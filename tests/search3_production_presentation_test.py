@@ -278,6 +278,19 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 original_export = b'window.V2TourController={selectTour,get currentTour(){return currentTour;},version:4};'
                 self.assertEqual(source.count(provider_export), 1, 'one canonical provider selection entry')
                 source = source.replace(provider_export, original_export, 1)
+                # Reviewed selected placement display only. The result renderer
+                # carries its canonical label through the existing action while
+                # the detail object and lead payload retain their raw values.
+                placement_fragments = (
+                    (b",selectedPlacementLabel=''", b''),
+                    (b"placement=displayText(selectedPlacementLabel)||displayText(t.placement)", b"placement=displayText(t.placement)"),
+                    (b"selectedPlacementLabel=String(button&&button.dataset&&button.dataset.placementLabel||'').trim();", b''),
+                    (b" data-placement-label=\"'+esc(selectedPlacementLabel)+'\"", b''),
+                    (b"currentTour=null;selectedPlacementLabel='';flightVariants=[]", b"currentTour=null;flightVariants=[]"),
+                )
+                for reviewed, original in placement_fragments:
+                    self.assertEqual(source.count(reviewed), 1, 'one selected placement display seam')
+                    source = source.replace(reviewed, original, 1)
                 # Reviewed offer handoff and in-memory editor draft only.
                 self.assertEqual(source.count("window.addEventListener('v2:search-reset',()=>{leadDraft=null;tourGeneration++;".encode()), 1)
                 source = source.replace("window.addEventListener('v2:search-reset',()=>{leadDraft=null;tourGeneration++;".encode(), "window.addEventListener('v2:search-reset',()=>{tourGeneration++;".encode(), 1)

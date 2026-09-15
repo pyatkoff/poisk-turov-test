@@ -382,7 +382,7 @@ async function checkLeadRecovery(page, width) {
       state.calls.push([action, params?.tourId]);
       const selected = [first, second].find(item => item.id === params?.tourId);
       if (!selected) throw new Error('unexpected recovery offer');
-      if (action === 'tour') return selected;
+      if (action === 'tour') return { ...selected, placement: '2 взрослых + 1 ребёнок' };
       if (action === 'flights') return flights;
       throw new Error('unexpected recovery API action ' + action);
     };
@@ -432,6 +432,8 @@ async function checkLeadRecovery(page, width) {
     return value;
   };
   await openOffer(first.id);
+  const selectedPlacement = await root.locator('.facts > div').filter({ hasText: 'Размещение' }).locator('b').innerText();
+  assert.equal(selectedPlacement, 'Двухместное + ребёнок', 'selected tour keeps the canonical listing placement instead of repeating party composition from detail');
   const form = root.locator('.lead-form');
   const submit = form.locator('button[type="submit"]');
   await form.locator('[name="phone"]').fill('123');
