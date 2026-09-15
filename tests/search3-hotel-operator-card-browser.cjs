@@ -85,7 +85,7 @@ module.exports=async function checkOperatorCards(page,width,output){
       assert.match(await row.locator('.tour-meta>small').innerText(),new RegExp(' · '+offer.nights+' ноч\\.'));
       assert.match(await row.innerText(),new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
       assert.doesNotMatch(await row.innerText(),/от \d|7–10|Разные варианты перелёта/);
-      assert.match(await row.innerText(),/Источник\s*Tourvisor/,'expanded exact offer keeps provider source distinct from tour operator');
+      assert.doesNotMatch(await row.innerText(),/Источник|Tourvisor/,'expanded exact offer keeps provider provenance out of customer copy');
       assert.doesNotMatch(await row.innerText(),/Туристы|Размещение/,'expanded offer row does not repeat search party or a second placement field');
       assert.match(await row.innerText(),/Стандарт · DBL/,'reviewed room label and raw placement stay together as one compact exact-offer fact');
       assert.equal(await row.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),String(offer.price)+'₽');

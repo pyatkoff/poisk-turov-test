@@ -59,12 +59,12 @@ assert.equal(api.normalizeHotel(invalid),null,'invalid offer context is rejected
 const rendererWindow={};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../v2/results-renderer-v5.js'),'utf8'),{window:rendererWindow,document:{readyState:'loading',addEventListener(){},querySelector(){return null;}},Intl,Number,String,Object,Array,Set});
 const andromedaRow=rendererWindow.V2Results.tourRow(normalized.tours[0]);
-assert.match(andromedaRow,/Источник<\/small><b>Андромеда<\/b>/);
-assert.match(andromedaRow,/перед выбором нужна проверка/);
+assert.doesNotMatch(andromedaRow,/Источник|Андромеда/);
+assert.match(andromedaRow,/Перед выбором проверим цену и рейсы/);
 assert.doesNotMatch(andromedaRow,/class="direct-tour"/,'Andromeda offer IDs never reach the Tourvisor selection controller');
 assert.doesNotMatch(andromedaRow,/data-andromeda-detail/,'an Andromeda-shaped tour outside the retained provider runtime has no dead detail action');
 const tvRow=rendererWindow.V2Results.tourRow(tv.tours[0]);
-assert.match(tvRow,/Источник<\/small><b>Tourvisor<\/b>/);
+assert.doesNotMatch(tvRow,/Источник|Tourvisor/);
 assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available');
 const seedHtml=rendererWindow.V2Results.toursHtml({...normalized,andromedaExpansion:{status:'idle',count:0}});
 assert.match(seedHtml,/hotel-offers-summary/,'one grouped seed remains a hotel summary until its common disclosure opens');
@@ -162,7 +162,7 @@ assert.equal(rendererWindow.V2Results.toursHtml(tv),tvRow,'ordinary single Tourv
   assert.equal(JSON.stringify(retained.offerContext),originalContext,'request projection never removes the retained browser scope');
   const detailHtml=rendererWindow.V2Results.tourRow(detailTour);
   assert.match(detailHtml,/&lt;script&gt;/);assert.doesNotMatch(detailHtml,/<script>/);
-  assert.match(detailHtml,/Подробности предложения Андромеды/);assert.doesNotMatch(detailHtml,/class="direct-tour"/);
+  assert.match(detailHtml,/aria-label="Подробности предложения"/);assert.doesNotMatch(detailHtml,/Андромед|class="direct-tour"/);
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(retained.offerRef);
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(retained.offerRef);
   assert.equal(detailCalls,1,'close and cached reopen issue no second detail request');
