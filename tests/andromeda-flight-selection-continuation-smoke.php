@@ -78,15 +78,35 @@ $selection=[
 $chosen=AnyTourAndromedaFlightSelection::select($retained,$context,$selection);
 if(($chosen['selected']['0']['uid']??null)!=='supplier_out_b'||($chosen['selected']['1']['uid']??null)!=='supplier_back_a')throw new RuntimeException('SELECTION_BINDING');
 
+$supplierBackDefault=[
+    'uid'=>'supplier_back_default','groupId'=>'g1','direction'=>'1','type'=>'ttAvia',
+    'name'=>'BACK DEFAULT','datebeg'=>'2026-09-27','dateend'=>'2026-09-27',
+];
 $continuedCalls=[];$continuedBudget=0;
 $continuedActions=new AnyTourAndromedaClaimActions('SID_continue',static function()use(&$continuedBudget){++$continuedBudget;},
-    static function(string $url,string $post)use(&$continuedCalls,$money):array{
+    static function(string $url,string $post)use(&$continuedCalls,$money,$supplierBackDefault):array{
         parse_str((string)parse_url($url,PHP_URL_QUERY),$query);
         $action=$query['action']??null;$continuedCalls[]=$action;
         parse_str($post,$form);
         $claim=json_decode($form['claim']??'',true,64,JSON_THROW_ON_ERROR);
         if($action==='changeservice'){
-            if(!isset($query['NEW_UID'])||isset($query['OLD_UID']))throw new RuntimeException('CHANGE_SHAPE');
+            $newUid=$query['NEW_UID']??null;
+            if($newUid==='supplier_out_b'){
+                if(isset($query['OLD_UID']))throw new RuntimeException('OUTBOUND_CHANGE_SHAPE');
+                $claim['claimDocument'][0]['transports'][0]['transport'][]=$supplierBackDefault;
+            }elseif($newUid==='supplier_back_a'){
+                if(($query['OLD_UID']??null)!=='supplier_back_default')throw new RuntimeException('RETURN_CHANGE_SHAPE');
+                $uids=[];
+                foreach(($claim['claimDocument'][0]['transports']??[]) as $block){
+                    if(!is_array($block)||!is_array($block['transport']??null))continue;
+                    foreach($block['transport'] as $transport){
+                        if(is_array($transport)&&is_string($transport['uid']??null))$uids[]=$transport['uid'];
+                    }
+                }
+                if(!in_array('supplier_back_a',$uids,true)||in_array('supplier_back_default',$uids,true))throw new RuntimeException('RETURN_REPLACEMENT');
+            }else{
+                throw new RuntimeException('CHANGE_UID');
+            }
             return ['status'=>200,'body'=>json_encode($claim,JSON_THROW_ON_ERROR)];
         }
         if($action==='calc'){
@@ -101,7 +121,7 @@ if($continuedCalls!==['changeservice','changeservice','calc']||$continuedBudget!
 if(($final['state']??null)!=='quote_verified'||($final['final_price_verified']??null)!==true
     ||($final['final_price']['amount']??null)!=='81234'||($final['booking_enabled']??null)!==false)throw new RuntimeException('FINAL_QUOTE');
 $finalEncoded=json_encode($final,JSON_THROW_ON_ERROR);
-foreach(['supplier_out_a','supplier_out_b','supplier_back_a','SID_continue','catalog-private'] as $secret){
+foreach(['supplier_out_a','supplier_out_b','supplier_back_a','supplier_back_default','SID_continue','catalog-private'] as $secret){
     if(str_contains($finalEncoded,$secret))throw new RuntimeException('FINAL_PRIVATE_LEAK_'.$secret);
 }
 
