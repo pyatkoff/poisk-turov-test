@@ -92,6 +92,11 @@ assert.deepEqual(compare([
   { ...same, date: '2026-09-12T04:30:00Z', meal: 'All Inclusive', operator: 'ANEX' }
 ]), { keys: [], common: ['date', 'nights', 'party', 'meal', 'room', 'placement', 'operator'] }, 'equivalent displayed dates, reviewed meal and operator aliases do not create false differences');
 assert.deepEqual(compare([same, { ...same, room: 'Standard room' }, { ...same, room: 'Стандартный номер' }]).keys, [], 'reviewed room aliases do not create false differences');
+const poolView = { ...same, room: 'Standard Pool View' };
+assert.deepEqual(compare([poolView, { ...same, room: 'Стандарт · вид на бассейн' }]).keys, [], 'the reviewed pool-view labels compare as the same room description');
+for (const room of ['STANDARD', 'STANDARD LAND VIEW', 'STANDARD SEA VIEW', 'STANDARD POOL VIEW WITH PRIVATE POOL']) {
+  assert.deepEqual(compare([poolView, { ...same, room }]).keys, ['room'], 'pool view remains distinct from ' + room);
+}
 assert.deepEqual(compare([same, { ...same, room: 'EXECUTIVE SEA VIEW WITH BALCONY' }]).keys, ['room'], 'unknown extended room names remain distinct');
 for (const meal of ['UAI', 'Soft AI', 'Not all inclusive', 'Premium All Inclusive']) {
   assert.deepEqual(compare([same, { ...same, meal }]).keys, ['meal'], meal + ' retains its distinct conditions');

@@ -39,6 +39,7 @@ return identities[family]||{key:'meal:label:'+normalized,label};
 function rawRoomLabel(t){return textValue(t&&(t.roomType!==undefined?t.roomType:t.room)).replace(/\s+/g,' ').trim();}
 const roomAliases=[
   {key:'standard',label:'Стандарт',aliases:['standard','standard room','стандарт','стандартный номер']},
+  {key:'standard-pool-view',label:'Стандарт · вид на бассейн',aliases:['standard pool view','standard room pool view','стандарт вид на бассейн','стандартный номер вид на бассейн']},
   {key:'standard-land-view',label:'Стандарт · территория',aliases:['standard land view','standard room land view','стандартный номер вид на территорию','стандартный номер · вид на территорию','стандарт вид на территорию','стандарт · вид на территорию','стандарт территория','стандарт · территория']},
   {key:'standard-sea-view',label:'Стандарт · море',aliases:['standard sea view','standard room sea view','стандартный номер вид на море','стандартный номер · вид на море','стандарт вид на море','стандарт · вид на море','стандарт море','стандарт · море']},
   {key:'standard-side-sea-view',label:'Стандарт · боковой вид на море',aliases:['standard side sea view','standard room side sea view','стандартный номер боковой вид на море','стандартный номер · боковой вид на море','стандарт боковой вид на море','стандарт · боковой вид на море']},
