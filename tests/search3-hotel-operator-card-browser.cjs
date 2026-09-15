@@ -26,7 +26,7 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await card.locator('[data-operator-brand],.hotel-operator-logo').count(),0,'collapsed multi-offer hotel does not borrow one concrete operator');
     assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(),0,'collapsed multi-offer hotel has no concrete offer row, Select, or Compare');
     const collapsedText=await card.innerText();
-    assert.doesNotMatch(collapsedText,/16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|8 ноч\.|9 ноч\.|10 ноч\.|Завтраки|Полупансион|Всё включено|STANDARD|DBL|Tourvisor|FUN&SUN|ANEX|Интурист|Библио|Чартер|Регулярный рейс/,'collapsed hotel-level surface excludes concrete offer parameters');
+    assert.doesNotMatch(collapsedText,/16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|8 ноч\.|9 ноч\.|10 ноч\.|Завтраки|Полупансион|Всё включено|STANDARD|DBL|Двухместное|Tourvisor|FUN&SUN|ANEX|Интурист|Библио|Чартер|Регулярный рейс/,'collapsed hotel-level surface excludes concrete offer parameters');
     assert.equal(await card.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от62400₽','collapsed multi-offer hotel exposes only the truthful group minimum');
     assert.equal(await card.locator('.tour-more-toggle').count(),1);
     const toggle=card.locator('.tour-more-toggle');
@@ -87,7 +87,7 @@ module.exports=async function checkOperatorCards(page,width,output){
       assert.doesNotMatch(await row.innerText(),/от \d|7–10|Разные варианты перелёта/);
       assert.doesNotMatch(await row.innerText(),/Источник|Tourvisor/,'expanded exact offer keeps provider provenance out of customer copy');
       assert.doesNotMatch(await row.innerText(),/Туристы|Размещение/,'expanded offer row does not repeat search party or a second placement field');
-      assert.match(await row.innerText(),/Стандарт · DBL/,'reviewed room label and raw placement stay together as one compact exact-offer fact');
+      assert.match(await row.innerText(),/Стандарт · Двухместное/,'reviewed room and placement labels stay together as one compact exact-offer fact');
       assert.equal(await row.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),String(offer.price)+'₽');
       const identity=await page.evaluate(t=>window.V2Results.operatorIdentity(t),offer),badge=row.locator('.hotel-operator');
       assert.equal(await badge.getAttribute('title'),'Туроператор: '+identity.label,'hover text names the actual operator');
