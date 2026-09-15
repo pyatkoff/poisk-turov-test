@@ -1,0 +1,92 @@
+name: MATCH PR2412 schema-v3 CURRENT evidence matrix v1
+on:
+  push:
+    branches: [ops/match-pr2412-evidence-current-1971-20260915-v1]
+    paths:
+      - .github/workflows/hotel-match-pr2412-evidence-current-v1.yml
+      - scripts/diagnostics/hotel_match_pr2412_evidence_current.php
+permissions: {contents: read}
+concurrency: {group: match-pr2412-evidence-current-1971-20260915-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-pr2412-evidence-current-1971-20260915-v1
+jobs:
+  current-evidence-readonly:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate read-only evidence matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_pr2412_evidence_current.php
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('scripts/diagnostics/hotel_match_pr2412_evidence_current.php').read_text()
+          assert "const HM_OP='hotel-match-pr2412-evidence-current-1971-20260915-v1'" in s
+          assert 'if(count($inputs)!==101)' in s
+          assert 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' in s
+          assert "'supplier_calls'=>0" in s and "'tourvisor_calls'=>0" in s
+          assert not re.search(r'\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b\s', s, re.I)
+          assert not re.search(r'https?://|\bcurl\s|stream_socket_client|fsockopen', s, re.I)
+          print('static safety: PASS')
+          PY
+      - name: Execute immutable CURRENT evidence matrix and verify durable receipt
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          cleanup() { ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0" < scripts/diagnostics/hotel_match_pr2412_evidence_current.php > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"
+          trc=$?
+          set -e
+          if [[ $trc -eq 0 && -s "$out/server-operation.tgz" ]]; then mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"; fi
+          export RC="$rc" OUT="$out"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT']); p=out/'server'
+          def load(name):
+              try:return json.loads((p/name).read_text())
+              except Exception:return {}
+          result=load('result.json'); receipt=load('receipt.json'); reservation=load('reservation.json')
+          rp=p/'result.json'; rh=hashlib.sha256(rp.read_bytes()).hexdigest() if rp.exists() else None
+          guards=result.get('guard_counts') or {}; lanes=result.get('lane_counts') or {}
+          ok=(int(os.environ['RC'])==0 and result.get('operation_id')==os.environ['OPERATION_ID']
+              and result.get('status')=='completed_read_only' and result.get('input_rows')==101
+              and sum(int(v) for v in guards.values())==101 and sum(int(v) for v in lanes.values())==101
+              and result.get('supplier_calls')==0 and result.get('tourvisor_calls')==0
+              and result.get('database_writes')==0 and result.get('mapping_writes')==0
+              and reservation.get('state')=='reserved_before_db_access' and reservation.get('input_rows')==101
+              and receipt.get('readback_verified') is True and receipt.get('result_sha256')==rh
+              and receipt.get('database_writes')==0 and receipt.get('mapping_writes')==0)
+          gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':result.get('source_sha'),'verified':ok,
+                'remote_exit':int(os.environ['RC']),'input_rows':result.get('input_rows'),
+                'guard_counts':guards,'lane_counts':lanes,
+                'unresolved_live_frequency_sum':result.get('unresolved_live_frequency_sum'),
+                'result_sha256':rh,'supplier_calls':result.get('supplier_calls'),'tourvisor_calls':result.get('tourvisor_calls'),
+                'database_writes':result.get('database_writes'),'mapping_writes':result.get('mapping_writes'),'no_replay':True}
+          (out/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,sort_keys=True))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-pr2412-evidence-current-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-pr2412-evidence-current-1971-20260915-v1/
+          retention-days: 90
