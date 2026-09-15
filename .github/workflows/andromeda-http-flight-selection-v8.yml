@@ -55,7 +55,7 @@ jobs:
           for needle in required:
               if text.count(needle) < 1:
                   raise SystemExit('v8 control pin missing: '+needle)
-          for forbidden in ('bron_ticket', 'booking_calls=1', '/run-andromeda-http-flight-selection-e2e-1717-v7'):
+          for forbidden in ('bron'+'_ticket', 'booking_calls'+'=1', '/run-andromeda-http-flight-selection-e2e-1717-'+'v7'):
               if forbidden in text:
                   raise SystemExit('forbidden/replay authority in v8 control: '+forbidden)
           print('v8 control contract OK; PR supplier calls=0')
