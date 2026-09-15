@@ -1,0 +1,99 @@
+name: MATCH mass Andromeda operator evidence v1
+on:
+  push:
+    branches: [ops/match-andromeda-operator-evidence-mass-1971-20260915-v1]
+    paths: [.github/workflows/hotel-match-andromeda-operator-evidence-mass-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-andromeda-operator-evidence-mass-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-andromeda-operator-evidence-mass-1971-20260915-v1
+jobs:
+  enrich:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}', fetch-depth: 1}
+      - name: Exact MATCH source tests and guards
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_andromeda_operator_evidence_mass_v1.php
+          php -l tests/hotel_match_andromeda_operator_evidence_mass_v1_test.php
+          php tests/hotel_match_andromeda_operator_evidence_mass_v1_test.php
+          test "$(git hash-object scripts/diagnostics/hotel_match_andromeda_operator_evidence_mass_v1.php)" = 0310181c525d13ddf35bfe9246a47ecc5ffa4fa4
+          test "$(git hash-object tests/hotel_match_andromeda_operator_evidence_mass_v1_test.php)" = 374c89a69723b34a6a128a817cfc1655ea6991c1
+          test "$(git hash-object scripts/diagnostics/hotel_match_live_residual_current_review.php)" = e93113da264b9bb1a17d0cb65287b4d1dc5b476b
+          test "$(git hash-object app/integrations/andromeda-client.php)" = 7f2a444904e25f8abf1b50b70879b1650984800c
+          test "$(git hash-object app/integrations/andromeda-transport.php)" = 162e33d3f1997ec7e73e1ef276c586d4732f8957
+          ! grep -Eiq '(broninit|booking\(|lead\(|tourvisor|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bREPLACE\b)' scripts/diagnostics/hotel_match_andromeda_operator_evidence_mass_v1.php
+      - name: Reserve immutable operation before DB or supplier access
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'state':'reserved_before_db_access','mode':'server_current_queue_then_andromeda_price_hotels','operators':[5,315,342,115],'max_price_calls':500,'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'booking_calls':0,'no_replay':True},sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-andromeda-operator-evidence-mass-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-andromeda-operator-evidence-mass-1971-20260915-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Build server-CURRENT core8 pending queue read-only
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          remote="\$HOME/.anytoour-match/operations/$OPERATION_ID"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=$remote; mkdir -p \"\$p/source\"; test ! -e \"\$p/reservation.json\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          for f in hotel_match_live_residual_current_review.php hotel_match_andromeda_operator_evidence_mass_v1.php; do ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cat > $remote/source/$f" < "scripts/diagnostics/$f"; done
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=1 $remote/source/hotel_match_andromeda_operator_evidence_mass_v1.php queue"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C $remote -czf - ." > "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'server';raw=root.joinpath('queue.json').read_bytes();q=json.loads(raw);r=json.loads(root.joinpath('queue-receipt.json').read_text());d=hashlib.sha256(raw).hexdigest()
+          assert q['state']=='queue_completed_read_only' and q['operation_id']==os.environ['OPERATION_ID'] and q['source_sha']==os.environ['GITHUB_SHA']
+          assert q['queue_count']==len(q['queue']) and q['queue_count']>=100 and q['db_writes']==q['mapping_writes']==q['supplier_calls']==q['tourvisor_calls']==q['booking_calls']==0
+          assert r['queue_sha256']==d and r['queue_count']==q['queue_count'] and r['db_writes']==0
+          print(json.dumps({'pending_total':q['pending_total'],'queue_count':q['queue_count'],'frequency_sum':q['frequency_sum'],'states':q['states'],'queue_sha256':d},sort_keys=True))
+          PY
+      - name: Collect operator-native original.hotelKey evidence at mass scale
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"
+          test -n "$ANDROMEDA_USERNAME" && test -n "$ANDROMEDA_PASSWORD"
+          php scripts/diagnostics/hotel_match_andromeda_operator_evidence_mass_v1.php run "$out/server/queue.json" "$out"
+      - name: Independent result and no-write readback
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];raw=p.joinpath('result.json').read_bytes();x=json.loads(raw);r=json.loads(p.joinpath('receipt.json').read_text());d=hashlib.sha256(raw).hexdigest();q=json.loads(p.joinpath('server/queue.json').read_text())
+          zero=['database_writes','mapping_writes','tourvisor_calls','all_calls','booking_calls']
+          ok=x.get('state')=='completed' and x.get('operation_id')==os.environ['OPERATION_ID'] and x.get('source_sha')==os.environ['GITHUB_SHA'] and x.get('queue_count')==q.get('queue_count') and x.get('queue_sha256')==hashlib.sha256(p.joinpath('server/queue.json').read_bytes()).hexdigest() and 0 < x.get('price_calls',0) <= 500 and all(x.get(k)==0 for k in zero) and r.get('result_sha256')==d and r.get('readback_verified') is True and r.get('database_writes')==0
+          gate={'verified':ok,'queue_count':x.get('queue_count'),'queue_frequency_sum':x.get('queue_frequency_sum'),'unique_pair_count':x.get('unique_pair_count'),'covered_andromeda_count':x.get('covered_andromeda_count'),'by_operator':x.get('by_operator'),'supplier_calls':x.get('supplier_calls'),'price_calls':x.get('price_calls'),'result_sha256':d,'no_replay':True}
+          p.joinpath('workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n');print(json.dumps(gate,sort_keys=True))
+          if not ok: raise SystemExit(5)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-andromeda-operator-evidence-mass-v1-result
+          path: ${{ runner.temp }}/hotel-match-andromeda-operator-evidence-mass-1971-20260915-v1/
+          if-no-files-found: warn
+          retention-days: 90
