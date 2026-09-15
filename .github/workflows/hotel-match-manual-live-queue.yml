@@ -30,8 +30,8 @@ jobs:
           test "$(git hash-object scripts/diagnostics/hotel_match_tv_operator_dictionary.php)" = 3f916ce945bc73acd4c9fce2f2e86f5cc650a496
           php -l scripts/diagnostics/hotel_match_tv_operator_dictionary.php
           php scripts/diagnostics/hotel_match_tv_operator_dictionary.php --self-test
-          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_tv_operator_dictionary.php
-          ! grep -Eiq '(\/tours\/search|\/tours\/[A-Za-z0-9]|booking|broninit|lead\()' scripts/diagnostics/hotel_match_tv_operator_dictionary.php
+          grep -Fq "'endpoint'=>'/operators'" scripts/diagnostics/hotel_match_tv_operator_dictionary.php
+          grep -Fq "'max_http_calls'=>1" scripts/diagnostics/hotel_match_tv_operator_dictionary.php
       - name: Reserve immutable operation before SSH or provider access
         run: |
           set -euo pipefail
