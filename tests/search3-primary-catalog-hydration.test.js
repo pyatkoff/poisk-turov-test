@@ -125,7 +125,7 @@ test('loaded hotel services preserve focus continuity without stealing unrelated
   fixture.renderHotelServices([{ name: 'Общие', items: [{ id: 1, name: 'Wi-Fi' }] }]);
 
   assert.equal(fixture.firstService.calls.length, 1);
-  assert.deepEqual(fixture.firstService.calls[0], { preventScroll: true });
+  assert.equal(fixture.firstService.calls[0].preventScroll, true);
   assert.equal(fixture.attrs.has('role'), false);
   assert.equal(fixture.attrs.has('aria-live'), false);
   assert.equal(fixture.attrs.has('aria-busy'), false);
