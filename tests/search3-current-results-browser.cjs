@@ -675,27 +675,20 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.equal(await card.locator('.tour-row').count(), 3, 'the same action reopens the received offers');
     assert.equal(control.requests.length, 4, 'collapse and reopen do not replay scoped pages or offer details');
     assert.equal(await expansionToggle.evaluate(node => node === document.activeElement), true, 'collapse and reopen retain keyboard focus on the common action');
-    const sourceFilter = page.locator('.search3-provider-filter select');
-    if (width < 1025) {
-      const panel = page.locator('.search3-mobile-filter-panel');
-      if (await panel.getAttribute('open') === null) await panel.locator('summary').click();
-    }
-    await sourceFilter.selectOption('tourvisor');
-    assert.equal(await card.locator('.tour-row').count(), 1, 'a selected source projects only its matching exact offer');
-    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), 'tv-andromeda-control', 'the projected selectable offer retains its original identity');
-    assert.equal(await card.locator('.provider-detail-toggle').count(), 0, 'filtering to Tourvisor never reveals the filtered provider offers');
-    assert.equal(await expansionToggle.count(), 1, 'projecting one offer retains the hotel’s common disclosure');
+    assert.equal(await page.locator('.search3-provider-filter').count(), 0, 'provider provenance is not exposed as a customer filter');
+    assert.equal(await card.locator('.tour-row').count(), 3, 'all received offers remain available for operator and product decisions');
+    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), 'tv-andromeda-control', 'the selectable offer retains its original identity without a provider control');
+    assert.equal(await expansionToggle.count(), 1, 'the hotel keeps one common offer disclosure');
     await expansionToggle.click();
-    assert.equal(await card.locator('.tour-row').count(), 0, 'the filtered single offer can be collapsed');
+    assert.equal(await card.locator('.tour-row').count(), 0, 'the common offer list can be collapsed');
     await page.locator('#sortResults').selectOption('rating');
-    assert.equal(await expansionToggle.getAttribute('aria-expanded'), 'false', 'local sorting preserves the collapsed filtered hotel');
+    assert.equal(await expansionToggle.getAttribute('aria-expanded'), 'false', 'local sorting preserves the collapsed hotel');
     await expansionToggle.click();
-    assert.equal(await card.locator('.tour-row').count(), 1, 'reopening preserves the selected source filter');
-    assert.equal(await card.locator('.provider-detail-toggle').count(), 0, 'common disclosure does not bypass the source restriction');
-    assert.equal(control.requests.length, 4, 'local source filtering, sorting and disclosure do not replay supplier requests');
-    await sourceFilter.selectOption('');
+    assert.equal(await card.locator('.tour-row').count(), 3, 'reopening restores all already loaded offers');
+    assert.equal(await card.locator('.provider-detail-toggle').count(), 2, 'provider-specific verification actions stay attached to exact offers without exposing provenance as a filter');
+    assert.equal(control.requests.length, 4, 'local sorting and disclosure do not replay supplier requests');
     await page.locator('#sortResults').selectOption('price');
-    assert.equal(await card.locator('.tour-row').count(), 3, 'clearing the local restriction restores the already loaded common offers');
+    assert.equal(await card.locator('.tour-row').count(), 3, 'sorting keeps the already loaded common offers');
 
     control.failSecond = true;
     control.requests.length = 0;
@@ -1196,9 +1189,8 @@ async function run(browser, width, previous) {
     assert.equal(await localCategoryFilter.isVisible(), false, 'search reset hides the stale local category facet');
     assert.equal(await localOperatorSelect.inputValue(), '', 'search reset clears the local operator');
     assert.equal(await localOperatorFilter.isVisible(), false, 'search reset hides the stale local operator facet');
-    for (const selector of ['.search3-provider-filter', '.search3-region-filter']) {
-      assert.equal(await page.locator(selector).evaluate(node => node.hidden && getComputedStyle(node).display === 'none'), true, 'reset removes the stale facet from layout even inside a grid: ' + selector);
-    }
+    assert.equal(await page.locator('.search3-provider-filter').count(),0,'reset cannot recreate the removed provider facet');
+    assert.equal(await page.locator('.search3-region-filter').evaluate(node => node.hidden && getComputedStyle(node).display === 'none'), true, 'reset removes the stale region facet from layout even inside a grid');
     assert.equal(await calendar.isVisible(), false, 'search reset hides stale calendar data');
     assert.equal(await calendar.locator('[data-calendar-date]').count(), 0, 'search reset clears stale calendar dates');
     await page.evaluate(() => {

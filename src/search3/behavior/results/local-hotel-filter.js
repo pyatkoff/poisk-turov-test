@@ -2,10 +2,9 @@
 const results=document.getElementById('results'),actions=document.querySelector('#resultsTools .results-tools__actions'),rail=document.querySelector('.results-filter-rail');
 if(!results||!actions||!rail)return;
 const desktop=window.matchMedia('(min-width:1025px)');
-let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,mealPresets=null,providerField=null,providerSelect=null,operatorField=null,operatorSelect=null,regionField=null,regionSelect=null,budgetField=null,budgetInput=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null,activeList=null;
+let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,mealPresets=null,operatorField=null,operatorSelect=null,regionField=null,regionSelect=null,budgetField=null,budgetInput=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null,activeList=null;
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
-function providerKey(t){const value=String(t&&t.provider||'tourvisor').trim().toLowerCase();return value==='andromeda'?'andromeda':value==='anex'?'anex':'tourvisor';}
 function id(value){return String(value&&value.id!==undefined&&value.id!==null?value.id:'');}
 function cards(){return Array.from(results.querySelectorAll('.hotel-card'));}
 function cardValues(key){const byId=new Map(sourceItems.map(item=>[id(item),Number(item&&item[key]||0)]));return cards().map(card=>byId.get(String(card.dataset.hotelId||''))||0);}
@@ -14,14 +13,13 @@ function cardTextValues(key){
   return cards().map(card=>byId.get(String(card.dataset.hotelId||''))||{key:'',label:''});
 }
 function money(value){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(value||0));}
-function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,providerField,ratingField,seaField];}
-function active(){return!!(normalize(input.value)||Number(categorySelect.value)||mealSelect.value||providerSelect.value||operatorSelect.value||regionSelect.value||budgetActive||Number(ratingSelect.value)||Number(seaSelect.value));}
+function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,ratingField,seaField];}
+function active(){return!!(normalize(input.value)||Number(categorySelect.value)||mealSelect.value||operatorSelect.value||regionSelect.value||budgetActive||Number(ratingSelect.value)||Number(seaSelect.value));}
 function selectedLabel(select){const selected=select.selectedOptions&&select.selectedOptions[0];return selected?selected.textContent.trim():'';}
 function activeEntries(){
   const entries=[];
   if(budgetActive)entries.push({key:'budget',label:'до '+money(budgetInput.value)+' ₽'});
   if(mealSelect.value)entries.push({key:'meal',label:selectedLabel(mealSelect)});
-  if(providerSelect.value)entries.push({key:'provider',label:'Источник: '+selectedLabel(providerSelect)});
   if(operatorSelect.value)entries.push({key:'operator',label:selectedLabel(operatorSelect)});
   if(regionSelect.value)entries.push({key:'region',label:selectedLabel(regionSelect)});
   if(Number(categorySelect.value))entries.push({key:'category',label:selectedLabel(categorySelect)});
@@ -34,12 +32,11 @@ function syncActiveList(entries){
   activeList.replaceChildren(...entries.map(entry=>{const button=document.createElement('button');button.type='button';button.dataset.filterKey=entry.key;button.textContent=entry.label+' ×';button.setAttribute('aria-label','Убрать фильтр: '+entry.label);return button;}));
   activeList.hidden=!entries.length;
 }
-function focusFilter(key){return({budget:budgetInput,meal:mealSelect,provider:providerSelect,operator:operatorSelect,region:regionSelect,category:categorySelect,rating:ratingSelect,sea:seaSelect,hotel:input})[key]||input;}
+function focusFilter(key){return({budget:budgetInput,meal:mealSelect,operator:operatorSelect,region:regionSelect,category:categorySelect,rating:ratingSelect,sea:seaSelect,hotel:input})[key]||input;}
 function clearActive(key){
-  const target=focusFilter(key),projected=['budget','meal','provider','operator'].includes(key);
+  const target=focusFilter(key),projected=['budget','meal','operator'].includes(key);
   if(key==='budget'){budgetActive=false;budgetInput.value=budgetInput.max;}
   else if(key==='meal')mealSelect.value='';
-  else if(key==='provider')providerSelect.value='';
   else if(key==='operator')operatorSelect.value='';
   else if(key==='region')regionSelect.value='';
   else if(key==='category')categorySelect.value='0';
@@ -93,17 +90,15 @@ function ensure(){
   budgetField=document.createElement('label');budgetField.className='search3-budget-filter';budgetField.hidden=true;
   budgetField.innerHTML='<span>Максимальный бюджет, ₽</span><input type="number" min="0" max="0" step="1" inputmode="numeric" value="0">';
   mealField=document.createElement('div');mealField.className='search3-meal-filter';mealField.hidden=true;mealField.innerHTML='<label><span>Питание</span><select aria-describedby="search3HotelFilterStatus"><option value="">Любое питание</option></select></label><div class="search3-filter-presets" role="group" aria-label="Быстрый выбор питания" hidden></div>';
-  providerField=document.createElement('label');providerField.className='search3-provider-filter';providerField.hidden=true;providerField.innerHTML='<span>Источник предложения</span><select aria-describedby="search3HotelFilterStatus"><option value="">Все источники</option></select>';
   operatorField=document.createElement('label');operatorField.className='search3-operator-filter';operatorField.hidden=true;operatorField.innerHTML='<span>Туроператор</span><select aria-describedby="search3HotelFilterStatus"><option value="">Все туроператоры</option></select>';
   regionField=document.createElement('label');regionField.className='search3-region-filter';regionField.hidden=true;regionField.innerHTML='<span>Курорт / регион</span><select aria-describedby="search3HotelFilterStatus"><option value="">Все курорты</option></select>';
   categoryField=document.createElement('div');categoryField.className='search3-category-filter';categoryField.hidden=true;categoryField.innerHTML='<label><span>Категория отеля</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любая категория</option></select></label><div class="search3-filter-presets" role="group" aria-label="Быстрый выбор категории" hidden></div>';
   ratingField=document.createElement('label');ratingField.className='search3-rating-filter';ratingField.hidden=true;ratingField.innerHTML='<span>Рейтинг гостей</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любой рейтинг</option><option value="4">4,0 и выше</option><option value="4.5">4,5 и выше</option></select>';
   seaField=document.createElement('label');seaField.className='search3-sea-filter';seaField.hidden=true;seaField.innerHTML='<span>До моря</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любое расстояние</option><option value="200">До 200 м</option><option value="500">До 500 м</option><option value="1000">До 1 км</option></select>';
   resetButton=document.createElement('button');resetButton.type='button';resetButton.className='search3-filter-reset';resetButton.textContent='Сбросить фильтры';resetButton.hidden=true;
-  input=field.querySelector('input');status=field.querySelector('small');budgetInput=budgetField.querySelector('input');mealSelect=mealField.querySelector('select');mealPresets=mealField.querySelector('.search3-filter-presets');providerSelect=providerField.querySelector('select');operatorSelect=operatorField.querySelector('select');regionSelect=regionField.querySelector('select');categorySelect=categoryField.querySelector('select');categoryPresets=categoryField.querySelector('.search3-filter-presets');ratingSelect=ratingField.querySelector('select');seaSelect=seaField.querySelector('select');
+  input=field.querySelector('input');status=field.querySelector('small');budgetInput=budgetField.querySelector('input');mealSelect=mealField.querySelector('select');mealPresets=mealField.querySelector('.search3-filter-presets');operatorSelect=operatorField.querySelector('select');regionSelect=regionField.querySelector('select');categorySelect=categoryField.querySelector('select');categoryPresets=categoryField.querySelector('.search3-filter-presets');ratingSelect=ratingField.querySelector('select');seaSelect=seaField.querySelector('select');
   input.addEventListener('input',apply);regionSelect.addEventListener('change',apply);categorySelect.addEventListener('change',apply);ratingSelect.addEventListener('change',apply);seaSelect.addEventListener('change',apply);
   mealSelect.addEventListener('change',()=>window.V2Results.rerender());
-  providerSelect.addEventListener('change',()=>window.V2Results.rerender());
   operatorSelect.addEventListener('change',()=>window.V2Results.rerender());
   bindPresets(mealPresets,mealSelect);bindPresets(categoryPresets,categorySelect);
   budgetInput.addEventListener('change',()=>setBudget(budgetInput.value));
@@ -154,13 +149,6 @@ function syncMeal(items){
   [breakfast,inclusive].forEach(item=>{if(item&&!quick.some(choice=>choice.value===item.value))quick.push({value:item.value,label:item===breakfast?'Завтрак':'Всё включено'});});
   syncPresets(mealPresets,mealSelect,quick,'');return mealSelect.value;
 }
-function syncProvider(items){
-  const labels=new Map(),api=window.V2Results;
-  items.forEach(h=>(Array.isArray(h&&h.tours)?h.tours:[]).forEach(t=>{const key=providerKey(t),label=api.providerName(t).replace(/\s+/g,' ').trim();if(key&&!labels.has(key))labels.set(key,label||key);}));
-  const previous=providerSelect.value,available=labels.size>1;providerSelect.replaceChildren(option('','Все источники'));
-  if(available)Array.from(labels).sort((a,b)=>a[1].localeCompare(b[1],'ru')).forEach(([value,label])=>providerSelect.appendChild(option(value,label)));
-  providerSelect.value=available&&labels.has(previous)?previous:'';providerField.hidden=!available;return providerSelect.value;
-}
 function syncOperator(items){
   const labels=new Map(),api=window.V2Results;
   const complete=items.length>0&&items.every(h=>Array.isArray(h&&h.tours)&&h.tours.length&&h.tours.every(t=>{const identity=api.operatorIdentity(t);if(!identity)return false;if(!labels.has(identity.key))labels.set(identity.key,identity.label);return true;}));
@@ -169,9 +157,9 @@ function syncOperator(items){
   operatorSelect.value=available&&labels.has(previous)?previous:'';operatorField.hidden=!available;return operatorSelect.value;
 }
 function project(items){
-  ensure();sourceItems=items.slice();unmatched=new Set();const api=window.V2Results,meal=syncMeal(items),provider=syncProvider(items),operator=syncOperator(items),budget=syncBudget(items);
-  if(!meal&&!provider&&!operator&&!budget){projectedItems=items;mount();return projectedItems;}
-  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||api.mealIdentity(t)?.key===meal)&&(!provider||providerKey(t)===provider)&&(!operator||api.operatorIdentity(t)?.key===operator)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
+  ensure();sourceItems=items.slice();unmatched=new Set();const api=window.V2Results,meal=syncMeal(items),operator=syncOperator(items),budget=syncBudget(items);
+  if(!meal&&!operator&&!budget){projectedItems=items;mount();return projectedItems;}
+  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||api.mealIdentity(t)?.key===meal)&&(!operator||api.operatorIdentity(t)?.key===operator)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
   mount();return projectedItems;
 }
 function apply(){
@@ -183,12 +171,12 @@ function apply(){
 function focusAfterReset(trigger){
   requestAnimationFrame(()=>{const restored=cards().find(card=>!card.hidden),target=trigger.classList.contains('search3-local-empty-reset')&&(restored&&restored.querySelector('.hotel-title')||results)||input;if(!target)return;const temporary=target!==input&&!target.hasAttribute('tabindex');if(temporary)target.setAttribute('tabindex','-1');try{target.focus({preventScroll:true});}catch(error){target.focus();}if(temporary)target.addEventListener('blur',()=>target.removeAttribute('tabindex'),{once:true});});
 }
-function reset(event){ensure();const trigger=event&&event.currentTarget;input.value='';categorySelect.value='0';mealSelect.value='';providerSelect.value='';operatorSelect.value='';regionSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;window.V2Results.rerender();if(trigger)focusAfterReset(trigger);}
+function reset(event){ensure();const trigger=event&&event.currentTarget;input.value='';categorySelect.value='0';mealSelect.value='';operatorSelect.value='';regionSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;window.V2Results.rerender();if(trigger)focusAfterReset(trigger);}
 function clear(event){
   ensure();const empty=results.querySelector('.search3-local-empty');if(empty)empty.remove();if(event&&event.detail&&event.detail.dirty){fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);return;}
-  sourceItems=[];projectedItems=[];unmatched=new Set();input.value='';categorySelect.value='0';mealSelect.value='';providerSelect.value='';operatorSelect.value='';regionSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;budgetInput.value='0';cards().forEach(card=>{card.hidden=false;});status.textContent='';fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);
+  sourceItems=[];projectedItems=[];unmatched=new Set();input.value='';categorySelect.value='0';mealSelect.value='';operatorSelect.value='';regionSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;budgetInput.value='0';cards().forEach(card=>{card.hidden=false;});status.textContent='';fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
 ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);
-window.Search3LocalHotelFilter={apply,clear,project,reset,version:10};
+window.Search3LocalHotelFilter={apply,clear,project,reset,version:11};
 })();
