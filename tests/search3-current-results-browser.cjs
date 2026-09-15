@@ -120,10 +120,11 @@ async function checkToolbarLayout(page, width, previous) {
   return { closed, opened };
 }
 async function checkMinimumReadiness(page, width, previous) {
+  // Generic selection readiness; real SAMO admission is exercised through its HTTP projection below.
   const makeTour = (id, price, extra = {}) => ({ ...tour, id, price, ...extra });
   const items = [
-    { ...hotels[0], id: 'minimum-check', name: 'Минимальная цена с проверкой', price: 80000, tours: [makeTour('minimum-andromeda', 80000, { provider: 'andromeda' }), makeTour('minimum-selectable', 95000)] },
-    { ...hotels[0], id: 'minimum-mixed', name: 'Одна цена — разные условия выбора', price: 85000, tours: [makeTour('mixed-andromeda', 85000, { provider: 'andromeda' }), makeTour('mixed-selectable', 85000)] },
+    { ...hotels[0], id: 'minimum-check', name: 'Минимальная цена с проверкой', price: 80000, tours: [makeTour('minimum-check-offer', 80000, { selectionEnabled: false }), makeTour('minimum-selectable', 95000)] },
+    { ...hotels[0], id: 'minimum-mixed', name: 'Одна цена — разные условия выбора', price: 85000, tours: [makeTour('mixed-check-offer', 85000, { selectionEnabled: false }), makeTour('mixed-selectable', 85000)] },
     { ...hotels[0], id: 'minimum-ready', name: 'Вариант с доступным выбором', price: 90000, tours: [makeTour('ready-minimum', 90000), makeTour('expensive-check', 110000, { selectionEnabled: false })] }
   ];
   const requests = [];
@@ -153,9 +154,9 @@ async function checkMinimumReadiness(page, width, previous) {
     const labels = await cards.evaluateAll(nodes => nodes.map(node => ({ id: node.dataset.hotelId, price: node.querySelector('.hotel-offers-summary .hotel-price').textContent, note: node.querySelector('.tour-selection-note')?.textContent || '' })));
     const toggle = checked.locator('.tour-more-toggle');
     await toggle.focus(); await toggle.press('Enter');
-    assert.equal(await checked.locator('[data-tid="minimum-andromeda"]').count(), 0, 'unverified minimum still cannot create a select action');
+    assert.equal(await checked.locator('[data-tid="minimum-check-offer"]').count(), 0, 'unverified minimum still cannot create a select action');
     assert.equal(await checked.locator('[data-tid="minimum-selectable"]').isVisible(), true, 'more expensive selectable offer keeps its existing action');
-    assert.match(await checked.locator('.tour-row').first().innerText(), /перед выбором проверим цену и рейсы/i);
+    assert.match(await checked.locator('.tour-row').first().innerText(), /перед выбором нужна проверка/i);
     if (!previous) await checked.screenshot({ path: path.join(output, `minimum-readiness-${width}.png`), animations: 'disabled' });
     await checked.locator('.tour-more-toggle').press('Enter');
     assert.equal(await checked.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'collapse retains the existing disclosure focus');
@@ -303,7 +304,7 @@ async function checkExpandedDensity(page, width, previous) {
 async function checkMealFacet(page, width, previous) {
   const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
-    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-bb', 140000, { name: 'BB', fullName: 'BB - Только завтрак' }, '2026-09-15'), sample('a-hb', 145000, { fullName: 'Полупансион' }, '2026-09-16'), sample('a-fb', 150000, { fullName: 'Full Board' }, '2026-09-17'), sample('a-sc', 155000, { fullName: 'Self Catering' }, '2026-09-18'), sample('a-request', 160000, { fullName: 'По запросу' }, '2026-09-19'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), sample('a-soft-ai', 138000, { name: 'Soft AI', fullName: 'Мягкое всё включено' }, '2026-09-14'), { ...sample('a-andromeda-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'andromeda', selectionEnabled: false }] },
+    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-bb', 140000, { name: 'BB', fullName: 'BB - Только завтрак' }, '2026-09-15'), sample('a-hb', 145000, { fullName: 'Полупансион' }, '2026-09-16'), sample('a-fb', 150000, { fullName: 'Full Board' }, '2026-09-17'), sample('a-sc', 155000, { fullName: 'Self Catering' }, '2026-09-18'), sample('a-request', 160000, { fullName: 'По запросу' }, '2026-09-19'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), sample('a-soft-ai', 138000, { name: 'Soft AI', fullName: 'Мягкое всё включено' }, '2026-09-14'), { ...sample('a-anex-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'anex', selectionEnabled: false }] },
     { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11'), sample('b-bb', 142000, { fullName: 'Bed & Breakfast' }, '2026-09-15'), sample('b-hb', 147000, { fullName: 'Half Board' }, '2026-09-16'), sample('b-request', 162000, { fullName: 'On Request' }, '2026-09-19')] },
     { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Room only' }, '2026-09-13'), sample('c-fb', 152000, { fullName: 'Полный пансион' }, '2026-09-17'), sample('c-sc', 157000, { fullName: 'Самообслуживание' }, '2026-09-18')] }
   ];
@@ -391,7 +392,7 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal disclosure keeps keyboard focus after replacing its contents');
     assert.equal(await a.locator('.direct-tour').first().getAttribute('data-tid'), 'a-ai', 'expanded representative choice keeps its original tour ID');
     assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion keeps AI aliases without reintroducing UAI or Soft AI');
-    assert.equal(await a.locator('.tour-selection-note').count(), 1, 'equivalent Andromeda AI remains visible but cannot enter the Tourvisor selection controller');
+    assert.equal(await a.locator('.tour-selection-note').count(), 1, 'equivalent direct-provider AI remains visible but cannot enter the Tourvisor selection controller');
     assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /Без питания|90000/);
     assert.equal(await a.locator('.hotel-price').first().innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'expanded meal offers start with the same matching price');
     await a.locator('.tour-more-toggle').press('Space');
