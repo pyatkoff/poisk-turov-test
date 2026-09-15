@@ -1,18 +1,19 @@
-name: ANEX AdditionalPricesDaily specimen
+name: ANEX AdditionalPricesDaily program778 date evidence
 on:
   pull_request:
     branches: ['feature/anex-search-adapter-20260907']
     paths:
+      - 'app/integrations/anex-additional-prices-client.php'
       - 'scripts/diagnostics/anex_additional_prices_specimen.php'
       - 'tests/anex-additional-currency-specimen-test.php'
       - '.github/workflows/anex-additional-prices-specimen.yml'
   push:
-    branches: ['ops/int-anex-additional-green-gold-v7-20260912']
-    paths: ['.github/ops/anex-additional-green-gold-v7-20260912']
+    branches: ['ops/int-anex-apd-778-date-v8-20260915']
+    paths: ['.github/ops/int-anex-apd-778-date-v8-20260915']
 permissions:
   contents: read
 concurrency:
-  group: anex-additional-green-gold-${{ github.ref }}
+  group: anex-additional-program778-date-v8-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   offline:
@@ -24,32 +25,32 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Verify v7 boundary
+      - name: Verify focused v8 evidence path
         run: |
+          php -l app/integrations/anex-additional-prices-client.php
           php -l scripts/diagnostics/anex_additional_prices_specimen.php
           php tests/anex-additional-currency-specimen-test.php
           python3 - <<'PY'
           from pathlib import Path
           s=Path('scripts/diagnostics/anex_additional_prices_specimen.php').read_text()
-          assert "anex-additional-green-gold-20260912-v7" in s
-          assert "https://api.anextour.ru/b2b/AdditionalPricesDaily" in s
-          assert "CURLOPT_FOLLOWLOCATION => false" in s
-          assert "CURLOPT_SSL_VERIFYPEER => true" in s
-          assert "CURLOPT_SSL_VERIFYHOST => 2" in s
-          assert "CURLOPT_WRITEFUNCTION" in s
-          assert "ANEX_ADDITIONAL_GREEN_GOLD_MAX_BYTES = 262144" in s
-          assert s.count('curl_exec(') == 1
-          for x in ('AnyTourAnexAdditionalPricesClient','SearchTour_PRICES','SearchTour_TOURS','->bron(','INSERT INTO','UPDATE '): assert x not in s
-          assert "'arithmetic_applied'=>false" in s
-          print('AdditionalPricesDaily v7 static boundary: PASS')
+          assert "anex-additional-prices-778-date-20260915-v8" in s
+          assert "ANEX_ADDITIONAL_SPECIMEN_TOUR = 778" in s
+          assert "ANEX_ADDITIONAL_SPECIMEN_DATE = '2026-09-27'" in s
+          assert "new AnyTourAnexAdditionalPricesClient" in s
+          assert "'arithmetic_applied' => false" in s
+          assert "'empty_means_zero' => false" in s
+          for x in ('fuelCharge','SearchTour_PRICES','->bron(','bron_ticket','INSERT INTO','UPDATE '):
+              assert x not in s
+          print('AdditionalPricesDaily v8 focused boundary: PASS')
           PY
+
   live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-additional-green-gold-v7-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-apd-778-date-v8-20260915' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 7
     env:
-      SOURCE_SHA: 837c219012a7a9bf4f45af9f5d98755040e31025
-      REQUESTED_OPERATION: anex-additional-green-gold-20260912-v7
+      SOURCE_SHA: ${{ github.event.before }}
+      REQUESTED_OPERATION: anex-additional-prices-778-date-20260915-v8
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -63,22 +64,25 @@ jobs:
         with:
           ref: ${{ github.sha }}
           path: control
+          fetch-depth: 2
           persist-credentials: false
-      - name: Bind exact v7 operation
+      - name: Bind marker-only control to checked INT source
         run: |
-          test "$(cat control/.github/ops/anex-additional-green-gold-v7-20260912)" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};tour=2637;dateBeg=2026-10-05;nights=7;currency=3;page=1;pageSize=10;owner=2026-09-12"
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git -C control rev-parse HEAD^)" = "$SOURCE_SHA"
+          test "$(git -C control diff --name-only HEAD^ HEAD)" = ".github/ops/int-anex-apd-778-date-v8-20260915"
+          test "$(cat control/.github/ops/int-anex-apd-778-date-v8-20260915)" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};tour=778;dateBeg=2026-09-27;nights=7;currency=3;owner=2026-09-15"
       - name: Reserve before supplier access
         run: |
           mkdir -m 700 "$RUNNER_TEMP/specimen"
-          printf '%s\n' '{"state":"reserved","replay_allowed":false,"operation_id":"'"$REQUESTED_OPERATION"'"}' > "$RUNNER_TEMP/specimen/reservation.json"
+          printf '%s\n' '{"state":"reserved","replay_allowed":false,"operation_id":"'"$REQUESTED_OPERATION"'","source_sha":"'"$SOURCE_SHA"'"}' > "$RUNNER_TEMP/specimen/reservation.json"
       - name: Preserve reservation
         uses: actions/upload-artifact@v4
         with:
-          name: anex-additional-green-gold-v7-reservation-${{ github.run_id }}
+          name: anex-additional-program778-v8-reservation-${{ github.run_id }}
           path: ${{ runner.temp }}/specimen/reservation.json
           retention-days: 30
-      - name: Run one-shot specimen
+      - name: Run one new APD date context through current runtime client
         id: specimen
         continue-on-error: true
         run: |
@@ -87,7 +91,14 @@ jobs:
           from pathlib import Path
           p=Path(os.environ['RUNNER_TEMP'])/'specimen'; key=p/'key'
           key.write_text(os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].rstrip()+'\n'); key.chmod(0o600)
-          code=Path('source/scripts/diagnostics/anex_additional_prices_specimen.php').read_text()[5:].lstrip()
+          def php_body(path):
+              text=Path(path).read_text()
+              if not text.startswith('<?php'):
+                  raise SystemExit('checked PHP source invalid')
+              return text[5:].lstrip()
+          code=php_body('source/app/integrations/anex-additional-prices-client.php')+'\n'+php_body('source/scripts/diagnostics/anex_additional_prices_specimen.php')
+          if len(code.encode()) > 65536:
+              raise SystemExit('checked PHP source too large')
           cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(p/'known_hosts'),'-o','ConnectTimeout=15','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -r '+shlex.quote(code)]
           req={'operation_id':os.environ['REQUESTED_OPERATION'],'source_sha':os.environ['SOURCE_SHA']}
           value={'schema_version':1,**req,'status':'transport_unconfirmed','supplier_replay_allowed':False}; rc=1
@@ -95,18 +106,20 @@ jobs:
               r=subprocess.run(cmd,input=json.dumps(req),text=True,capture_output=True,timeout=300); rc=r.returncode
               x=json.loads(r.stdout)
               if isinstance(x,dict): value=x
-          except Exception: pass
-          finally: key.unlink(missing_ok=True)
-          text=json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n'
-          (p/'result.json').write_text(text)
+          except Exception:
+              pass
+          finally:
+              key.unlink(missing_ok=True)
+          (p/'result.json').write_text(json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
           raise SystemExit(0 if rc==0 and value.get('status')=='completed' else 1)
           PY
       - name: Preserve result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-additional-green-gold-v7-${{ github.run_id }}
+          name: anex-additional-program778-v8-${{ github.run_id }}
           path: ${{ runner.temp }}/specimen/
+          if-no-files-found: error
           retention-days: 30
       - name: Fail after preservation
         if: steps.specimen.outcome != 'success'
