@@ -40,15 +40,15 @@ jobs:
           required = [
               "group: anytoour-andromeda-flight-selection-runtime-publication",
               "github.event.issue.number == 2530",
-              "github.event.comment.body == '/publish-andromeda-flight-replacement-runtime-1717-v4'",
-              "const runtimeHead = 'a2561f80028764a7449390d37d14d0e8e3ee502e';",
-              "const runtimeMerge = '506bc9a721f1b32d4c1bc8e6a7170a6cabe62c5e';",
-              "pull_number: 2566",
-              "for (const run_id of [34981763791, 34981763854, 34981764071])",
-              "artifact_id: 10401582155",
-              "sha256:e34a2e9f204bc48be975bf694817a638fafbdc81a515ae0c415b8c24cf7f07bf",
+              "github.event.comment.body == '/publish-andromeda-supplier-error-facts-runtime-1717-v5'",
+              "const runtimeHead = '2df0daad0c0fdc1a7a3671bda558a79cff842dfd';",
+              "const runtimeMerge = 'cea90265f6a098c010d635bc0ce0ae491d1305d2';",
+              "pull_number: 2598",
+              "for (const run_id of [35014926845, 35014926875, 35014926836])",
+              "artifact_id: 10415007959",
+              "sha256:56072dfc636d948fcf6f914c4c39120339c371ec0242ce6ff224189b0384eba1",
               "ref: 23dd08a985eb58ed93652d97b60dac6c4145020c",
-              "RUNTIME_SOURCE_SHA: a2561f80028764a7449390d37d14d0e8e3ee502e",
+              "RUNTIME_SOURCE_SHA: 2df0daad0c0fdc1a7a3671bda558a79cff842dfd",
           ]
           # concurrency is intentionally outside the live publish block; verify only the YAML header.
           header = text.split('\njobs:', 1)[0]
@@ -77,7 +77,7 @@ jobs:
       github.event.issue.number == 2530 && !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/publish-andromeda-flight-replacement-runtime-1717-v4'
+      github.event.comment.body == '/publish-andromeda-supplier-error-facts-runtime-1717-v5'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -86,9 +86,9 @@ jobs:
         with:
           script: |
             const owner = 226193297;
-            const command = '/publish-andromeda-flight-replacement-runtime-1717-v4';
-            const runtimeHead = 'a2561f80028764a7449390d37d14d0e8e3ee502e';
-            const runtimeMerge = '506bc9a721f1b32d4c1bc8e6a7170a6cabe62c5e';
+            const command = '/publish-andromeda-supplier-error-facts-runtime-1717-v5';
+            const runtimeHead = '2df0daad0c0fdc1a7a3671bda558a79cff842dfd';
+            const runtimeMerge = 'cea90265f6a098c010d635bc0ce0ae491d1305d2';
             const publisherHead = '64706822fc54f4d4423ea6bbd0ad966144151387';
             const publisherMerge = '23dd08a985eb58ed93652d97b60dac6c4145020c';
             if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('Do not replay an unknown publication; inspect its receipt.');
@@ -102,20 +102,20 @@ jobs:
             }
             const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
             if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
-            const {data: runtimePr} = await github.rest.pulls.get({...context.repo, pull_number: 2566});
+            const {data: runtimePr} = await github.rest.pulls.get({...context.repo, pull_number: 2598});
             if (!runtimePr.merged || runtimePr.head.sha !== runtimeHead || runtimePr.merge_commit_sha !== runtimeMerge || runtimePr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Runtime PR provenance mismatch.');
             const {data: publisherPr} = await github.rest.pulls.get({...context.repo, pull_number: 2461});
             if (!publisherPr.merged || publisherPr.head.sha !== publisherHead || publisherPr.merge_commit_sha !== publisherMerge || publisherPr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Publisher PR provenance mismatch.');
-            for (const run_id of [34981763791, 34981763854, 34981764071]) {
+            for (const run_id of [35014926845, 35014926875, 35014926836]) {
               const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
               if (run.head_sha !== runtimeHead || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('Pinned runtime CI failed: ' + run_id);
             }
             const {data: publisherRun} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: 34892746421});
             if (publisherRun.head_sha !== publisherHead || publisherRun.status !== 'completed' || publisherRun.conclusion !== 'success') throw new Error('Pinned publisher CI failed.');
-            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10401582155});
-            if (artifact.id !== 10401582155 || artifact.expired !== false || artifact.workflow_run?.id !== 34981764071 ||
+            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10415007959});
+            if (artifact.id !== 10415007959 || artifact.expired !== false || artifact.workflow_run?.id !== 35014926836 ||
                 artifact.workflow_run?.head_sha !== runtimeHead ||
-                artifact.digest !== 'sha256:e34a2e9f204bc48be975bf694817a638fafbdc81a515ae0c415b8c24cf7f07bf') throw new Error('Artifact identity/digest mismatch.');
+                artifact.digest !== 'sha256:56072dfc636d948fcf6f914c4c39120339c371ec0242ce6ff224189b0384eba1') throw new Error('Artifact identity/digest mismatch.');
             const {data: publisherFile} = await github.rest.repos.getContent({...context.repo, path: 'scripts/diagnostics/andromeda_runtime_source_publish.py', ref: publisherHead});
             if (Array.isArray(publisherFile) || publisherFile.sha !== '3a0047f8b08f315231900887ecffd6e131c30781') throw new Error('Publisher implementation blob mismatch.');
       - uses: actions/checkout@v4
@@ -130,14 +130,14 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          artifact-ids: '10401582155'
-          run-id: '34981764071'
+          artifact-ids: '10415007959'
+          run-id: '35014926836'
           github-token: ${{ github.token }}
           path: candidate
           merge-multiple: true
       - name: Publish exact checked 16-file runtime to isolated Andromeda preview
         env:
-          RUNTIME_SOURCE_SHA: a2561f80028764a7449390d37d14d0e8e3ee502e
+          RUNTIME_SOURCE_SHA: 2df0daad0c0fdc1a7a3671bda558a79cff842dfd
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -151,7 +151,7 @@ jobs:
           published = json.loads((out / 'result.json').read_text())
           if published.get('status') not in ('published','already_published'):
               raise SystemExit('Publication is unconfirmed; inspect receipt, do not replay')
-          if published.get('source') != 'a2561f80028764a7449390d37d14d0e8e3ee502e':
+          if published.get('source') != '2df0daad0c0fdc1a7a3671bda558a79cff842dfd':
               raise SystemExit('Published source mismatch')
           report = {'status':'incomplete','source':published['source'],'checks':[],
                     'validation_only':True,'supplier_calls':0,'database_reads':0,'booking_calls':0}
