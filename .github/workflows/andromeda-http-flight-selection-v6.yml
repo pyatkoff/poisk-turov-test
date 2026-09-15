@@ -24,6 +24,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
           ref: 642c38113820859e3a09eaa12c233c3a790ac787
           path: source
           persist-credentials: false
