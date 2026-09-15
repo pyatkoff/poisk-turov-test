@@ -1,4 +1,4 @@
-name: ANEX AdditionalPricesDaily program778 date evidence
+name: ANEX AdditionalPricesDaily program778 nights evidence
 on:
   pull_request:
     branches: ['feature/anex-search-adapter-20260907']
@@ -8,12 +8,12 @@ on:
       - 'tests/anex-additional-currency-specimen-test.php'
       - '.github/workflows/anex-additional-prices-specimen.yml'
   push:
-    branches: ['ops/int-anex-apd-778-date-v10-20260915']
-    paths: ['.github/ops/int-anex-apd-778-date-v10-20260915']
+    branches: ['ops/int-anex-apd-778-nights-v11-20260915']
+    paths: ['.github/ops/int-anex-apd-778-nights-v11-20260915']
 permissions:
   contents: read
 concurrency:
-  group: anex-additional-program778-date-v10-${{ github.ref }}
+  group: anex-additional-program778-nights-v11-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   offline:
@@ -25,7 +25,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Verify focused v10 evidence path and exact PHP assembly
+      - name: Verify focused v11 nights evidence path and exact PHP assembly
         run: |
           php -l app/integrations/anex-additional-prices-client.php
           php -l scripts/diagnostics/anex_additional_prices_specimen.php
@@ -46,27 +46,28 @@ jobs:
           code=client+'\n'+specimen
           assert code.count(strict) == 1
           assert len(code.encode()) <= 65536
-          Path('/tmp/anex-apd-v10-assembled.php').write_text('<?php\n'+code)
+          Path('/tmp/anex-apd-v11-assembled.php').write_text('<?php\n'+code)
           s=Path('scripts/diagnostics/anex_additional_prices_specimen.php').read_text()
-          assert "anex-additional-prices-778-date-20260915-v10" in s
+          assert "anex-additional-prices-778-nights-20260915-v11" in s
           assert "ANEX_ADDITIONAL_SPECIMEN_TOUR = 778" in s
           assert "ANEX_ADDITIONAL_SPECIMEN_DATE = '2026-10-18'" in s
+          assert "ANEX_ADDITIONAL_SPECIMEN_NIGHTS = [10, 14]" in s
           assert "new AnyTourAnexAdditionalPricesClient" in s
           assert "'arithmetic_applied' => false" in s
           assert "'empty_means_zero' => false" in s
           for x in ('fuelCharge','SearchTour_PRICES','->bron(','bron_ticket','INSERT INTO','UPDATE '):
               assert x not in s
-          print('AdditionalPricesDaily v10 exact assembly boundary: PASS')
+          print('AdditionalPricesDaily v11 nights exact assembly boundary: PASS')
           PY
-          php -l /tmp/anex-apd-v10-assembled.php
+          php -l /tmp/anex-apd-v11-assembled.php
 
   live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-apd-778-date-v10-20260915' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-apd-778-nights-v11-20260915' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 7
     env:
       SOURCE_SHA: ${{ github.event.before }}
-      REQUESTED_OPERATION: anex-additional-prices-778-date-20260915-v10
+      REQUESTED_OPERATION: anex-additional-prices-778-nights-20260915-v11
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -86,8 +87,8 @@ jobs:
         run: |
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           test "$(git -C control rev-parse HEAD^)" = "$SOURCE_SHA"
-          test "$(git -C control diff --name-only HEAD^ HEAD)" = ".github/ops/int-anex-apd-778-date-v10-20260915"
-          test "$(cat control/.github/ops/int-anex-apd-778-date-v10-20260915)" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};tour=778;dateBeg=2026-10-18;nights=7;currency=3;owner=2026-09-15"
+          test "$(git -C control diff --name-only HEAD^ HEAD)" = ".github/ops/int-anex-apd-778-nights-v11-20260915"
+          test "$(cat control/.github/ops/int-anex-apd-778-nights-v11-20260915)" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};tour=778;dateBeg=2026-10-18;nights=10,14;currency=3;owner=2026-09-15;baseline=v10:7"
       - name: Reserve before supplier access
         run: |
           mkdir -m 700 "$RUNNER_TEMP/specimen"
@@ -95,10 +96,10 @@ jobs:
       - name: Preserve reservation
         uses: actions/upload-artifact@v4
         with:
-          name: anex-additional-program778-v10-reservation-${{ github.run_id }}
+          name: anex-additional-program778-v11-reservation-${{ github.run_id }}
           path: ${{ runner.temp }}/specimen/reservation.json
           retention-days: 30
-      - name: Run one new APD date context through current runtime client
+      - name: Run two new APD night contexts through current runtime client
         id: specimen
         continue-on-error: true
         run: |
@@ -139,10 +140,40 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-additional-program778-v10-${{ github.run_id }}
+          name: anex-additional-program778-v11-${{ github.run_id }}
           path: ${{ runner.temp }}/specimen/
           if-no-files-found: error
           retention-days: 30
+      - name: Report sanitized APD comparison
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'specimen'/'result.json'
+          if not path.exists():
+              print('{"status":"missing_result"}')
+              raise SystemExit(0)
+          value=json.loads(path.read_text())
+          report={
+              'status': value.get('status'),
+              'additional_prices_requests': value.get('additional_prices_requests'),
+              'rows': [],
+          }
+          for item in value.get('additional_prices_by_nights') or []:
+              fact=item.get('additional_prices') or {}
+              row=(fact.get('rows') or [None])[0]
+              report['rows'].append({
+                  'nights': item.get('nights'),
+                  'state': fact.get('state'),
+                  'price_adult': row.get('price_adult') if isinstance(row,dict) else None,
+                  'price_child': row.get('price_child') if isinstance(row,dict) else None,
+                  'cashrate': row.get('cashrate') if isinstance(row,dict) else None,
+                  'price_converted_adult': row.get('price_converted_adult') if isinstance(row,dict) else None,
+                  'price_converted_child': row.get('price_converted_child') if isinstance(row,dict) else None,
+              })
+          print(json.dumps(report,ensure_ascii=False,sort_keys=True))
+          PY
       - name: Fail after preservation
         if: steps.specimen.outcome != 'success'
         run: exit 1
