@@ -10,7 +10,7 @@ import re
 import secrets
 import shlex
 
-from search3_preview_publish import Github, OWNER_ID, REPO, command, http
+from search3_preview_publish import COORDINATION_ISSUE, Github, OWNER_ID, REPO, command, http
 from search3_preview_remote import ROUTE, digest, json_bytes, need
 
 PREFIX = '/restore-search3-lead-route '
@@ -25,7 +25,7 @@ def checked_repair(event, env):
          and event['repository'].get('id') == 1345518271, 'repository_identity')
     need(event.get('sender', {}).get('id') == OWNER_ID and event['sender'].get('login') == 'pyatkoff', 'sender_identity')
     issue = event.get('issue', {}); comment = event.get('comment', {})
-    need(event.get('action') == 'created' and issue.get('number') == 996 and not issue.get('pull_request'), 'coordinator_only')
+    need(event.get('action') == 'created' and issue.get('number') == COORDINATION_ISSUE and not issue.get('pull_request'), 'coordinator_only')
     need(comment.get('user', {}).get('id') == OWNER_ID and comment.get('author_association') == 'OWNER', 'comment_owner')
     control = env.get('GITHUB_SHA', '')
     need(re.fullmatch('[0-9a-f]{40}', control) and comment.get('body') == PREFIX + control, 'exact_control_command')

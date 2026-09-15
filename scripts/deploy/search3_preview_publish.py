@@ -23,6 +23,7 @@ from search3_preview_remote import (ROUTE, digest, inventory, json_bytes, need,
 
 REPO = 'pyatkoff/poisk-turov-test'
 OWNER_ID = 226193297
+COORDINATION_ISSUE = 2530
 RELEASE = 'release/search3-production-ready-v1'
 API = 'https://api.github.com/repos/' + REPO
 ORIGIN = 'https://anytoour.ru'
@@ -45,7 +46,7 @@ def checked_command(event, env):
     need(sender.get('id') == OWNER_ID and sender.get('login') == 'pyatkoff', 'sender_identity')
     if env.get('GITHUB_EVENT_NAME') == 'issue_comment':
         issue = event.get('issue', {}); comment = event.get('comment', {})
-        need(event.get('action') == 'created' and issue.get('number') == 996 and not issue.get('pull_request'), 'coordinator_command_only')
+        need(event.get('action') == 'created' and issue.get('number') == COORDINATION_ISSUE and not issue.get('pull_request'), 'coordinator_command_only')
         need(comment.get('user', {}).get('id') == OWNER_ID and comment.get('author_association') == 'OWNER', 'comment_owner')
         body = comment.get('body', '')
         need(isinstance(body, str) and body.startswith(PREFIX) and '\n' not in body and '\r' not in body, 'command_syntax')
