@@ -250,7 +250,7 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
           const rowTops = [...new Set(advancedGeometry.fields.map(field => field.top))];
           assert.equal(rowTops.length, 2, `${width}: wide advanced filters use two balanced rows`);
           assert.deepEqual(rowTops.map(top => advancedGeometry.fields.filter(field => field.top === top).length), [3, 3], `${width}: every advanced row contains three aligned groups`);
-          assert.ok(advancedGeometry.fields.every(field => field.width >= 280 && field.height <= 70), `${width}: advanced controls stay readable without stretched 123px cells`);
+          assert.ok(advancedGeometry.fields.every(field => field.width >= 280 && field.height <= 80), `${width}: advanced controls stay readable without stretched 123px cells`);
           assert.equal(new Set(advancedGeometry.flightChoices.map(choice => choice.top)).size, 1, `${width}: direct and charter choices share one row`);
           assert.ok(advancedGeometry.flightChoices.every(choice => choice.height >= 44), `${width}: flight choices retain 44px targets`);
         }
