@@ -10,7 +10,7 @@ env:
   PREVIOUS_OPERATION_ID: hotel-match-operator-current-anchor-review-1971-20260915-v2
 jobs:
   review:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 30
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 31
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -40,14 +40,7 @@ jobs:
           test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
           if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
-          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -T "$U@$H" "set -euo pipefail; p=\$HOME/.anytoour-match/operations/$PREVIOUS_OPERATION_ID; test -f \"\$p/reservation.json\"; test ! -e \"\$p/result.json\"; test ! -e \"\$p/receipt.json\"; test ! -e \"\$p/failure.json\"; python3 - \"\$p/reservation.json\" <<'PY'
-import json,sys
-p=sys.argv[1]; r=json.load(open(p));
-assert r.get('operation_id')=='hotel-match-operator-current-anchor-review-1971-20260915-v2'
-assert r.get('state')=='reserved_before_db_access'
-assert int(r.get('db_writes',-1))==0
-print('PREVIOUS_RESERVED_NO_RESULT_NO_RECEIPT_NO_FAILURE')
-PY"
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -T "$U@$H" "set -euo pipefail; p=\$HOME/.anytoour-match/operations/$PREVIOUS_OPERATION_ID; test -f \"\$p/reservation.json\"; test ! -e \"\$p/result.json\"; test ! -e \"\$p/receipt.json\"; test ! -e \"\$p/failure.json\"; grep -q '\"operation_id\": \"hotel-match-operator-current-anchor-review-1971-20260915-v2\"' \"\$p/reservation.json\"; grep -q '\"state\": \"reserved_before_db_access\"' \"\$p/reservation.json\"; grep -q '\"db_writes\": 0' \"\$p/reservation.json\"; echo PREVIOUS_RESERVED_NO_RESULT_NO_RECEIPT_NO_FAILURE"
           rm -f "$key" "$known"
       - name: Reserve v3 before DB access
         run: |
