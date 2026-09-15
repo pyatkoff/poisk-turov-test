@@ -18,19 +18,19 @@ function additional_reject(callable $call, string $expected): void
     throw new RuntimeException('expected rejection');
 }
 
-additional_check(ANEX_ADDITIONAL_SPECIMEN_OPERATION === 'anex-additional-prices-778-nights-20260915-v11');
+additional_check(ANEX_ADDITIONAL_SPECIMEN_OPERATION === 'anex-additional-prices-778-14n-20260915-v12');
 additional_check(ANEX_ADDITIONAL_SPECIMEN_TOUR === 778);
 additional_check(ANEX_ADDITIONAL_SPECIMEN_DATE === '2026-10-18');
-additional_check(ANEX_ADDITIONAL_SPECIMEN_NIGHTS === [10, 14]);
+additional_check(ANEX_ADDITIONAL_SPECIMEN_NIGHTS === [14]);
 additional_check(ANEX_ADDITIONAL_SPECIMEN_CURRENCY === 3);
 
-$criteria = ['page'=>1,'pageSize'=>10,'tour'=>778,'dateBeg'=>'2026-10-18','nights'=>10,'currency'=>3];
+$criteria = ['page'=>1,'pageSize'=>10,'tour'=>778,'dateBeg'=>'2026-10-18','nights'=>14,'currency'=>3];
 $payload = [
     'data' => [[
         'tour'=>778,
         'currency'=>3,
         'dateBeg'=>'2026-10-18T00:00:00',
-        'nights'=>10,
+        'nights'=>14,
         'price_adult'=>100,
         'price_chd'=>100,
         'cashrate'=>104.12,
@@ -43,7 +43,7 @@ $fact = anytour_anex_additional_specimen_fact($payload, $criteria);
 additional_check($fact['state'] === 'observed');
 additional_check($fact['total_count'] === 1 && $fact['retained_row_count'] === 1 && $fact['context_verified'] === true);
 $row = $fact['rows'][0];
-additional_check($row['tour'] === 778 && $row['currency'] === 3 && $row['date_beg'] === '2026-10-18' && $row['nights'] === 10);
+additional_check($row['tour'] === 778 && $row['currency'] === 3 && $row['date_beg'] === '2026-10-18' && $row['nights'] === 14);
 additional_check($row['price_adult'] === '100' && $row['price_child'] === '100' && $row['cashrate'] === '104.12');
 additional_check($row['price_converted_adult'] === '10412' && $row['price_converted_child'] === '10412');
 additional_check($fact['money_semantics']['additional_prices_source'] === 'AdditionalPricesDaily');
@@ -59,7 +59,7 @@ foreach ([
     'tour' => 779,
     'currency' => 4,
     'dateBeg' => '2026-10-19T00:00:00',
-    'nights' => 14,
+    'nights' => 10,
 ] as $field => $value) {
     $mismatch = $payload;
     $mismatch['data'][0][$field] = $value;
@@ -81,4 +81,4 @@ additional_check(anytour_anex_additional_specimen_context_date('2026-10-18') ===
 additional_check(anytour_anex_additional_specimen_context_date('2026-10-18T00:00:00') === '2026-10-18');
 additional_check(anytour_anex_additional_specimen_context_date('2026-10-18T12:00:00') === null);
 
-echo "ANEX AdditionalPricesDaily program778 nights v11 evidence guards: PASS\n";
+echo "ANEX AdditionalPricesDaily program778 14n v12 evidence guards: PASS\n";
