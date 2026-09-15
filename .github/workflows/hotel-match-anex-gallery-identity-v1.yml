@@ -1,0 +1,101 @@
+name: MATCH public ANEX primary gallery identity v2
+on:
+  push:
+    branches: [match/anex-media-chain-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-gallery-identity-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-anex-gallery-identity-1971-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-anex-gallery-identity-1971-20260914-v2
+jobs:
+  public-gallery-evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve exact public gallery-only operation
+        run: |
+          python3 - <<'PY'
+          import os,pathlib,json
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          d={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_public_access','source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'input_runs':[34891092743,34891461527],'expected_hotel_ids':[4158,1767,1768,5215],'max_public_requests':4,'database_access':False,'mapping_writes':0,'supplier_search_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-anex-gallery-identity-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-gallery-identity-1971-20260914-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Read the two completed evidence artifacts, not their public sources
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          gh run download 34891092743 --repo "$GITHUB_REPOSITORY" --name match-anex-media-chain-v1-result -D "$RUNNER_TEMP/cards"
+          gh run download 34891461527 --repo "$GITHUB_REPOSITORY" --name match-anex-gallery-assets-v1-result -D "$RUNNER_TEMP/assets"
+      - name: Read only the four observed primary gallery lists
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,time
+          from urllib.parse import urlencode,urlsplit
+          from urllib.request import Request,build_opener,HTTPRedirectHandler
+          from urllib.error import HTTPError
+          root=pathlib.Path(os.environ['RUNNER_TEMP']);out=root/os.environ['OPERATION_ID']
+          def verify(name,digest):
+            p=root/name;data=(p/'result.json').read_bytes();receipt=json.loads((p/'receipt.json').read_text())
+            assert hashlib.sha256(data).hexdigest()==digest==receipt['result_sha256']
+            for f,h in receipt['files'].items():
+              assert pathlib.Path(f).name==f and hashlib.sha256((p/f).read_bytes()).hexdigest()==h
+            return json.loads(data)
+          cards=verify('cards','55d5ee912d3dae36554a61097b16ff965b79243837dbe48fc338441451b73c3e')
+          assets=verify('assets','6681a4588e3d8e713e9fa0f9983d5a5ecd7aced5a630f5c19263cdfc76652190')
+          loader=(root/'assets/asset-09.js').read_bytes()
+          assert hashlib.sha256(loader).hexdigest()=='bba83e3da36d0711cee124e8b5dfe93decd281a84149e2ce4264757a9ab4ae95'
+          assert b'/hotel/hotelimagelist' in loader and b'code:M,lang:I,onlyOnSale:!0,take:x' in loader
+          seeds=[]
+          for row in cards['rows']:
+            if row['kind']!='card':continue
+            text=(root/'cards'/row['chain'][-1]['body_file']).read_text()
+            match=re.search(r'<script[^>]+id="__NEXT_DATA__"[^>]*>(.*?)</script>',text,re.S);assert match
+            props=json.loads(match[1])['props']['pageProps'];settings=props['marketSettings']['payload']['settings']
+            query=next(q for q in props['dehydratedState']['queries'] if q['queryKey'][0]=='fetchHotelInfo')
+            info=query['state']['data']['info'];aid=info['inc'];assert aid==row['anex_id']
+            base=settings['envLinkFiles'].replace('files1','files');assert base=='https://files.anextour.ru'
+            url=base+'/hotel/hotelimagelist?'+urlencode({'code':aid,'lang':'ru','onlyOnSale':'true','take':500})
+            assert urlsplit(url).path=='/hotel/hotelimagelist'
+            seeds.append({'anex_id':aid,'hotel_name':info['hotelName'],'url':url,'source_card':row['url']})
+          assert len(seeds)==4 and {s['anex_id'] for s in seeds}=={4158,1767,1768,5215}
+          (out/'seeds.json').write_text(json.dumps(seeds,sort_keys=True,indent=2)+'\n')
+          class NoRedirect(HTTPRedirectHandler):
+            def redirect_request(self,*args,**kwargs):return None
+          opener=build_opener(NoRedirect());rows=[];state='completed_read_only'
+          for seed in seeds:
+            row=dict(seed);rows.append(row)
+            try:
+              try:response=opener.open(Request(seed['url'],headers={'User-Agent':'AnyTour-MATCH-PublicEvidence/1.0','Accept':'application/json'}),timeout=20)
+              except HTTPError as exc:response=exc
+              with response:
+                row['http_status']=response.code;row['content_type']=response.headers.get('Content-Type');row['location']=response.headers.get('Location')
+                if response.code!=200:state='public_gallery_blocked_no_retry';break
+                raw=response.read(8*1024*1024+1);assert len(raw)<=8*1024*1024
+                name=f"gallery-{seed['anex_id']}.json";(out/name).write_bytes(raw)
+                data=json.loads(raw);assert isinstance(data,list)
+                urls=sorted({item['Img'] for item in data if isinstance(item,dict) and isinstance(item.get('Img'),str)})
+                row.update(file=name,sha256=hashlib.sha256(raw).hexdigest(),gallery_records=len(data),image_urls=urls,field_names=sorted({k for item in data if isinstance(item,dict) for k in item}))
+            except Exception as exc:row['error']=type(exc).__name__+': '+str(exc)[:400];state='public_gallery_failed_no_retry';break
+            finally:
+              (out/'partial.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n');time.sleep(0.3)
+            print(json.dumps(row,ensure_ascii=False),flush=True)
+          result={'operation_id':os.environ['OPERATION_ID'],'state':state,'rows':rows,'public_gallery_requests':len(rows),'database_access':False,'mapping_writes':0,'supplier_search_calls':0,'tourvisor_calls':0,'confirmed_samo_ids':[],'no_replay':True}
+          raw=(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();(out/'result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':state,'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'result_sha256':hashlib.sha256(raw).hexdigest(),'files':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file()},'no_replay':True}
+          (out/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n');print('RECEIPT '+json.dumps(receipt,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-anex-gallery-identity-v2-result
+          path: ${{ runner.temp }}/hotel-match-anex-gallery-identity-1971-20260914-v2/
+          if-no-files-found: warn
+          retention-days: 90
