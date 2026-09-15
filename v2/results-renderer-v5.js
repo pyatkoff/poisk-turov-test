@@ -40,6 +40,7 @@ function rawRoomLabel(t){return textValue(t&&(t.roomType!==undefined?t.roomType:
 const roomAliases=[
   {key:'standard',label:'Стандарт',aliases:['standard','standard room','стандарт','стандартный номер']},
   {key:'economy',label:'Эконом',aliases:['economy','economy room','эконом','эконом номер','номер эконом']},
+  {key:'promo',label:'Промо',aliases:['promo','promo room','promotional room','промо','промо номер','номер промо']},
   {key:'standard-pool-view',label:'Стандарт · вид на бассейн',aliases:['standard pool view','standard room pool view','стандарт вид на бассейн','стандартный номер вид на бассейн']},
   {key:'standard-land-view',label:'Стандарт · территория',aliases:['standard land view','standard room land view','стандартный номер вид на территорию','стандартный номер · вид на территорию','стандарт вид на территорию','стандарт · вид на территорию','стандарт территория','стандарт · территория']},
   {key:'standard-sea-view',label:'Стандарт · море',aliases:['standard sea view','standard room sea view','стандартный номер вид на море','стандартный номер · вид на море','стандарт вид на море','стандарт · вид на море','стандарт море','стандарт · море']},
