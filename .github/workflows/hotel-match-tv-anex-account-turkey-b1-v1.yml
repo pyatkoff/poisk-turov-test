@@ -10,7 +10,7 @@ concurrency:
   group: anytour-match-tv-anex-turkey-b1-1971-20260915-v1
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-old-tv-hotellist-mass-1971-20260915-v11-turkey-b1
+  OPERATION_ID: hotel-match-old-tv-hotellist-mass-1971-20260915-v12-turkey-b1
   MATCH_DATE: '2026-12-25'
   MATCH_LIMIT: '30'
   MATCH_FOCUS_PAIRS: '23894:1600,45225:153743,32880:17443,44573:59085,43984:99257,16605:115500,32692:70291,32745:85422,37885:111046,32724:17586,29446:17390,32686:43550,28933:163543,30424:132803,45226:81578,32742:1557,29036:1558,34804:53531,39389:67042,43077:1283,44138:2160,44139:1255,8550:996,10115:1004,11241:1474,11756:5535,12143:1217,12901:1070,14812:17561,15046:60388'
@@ -50,8 +50,11 @@ jobs:
           src=pathlib.Path('scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php').read_text()
           old="hm_find_entity($countries,['егип','egypt'])"
           new="hm_find_entity($countries,['турц','turkey'])"
+          op_old="preg_match('/^hotel-match-old-tv-hotellist-mass-1971-20260914-v[0-9]+-egypt$/D',$op)"
+          op_new="preg_match('/^hotel-match-old-tv-hotellist-mass-1971-20260915-v[0-9]+-turkey-b1$/D',$op)"
           assert src.count(old)==1 and src.count(new)==0
-          src2=src.replace(old,new,1)
+          assert src.count(op_old)==1 and src.count(op_new)==0
+          src2=src.replace(old,new,1).replace(op_old,op_new,1)
           body,n=re.subn(r'^<\?php\s*declare\(strict_types=1\);\s*','',src2,count=1)
           assert n==1
           prefix="""<?php
@@ -65,7 +68,7 @@ jobs:
           """
           payload=prefix+body
           p=pathlib.Path(os.environ['OUT'])/'payload.php';p.write_text(payload)
-          meta={'source_blob':'08c75e62c8b30832f77b3d3f2a336515fc7f71e3','payload_sha256':hashlib.sha256(payload.encode()).hexdigest(),'credential_source':'TOURVISOR_ANEX_JWT','client_token_slot':'TOURVISOR_JWT','country_selector':'turkey','country_selector_replacements':1,'protected_request_contract_changed':False}
+          meta={'source_blob':'08c75e62c8b30832f77b3d3f2a336515fc7f71e3','payload_sha256':hashlib.sha256(payload.encode()).hexdigest(),'credential_source':'TOURVISOR_ANEX_JWT','client_token_slot':'TOURVISOR_JWT','country_selector':'turkey','country_selector_replacements':1,'operation_guard_replacements':1,'protected_request_contract_changed':False}
           (pathlib.Path(os.environ['OUT'])/'adapter-meta.json').write_text(json.dumps(meta,sort_keys=True)+'\n')
           PY
           php -l "$OUT/payload.php"
@@ -73,7 +76,7 @@ jobs:
           import json,os,pathlib
           meta=json.loads((pathlib.Path(os.environ['OUT'])/'adapter-meta.json').read_text())
           assert meta['protected_request_contract_changed'] is False
-          assert meta['country_selector_replacements']==1 and meta['country_selector']=='turkey'
+          assert meta['country_selector_replacements']==1 and meta['operation_guard_replacements']==1 and meta['country_selector']=='turkey'
           PY
       - name: Persist immutable runner reservation before SSH or Tourvisor access
         shell: bash
@@ -130,7 +133,7 @@ jobs:
           assert result['source_sha']==receipt['source_sha']==reservation['source_sha']==rr['source_sha']==os.environ['GITHUB_SHA']
           assert receipt.get('readback_verified') is True and receipt.get('result_sha256')==rh
           assert rr['credential_source']=='TOURVISOR_ANEX_JWT' and meta['credential_source']=='TOURVISOR_ANEX_JWT'
-          assert meta['country_selector']=='turkey' and meta['country_selector_replacements']==1
+          assert meta['country_selector']=='turkey' and meta['country_selector_replacements']==1 and meta['operation_guard_replacements']==1
           assert result.get('credential_identifier')=='TOURVISOR_JWT' and reservation.get('credential_identifier')=='TOURVISOR_JWT'
           assert result.get('database_writes')==0 and result.get('mapping_writes')==0 and result.get('booking_calls')==0 and result.get('lead_calls')==0
           status=result.get('status'); reason=result.get('reason')
