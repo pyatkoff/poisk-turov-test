@@ -119,6 +119,69 @@ async function checkToolbarLayout(page, width, previous) {
   }
   return { closed, opened };
 }
+async function checkBudgetRange(page, width, previous) {
+  const requests=[];
+  const record=request=>{if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) requests.push(request.url());};
+  page.on('request',record);
+  try {
+    await page.evaluate(items=>{window.Search3LocalHotelFilter.reset();window.V2Results.render(items);window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items}}));},hotels);
+    const panel=page.locator('.search3-mobile-filter-panel'), lower=page.locator('.search3-budget-min'), upper=page.locator('.search3-budget-max');
+    if(width<1025&&!await panel.evaluate(node=>node.open)) await panel.locator('summary').click();
+    const set=async (input,value)=>{await input.fill(value);await input.press('Tab');};
+    await set(lower,'148501');
+    await set(upper,'155000');
+    const card=page.locator('#results .hotel-card:visible');
+    assert.equal(await card.count(),1,'range excludes the cheaper hotel');
+    assert.equal(await card.getAttribute('data-hotel-id'),'expensive');
+    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'),'third-tour','both inclusive bounds retain the exact 155000 offer, not the cheaper hotel representative');
+    assert.match(await card.locator('.hotel-price').innerText(),/155\s*000/,'hotel price is derived from the offer inside the range');
+    assert.equal(await page.locator('.search3-active-filters [data-filter-key=budget]').count(),1,'one removable chip represents both bounds');
+    await page.locator('.search3-operator-filter select').selectOption('name:test operator');
+    assert.equal(await card.count(),0,'operator and both price bounds must match one offer');
+    await page.locator('.search3-operator-filter select').selectOption('');
+    await page.locator('#sortResults').selectOption('rating');
+    assert.equal(await lower.inputValue(),'148501','sorting preserves the lower bound');
+    assert.equal(await upper.inputValue(),'155000','sorting preserves the upper bound');
+    await page.evaluate(items=>window.V2Results.render(items),hotels);
+    assert.equal(await lower.inputValue(),'148501','results refresh preserves the lower bound');
+    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'),'third-tour');
+    assert.deepEqual(await page.evaluate(()=>window.V2Results.state.items),hotels,'range filtering leaves source tour objects and prices unchanged');
+    if(!previous&&[320,375,390,720,1025,1440].includes(width)) await (width<1025?panel:page.locator('.results-filter-rail')).screenshot({path:path.join(output,`budget-range-${width}.png`),animations:'disabled'});
+    if(width<1025){
+      const done=panel.locator('.search3-filter-results');
+      assert.equal(await done.innerText(),'Показать отели · 1');
+      await done.click();
+      await page.waitForFunction(()=>document.activeElement?.matches('#results .hotel-title'));
+      assert.equal(await panel.getAttribute('open'),null,'bottom action closes the same native filter disclosure');
+      const heading=await card.locator('.hotel-title').boundingBox();
+      assert.ok(heading.y>=0&&heading.y+heading.height<=await page.evaluate(()=>innerHeight),'return shows the matching hotel in the viewport: '+JSON.stringify({width,previous,heading}));
+      if(!previous&&[375,390,720].includes(width)) await page.screenshot({path:path.join(output,`budget-results-${width}.png`),animations:'disabled'});
+      await panel.locator('summary').click();
+    }
+    await set(lower,'155001');
+    assert.equal(await card.count(),0,'reversed bounds do not silently swap or show an out-of-range offer');
+    assert.match(await page.locator('#search3BudgetHint').innerText(),/Цена «от» больше цены «до»/);
+    if(width<1025){
+      await panel.locator('.search3-filter-results').click();
+      await page.waitForFunction(()=>document.activeElement?.matches('.search3-local-empty'));
+      assert.equal(await page.locator('.search3-local-empty-reset').isVisible(),true,'zero-result return exposes the existing recovery action');
+      await panel.locator('summary').click();
+    }
+    await page.locator('.search3-active-filters [data-filter-key=budget]').click();
+    assert.equal(await lower.inputValue(),'','removing the budget chip clears both ends');
+    assert.equal(await card.count(),2);
+    await set(upper,'0');
+    assert.equal(await card.count(),0,'an explicit zero upper limit never disables the budget filter');
+    await set(upper,'');
+    assert.equal(await card.count(),2,'empty upper limit restores the available range');
+    await set(lower,'90000');
+    await set(upper,'90000');
+    assert.equal(await card.getAttribute('data-hotel-id'),'cheap','equal bounds are inclusive');
+    await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:search-started',{detail:{searchId:711}})));
+    assert.equal(await lower.inputValue(),'','new search clears the old budget floor');
+    assert.deepEqual(requests,[],'budget and mobile return never call supplier or lead endpoints');
+  } finally {page.off('request',record);await page.evaluate(()=>window.Search3LocalHotelFilter.reset());}
+}
 async function checkMinimumReadiness(page, width, previous) {
   // Generic selection readiness; real SAMO admission is exercised through its HTTP projection below.
   const makeTour = (id, price, extra = {}) => ({ ...tour, id, price, ...extra });
@@ -360,7 +423,7 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'sort uses matching offer prices, not excluded cheaper meals');
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'meal facet removes excluded offers from the current price calendar');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'calendar best date follows the cheapest matching meal');
-    const budget = page.locator('.search3-budget-filter input[type=number]');
+    const budget = page.locator('.search3-budget-filter .search3-budget-max');
     assert.ok((await budget.boundingBox()).height >= 44, 'exact budget keeps a full touch target');
     await budget.fill('110001');
     await budget.press('Enter');
@@ -962,7 +1025,7 @@ async function run(browser, width, previous) {
     const localCategorySelect = localCategoryFilter.locator('select');
     const localCategoryPresets = localCategoryFilter.locator('.search3-filter-presets');
     const localBudgetFilter = page.locator('.search3-budget-filter');
-    const localBudgetInput = localBudgetFilter.locator('input');
+    const localBudgetInput = localBudgetFilter.locator('.search3-budget-max');
     const localOperatorFilter = page.locator('.search3-operator-filter');
     const localOperatorSelect = localOperatorFilter.locator('select');
     const localRatingFilter = page.locator('.search3-rating-filter');
@@ -1316,6 +1379,7 @@ async function run(browser, width, previous) {
     let minimumReadiness = null, expandedDensity = null, offerComposition = null;
     if ([320, 375, 390, 720, 1200, 1363, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
+      await checkBudgetRange(page, width, previous);
       minimumReadiness = await checkMinimumReadiness(page, width, previous);
       await checkExactOfferParty(page, width, previous);
       expandedDensity = await checkExpandedDensity(page, width, previous);

@@ -48,7 +48,7 @@ async function exerciseActiveChips(page, container, requestCount) {
   assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'removing one chip restores only that predicate');
   await page.waitForFunction(() => document.activeElement?.matches('.search3-hotel-filter input'));
 
-  const budget = page.locator(`${container} .search3-budget-filter input[type=number]`);
+  const budget = page.locator(`${container} .search3-budget-filter .search3-budget-max`);
   await budget.waitFor({ state: 'visible' });
   assert.ok((await budget.boundingBox()).height >= 43.5, 'exact budget has an accessible hit target');
   const bounds = await budget.evaluate(node => ({ min: Number(node.min), max: Number(node.max) }));
@@ -77,7 +77,7 @@ async function exerciseActiveChips(page, container, requestCount) {
   await budgetChip.click();
   assert.equal(requestCount(), before, 'removing budget chip stays local');
   assert.equal(await page.locator(`${container} .search3-active-filters button`).count(), 0, 'all individual chips are gone after their own predicates are cleared');
-  await page.waitForFunction(() => document.activeElement?.matches('.search3-budget-filter input[type=number]'));
+  await page.waitForFunction(() => document.activeElement?.matches('.search3-budget-filter .search3-budget-max'));
 }
 
 async function exercise(browser, width, height) {
