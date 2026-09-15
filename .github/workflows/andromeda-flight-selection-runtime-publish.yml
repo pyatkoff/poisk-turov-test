@@ -57,7 +57,7 @@ jobs:
           for needle in required[1:]:
               if live.count(needle) != 1:
                   raise SystemExit('publication control pin missing or duplicated: ' + needle)
-          if 'group: anytoour-andromeda-detail-publication' in text:
+          if 'group: anytoour-andromeda-detail-publication' in header:
               raise SystemExit('shared issue-comment fan-out concurrency group must not remain')
           trigger = text.split('\npermissions:', 1)[0]
           if '\n  workflow_dispatch:' in trigger or '\n  push:' in trigger:
