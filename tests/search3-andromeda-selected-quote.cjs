@@ -1,5 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');
+const withFuel=require('./fixtures/search3-andromeda-fuel.cjs');
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
@@ -8,7 +9,7 @@ const copy=value=>JSON.parse(JSON.stringify(value)),settle=()=>new Promise(resol
 const hex='a'.repeat(64),offer='offer_'+hex,reference='listing_'+'b'.repeat(64),laterReference='listing_'+'c'.repeat(64);
 const context={provider:'andromeda',search_ref:hex,generation:7,page:1,offer_ref:offer};
 const params={departureId:'1',countryId:'1',dateFrom:'2026-09-20',dateTo:'2026-09-20',nightsFrom:'7',nightsTo:'7',adults:'2',childs:[],currency:'RUB'};
-const rawHotel={local_id:6319,name:'Локальный отель',provider:'andromeda',mapping_status:'resolved',country:'Египет',region:'Шарм-эль-Шейх',catalog:{hotel_id:6319,source:'tourvisor',image_url:'https://catalog.example/hotel.jpg'},tours:[{provider:'andromeda',offer_ref:offer,offer_context:context,listing_price_ref:reference,price:{amount:'119114',currency:'RUB'},checkin:'2026-09-20',nights:7,meal:'BB',room:'STANDARD',placement:'2 ADL',operator:'ANEX'}]};
+const rawHotel={local_id:6319,name:'Локальный отель',provider:'andromeda',mapping_status:'resolved',country:'Египет',region:'Шарм-эль-Шейх',catalog:{hotel_id:6319,source:'tourvisor',image_url:'https://catalog.example/hotel.jpg'},tours:[withFuel({provider:'andromeda',offer_ref:offer,offer_context:context,listing_price_ref:reference,price:{amount:'119114',currency:'RUB'},checkin:'2026-09-20',nights:7,meal:'BB',room:'STANDARD',placement:'2 ADL',operator:'ANEX'})]};
 const verified={schema_version:1,provider:'andromeda',local_id:6319,selection_enabled:true,booking_enabled:false,state:'quote_verified',quote_state:'verified',final_price:{amount:'135643.25',currency:'RUB'},final_price_verified:true,flight_selection_required:false,flights:[{direction:'0',name:'OUT 101',datebeg:'2026-09-20',class:'ECONOM',departure:{town:'Москва',port:'SVO'},arrival:{town:'Шарм-эль-Шейх',port:'SSH'}},{direction:'1',name:'BACK 102',datebeg:'2026-09-27',class:'ECONOM',departure:{town:'Шарм-эль-Шейх',port:'SSH'},arrival:{town:'Москва',port:'SVO'}}]};
 const response=data=>({ok:true,status:200,json:async()=>({ok:true,data})});
 async function harness(){

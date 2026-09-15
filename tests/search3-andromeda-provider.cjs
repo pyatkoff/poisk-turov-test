@@ -1,5 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');
+const withFuel=require('./fixtures/search3-andromeda-fuel.cjs');
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
@@ -17,13 +18,47 @@ assert.equal(api.safeUrl('https://cdn.samo.ru/image.jpg?session=secret'),'','cre
 assert.equal(api.endpoint('/_preview/search3-anex-candidate/api-andromeda-search3-preview.php').origin,'https://anytoour.ru');
 assert.equal(api.endpoint('https://evil.example/api-andromeda-search3-preview.php'),null,'provider endpoint must remain same-origin');
 const context={provider:'andromeda',search_ref:hex,generation:11,page:1,offer_ref:offer};
-const rawHotel=(localId,name='Movenpick')=>({local_id:localId,card_key:localId===null?'andromeda:andromeda_catalog:3414':null,name,provider:'andromeda',mapping_status:localId===null?'unresolved':'resolved',country:'Египет',region:'Шарм-эль-Шейх',category:4,rating:4.7,catalog:{hotel_id:localId,source:'tourvisor',image_url:'https://catalog.example/hotel.jpg',subregion:'Наама-Бей',description:'Локальное описание',address:'Локальный адрес',sea_distance:200},andromeda_content:{source:'andromeda',image_url:'https://cdn.samo.ru/img/5.5844.3414.jpg',hotel_url:'https://operator.example/hotels/movenpick',region:'Шарм-эль-Шейх'},tours:[{provider:'andromeda',offer_ref:offer,offer_context:context,price:{amount:'155079.00',currency:'RUB'},checkin:'2026-09-18',nights:8,meal:'AI',room:'STANDARD',placement:'2 ADL',operator:'ANEX'}]});
+const rawHotel=(localId,name='Movenpick')=>({local_id:localId,card_key:localId===null?'andromeda:andromeda_catalog:3414':null,name,provider:'andromeda',mapping_status:localId===null?'unresolved':'resolved',country:'Египет',region:'Шарм-эль-Шейх',category:4,rating:4.7,catalog:{hotel_id:localId,source:'tourvisor',image_url:'https://catalog.example/hotel.jpg',subregion:'Наама-Бей',description:'Локальное описание',address:'Локальный адрес',sea_distance:200},andromeda_content:{source:'andromeda',image_url:'https://cdn.samo.ru/img/5.5844.3414.jpg',hotel_url:'https://operator.example/hotels/movenpick',region:'Шарм-эль-Шейх'},tours:[withFuel({provider:'andromeda',offer_ref:offer,offer_context:context,price:{amount:'155079.00',currency:'RUB'},checkin:'2026-09-18',nights:8,meal:'AI',room:'STANDARD',placement:'2 ADL',operator:'ANEX'})]});
+const clone=value=>JSON.parse(JSON.stringify(value));
+const inclusive=rawHotel(21477);
+inclusive.tours[0]=withFuel(inclusive.tours[0],'150000','5079.00');
+assert.equal(api.normalizeHotel(inclusive).price,155079,'already inclusive amount is consumed verbatim, never topped up again');
+assert.equal(api.normalizeHotel(inclusive).tours[0].fuelIncluded,true);
+const rejected=[];
+for(const mutate of [
+ t=>{delete t.search_surcharge;},t=>{delete t.base_search_price;},
+ t=>{t.search_surcharge.state='unknown';},t=>{t.search_surcharge.arithmetic_applied=false;},
+ t=>{t.search_surcharge.arithmetic_applied='true';},t=>{t.search_surcharge.provider='anex';},
+ t=>{t.search_surcharge.surcharge_scope='person';},t=>{t.search_surcharge.schema_version=2;},
+ t=>{t.search_surcharge.search_price.amount='149999';},t=>{t.price.amount='150000';},
+ t=>{t.search_surcharge.party_surcharge.currency='USD';},t=>{t.search_surcharge.party_surcharge.amount='-1';},
+ t=>{t.search_surcharge.party_surcharge.source='assumed';},t=>{t.search_surcharge.search_price_with_surcharge.source='unknown';}
+]){
+ const h=clone(inclusive);mutate(h.tours[0]);const before=JSON.stringify(h);
+ assert.equal(api.normalizeHotel(h),null,'missing, malformed or inconsistent fuel evidence excludes the offer');
+ assert.equal(JSON.stringify(h),before,'rejection does not mutate supplier data');rejected.push(h);
+}
+const noFact=clone(inclusive);delete noFact.tours[0].search_surcharge;
+noFact.tours[0].price.fees='included';noFact.tours[0].price.final=true;
+assert.equal(api.normalizeHotel(noFact),null,'generic booleans cannot replace the existing transport evidence');
+const zero=api.normalizeHotel(rawHotel(21477));assert.ok(zero,'explicit server-confirmed zero surcharge remains valid');
 const normalized=api.normalizeHotel(rawHotel(21477));
 assert.equal(normalized.id,'21477');
 assert.equal(normalized.tours[0].id,'andromeda:'+offer);
 assert.equal(normalized.tours[0].selectionEnabled,false);
 assert.equal(JSON.stringify(normalized.tours[0].providerHotelCode),JSON.stringify({operator:'anex',code:'5844',evidence:'hotel_image_path'}),'photo-derived operator code remains offer metadata');
 const tv={id:21477,name:'Movenpick Resort',price:165000,picturelink:'https://tourvisor.example/photo.jpg',tours:[{id:'tv-1',price:165000,date:'18.09.2026'}]};
+for(const h of rejected){
+ assert.equal(api.merge([tv],[h])[0],tv,'rejected low SAMO amount never changes the Tourvisor card or its minimum');
+ assert.equal(api.merge([],[h]).length,0,'a mapped hotel with only unconfirmed prices stays out of the results');
+}
+const mixed=clone(inclusive);mixed.tours.unshift({...noFact.tours[0],price:{amount:'1',currency:'RUB'}});
+assert.equal(api.merge([tv],[mixed])[0].tours.length,2,'only the confirmed offer joins mixed results');
+assert.equal(api.merge([tv],[mixed])[0].price,155079,'unconfirmed cheap offer cannot set the hotel minimum');
+const contaminated={...tv,price:1,providers:['tourvisor','andromeda'],andromedaExpansion:{status:'complete'},tours:[...tv.tours,{provider:'andromeda',price:1,id:'old-unknown'}]};
+assert.equal(api.merge([contaminated],[])[0].tours.length,1,'retained mixed base cannot reintroduce rejected SAMO');
+assert.equal(api.merge([contaminated],[])[0].andromedaExpansion,undefined,'rejected retained offers cannot leave dead expansion controls');
+assert.equal(api.merge([contaminated],[])[0].price,165000,'base minimum is rebuilt after rejected retained offer is removed');
 const passthrough=api.merge([tv],[]);
 assert.equal(passthrough[0],tv,'provider merge preserves the original Tourvisor hotel when there is no accepted Andromeda offer');
 const merged=api.merge([tv],[rawHotel(21477)]);
@@ -98,7 +133,7 @@ assert.equal(rendererWindow.V2Results.toursHtml(tv),tvRow,'ordinary single Tourv
   assert.deepEqual(providerEvents.map(item=>item.status),['loading','progress','complete']);
   const collision={...tv,tours:tv.tours.concat({...normalized.tours[0],offerContext:{...context,search_ref:'b'.repeat(64)}})};
   runtimeWindow.V2Results.render([collision],{empty:true});
-  assert.doesNotMatch(rendererWindow.V2Results.tourRow(renders.at(-1).items[0].tours[1]),/data-andromeda-detail/,'same offer ref with a different context cannot inherit detail eligibility');
+  assert.equal(JSON.stringify(renders.at(-1).items[0].tours[1].offerContext),JSON.stringify(context),'mixed base cannot retain an Andromeda offer with a foreign context; only current admitted provider data is merged');
   runtimeWindow.V2Results.render([tv],{empty:true});
   const linkedButUnresolved=rawHotel(21477);linkedButUnresolved.mapping_status='observed';
   runtimeWindow.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[linkedButUnresolved]}})});
@@ -196,6 +231,21 @@ assert.equal(rendererWindow.V2Results.toursHtml(tv),tvRow,'ordinary single Tourv
     assert.equal(result.status,localId===21477?'complete':'error','detail remains bound to the accepted local hotel');
     if(localId!==21477)assert.equal(result.retry,false,'another local hotel is a terminal identity failure');
   }
+
+  runtimeWindow.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[inclusive]}})});
+  listeners.get('v2:search-reset')({detail:{generation:11}});await settle();runtimeWindow.V2Results.render([tv],{empty:true});
+  runtimeWindow.fetch=async(url,options)=>{const body=JSON.parse(options.body);return{ok:true,status:200,json:async()=>({ok:true,data:{provider:'andromeda',local_id:21477,offer_context:body.offer_context,price:{amount:'150000',currency:'RUB'}}})};};
+  await runtimeWindow.AnyTourAndromedaProvider.openDetail(offer);
+  assert.equal(renders.at(-1).items[0].tours.find(t=>t.provider==='andromeda').providerDetail.data.price,155079,'detail base price cannot replace the admitted surcharge-inclusive listing amount');
+  let rejectedExpansionCalls=0;
+  runtimeWindow.fetch=async(url,options)=>{rejectedExpansionCalls++;const body=JSON.parse(options.body);return{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:body.page,pages_count:2,grouped:false,hotels:[noFact]}})};};
+  await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');
+  assert.equal(rejectedExpansionCalls,2,'unconfirmed-only pages complete normally without a supplier retry');
+  assert.equal(renders.at(-1).items[0].tours.length,1,'complete unconfirmed expansion removes the seed instead of keeping a misleading minimum');
+  assert.equal(renders.at(-1).items[0].price,165000);
+  assert.equal(renders.at(-1).items[0].andromedaExpansion,undefined);
+  await runtimeWindow.AnyTourAndromedaProvider.openDetail(offer);
+  assert.equal(rejectedExpansionCalls,2,'excluded offer cannot reopen retained details');
 
   // Two distinct local hotels opened while another is loading share one request lane.
   // Deferred responses deliberately ignore abort so generation guards, not the mock, reject stale data.
