@@ -19,6 +19,7 @@ $accepted=[
   manb_ar('104',11,4,'Twin Shared Name'),
   manb_ar('105',10,4,'Antalya'),
   manb_ar('106',12,8,'Maldives'),
+  manb_ar('107',10,4,'Block 123'),
 ];
 $a=manb_build_anchors($accepted,$hotels);
 manb_t(isset($a['usable'][4]['blue pearl collection']),'unique multi-token supplier alias should be usable');
@@ -27,6 +28,7 @@ manb_t(!isset($a['usable'][4]['twin shared name']),'ambiguous supplier name must
 manb_t(isset($a['ambiguous'][4]['twin shared name']),'ambiguous supplier name should be recorded');
 manb_t(isset($a['weak'][4]['antalya']),'single-token geography must be weak');
 manb_t(isset($a['weak'][8]['maldives']),'country-only key must be weak');
+manb_t(isset($a['usable'][4]['block 123']),'mixed alpha/numeric key should not type-error');
 
 $r=manb_select(['Blue Pearl Collection'],4,$a);
 manb_t(($r['route']??'')==='auto_accept_candidate','exact accepted supplier alias should bridge');
