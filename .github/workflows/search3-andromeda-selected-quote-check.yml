@@ -1,8 +1,8 @@
-name: Search3 Andromeda selected quote UI
+name: Search3 Andromeda selected quote
 on:
   pull_request:
     paths:
-      - 'v2/search3-selected-flow-v2.js'
+      - 'v2/andromeda-provider-v1.js'
       - 'tests/search3-andromeda-selected-quote.cjs'
       - '.github/workflows/search3-andromeda-selected-quote-check.yml'
 permissions:
@@ -14,11 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Syntax and selected quote flow
         run: |
-          node --check v2/search3-selected-flow-v2.js
+          node --check v2/andromeda-provider-v1.js
           node tests/search3-andromeda-selected-quote.cjs
       - name: Enforce no booking or lead handoff
         run: |
-          ! grep -RE "data-direct-tour|leadApi|action[[:space:]]*:[[:space:]]*['\"]bron['\"]|booking_enabled[[:space:]]*[:=][[:space:]]*true" v2/search3-selected-flow-v2.js
+          ! grep -RE "data-direct-tour|leadApi|action[[:space:]]*:[[:space:]]*['\"]bron['\"]|booking_enabled[[:space:]]*[:=][[:space:]]*true" v2/andromeda-provider-v1.js
