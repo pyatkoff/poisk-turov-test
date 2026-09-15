@@ -220,7 +220,7 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await page.evaluate(()=>window.V2Results.state.items[0]===window.__operatorAliasOriginal),true,'projection keeps the canonical source object');
     assert.equal(await page.evaluate(()=>JSON.stringify(window.__operatorAliasOriginal)),JSON.stringify(aliasHotel),'operator filtering never mutates provider identity, original labels, offers or prices');
     await provider.selectOption('');
-    await page.evaluate(()=>window.V2Results.render([{...window.__operatorAliasOriginal,tours:[...window.__operatorAliasOriginal.tours,{id:'missing-operator',provider:'anex',price:60000}]}]));
+    await page.evaluate(()=>window.V2Results.render([{...window.__operatorAliasOriginal,tours:[...window.__operatorAliasOriginal.tours,{id:'missing-operator',provider:'anex',price:60000,fuelCharge:0}]}]));
     assert.equal(await operatorField.isVisible(),false,'provider name cannot fill incomplete operator data');
     assert.equal(await operator.inputValue(),'','incomplete data clears the old local operator choice');
     await page.evaluate(()=>window.V2Results.render([{...window.__operatorAliasOriginal,tours:window.__operatorAliasOriginal.tours.slice(0,2)}]));
