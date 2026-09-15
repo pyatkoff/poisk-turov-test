@@ -19,6 +19,10 @@ margin:0;background:#f5f7fb;color:#17233b;
 & :is(.results-tools__actions,.search3-mobile-filter-panel__body) :is(input,select){width:100%;min-height:46px;padding:10px 12px;font-size:16px;font-weight:400;background:var(--at-soft,#f5f8ff)}
 & #resultsSearchEdit{justify-self:start;min-height:46px;padding-inline:16px;border-color:#c4cfeb;color:#2743cb;font-weight:700}
 & #resultSummary{display:block;color:#526078}
+& .search3-trip-context{flex-basis:100%;display:grid;gap:3px;margin:0;overflow-wrap:anywhere;font-size:14px;line-height:1.5}
+& .search3-trip-context[hidden]{display:none}
+& .search3-trip-context>strong{font-size:16px}
+& .search3-trip-context>span{color:#526078}
 & .status:not([hidden]){display:block;margin:18px 0}
 & .catalog-recovery{padding:16px 18px;border:1px solid #f0c6bd;border-radius:14px;background:#fff9f7;color:#7c2d20}
 & .catalog-recovery .search-progress-error{display:flex;align-items:center;justify-content:space-between;gap:16px}

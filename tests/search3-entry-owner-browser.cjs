@@ -6,6 +6,84 @@ const path = require('node:path');
 const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_ENTRY_OWNER_OUTPUT;
 assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
 fs.mkdirSync(output, { recursive: true });
+async function checkSubmittedTripContext(page, width) {
+  const expected = await page.evaluate(async () => {
+    const form = document.getElementById('tourSearch');
+    const set = (name, value, label) => {
+      const field = form.elements[name];
+      if (label) {
+        let option = [...field.options].find(item => item.value === value);
+        if (!option) { option = new Option(label, value); field.add(option); }
+        option.textContent = label;
+      }
+      field.value = value;
+    };
+    set('from', '1', 'Москва'); set('country', '4', 'Турция');
+    set('from', '2', 'Санкт-Петербург'); set('country', '1', 'Египет');
+    set('from', '1'); set('country', '4');
+    const date = new Date(); date.setDate(date.getDate() + 3);
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    set('dateFrom', iso); set('dateTo', iso); set('daysFrom', '7'); set('daysTill', '10'); set('count_people', '2');
+    set('child_count', '1'); window.V2Catalogs.renderChildAges();
+    form.querySelector('[name="child_age[]"]').value = '0';
+    const hotel = { id: 'trip-context-fixture', name: 'Отель для проверки параметров поиска', country: { name: 'Турция' }, category: 4, price: 150000,
+      tours: [{ id: 'trip-context-tour', date: iso, nights: 7, price: 150000, adults: 2, childs: 1, meal: { name: 'AI' }, roomType: 'STANDARD' }] };
+    const audit = window.__tripContextAudit = { originalApi: window.V2Runtime.api, calls: [], hotel };
+    window.V2Runtime.api = async (action, params) => {
+      audit.calls.push({ action, params });
+      if (action === 'search_start') return { searchId: 800 + audit.calls.length };
+      if (action === 'search_status') return { progress: 100, status: 'complete' };
+      if (action === 'search_results') return [audit.hotel];
+      if (action === 'countries') return [{ id: 1, russianName: 'Египет' }, { id: 4, russianName: 'Турция' }];
+      if (['regions', 'subregions', 'meals', 'arrivals', 'operators', 'hotel_types', 'hotel_services', 'hotels'].includes(action)) return [];
+      throw new Error('Unexpected trip-context supplier action: ' + action);
+    };
+    const submitted = window.V2SearchLifecycle.params();
+    await window.V2SearchLifecycle.submit();
+    return { submitted, date: iso.split('-').reverse().join('.') };
+  });
+  await page.waitForFunction(() => !window.V2SearchLifecycle.pending && !!document.querySelector('#results .hotel-card'));
+  const context = page.locator('#resultsTripContext');
+  assert.equal(await context.isVisible(), true, 'successful submitted search keeps trip context beside the results');
+  assert.equal(await page.locator('#tourSearch').isVisible(), false, 'populated results retain the existing collapsed editor');
+  assert.equal(await context.locator('[data-search3-trip-route]').innerText(), 'Москва → Турция');
+  const firstText = `Вылет ${expected.date} · 7–10 ночей · 2 взрослых · 1 ребёнок`;
+  assert.equal(await context.locator('[data-search3-trip-details]').innerText(), firstText);
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.snapshot), expected.submitted, 'summary leaves the canonical submitted snapshot unchanged');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'submitted context fits the viewport');
+  await page.locator('#resultsTools').screenshot({ path: path.join(output, `submitted-trip-context-${width}.png`), animations: 'disabled' });
+  await page.locator('#resultsSearchEdit').click();
+  assert.equal(await context.isVisible(), false, 'the existing editor replaces the compact context without duplicate controls');
+  await page.locator('[name=from]').selectOption('2');
+  await page.waitForFunction(() => [...document.getElementById('tourSearch').elements.country.options].some(option => option.value === '1'));
+  await page.locator('[name=country]').selectOption('1');
+  await page.locator('[name=count_people]').selectOption('1');
+  await page.locator('[name=child_count]').selectOption('0');
+  await page.evaluate(() => window.V2Results.rerender());
+  assert.equal(await page.locator('#tourSearch').isVisible(), true, 'retained-results rerender does not close the unsent draft');
+  assert.equal(await context.locator('[data-search3-trip-details]').textContent(), firstText, 'unsent edits cannot relabel the previous result set');
+  assert.equal(await context.locator('[data-search3-trip-route]').textContent(), 'Москва → Турция');
+  await page.evaluate(async () => {
+    const form = document.getElementById('tourSearch');
+    form.elements.daysFrom.value = '1'; form.elements.daysTill.value = '1';
+    const hotel = window.__tripContextAudit.hotel;
+    hotel.country.name = 'Египет'; Object.assign(hotel.tours[0], { nights: 1, adults: 1, childs: 0 });
+    await window.V2SearchLifecycle.submit();
+  });
+  await page.waitForFunction(() => !window.V2SearchLifecycle.pending && !!document.querySelector('#results .hotel-card'));
+  assert.equal(await context.isVisible(), true);
+  assert.equal(await context.locator('[data-search3-trip-route]').innerText(), 'Санкт-Петербург → Египет');
+  assert.equal(await context.locator('[data-search3-trip-details]').innerText(), `Вылет ${expected.date} · 1 ночь · 1 взрослый`, 'next successful search replaces route/night/party and removes old children');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'updated context also fits the viewport');
+  const calls = await page.evaluate(() => {
+    const audit = window.__tripContextAudit;
+    window.V2Runtime.api = audit.originalApi;
+    delete window.__tripContextAudit;
+    return audit.calls;
+  });
+  assert.deepEqual(calls.filter(call => call.action.startsWith('search_')).map(call => call.action), ['search_start', 'search_status', 'search_results', 'search_start', 'search_status', 'search_results'], 'summary adds no request to either canonical fixture search; route edits use their existing catalog requests');
+  fs.writeFileSync(path.join(output, `submitted-trip-context-${width}.json`), JSON.stringify({ width, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, firstSnapshot: expected.submitted, calls, supplier_requests_sent: 0, lead_sent: 0 }, null, 2) + '\n');
+}
 async function checkLocalHistory(page) {
   const documents = [];
   const trackDocument = request => {
@@ -449,6 +527,8 @@ async function run(browser, width, servicesOnly = false) {
     assert.deepEqual(errors, [], 'calendar interaction has no page errors');
     if ([375, 1440].includes(width)) await checkUrlRoundTrip(page, width, blocked);
     assert.deepEqual(errors, [], 'URL round trip has no page errors');
+    if ([375, 430, 1024, 1440].includes(width)) await checkSubmittedTripContext(page, width);
+    assert.deepEqual(errors, [], 'submitted trip context has no page errors');
   } finally { await page.close(); }
 }
 // Existing homepage controls, offline catalogs, no real search/lead navigation.
@@ -543,9 +623,9 @@ async function runHomeRanges(browser, width) {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [375, 1024, 1025, 1101, 1199, 1200, 1440]) await run(browser, width);
+    for (const width of [375, 430, 1024, 1025, 1101, 1199, 1200, 1440]) await run(browser, width);
     for (const width of [320, 700, 1363]) await run(browser, width, true);
     for (const width of [375, 768, 1440]) await runHomeRanges(browser, width);
   } finally { await browser.close(); }
-  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=320,375,700,1024,1025,1101,1199,1200,1363,1440 hotel_services=31 service_targets=44px home_ranges=375,768,1440 lead_sent=0');
+  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=320,375,430,700,1024,1025,1101,1199,1200,1363,1440 submitted_trip_context=375,430,1024,1440 hotel_services=31 service_targets=44px home_ranges=375,768,1440 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });
