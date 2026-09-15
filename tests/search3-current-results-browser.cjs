@@ -201,7 +201,7 @@ async function checkExactOfferParty(page, width, previous) {
 async function checkExpandedDensity(page, width, previous) {
   // The owner supplied a physical-iPhone capture with 260 offers. Ten cover
   // initial, intermediate and final disclosure steps without supplier calls.
-  const item = { ...hotels[0], id: 'density-ten', price: 61372, tours: Array.from({ length: 10 }, (_, index) => ({ ...tour, id: 'density-' + index, price: 61372 + index * 1000, roomType: index === 1 ? 'Standard Pool View' : tour.roomType, adults: 2, childs: 0, isCharter: true })) };
+  const item = { ...hotels[0], id: 'density-ten', price: 61372, tours: Array.from({ length: 10 }, (_, index) => ({ ...tour, id: 'density-' + index, price: 61372 + index * 1000, roomType: index === 1 ? 'promo room' : tour.roomType, adults: 2, childs: 0, isCharter: true })) };
   const requests = [], record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) requests.push(request.url()); };
   page.on('request', record);
   const measurements = [];
@@ -223,7 +223,7 @@ async function checkExpandedDensity(page, width, previous) {
     assert.equal(await card.locator('.hotel-trip-summary,.hotel-summary-total').count(), 0, 'expanded comparison has no aggregate facts or total');
     assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(), '10 вариантов', 'one grammatically correct count belongs to the comparison header');
     assert.equal(await card.locator('.hotel-price').count(), 3, 'the first decision view shows three exact offers instead of the whole long list');
-    assert.equal(await card.locator('.tour-row').nth(1).locator('.tour-fact').filter({ hasText: 'Номер' }).locator('b').innerText(), 'Стандарт · вид на бассейн · Двухместное', 'the visible pool-view room uses shared Russian room and placement labels');
+    assert.equal(await card.locator('.tour-row').nth(1).locator('.tour-fact').filter({ hasText: 'Номер' }).locator('b').innerText(), 'Промо · Двухместное', 'the visible promotional room uses shared Russian room and placement labels');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.slice(0, 3).map(value => value.id), 'the representative offer and first alternatives retain their identity and order');
     assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.slice(0, 3).map(value => value.price), 'the first displayed prices remain the original supplier amounts');
     assert.equal(await card.locator('.tour-list-more').innerText(), 'Показать ещё 3');
