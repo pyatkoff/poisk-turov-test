@@ -2,11 +2,7 @@
   'use strict';
 
   const root = window;
-  const entry = typeof root.__ANYTOOUR_SEARCH3_ENTRY__ === 'string' ? root.__ANYTOOUR_SEARCH3_ENTRY__ : '';
-  if (!entry) return;
-  const ns = root[entry] = root[entry] || {};
-  ns.modules = ns.modules || {};
-  if (ns.modules['search3-selected-flow-v2'] && ns.modules['search3-selected-flow-v2'].version === 3) return;
+  if (root.Search3AndromedaQuoteUi && root.Search3AndromedaQuoteUi.version === 3) return;
 
   const quoteStates = new Map();
   const moneyFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
@@ -174,5 +170,5 @@
   else scheduleDecorate();
 
   const api = { verifyQuote, selectVerified, decorate, states: quoteStates, version: 3 };
-  ns.modules['search3-selected-flow-v2'] = api;
+  root.Search3AndromedaQuoteUi = api;
 })();
