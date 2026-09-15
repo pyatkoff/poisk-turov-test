@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const MCR_OP = 'hotel-match-live-residual-current-review-1971-20260915-v1';
+const MCR_OP = 'hotel-match-live-residual-current-review-1971-20260915-v4';
 const MCR_POLICY = 'owner_exact_and_strong_20260908';
 
 function mcr_json(array $value): string {
@@ -139,7 +139,59 @@ function mcr_direct_target_guard(array $names, array $points, array $hotel): arr
     if ($dists && max($dists)>5.0) return ['ok'=>false,'reason'=>'direct_target_coordinate_conflict_gt5km','distance_km'=>min($dists)];
     return ['ok'=>true,'distance_km'=>$dists?min($dists):null];
 }
-function mcr_select_candidate(array $names, int $countryId, array $points, array $hotels, array $forms, array $exact, array $tokenIndex): array {
+
+function mcr_geo_latin(string $s): string {
+    $s=mcr_fold($s);
+    $s=strtr($s,[
+        'а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','ж'=>'zh','з'=>'z','и'=>'i','й'=>'y',
+        'к'=>'k','л'=>'l','м'=>'m','н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u',
+        'ф'=>'f','х'=>'h','ц'=>'ts','ч'=>'ch','ш'=>'sh','щ'=>'sch','ы'=>'y','э'=>'e','ю'=>'yu','я'=>'ya',
+        'ь'=>'','ъ'=>''
+    ]);
+    $s=preg_replace('/[^a-z0-9]+/u',' ',strtolower($s))??strtolower($s);
+    return trim(preg_replace('/\s+/',' ',$s)??$s);
+}
+function mcr_geo_suffixes(array $hotel): array {
+    $out=[];
+    foreach (['region_name','subregion_name'] as $k) {
+        $raw=trim((string)($hotel[$k]??''));
+        if($raw==='')continue;
+        $g=mcr_geo_latin($raw);
+        if($g==='')continue;
+        $gt=preg_split('/\s+/', $g)?:[];
+        $meaningful=['annex'=>1,'annexe'=>1,'beach'=>1,'garden'=>1,'gardens'=>1,'north'=>1,'south'=>1,'east'=>1,'west'=>1,'pool'=>1,'adult'=>1,'adults'=>1,'family'=>1];
+        $bad=false;foreach($gt as $t)if(isset($meaningful[$t])){$bad=true;break;}
+        if(!$bad)$out[$g]=true;
+    }
+    return array_keys($out);
+}
+function mcr_geo_strip_form(string $raw,array $hotel): ?string {
+    $n=mcr_norm($raw); if($n==='')return null;
+    $latin=mcr_geo_latin($n); if($latin==='')return null;
+    foreach(mcr_geo_suffixes($hotel) as $g){
+        if($latin===$g)continue;
+        $suffix=' '.$g;
+        if(str_ends_with($latin,$suffix)){
+            $base=trim(substr($latin,0,-strlen($suffix)));
+            if($base!=='' && count(preg_split('/\s+/',$base)?:[])>=1)return $base;
+        }
+    }
+    return null;
+}
+function mcr_geo_exact_index(array $hotels,array $forms): array {
+    $idx=[];
+    foreach($forms as $id=>$list){
+        if(!isset($hotels[$id]))continue;
+        $cid=(int)$hotels[$id]['country_id'];
+        foreach(array_unique($list) as $raw){
+            $base=mcr_geo_strip_form((string)$raw,$hotels[$id]);
+            if($base!==null)$idx[$cid][$base][(int)$id]=true;
+        }
+    }
+    return $idx;
+}
+
+function mcr_select_candidate(array $names, int $countryId, array $points, array $hotels, array $forms, array $exact, array $tokenIndex, array $geoExact = []): array {
     $sourceForms=[]; foreach ($names as $n) { $nn=mcr_norm($n); if ($nn!=='') $sourceForms[$nn]=$n; }
     if (!$sourceForms) return ['route'=>'needs_extra_evidence','reason'=>'missing_substantive_name'];
     $exactIds=[];
@@ -162,6 +214,31 @@ function mcr_select_candidate(array $names, int $countryId, array $points, array
         }
         return ['route'=>'hard_conflict','reason'=>in_array('coordinate_conflict_gt5km',$blocked,true)?'exact_name_coordinate_conflict_gt5km':'exact_name_qualifier_conflict','candidate_ids'=>array_slice(array_map('intval',array_keys($blocked)),0,20)];
     }
+    $geoIds=[];
+    foreach($sourceForms as $n=>$raw){
+        $key=mcr_geo_latin($n);
+        foreach(array_keys($geoExact[$countryId][$key]??[]) as $id)$geoIds[(int)$id]=true;
+    }
+    if($geoIds){
+        $safe=[];
+        foreach(array_keys($geoIds) as $id){
+            if(!isset($hotels[$id]))continue;
+            $qok=false;
+            foreach($names as $srcName)foreach($forms[$id] as $localForm){
+                $base=mcr_geo_strip_form((string)$localForm,$hotels[$id]);
+                if($base!==null && $base===mcr_geo_latin(mcr_norm((string)$srcName)) && mcr_qualifier_ok((string)$srcName,(string)$localForm)){$qok=true;break 2;}
+            }
+            if(!$qok)continue;
+            $dists=[];foreach($points as $p){$d=mcr_distance($p,$hotels[$id]);if($d!==null)$dists[]=$d;}
+            if($dists&&max($dists)>5.0)continue;
+            $safe[$id]=['distance_km'=>$dists?min($dists):null];
+        }
+        if(count($safe)===1){
+            $id=(int)array_key_first($safe);
+            return ['route'=>'auto_accept_candidate','reason'=>'unique_exact_name_plus_own_geography','target'=>$id,'score'=>1.0]+$safe[$id];
+        }
+        if(count($safe)>1)return ['route'=>'needs_extra_evidence','reason'=>'ambiguous_geo_suffix_exact','candidate_count'=>count($safe),'candidate_ids'=>array_slice(array_map('intval',array_keys($safe)),0,20)];
+    }
     $candidateIds=[]; $maxSourceTokens=0;
     foreach ($sourceForms as $n=>$raw) { $tt=mcr_tokens($n); $maxSourceTokens=max($maxSourceTokens,count($tt)); foreach ($tt as $t) foreach (array_keys($tokenIndex[$countryId][$t]??[]) as $id) $candidateIds[(int)$id]=true; }
     if ($maxSourceTokens<2 || !$candidateIds) return ['route'=>'needs_extra_evidence','reason'=>'no_strong_name_candidate'];
@@ -178,89 +255,36 @@ function mcr_select_candidate(array $names, int $countryId, array $points, array
     $dists=[]; foreach ($points as $p) { $d=mcr_distance($p,$hotels[$id]); if ($d!==null)$dists[]=$d; }
     if ($dists && max($dists)>5.0) return ['route'=>'hard_conflict','reason'=>'fuzzy_coordinate_conflict_gt5km','target'=>$id,'score'=>$best,'margin'=>$margin,'distance_km'=>min($dists)];
     $near=$dists?min($dists):null;
-    if ($best>=0.88 && $margin>=0.18 || ($best>=0.82 && $margin>=0.18 && $near!==null && $near<=1.5)) return ['route'=>'auto_accept_candidate','reason'=>'strong_fuzzy_winner','target'=>$id,'score'=>$best,'margin'=>$margin,'distance_km'=>$near];
+    if ($best>=0.88 && $margin>=0.18 || ($best>=0.82 && $margin>=0.12 && $near!==null && $near<=1.0)) return ['route'=>'auto_accept_candidate','reason'=>'strong_fuzzy_winner','target'=>$id,'score'=>$best,'margin'=>$margin,'distance_km'=>$near];
     return ['route'=>'needs_extra_evidence','reason'=>'fuzzy_margin_or_score_insufficient','top_target'=>$id,'score'=>$best,'margin'=>$margin,'distance_km'=>$near];
 }
 
-if (getenv('MATCH_TEST_LIBRARY') === '1') return;
-if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
-
-$operation=(string)getenv('MATCH_OPERATION_ID'); $sourceSha=(string)getenv('MATCH_SOURCE_SHA');
-if ($operation!==MCR_OP || !preg_match('/^[0-9a-f]{40}$/D',$sourceSha)) throw new RuntimeException('operation_or_source_guard');
-$home=(string)getenv('HOME'); if ($home==='') throw new RuntimeException('home_missing');
-$dir=$home.'/.anytoour-match/operations/'.MCR_OP;
-if (!is_file($dir.'/reservation.json')) throw new RuntimeException('reservation_missing');
-$res=mcr_evidence((string)file_get_contents($dir.'/reservation.json'));
-if (($res['operation_id']??'')!==MCR_OP || ($res['source_sha']??'')!==$sourceSha || ($res['state']??'')!=='reserved_before_db_access') throw new RuntimeException('reservation_contract');
-$root=realpath(getcwd()); if (!$root || basename($root)!=='anytoour.ru') throw new RuntimeException('root_guard');
-require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
-$db=v2_data_db(); $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'); $db->exec('SET TRANSACTION READ ONLY'); $db->beginTransaction();
-try {
-    $required=['andromeda_hotel_identities','catalog_hotels','catalog_countries','hotel_aliases','anex_hotel_search_mappings','anex_hotel_decisions','anex_review_pair_exclusions'];
-    $present=mcr_query($db,'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('.implode(',',array_fill(0,count($required),'?')).')',$required);
-    $have=array_fill_keys(array_column($present,'TABLE_NAME'),true); foreach($required as $t) if(!isset($have[$t])) throw new RuntimeException('required_table_missing_'.$t);
-    $hasReview=(bool)mcr_query($db,"SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anex_review_state' AND COLUMN_NAME='anex_hotel_id' LIMIT 1");
-
-    $countries=mcr_query($db,'SELECT id,name FROM catalog_countries WHERE is_active=1 ORDER BY id'); $coreIds=[]; $countryNameToId=[];
-    foreach($countries as $c){$cid=(int)$c['id'];$key=trim(mcr_country_key((string)$c['name']));$countryNameToId[$key]=$cid;if(mcr_is_core8_name((string)$c['name']))$coreIds[$cid]=(string)$c['name'];}
-    if(count($coreIds)<6) throw new RuntimeException('core8_country_dictionary_incomplete');
-
-    $catalogRows=mcr_query($db,'SELECT id,country_id,country_name,region_id,region_name,subregion_id,subregion_name,name,category,latitude,longitude FROM catalog_hotels WHERE is_active=1 AND country_id IN ('.implode(',',array_fill(0,count($coreIds),'?')).') ORDER BY country_id,id',array_keys($coreIds));
-    $hotels=[];$forms=[];$exact=[];$tokenIndex=[];
-    foreach($catalogRows as $h){$id=(int)$h['id'];$cid=(int)$h['country_id'];$hotels[$id]=$h;$forms[$id]=[(string)$h['name']];}
-    $aliases=mcr_query($db,'SELECT a.hotel_id,a.alias FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.is_active=1 AND h.country_id IN ('.implode(',',array_fill(0,count($coreIds),'?')).') ORDER BY a.hotel_id,a.id',array_keys($coreIds));
-    foreach($aliases as $a){$id=(int)$a['hotel_id'];if(isset($forms[$id]))$forms[$id][]=(string)$a['alias'];}
+if(getenv('MATCH_TEST_LIBRARY')==='1')return;
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
+$operation=(string)getenv('MATCH_OPERATION_ID');$sourceSha=(string)getenv('MATCH_SOURCE_SHA');
+if($operation!==MCR_OP||!preg_match('/^[0-9a-f]{40}$/D',$sourceSha))throw new RuntimeException('operation_or_source_guard');
+$home=(string)getenv('HOME');if($home==='')throw new RuntimeException('home_missing');$dir=$home.'/.anytoour-match/operations/'.MCR_OP;$reservation=mcr_evidence((string)@file_get_contents($dir.'/reservation.json'));if(($reservation['operation_id']??'')!==MCR_OP||($reservation['source_sha']??'')!==$sourceSha||($reservation['state']??'')!=='reserved_before_db_access')throw new RuntimeException('reservation_contract');
+$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root_guard');require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+try{
+    $coreRows=mcr_query($db,'SELECT id,name FROM catalog_countries WHERE is_active=1 ORDER BY id');$coreIds=[];foreach($coreRows as $c)if(mcr_is_core8_name((string)$c['name']))$coreIds[(int)$c['id']]=(string)$c['name'];if(count($coreIds)<6)throw new RuntimeException('core8_incomplete');
+    $catalogRows=mcr_query($db,'SELECT id,country_id,country_name,region_id,region_name,subregion_id,subregion_name,name,category,latitude,longitude FROM catalog_hotels WHERE is_active=1 AND country_id IN ('.implode(',',array_fill(0,count($coreIds),'?')).') ORDER BY country_id,id',array_keys($coreIds));$hotels=[];$forms=[];$exact=[];$tokenIndex=[];foreach($catalogRows as $h){$id=(int)$h['id'];$hotels[$id]=$h;$forms[$id]=[(string)$h['name']];}
+    $aliases=mcr_query($db,'SELECT a.hotel_id,a.alias FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.is_active=1 AND h.country_id IN ('.implode(',',array_fill(0,count($coreIds),'?')).') ORDER BY a.hotel_id,a.id',array_keys($coreIds));foreach($aliases as $a){$id=(int)$a['hotel_id'];if(isset($forms[$id]))$forms[$id][]=(string)$a['alias'];}
     foreach($forms as $id=>$list){$cid=(int)$hotels[$id]['country_id'];foreach(array_values(array_unique($list)) as $raw){$n=mcr_norm($raw);if($n==='')continue;$exact[$cid][$n][]=$id;foreach(mcr_tokens($raw) as $t)$tokenIndex[$cid][$t][$id]=true;}}
-
-    $allAnd=mcr_query($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' OR LEFT(supplier_namespace,9)='operator_' ORDER BY supplier_namespace,external_hotel_id");
-    $acceptedAnd=[];$acceptedTypedByAnd=[];$stateCounts=[];$pendingCatalog=[];$pendingTyped=[];
-    foreach($allAnd as $r){$ns=(string)$r['supplier_namespace'];$e=mcr_evidence((string)$r['evidence_json']);$local=$r['local_hotel_id']!==null?(int)$r['local_hotel_id']:null;
-        if($ns==='andromeda_catalog'){
-            $aid=(string)$r['external_hotel_id'];
-            if($r['decision_status']==='accepted'&&$local!==null&&isset($hotels[$local])){$acceptedAnd[$aid]=$local;$sk=mcr_state_key($e);if($sk!==null)$stateCounts[$sk][(int)$hotels[$local]['country_id']] = ($stateCounts[$sk][(int)$hotels[$local]['country_id']]??0)+1;}
-            elseif($r['decision_status']==='pending'&&$local===null)$pendingCatalog[]=$r;
-        } elseif(str_starts_with($ns,'operator_')) {
-            if($r['decision_status']==='accepted'&&$local!==null){foreach(mcr_provider_bridges($e) as $aid)$acceptedTypedByAnd[$aid][$local]=true;}
-            elseif($r['decision_status']==='pending'&&$local===null)$pendingTyped[]=$r;
-        }
+    $geoExact=mcr_geo_exact_index($hotels,$forms);
+    $stateCountry=[];$counts=[];$accepted=mcr_query($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL ORDER BY external_hotel_id");foreach($accepted as $r){$local=(int)$r['local_hotel_id'];if(!isset($hotels[$local]))continue;$e=mcr_evidence((string)$r['evidence_json']);$sk=mcr_state_key($e);if($sk!==null)$counts[$sk][(int)$hotels[$local]['country_id']]=($counts[$sk][(int)$hotels[$local]['country_id']]??0)+1;}foreach($counts as $sk=>$c){arsort($c,SORT_NUMERIC);$cid=(int)array_key_first($c);$total=array_sum($c);if(isset($coreIds[$cid])&&(int)$c[$cid]>=3&&(int)$c[$cid]/$total>=0.98)$stateCountry[$sk]=['country_id'=>$cid,'winner'=>(int)$c[$cid],'total'=>$total,'share'=>(int)$c[$cid]/$total];}
+    $identityRows=mcr_query($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' OR supplier_namespace LIKE 'operator\\_%' ORDER BY supplier_namespace,external_hotel_id");
+    $catalogById=[];$acceptedTypedByAnd=[];$pending=[];$operatorRows=[];foreach($identityRows as $r){$ns=(string)$r['supplier_namespace'];$id=(string)$r['external_hotel_id'];$e=mcr_evidence((string)$r['evidence_json']);if($ns==='andromeda_catalog')$catalogById[$id]=$r;if($r['decision_status']==='accepted'&&$r['local_hotel_id']!==null&&$ns!=='andromeda_catalog')foreach(mcr_provider_bridges($e) as $aid)$acceptedTypedByAnd[$aid][]=[$ns,$id,(int)$r['local_hotel_id'],$r['evidence_sha256']];if($r['decision_status']==='pending'&&$r['local_hotel_id']===null){$pending[]=$r;if($ns!=='andromeda_catalog')$operatorRows[]=$r;}}
+    $anexAuthority=[];foreach(mcr_query($db,"SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_decisions WHERE decision_status='accepted' AND catalog_hotel_id IS NOT NULL ORDER BY anex_hotel_id") as $r){$aid=(string)$r['anex_hotel_id'];$target=(int)$r['catalog_hotel_id'];$anexAuthority[$aid][$target]=true;}foreach(mcr_query($db,"SELECT m.anex_hotel_id,m.catalog_hotel_id FROM anex_hotel_search_mappings m WHERE m.enabled=1 AND m.scope='preview' AND m.approval_policy=? AND NOT EXISTS(SELECT 1 FROM anex_hotel_decisions d WHERE d.anex_hotel_id=m.anex_hotel_id) AND NOT EXISTS(SELECT 1 FROM anex_review_pair_exclusions x WHERE x.anex_hotel_id=m.anex_hotel_id AND x.catalog_hotel_id=m.catalog_hotel_id) ORDER BY m.anex_hotel_id,m.catalog_hotel_id",[MCR_POLICY]) as $r){$aid=(string)$r['anex_hotel_id'];$target=(int)$r['catalog_hotel_id'];$anexAuthority[$aid][$target]=true;}
+    $routes=[];$reason=[];$routeFrequency=[];$auto=[];
+    foreach($pending as $r){$ns=(string)$r['supplier_namespace'];$id=(string)$r['external_hotel_id'];$e=mcr_evidence((string)$r['evidence_json']);$names=mcr_names($e);$freq=mcr_frequency($e);$item=['kind'=>$ns==='andromeda_catalog'?'andromeda_catalog':'operator_native','supplier_namespace'=>$ns,'external_hotel_id'=>$id,'frequency'=>$freq,'names'=>$names];
+        if($ns==='andromeda_catalog'){$sk=mcr_state_key($e);$country=mcr_country_name($e);$cid=$sk!==null?($stateCountry[$sk]['country_id']??null):null;if($cid===null&&$country!==null)foreach($coreIds as $ccid=>$cname)if(mcr_country_key($cname)===mcr_country_key($country)){$cid=$ccid;break;}$item['state_key']=$sk;$item['country_id']=$cid;if($cid===null){$sel=['route'=>'needs_extra_evidence','reason'=>'country_semantics_unresolved'];}
+        else{$bridges=$acceptedTypedByAnd[$id]??[];$unique=[];foreach($bridges as $b)$unique[(int)$b[2]]=true;if(count($unique)===1){$target=(int)array_key_first($unique);$g=mcr_direct_target_guard($names,mcr_points($e),$hotels[$target]??[]);$sel=($g['ok']??false)?['route'=>'auto_accept_candidate','reason'=>'accepted_operator_native_bridge','target'=>$target,'score'=>1.0,'distance_km'=>$g['distance_km']]:['route'=>'hard_conflict','reason'=>$g['reason']??'bridge_guard'];}elseif(count($unique)>1)$sel=['route'=>'hard_conflict','reason'=>'accepted_operator_bridge_target_conflict','candidate_ids'=>array_map('intval',array_keys($unique))];else $sel=mcr_select_candidate($names,$cid,mcr_points($e),$hotels,$forms,$exact,$tokenIndex,$geoExact);}
+        }else{$refs=mcr_provider_bridges($e);$targets=[];foreach($refs as $aid){$c=$catalogById[$aid]??null;if($c&&$c['decision_status']==='accepted'&&$c['local_hotel_id']!==null)$targets[(int)$c['local_hotel_id']]=true;}$item['andromeda_ids']=$refs;if(count($targets)===1){$target=(int)array_key_first($targets);$g=mcr_direct_target_guard($names,mcr_points($e),$hotels[$target]??[]);$sel=($g['ok']??false)?['route'=>'auto_accept_candidate','reason'=>'operator_native_accepted_andromeda_bridge','target'=>$target,'score'=>1.0,'distance_km'=>$g['distance_km']]:['route'=>'hard_conflict','reason'=>$g['reason']??'direct_guard'];}elseif(count($targets)>1)$sel=['route'=>'hard_conflict','reason'=>'operator_native_multi_local_conflict'];elseif($ns==='operator_5'){$auth=$anexAuthority[$id]??[];if(count($auth)===1){$target=(int)array_key_first($auth);$g=mcr_direct_target_guard($names,mcr_points($e),$hotels[$target]??[]);$sel=($g['ok']??false)?['route'=>'auto_accept_candidate','reason'=>'operator_native_current_authority','target'=>$target,'score'=>1.0,'distance_km'=>$g['distance_km']]:['route'=>'hard_conflict','reason'=>$g['reason']??'anex_authority_guard'];}elseif(count($auth)>1)$sel=['route'=>'hard_conflict','reason'=>'anex_current_authority_conflict'];else $sel=['route'=>'needs_anex_detail','reason'=>'anex_no_current_authority'];}else $sel=['route'=>'needs_operator_authority','reason'=>'operator_native_no_current_local_authority'];}
+        $item=array_merge($item,$sel);$route=(string)$item['route'];$why=(string)$item['reason'];$routes[$route][]=$item;$reason[$why]=($reason[$why]??0)+1;$routeFrequency[$route]=($routeFrequency[$route]??0)+$freq;if($route==='auto_accept_candidate')$auto[]=$item;
     }
-    $stateCountry=[];$stateEvidence=[];foreach($stateCounts as $sk=>$counts){arsort($counts,SORT_NUMERIC);$cid=(int)array_key_first($counts);$total=array_sum($counts);$top=(int)$counts[$cid];if(isset($coreIds[$cid])&&$top>=3&&$top/$total>=0.98)$stateCountry[$sk]=$cid;$stateEvidence[$sk]=['winner'=>$cid,'top'=>$top,'total'=>$total,'share'=>$total?$top/$total:0.0,'accepted'=>$stateCountry[$sk]??null];}
-
-    $decisions=mcr_query($db,"SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_decisions WHERE decision_status='accepted' AND catalog_hotel_id IS NOT NULL");
-    $excluded=[];foreach(mcr_query($db,'SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions') as $x)$excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']]=true;
-    $review=[];if($hasReview)foreach(mcr_query($db,'SELECT anex_hotel_id FROM anex_review_state') as $x)$review[(int)$x['anex_hotel_id']]=true;
-    $anexTargets=[];foreach($decisions as $d){$a=(int)$d['anex_hotel_id'];$t=(int)$d['catalog_hotel_id'];if(!isset($excluded[$a][$t]))$anexTargets[$a][$t]=true;}
-    foreach(mcr_query($db,"SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_search_mappings WHERE enabled=1 AND scope='preview' AND approval_policy=?",[MCR_POLICY]) as $m){$a=(int)$m['anex_hotel_id'];$t=(int)$m['catalog_hotel_id'];if(!isset($excluded[$a][$t]))$anexTargets[$a][$t]=true;}
-    $anexAuthority=[];foreach($anexTargets as $a=>$targets)if(count($targets)===1&&!isset($review[$a]))$anexAuthority[$a]=(int)array_key_first($targets);
-
-    $routes=[];$reasons=[];$auto=[];$frequencyByRoute=[];
-    $countryForEvidence=function(array $e)use($stateCountry,$countryNameToId,$coreIds):?int{$sk=mcr_state_key($e);if($sk!==null&&isset($stateCountry[$sk]))return $stateCountry[$sk];$cn=mcr_country_name($e);if($cn!==null){$key=trim(mcr_country_key($cn));$cid=$countryNameToId[$key]??null;if($cid!==null&&isset($coreIds[$cid]))return $cid;}return null;};
-    foreach($pendingCatalog as $r){$e=mcr_evidence((string)$r['evidence_json']);$aid=(string)$r['external_hotel_id'];$freq=mcr_frequency($e);$names=mcr_names($e);$cid=$countryForEvidence($e);$row=['kind'=>'andromeda_catalog','external_hotel_id'=>$aid,'frequency'=>$freq,'names'=>array_slice($names,0,6),'state_key'=>mcr_state_key($e),'country_id'=>$cid];
-        $typed=array_keys($acceptedTypedByAnd[$aid]??[]);if(count($typed)===1){$target=(int)$typed[0];if(isset($hotels[$target])&&($cid===null||(int)$hotels[$target]['country_id']===$cid)){ $guard=mcr_direct_target_guard($names,mcr_points($e),$hotels[$target]);$sel=$guard['ok']?['route'=>'auto_accept_candidate','reason'=>'accepted_operator_bridge','target'=>$target,'score'=>1.0,'distance_km'=>$guard['distance_km']]:['route'=>'hard_conflict','reason'=>$guard['reason'],'target'=>$target]+$guard; } else $sel=['route'=>'hard_conflict','reason'=>'accepted_operator_bridge_country_conflict','target'=>$target];}
-        elseif(count($typed)>1)$sel=['route'=>'hard_conflict','reason'=>'accepted_operator_bridge_target_conflict','candidate_ids'=>array_map('intval',$typed)];
-        elseif($cid===null)$sel=['route'=>'needs_extra_evidence','reason'=>'country_semantics_unresolved'];
-        else $sel=mcr_select_candidate($names,$cid,mcr_points($e),$hotels,$forms,$exact,$tokenIndex);
-        $row+=$sel;$routes[$sel['route']][]=$row;$reasons[$sel['reason']]=($reasons[$sel['reason']]??0)+1;$frequencyByRoute[$sel['route']]=($frequencyByRoute[$sel['route']]??0)+$freq;if($sel['route']==='auto_accept_candidate')$auto[]=$row;
-    }
-    foreach($pendingTyped as $r){$e=mcr_evidence((string)$r['evidence_json']);$ns=(string)$r['supplier_namespace'];$native=(string)$r['external_hotel_id'];$freq=mcr_frequency($e);$refs=mcr_provider_bridges($e);$accepted=[];foreach($refs as $aid)if(isset($acceptedAnd[$aid]))$accepted[$acceptedAnd[$aid]]=true;$row=['kind'=>'operator_native','supplier_namespace'=>$ns,'external_hotel_id'=>$native,'frequency'=>$freq,'andromeda_ids'=>$refs,'names'=>array_slice(mcr_names($e),0,6)];
-        if($ns==='operator_5'&&ctype_digit($native)&&isset($anexAuthority[(int)$native]))$accepted[$anexAuthority[(int)$native]]=true;
-        if(count($accepted)===1){$target=(int)array_key_first($accepted);$guard=isset($hotels[$target])?mcr_direct_target_guard(mcr_names($e),mcr_points($e),$hotels[$target]):['ok'=>false,'reason'=>'operator_target_outside_core8'];if($guard['ok'])$row+=['route'=>'auto_accept_candidate','reason'=>$ns==='operator_5'?'operator_native_current_authority':'operator_native_accepted_andromeda_bridge','target'=>$target,'score'=>1.0,'distance_km'=>$guard['distance_km']];else$row+=['route'=>'hard_conflict','reason'=>$guard['reason'],'target'=>$target]+$guard;}
-        elseif(count($accepted)>1)$row+=['route'=>'hard_conflict','reason'=>'operator_native_target_conflict','candidate_ids'=>array_map('intval',array_keys($accepted))];
-        elseif($ns==='operator_5')$row+=['route'=>'needs_anex_detail','reason'=>'anex_no_current_authority'];
-        else $row+=['route'=>'needs_operator_authority','reason'=>'operator_native_no_current_local_authority'];
-        $route=$row['route'];$reason=$row['reason'];$routes[$route][]=$row;$reasons[$reason]=($reasons[$reason]??0)+1;$frequencyByRoute[$route]=($frequencyByRoute[$route]??0)+$freq;if($route==='auto_accept_candidate')$auto[]=$row;
-    }
-    foreach($routes as &$rows)usort($rows,fn($a,$b)=>(($b['frequency']??0)<=>($a['frequency']??0)) ?: strcmp((string)($a['external_hotel_id']??''),(string)($b['external_hotel_id']??'')));unset($rows);
-    usort($auto,fn($a,$b)=>(($b['frequency']??0)<=>($a['frequency']??0)) ?: strcmp((string)$a['external_hotel_id'],(string)$b['external_hotel_id']));
-    $routeCounts=[];foreach($routes as $k=>$v)$routeCounts[$k]=count($v);ksort($routeCounts);ksort($reasons);ksort($frequencyByRoute);
-    $result=['schema'=>'hotel-match-live-residual-current-review/1','operation_id'=>MCR_OP,'source_sha'=>$sourceSha,'state'=>'completed_read_only','server_current'=>true,'transaction'=>'repeatable_read_read_only','supplier_calls'=>0,'external_calls'=>0,'booking_calls'=>0,'db_writes'=>0,'mapping_writes'=>0,'core8_countries'=>$coreIds,'state_country_semantics'=>$stateEvidence,'population'=>['andromeda_catalog_pending'=>count($pendingCatalog),'operator_native_pending'=>count($pendingTyped),'total'=>count($pendingCatalog)+count($pendingTyped),'catalog_hotels_considered'=>count($hotels)],'route_counts'=>$routeCounts,'route_frequency'=>$frequencyByRoute,'reason_counts'=>$reasons,'auto_accept_candidate_count'=>count($auto),'auto_accept_candidates'=>$auto,'routes'=>$routes,'no_replay'=>true,'created_at'=>gmdate('c')];
+    foreach($routes as &$list)usort($list,fn($a,$b)=>[$b['frequency'],$a['supplier_namespace'],$a['external_hotel_id']]<=>[$a['frequency'],$b['supplier_namespace'],$b['external_hotel_id']]);unset($list);ksort($routes);ksort($reason);ksort($routeFrequency);
+    $population=['andromeda_catalog_pending'=>count(array_filter($pending,fn($r)=>$r['supplier_namespace']==='andromeda_catalog')),'operator_native_pending'=>count($operatorRows),'total'=>count($pending),'catalog_hotels'=>count($hotels)];
+    $result=['schema'=>'hotel-match-live-residual-current-review/1','operation_id'=>MCR_OP,'source_sha'=>$sourceSha,'state'=>'completed_read_only','server_current'=>true,'transaction'=>'REPEATABLE READ READ ONLY','supplier_calls'=>0,'external_calls'=>0,'booking_calls'=>0,'db_writes'=>0,'mapping_writes'=>0,'core8_countries'=>$coreIds,'state_country_semantics'=>$stateCountry,'population'=>$population,'route_counts'=>array_map('count',$routes),'route_frequency'=>$routeFrequency,'reason_counts'=>$reason,'auto_accept_candidate_count'=>count($auto),'auto_accept_candidates'=>$auto,'routes'=>$routes,'no_replay'=>true,'created_at'=>gmdate('c')];
+    $hash=mcr_write_exclusive($dir.'/result.json',$result);$raw=(string)file_get_contents($dir.'/result.json');$ok=hash('sha256',$raw)===$hash&&($x=mcr_evidence($raw))&&($x['operation_id']??'')===MCR_OP&&($x['db_writes']??-1)===0&&($x['mapping_writes']??-1)===0&&count($x['routes']??[])>0;$receipt=['operation_id'=>MCR_OP,'source_sha'=>$sourceSha,'state'=>'completed_read_only','result_sha256'=>$hash,'readback_verified'=>$ok,'population_total'=>$population['total'],'auto_accept_candidate_count'=>count($auto),'route_counts'=>array_map('count',$routes),'db_writes'=>0,'supplier_calls'=>0,'external_calls'=>0,'no_replay'=>true,'completed_at'=>gmdate('c')];mcr_write_exclusive($dir.'/receipt.json',$receipt);if(!$ok)throw new RuntimeException('result_readback');echo mcr_json(['operation_id'=>MCR_OP,'state'=>'completed_read_only','population'=>$population,'route_counts'=>array_map('count',$routes),'route_frequency'=>$routeFrequency,'auto_accept_candidate_count'=>count($auto),'reason_counts'=>$reason,'result_sha256'=>$hash]);
     $db->commit();
-    $resultSha=mcr_write_exclusive($dir.'/result.json',$result);$readRaw=(string)file_get_contents($dir.'/result.json');$read=mcr_evidence($readRaw);$readOk=hash('sha256',$readRaw)===$resultSha&&($read['operation_id']??'')===MCR_OP&&($read['source_sha']??'')===$sourceSha&&($read['state']??'')==='completed_read_only'&&($read['db_writes']??null)===0;
-    $receipt=['operation_id'=>MCR_OP,'source_sha'=>$sourceSha,'state'=>'completed_read_only','result_sha256'=>$resultSha,'readback_verified'=>$readOk,'population_total'=>$result['population']['total'],'auto_accept_candidate_count'=>count($auto),'route_counts'=>$routeCounts,'db_writes'=>0,'supplier_calls'=>0,'external_calls'=>0,'no_replay'=>true,'completed_at'=>gmdate('c')];
-    mcr_write_exclusive($dir.'/receipt.json',$receipt); if(!$readOk)throw new RuntimeException('result_readback'); echo mcr_json(['operation_id'=>MCR_OP,'state'=>'completed_read_only','population'=>$result['population'],'route_counts'=>$routeCounts,'auto_accept_candidate_count'=>count($auto),'result_sha256'=>$resultSha]);
-} catch(Throwable $e) {
-    if($db->inTransaction())$db->rollBack();
-    if(!is_file($dir.'/failure.json'))mcr_write_exclusive($dir.'/failure.json',['operation_id'=>MCR_OP,'source_sha'=>$sourceSha,'state'=>'failed_before_result','error_class'=>get_class($e),'error'=>substr($e->getMessage(),0,300),'db_writes'=>0,'supplier_calls'=>0,'external_calls'=>0,'no_replay'=>true,'failed_at'=>gmdate('c')]);
-    throw $e;
-}
+}catch(Throwable $e){if($db->inTransaction())$db->rollBack();if(!is_file($dir.'/failure.json'))mcr_write_exclusive($dir.'/failure.json',['operation_id'=>MCR_OP,'source_sha'=>$sourceSha,'state'=>'read_only_failed','error_class'=>get_class($e),'error'=>substr($e->getMessage(),0,300),'supplier_calls'=>0,'external_calls'=>0,'db_writes'=>0,'no_replay'=>true,'failed_at'=>gmdate('c')]);throw $e;}
