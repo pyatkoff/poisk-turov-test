@@ -172,6 +172,7 @@ async function checkOfferFacets(page, width, previous) {
     assert.equal(await nights.inputValue(),'0');assert.equal(await flight.inputValue(),'');
     assert.equal((await visible()).length,3,'new search clears both facets');
     await render([items[0]]);
+    if(width<1025&&!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
     assert.equal(await nights.isVisible(),true);assert.equal(await flight.isVisible(),true,'multiple offers at one hotel still allow useful choices');
     assert.deepEqual(requests,[],'local nights/flight interactions never call supplier or lead endpoints');
   } finally {page.off('request',record);await reset();await render(hotels);if(width<1025&&await panel.evaluate(node=>node.open))await panel.locator('summary').click();}
