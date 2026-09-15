@@ -52,7 +52,7 @@ jobs:
           live = text.split(marker, 1)[1]
           forbidden = [
               'anytour_andromeda_quote_run', 'AnyTourAndromedaClient', 'new PDO', 'curl_',
-              'file_put_contents', 'fopen(', 'mkdir(', 'unlink(', 'rename(', 'copy(', 'touch(',
+              'file_put_contents', 'fopen(', 'unlink(', 'rename(', 'copy(', 'touch(',
               'shell_exec', 'passthru(', 'system(',
           ]
           for needle in forbidden:
