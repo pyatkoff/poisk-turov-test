@@ -15,16 +15,16 @@ function tourIdentity(tour){return String(tour&&tour.provider||'tourvisor')+':'+
 function merge(base,provider){const rows=new Map();(Array.isArray(base)?base:[]).forEach(hotel=>{if(!hotel||hotel.id===undefined||hotel.id===null)return;const key=String(hotel.id);rows.set(key,hotel);});(Array.isArray(provider)?provider:[]).forEach(input=>{const hotel=normalizeHotel(input);if(!hotel||hotel.mappingStatus!=='resolved'||!/^[1-9][0-9]*$/.test(String(hotel.id)))return;const key=String(hotel.id),existing=rows.get(key);if(!existing){if(hotel.catalog&&hotel.picturelink)rows.set(key,hotel);return;}const seen=new Set((existing.tours||[]).map(tourIdentity)),added=hotel.tours.filter(t=>!seen.has(tourIdentity(t)));const combined=Object.assign({},existing,{tours:(existing.tours||[]).concat(added),providers:Array.from(new Set([].concat(existing.providers||['tourvisor'],'andromeda'))),andromedaContent:hotel.andromedaContent});if(!combined.picturelink&&hotel.picturelink)combined.picturelink=hotel.picturelink;if(!Number(combined.category)&&hotel.category)combined.category=hotel.category;if(!Number(combined.rating)&&hotel.rating)combined.rating=hotel.rating;if(!(combined.region&&combined.region.name)&&hotel.region.name)combined.region=hotel.region;if(!(combined.subRegion&&combined.subRegion.name)&&hotel.subRegion.name)combined.subRegion=hotel.subRegion;if(!Number(combined.seaDistance)&&hotel.seaDistance)combined.seaDistance=hotel.seaDistance;combined.price=combined.tours.reduce((best,tour)=>{const value=amount(tour.price);return value&&value<best?value:best;},Number.POSITIVE_INFINITY);if(!Number.isFinite(combined.price))combined.price=0;rows.set(key,combined);});return Array.from(rows.values());}
 function endpoint(value){if(!value||!root.location)return null;try{const url=new URL(value,root.location.href);return url.origin===root.location.origin&&/^\/(?:_preview\/[A-Za-z0-9._-]+\/)?api-andromeda-search3-preview\.php$/.test(url.pathname)&&!url.search&&!url.hash?url:null;}catch(_){return null;}}
 function quoteEndpoint(value){const url=endpoint(value);if(!url||url.username||url.password)return null;url.pathname=url.pathname.replace(/api-andromeda-search3-preview\.php$/,'api-andromeda-quote-preview.php');return url;}
-function quoteRequest(selection){
+function offerRequest(selection,action){
  const tour=selection&&selection.tour,c=context(tour&&tour.offerContext);
  if(!c||tour.provider!=='andromeda'||tour.offerRef!==c.offer_ref||selection.generation!==c.generation||!Number.isSafeInteger(selection.localId)||selection.localId<1||!selection.params||typeof selection.params!=='object'||Array.isArray(selection.params))return null;
- const {hotel_scope,...identity}=c,body={action:'quote',generation:selection.generation,page:c.page,params:JSON.parse(JSON.stringify(selection.params)),offer_context:identity};
+ const {hotel_scope,...identity}=c,body={action,generation:selection.generation,page:c.page,params:JSON.parse(JSON.stringify(selection.params)),offer_context:identity};
  // Browser hotel_scope is a seed envelope; SelectedOffer's optional scope is private HOTELS.
  // The existing HTTP contract consumes the public envelope only at the top level.
  if(hotel_scope){if(hotel_scope.local_id!==selection.localId)return null;body.hotel_scope=hotel_scope;}
- const reference=listingReference(tour.listingPriceRef);if(reference)body.listing_price_ref=reference;
  return body;
 }
+function quoteRequest(selection){const body=offerRequest(selection,'quote');if(!body)return null;const reference=listingReference(selection.tour.listingPriceRef);if(reference)body.listing_price_ref=reference;return body;}
 function normalizeQuote(data,localId){
  if(!data||data.schema_version!==1||data.provider!=='andromeda'||data.local_id!==localId||data.selection_enabled!==true||data.booking_enabled!==false||!Array.isArray(data.flights)||data.flights.length>100)return null;
  const verified=data.state==='quote_verified'&&data.quote_state==='verified'&&data.final_price_verified===true&&data.flight_selection_required===false;
@@ -69,6 +69,7 @@ async function loadHotel(run,key,state){
 async function openDetail(ref){
  const run=active;ref=String(ref||'');if(!run||!current(run)||!/^offer_[a-f0-9]{64}$/.test(ref))return;
  const accepted=detailTours().get(ref),tour=accepted&&accepted.tour;if(!tour)return;
+ const body=offerRequest({tour,localId:accepted.localId,generation:run.generation,params:run.params},'offer_detail');if(!body)return;
  const renderDetail=()=>{render(lastOptions);if(typeof document.querySelectorAll!=='function')return;const button=Array.from(document.querySelectorAll('[data-andromeda-detail]')).find(node=>node.dataset&&node.dataset.andromedaDetail===ref);if(button&&typeof button.focus==='function')button.focus({preventScroll:true});};
  const previous=details.get(ref);if(previous&&previous.open){previous.open=false;if(detailRequest&&detailRequest.ref===ref)detailRequest.controller.abort();renderDetail();return;}
  if(previous&&previous.status==='complete'){previous.open=true;renderDetail();return;}
@@ -77,12 +78,11 @@ async function openDetail(ref){
  const state={open:true,status:'loading'},request={ref,controller:new AbortController()};details.set(ref,state);detailRequest=request;renderDetail();
  let timedOut=false;const timer=root.setTimeout(()=>{timedOut=true;request.controller.abort();},15000);
  try{
-  const body={generation:run.generation,params:run.params,action:'offer_detail',page:tour.offerContext.page,offer_context:tour.offerContext};if(tour.offerContext.hotel_scope)body.hotel_scope=tour.offerContext.hotel_scope;
   const response=await root.fetch(target.href,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body),signal:request.controller.signal});
   const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!current(run)||detailRequest!==request)return;
-  const responseContext=data&&context(data.offer_context),sameContext=responseContext&&JSON.stringify(responseContext)===JSON.stringify(tour.offerContext);
+  const responseContext=data&&context(data.offer_context),latest=detailTours().get(ref),sameContext=responseContext&&contextKey(responseContext)===contextKey(body.offer_context)&&latest&&latest.key===accepted.key&&latest.localId===accepted.localId;
   if(!response.ok||!payload||payload.ok!==true){state.retry=!!response&&response.status>=500;throw new Error('request_failed');}
-  if(!data||data.provider!=='andromeda'||!sameContext||!amount(data.price)||String(data.price.currency||'')!=='RUB'){state.retry=false;throw new Error('context_failed');}
+  if(!data||data.provider!=='andromeda'||data.local_id!==accepted.localId||!sameContext||!amount(data.price)||String(data.price.currency||'')!=='RUB'){state.retry=false;throw new Error('context_failed');}
   const text=(value,max)=>String(value==null?'':value).slice(0,max),integer=value=>Number.isSafeInteger(Number(value))&&Number(value)>=0?Number(value):0;
   state.status='complete';state.data={hotel:text(data.hotel,4096),operator:text(data.operator,180),room:text(data.room,300),placement:text(data.placement,160),checkin:text(data.checkin,10),nights:integer(data.nights),adults:integer(data.adults),children:integer(data.children),meal:text(data.meal,160),price:amount(data.price)};
  }catch(error){if(!current(run)||detailRequest!==request||!state.open)return;state.status='error';state.retry=state.retry!==false;state.message=timedOut?'Подробности не успели загрузиться.':state.retry?'Не удалось загрузить подробности. Список предложений сохранён.':'Не удалось подтвердить предложение. Повторите поиск.';}

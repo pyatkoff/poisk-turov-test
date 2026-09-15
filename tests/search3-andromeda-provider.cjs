@@ -16,7 +16,7 @@ assert.equal(api.operatorHotelCodeFromImage('https://cdn.samo.ru/img/7.5844.3414
 assert.equal(api.safeUrl('https://cdn.samo.ru/image.jpg?session=secret'),'','credential-like query values are not retained');
 assert.equal(api.endpoint('/_preview/search3-anex-candidate/api-andromeda-search3-preview.php').origin,'https://anytoour.ru');
 assert.equal(api.endpoint('https://evil.example/api-andromeda-search3-preview.php'),null,'provider endpoint must remain same-origin');
-const context={provider:'andromeda',search_ref:hex,generation:7,page:1,offer_ref:offer};
+const context={provider:'andromeda',search_ref:hex,generation:11,page:1,offer_ref:offer};
 const rawHotel=(localId,name='Movenpick')=>({local_id:localId,card_key:localId===null?'andromeda:andromeda_catalog:3414':null,name,provider:'andromeda',mapping_status:localId===null?'unresolved':'resolved',country:'Египет',region:'Шарм-эль-Шейх',category:4,rating:4.7,catalog:{hotel_id:localId,source:'tourvisor',image_url:'https://catalog.example/hotel.jpg',subregion:'Наама-Бей',description:'Локальное описание',address:'Локальный адрес',sea_distance:200},andromeda_content:{source:'andromeda',image_url:'https://cdn.samo.ru/img/5.5844.3414.jpg',hotel_url:'https://operator.example/hotels/movenpick',region:'Шарм-эль-Шейх'},tours:[{provider:'andromeda',offer_ref:offer,offer_context:context,price:{amount:'155079.00',currency:'RUB'},checkin:'2026-09-18',nights:8,meal:'AI',room:'STANDARD',placement:'2 ADL',operator:'ANEX'}]});
 const normalized=api.normalizeHotel(rawHotel(21477));
 assert.equal(normalized.id,'21477');
@@ -142,14 +142,24 @@ assert.equal(rendererWindow.V2Results.toursHtml(tv),tvRow,'ordinary single Tourv
   assert.equal(renders.at(-1).items[0].andromedaExpansion.status,'unavailable');
   toggle(21477,false);toggle(21477,true);await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');await settle();
   assert.equal(partialCalls,2,'unavailable expansion preserves received offers without retrying when reopened');
-  const retained=renders.at(-1).items[0].tours.find(t=>t.provider==='andromeda');
+  const retained=renders.at(-1).items[0].tours.find(t=>t.provider==='andromeda'&&t.offerContext.hotel_scope);
   assert.equal(retained.providerDetail.eligible,true,'only a retained provider offer receives detail eligibility');
   assert.match(rendererWindow.V2Results.tourRow(retained),/data-andromeda-detail/);
   let detailCalls=0;
-  runtimeWindow.fetch=async(url,options)=>{const body=JSON.parse(options.body);detailCalls++;assert.equal(body.action,'offer_detail');assert.deepEqual(body.offer_context,JSON.parse(JSON.stringify(retained.offerContext)));return{ok:true,status:200,json:async()=>({ok:true,data:{provider:'andromeda',offer_context:body.offer_context,hotel:'<Hotel>',operator:'ANEX',room:'<script>alert(1)<\/script>',placement:'DBL',checkin:'2026-09-18',nights:8,adults:2,children:0,meal:'AI',price:{amount:'155079.00',currency:'RUB'}}})};};
+  const originalContext=JSON.stringify(retained.offerContext),{hotel_scope:detailScope,...detailIdentity}=JSON.parse(originalContext);
+  runtimeWindow.fetch=async(url,options)=>{
+    const body=JSON.parse(options.body);detailCalls++;
+    assert.equal(body.action,'offer_detail');assert.deepEqual(body.params,lifecycle.snapshot);
+    assert.deepEqual(body.hotel_scope,detailScope,'browser hotel scope is consumed at the request root');
+    // Actual SelectedOffer rejects the public seed envelope as its private HOTELS scope.
+    if(Object.hasOwn(body.offer_context,'hotel_scope'))return{ok:false,status:500,json:async()=>({ok:false,error:'unavailable'})};
+    assert.deepEqual(body.offer_context,detailIdentity,'retained identity keeps exact search/generation/page/offer');
+    return{ok:true,status:200,json:async()=>({ok:true,data:{provider:'andromeda',local_id:21477,offer_context:body.offer_context,hotel:'<Hotel>',operator:'ANEX',room:'<script>alert(1)<\/script>',placement:'DBL',checkin:'2026-09-18',nights:8,adults:2,children:0,meal:'AI',price:{amount:'155079.00',currency:'RUB'}}})};
+  };
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(retained.offerRef);
   let detailTour=renders.at(-1).items[0].tours.find(t=>t.offerRef===retained.offerRef);
-  assert.equal(detailTour.providerDetail.status,'complete');
+  assert.equal(detailTour.providerDetail.status,'complete','expanded offer detail passes the strict retained-offer contract');
+  assert.equal(JSON.stringify(retained.offerContext),originalContext,'request projection never removes the retained browser scope');
   const detailHtml=rendererWindow.V2Results.tourRow(detailTour);
   assert.match(detailHtml,/&lt;script&gt;/);assert.doesNotMatch(detailHtml,/<script>/);
   assert.match(detailHtml,/Подробности предложения Андромеды/);assert.doesNotMatch(detailHtml,/class="direct-tour"/);
@@ -163,13 +173,29 @@ assert.equal(rendererWindow.V2Results.toursHtml(tv),tvRow,'ordinary single Tourv
   let failed=renders.at(-1).items[0].tours.find(t=>t.offerRef===other.offerRef).providerDetail;
   assert.equal(failed.retry,true);assert.equal(failed.status,'error');assert.doesNotMatch(failed.message,/истёк/);
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
-  let terminalCalls=0;runtimeWindow.fetch=async()=>{terminalCalls++;return{ok:true,status:200,json:async()=>({ok:true,data:{provider:'andromeda',offer_context:context,price:{amount:100,currency:'RUB'}}})};};
+  let terminalCalls=0;runtimeWindow.fetch=async()=>{terminalCalls++;return{ok:true,status:200,json:async()=>({ok:true,data:{provider:'andromeda',local_id:21477,offer_context:{...context,offer_ref:'offer_'+'f'.repeat(64)},price:{amount:100,currency:'RUB'}}})};};
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
   failed=renders.at(-1).items[0].tours.find(t=>t.offerRef===other.offerRef).providerDetail;
   assert.equal(failed.retry,false,'mismatched context cannot expose details');
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
   assert.equal(terminalCalls,1,'closing and reopening a terminal context error cannot replay the request');
+
+  for(const localId of [21477,21478]){
+    runtimeWindow.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[rawHotel(21477)]}})});
+    listeners.get('v2:search-reset')({detail:{generation:11}});await settle();
+    runtimeWindow.V2Results.render([tv],{empty:true});
+    runtimeWindow.fetch=async(url,options)=>{
+      const body=JSON.parse(options.body);assert.equal(body.action,'offer_detail');
+      assert.equal(body.hotel_scope,undefined,'grouped offer details do not fabricate a hotel scope');
+      assert.deepEqual(body.offer_context,context);
+      return{ok:true,status:200,json:async()=>({ok:true,data:{provider:'andromeda',local_id:localId,offer_context:body.offer_context,price:{amount:'155079.00',currency:'RUB'}}})};
+    };
+    await runtimeWindow.AnyTourAndromedaProvider.openDetail(offer);
+    const result=renders.at(-1).items[0].tours.find(t=>t.offerRef===offer).providerDetail;
+    assert.equal(result.status,localId===21477?'complete':'error','detail remains bound to the accepted local hotel');
+    if(localId!==21477)assert.equal(result.retry,false,'another local hotel is a terminal identity failure');
+  }
 
   // Two distinct local hotels opened while another is loading share one request lane.
   // Deferred responses deliberately ignore abort so generation guards, not the mock, reject stale data.
