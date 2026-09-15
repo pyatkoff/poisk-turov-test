@@ -28,6 +28,45 @@ function primaryFixture({ advanced = false, critical = true } = {}) {
   return { calls, ensurePrimary: context.ensurePrimary };
 }
 
+function serviceFocusFixture() {
+  const attrs = new Map();
+  const firstService = {
+    calls: [],
+    focus(options) { this.calls.push(options); }
+  };
+  const serviceBox = {
+    innerHTML: '',
+    tabIndex: -1,
+    setAttribute(name, value) { attrs.set(name, String(value)); },
+    removeAttribute(name) { attrs.delete(name); },
+    querySelector(selector) {
+      return selector === 'input[name="hotel_service[]"]' ? firstService : null;
+    }
+  };
+  const context = {
+    serviceBox,
+    document: { activeElement: null },
+    form: { querySelectorAll: () => [] },
+    esc: value => String(value),
+    updateServiceCount: () => {},
+    requestAnimationFrame: callback => callback()
+  };
+  vm.createContext(context);
+  vm.runInContext(
+    line('function renderServiceState(') + '\n' +
+    line('function renderHotelServices(') + '\n' +
+    'this.renderServiceState=renderServiceState;this.renderHotelServices=renderHotelServices;',
+    context
+  );
+  return {
+    attrs,
+    context,
+    firstService,
+    renderServiceState: context.renderServiceState,
+    renderHotelServices: context.renderHotelServices
+  };
+}
+
 test('closed primary form hydrates region and meal without opening advanced filters', async () => {
   const fixture = primaryFixture();
   await fixture.ensurePrimary(1);
@@ -66,4 +105,45 @@ test('canonical lifecycle refreshes permanent catalogs without expanding hotel d
   assert.match(hotels, /limit:100/, 'existing bounded hotel catalog remains unchanged');
   assert.match(hotels, /api\('hotels',\{countryId:country,regionId:region/,
     'hotel catalog endpoint contract remains unchanged');
+});
+
+
+test('hotel-service loading is a keyboard and live-status stop', () => {
+  const fixture = serviceFocusFixture();
+  fixture.renderServiceState('Загружаем доступные услуги…', true);
+
+  assert.match(fixture.context.serviceBox.innerHTML, /Загружаем доступные услуги/);
+  assert.equal(fixture.context.serviceBox.tabIndex, 0);
+  assert.equal(fixture.attrs.get('role'), 'status');
+  assert.equal(fixture.attrs.get('aria-live'), 'polite');
+  assert.equal(fixture.attrs.get('aria-busy'), 'true');
+});
+
+test('loaded hotel services preserve focus continuity without stealing unrelated focus', () => {
+  const fixture = serviceFocusFixture();
+  fixture.context.document.activeElement = fixture.context.serviceBox;
+  fixture.renderHotelServices([{ name: 'Общие', items: [{ id: 1, name: 'Wi-Fi' }] }]);
+
+  assert.equal(fixture.firstService.calls.length, 1);
+  assert.equal(fixture.firstService.calls[0].preventScroll, true);
+  assert.equal(fixture.attrs.has('role'), false);
+  assert.equal(fixture.attrs.has('aria-live'), false);
+  assert.equal(fixture.attrs.has('aria-busy'), false);
+  assert.equal(fixture.attrs.has('tabindex'), false);
+
+  fixture.context.document.activeElement = { id: 'submit' };
+  fixture.renderHotelServices([{ name: 'Общие', items: [{ id: 2, name: 'Парковка' }] }]);
+  assert.equal(fixture.firstService.calls.length, 1, 'unrelated focus is not stolen');
+});
+
+test('empty hotel-service state remains keyboard-readable and is not busy', () => {
+  const fixture = serviceFocusFixture();
+  fixture.renderServiceState('Загружаем доступные услуги…', true);
+  fixture.renderHotelServices([]);
+
+  assert.match(fixture.context.serviceBox.innerHTML, /Нет доступных фильтров услуг/);
+  assert.equal(fixture.context.serviceBox.tabIndex, 0);
+  assert.equal(fixture.attrs.get('role'), 'status');
+  assert.equal(fixture.attrs.get('aria-live'), 'polite');
+  assert.equal(fixture.attrs.has('aria-busy'), false);
 });
