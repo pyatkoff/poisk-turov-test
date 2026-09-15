@@ -22,8 +22,8 @@ jobs:
         run: |
           set -euo pipefail
           php -l scripts/diagnostics/hotel_match_pr2412_anex_current.php
-          grep -F "START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY" scripts/diagnostics/hotel_match_pr2412_anex_current.php >/dev/null
-          grep -F "if(count($inputs)!==101)" scripts/diagnostics/hotel_match_pr2412_anex_current.php >/dev/null
+          grep -F 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' scripts/diagnostics/hotel_match_pr2412_anex_current.php >/dev/null
+          grep -F 'if(count($inputs)!==101)' scripts/diagnostics/hotel_match_pr2412_anex_current.php >/dev/null
           ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_pr2412_anex_current.php
           ! grep -Eiq '(curl[[:space:]]|file_get_contents\([[:space:]]*["'"']https?://|stream_socket_client|fsockopen)' scripts/diagnostics/hotel_match_pr2412_anex_current.php
       - name: Execute immutable CURRENT read and verify durable receipt
