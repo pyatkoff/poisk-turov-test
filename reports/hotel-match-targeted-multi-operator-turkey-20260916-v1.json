@@ -1,0 +1,29 @@
+{
+  "country": "Turkey",
+  "country_id": 4,
+  "rows": [
+    {"anex_hotel_id":32880,"candidate_name":"GRAND EMIN HOTEL LALELI","local_hotel_id":17443,"name_score":0.707407,"search_count":53,"source_name":"Grand Emin Hotel."},
+    {"anex_hotel_id":43984,"candidate_name":"CONTINENTAL AIRPORT HOTEL","local_hotel_id":99257,"name_score":0.744681,"search_count":52,"source_name":"Continental Airport Hotel Istanbul.."},
+    {"anex_hotel_id":37389,"candidate_name":"MARINE FAMILY CLUB HOTEL (EX. OTIUM FAMILY CLUB MARINE BEACH)","local_hotel_id":69822,"name_score":0.721644,"search_count":13,"source_name":"Marine Family Club Beach Hotel"},
+    {"anex_hotel_id":32355,"candidate_name":"THE ISTANBUL HOTEL","local_hotel_id":21838,"name_score":0.7125,"search_count":4,"source_name":"The Meretto Hotel Istanbul"},
+    {"anex_hotel_id":45226,"candidate_name":"HOLIDAY INN EXPRESS ISTANBUL AIRPORT ARNAVUTKOY","local_hotel_id":163543,"name_score":0.849381,"search_count":3,"source_name":"Holiday Inn Express Istanbul - Airport Arnavutkoy By Ihg"},
+    {"anex_hotel_id":32742,"candidate_name":"DELTA HOTELS ISTANBUL HALIC","local_hotel_id":132803,"name_score":0.752941,"search_count":2,"source_name":"Delta Hotel Istanbul."},
+    {"anex_hotel_id":44138,"candidate_name":"TANGO ARJAAN BY ROTANA","local_hotel_id":53531,"name_score":1.0,"search_count":2,"source_name":"Tango Arjaan By Rotana"},
+    {"anex_hotel_id":44139,"candidate_name":"BURGU ARJAAN BY ROTANA ISTANBUL","local_hotel_id":67042,"name_score":0.816604,"search_count":2,"source_name":"Burgu Arjaan By Rotana"},
+    {"anex_hotel_id":12901,"candidate_name":"SATURN PALACE RESORT","local_hotel_id":1474,"name_score":1.0,"search_count":1,"source_name":"Saturn Palace Resort"},
+    {"anex_hotel_id":29332,"candidate_name":"CALIMERA SIDE RESORT HOTEL (EX. SIDE RESORT)","local_hotel_id":60388,"name_score":0.91129,"search_count":1,"source_name":"Calimera Side Resort"},
+    {"anex_hotel_id":10115,"candidate_name":"ELYSEE RIVE (EX. ELYSEE HOTEL)","local_hotel_id":2160,"name_score":0.867241,"search_count":1,"source_name":"Elysee Rive Hotel"},
+    {"anex_hotel_id":35319,"candidate_name":"SELECTUM FAMILY COMFORT SIDE (EX. LYRA RESORT HOTEL)","local_hotel_id":1346,"name_score":0.864918,"search_count":1,"source_name":"Selectum Family Comfort Side"},
+    {"anex_hotel_id":15235,"candidate_name":"OZ HOTELS SUI (EX. SUI RESORT)","local_hotel_id":47028,"name_score":0.8625,"search_count":1,"source_name":"Oz Hotels Sui Resort"},
+    {"anex_hotel_id":34804,"candidate_name":"ARCANUS HOTELS TRENDLINE SIDE (EX. ARCANUS TRENDLINE RESORT)","local_hotel_id":81578,"name_score":0.840323,"search_count":1,"source_name":"Arcanus Hotels Trendline Side"},
+    {"anex_hotel_id":26702,"candidate_name":"SEADEN SIDE COROLLA","local_hotel_id":1497,"name_score":0.766667,"search_count":1,"source_name":"Seaden Corolla Hotel"},
+    {"anex_hotel_id":39875,"candidate_name":"SELECTUM NOA BELEK (EX. CESARS BELEK)","local_hotel_id":1071,"name_score":0.741582,"search_count":1,"source_name":"Selectum Noa Belek"},
+    {"anex_hotel_id":37538,"candidate_name":"AMARA COMFORT KEMER (EX. LOXIA COMFORT RESORT)","local_hotel_id":1461,"name_score":0.739423,"search_count":1,"source_name":"Amara Comfort Kemer"},
+    {"anex_hotel_id":35898,"candidate_name":"MEGASARAY RESORT SIDE (EX. ASKA SIDE HOTEL)","local_hotel_id":1221,"name_score":0.705263,"search_count":1,"source_name":"Megasaray Resort Side"}
+  ],
+  "schema_version": 1,
+  "selection": "ANEX provider rows; physical-hotel only; no pair exclusion/qualifier/numeric conflict; name_score>=0.70; unique candidate_local_id; ordered by live search_count. Evidence-only: CURRENT mapping/manual/exclusion recheck required before provider access and no automatic acceptance.",
+  "source_artifact_id": 10351108943,
+  "source_operation": "hotel-match-manual-live-photo-enriched-1971-20260914-v2",
+  "source_queue_rows": 219
+}
