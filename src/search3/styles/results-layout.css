@@ -303,7 +303,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-gallery-thumb:hover{border-color:#9aa9e8}
 }
 @media(min-width:761px){
-& .hotel-photo:has(img){align-self:start;height:auto;aspect-ratio:4/3}
+& .hotel-photo:has(img){align-self:start;width:100%;height:auto;aspect-ratio:4/3}
 }
 @media(max-width:760px){
 & .hotel-main{display:flex;flex-direction:column}
