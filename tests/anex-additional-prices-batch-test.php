@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../app/integrations/anex-normalizer.php';
 require_once __DIR__ . '/../app/integrations/anex-additional-prices-client.php';
+require_once __DIR__ . '/../app/integrations/anex-preview-gateway.php';
 require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
 $checks = 0;
@@ -306,8 +307,69 @@ $assert($cachedRuntime['offers'][0]['additional_prices']['search_plus_additional
     && $cachedRuntime['offers'][0]['price'] === '102000',
     'cached endpoint response reapplies the same ready per-offer price without supplier replay');
 
-$runtimeUnknown = $runtimeState;
 $sharedDigest = hash('sha256', implode("\0", ['2637', '1', '2026-10-05', '7']));
+// The exact saved-offer read must retain that completed APD listing amount without a new supplier call.
+$exactTemplate = $runtimeState;
+$exactTemplate['gateway']['expires_at'] = 1789220900;
+$exactTemplate['gateway']['window_started_at'] = 1789220000;
+$exactTemplate['gateway']['request_count'] = 0;
+$exactTemplate['gateway']['burst_started_at'] = 1789220000;
+$exactTemplate['gateway']['burst_request_count'] = 0;
+$exactTemplate['gateway']['saved_offers']['search'] = [
+    'checkin_begin' => '2026-10-05', 'checkin_end' => '2026-10-06',
+    'nights_from' => 7, 'nights_till' => 7, 'adults' => 2, 'children' => 0, 'child_ages' => [],
+];
+foreach ($exactTemplate['gateway']['saved_offers']['offers'] as &$savedOffer) $savedOffer['observed_at'] = 1789220000;
+unset($savedOffer);
+$exactRequest = ['action' => 'offer', 'generation' => 11, 'search_ref' => $searchRef,
+    'offer_ref' => $ref1, 'local_hotel_id' => 101];
+$searchFactoryCalls = 0;
+$forbiddenClientFactory = static function () use (&$searchFactoryCalls): AnyTourAnexClient {
+    ++$searchFactoryCalls;
+    throw new RuntimeException('EXACT_OFFER_MUST_NOT_CALL_SEARCH');
+};
+$exactAdditionalCalls = 0;
+$forbiddenAdditionalFactory = static function () use (&$exactAdditionalCalls): AnyTourAnexAdditionalPricesClient {
+    ++$exactAdditionalCalls;
+    throw new RuntimeException('EXACT_OFFER_MUST_NOT_CALL_APD');
+};
+$beforeFactory = $factoryCalls;
+$beforeTransport = count($transportCalls);
+$exactState = $exactTemplate;
+$exact = anytour_anex_search3_followup($exactRequest, $exactState, $resolver, $forbiddenClientFactory,
+    $metadata, $clock, null, $forbiddenAdditionalFactory);
+$assert($exact['status'] === 'current'
+    && $exact['finalPriceReady'] === true && $exact['finalPrice'] === '102000' && $exact['price'] === '102000'
+    && $exact['additional_prices']['search_plus_additional']['amount'] === '102000',
+    'exact saved offer preserves the completed APD customer-ready listing amount');
+$assert($exact['offer']['money']['search_price']['amount'] === '100000'
+    && $exact['offer']['money']['fuel_charge_reported'] === null
+    && $exact['offer']['final_price_verified'] === false
+    && $exact['additional_prices']['final_price_verified'] === false,
+    'exact APD continuity keeps search money and final quote verification separate');
+$assert($searchFactoryCalls === 0 && $exactAdditionalCalls === 0
+    && $factoryCalls === $beforeFactory && count($transportCalls) === $beforeTransport,
+    'exact saved offer reuses APD state without supplier transport');
+
+$unknownExactState = $exactTemplate;
+$unknownExactState['additional_prices'][$sharedDigest] = ['status' => 'unknown'];
+$unknownExact = anytour_anex_search3_followup($exactRequest, $unknownExactState, $resolver, $forbiddenClientFactory,
+    $metadata, $clock, null, $forbiddenAdditionalFactory);
+$assert($unknownExact['status'] === 'current' && $unknownExact['finalPriceReady'] === false
+    && $unknownExact['finalPrice'] === null && $unknownExact['price'] === null
+    && $unknownExact['additional_prices'] === null,
+    'durable-unknown APD stays fail-closed on exact offer read');
+$missingExactState = $exactTemplate;
+unset($missingExactState['additional_prices'][$sharedDigest]);
+$missingExact = anytour_anex_search3_followup($exactRequest, $missingExactState, $resolver, $forbiddenClientFactory,
+    $metadata, $clock, null, $forbiddenAdditionalFactory);
+$assert($missingExact['status'] === 'current' && $missingExact['finalPriceReady'] === false
+    && $missingExact['finalPrice'] === null && $missingExact['price'] === null
+    && $missingExact['additional_prices'] === null
+    && $searchFactoryCalls === 0 && $exactAdditionalCalls === 0,
+    'missing APD stays supplier-free and never falls back to base search price');
+
+$runtimeUnknown = $runtimeState;
 $runtimeUnknown['additional_prices'][$sharedDigest] = ['status' => 'unknown'];
 $beforeFactory = $factoryCalls;
 $beforeTransport = count($transportCalls);
