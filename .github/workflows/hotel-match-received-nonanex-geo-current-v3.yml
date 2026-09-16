@@ -1,0 +1,102 @@
+name: MATCH received non-ANEX geo-edge CURRENT v3
+on:
+  push:
+    branches: [ops/match-received-nonanex-geo-current-1971-20260916-v3]
+    paths:
+      - scripts/diagnostics/hotel_match_received_nonanex_geo_current_v3_bundle.py
+      - .github/workflows/hotel-match-received-nonanex-geo-current-v3.yml
+permissions: {contents: read}
+concurrency: {group: match-received-nonanex-geo-current-1971-v3, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-received-nonanex-geo-current-1971-20260916-v3
+jobs:
+  current-geo-guards:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Build and validate fail-closed read-only geo-edge bundle
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/diagnostics/hotel_match_received_nonanex_current_bundle.py scripts/diagnostics/hotel_match_received_nonanex_geo_current_v2_bundle.py scripts/diagnostics/hotel_match_received_nonanex_geo_current_v3_bundle.py
+          test "$(sha256sum reports/hotel-match-received-union-current-20260915.json | awk '{print $1}')" = d9a9a9cbbb8b4d3f77600c309fac8aa4334ebcb0812888725504c580bbdba8c6
+          out="$RUNNER_TEMP/nonanex-geo-current.php"
+          python3 scripts/diagnostics/hotel_match_received_nonanex_geo_current_v3_bundle.py "$out" | tee "$RUNNER_TEMP/bundle.json"
+          php -l "$out"
+          php "$out" --self-test
+          python3 - "$out" "$RUNNER_TEMP/bundle.json" <<'PY'
+          import json,pathlib,re,sys
+          s=pathlib.Path(sys.argv[1]).read_text(); meta=json.loads(pathlib.Path(sys.argv[2]).read_text())
+          assert meta['operation_id']=='hotel-match-received-nonanex-geo-current-1971-20260916-v3'
+          assert meta['parent_run_id']==35049809798 and meta['parent_result_sha256']=='9c851185282fb85bb56e281a65fb56f6c3daf26686cd3b6a72a7dbdc355f41e6'
+          assert meta['plan_count']==93 and meta['database_writes']==meta['mapping_writes']==0 and meta['fail_closed'] is True
+          assert meta['supplier_calls']==meta['tourvisor_calls']==0
+          assert 'START TRANSACTION READ ONLY' in s and 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ' in s
+          assert 'geo_edge_runtime_error' in s and '$geoFormErrors' in s and 'target_geo_edge_removed' in s
+          assert not re.search(r'\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\s',s,re.I)
+          assert 'operator_5' not in s
+          print('offline_geo_current_v3_contract_PASS')
+          PY
+      - name: Reserve before SSH or database access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_db_access','coordination_issue':2530,'claim_comment_id':5692759536,'queue_issue':1971,'purpose':'fail-closed CURRENT read-only target-side geography-edge alias review across exact93 non-ANEX relation dossiers','parent_operation_id':'hotel-match-received-nonanex-current-1971-20260916-v1','parent_run_id':35049809798,'parent_result_sha256':'9c851185282fb85bb56e281a65fb56f6c3daf26686cd3b6a72a7dbdc355f41e6','input_report_sha256':'d9a9a9cbbb8b4d3f77600c309fac8aa4334ebcb0812888725504c580bbdba8c6','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-received-nonanex-geo-current-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-received-nonanex-geo-current-1971-20260916-v3/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Execute one server-CURRENT fail-closed read-only geo-edge pass
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; phpfile="$RUNNER_TEMP/nonanex-geo-current.php"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test ! -e \"\$p\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php" < "$phpfile" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server'
+          r=json.loads((s/'result.json').read_text()); receipt=json.loads((s/'receipt.json').read_text()); digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['readback_verified'] is True
+          assert all(x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] for x in (r,receipt))
+          assert r.get('database_writes',0)==r.get('mapping_writes',0)==r.get('supplier_calls',0)==r.get('tourvisor_calls',0)==0 and r.get('no_replay') is True
+          gate={'operation_id':r['operation_id'],'state':r['state'],'result_sha256':digest,'readback_verified':True,'database_writes':0,'no_replay':True}
+          if r['state']=='completed_read_only':
+              assert r['plan_count']==93 and os.environ['REMOTE_RC']=='0'
+              geo=[x for x in r.get('rows',[]) if x.get('route')=='guard_passed_prepared' and any(m.get('target_geo_edge_removed') for m in x.get('matched_forms',[]))]
+              runtime=[x for x in r.get('rows',[]) if 'geo_edge_runtime_error' in x.get('holds',[])]
+              gate.update({'plan_count':r['plan_count'],'route_counts':r.get('route_counts',{}),'reason_counts':r.get('reason_counts',{}),'guard_passed_frequency':r.get('guard_passed_frequency',0),'geo_edge_passed_count':len(geo),'geo_edge_passed_frequency':sum(int(x.get('frequency',0)) for x in geo),'geo_edge_rows':[{'supplier_namespace':x.get('supplier_namespace'),'native_hotel_id':x.get('native_hotel_id'),'andromeda_hotel_id':x.get('andromeda_hotel_id'),'local_hotel_id':x.get('local_hotel_id'),'frequency':x.get('frequency'),'matched_forms':x.get('matched_forms',[])} for x in geo],'geo_form_error_count':len(r.get('geo_form_errors',[])),'runtime_hold_count':len(runtime)})
+          else:
+              gate.update({'phase':r.get('phase'),'error_class':r.get('error_class'),'remote_rc':int(os.environ['REMOTE_RC'])})
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True)+'\n');print(json.dumps(gate,sort_keys=True))
+          assert r['state']=='completed_read_only' and os.environ['REMOTE_RC']=='0'
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-received-nonanex-geo-current-v3-result
+          path: ${{ runner.temp }}/hotel-match-received-nonanex-geo-current-1971-20260916-v3/
+          if-no-files-found: warn
+          retention-days: 90
