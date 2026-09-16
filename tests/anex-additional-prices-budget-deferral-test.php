@@ -190,9 +190,9 @@ $endpointDeferred = anytour_anex_search3_additional_batch(
 expect(($endpointDeferred['status'] ?? null) === 'additional_prices_batch', 'endpoint keeps bounded batch status on local deferral');
 expect(($endpointDeferred['offers'][0]['status'] ?? null) === 'additional_prices_unknown'
     && ($endpointDeferred['offers'][0]['finalPriceReady'] ?? null) === false
-    && ($endpointDeferred['offers'][0]['finalPrice'] ?? 'not-null') === null
-    && ($endpointDeferred['offers'][0]['price'] ?? 'not-null') === null
-    && ($endpointDeferred['offers'][0]['additional_prices'] ?? 'not-null') === null,
+    && array_key_exists('finalPrice', $endpointDeferred['offers'][0]) && $endpointDeferred['offers'][0]['finalPrice'] === null
+    && array_key_exists('price', $endpointDeferred['offers'][0]) && $endpointDeferred['offers'][0]['price'] === null
+    && array_key_exists('additional_prices', $endpointDeferred['offers'][0]) && $endpointDeferred['offers'][0]['additional_prices'] === null,
     'endpoint local deferral remains no-money and fail-closed');
 expect(($endpointDeferred['offers'][0]['retryable'] ?? null) === true
     && ($endpointDeferred['offers'][0]['retry_reason'] ?? null) === 'session_budget_deferred',
@@ -212,7 +212,7 @@ $endpointUnknown = anytour_anex_search3_additional_batch(
 );
 expect($blockedFactoryCalls === 0, 'endpoint durable unknown remains supplier no-replay');
 expect(($endpointUnknown['offers'][0]['finalPriceReady'] ?? null) === false
-    && ($endpointUnknown['offers'][0]['price'] ?? 'not-null') === null
+    && array_key_exists('price', $endpointUnknown['offers'][0]) && $endpointUnknown['offers'][0]['price'] === null
     && ($endpointUnknown['offers'][0]['retryable'] ?? null) === false
     && array_key_exists('retry_reason', $endpointUnknown['offers'][0])
     && $endpointUnknown['offers'][0]['retry_reason'] === null,
