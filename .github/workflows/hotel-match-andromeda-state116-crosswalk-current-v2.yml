@@ -1,0 +1,111 @@
+name: MATCH Andromeda state116 CURRENT crosswalk v2
+on:
+  push:
+    branches: [ops/match-andromeda-state116-crosswalk-current-1971-20260916-v2]
+    paths:
+      - 'scripts/diagnostics/hotel_match_andromeda_state116_crosswalk_current_v2.php'
+      - '.github/workflows/hotel-match-andromeda-state116-crosswalk-current-v2.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-andromeda-state116-crosswalk-current-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-andromeda-state116-crosswalk-current-1971-20260916-v2
+  OUT: /tmp/match-andromeda-state116-crosswalk-current-v2
+jobs:
+  crosswalk:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '${{ github.sha }}'
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Build and validate corrected read-only diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git hash-object scripts/diagnostics/hotel_match_andromeda_state116_crosswalk_current_v1.php)" = '2c462a501318ac17bfa9764bbd2fab6ef821866b'
+          php -l scripts/diagnostics/hotel_match_andromeda_state116_crosswalk_current_v2.php
+          mkdir -p "$OUT"
+          php scripts/diagnostics/hotel_match_andromeda_state116_crosswalk_current_v2.php --emit > "$OUT/runtime-source.php"
+          php -l "$OUT/runtime-source.php"
+          php "$OUT/runtime-source.php" --self-test
+          grep -Fq 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' "$OUT/runtime-source.php"
+          grep -Fq 'MIN_CROSSWALK_TARGETS=10' "$OUT/runtime-source.php"
+          grep -Fq 'hold_pending_target_collision' "$OUT/runtime-source.php"
+          grep -Fq 'has_protected_evidence' "$OUT/runtime-source.php"
+          ! grep -Fq 'function protected(' "$OUT/runtime-source.php"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' "$OUT/runtime-source.php"
+      - name: Create runner reservation before SSH DB
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT']); p=out/'runtime-source.php'
+          data={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_and_db','runtime_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'read_only':True,'state_key':116,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (out/'runner-reservation.json').write_text(json.dumps(data,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 'match-andromeda-state116-crosswalk-v2-reservation-${{ github.run_id }}'
+          path: |
+            ${{ env.OUT }}/runner-reservation.json
+            ${{ env.OUT }}/runtime-source.php
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run immutable server-CURRENT state116 crosswalk v2
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/match-state116-v2-key"; known="$RUNNER_TEMP/match-state116-v2-known"; sock="$RUNNER_TEMP/match-state116-v2.sock"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=600 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M -d max_execution_time=480" < "$OUT/runtime-source.php" > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
+          trc=$?
+          set -e
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export RC="$rc" TRC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT'])
+          def load(n):
+              try:return json.loads((out/n).read_text())
+              except Exception:return {}
+          rr=load('runner-reservation.json'); sr=load('reservation.json'); r=load('result.json'); f=load('failure.json'); receipt=load('receipt.json')
+          rh=hashlib.sha256((out/'result.json').read_bytes()).hexdigest() if (out/'result.json').exists() else None
+          fh=hashlib.sha256((out/'failure.json').read_bytes()).hexdigest() if (out/'failure.json').exists() else None
+          runtime_sha=hashlib.sha256((out/'runtime-source.php').read_bytes()).hexdigest(); state=r.get('state') or f.get('state')
+          ok=(rr.get('state')=='reserved_before_ssh_and_db' and rr.get('operation_id')==os.environ['OPERATION_ID'] and rr.get('source_sha')==os.environ['GITHUB_SHA'] and rr.get('runtime_sha256')==runtime_sha and rr.get('no_replay') is True
+              and sr.get('state')=='reserved_before_db_access' and sr.get('operation_id')==os.environ['OPERATION_ID'] and sr.get('source_sha')==os.environ['GITHUB_SHA'] and sr.get('no_replay') is True
+              and receipt.get('operation_id')==os.environ['OPERATION_ID'] and receipt.get('source_sha')==os.environ['GITHUB_SHA'] and receipt.get('readback_verified') is True and receipt.get('no_replay') is True
+              and rh is not None and receipt.get('result_sha256')==rh and state=='completed_read_only'
+              and int(os.environ['RC'])==0 and int(os.environ['TRC'])==0
+              and all(r.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls','booking_calls','lead_calls')))
+          gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'verified':ok,'state':state,'pending_state116_examined':r.get('pending_state116_examined'),'global_unique_exact_proof_distinct_targets':r.get('global_unique_exact_proof_distinct_targets'),'proof_target_country_counts':r.get('proof_target_country_counts'),'crosswalk_country_id':r.get('crosswalk_country_id'),'crosswalk_usable':r.get('crosswalk_usable'),'route_counts':r.get('route_counts'),'guard_passed_prepared_count':r.get('guard_passed_prepared_count'),'result_sha256':rh,'failure_sha256':fh,'runtime_sha256':runtime_sha,'remote_exit':int(os.environ['RC']),'tar_exit':int(os.environ['TRC']),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (out/'workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 'match-andromeda-state116-crosswalk-v2-${{ github.run_id }}'
+          path: '${{ env.OUT }}/'
+          retention-days: 90
