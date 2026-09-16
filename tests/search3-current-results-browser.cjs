@@ -674,6 +674,18 @@ async function checkHydratedHotelFacets(page, width, previous, details) {
     assert.equal(await rating.isVisible(),false,'coverage is not relaxed for local details');
     assert.equal(await category.isVisible(),false,'an unknown local category cannot masquerade as the old source category');
     assert.equal((await visible()).length,3,'unknown facts do not leave hotels silently filtered out');
+    const coverageItems=Array.from({length:100},(_,index)=>({...items[index%items.length],id:'category-coverage-'+index,name:'Отель покрытия '+index,category:index===99?null:3+(index%3),rating:4+(index%2)*.5,tours:[{...tour,id:'category-coverage-tour-'+index,price:90000+index}]}));
+    await render(coverageItems);
+    assert.equal(await category.isVisible(),true,'99 known categories out of 100 expose the useful category facet');
+    assert.equal(await page.locator('[data-search3-category-coverage]').innerText(),'Категория указана у 99 из 100 отелей','partial coverage is explicit instead of pretending to be complete');
+    assert.deepEqual(await category.locator('option').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','5','4','3']);
+    assert.equal((await visible()).length,100,'the unknown-category hotel remains visible until the visitor selects a category');
+    await category.selectOption('5');
+    assert.equal((await visible()).length,33,'an explicit category selection matches only hotels with that known category');
+    assert.equal(await page.locator('[data-hotel-id="category-coverage-99"]').isVisible(),false,'unknown category is never guessed into a selected star bucket');
+    assert.equal(await page.locator('#resultSummary').innerText(),'Показано отелей: 33 из 100 · цены из текущего поиска');
+    assert.equal((await snapshot(page)).overflow,false);
+    if(!previous&&[375,1440].includes(width))await page.screenshot({path:path.join(output,`category-coverage-${width}.png`),fullPage:true});
     assert.deepEqual(requests,[],'local hydration/filtering/sorting never requests supplier or lead endpoints');
   } finally {release();details.facts=null;page.off('request',record);await page.evaluate(()=>window.Search3LocalHotelFilter.reset());await page.locator('#sortResults').selectOption('price');}
 }
