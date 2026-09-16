@@ -11,9 +11,7 @@ final class AnyTourThreeProviderPriceActualizationStore
     {
         self::assertObservation($observation);
         $directory = dirname($path);
-        if (!is_dir($directory)) {
-            throw new RuntimeException('THREE_PROVIDER_ACTUALIZATION_STORE_DIRECTORY');
-        }
+        if (!is_dir($directory)) throw new RuntimeException('THREE_PROVIDER_ACTUALIZATION_STORE_DIRECTORY');
         $line = json_encode($observation, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
         $handle = fopen($path, 'ab');
         if ($handle === false) throw new RuntimeException('THREE_PROVIDER_ACTUALIZATION_STORE_OPEN');
@@ -31,7 +29,6 @@ final class AnyTourThreeProviderPriceActualizationStore
     {
         if ($maxRows < 1 || $maxRows > 100000) throw new InvalidArgumentException('THREE_PROVIDER_ACTUALIZATION_SUMMARY_LIMIT');
         if (!is_file($path)) return ['total' => 0, 'exact' => 0, 'accuracy' => null, 'providers' => []];
-
         $handle = fopen($path, 'rb');
         if ($handle === false) throw new RuntimeException('THREE_PROVIDER_ACTUALIZATION_STORE_OPEN');
         $rows = [];
@@ -105,6 +102,10 @@ final class AnyTourThreeProviderPriceActualizationStore
                 || !preg_match('/[1-9]/', $row[$key]['amount'])) {
                 throw new InvalidArgumentException('THREE_PROVIDER_ACTUALIZATION_OBSERVATION_MONEY');
             }
+        }
+        $derivedExact = $row['listing_price'] === $row['verified_quote_price'];
+        if ($row['exact_match'] !== $derivedExact) {
+            throw new InvalidArgumentException('THREE_PROVIDER_ACTUALIZATION_EXACT_MATCH');
         }
         $encoded = json_encode($row, JSON_THROW_ON_ERROR);
         foreach (['supplier_offer_id', 'offer_ref', 'search_ref', 'externalOfferId', 'claiminc', 'quote_evidence_digest'] as $forbidden) {
