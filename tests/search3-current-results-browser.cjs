@@ -1345,21 +1345,21 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 20, 'coverage loss cannot silently retain a filter or hide unknown cards');
     await page.evaluate(items => {
       const base=items[0];
-      window.V2Results.render(Array.from({length:20},(_,index)=>({...base,id:'sea-'+index,name:'Отель у моря '+index,rating:4.7,seaDistance:index<16?(index%2?150:700):0,tours:base.tours.map(tour=>({...tour,id:tour.id+'-sea-'+index}))})));
+      window.V2Results.render(Array.from({length:20},(_,index)=>({...base,id:'sea-sparse-'+index,name:'Отель у моря '+index,rating:4.7,seaDistance:index===0?150:0,tours:base.tours.map(tour=>({...tour,id:tour.id+'-sea-sparse-'+index}))})));
     }, hotels);
-    assert.equal(await localSeaFilter.isVisible(), true, '80% known sea distances keep the useful local facet available');
-    assert.equal(await localSeaSelect.locator('option').first().innerText(), 'Любое расстояние · 16/20', 'sea facet discloses exact loaded-data coverage');
+    assert.equal(await localSeaFilter.isVisible(), true, 'one known sea distance keeps the useful local threshold available');
+    assert.equal(await localSeaSelect.locator('option').first().innerText(), 'Любое расстояние · 1/20', 'sparse sea facet discloses exact loaded-data coverage');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 20, 'unknown sea distances stay visible before a threshold is selected');
     await localSeaSelect.selectOption('500');
-    assert.equal(await page.locator('#results .hotel-card:visible').count(), 8, 'sea threshold excludes unknown and above-threshold cards locally');
-    if (!previous && [375,720,1440].includes(width)) await page.screenshot({ path: path.join(output, `sea-coverage-${width}.png`), fullPage: true });
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'sea threshold matches the known nearby hotel and excludes unknown distances locally');
+    if (!previous && [375,720,1440].includes(width)) await page.screenshot({ path: path.join(output, `sea-sparse-coverage-${width}.png`), fullPage: true });
     await page.evaluate(items => {
       const base=items[0];
-      window.V2Results.render(Array.from({length:20},(_,index)=>({...base,id:'sea-low-'+index,name:'Отель у моря '+index,rating:4.7,seaDistance:index<15?150:0,tours:base.tours.map(tour=>({...tour,id:tour.id+'-sea-low-'+index}))})));
+      window.V2Results.render(Array.from({length:20},(_,index)=>({...base,id:'sea-unknown-'+index,name:'Отель без расстояния '+index,rating:4.7,seaDistance:0,tours:base.tours.map(tour=>({...tour,id:tour.id+'-sea-unknown-'+index}))})));
     }, hotels);
-    assert.equal(await localSeaFilter.isVisible(), false, 'sea facet hides below the explicit 80% coverage policy');
-    assert.equal(await localSeaSelect.inputValue(), '0', 'coverage loss resets the active sea threshold');
-    assert.equal(await page.locator('#results .hotel-card:visible').count(), 20, 'sea coverage loss cannot silently retain a filter or hide unknown cards');
+    assert.equal(await localSeaFilter.isVisible(), false, 'sea facet hides only when no loaded hotel has a known distance');
+    assert.equal(await localSeaSelect.inputValue(), '0', 'loss of all known distances resets the active sea threshold');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 20, 'facet removal cannot silently retain a filter or hide unknown cards');
     await page.evaluate(items => {
       const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
       window.__decisionOriginal = freeze(items);
