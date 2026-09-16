@@ -734,7 +734,9 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.deepEqual(hotelDetails.requests, ['21477'], 'one local hotel id loads its trusted details exactly once');
     assert.equal(await card.locator('.hotel-gallery-main').getAttribute('src'), 'https://catalog.example/hotel-21477.svg', 'supplier-only offer uses the exact-ID local catalog photo');
     assert.match(await card.locator('.hotel-place').innerText(), /Наама-Бей/, 'local subregion reaches the card');
-    assert.equal(await card.locator('.hotel-gallery-thumb').count(), 3, 'local hotel details expose a bounded gallery in the canonical card');
+    assert.equal(await card.locator('.hotel-gallery-thumb').count(), 2, 'the gallery exposes only alternate photos and never repeats the active main photo');
+    const initialGallerySources = await card.locator('.hotel-gallery img').evaluateAll(images => images.map(image => image.getAttribute('src')));
+    assert.equal(new Set(initialGallerySources).size, initialGallerySources.length, 'every initially visible gallery image is unique');
     const hotelInfo = card.locator('.hotel-details');
     assert.match(await card.locator('.hotel-description-summary').innerText(), /Локальное описание отеля: Hard Rock Café & SPA/, 'encoded local description is readable before opening the hotel disclosure');
     assert.equal(await hotelInfo.locator('summary').innerText(), 'Подробнее об отеле', 'hotel disclosure promises complete local details');
@@ -759,9 +761,12 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     }
     assert.equal((await snapshot(page)).overflow, false, width + ': decoded hotel details fit the viewport');
     if (!previous && [375,1440].includes(width)) await card.screenshot({ path: path.join(output, `hotel-details-entities-${width}.png`), animations: 'disabled' });
-    await card.locator('.hotel-gallery-thumb').nth(1).click();
+    await card.locator('.hotel-gallery-thumb').first().click();
     assert.equal(await card.locator('.hotel-gallery-main').getAttribute('src'), 'https://catalog.example/hotel-21477-2.svg', 'gallery changes the main local photo without changing the offer');
-    assert.equal(await card.locator('.hotel-gallery-thumb').nth(1).getAttribute('aria-pressed'), 'true', 'gallery exposes the selected photo state');
+    assert.equal(await card.locator('.hotel-gallery-thumb').first().locator('img').getAttribute('src'), 'https://catalog.example/hotel-21477.svg', 'the clicked thumbnail retains the previous main photo so it remains reachable');
+    assert.equal(await card.locator('.hotel-gallery-thumb[aria-pressed]').count(), 0, 'swap actions do not expose a false selected-thumbnail state');
+    const swappedGallerySources = await card.locator('.hotel-gallery img').evaluateAll(images => images.map(image => image.getAttribute('src')));
+    assert.equal(new Set(swappedGallerySources).size, swappedGallerySources.length, 'gallery swapping preserves unique visible images');
     await hotelInfo.locator('summary').press('Enter');
     assert.equal(await card.locator('.hotel-description-summary').isVisible(), true, 'closing details restores the concise hotel summary');
     await card.locator('.hotel-gallery-main').scrollIntoViewIfNeeded();
