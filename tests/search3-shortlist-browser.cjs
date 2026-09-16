@@ -18,7 +18,7 @@ const hotel = { id: 'offer-hotel', name: 'Отель с вариантами н�
 const offer = (id, price, roomType, meal, hotelValue = hotel) => ({
   id, source: 'tourvisor', price, date: '2026-09-12', nights: 9,
   meal: { name: meal === 'AI' ? 'AI' : 'RO', fullName: meal === 'AI' ? 'Всё включено' : 'Без питания' },
-  roomType, placement: 'DBL', operator: { name: 'TEST OPERATOR' }, adults: 2, childs: 0,
+  roomType, placement: 'DBL', operator: 'Biblioglobus', adults: 2, childs: 0,
   hotel: hotelValue
 });
 const standard = offer('offer-standard', 120000, 'STANDARD', 'AI');
@@ -99,7 +99,7 @@ async function discloseMatchingOffers(page) {
   assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'matching multi-offer hotel starts at hotel level without Select or Compare');
   assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'matching multi-offer hotel exposes one hotel-level minimum');
   assert.equal((await card.locator('.hotel-price').innerText()).replace(/\s/g, ''), 'от120000₽', 'RO90k is excluded and matching AI offers contribute only the truthful hotel minimum');
-  assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /offer-standard|TEST OPERATOR|Tourvisor|Всё включено|12\.09\.2026/, 'collapsed shortlist entry does not borrow one exact offer');
+  assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /offer-standard|Biblioglobus|Tourvisor|Всё включено|12\.09\.2026/, 'collapsed shortlist entry does not borrow one exact offer');
   const disclosure = card.locator('.tour-more-toggle');
   assert.ok((await disclosure.boundingBox()).height >= 44, 'offer disclosure retains a 44px target');
   await disclosure.focus();
@@ -285,6 +285,7 @@ async function checkJourney(browser, width) {
     const snapshots = await shortlist.locator('.search3-shortlist-item').evaluateAll(nodes => nodes.map(node => ({ offerId: node.dataset.offerId, text: node.textContent.replace(/\s+/g, ' ').trim() })));
     assert.match(snapshots[0].text, /Стандарт/); assert.match(snapshots[0].text, /Всё включено/); assert.match(snapshots[0].text.replace(/\s/g, ''), /120000₽/);
     assert.match(snapshots[1].text, /Семейный/); assert.match(snapshots[1].text, /Всё включено/); assert.match(snapshots[1].text.replace(/\s/g, ''), /125000₽/);
+    assert.equal(snapshots.every(item => item.text.includes('Библио-Глобус') && !item.text.includes('Biblioglobus')), true, 'Compare renders the existing canonical operator label for every saved offer');
     assert.doesNotMatch(snapshots.slice(0, 2).map(item => item.text).join(' '), /Без питания|90000/, 'excluded RO snapshot is never synthesized into comparison');
     assert.match(compact(await shortlist.innerText()), /сохран|историч/i, 'saved price is labelled as a historical snapshot');
     const storedItems = await page.evaluate(() => window.Search3Shortlist.items());
@@ -294,6 +295,7 @@ async function checkJourney(browser, width) {
       ['tourvisor', '731', 'offer-hotel', 'offer-standard'], ['tourvisor', '731', 'offer-hotel', 'offer-family']
     ], 'record identity separates source/search/offer from hotel identity');
     assert.equal(storedItems.every(item => Object.keys(item).every(key => whitelist.includes(key))), true, 'storage contains whitelist fields only');
+    assert.equal(storedItems.every(item => item.operator === 'Biblioglobus'), true, 'canonical Compare display does not rewrite the stored supplier operator value');
     assert.equal(/phone|comment|consent|raw|payload|token|cookie|yclid/i.test(JSON.stringify(storedItems)), false, 'personal, attribution and raw supplier data are never retained');
     await page.locator('#sortResults').selectOption('price');
     await page.evaluate(value => {
@@ -336,6 +338,7 @@ async function checkJourney(browser, width) {
     await page.waitForFunction(() => document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
     await openComparison(page, width);
     assert.equal(await page.locator('.search3-shortlist-item').count(), 2, 'two exact snapshots survive reload');
+    assert.equal(await page.locator('.search3-shortlist-item').evaluateAll(nodes => nodes.every(node => node.textContent.includes('Библио-Глобус') && !node.textContent.includes('Biblioglobus'))), true, 'persisted snapshots are canonicalized again at render time');
     assert.equal(await page.locator('.search3-shortlist-select:enabled').count(), 0, 'persisted snapshots never grant selection authority before a current projection');
     assert.equal(await page.locator('.search3-shortlist-select').first().evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(238, 241, 246)', 'stale comparison action is visibly disabled rather than orange');
     assert.match(compact(await page.locator('.search3-shortlist').innerText()), /сохран|историч/i);
