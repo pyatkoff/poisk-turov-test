@@ -90,8 +90,8 @@ function anytour_anex_additional_prices_batch_plan(array $items, array $state): 
  * before invoking the reader; supplier-observed unknown/reserved attempts are not replayed, while
  * completed evidence is reused without a reader call. A local `ANEX_RATE_LIMIT` raised by the
  * existing runtime client factory happens before supplier transport; that unsent attempt is rolled
- * back to absent state so a later visible-card batch may try it after the session budget recovers.
- * A shared same-day APD supplier unknown remains durable and affects only that context.
+ * back to absent state and explicitly marked retryable so a later visible-card batch may try it
+ * after the session budget recovers. Durable unknown state remains non-retryable.
  */
 function anytour_anex_additional_prices_batch_execute(array $plan, array &$state, callable $reader, callable $checkpoint): array
 {
@@ -113,11 +113,13 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
         }
         $attempt = $state['additional_prices'][$digest] ?? null;
         if (is_array($attempt) && ($attempt['status'] ?? null) === 'complete' && is_array($attempt['evidence'] ?? null)) {
-            $results[$digest] = ['status' => 'complete', 'cached' => true, 'evidence' => $attempt['evidence']];
+            $results[$digest] = ['status' => 'complete', 'cached' => true, 'evidence' => $attempt['evidence'],
+                'retryable' => false, 'retry_reason' => null];
             continue;
         }
         if ($attempt !== null) {
-            $results[$digest] = ['status' => 'unknown', 'cached' => true, 'evidence' => null];
+            $results[$digest] = ['status' => 'unknown', 'cached' => true, 'evidence' => null,
+                'retryable' => false, 'retry_reason' => 'durable_unknown'];
             continue;
         }
         $state['additional_prices'][$digest] = ['status' => 'unknown'];
@@ -128,18 +130,21 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
             if ($error->getMessage() === 'ANEX_RATE_LIMIT') {
                 unset($state['additional_prices'][$digest]);
                 $checkpoint($state, $digest);
-                $results[$digest] = ['status' => 'unknown', 'cached' => false, 'evidence' => null];
+                $results[$digest] = ['status' => 'unknown', 'cached' => false, 'evidence' => null,
+                    'retryable' => true, 'retry_reason' => 'session_budget_deferred'];
                 continue;
             }
             if ($error->getMessage() === 'ANEX_B2B_DAILY_UNKNOWN') {
-                $results[$digest] = ['status' => 'unknown', 'cached' => true, 'evidence' => null];
+                $results[$digest] = ['status' => 'unknown', 'cached' => true, 'evidence' => null,
+                    'retryable' => false, 'retry_reason' => 'durable_unknown'];
                 continue;
             }
             throw $error;
         }
         if (!is_array($evidence)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
         $state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => $evidence];
-        $results[$digest] = ['status' => 'complete', 'cached' => false, 'evidence' => $evidence];
+        $results[$digest] = ['status' => 'complete', 'cached' => false, 'evidence' => $evidence,
+            'retryable' => false, 'retry_reason' => null];
     }
 
     $publicOffers = [];
@@ -155,6 +160,8 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
             'context_digest' => $digest,
             'status' => $results[$digest]['status'],
             'additional_prices' => $results[$digest]['evidence'],
+            'retryable' => $results[$digest]['retryable'],
+            'retry_reason' => $results[$digest]['retry_reason'],
         ];
     }
 
