@@ -1,0 +1,38 @@
+name: INT natural actualization accuracy
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-price-actualization-store.php'
+      - 'tests/three-provider-price-actualization-store-test.php'
+      - '.github/workflows/int-natural-actualization-accuracy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate supplier-free accuracy accumulator
+        run: |
+          set -euo pipefail
+          php -l app/integrations/three-provider-price-actualization-store.php
+          php -l tests/three-provider-price-actualization-store-test.php
+          php -d allow_url_fopen=0 tests/three-provider-price-actualization-store-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-price-actualization-store.php').read_text()
+          for forbidden in (
+              'curl_', 'file_get_contents(', 'PDO', 'mysqli_', 'bron(', 'bron_ticket',
+              'INSERT ', 'UPDATE ', 'DELETE '
+          ):
+              assert forbidden not in src, forbidden
+          for required in (
+              "'providers'", "'operators'", "'accuracy'", "'exact_match'", 'LOCK_EX', 'LOCK_SH',
+              "'supplier_offer_id'", "'offer_ref'", "'search_ref'", "'externalOfferId'", "'claiminc'"
+          ):
+              assert required in src, required
+          print('INT natural actualization accuracy boundary: PASS')
+          PY
