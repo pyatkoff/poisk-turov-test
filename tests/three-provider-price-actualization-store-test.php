@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../app/integrations/three-provider-price-actualization-store.php';
+require_once __DIR__ . '/../app/integrations/three-provider-price-actualization-observation.php';
 
 $checks = 0;
 function store_check(bool $ok): void { global $checks; ++$checks; if (!$ok) throw new RuntimeException('store_check_' . $checks); }
@@ -70,6 +71,57 @@ store_reject(static fn() => AnyTourThreeProviderPriceActualizationStore::summari
 $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 store_check(count($lines) === 4);
 store_check(strpos(implode("\n", $lines), 'offer_ref') === false);
+
+// Consume an actual producer result, not an independently fabricated exact flag.
+$listing = [
+    'provider' => 'andromeda', 'operator' => 'ANEX', 'local_hotel_id' => 17449,
+    'identity' => ['namespace' => 'andromeda', 'key' => 'safe-identity'],
+    'tour' => ['checkin' => '2026-12-28', 'nights' => 7,
+        'party' => ['adults' => 2, 'children' => 0, 'child_ages' => []],
+        'meal' => ['raw' => 'AI'], 'room' => ['raw' => 'Standard'], 'placement' => null],
+    'context' => ['generation' => 44, 'page' => 1, 'current_context_verified' => true],
+    'finalPriceReady' => true, 'finalPrice' => '199390', 'price' => '199390', 'currency' => 'RUB',
+    'final_price_verified' => false, 'quote_state' => 'unknown',
+    'selection_state' => 'disabled', 'booking_enabled' => false,
+];
+$quote = $listing;
+$quote['final_price_verified'] = true;
+$quote['quote_state'] = 'verified';
+$quote['money'] = ['quote_price' => ['amount' => '199390.00', 'currency' => 'RUB']];
+$produced = AnyTourThreeProviderPriceActualizationObservation::fromListingAndVerifiedQuote($listing, $quote);
+store_check($produced['exact_match'] === true);
+$decimalPath = $dir . '/decimal.ndjson';
+AnyTourThreeProviderPriceActualizationStore::append($decimalPath, $produced);
+store_check(json_decode(file($decimalPath)[0], true, 32, JSON_THROW_ON_ERROR) === $produced);
+$decimalSummary = AnyTourThreeProviderPriceActualizationStore::summarize($decimalPath);
+store_check($decimalSummary['total'] === 1 && $decimalSummary['exact'] === 1 && $decimalSummary['accuracy'] === 1.0);
+store_check($decimalSummary['providers']['andromeda']['operators']['ANEX']['accuracy'] === 1.0);
+$falseMismatch = $produced;
+$falseMismatch['exact_match'] = false;
+store_reject(static fn() => AnyTourThreeProviderPriceActualizationStore::append($decimalPath, $falseMismatch), 'THREE_PROVIDER_ACTUALIZATION_EXACT_MATCH');
+
+// Previously accepted representation-only mismatches stay readable; no history is rewritten.
+$legacyPath = $dir . '/legacy.ndjson';
+$legacy = store_row('andromeda', 'ANEX', '199390', '199390.00', 17449);
+file_put_contents($legacyPath, json_encode($legacy, JSON_THROW_ON_ERROR) . "\n");
+$beforeHash = hash_file('sha256', $legacyPath);
+$legacySummary = AnyTourThreeProviderPriceActualizationStore::summarize($legacyPath);
+store_check($legacySummary['total'] === 1 && $legacySummary['exact'] === 1 && $legacySummary['accuracy'] === 1.0);
+store_check(hash_file('sha256', $legacyPath) === $beforeHash);
+AnyTourThreeProviderPriceActualizationStore::append($legacyPath, $produced);
+$both = AnyTourThreeProviderPriceActualizationStore::summarize($legacyPath);
+store_check($both['total'] === 2 && $both['exact'] === 2);
+store_check(AnyTourThreeProviderPriceActualizationStore::summarize($legacyPath, 1)['exact'] === 1);
+
+// Legacy read compatibility does not legalize flags the old store would have rejected.
+$invalidPath = $dir . '/invalid.ndjson';
+foreach ([$forgedExact, array_replace(store_row('andromeda', 'ANEX', '199390', '199390', 1), ['exact_match' => false])] as $invalid) {
+    file_put_contents($invalidPath, json_encode($invalid, JSON_THROW_ON_ERROR) . "\n");
+    store_reject(static fn() => AnyTourThreeProviderPriceActualizationStore::summarize($invalidPath), 'THREE_PROVIDER_ACTUALIZATION_EXACT_MATCH');
+}
+@unlink($decimalPath);
+@unlink($legacyPath);
+@unlink($invalidPath);
 
 @unlink($path);
 @rmdir($dir);

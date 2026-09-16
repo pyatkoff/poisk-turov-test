@@ -32,7 +32,7 @@ final class AnyTourThreeProviderPriceActualizationObservation
             ],
             'listing_price' => $listingMoney,
             'verified_quote_price' => $quoteMoney,
-            'exact_match' => $listingMoney === $quoteMoney,
+            'exact_match' => self::moneyMatches($listingMoney, $quoteMoney),
             'listing_final_price_ready' => true,
             'quote_final_price_verified' => true,
             'context' => [
@@ -40,6 +40,18 @@ final class AnyTourThreeProviderPriceActualizationObservation
                 'page' => $listing['context']['page'],
             ],
         ];
+    }
+
+    /** Equality only: no floats, rounding, conversion or rewriting of either money fact. */
+    public static function moneyMatches(array $left, array $right): bool
+    {
+        $keys = [];
+        foreach ([$left, $right] as $money) {
+            $validated = self::rubMoney($money, 'THREE_PROVIDER_ACTUALIZATION_OBSERVATION_MONEY');
+            $parts = explode('.', $validated['amount'], 2);
+            $keys[] = $parts[0] . '.' . str_pad($parts[1] ?? '', 2, '0');
+        }
+        return $keys[0] === $keys[1];
     }
 
     private static function assertListing(array $listing): void

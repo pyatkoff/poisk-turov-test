@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/three-provider-price-actualization-observation.php';
+
 /**
  * Private append-only store for supplier-free natural actualization observations.
  * Input must already be produced by AnyTourThreeProviderPriceActualizationObservation.
@@ -36,7 +38,8 @@ final class AnyTourThreeProviderPriceActualizationStore
             if (!flock($handle, LOCK_SH)) throw new RuntimeException('THREE_PROVIDER_ACTUALIZATION_STORE_LOCK');
             while (($line = fgets($handle)) !== false) {
                 $decoded = json_decode($line, true, 32, JSON_THROW_ON_ERROR);
-                self::assertObservation($decoded);
+                // Correct only the in-memory summary flag; preserve the append-only source bytes.
+                $decoded['exact_match'] = self::assertObservation($decoded, true);
                 $rows[] = $decoded;
                 if (count($rows) > $maxRows) array_shift($rows);
             }
@@ -80,7 +83,7 @@ final class AnyTourThreeProviderPriceActualizationStore
         $bucket['accuracy'] = $bucket['total'] > 0 ? round($bucket['exact'] / $bucket['total'], 4) : null;
     }
 
-    private static function assertObservation(array $row): void
+    private static function assertObservation(array $row, bool $readingLegacy = false): bool
     {
         if (($row['schema_version'] ?? null) !== 1
             || !is_string($row['provider'] ?? null) || $row['provider'] === ''
@@ -103,13 +106,20 @@ final class AnyTourThreeProviderPriceActualizationStore
                 throw new InvalidArgumentException('THREE_PROVIDER_ACTUALIZATION_OBSERVATION_MONEY');
             }
         }
-        $derivedExact = $row['listing_price'] === $row['verified_quote_price'];
-        if ($row['exact_match'] !== $derivedExact) {
+        $derivedExact = AnyTourThreeProviderPriceActualizationObservation::moneyMatches(
+            $row['listing_price'], $row['verified_quote_price']);
+        // Old producers accepted false for equal amounts with different decimal spellings.
+        // Read that already-valid history, but never accept an inconsistent new append or
+        // a forged true flag for genuinely different amounts (including one kopeck).
+        $legacyMismatch = $readingLegacy && $derivedExact && $row['exact_match'] === false
+            && $row['listing_price'] !== $row['verified_quote_price'];
+        if ($row['exact_match'] !== $derivedExact && !$legacyMismatch) {
             throw new InvalidArgumentException('THREE_PROVIDER_ACTUALIZATION_EXACT_MATCH');
         }
         $encoded = json_encode($row, JSON_THROW_ON_ERROR);
         foreach (['supplier_offer_id', 'offer_ref', 'search_ref', 'externalOfferId', 'claiminc', 'quote_evidence_digest'] as $forbidden) {
             if (strpos($encoded, $forbidden) !== false) throw new InvalidArgumentException('THREE_PROVIDER_ACTUALIZATION_PRIVATE_REF');
         }
+        return $derivedExact;
     }
 }
