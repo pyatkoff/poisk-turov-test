@@ -1,0 +1,64 @@
+name: MATCH ANEX current external evidence queue v1
+on:
+  push:
+    branches: [ops/match-anex-current-external-evidence-queue-1971-20260916-v1]
+    paths: ['.github/workflows/hotel-match-anex-current-external-evidence-queue-v1.yml']
+permissions: {contents: read, actions: read}
+concurrency:
+  group: anytour-match-anex-current-external-evidence-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-current-external-evidence-queue-1971-20260916-v1
+  OUT: /tmp/match-anex-current-external-evidence-v1
+jobs:
+  queue:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ github.sha }}', fetch-depth: 1, persist-credentials: false}
+      - name: Validate read-only queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_current_external_evidence_queue_v1.php
+          php scripts/diagnostics/hotel_match_anex_current_external_evidence_queue_v1.php --self-test
+          grep -Fq 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' scripts/diagnostics/hotel_match_anex_current_external_evidence_queue_v1.php
+      - name: Reserve before SSH evidence DB
+        shell: bash
+        run: |
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          s=pathlib.Path('scripts/diagnostics/hotel_match_anex_current_external_evidence_queue_v1.php');p=pathlib.Path(os.environ['OUT'])
+          (p/'runner-reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_evidence_db','runtime_sha256':hashlib.sha256(s.read_bytes()).hexdigest(),'read_only':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 'match-anex-current-evidence-reservation-${{ github.run_id }}'
+          path: '${{ env.OUT }}/runner-reservation.json'
+          retention-days: 90
+      - name: Run immutable current queue
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi; chmod 600 "$key"; set +e
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M" < scripts/diagnostics/hotel_match_anex_current_external_evidence_queue_v1.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"; rc=$?
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"; trc=$?; set -e; rm -f "$key" "$known"; if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi; export RC="$rc" TRC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['OUT']);load=lambda n:json.loads((p/n).read_text()) if (p/n).exists() else {};r=load('result.json');c=load('receipt.json');rr=load('runner-reservation.json');rh=hashlib.sha256((p/'result.json').read_bytes()).hexdigest() if (p/'result.json').exists() else None
+          ok=(r.get('state')=='completed_read_only' and r.get('safe_to_write_now') is False and all(r.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls','booking_calls','lead_calls')) and c.get('result_sha256')==rh and c.get('readback_verified') is True and rr.get('state')=='reserved_before_ssh_evidence_db' and int(os.environ['RC'])==0 and int(os.environ['TRC'])==0)
+          g={'verified':ok,'examined':r.get('examined'),'queue_count':r.get('queue_count'),'saved_hotelcode_rows':r.get('saved_hotelcode_rows'),'direct_safe_prepared_count':r.get('direct_safe_prepared_count'),'operator_link_required_count':r.get('operator_link_required_count'),'reason_counts':r.get('reason_counts'),'direct_safe_prepared':r.get('direct_safe_prepared'),'operator_link_top':(r.get('operator_link_required') or [])[:30],'result_sha256':rh,'remote_exit':int(os.environ['RC']),'tar_exit':int(os.environ['TRC']),'no_replay':True};(p/'workflow-readback.json').write_text(json.dumps(g,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(g,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if ok else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 'match-anex-current-evidence-${{ github.run_id }}'
+          path: '${{ env.OUT }}/'
+          retention-days: 90
