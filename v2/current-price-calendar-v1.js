@@ -1,7 +1,7 @@
 (function(){'use strict';
 if(window.V2CurrentPriceCalendar)return;
 const money=new Intl.NumberFormat('ru-RU'),dayFormatter=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',weekday:'short',timeZone:'UTC'});
-let terminal=false,filteredItems=null,disclosureOpen=null;
+let terminal=false,filteredItems=null,disclosureOpen=null,pendingFocus=false;
 function dateValue(raw){
 const s=String(raw||'').trim(),iso=s.match(/^(\d{4})-(\d{2})-(\d{2})$/),local=iso?null:s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
 if(!iso&&!local)return'';
@@ -46,8 +46,8 @@ else if(rect.right+5>viewport.right)strip.scrollLeft+=rect.right+5-viewport.righ
 }
 }
 return days;}
-function clear(){disclosureOpen=null;const box=document.getElementById('currentPriceCalendar'),restoreFocus=box&&box.contains(document.activeElement);if(box){box.hidden=true;box.innerHTML='';}if(restoreFocus)focusFallback();}
-function complete(event){terminal=true;render(filteredItems||event&&event.detail&&event.detail.items);}
+function clear(){disclosureOpen=null;const box=document.getElementById('currentPriceCalendar'),restoreFocus=box&&box.contains(document.activeElement);if(box){box.hidden=true;box.innerHTML='';}if(restoreFocus){pendingFocus=true;focusFallback();}}
+function complete(event){terminal=true;render(filteredItems||event&&event.detail&&event.detail.items);if(pendingFocus){pendingFocus=false;focusFallback();}}
 function reset(event){if(!(event&&event.detail&&event.detail.dirty)){terminal=false;filteredItems=null;}clear();}
 window.addEventListener('v2:search-complete',complete);
 window.addEventListener('v2:search-continued',complete);

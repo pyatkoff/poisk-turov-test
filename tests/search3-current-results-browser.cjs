@@ -1144,6 +1144,12 @@ async function run(browser, width, previous) {
     assert.equal(await page.evaluate(() => window.__calendarSubmits), 1, 'calendar date submits through the canonical lifecycle exactly once');
     assert.equal(await calendar.isVisible(), false, 'calendar clears when the replacement search starts');
     assert.equal(await page.locator('#resultsSearchEdit').evaluate(node => node === document.activeElement), true, 'keyboard calendar selection restores focus before removing its date button');
+    await page.evaluate(() => {
+      const edit = document.getElementById('resultsSearchEdit');
+      edit.replaceWith(edit.cloneNode(true));
+      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: [{ tours: [{ date: '2026-09-14', price: 88000 }] }] } }));
+    });
+    assert.equal(await page.locator('#resultsSearchEdit').evaluate(node => node === document.activeElement), true, 'terminal completion restores focus after the asynchronous results toolbar is replaced');
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [form.elements.dateFrom.value, form.elements.dateTo.value]), ['2026-09-14', '2026-09-14'], 'calendar applies the exact selected day');
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()].filter(([name]) => !['dateFrom', 'dateTo'].includes(name))), preservedBeforeCalendar, 'calendar preserves every non-date search parameter');
     const parameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);
