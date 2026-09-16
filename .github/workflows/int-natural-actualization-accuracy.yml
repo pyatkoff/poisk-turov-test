@@ -26,10 +26,13 @@ jobs:
           src = Path('app/integrations/three-provider-price-actualization-store.php').read_text()
           for forbidden in (
               'curl_', 'file_get_contents(', 'PDO', 'mysqli_', 'bron(', 'bron_ticket',
-              'INSERT ', 'UPDATE ', 'DELETE ', 'supplier_offer_id', 'externalOfferId', 'claiminc'
+              'INSERT ', 'UPDATE ', 'DELETE '
           ):
               assert forbidden not in src, forbidden
-          for required in ("'providers'", "'operators'", "'accuracy'", "'exact_match'", 'LOCK_EX', 'LOCK_SH'):
+          for required in (
+              "'providers'", "'operators'", "'accuracy'", "'exact_match'", 'LOCK_EX', 'LOCK_SH',
+              "'supplier_offer_id'", "'offer_ref'", "'search_ref'", "'externalOfferId'", "'claiminc'"
+          ):
               assert required in src, required
           print('INT natural actualization accuracy boundary: PASS')
           PY
