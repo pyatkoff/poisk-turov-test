@@ -35,6 +35,12 @@ function v2_bundle_files(string $type, string $scope = 'full'): array
         $index = array_search('results-renderer-v5.js', $files, true);
         if ($index === false) throw new LogicException('Missing renderer dependency');
         array_splice($files, $index, 0, ['search3-canonical-profiles-v1.js']);
+
+        $andromeda = array_search('andromeda-provider-v1.js', $files, true);
+        if ($andromeda === false) throw new LogicException('Missing Andromeda provider dependency');
+        array_splice($files, $andromeda, 0, ['andromeda-local-endpoint-v1.js']);
+        $andromeda = array_search('andromeda-provider-v1.js', $files, true);
+        array_splice($files, $andromeda + 1, 0, ['anex-final-price-provider-v1.js']);
     }
     return $files;
 }
