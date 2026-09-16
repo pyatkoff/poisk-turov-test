@@ -125,8 +125,8 @@ readiness_reject(static function () use ($anex, $anexRetained, $anexCurrent, $no
     AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer($anex, $anexRetained, $anexCurrent, $now, $tampered);
 });
 
-// Andromeda estimate remains visible as money evidence but cannot be promoted to finalPriceReady.
-// Live v8 proved search/package 185125 -> calc 199390 even with selected transport markup 0 EUR.
+// Andromeda with explicit party-specific fuel is listing-ready. This remains a listing
+// price only: a later selected regular/external transport quote may still reprice it.
 [$andromeda, $andromedaRetained, $andromedaCurrent] = readiness_setup(readiness_raw(
     'andromeda',
     3,
@@ -138,13 +138,13 @@ $andromedaPriced = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($
 $andromedaReady = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
     $andromeda, $andromedaRetained, $andromedaCurrent, $now, $andromedaPriced
 );
-readiness_check($andromedaReady['finalPriceReady'] === false);
-readiness_check($andromedaReady['finalPrice'] === null && $andromedaReady['price'] === null);
+readiness_check($andromedaReady['finalPriceReady'] === true);
+readiness_check($andromedaReady['finalPrice'] === '166346.80' && $andromedaReady['price'] === '166346.80');
 readiness_check($andromedaReady['money']['search_price_with_surcharge']['amount'] === '166346.80');
 readiness_check($andromedaReady['money']['search_price']['amount'] === '144790');
-readiness_check($andromedaReady['final_price_verified'] === false);
+readiness_check($andromedaReady['final_price_verified'] === false && $andromedaReady['quote_state'] === 'unknown');
 
-// Even a syntactically valid zero surcharge estimate cannot make Andromeda listing money final.
+// An explicit zero fuel rate is known fuel, not missing fuel; the base listing amount is usable.
 [$andromedaZero, $andromedaZeroRetained, $andromedaZeroCurrent] = readiness_setup(readiness_raw(
     'andromeda',
     3,
@@ -157,9 +157,11 @@ $andromedaZeroReady = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer
     $andromedaZero, $andromedaZeroRetained, $andromedaZeroCurrent, $now, $andromedaZeroPriced
 );
 readiness_check($andromedaZeroPriced['search_price_with_surcharge']['amount'] === '185125');
-readiness_check($andromedaZeroReady['finalPriceReady'] === false
-    && $andromedaZeroReady['finalPrice'] === null && $andromedaZeroReady['price'] === null);
+readiness_check($andromedaZeroReady['finalPriceReady'] === true
+    && $andromedaZeroReady['finalPrice'] === '185125' && $andromedaZeroReady['price'] === '185125');
+readiness_check($andromedaZeroReady['final_price_verified'] === false && $andromedaZeroReady['quote_state'] === 'unknown');
 
+// Missing fuel is still fail-closed and never falls back to the base search price.
 $andromedaUnknown = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
     $andromeda, $andromedaRetained, $andromedaCurrent, $now
 );
