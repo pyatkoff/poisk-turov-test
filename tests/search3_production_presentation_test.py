@@ -363,6 +363,15 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 original = b"esc(mealName(t)||'\xe2\x80\x94')"
                 self.assertEqual(source.count(display), 1, 'one reviewed meal display expression')
                 source = source.replace(display, original, 1)
+                # Reviewed operator display only. Results, Compare and selected
+                # tour reuse the canonical renderer identity while the raw
+                # supplier value remains untouched in state and lead payload.
+                operator_helper = b"function operatorDisplayName(t){const results=window.V2Results,identity=results&&typeof results.operatorIdentity==='function'?results.operatorIdentity(t):null;return identity&&identity.label||operatorName(t);}\n"
+                operator_display = b"esc(operatorDisplayName(t)||'\xe2\x80\x94')"
+                raw_operator_display = b"esc(operatorName(t)||'\xe2\x80\x94')"
+                self.assertEqual(source.count(operator_helper), 1, 'one canonical selected operator display helper')
+                self.assertEqual(source.count(operator_display), 1, 'one canonical selected operator display call')
+                source = source.replace(operator_helper, b'', 1).replace(operator_display, raw_operator_display, 1)
                 # Reviewed room display only. The raw roomType remains in the
                 # offer and lead payload; reverse the exact selected-tour call
                 # before comparing the frozen controller/business digest.

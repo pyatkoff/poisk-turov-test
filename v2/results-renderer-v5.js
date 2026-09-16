@@ -74,7 +74,7 @@ const operatorBrands=[
   {key:'funsun',name:'FUN&SUN',aliases:['fun&sun','fun&sun (ru)','fun & sun','fun & sun (ru)','fun&sun россия','фансан','фан сан']},
   {key:'anex',name:'ANEX',aliases:['anex','anex tour','анекс','анекс тур']},
   {key:'intourist',name:'Интурист',aliases:['intourist','интурист','нтк интурист']},
-  {key:'biblio-globus',name:'Библио-Глобус',aliases:['библио-глобус','библио глобус','библиоглобус','biblio-globus','biblio globus']},
+  {key:'biblio-globus',name:'Библио-Глобус',aliases:['библио-глобус','библио глобус','библиоглобус','biblio-globus','biblio globus','biblioglobus']},
   {key:'coral',name:'Coral Travel',aliases:['coral','coral travel','корал','корал тревел']},
   {key:'sunmar',name:'Sunmar',aliases:['sunmar','санмар']},
   {key:'pegas',name:'Pegas Touristik',aliases:['pegas touristik','pegas','пегас','пегас туристик']}

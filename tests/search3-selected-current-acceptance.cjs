@@ -23,7 +23,7 @@ const tour = {
   meal: { name: 'AI', fullName: 'Всё включено' },
   roomType: 'STANDARD LAND VIEW',
   placement: 'DBL + CHD',
-  operator: { name: 'ANEX Tour' },
+  operator: { name: 'Biblioglobus' },
   isCharter: true,
   fuelCharge: 0,
   picture,
@@ -250,7 +250,7 @@ async function run(browser, width) {
     assert.equal(columnCount(detail.factColumns), expected.fact_columns, `selected fact columns at ${width}`);
     assert.deepEqual(detail.facts.map(item => item.label), contract.required_fact_labels, 'selected facts stay complete and ordered');
     assert.deepEqual(detail.facts.map(item => item.value), ['Москва', '05.10.2026', '9', '2 взр. + 1 дет.', 'Всё включено',
-      'Стандарт · территория', 'DBL + CHD', 'ANEX Tour', 'Чартер', 'без доплаты'], 'spacing keeps exact selected conditions with reviewed Russian display labels');
+      'Стандарт · территория', 'DBL + CHD', 'Библио-Глобус', 'Чартер', 'без доплаты'], 'selected tour reuses the canonical operator identity used by results and Compare');
     const factGeometry = await checkSelectedFacts(root, width);
     if (width <= 375) assert.ok(factGeometry.height <= 360, width + ': mobile selected facts improve on the 411px measured baseline without shrinking or hiding text');
     await root.locator('.facts').screenshot({ path: path.join(output, 'selected-facts-' + width + '.png'), animations: 'disabled' });
@@ -445,6 +445,8 @@ async function checkLeadRecovery(page, width) {
   assert.equal(await page.locator('#selectedTour').getAttribute('aria-hidden'), null, 'Browser Forward restores selected tour to the accessibility tree');
   const selectedPlacement = await root.locator('.facts > div').filter({ hasText: 'Размещение' }).locator('b').innerText();
   assert.equal(selectedPlacement, 'Двухместное + ребёнок', 'selected tour keeps the canonical listing placement instead of repeating party composition from detail');
+  const selectedOperator = await root.locator('.facts > div').filter({ hasText: 'Оператор' }).locator('b').innerText();
+  assert.equal(selectedOperator, 'Библио-Глобус', 'Browser Forward retains the canonical selected-tour operator display');
   const form = root.locator('.lead-form');
   const submit = form.locator('button[type="submit"]');
   await form.locator('[name="phone"]').fill('123');
