@@ -47,11 +47,11 @@ final class AnyTourThreeProviderSearchHandoff
      *
      * `finalPriceReady` is listing/display readiness, not supplier quote verification.
      * Tourvisor already reports the displayed search price and its fuel fact separately;
-     * that price is usable only when the fuel fact is present. Direct ANEX is usable when
-     * the existing canonical surcharge estimator has produced the exact party-specific
-     * search_price_with_surcharge. Andromeda search estimates remain evidence only: live
-     * v8 proved calc can reprice a selected external-flight package even when the selected
-     * transport markup is zero, so an estimate must not be promoted to customer final price.
+     * that price is usable only when the fuel fact is present. Direct ANEX and Andromeda
+     * are usable when the existing canonical surcharge estimator has produced the exact
+     * party-specific search_price_with_surcharge from explicit fuel facts. A later
+     * Andromeda calc may still reprice selected regular/external transport; that later
+     * quote remains a separate fact and does not erase a fuel-complete listing price.
      * Missing/unknown surcharge never falls back to the base search price.
      */
     public static function fromCustomerSearchOffer(
@@ -292,12 +292,6 @@ final class AnyTourThreeProviderSearchHandoff
         if ($pricedMoney !== $expected) {
             throw new InvalidArgumentException('THREE_PROVIDER_HANDOFF_PRICE');
         }
-        if ($provider === 'andromeda') {
-            // Search/get_flights surcharge is an estimate only. A selected external-flight
-            // package may still be repriced by calc, so only the verified quote path can
-            // establish Andromeda final money.
-            return ['ready' => false, 'amount' => null];
-        }
         $amount = self::readyRubAmount($pricedMoney['search_price_with_surcharge'] ?? null);
         return $amount === null
             ? ['ready' => false, 'amount' => null]
@@ -325,49 +319,3 @@ final class AnyTourThreeProviderSearchHandoff
         ?string $quoteEvidenceDigest
     ): array {
         if (!in_array($quoteState, ['unknown', 'verified'], true)
-            || ($quoteState === 'verified') !== $finalPriceVerified
-            || ($quoteState === 'verified') !== ($quoteEvidenceDigest !== null)) {
-            throw new InvalidArgumentException('THREE_PROVIDER_HANDOFF_QUOTE_STATE');
-        }
-
-        return [
-            'schema_version' => 1,
-            'provider' => $offer['provider'],
-            'operator' => $offer['operator'],
-            'local_hotel_id' => $offer['local_hotel_id'],
-            'identity' => $offer['identity'],
-            'tour' => [
-                'checkin' => $offer['checkin'],
-                'nights' => $offer['nights'],
-                'party' => $offer['party'],
-                'meal' => $offer['meal'],
-                'room' => $offer['room'],
-                'placement' => $offer['placement'],
-                'availability' => $offer['availability'],
-                'flight_details' => $offer['flight_details'],
-                'observed_at' => $offer['observed_at'],
-            ],
-            'money' => $money,
-            'quote_state' => $quoteState,
-            'final_price_verified' => $finalPriceVerified,
-            'quote_evidence_digest' => $quoteEvidenceDigest,
-            'context' => [
-                'generation' => $retained['generation'],
-                'page' => $retained['page'],
-                'issued_at' => $retained['issued_at'],
-                'expires_at' => $retained['expires_at'],
-                'current_context_verified' => true,
-            ],
-            // SEARCH owns the action state; INT never promotes it here.
-            'selection_state' => 'disabled',
-            'booking_enabled' => false,
-        ];
-    }
-
-    private static function exactKeys(array $value, array $expected): bool
-    {
-        return count($value) === count($expected)
-            && array_diff($expected, array_keys($value)) === []
-            && array_diff(array_keys($value), $expected) === [];
-    }
-}
