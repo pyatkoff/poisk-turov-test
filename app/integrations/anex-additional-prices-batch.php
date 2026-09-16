@@ -87,9 +87,11 @@ function anytour_anex_additional_prices_batch_plan(array $items, array $state): 
  *
  * `$reader` receives one private planner context and must return already-validated public-safe
  * evidence. The executor itself never performs transport. New contexts are persisted as unknown
- * before invoking the reader; unknown/reserved attempts are not replayed, while completed evidence
- * is reused without a reader call. A shared same-day APD unknown is also a durable no-replay fact:
- * it affects only that context and must not turn the whole visible-card batch into a supplier error.
+ * before invoking the reader; supplier-observed unknown/reserved attempts are not replayed, while
+ * completed evidence is reused without a reader call. A local `ANEX_RATE_LIMIT` raised by the
+ * existing runtime client factory happens before supplier transport; that unsent attempt is rolled
+ * back to absent state so a later visible-card batch may try it after the session budget recovers.
+ * A shared same-day APD supplier unknown remains durable and affects only that context.
  */
 function anytour_anex_additional_prices_batch_execute(array $plan, array &$state, callable $reader, callable $checkpoint): array
 {
@@ -123,6 +125,12 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
         try {
             $evidence = $reader($context);
         } catch (RuntimeException $error) {
+            if ($error->getMessage() === 'ANEX_RATE_LIMIT') {
+                unset($state['additional_prices'][$digest]);
+                $checkpoint($state, $digest);
+                $results[$digest] = ['status' => 'unknown', 'cached' => false, 'evidence' => null];
+                continue;
+            }
             if ($error->getMessage() === 'ANEX_B2B_DAILY_UNKNOWN') {
                 $results[$digest] = ['status' => 'unknown', 'cached' => true, 'evidence' => null];
                 continue;
