@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../app/integrations/anex-normalizer.php';
 require_once __DIR__ . '/../app/integrations/anex-additional-prices-client.php';
+require_once __DIR__ . '/../app/integrations/anex-preview-gateway.php';
 require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
 function expect(bool $condition, string $message): void
@@ -240,5 +241,60 @@ expect(($endpointComplete['offers'][0]['finalPriceReady'] ?? null) === true
     && array_key_exists('retry_reason', $endpointComplete['offers'][0])
     && $endpointComplete['offers'][0]['retry_reason'] === null,
     'endpoint completed fuel-ready price remains unchanged and non-retryable');
+
+// Supplier-free saved offer reads must not burn the supplier transport budget.
+$budgetNow = 1789220100;
+$budgetFactoryCalls = 0;
+$budgetGateway = new AnyTourAnexPreviewGateway(
+    static function() use (&$budgetFactoryCalls): AnyTourAnexClient {
+        ++$budgetFactoryCalls;
+        throw new RuntimeException('SAVED_READ_MUST_NOT_CREATE_CLIENT');
+    },
+    $resolver,
+    [],
+    static function() use (&$budgetNow): int { return $budgetNow; }
+);
+$budgetSession = [
+    'expires_at' => 1789220900,
+    'window_started_at' => $budgetNow,
+    'request_count' => 20,
+    'burst_started_at' => $budgetNow,
+    'burst_request_count' => 10,
+    'search' => ['offers' => [[
+        'offer_key' => $offerRef, 'kind' => 'concrete', 'hotel_external_id' => '8121',
+    ]]],
+    'saved_offers' => [
+        'search_ref' => $searchRef,
+        'created_at' => 1789220000,
+        'expires_at' => 1789220900,
+        'search' => [
+            'checkin_begin' => '2026-10-18', 'checkin_end' => '2026-10-18',
+            'nights_from' => 7, 'nights_till' => 7, 'adults' => 2, 'children' => 0, 'child_ages' => [],
+        ],
+        'offers' => [$offerRef => ['offer' => $offer, 'observed_at' => 1789220000]],
+    ],
+];
+$budgetRead = [
+    'action' => 'offer', 'search_ref' => $searchRef, 'offer_key' => $offerRef, 'local_hotel_id' => 6319,
+];
+for ($i = 0; $i < 12; ++$i) {
+    $saved = $budgetGateway->handle($budgetRead, $budgetSession);
+    expect(($saved['status'] ?? null) === 'current', 'supplier-free saved read must stay current at exhausted transport budget');
+}
+expect($budgetFactoryCalls === 0, 'saved reads must not create supplier client');
+expect(($budgetSession['request_count'] ?? null) === 20 && ($budgetSession['burst_request_count'] ?? null) === 10,
+    'saved reads must not consume supplier request counters');
+$transportBudgetBlocked = false;
+try {
+    $budgetGateway->handle(['action' => 'search', 'criteria' => [
+        'supplier_namespace' => 'anex_online', 'departure_id' => '1', 'destination_id' => '2', 'currency_id' => '3',
+        'checkin_begin' => '20261018', 'checkin_end' => '20261018', 'nights_from' => 7, 'nights_till' => 7,
+        'adults' => 2, 'children' => 0, 'hotel_ids' => ['8121'],
+    ]], $budgetSession);
+} catch (RuntimeException $error) {
+    $transportBudgetBlocked = $error->getMessage() === 'ANEX_RATE_LIMIT';
+}
+expect($transportBudgetBlocked, 'supplier transport action must remain rate-limited at exhausted budget');
+expect($budgetFactoryCalls === 0, 'rate-limited supplier action must stop before client construction');
 
 echo "ANEX AdditionalPricesDaily budget deferral regression: OK\n";
