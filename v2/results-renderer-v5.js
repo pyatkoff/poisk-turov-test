@@ -19,7 +19,8 @@ const pair=normalized.match(/^([a-z]{1,5}(?:\s+ai)?\+?)\s*-\s*(.+)$/);
 if(pair){const codeIdentity=mealIdentity({meal:pair[1]}),descriptionIdentity=mealIdentity({meal:pair[2]});if(codeIdentity&&descriptionIdentity&&!codeIdentity.key.startsWith('meal:label:')&&codeIdentity.key===descriptionIdentity.key)return codeIdentity;}
 const code=(supplierCode.match(/^(soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)$/)||[])[1]||'';
 let family='';
-if(/^(?:soft[ -]?(?:ai|all[ -]?inclusive)|sai|мягкое все включено|софт все включено)$/.test(normalized))family='soft-all-inclusive';
+if(/^(?:ai[ -]?without[ -]?alcohol|all[ -]?inclusive[ -]?without[ -]?alcohol|безалкогольное все включено|все включено без алкоголя)$/.test(normalized))family='alcohol-free-all-inclusive';
+else if(/^(?:soft[ -]?(?:ai|all[ -]?inclusive)|sai|мягкое все включено|софт все включено)$/.test(normalized))family='soft-all-inclusive';
 else if(/^(?:ultra[ -]?(?:ai|all[ -]?inclusive)|uai|ai ultra|ультра все включено)$/.test(normalized))family='ultra-all-inclusive';
 else if(/^(?:ai\+?|all[ -]?inclusive|все включено)$/.test(normalized))family='all-inclusive';
 else if(/^(?:bb\+?|bed\s*(?:&|and)\s*breakfast|breakfast|(?:только )?завтраки?)$/.test(normalized))family='breakfast';
@@ -30,6 +31,7 @@ else if(/^(?:sc\+?|self[ -]?catering|самообслуживание)$/.test(no
 else if(/^(?:on[ -]?request|по запросу)$/.test(normalized))family='on-request';
 else if(code&&(!normalizedName||normalized===normalizedName))family=({ai:'all-inclusive',uai:'ultra-all-inclusive','soft ai':'soft-all-inclusive',sai:'soft-all-inclusive',bb:'breakfast',hb:'half-board',fb:'full-board',ro:'room-only',sc:'self-catering'})[code]||'';
 const identities={
+'alcohol-free-all-inclusive':{key:'meal:alcohol-free-all-inclusive',label:'Всё включено без алкоголя'},
 'soft-all-inclusive':{key:'meal:soft-all-inclusive',label:'Мягкое всё включено'},'ultra-all-inclusive':{key:'meal:ultra-all-inclusive',label:'Ультра всё включено'},
 'all-inclusive':{key:'meal:all-inclusive',label:'Всё включено'},breakfast:{key:'meal:breakfast',label:'Завтрак'},'half-board':{key:'meal:half-board',label:'Полупансион'},
 'full-board':{key:'meal:full-board',label:'Полный пансион'},'room-only':{key:'meal:room-only',label:'Без питания'},'self-catering':{key:'meal:self-catering',label:'Самообслуживание'},
