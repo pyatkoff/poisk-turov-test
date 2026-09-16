@@ -77,6 +77,14 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     { key: 'meal:soft-all-inclusive', label: 'Мягкое всё включено' },
   ]), 'AI, UAI and Soft AI retain distinct identities');
   assert.equal(JSON.stringify([
+    results.mealIdentity({ meal: 'AI-WITHOUT ALCOHOL' }),
+    results.mealIdentity({ meal: 'All Inclusive Without Alcohol' }),
+    results.mealIdentity({ meal: 'Всё включено без алкоголя' }),
+  ]), JSON.stringify(Array.from({ length: 3 }, () => ({ key: 'meal:alcohol-free-all-inclusive', label: 'Всё включено без алкоголя' }))),
+  'exact alcohol-free all-inclusive aliases share one distinct Russian customer identity');
+  assert.notEqual(results.mealIdentity({ meal: 'AI-WITHOUT ALCOHOL' }).key, results.mealIdentity({ meal: 'AI' }).key,
+    'alcohol-free all-inclusive remains distinct from ordinary AI');
+  assert.equal(JSON.stringify([
     results.mealIdentity({ meal: 'HB' }),
     results.mealIdentity({ meal: { name: 'HB', fullName: 'Полупансион' } }),
   ]), JSON.stringify(Array.from({ length: 2 }, () => ({ key: 'meal:half-board', label: 'Полупансион' }))), 'ordinary HB aliases retain the reviewed family');
@@ -88,10 +96,12 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     results.mealIdentity({ meal: 'Premium All Inclusive' }),
     results.mealIdentity({ meal: 'Breakfast and dinner' }),
     results.mealIdentity({ meal: 'Not all inclusive' }),
+    results.mealIdentity({ meal: 'AI-WITHOUT ALCOHOL PREMIUM' }),
   ]), JSON.stringify([
     { key: 'meal:label:premium all inclusive', label: 'Premium All Inclusive' },
     { key: 'meal:label:breakfast and dinner', label: 'Breakfast and dinner' },
     { key: 'meal:label:not all inclusive', label: 'Not all inclusive' },
+    { key: 'meal:label:ai-without alcohol premium', label: 'AI-WITHOUT ALCOHOL PREMIUM' },
   ]), 'ambiguous, extended and negated supplier labels are not guessed into a broader meal family');
   assert.match(results.tourRow(tour), /<small>Питание<\/small><b>Всё включено<\/b>/,
     'supplier fullName-only meal appears in the tour facts');
@@ -187,6 +197,8 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     { meal: 'BB - Полупансион', label: 'BB - Полупансион', payload: '' },
     { meal: 'BB - Breakfast and dinner', label: 'BB - Breakfast and dinner', payload: '' },
     { meal: 'HB+ - Полупансион', label: 'HB+ - Полупансион', payload: '' },
+    { meal: 'AI-WITHOUT ALCOHOL', label: 'Всё включено без алкоголя', payload: '' },
+    { meal: { name: 'AI-WITHOUT ALCOHOL', fullName: 'AI-WITHOUT ALCOHOL' }, label: 'Всё включено без алкоголя', payload: 'AI-WITHOUT ALCOHOL' },
     { meal: 'Soft AI', label: 'Мягкое всё включено', payload: '' },
     { meal: 'UAI', label: 'Ультра всё включено', payload: '' },
     { meal: { name: 'RO', fullName: 'Без питания' }, label: 'Без питания', payload: 'RO' },
