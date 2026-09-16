@@ -1,0 +1,111 @@
+name: MATCH TV targeted multi-operator Turkey B v1
+on:
+  push:
+    branches: [ops/match-tv-multiop-targeted-1971-20260916-v1-turkey-b]
+    paths:
+      - 'scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_b_v1.php'
+      - '.github/workflows/hotel-match-tv-multiop-targeted-turkey-b-v1.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-tv-multiop-targeted-1971-turkey-b-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-tv-multiop-targeted-1971-20260916-v1-turkey-b
+  OUT: /tmp/match-tv-multiop-targeted-turkey-b-v1
+jobs:
+  acquire:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '${{ github.sha }}'
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Build and validate Turkey-B runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git hash-object scripts/diagnostics/hotel_match_tv_multiop_targeted_v2.php)" = '4bc062ae83cd55ff407964646735325bca00404e'
+          php -l scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_b_v1.php
+          php scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_b_v1.php --self-test
+          php scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_b_v1.php --emit > "$RUNNER_TEMP/turkey-b-runtime.php"
+          php -l "$RUNNER_TEMP/turkey-b-runtime.php"
+          grep -Fq "HMM2_DATE='2026-11-19'" "$RUNNER_TEMP/turkey-b-runtime.php"
+          grep -Fq "'country'=>'Turkey'" "$RUNNER_TEMP/turkey-b-runtime.php"
+          grep -Fq 'country_id=4 AND is_active=1' "$RUNNER_TEMP/turkey-b-runtime.php"
+          grep -Fq 'source_anex_ids' "$RUNNER_TEMP/turkey-b-runtime.php"
+          grep -Fq 'search_created_before_poll' "$RUNNER_TEMP/turkey-b-runtime.php"
+          grep -Fq 'foreach([8,12,15,15,15] as $wait)' "$RUNNER_TEMP/turkey-b-runtime.php"
+          ! grep -Fq "'operatorIds'" "$RUNNER_TEMP/turkey-b-runtime.php"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' "$RUNNER_TEMP/turkey-b-runtime.php"
+      - name: Create durable runner reservation before SSH DB Tourvisor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          cp "$RUNNER_TEMP/turkey-b-runtime.php" "$OUT/runtime-source.php"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT']); runtime=out/'runtime-source.php'
+          data={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_db_tourvisor','credential_identifier':'TOURVISOR_JWT','date':'2026-11-19','runtime_sha256':hashlib.sha256(runtime.read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}
+          (out/'runner-reservation.json').write_text(json.dumps(data,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 'match-tv-turkey-b-reservation-${{ github.run_id }}'
+          path: |
+            ${{ env.OUT }}/runner-reservation.json
+            ${{ env.OUT }}/runtime-source.php
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run immutable targeted multi-operator Turkey-B acquisition
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/match-tv-turkey-b-key"; known="$RUNNER_TEMP/match-tv-turkey-b-known"; sock="$RUNNER_TEMP/match-tv-turkey-b.sock"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=700 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -o ServerAliveInterval=15 -o ServerAliveCountMax=6 "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0 -d memory_limit=768M" < "$OUT/runtime-source.php" > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
+          trc=$?
+          set -e
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export RC="$rc" TRC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT'])
+          def load(n):
+              try:return json.loads((out/n).read_text())
+              except Exception:return {}
+          rr=load('runner-reservation.json');sr=load('reservation.json');cp=load('search-checkpoint.json');result=load('result.json');failure=load('failure.json');receipt=load('receipt.json')
+          rh=hashlib.sha256((out/'result.json').read_bytes()).hexdigest() if (out/'result.json').exists() else None
+          fh=hashlib.sha256((out/'failure.json').read_bytes()).hexdigest() if (out/'failure.json').exists() else None
+          runtime_sha=hashlib.sha256((out/'runtime-source.php').read_bytes()).hexdigest(); state=result.get('state') or failure.get('state')
+          terminal_ok=(rr.get('state')=='reserved_before_ssh_db_tourvisor' and rr.get('operation_id')==os.environ['OPERATION_ID'] and rr.get('source_sha')==os.environ['GITHUB_SHA'] and rr.get('runtime_sha256')==runtime_sha and rr.get('no_replay') is True and sr.get('state')=='reserved_before_db_and_tourvisor_access' and sr.get('operation_id')==os.environ['OPERATION_ID'] and sr.get('source_sha')==os.environ['GITHUB_SHA'] and sr.get('no_replay') is True and receipt.get('operation_id')==os.environ['OPERATION_ID'] and receipt.get('source_sha')==os.environ['GITHUB_SHA'] and receipt.get('readback_verified') is True and receipt.get('no_replay') is True and ((rh is not None and receipt.get('result_sha256')==rh) or (fh is not None and receipt.get('failure_sha256')==fh)) and int(os.environ['TRC'])==0)
+          checkpoint_ok=(not cp) or (cp.get('operation_id')==os.environ['OPERATION_ID'] and cp.get('source_sha')==os.environ['GITHUB_SHA'] and cp.get('state')=='search_created_before_poll' and isinstance(cp.get('search_id'),int) and cp.get('search_id')>0 and cp.get('no_replay') is True)
+          gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'terminal_receipt_verified':terminal_ok,'checkpoint_verified':checkpoint_ok,'state':state,'reason':failure.get('reason'),'last_stage':failure.get('last_stage'),'search_id':result.get('search_id',cp.get('search_id')),'checkpoint_input_count':cp.get('current_input_count'),'checkpoint_source_identity_count':cp.get('source_identity_count'),'current_input_count':result.get('current_input_count'),'flattened_rows':result.get('flattened_rows'),'unique_hotel_operator_candidates':result.get('unique_hotel_operator_candidates'),'detail_rows':result.get('detail_rows'),'operator_counts':result.get('operator_counts'),'numeric_link_shapes':result.get('numeric_link_shapes'),'rate_limited':result.get('rate_limited'),'auth_rejected':result.get('auth_rejected'),'tourvisor_calls':result.get('tourvisor_calls',failure.get('tourvisor_calls')),'result_sha256':rh,'failure_sha256':fh,'runtime_sha256':runtime_sha,'remote_exit':int(os.environ['RC']),'tar_exit':int(os.environ['TRC']),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}
+          (out/'workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
+          if not terminal_ok or not checkpoint_ok: raise SystemExit(2)
+          if state not in {'completed_read_only','partial_rate_limited','partial_auth_rejected'}: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 'match-tv-turkey-b-${{ github.run_id }}'
+          path: '${{ env.OUT }}/'
+          retention-days: 90
