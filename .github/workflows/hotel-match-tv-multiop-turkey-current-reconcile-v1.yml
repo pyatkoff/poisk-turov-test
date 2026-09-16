@@ -1,0 +1,87 @@
+name: MATCH TV multiop Turkey CURRENT reconcile v1
+on:
+  push:
+    branches: [ops/match-tv-multiop-turkey-current-reconcile-1971-20260916-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_multiop_turkey_current_reconcile_v1.php
+      - .github/workflows/hotel-match-tv-multiop-turkey-current-reconcile-v1.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-tv-multiop-turkey-current-reconcile-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-tv-multiop-turkey-current-reconcile-1971-20260916-v1
+  OUT: /tmp/match-tv-multiop-turkey-current-reconcile-v1
+jobs:
+  reconcile:
+    if: github.actor == 'pyatkoff' && github.run_number == 1 && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate read-only diagnostic
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_tv_multiop_turkey_current_reconcile_v1.php
+          php scripts/diagnostics/hotel_match_tv_multiop_turkey_current_reconcile_v1.php --self-test
+          grep -Fq 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' scripts/diagnostics/hotel_match_tv_multiop_turkey_current_reconcile_v1.php
+          grep -Fq "'tourvisor_calls'=>0" scripts/diagnostics/hotel_match_tv_multiop_turkey_current_reconcile_v1.php
+      - name: Runner reservation before SSH DB
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['OUT'])/'runner-reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_db','read_only':True,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-tv-multiop-turkey-current-reservation-${{ github.run_id }}
+          path: ${{ env.OUT }}/runner-reservation.json
+          retention-days: 90
+      - name: Run immutable CURRENT reconcile
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          set +e
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0" < scripts/diagnostics/hotel_match_tv_multiop_turkey_current_reconcile_v1.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
+          trc=$?
+          set -e
+          rm -f "$key" "$known"
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export RC="$rc" TRC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['OUT'])
+          def load(n):
+            try:return json.loads((p/n).read_text())
+            except:return {}
+          r=load('result.json'); c=load('receipt.json')
+          rh=hashlib.sha256((p/'result.json').read_bytes()).hexdigest() if (p/'result.json').exists() else None
+          ok=(r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('source_sha')==os.environ['GITHUB_SHA'] and r.get('status')=='completed_read_only' and r.get('database_writes')==0 and r.get('mapping_writes')==0 and r.get('tourvisor_calls')==0 and r.get('supplier_calls')==0 and c.get('result_sha256')==rh and c.get('readback_verified') is True and c.get('no_replay') is True)
+          gate={'verified':ok,'status':r.get('status'),'typed_identity_30752_hits':len(r.get('typed_identity_30752_hits') or []),'anex_mapping_rows':len(r.get('anex_mapping_rows') or []),'saved_operator_observations':len(r.get('saved_operator_observations') or []),'result_sha256':rh,'remote_exit':int(os.environ['RC']),'tar_exit':int(os.environ['TRC']),'no_replay':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-tv-multiop-turkey-current-${{ github.run_id }}
+          path: ${{ env.OUT }}/
+          retention-days: 90
