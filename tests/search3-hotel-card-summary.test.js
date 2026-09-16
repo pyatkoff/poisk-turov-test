@@ -22,8 +22,8 @@ global.CustomEvent = class CustomEvent {
   constructor(type, init) { this.type = type; this.detail = init && init.detail; }
 };
 
-vm.runInThisContext(fs.readFileSync('v2/results-renderer-v5.js', 'utf8'), { filename: 'v2/results-renderer-v5.js' });
-const api = window.V2Results;
+const { loadSearch3Renderer } = require('./helpers/search3-renderer-bootstrap.js');
+const api = loadSearch3Renderer();
 assert.ok(api, 'renderer API is available');
 
 const multi = {

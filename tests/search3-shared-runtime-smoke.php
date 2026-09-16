@@ -22,7 +22,13 @@ try {
         copy($root . '/v2/' . $name, $temp . '/' . $name);
     }
     require $root . '/v2/assets.php';
-    foreach (v2_bundle_files('js', 'full') as $name) copy($root . '/v2/' . $name, $temp . '/' . $name);
+    // Search3 may add scoped dependencies that intentionally do not belong to legacy full.
+    // Reproduce both real manifests; a partial fixture is not a valid bundle response.
+    $fixtureFiles = array_unique(array_merge(v2_bundle_files('js', 'full'), v2_bundle_files('js', 'search3')));
+    foreach ($fixtureFiles as $name) {
+        verify_shared(is_file($root . '/v2/' . $name), 'fixture source missing: ' . $name);
+        verify_shared(copy($root . '/v2/' . $name, $temp . '/' . $name), 'fixture copy failed: ' . $name);
+    }
     $full = render_shared($temp, 'full');
     $plain = render_shared($temp, 'search3');
     $map = json_decode(file_get_contents($root . '/v2/search3-shared-runtime.json'), true, 512, JSON_THROW_ON_ERROR);

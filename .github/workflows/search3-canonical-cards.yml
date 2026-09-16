@@ -1,0 +1,66 @@
+name: Search3 canonical cards
+on:
+  pull_request:
+    paths:
+      - 'v2/search3-canonical-profiles-v1.js'
+      - 'v2/results-renderer-v5.js'
+      - 'v2/search3-room-normalizer-v1.js'
+      - 'v2/andromeda-provider-v1.js'
+      - 'v2/tour-controller-v4.js'
+      - 'v2/search-lifecycle-v6.js'
+      - 'v2/search3-results-filters-v1.js'
+      - 'v2/search3-results-filters-v1.css'
+      - 'v2/bundle-manifest-v1.php'
+      - 'v2/search3-shared-runtime.json'
+      - 'tests/search3-canonical-profiles.cjs'
+      - 'tests/search3-canonical-cards-browser.py'
+      - '.github/workflows/search3-canonical-cards.yml'
+permissions:
+  contents: read
+jobs:
+  canonical-cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Pure profile and syntax contracts
+        run: |
+          node --check v2/search3-canonical-profiles-v1.js
+          node --check v2/results-renderer-v5.js
+          node --check v2/andromeda-provider-v1.js
+          node tests/search3-canonical-profiles.cjs
+          node tests/search3-owner-size-guard.test.js
+          php -l v2/bundle-manifest-v1.php
+          python -m py_compile tests/search3-canonical-cards-browser.py
+      - name: Install pinned offline browser test tools
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: Real renderer filters controller lifecycle and provider integration with fixture transport
+        env:
+          SEARCH3_BASE_RENDERER: ${{ runner.temp }}/renderer-before-canonical.js
+        run: |
+          git show 7482c62f2e6b6cb3d7f202441281868d500652d9:v2/results-renderer-v5.js > "$SEARCH3_BASE_RENDERER"
+          python tests/search3-canonical-cards-browser.py
+      - name: Retain offline acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-canonical-cards-${{ github.event.pull_request.head.sha }}
+          path: canonical-card-evidence/
+          if-no-files-found: warn
+          retention-days: 14
