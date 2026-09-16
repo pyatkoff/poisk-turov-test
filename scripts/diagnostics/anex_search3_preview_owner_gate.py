@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import sys
 
-COMMAND = "/publish-anex-search3-preview-2530-v1"
+COMMAND = "/publish-anex-search3-preview-2530-v2"
 REPOSITORY = "pyatkoff/poisk-turov-test"
 OWNER_LOGIN = "pyatkoff"
 OWNER_ID = 226193297
