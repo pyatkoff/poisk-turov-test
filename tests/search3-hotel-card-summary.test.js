@@ -139,6 +139,8 @@ const localHtml=api.hotelMainHtml({id:21477,name:'Supplier name',picturelink:'ht
 assert.match(localHtml,/Локальный отель/,'local hotel name owns the hotel card');
 assert.match(localHtml,/hotel-gallery-thumb/,'local gallery is available before offer selection');
 assert.match(localHtml,/Поменять главное фото, миниатюра 1/,'gallery keeps a truthful named keyboard action after swapping photos');
+assert.doesNotMatch(localHtml,/supplier\.example\/photo\.jpg/,'supplier result photo is never mixed into a populated local gallery');
+assert.equal((localHtml.match(/img\.example\/1\.jpg/g)||[]).length,1,'exact duplicates inside the local gallery remain deduplicated');
 assert.match(localHtml,/class="hotel-description-summary">Проверенное описание · Вторая строка<\/p>/,'legacy line markup becomes readable plain text in the collapsed hotel presentation');
 assert.match(localHtml,/Подробнее об отеле/,'trusted local details have one clearly labelled native disclosure');
 assert.match(localHtml,/Промо: 24 кв\.м\. · Стандарт: 30 кв\.м\./,'legacy room-list markup becomes readable plain text');
@@ -184,6 +186,10 @@ assert.equal(api.sorted([sourceFacts,otherFacts],'rating')[0],otherFacts,'rating
 assert.equal(api.sorted([otherFacts,sourceFacts],'stars')[0],sourceFacts,'category order follows the displayed local category');
 const inlineImage=api.hotelMainHtml({id:'fixture',name:'Fixture',picturelink:'data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22/%3E'});
 assert.match(inlineImage,/class="hotel-photo hotel-gallery"/,'bounded image data URI fixtures retain the established card geometry');
+const emptyLocal={...local,id:21483,primaryImage:'',images:[]};
+api.hotelDetailsCache.set('21483',emptyLocal);
+const fallbackImage=api.hotelMainHtml({id:21483,name:'Fallback',picturelink:'https://supplier.example/fallback.jpg'});
+assert.match(fallbackImage,/https:\/\/supplier\.example\/fallback\.jpg/,'supplier result photo remains the fallback when the local gallery has no valid image');
 const unsafeImage=api.hotelMainHtml({id:'unsafe',name:'Unsafe',picturelink:'javascript:alert(1)'});
 assert.doesNotMatch(unsafeImage,/javascript:/,'non-image and executable URL schemes never reach image markup');
 

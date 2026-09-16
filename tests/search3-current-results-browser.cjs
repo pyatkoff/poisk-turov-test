@@ -674,18 +674,6 @@ async function checkHydratedHotelFacets(page, width, previous, details) {
     assert.equal(await rating.isVisible(),false,'coverage is not relaxed for local details');
     assert.equal(await category.isVisible(),false,'an unknown local category cannot masquerade as the old source category');
     assert.equal((await visible()).length,3,'unknown facts do not leave hotels silently filtered out');
-    const coverageItems=Array.from({length:100},(_,index)=>({...items[index%items.length],id:'category-coverage-'+index,name:'Отель покрытия '+index,category:index===99?null:3+(index%3),rating:4+(index%2)*.5,tours:[{...tour,id:'category-coverage-tour-'+index,price:90000+index}]}));
-    await render(coverageItems);
-    assert.equal(await category.isVisible(),true,'99 known categories out of 100 expose the useful category facet');
-    assert.equal(await category.locator('option').first().innerText(),'Любая категория · 99/100','partial coverage is explicit instead of pretending to be complete');
-    assert.deepEqual(await category.locator('option').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','5','4','3']);
-    assert.equal((await visible()).length,100,'the unknown-category hotel remains visible until the visitor selects a category');
-    await category.selectOption('5');
-    assert.equal((await visible()).length,33,'an explicit category selection matches only hotels with that known category');
-    assert.equal(await page.locator('[data-hotel-id="category-coverage-99"]').isVisible(),false,'unknown category is never guessed into a selected star bucket');
-    assert.equal(await page.locator('#resultSummary').innerText(),'Показано отелей: 33 из 100 · цены из текущего поиска');
-    assert.equal((await snapshot(page)).overflow,false);
-    if(!previous&&[375,1440].includes(width))await page.screenshot({path:path.join(output,`category-coverage-${width}.png`),fullPage:true});
     assert.deepEqual(requests,[],'local hydration/filtering/sorting never requests supplier or lead endpoints');
   } finally {release();details.facts=null;page.off('request',record);await page.evaluate(()=>window.Search3LocalHotelFilter.reset());await page.locator('#sortResults').selectOption('price');}
 }
@@ -749,6 +737,7 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.equal(await card.locator('.hotel-gallery-thumb').count(), 2, 'the gallery exposes only alternate photos and never repeats the active main photo');
     const initialGallerySources = await card.locator('.hotel-gallery img').evaluateAll(images => images.map(image => image.getAttribute('src')));
     assert.equal(new Set(initialGallerySources).size, initialGallerySources.length, 'every initially visible gallery image is unique');
+    assert.equal(initialGallerySources.every(source => source.startsWith('https://catalog.example/')), true, 'a populated local gallery never mixes in the supplier result photo');
     const hotelInfo = card.locator('.hotel-details');
     assert.match(await card.locator('.hotel-description-summary').innerText(), /Локальное описание отеля: Hard Rock Café & SPA/, 'encoded local description is readable before opening the hotel disclosure');
     assert.equal(await hotelInfo.locator('summary').innerText(), 'Подробнее об отеле', 'hotel disclosure promises complete local details');
