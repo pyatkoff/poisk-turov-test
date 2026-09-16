@@ -1,0 +1,29 @@
+name: INT Andromeda served-price accuracy
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-served-price-accuracy.php'
+      - 'tests/andromeda-served-price-accuracy-test.php'
+      - '.github/workflows/int-andromeda-served-accuracy.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          php -l app/integrations/andromeda-served-price-accuracy.php
+          php -l tests/andromeda-served-price-accuracy-test.php
+          php -d allow_url_fopen=0 tests/andromeda-served-price-accuracy-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('app/integrations/andromeda-served-price-accuracy.php').read_text()
+          for x in ('curl_','file_get_contents(','fopen(','PDO','mysqli_','INSERT ','UPDATE ','DELETE '):
+              assert x not in src, x
+          for x in ('natural_customer_actualizations','exact_accuracy','within_300_bps_accuracy','p90_relative_delta_bps','runtime_gate_applied'):
+              assert x in src, x
+          print('INT Andromeda served-price accuracy boundary: PASS')
+          PY
