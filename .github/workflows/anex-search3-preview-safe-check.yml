@@ -1,0 +1,46 @@
+name: ANEX Search3 preview safe publisher check
+
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'scripts/diagnostics/anex_search3_preview_deploy.py'
+      - 'scripts/diagnostics/anex_search3_preview_deploy_safe.py'
+      - 'tests/anex_search3_preview_deploy_test.py'
+      - 'tests/anex_search3_preview_safe_deploy_test.py'
+      - '.github/workflows/anex-search3-preview-safe-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anex-search3-preview-safe-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+jobs:
+  safe-publisher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify exact PR head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Compile safe publisher
+        run: python3 -m py_compile scripts/diagnostics/anex_search3_preview_deploy_safe.py tests/anex_search3_preview_safe_deploy_test.py
+      - name: Verify generated remote shell syntax
+        run: |
+          python3 - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          path = Path('scripts/diagnostics/anex_search3_preview_deploy_safe.py')
+          spec = importlib.util.spec_from_file_location('safe', path)
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          Path('/tmp/anex-safe-remote.sh').write_text(module.remote_script('a' * 40 + '-' + 'b' * 12), encoding='utf-8')
+          PY
+          bash -n /tmp/anex-safe-remote.sh
+      - name: Run publisher fixtures
+        run: python3 -m unittest tests/anex_search3_preview_deploy_test.py tests/anex_search3_preview_safe_deploy_test.py
