@@ -20,7 +20,7 @@ try {
     if(realpath($directory)!==$directory||!is_dir($directory)||is_link($directory))throw new RuntimeException('search_store_missing');
 
     $runtimeSupports=false;
-    foreach([$target.'/api-andromeda-selected-quote.php',$target.'/app/integrations/andromeda-price-observation.php'] as $source){
+    foreach([$target.'/api-andromeda-quote-preview.php',$target.'/app/integrations/andromeda-price-observation.php'] as $source){
         if(is_file($source)&&!is_link($source)){
             $text=file_get_contents($source);
             if(is_string($text)&&strpos($text,'served_price_observation')!==false)$runtimeSupports=true;
