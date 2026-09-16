@@ -144,7 +144,7 @@ function syncHotelFacets(){
   const c=numericCoverage(categories,.95),category=syncSelect(categoryField,categorySelect,c.a?categories.filter(value=>value>0):[],'Любая категория'+(c.a?' · '+c.k+'/'+c.t:''),value=>value+'★');
   syncPresets(categoryPresets,categorySelect,Array.from(categorySelect.options).slice(1).map(item=>({value:item.value,label:item.textContent})),'0');
   const r=numericCoverage(ratings,.95);ratingField.hidden=!r.a;ratingCoverage.textContent=r.a?'Рейтинг указан у '+r.k+' из '+r.t+' отелей':'';if(!r.a)ratingSelect.value='0';
-  const s=numericCoverage(seas,.8);seaField.hidden=!s.a;if(s.a)seaSelect.options[0].textContent='Любое расстояние · '+s.k+'/'+s.t;else seaSelect.value='0';
+  const s=seas.filter(value=>value>0).length;seaField.hidden=seas.length<2||!s;if(!seaField.hidden)seaSelect.options[0].textContent='Любое расстояние · '+s+'/'+seas.length;else seaSelect.value='0';
   return{regions,categories,ratings,seas,region,category,rating:Number(ratingSelect.value||0),sea:Number(seaSelect.value||0)};
 }
 function prices(items){const result=[];items.forEach(h=>(Array.isArray(h&&h.tours)?h.tours:[]).forEach(t=>{const value=Number(t&&t.price||0);if(value>0)result.push(value);}));return result;}
