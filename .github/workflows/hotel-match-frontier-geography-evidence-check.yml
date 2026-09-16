@@ -12,9 +12,6 @@ jobs:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    env:
-      MATCH_GEO_DOSSIER_ZIP: ${{ runner.temp }}/match-geo-inputs/dossier.zip
-      MATCH_GEO_CENSUS_ZIP: ${{ runner.temp }}/match-geo-inputs/census.zip
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
@@ -29,11 +26,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir "$RUNNER_TEMP/match-geo-inputs"
-          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10447857357/zip > "$MATCH_GEO_DOSSIER_ZIP"
-          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10394524643/zip > "$MATCH_GEO_CENSUS_ZIP"
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10447857357/zip > "$RUNNER_TEMP/match-geo-inputs/dossier.zip"
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10394524643/zip > "$RUNNER_TEMP/match-geo-inputs/census.zip"
       - name: Test full frontier and reproduce geography support
         run: |
           set -euo pipefail
+          export MATCH_GEO_DOSSIER_ZIP="$RUNNER_TEMP/match-geo-inputs/dossier.zip"
+          export MATCH_GEO_CENSUS_ZIP="$RUNNER_TEMP/match-geo-inputs/census.zip"
           python3 tests/hotel_match_frontier_geography_evidence_test.py
           python3 scripts/diagnostics/hotel_match_frontier_geography_evidence.py "$MATCH_GEO_DOSSIER_ZIP" "$MATCH_GEO_CENSUS_ZIP" "$RUNNER_TEMP/match-frontier-geography-20260916.json"
           echo "a7e32249fd1a63e8783e92f8871314644ef5cf3fa1c6593b23be87c0b1dd75e8  $RUNNER_TEMP/match-frontier-geography-20260916.json" | sha256sum -c -
