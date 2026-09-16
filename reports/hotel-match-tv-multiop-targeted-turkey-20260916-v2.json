@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "operation_id": "hotel-match-tv-multiop-targeted-turkey-1971-20260916-v2",
+  "source_sha": "7f70ae7d60098374b3cd8f1dab13fbf37a6e9caa",
+  "run_id": 35071330232,
+  "artifact_id": 10436510901,
+  "artifact_digest": "sha256:d405cd4d2a1f7ee0650243635a760f0974ca7cccb89f9ad6d2b90146c54b649b",
+  "result_sha256": "514e47d889ae73279b16d8a62d76e8c7fd52aef2a5e3646d888758c99791d468",
+  "status": "completed",
+  "readback_verified": true,
+  "no_replay": true,
+  "date": "2026-11-17",
+  "input_rows": 18,
+  "current_focus_count": 14,
+  "pruned": {"mapped": 4, "manual": 0, "excluded": 0, "inactive": 0},
+  "search_id": 13630248569,
+  "tourvisor_calls": 12,
+  "selected_hotel_operator_pairs": 7,
+  "captured": 7,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "supplier_calls": 0,
+  "evidence": [
+    {"tourvisor_hotel_id": 2160, "hotel_name": "ELYSEE RIVE (EX. ELYSEE HOTEL)", "operator_id": 12, "operator_name": "Pegas Touristik", "link_host": "agency.pegast.ru", "link_path": "/PackageBooking/Construct", "native_status": "non_numeric_id_value_not_retained"},
+    {"tourvisor_hotel_id": 2160, "hotel_name": "ELYSEE RIVE (EX. ELYSEE HOTEL)", "operator_id": 18, "operator_name": "Biblioglobus", "link_host": "www.bgoperator.ru", "link_path": "/price.shtml", "native_status": "booking_context_only_not_asserted_as_hotel_id"},
+    {"tourvisor_hotel_id": 17443, "hotel_name": "GRAND EMIN HOTEL LALELI", "operator_id": 12, "operator_name": "Pegas Touristik", "link_host": "agency.pegast.ru", "link_path": "/PackageBooking/Construct", "native_status": "non_numeric_id_value_not_retained"},
+    {"tourvisor_hotel_id": 1221, "hotel_name": "MEGASARAY RESORT SIDE (EX. ASKA SIDE HOTEL)", "operator_id": 12, "operator_name": "Pegas Touristik", "link_host": "agency.pegast.ru", "link_path": "/PackageBooking/Construct", "native_status": "non_numeric_id_value_not_retained"},
+    {"tourvisor_hotel_id": 1221, "hotel_name": "MEGASARAY RESORT SIDE (EX. ASKA SIDE HOTEL)", "operator_id": 11, "operator_name": "Coral", "native_status": "operator_link_missing"},
+    {"tourvisor_hotel_id": 1221, "hotel_name": "MEGASARAY RESORT SIDE (EX. ASKA SIDE HOTEL)", "operator_id": 25, "operator_name": "Fun&Sun (RU)", "link_host": "b2b.fstravel.com", "link_path": "/search_tour", "native_hotel_parameter": "hotels", "native_hotel_id": 30752, "native_status": "direct_operator_link_parameter"},
+    {"tourvisor_hotel_id": 1221, "hotel_name": "MEGASARAY RESORT SIDE (EX. ASKA SIDE HOTEL)", "operator_id": 18, "operator_name": "Biblioglobus", "link_host": "www.bgoperator.ru", "link_path": "/price.shtml", "native_status": "booking_context_only_not_asserted_as_hotel_id"}
+  ],
+  "next": "CURRENT cross-provider reconciliation for TV 1221 / FUN&SUN native hotel 30752 and name/alias guards for TV 2160, 17443, 1221. Do not replay this Tourvisor search or its detail calls."
+}
