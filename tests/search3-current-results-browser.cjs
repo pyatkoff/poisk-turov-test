@@ -1133,11 +1133,17 @@ async function run(browser, width, previous) {
     const preservedBeforeCalendar = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()].filter(([name]) => !['dateFrom', 'dateTo'].includes(name)));
     await page.evaluate(() => {
       window.__calendarSubmits = 0;
-      window.V2SearchLifecycle.submit = () => { window.__calendarSubmits += 1; };
+      window.V2SearchLifecycle.submit = () => {
+        window.__calendarSubmits += 1;
+        window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { dirty: false } }));
+      };
     });
     if (!(await calendarDisclosure.evaluate(node => node.open))) await calendar.locator('summary').click();
-    await calendar.locator('[data-calendar-date="2026-09-14"]').click();
+    await calendar.locator('[data-calendar-date="2026-09-14"]').focus();
+    await calendar.locator('[data-calendar-date="2026-09-14"]').press('Enter');
     assert.equal(await page.evaluate(() => window.__calendarSubmits), 1, 'calendar date submits through the canonical lifecycle exactly once');
+    assert.equal(await calendar.isVisible(), false, 'calendar clears when the replacement search starts');
+    assert.equal(await page.locator('#resultsSearchEdit').evaluate(node => node === document.activeElement), true, 'keyboard calendar selection restores focus before removing its date button');
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [form.elements.dateFrom.value, form.elements.dateTo.value]), ['2026-09-14', '2026-09-14'], 'calendar applies the exact selected day');
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()].filter(([name]) => !['dateFrom', 'dateTo'].includes(name))), preservedBeforeCalendar, 'calendar preserves every non-date search parameter');
     const parameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);

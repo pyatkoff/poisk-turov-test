@@ -11,6 +11,11 @@ return year>0&&month>=1&&month<=12&&day>=1&&day<=days[month-1]?parts.join('-'):'
 function dateLabel(iso){const d=new Date(iso+'T12:00:00Z');if(Number.isNaN(d.getTime()))return iso;return dayFormatter.format(d).replace(/\.$/,'');}
 function collect(items){const byDate=new Map();(Array.isArray(items)?items:[]).forEach(h=>{(Array.isArray(h&&h.tours)?h.tours:[]).forEach(t=>{const date=dateValue(t&&t.date),price=Number(t&&t.price||0);if(!date||!Number.isFinite(price)||price<=0)return;const previous=byDate.get(date);if(previous===undefined||price<previous)byDate.set(date,price);});});return Array.from(byDate.entries()).map(([date,price])=>({date,price})).sort((a,b)=>a.date.localeCompare(b.date));}
 function ensure(){let box=document.getElementById('currentPriceCalendar');if(box)return box;const tools=document.getElementById('resultsTools'),results=document.getElementById('results');if(!tools&&!results)return null;box=document.createElement('section');box.id='currentPriceCalendar';box.className='current-price-calendar';box.hidden=true;box.setAttribute('aria-labelledby','currentPriceCalendarTitle');(tools||results).insertAdjacentElement('beforebegin',box);return box;}
+function focusFallback(){
+const form=document.getElementById('tourSearch');
+const target=[document.getElementById('resultsSearchEdit'),form&&form.elements.dateFrom].find(node=>node&&node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden');
+if(target)target.focus({preventScroll:true});
+}
 function render(items){
 const box=ensure();if(!box)return[];
 const compact=document.body.classList.contains('search3-candidate'),active=document.activeElement;
@@ -21,11 +26,7 @@ const previous=box.querySelector('details');if(previous)disclosureOpen=previous.
 const days=collect(items);
 if(days.length<2){
 box.hidden=true;box.innerHTML='';
-if(focused){
-const form=document.getElementById('tourSearch');
-const target=[document.getElementById('resultsSearchEdit'),form&&form.elements.dateFrom].find(node=>node&&node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden');
-if(target)target.focus({preventScroll:true});
-}
+if(focused)focusFallback();
 return days;
 }
 const best=Math.min.apply(null,days.map(x=>x.price));
@@ -45,7 +46,7 @@ else if(rect.right+5>viewport.right)strip.scrollLeft+=rect.right+5-viewport.righ
 }
 }
 return days;}
-function clear(){disclosureOpen=null;const box=document.getElementById('currentPriceCalendar');if(box){box.hidden=true;box.innerHTML='';}}
+function clear(){disclosureOpen=null;const box=document.getElementById('currentPriceCalendar'),restoreFocus=box&&box.contains(document.activeElement);if(box){box.hidden=true;box.innerHTML='';}if(restoreFocus)focusFallback();}
 function complete(event){terminal=true;render(filteredItems||event&&event.detail&&event.detail.items);}
 function reset(event){if(!(event&&event.detail&&event.detail.dirty)){terminal=false;filteredItems=null;}clear();}
 window.addEventListener('v2:search-complete',complete);
