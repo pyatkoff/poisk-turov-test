@@ -26,9 +26,12 @@ const aliases=[
 {key:'family-suite',label:'Семейный люкс',aliases:['family suite','семейный люкс']},
 {key:'family-suite-2-bedroom-side-sea-view',label:'Семейный люкс · 2 спальни · боковой вид на море',aliases:['family suite with two bedrooms and side sea view','семейный люкс 2 спальни боковой вид на море']}
 ];
+// Keep exact alias keys and first-match priority; do not broaden room identities.
+const byAlias=new Map();
+for(const entry of aliases)for(const alias of entry.aliases)if(!byAlias.has(alias))byAlias.set(alias,entry);
 function text(value){return String(value==null?'':value).replace(/\s+/g,' ').trim();}
 function normalize(value){return text(value).toLocaleLowerCase('ru-RU').replace(/ё/g,'е').replace(/[–—]/g,'-').replace(/[.,]/g,'').replace(/\s*[-·]\s*/g,' ').replace(/\s+/g,' ').trim();}
-function identity(value){const raw=text(value);if(!raw)return null;const normalized=normalize(raw),item=aliases.find(entry=>entry.aliases.includes(normalized));return item?{key:'room:'+item.key,label:item.label}:{key:'room:label:'+normalized,label:raw};}
+function identity(value){const raw=text(value);if(!raw)return null;const normalized=normalize(raw),item=byAlias.get(normalized);return item?{key:'room:'+item.key,label:item.label}:{key:'room:label:'+normalized,label:raw};}
 function label(value){const item=identity(value);return item?item.label:text(value);}
 window.Search3RoomNormalizerV1={identity,label,normalize,version:1};
 })();
