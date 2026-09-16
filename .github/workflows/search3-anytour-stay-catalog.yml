@@ -1,0 +1,45 @@
+name: Search3 canonical rooms and meal plans
+on:
+  pull_request:
+    paths:
+      - 'v2/data/anytour-stay-catalog-v1.php'
+      - 'v2/data/migrations/20260916-anytour-stay-catalog.sql'
+      - 'v2/data/migrations/20260916-anytour-canonical-catalog.sql'
+      - 'tests/anytour_stay_catalog_test.php'
+      - '.github/workflows/search3-anytour-stay-catalog.yml'
+permissions:
+  contents: read
+jobs:
+  stay-catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_stay_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Syntax
+        run: |
+          php -l v2/data/anytour-stay-catalog-v1.php
+          php -l tests/anytour_stay_catalog_test.php
+      - name: Real disposable MySQL room and meal contracts
+        env:
+          ANYTOUR_STAY_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_fixture;charset=utf8mb4'
+          ANYTOUR_STAY_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour_stay_catalog_test.php
