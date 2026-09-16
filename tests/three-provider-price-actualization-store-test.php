@@ -45,7 +45,6 @@ store_check($summary['providers']['andromeda']['operators']['ANEX']['accuracy'] 
 store_check($summary['providers']['anex']['accuracy'] === 1.0);
 store_check($summary['providers']['tourvisor']['operators']['PEGAS']['accuracy'] === 1.0);
 
-// Bounded summary uses the newest rows only; append order remains durable evidence.
 $lastTwo = AnyTourThreeProviderPriceActualizationStore::summarize($path, 2);
 store_check($lastTwo['total'] === 2 && $lastTwo['exact'] === 2 && $lastTwo['accuracy'] === 1.0);
 store_check(array_keys($lastTwo['providers']) === ['anex', 'tourvisor']);
@@ -53,6 +52,10 @@ store_check(array_keys($lastTwo['providers']) === ['anex', 'tourvisor']);
 $bad = store_row('andromeda', 'ANEX', '185125', '199390', 1);
 $bad['quote_final_price_verified'] = false;
 store_reject(static fn() => AnyTourThreeProviderPriceActualizationStore::append($path, $bad), 'THREE_PROVIDER_ACTUALIZATION_OBSERVATION');
+
+$forgedExact = store_row('andromeda', 'ANEX', '185125', '199390', 1);
+$forgedExact['exact_match'] = true;
+store_reject(static fn() => AnyTourThreeProviderPriceActualizationStore::append($path, $forgedExact), 'THREE_PROVIDER_ACTUALIZATION_EXACT_MATCH');
 
 $private = store_row('andromeda', 'ANEX', '185125', '199390', 1);
 $private['tour']['offer_ref'] = 'private';
