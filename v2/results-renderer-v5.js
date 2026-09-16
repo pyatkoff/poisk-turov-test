@@ -83,7 +83,7 @@ function hotelKey(h){return String(h&&h.id!==undefined&&h.id!==null?h.id:'');}
 function localHotelId(h){const key=hotelKey(h);return /^\d+$/.test(key)&&Number(key)>0?key:'';}
 function hotelDetailsBase(){const script=document.currentScript&&document.currentScript.src||document.querySelector('script[src*="bundle-v1.php"]')?.src;return script?new URL('data/hotel-details-read-v1.php',script).pathname:'data/hotel-details-read-v1.php';}
 const hotelDetailsEndpoint=hotelDetailsBase();
-const ownProfiles=/^\/_preview\/search3-local-candidate(?:\/|$)/.test(window.location&&window.location.pathname||'')?window.Search3CanonicalProfilesV1.create(()=>render(ownProfiles.source(),ownProfiles.options())):null;
+const ownProfiles=isSearch3()&&/^\/_preview\/search3-local-candidate(?:\/|$)/.test(window.location&&window.location.pathname||'')?window.Search3CanonicalProfilesV1.create(()=>render(ownProfiles.source(),ownProfiles.options())):null;
 function decodeHotelTextEntities(value){
  const named={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' '};
  return value.replace(/&(#(?:x[0-9a-f]+|[0-9]+)|amp|lt|gt|quot|apos|nbsp);/gi,(entity,key)=>{
