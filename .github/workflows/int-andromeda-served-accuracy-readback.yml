@@ -1,0 +1,49 @@
+name: INT Andromeda served accuracy readback
+
+on:
+  push:
+    branches: ['feat/int-andromeda-served-accuracy-readback-20260916']
+    paths:
+      - 'scripts/diagnostics/andromeda_served_price_accuracy_remote.py'
+      - 'tests/andromeda-served-price-accuracy-remote-test.py'
+      - 'runtime-control/int-andromeda-served-accuracy-readback.txt'
+      - '.github/workflows/int-andromeda-served-accuracy-readback.yml'
+permissions:
+  contents: read
+jobs:
+  read-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Offline contract
+        run: |
+          set -euo pipefail
+          python3 tests/andromeda-served-price-accuracy-remote-test.py
+      - name: Check exact one-shot control
+        id: control
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=$'READ_ONLY_ANDROMEDA_ACCURACY_V1\nBASE=18a945362d9894fea5310ba9573ad84e9f6755d7\n'
+          actual=''
+          if [[ -f runtime-control/int-andromeda-served-accuracy-readback.txt ]]; then actual="$(cat runtime-control/int-andromeda-served-accuracy-readback.txt)"$'\n'; fi
+          if [[ "$actual" == "$expected" ]]; then echo 'run_live=true' >> "$GITHUB_OUTPUT"; else echo 'run_live=false' >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.control.outputs.run_live == 'true'
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Read aggregate accuracy from server without writes or supplier calls
+        if: steps.control.outputs.run_live == 'true'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          set -euo pipefail
+          python3 -B scripts/diagnostics/andromeda_served_price_accuracy_remote.py --read-only
