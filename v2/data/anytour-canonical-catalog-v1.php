@@ -262,6 +262,44 @@ final class AnyTourCanonicalCatalog
         return $result;
     }
 
+    /**
+     * Translate already-resolved legacy targets, never supplier IDs. Both SELECTs
+     * share one read-only snapshot. Missing/inactive profiles have no fallback.
+     */
+    public function readLegacyProfiles(array $legacyIds): array
+    {
+        self::ids($legacyIds); // Exact key validation, including no leading zeros.
+        $ids = hotel_presentation_read_ids($legacyIds); // 100 max; caller order.
+        $this->begin(false); // Outside try: never roll back a caller transaction.
+        try {
+            $targets = $this->legacyTargets($ids);
+            $profiles = $targets === [] ? [] : $this->read(array_values($targets))['items'];
+            $byId = [];
+            foreach ($profiles as $profile) $byId[$profile['id']] = $profile;
+            $items = $links = $missing = $seen = [];
+            foreach ($ids as $legacyId) {
+                $ownId = $targets[$legacyId] ?? null;
+                if ($ownId === null || !isset($byId[$ownId])) {
+                    $missing[] = $legacyId;
+                    continue;
+                }
+                $links[] = ['legacyHotelId' => $legacyId, 'anytourHotelId' => $ownId];
+                if (!isset($seen[$ownId])) {
+                    $items[] = $byId[$ownId];
+                    $seen[$ownId] = true;
+                }
+            }
+            $result = ['source' => 'anytour-canonical-catalog', 'catalog' => 'anytour',
+                'requestedLegacyIds' => $ids, 'items' => $items, 'links' => $links,
+                'missingLegacyIds' => $missing];
+            $this->pdo->commit();
+            return $result;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
     public function read(array $anytourIds): array
     {
         $ids = self::ids($anytourIds);

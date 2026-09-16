@@ -1,0 +1,53 @@
+name: Search3 canonical profile read bridge
+on:
+  pull_request:
+    paths:
+      - 'v2/data/anytour-canonical-catalog-v1.php'
+      - 'v2/data/hotel-details-read-v1.php'
+      - 'v2/data/hotel-presentation-read-v1.php'
+      - 'v2/data/hotel-details-v1.php'
+      - 'v2/data/migrations/20260916-anytour-canonical-catalog.sql'
+      - 'tests/anytour_canonical_read_test.php'
+      - '.github/workflows/search3-anytour-canonical-read.yml'
+permissions:
+  contents: read
+jobs:
+  canonical-read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_canonical_read_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Syntax and full actual MySQL plus HTTP checks
+        env:
+          ANYTOUR_CANONICAL_READ_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_canonical_read_fixture;charset=utf8mb4'
+          ANYTOUR_TEST_PASSWORD: fixture-only-password
+        run: |
+          set -euo pipefail
+          php -l v2/data/anytour-canonical-catalog-v1.php
+          php -l v2/data/hotel-details-read-v1.php
+          php -l tests/anytour_canonical_read_test.php
+          php tests/anytour_canonical_read_test.php | tee canonical-read-result.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-read-result
+          path: canonical-read-result.txt
+          if-no-files-found: error
