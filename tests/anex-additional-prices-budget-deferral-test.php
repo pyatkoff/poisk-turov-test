@@ -69,7 +69,8 @@ $result = anytour_anex_additional_prices_batch_execute(
 expect($readerCalls === 2, 'later batch must retry the context after local budget recovery');
 expect(($result['offers'][0]['status'] ?? null) === 'complete', 'retried APD context must complete');
 expect(($result['offers'][0]['additional_prices'] ?? null) === $evidence, 'completed evidence must be returned unchanged');
-expect(($result['offers'][0]['retryable'] ?? null) === false && ($result['offers'][0]['retry_reason'] ?? 'sentinel') === null,
+expect(($result['offers'][0]['retryable'] ?? null) === false
+    && array_key_exists('retry_reason', $result['offers'][0]) && $result['offers'][0]['retry_reason'] === null,
     'completed APD context must not request another retry');
 expect(($state['additional_prices'][$digest]['status'] ?? null) === 'complete', 'successful retry must become durable complete');
 
