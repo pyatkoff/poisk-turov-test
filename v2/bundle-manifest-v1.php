@@ -30,7 +30,13 @@ function v2_bundle_files(string $type, string $scope = 'full'): array
         // current-price calendar is a shared product owner on both routes.
         'js' => ['header-current-site.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'hotel-actions-v3.js', 'room-details-v3.js', 'selected-tour-return-v1.js', 'selected-tour-description-v1.js', 'checkout-experience-v1.js', 'price-confidence-v1.js', 'hotel-autocomplete-v1.js', 'search-filters-ux-v1.js', 'search-params-filter-rail-v1.js', 'results-depth-v1.js', 'results-local-filters-v1.js', 'results-filter-autorefresh-v1.js', 'mobile-results-filters-v1.js', 'primary-meal-ux-v1.js', 'search-progress-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'mobile-search-summary-v1.js', 'ds2-results-filters.js', 'search-redesign-v2.js', 'accessibility.js'],
     ];
-    return array_values(array_diff($manifest[$type], $excluded[$type]));
+    $files = array_values(array_diff($manifest[$type], $excluded[$type]));
+    if ($type === 'js') {
+        $index = array_search('results-renderer-v5.js', $files, true);
+        if ($index === false) throw new LogicException('Missing renderer dependency');
+        array_splice($files, $index, 0, ['search3-canonical-profiles-v1.js']);
+    }
+    return $files;
 }
 
 /** Selected-tour transport and price owners are needed only after a tour is chosen. */

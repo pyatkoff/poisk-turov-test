@@ -5,6 +5,8 @@ on:
     paths:
       - 'v2/results-renderer-v5.js'
       - 'v2/search3-room-normalizer-v1.js'
+      - 'v2/search3-canonical-profiles-v1.js'
+      - 'v2/andromeda-provider-v1.js'
       - 'v2/bundle-manifest-v1.php'
       - 'v2/search3-shared-runtime.json'
       - 'v2/assets/operator-logos/**'
@@ -38,6 +40,15 @@ jobs:
           node-version: '24'
       - name: Install pinned Search3 build tools
         run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - name: Regenerate canonical shared runtime candidate
+        run: node scripts/build/search3-js/shared-runtime.cjs --write
+      - name: Upload canonical shared runtime candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-renderer-date-shared-runtime
+          path: v2/search3-shared-runtime.json
+          if-no-files-found: error
+          retention-days: 3
       - name: Syntax check canonical renderer and room owner
         run: |
           node --check v2/results-renderer-v5.js
@@ -67,14 +78,5 @@ jobs:
           grep -Fq "date=formatTourDate(t.date)" v2/results-renderer-v5.js
           grep -Fq "formatTourDate" tests/search3-renderer-date-display.test.js
           grep -Fq "innerText(), '12.09.2026'" tests/search3-current-results-browser.cjs
-      - name: Regenerate canonical shared runtime candidate
-        run: node scripts/build/search3-js/shared-runtime.cjs --write
-      - name: Upload canonical shared runtime candidate
-        uses: actions/upload-artifact@v4
-        with:
-          name: search3-renderer-date-shared-runtime
-          path: v2/search3-shared-runtime.json
-          if-no-files-found: error
-          retention-days: 3
       - name: Require committed shared runtime parity
         run: git diff --exit-code -- v2/search3-shared-runtime.json

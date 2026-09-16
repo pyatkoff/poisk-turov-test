@@ -106,9 +106,14 @@ function freeze(value){if(value&&typeof value==='object'){Object.values(value).f
 function prepareQuote(ref){
  const run=active,accepted=detailTours().get(ref);if(!run||!current(run)||!accepted)return null;
  const matches=[];for(const hotel of renderer.state&&renderer.state.items||[])for(const tour of hotel.tours||[])if(tour.provider==='andromeda'&&tour.offerRef===ref)matches.push({hotel,tour});
- if(matches.length!==1)return null;const {hotel,tour}=matches[0],localId=Number(hotel.id);
+ if(matches.length!==1)return null;const {hotel,tour}=matches[0];
+ // Own-card identity is not the retained offer's source hotel identity.
+ const canonical=/^\/_preview\/search3-local-candidate(?:\/|$)/.test(root.location.pathname)&&hotel.catalog==='anytour';
+ const origins=canonical&&Array.isArray(hotel.canonicalOfferLinks)?hotel.canonicalOfferLinks.filter(link=>link&&link.tour===tour):[];
+ if(canonical&&origins.length!==1)return null;
+ const localId=Number(canonical?origins[0].legacyHotelId:hotel.id);
  if(contextKey(tour.offerContext)!==accepted.key||!Number.isSafeInteger(localId)||localId<1||localId!==accepted.localId)return null;
- const selection=JSON.parse(JSON.stringify({localId,generation:run.generation,params:run.params,tour,hotel:{id:hotel.id,name:hotel.name,country:hotel.country,region:hotel.region,subRegion:hotel.subRegion,picturelink:hotel.picturelink}}));
+ const selection=JSON.parse(JSON.stringify({localId,generation:run.generation,params:run.params,tour,hotel:{id:canonical?localId:hotel.id,anytourHotelId:canonical?hotel.anytourHotelId:undefined,name:hotel.name,country:hotel.country,region:hotel.region,subRegion:hotel.subRegion,picturelink:hotel.picturelink}}));
  return quoteRequest(selection)?freeze(selection):null;
 }
 async function verifyQuote(ref){
