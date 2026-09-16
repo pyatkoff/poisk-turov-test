@@ -39,13 +39,13 @@ final class AnyTourAnexPreviewGateway
             throw new RuntimeException('ANEX_CLOCK_ERROR');
         }
         $this->prepareSession($session, $now);
-        $this->consumeRequest($session);
         $action = $request['action'] ?? null;
         if (!is_string($action) || !in_array($action, ['search', 'expand', 'flights', 'offer'], true)) {
             throw new InvalidArgumentException('ANEX_INVALID_ACTION');
         }
         // Saved reads never instantiate the token-bearing client or fetch details.
         if ($action === 'offer') return $this->savedOffer($request, $session, $now);
+        $this->consumeRequest($session);
 
         if ($action === 'search') {
             if (!self::exactKeys($request, ['action', 'criteria']) || !is_array($request['criteria'])) {
