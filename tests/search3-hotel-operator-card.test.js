@@ -6,6 +6,7 @@ const crypto=require('node:crypto');
 global.window={addEventListener(){},dispatchEvent(){},requestAnimationFrame(fn){fn();}};
 global.document={readyState:'loading',documentElement:{dataset:{}},body:null,addEventListener(){},getElementById(){return null;},querySelector(){return null;}};
 global.CustomEvent=function CustomEvent(){};
+require('../v2/search3-room-normalizer-v1.js');
 require('../v2/results-renderer-v5.js');
 const api=window.V2Results;
 const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};
