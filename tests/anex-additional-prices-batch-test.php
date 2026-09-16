@@ -307,6 +307,7 @@ $assert($cachedRuntime['offers'][0]['additional_prices']['search_plus_additional
     && $cachedRuntime['offers'][0]['price'] === '102000',
     'cached endpoint response reapplies the same ready per-offer price without supplier replay');
 
+$sharedDigest = hash('sha256', implode("\0", ['2637', '1', '2026-10-05', '7']));
 // The exact saved-offer read must retain that completed APD listing amount without a new supplier call.
 $exactTemplate = $runtimeState;
 $exactTemplate['gateway']['expires_at'] = 1789220900;
@@ -369,7 +370,6 @@ $assert($missingExact['status'] === 'current' && $missingExact['finalPriceReady'
     'missing APD stays supplier-free and never falls back to base search price');
 
 $runtimeUnknown = $runtimeState;
-$sharedDigest = hash('sha256', implode("\0", ['2637', '1', '2026-10-05', '7']));
 $runtimeUnknown['additional_prices'][$sharedDigest] = ['status' => 'unknown'];
 $beforeFactory = $factoryCalls;
 $beforeTransport = count($transportCalls);
