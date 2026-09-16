@@ -40,7 +40,7 @@ jobs:
       !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
       startsWith(github.event.comment.body, '/update-search3-local-preview ')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -54,11 +54,10 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: shivammathur/setup-php@f3e473b116dcccaddc5834248c87452386958240
-        with:
-          php-version: '8.3'
-          extensions: mbstring
-          coverage: none
+      - name: Verify pinned runner PHP capability
+        run: |
+          set -euo pipefail
+          php -r 'if (PHP_VERSION_ID < 80300 || PHP_VERSION_ID >= 80400) { fwrite(STDERR, "PHP_83_REQUIRED\n"); exit(1); } if (!extension_loaded("mbstring")) { fwrite(STDERR, "MBSTRING_REQUIRED\n"); exit(1); } echo "PHP_RUNNER_OK ".PHP_VERSION." mbstring\n";'
       - name: Offline authorization and transaction tests
         run: |
           python3 tests/search3_local_preview_update_test.py
