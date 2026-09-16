@@ -1,17 +1,18 @@
-"""Preserve the server-side ANEX B2B credential during an isolated preview refresh.
+"""Build the isolated ANEX preview private config from both GitHub secrets.
 
-The existing ANEX preview publisher deliberately transports only the public API
-credential from GitHub Actions.  AdditionalPricesDaily uses a separate B2B
-credential already installed in the private server config.  This wrapper keeps
-that credential server-side: it validates and copies it into the newly generated
-private config before the preview/config switch.  The token is never emitted to
-stdout or copied into workflow artifacts.
+The preview needs two independent credentials: the public ANEX API token and the
+B2B token used by AdditionalPricesDaily. Both are supplied by GitHub Actions and
+written only into the ephemeral private transport archive. The B2B token is
+removed from the publisher process environment before the base publisher starts,
+and neither credential is emitted to stdout or copied into workflow artifacts.
 """
 from __future__ import annotations
 
+import base64
 import importlib.util
+import os
 from pathlib import Path
-import shlex
+import re
 
 
 BASE_PATH = Path(__file__).with_name("anex_search3_preview_deploy.py")
@@ -21,68 +22,57 @@ if SPEC is None or SPEC.loader is None:
 base = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(base)
 
+_BASE_PRIVATE_CONFIG = base.private_config
 _BASE_REMOTE_SCRIPT = base.remote_script
-
-PRESERVE_PHP = r'''if ($argc !== 3) { exit(10); }
-$old = $argv[1];
-$new = $argv[2];
-foreach ([$old, $new] as $path) {
-    if (!is_file($path) || is_link($path)) { exit(11); }
-}
-ob_start();
-try {
-    require $old;
-} catch (Throwable $e) {
-    ob_end_clean();
-    exit(12);
-}
-$output = ob_get_clean();
-if ($output !== '') { exit(13); }
-if (!defined('ANEX_B2B_TOKEN') || !is_string(ANEX_B2B_TOKEN)) { exit(14); }
-$token = ANEX_B2B_TOKEN;
-if ($token === '' || strlen($token) > 16384 || stripos($token, 'Bearer ') === 0 || preg_match('/[\x00-\x20\x7f]/', $token)) {
-    exit(15);
-}
-$next = file_get_contents($new);
-if (!is_string($next) || strlen($next) > 65536 || strpos($next, 'ANEX_B2B_TOKEN') !== false) { exit(16); }
-$line = "define('ANEX_B2B_TOKEN', base64_decode('" . base64_encode($token) . "', true));\n";
-$updated = $next . $line;
-if (file_put_contents($new, $updated, LOCK_EX) !== strlen($updated)) { exit(17); }
-if (!chmod($new, 0600)) { exit(18); }
-echo "ANEX_PRIVATE_CONFIG_READY\n";'''
-
-_OLD_CONFIG_SWITCH = '''if test -f "$private/search3-preview.php"; then
-  cp -p "$private/search3-preview.php" "$work/previous-search3-preview.php"
-fi
-mv "$work/search3-preview.php" "$private/search3-preview.php"'''
+_B2B_ENV = "ANEX_B2B_TOKEN"
+_B2B_TOKEN: str | None = None
 
 
-def _inject_preservation(script: str) -> str:
-    """Replace the old config switch with a fail-closed server-only B2B transfer."""
-    if script.count(_OLD_CONFIG_SWITCH) != 1:
-        raise ValueError("ANEX preview private config switch drift")
-    php = shlex.quote(PRESERVE_PHP)
-    replacement = '''test -f "$private/search3-preview.php"
-test ! -L "$private/search3-preview.php"
-cp -p "$private/search3-preview.php" "$work/previous-search3-preview.php"
-php -d display_errors=0 -d log_errors=0 -r ''' + php + ''' \
-  "$work/previous-search3-preview.php" "$work/search3-preview.php" \
-  > "$work/private-config-preserve-result.txt"
-test "$(cat "$work/private-config-preserve-result.txt")" = ANEX_PRIVATE_CONFIG_READY
-mv "$work/search3-preview.php" "$private/search3-preview.php"'''
-    return script.replace(_OLD_CONFIG_SWITCH, replacement, 1)
+def _validated_b2b_token(token: str) -> str:
+    if (not isinstance(token, str) or token == "" or len(token) > 16384
+            or token.lower().startswith("bearer ")
+            or re.search(r"[\x00-\x20\x7f]", token)):
+        raise ValueError("missing or invalid ANEX B2B token")
+    return token
+
+
+def private_config(api_token: str, source_sha: str, b2b_token: str) -> str:
+    """Return the private config without ever embedding either raw token."""
+    token = _validated_b2b_token(b2b_token)
+    rendered = _BASE_PRIVATE_CONFIG(api_token, source_sha)
+    if "ANEX_B2B_TOKEN" in rendered:
+        raise ValueError("ANEX preview private config already defines B2B token")
+    encoded = base64.b64encode(token.encode("utf-8")).decode("ascii")
+    return rendered + "define('ANEX_B2B_TOKEN', base64_decode('" + encoded + "', true));\n"
+
+
+def _private_config_from_memory(api_token: str, source_sha: str) -> str:
+    if _B2B_TOKEN is None:
+        raise ValueError("missing ANEX B2B token")
+    return private_config(api_token, source_sha, _B2B_TOKEN)
 
 
 def remote_script(release: str) -> str:
-    return _inject_preservation(_BASE_REMOTE_SCRIPT(release))
+    # Keep the reviewed isolated target/rollback behavior. The previous private
+    # config may be copied server-side only as rollback material; it is never
+    # required or parsed to construct the new config.
+    return _BASE_REMOTE_SCRIPT(release)
 
 
 def main() -> int:
-    # ssh_deploy() resolves remote_script from the imported module's globals.
-    # Replace only that boundary; payload construction, isolation, rollback and
-    # sanitized receipts remain the already-reviewed publisher implementation.
+    global _B2B_TOKEN
+    # Pop before the base publisher runs so subprocess/SSH environments cannot
+    # inherit the B2B secret accidentally. Missing/invalid secret fails before
+    # any server-side reservation or deployment performed by this publisher.
+    _B2B_TOKEN = _validated_b2b_token(os.environ.pop(_B2B_ENV, ""))
+    base.private_config = _private_config_from_memory
     base.remote_script = remote_script
-    return base.main()
+    try:
+        return base.main()
+    finally:
+        _B2B_TOKEN = None
+        base.private_config = _BASE_PRIVATE_CONFIG
+        base.remote_script = _BASE_REMOTE_SCRIPT
 
 
 if __name__ == "__main__":
