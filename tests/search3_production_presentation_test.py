@@ -207,7 +207,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn("window.addEventListener('v2:results-rendered',rendered)", source)
         self.assertIn("window.addEventListener('v2:search-reset',clear)", source)
         self.assertIn("Array.isArray(event.detail.items)", source)
-        self.assertIn("list.every(value=>value>0)", source)
+        self.assertIn("numericCoverage(seas,.8)", source)
         self.assertIn("fieldNode.hidden=options.length<2", source)
         self.assertIn("facets.categories[index]===facets.category", source)
         self.assertIn("window.Search3LocalHotelFilter={apply,clear,project,reset,version:12}", source)

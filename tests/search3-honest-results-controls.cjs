@@ -54,7 +54,7 @@ assert.ok(localFilters.includes('function fields(){return[field,regionField,cate
   'desktop and mobile share decision-first filter order without a provider/source control');
 assert.ok(localFilters.includes('known/total>=minimum') && localFilters.includes('numericCoverage(ratings,.95)'),
   'guest-rating availability uses an explicit high-coverage policy instead of requiring every hotel to be complete');
-assert.ok(localFilters.includes("'Рейтинг указан у '+rating.known+' из '+rating.total+' отелей'"),
+assert.ok(localFilters.includes("'Рейтинг указан у '+r.k+' из '+r.t+' отелей'"),
   'a partially available rating facet discloses exact loaded-data coverage');
 
 {

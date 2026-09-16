@@ -674,6 +674,18 @@ async function checkHydratedHotelFacets(page, width, previous, details) {
     assert.equal(await rating.isVisible(),false,'coverage is not relaxed for local details');
     assert.equal(await category.isVisible(),false,'an unknown local category cannot masquerade as the old source category');
     assert.equal((await visible()).length,3,'unknown facts do not leave hotels silently filtered out');
+    const coverageItems=Array.from({length:100},(_,index)=>({...items[index%items.length],id:'category-coverage-'+index,name:'Отель покрытия '+index,category:index===99?null:3+(index%3),rating:4+(index%2)*.5,tours:[{...tour,id:'category-coverage-tour-'+index,price:90000+index}]}));
+    await render(coverageItems);
+    assert.equal(await category.isVisible(),true,'99 known categories out of 100 expose the useful category facet');
+    assert.equal(await category.locator('option').first().innerText(),'Любая категория · 99/100','partial coverage is explicit instead of pretending to be complete');
+    assert.deepEqual(await category.locator('option').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','5','4','3']);
+    assert.equal((await visible()).length,100,'the unknown-category hotel remains visible until the visitor selects a category');
+    await category.selectOption('5');
+    assert.equal((await visible()).length,33,'an explicit category selection matches only hotels with that known category');
+    assert.equal(await page.locator('[data-hotel-id="category-coverage-99"]').isVisible(),false,'unknown category is never guessed into a selected star bucket');
+    assert.equal(await page.locator('#resultSummary').innerText(),'Показано отелей: 33 из 100 · цены из текущего поиска');
+    assert.equal((await snapshot(page)).overflow,false);
+    if(!previous&&[375,1440].includes(width))await page.screenshot({path:path.join(output,`category-coverage-${width}.png`),fullPage:true});
     assert.deepEqual(requests,[],'local hydration/filtering/sorting never requests supplier or lead endpoints');
   } finally {release();details.facts=null;page.off('request',record);await page.evaluate(()=>window.Search3LocalHotelFilter.reset());await page.locator('#sortResults').selectOption('price');}
 }
@@ -1331,6 +1343,23 @@ async function run(browser, width, previous) {
     assert.equal(await localRatingFilter.isVisible(), false, 'rating facet hides below the explicit 95% coverage policy');
     assert.equal(await localRatingSelect.inputValue(), '0', 'coverage loss resets the active rating threshold');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 20, 'coverage loss cannot silently retain a filter or hide unknown cards');
+    await page.evaluate(items => {
+      const base=items[0];
+      window.V2Results.render(Array.from({length:20},(_,index)=>({...base,id:'sea-'+index,name:'Отель у моря '+index,rating:4.7,seaDistance:index<16?(index%2?150:700):0,tours:base.tours.map(tour=>({...tour,id:tour.id+'-sea-'+index}))})));
+    }, hotels);
+    assert.equal(await localSeaFilter.isVisible(), true, '80% known sea distances keep the useful local facet available');
+    assert.equal(await localSeaSelect.locator('option').first().innerText(), 'Любое расстояние · 16/20', 'sea facet discloses exact loaded-data coverage');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 20, 'unknown sea distances stay visible before a threshold is selected');
+    await localSeaSelect.selectOption('500');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 8, 'sea threshold excludes unknown and above-threshold cards locally');
+    if (!previous && [375,720,1440].includes(width)) await page.screenshot({ path: path.join(output, `sea-coverage-${width}.png`), fullPage: true });
+    await page.evaluate(items => {
+      const base=items[0];
+      window.V2Results.render(Array.from({length:20},(_,index)=>({...base,id:'sea-low-'+index,name:'Отель у моря '+index,rating:4.7,seaDistance:index<15?150:0,tours:base.tours.map(tour=>({...tour,id:tour.id+'-sea-low-'+index}))})));
+    }, hotels);
+    assert.equal(await localSeaFilter.isVisible(), false, 'sea facet hides below the explicit 80% coverage policy');
+    assert.equal(await localSeaSelect.inputValue(), '0', 'coverage loss resets the active sea threshold');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 20, 'sea coverage loss cannot silently retain a filter or hide unknown cards');
     await page.evaluate(items => {
       const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
       window.__decisionOriginal = freeze(items);

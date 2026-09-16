@@ -136,15 +136,15 @@ function syncTextSelect(fieldNode,select,list,baseLabel){
 }
 function numericCoverage(list,minimum){
   const total=sourceItems.length,known=list.filter(value=>value>0).length;
-  return{total,known,available:total>1&&known>1&&known/total>=minimum};
+  return{t:total,k:known,a:total>1&&known>1&&known/total>=minimum};
 }
 function syncHotelFacets(){
-  const regions=cardTextValues('region'),categories=cardValues('category'),ratings=cardValues('rating'),seas=cardValues('seaDistance'),complete=list=>sourceItems.length>1&&list.length===sourceItems.length&&list.every(value=>value>0);
+  const regions=cardTextValues('region'),categories=cardValues('category'),ratings=cardValues('rating'),seas=cardValues('seaDistance');
   const region=syncTextSelect(regionField,regionSelect,regions,'Все курорты');
-  const categoryState=numericCoverage(categories,.95),category=syncSelect(categoryField,categorySelect,categoryState.available?categories.filter(value=>value>0):[],'Любая категория'+(categoryState.available?' · '+categoryState.known+'/'+categoryState.total:''),value=>value+'★');
+  const c=numericCoverage(categories,.95),category=syncSelect(categoryField,categorySelect,c.a?categories.filter(value=>value>0):[],'Любая категория'+(c.a?' · '+c.k+'/'+c.t:''),value=>value+'★');
   syncPresets(categoryPresets,categorySelect,Array.from(categorySelect.options).slice(1).map(item=>({value:item.value,label:item.textContent})),'0');
-  const rating=numericCoverage(ratings,.95);ratingField.hidden=!rating.available;ratingCoverage.textContent=rating.available?'Рейтинг указан у '+rating.known+' из '+rating.total+' отелей':'';if(!rating.available)ratingSelect.value='0';
-  const seaComplete=complete(seas);seaField.hidden=!seaComplete;if(!seaComplete)seaSelect.value='0';
+  const r=numericCoverage(ratings,.95);ratingField.hidden=!r.a;ratingCoverage.textContent=r.a?'Рейтинг указан у '+r.k+' из '+r.t+' отелей':'';if(!r.a)ratingSelect.value='0';
+  const s=numericCoverage(seas,.8);seaField.hidden=!s.a;if(s.a)seaSelect.options[0].textContent='Любое расстояние · '+s.k+'/'+s.t;else seaSelect.value='0';
   return{regions,categories,ratings,seas,region,category,rating:Number(ratingSelect.value||0),sea:Number(seaSelect.value||0)};
 }
 function prices(items){const result=[];items.forEach(h=>(Array.isArray(h&&h.tours)?h.tours:[]).forEach(t=>{const value=Number(t&&t.price||0);if(value>0)result.push(value);}));return result;}
@@ -193,7 +193,7 @@ function project(items){
 }
 function apply(){
   ensure();const list=cards(),query=normalize(input.value),facets=syncHotelFacets(),visibleIds=new Set();let shown=0;
-  list.forEach((card,index)=>{const title=card.querySelector('.hotel-title'),matchesName=!query||normalize(title&&title.textContent).includes(query),matchesRegion=!facets.region||facets.regions[index].key===facets.region,matchesCategory=!facets.category||facets.categories[index]===facets.category,matchesRating=!facets.rating||facets.ratings[index]>=facets.rating,matchesSea=!facets.sea||facets.seas[index]<=facets.sea;card.hidden=!(matchesName&&matchesRegion&&matchesCategory&&matchesRating&&matchesSea&&!unmatched.has(String(card.dataset.hotelId)));if(!card.hidden){shown++;visibleIds.add(String(card.dataset.hotelId||''));}});
+  list.forEach((card,index)=>{const title=card.querySelector('.hotel-title'),matchesName=!query||normalize(title&&title.textContent).includes(query),matchesRegion=!facets.region||facets.regions[index].key===facets.region,matchesCategory=!facets.category||facets.categories[index]===facets.category,matchesRating=!facets.rating||facets.ratings[index]>=facets.rating,matchesSea=!facets.sea||facets.seas[index]>0&&facets.seas[index]<=facets.sea;card.hidden=!(matchesName&&matchesRegion&&matchesCategory&&matchesRating&&matchesSea&&!unmatched.has(String(card.dataset.hotelId)));if(!card.hidden){shown++;visibleIds.add(String(card.dataset.hotelId||''));}});
   field.hidden=list.length<2;status.textContent=active()?'Показано '+shown+' из '+list.length+' загруженных отелей':'';syncContainers(shown);syncEmptyState(list,shown);
   if(summary&&list.length)summary.textContent=(active()?'Показано отелей: '+shown+' из '+list.length:'Найдено отелей: '+list.length)+' · цены из текущего поиска';
   const items=projectedItems.filter(item=>visibleIds.has(id(item)));window.dispatchEvent(new CustomEvent('search3:local-results-filtered',{detail:{items,shown,total:list.length,active:active()}}));
