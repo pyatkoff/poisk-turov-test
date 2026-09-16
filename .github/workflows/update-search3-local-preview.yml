@@ -1,0 +1,117 @@
+name: Update isolated local-catalog Search3 preview
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/update-search3-local-preview.yml'
+      - 'scripts/deploy/search3_local_preview_update.py'
+      - 'scripts/deploy/search3_local_preview_update_remote.py'
+      - 'tests/search3_local_preview_update_test.py'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  update-local-preview-contracts:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify update and existing create-only publisher contracts
+        run: |
+          python3 -m py_compile scripts/deploy/search3_local_preview_update.py scripts/deploy/search3_local_preview_update_remote.py
+          python3 tests/search3_local_preview_update_test.py -v
+          python3 tests/search3_local_preview_test.py -v
+          python3 tests/search3_preview_publish_test.py -v
+
+  prepare-local-preview-update:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event_name == 'issue_comment' && github.event.issue.number == 2530 &&
+      !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, '/update-search3-local-preview ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+    outputs:
+      artifact_id: ${{ steps.retain.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473b116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: mbstring
+          coverage: none
+      - name: Offline authorization and transaction tests
+        run: |
+          python3 tests/search3_local_preview_update_test.py
+          python3 tests/search3_local_preview_test.py
+          python3 tests/search3_preview_publish_test.py
+      - name: Derive checked update artifact without SSH credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/deploy/search3_local_preview_update.py prepare
+      - name: Retain exact update artifact before deployment
+        id: retain
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-local-update-ready-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-local-update-prepare/retained/
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-local-preview-update:
+    needs: prepare-local-preview-update
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+    concurrency:
+      group: deploy-anytoour-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Recheck update transaction
+        run: python3 tests/search3_local_preview_update_test.py
+      - name: Update only the existing local-catalog preview from retained bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          READY_ARTIFACT_ID: ${{ needs.prepare-local-preview-update.outputs.artifact_id }}
+          PREVIEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          PREVIEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PREVIEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: python3 scripts/deploy/search3_local_preview_update.py publish
+      - name: Retain update or rollback receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-local-update-deployment-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-local-update-publish/evidence.json
+          if-no-files-found: warn
+          retention-days: 30
