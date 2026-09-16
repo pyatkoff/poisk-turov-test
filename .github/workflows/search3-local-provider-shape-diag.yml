@@ -1,0 +1,62 @@
+name: Search3 local provider shape diag
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/search3-local-provider-shape-diag.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  shape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Capture safe ANEX response shape
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DATE_FROM="$(date -d '+2 day' +%Y-%m-%d)"
+          export DATE_TO="$(date -d '+22 day' +%Y-%m-%d)"
+          cat > shape.cjs <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:1440,height:1000},extraHTTPHeaders:{'X-AnyTour-CI':'1'}});
+            await context.route(/https?:\/\/mc\.yandex\.(ru|com)\//,r=>r.abort());
+            const page=await context.newPage();
+            let shape=null;
+            page.on('response',async response=>{
+              try{
+                const u=new URL(response.url());
+                if(!u.pathname.endsWith('/api-anex-search3-preview.php')||response.request().method()!=='POST'||shape)return;
+                const json=await response.json();
+                const d=json&&json.data;
+                if(!d||typeof d!=='object') {shape={http:response.status(),ok:json&&json.ok,error:json&&json.error||null,data:false};return;}
+                const hotels=Array.isArray(d.hotels)?d.hotels:[];
+                let firstTour=null;
+                for(const h of hotels){if(Array.isArray(h&&h.tours)&&h.tours.length){firstTour=h.tours[0];break;}}
+                shape={http:response.status(),ok:json.ok,provider:d.provider??null,generation:d.generation??null,searchRefType:typeof d.search_ref,searchRefLength:typeof d.search_ref==='string'?d.search_ref.length:null,searchRefMatches:typeof d.search_ref==='string'&&/^[a-f0-9]{32}$/.test(d.search_ref),hotelsIsArray:Array.isArray(d.hotels),hotelCount:hotels.length,firstTour:firstTour?{kind:firstTour.kind??null,searchRefType:typeof firstTour.search_ref,searchRefMatches:typeof firstTour.search_ref==='string'&&/^[a-f0-9]{32}$/.test(firstTour.search_ref),offerRefType:typeof firstTour.offer_ref,offerRefMatches:typeof firstTour.offer_ref==='string'&&/^anex_online:[a-f0-9]{64}$/.test(firstTour.offer_ref)}:null};
+              }catch(e){shape={inspectionError:String(e)}}
+            });
+            const u=new URL('https://anytoour.ru/_preview/search3-local-candidate/poisk-turov/');
+            Object.entries({from:'1',country:'4',dateFrom:process.env.DATE_FROM,dateTo:process.env.DATE_TO,daysFrom:'7',daysTill:'7',count_people:'2',ci_test:'1'}).forEach(([k,v])=>u.searchParams.set(k,v));
+            const r=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
+            if(!r||r.status()!==200)throw new Error('page_http_'+(r&&r.status()));
+            for(let i=0;i<180&&!shape;i++)await page.waitForTimeout(500);
+            console.log('ANEX_LIVE_SAFE_SHAPE',JSON.stringify(shape));
+            if(!shape)throw new Error('anex_response_not_observed');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node shape.cjs
