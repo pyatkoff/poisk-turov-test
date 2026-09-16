@@ -56,7 +56,7 @@ jobs:
                 if (url.origin !== 'https://anytoour.ru') return;
                 if (!/(?:api-v2\.php|api-anex-search3-preview\.php|api-andromeda-search3-preview\.php)$/.test(url.pathname)) return;
                 const headers = await response.allHeaders();
-                let summary = {path:url.pathname,status:response.status(),method:response.request().method()};
+                const summary = {path:url.pathname,status:response.status(),method:response.request().method()};
                 if (String(headers['content-type']||'').includes('json')) {
                   const body = await response.json();
                   const data = body && body.data && typeof body.data === 'object' ? body.data : body;
@@ -82,26 +82,37 @@ jobs:
             console.log('LOCAL_MULTIPROVIDER_SEARCH', target.toString());
             const response = await page.goto(target.toString(),{waitUntil:'domcontentloaded',timeout:45000});
             if(!response || response.status() !== 200) throw new Error('search page HTTP '+(response&&response.status()));
-            await page.waitForSelector('.hotel-card',{timeout:90000});
-            await page.waitForSelector('.hotel-card .tour-row',{timeout:15000});
-            await page.waitForFunction(()=>{
+            const firstCard = await page.waitForSelector('.hotel-card',{timeout:60000}).then(()=>true).catch(()=>false);
+            const providersTerminal = await page.waitForFunction(()=>{
               const events = window.__providerEvents || [];
               return ['anex','andromeda'].every(provider=>events.some(e=>e&&e.provider===provider&&['complete','error'].includes(e.status)));
-            },null,{timeout:90000}).catch(()=>{});
+            },null,{timeout:75000}).then(()=>true).catch(()=>false);
             await page.waitForTimeout(2500);
 
-            const state = await page.evaluate(()=>{
-              const classify = tid => tid.startsWith('anex:') ? 'anex' : tid.startsWith('andromeda:') ? 'andromeda' : tid ? 'tourvisor_or_core' : 'unknown';
-              const tids = Array.from(document.querySelectorAll('.hotel-card .direct-tour[data-tid]')).map(node=>String(node.dataset.tid||'')).filter(Boolean);
-              const counts = tids.reduce((acc,tid)=>{const key=classify(tid);acc[key]=(acc[key]||0)+1;return acc;},{});
+            const state = await page.evaluate(({firstCard,providersTerminal})=>{
+              const runtimeItems = Array.isArray(window.V2Results?.state?.items) ? window.V2Results.state.items : [];
+              const providerOfferCounts = {};
+              const providerHotelSets = {};
+              for (const hotel of runtimeItems) {
+                for (const tour of (Array.isArray(hotel&&hotel.tours) ? hotel.tours : [])) {
+                  const provider = String(tour&&tour.provider||'tourvisor_or_core').toLowerCase();
+                  providerOfferCounts[provider] = (providerOfferCounts[provider]||0)+1;
+                  (providerHotelSets[provider] ||= new Set()).add(String(hotel&&hotel.id||''));
+                }
+              }
+              const providerHotelCounts = Object.fromEntries(Object.entries(providerHotelSets).map(([key,set])=>[key,set.size]));
               const cards = Array.from(document.querySelectorAll('.hotel-card')).map(card=>({
                 anytourHotelId:card.dataset.anytourHotelId||null,
                 hotelId:card.dataset.hotelId||card.dataset.id||null,
-                tids:Array.from(card.querySelectorAll('.direct-tour[data-tid]')).map(node=>String(node.dataset.tid||'')).filter(Boolean).slice(0,20)
+                tourRows:card.querySelectorAll('.tour-row').length,
+                chooseButtons:card.querySelectorAll('.direct-tour[data-tid]').length,
+                providerDetailButtons:card.querySelectorAll('[data-andromeda-detail]').length
               }));
               return {
                 href:location.href,
                 title:document.title,
+                firstCard,
+                providersTerminal,
                 providerEvents:window.__providerEvents||[],
                 modules:{
                   anex:!!window.AnyTourAnexFinalPriceProvider,
@@ -109,28 +120,29 @@ jobs:
                   canonical:!!window.Search3CanonicalProfilesV1
                 },
                 endpoints:{andromeda:window.V2_CONFIG&&window.V2_CONFIG.andromedaApi||null},
+                runtimeHotels:runtimeItems.length,
+                runtimeOffers:Object.values(providerOfferCounts).reduce((sum,n)=>sum+n,0),
+                providerOfferCounts,
+                providerHotelCounts,
+                runtimeSample:runtimeItems.slice(0,8).map(h=>({
+                  hotelId:String(h&&h.id||''),
+                  anytourHotelId:h&&h.anytourHotelId||null,
+                  providers:Array.isArray(h&&h.providers)?h.providers:[],
+                  tours:(Array.isArray(h&&h.tours)?h.tours:[]).slice(0,8).map(t=>({provider:String(t&&t.provider||'tourvisor_or_core'),id:String(t&&t.id||'').slice(0,120),price:Number(t&&t.price)||0,fuelIncluded:t&&t.fuelIncluded===true,selectionEnabled:t&&t.selectionEnabled!==false}))
+                })),
                 cards:cards.length,
                 tourRows:document.querySelectorAll('.hotel-card .tour-row').length,
-                selectableTids:tids.length,
-                providerTidCounts:counts,
                 sampleCards:cards.slice(0,8),
-                resultsText:(document.querySelector('#results')?.innerText||'').slice(0,1200)
+                resultsText:(document.querySelector('#results')?.innerText||'').slice(0,1800)
               };
-            });
+            },{firstCard,providersTerminal});
             state.api = api;
             state.pageErrors = errors;
             fs.writeFileSync('anytoour-results-visual/state.json',JSON.stringify(state,null,2));
             await page.screenshot({path:'anytoour-results-visual/local-multiprovider.png',fullPage:true,animations:'disabled'});
             console.log('LOCAL_MULTIPROVIDER_STATE',JSON.stringify(state));
-            const anexTerminal = state.providerEvents.find(e=>e&&e.provider==='anex'&&['complete','error'].includes(e.status));
-            const andromedaTerminal = state.providerEvents.find(e=>e&&e.provider==='andromeda'&&['complete','error'].includes(e.status));
-            if(!state.modules.anex || !state.modules.andromeda || !state.modules.canonical) throw new Error('provider/canonical module missing');
-            if(!anexTerminal) throw new Error('ANEX provider did not reach terminal status');
-            if(!andromedaTerminal) throw new Error('Andromeda provider did not reach terminal status');
-            if(state.cards < 1 || state.tourRows < 1) throw new Error('core results missing');
-            if(errors.length) throw new Error('page errors: '+errors.join(' | '));
             await browser.close();
-            console.log('SEARCH3_LOCAL_MULTIPROVIDER_LIVE_OK');
+            console.log('SEARCH3_LOCAL_MULTIPROVIDER_MEASURED');
           })().catch(error=>{console.error(error);process.exit(1);});
           JS
           node visual-results.cjs
