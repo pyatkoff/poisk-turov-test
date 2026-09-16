@@ -42,7 +42,8 @@ $result = anytour_anex_additional_prices_batch_execute(
 );
 expect($readerCalls === 1, 'budget deferral must reach the local pre-transport guard once');
 expect(($result['offers'][0]['status'] ?? null) === 'unknown', 'public status remains fail-closed');
-expect(($result['offers'][0]['additional_prices'] ?? 'sentinel') === null, 'deferred APD must expose no money');
+expect(array_key_exists('additional_prices', $result['offers'][0])
+    && $result['offers'][0]['additional_prices'] === null, 'deferred APD must expose no money');
 expect(!isset($state['additional_prices'][$digest]), 'unsent budget deferral must not become durable unknown');
 expect(count($checkpoints) === 2, 'budget deferral must checkpoint reservation and rollback');
 expect(($checkpoints[0][1]['status'] ?? null) === 'unknown' && $checkpoints[1][1] === null,
