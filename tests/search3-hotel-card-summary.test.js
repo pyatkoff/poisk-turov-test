@@ -138,7 +138,7 @@ api.hotelDetailsCache.set('21477',local);
 const localHtml=api.hotelMainHtml({id:21477,name:'Supplier name',picturelink:'https://supplier.example/photo.jpg',tours:[multi.tours[0]]});
 assert.match(localHtml,/Локальный отель/,'local hotel name owns the hotel card');
 assert.match(localHtml,/hotel-gallery-thumb/,'local gallery is available before offer selection');
-assert.match(localHtml,/Показать фото 2/,'gallery keeps a named keyboard action');
+assert.match(localHtml,/Поменять главное фото, миниатюра 1/,'gallery keeps a truthful named keyboard action after swapping photos');
 assert.match(localHtml,/class="hotel-description-summary">Проверенное описание · Вторая строка<\/p>/,'legacy line markup becomes readable plain text in the collapsed hotel presentation');
 assert.match(localHtml,/Подробнее об отеле/,'trusted local details have one clearly labelled native disclosure');
 assert.match(localHtml,/Промо: 24 кв\.м\. · Стандарт: 30 кв\.м\./,'legacy room-list markup becomes readable plain text');
