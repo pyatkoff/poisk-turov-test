@@ -40,6 +40,7 @@ assert.equal(api.operatorIdentity({provider:'anex'}),null,'provider is not tour 
 assert.equal(api.operatorIdentity({operator:'ANEX SERVICES'}).logo,'','unknown similar name is not branded');
 assert.equal(api.operatorIdentity({operator:'НТК Интурист'}).key,'intourist');
 assert.equal(api.operatorIdentity({operator:'Библио Глобус'}).key,'biblio-globus');
+assert.deepEqual(api.operatorIdentity({operator:'Biblioglobus'}),{key:'biblio-globus',label:'Библио-Глобус',logo:'biblio-globus.svg'},'exact supplier alias uses the canonical Biblio-Globus identity');
 for(const [key,label,logo,aliases] of [
   ['coral','Coral Travel','coral.png',['Coral','CORAL TRAVEL','Корал','Корал Тревел']],
   ['sunmar','Sunmar','sunmar.svg',['SUNMAR','Санмар']],
