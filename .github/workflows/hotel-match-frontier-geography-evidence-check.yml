@@ -4,6 +4,7 @@ on:
     branches: [match/frontier-retained-join-1971-20260916-v1]
     paths:
       - scripts/diagnostics/hotel_match_frontier_geography_evidence.py
+      - scripts/diagnostics/hotel_match_hierarchy_current_apply.php
       - tests/hotel_match_frontier_geography_evidence_test.py
       - .github/workflows/hotel-match-frontier-geography-evidence-check.yml
 permissions: {contents: read, actions: read}
@@ -21,6 +22,22 @@ jobs:
           test "$(git hash-object scripts/diagnostics/hotel_match_frontier_geography_evidence.py)" = 850ef42aa529e314a46d9fd0f696b4d8d41f9a67
           test "$(git hash-object tests/hotel_match_frontier_geography_evidence_test.py)" = f61e81a3d8cef605aaafe1678fa451e157c4f13a
           python3 -m py_compile scripts/diagnostics/hotel_match_frontier_geography_evidence.py tests/hotel_match_frontier_geography_evidence_test.py
+      - name: Test structured protection with synthetic data only
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_hierarchy_current_apply.php)" = 1a2eba434aaf76810641e6851e0224a986b1c23d
+          python3 - <<'PY'
+          import hashlib,pathlib
+          s=pathlib.Path('scripts/diagnostics/hotel_match_hierarchy_current_apply.php').read_text()
+          tail=s[s.index('function hmha_source('):s.index("if(in_array('--self-test'")]
+          assert hashlib.sha256(tail.encode()).hexdigest()=='acb3bf430755781f1a9f645b083ced3e4856e835372b19a981e4bcea7ee3573a'
+          assert s.count('__SEALED_CURRENT_PLAN_BASE64__')==1
+          assert not pathlib.Path('.github/workflows/hotel-match-hierarchy-current-apply-v1.yml').exists()
+          PY
+          php -n -l scripts/diagnostics/hotel_match_hierarchy_current_apply.php
+          cd "$RUNNER_TEMP"
+          php -n -d allow_url_fopen=0 "$GITHUB_WORKSPACE/scripts/diagnostics/hotel_match_hierarchy_current_apply.php" --self-test | tee "$RUNNER_TEMP/match-protection-tests.txt"
+          grep -Fxq '285 guarded apply self-tests PASS' "$RUNNER_TEMP/match-protection-tests.txt"
       - name: Download only two existing evidence artifacts
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
@@ -34,6 +51,7 @@ jobs:
           export MATCH_GEO_DOSSIER_ZIP="$RUNNER_TEMP/match-geo-inputs/dossier.zip"
           export MATCH_GEO_CENSUS_ZIP="$RUNNER_TEMP/match-geo-inputs/census.zip"
           mkdir "$RUNNER_TEMP/match-hierarchy-output"
+          cp "$RUNNER_TEMP/match-protection-tests.txt" "$RUNNER_TEMP/match-hierarchy-output/protection-tests.txt"
           python3 tests/hotel_match_frontier_geography_evidence_test.py 2>&1 | tee "$RUNNER_TEMP/match-hierarchy-output/tests.txt"
           python3 scripts/diagnostics/hotel_match_frontier_geography_evidence.py "$MATCH_GEO_DOSSIER_ZIP" "$MATCH_GEO_CENSUS_ZIP" "$RUNNER_TEMP/match-hierarchy-output/geography.json"
           python3 scripts/diagnostics/hotel_match_frontier_geography_evidence.py "$MATCH_GEO_DOSSIER_ZIP" "$MATCH_GEO_CENSUS_ZIP" "$RUNNER_TEMP/match-hierarchy-output/identity.json" --review-hotels
