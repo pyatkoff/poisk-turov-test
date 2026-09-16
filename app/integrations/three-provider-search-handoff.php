@@ -293,29 +293,4 @@ final class AnyTourThreeProviderSearchHandoff
             throw new InvalidArgumentException('THREE_PROVIDER_HANDOFF_PRICE');
         }
         $amount = self::readyRubAmount($pricedMoney['search_price_with_surcharge'] ?? null);
-        return $amount === null
-            ? ['ready' => false, 'amount' => null]
-            : ['ready' => true, 'amount' => $amount];
-    }
-
-    private static function readyRubAmount($money): ?string
-    {
-        if (!is_array($money) || ($money['currency'] ?? null) !== 'RUB') return null;
-        $amount = $money['amount'] ?? null;
-        if (!is_string($amount)
-            || !preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D', $amount)
-            || !preg_match('/[1-9]/', $amount)) {
-            return null;
-        }
-        return $amount;
-    }
-
-    private static function project(
-        array $offer,
-        array $retained,
-        array $money,
-        string $quoteState,
-        bool $finalPriceVerified,
-        ?string $quoteEvidenceDigest
-    ): array {
-        if (!in_array($quoteState, ['unknown', 'verified'], true)
+        return $
