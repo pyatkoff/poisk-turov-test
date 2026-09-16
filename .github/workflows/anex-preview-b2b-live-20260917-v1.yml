@@ -1,0 +1,204 @@
+name: ANEX preview B2B live 20260917 v1
+
+on:
+  push:
+    branches: ['ops/int-anex-preview-b2b-live-20260917-v1']
+    paths:
+      - '.github/workflows/anex-preview-b2b-live-20260917-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anex-preview-b2b-live-20260917-v1
+  cancel-in-progress: false
+
+jobs:
+  one-shot-live:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Bind one-shot operation to exact published source parent
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.request
+          repo=os.environ['GITHUB_REPOSITORY']
+          sha=os.environ['GITHUB_SHA']
+          req=urllib.request.Request(
+              f'https://api.github.com/repos/{repo}/commits/{sha}',
+              headers={'Authorization':'Bearer '+os.environ['GITHUB_TOKEN'], 'Accept':'application/vnd.github+json'}
+          )
+          with urllib.request.urlopen(req, timeout=20) as response:
+              commit=json.load(response)
+          parents=commit.get('parents') or []
+          expected='19b246e92659d92cdd6ffce9f8bd511b8a90c5b8'
+          if len(parents)!=1 or parents[0].get('sha')!=expected:
+              raise SystemExit('published_source_parent_mismatch')
+          print('ANEX_B2B_LIVE_SOURCE_BOUND')
+          PY
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Run exactly one fresh search and at most one retained APD context
+        env:
+          EVIDENCE_DIR: ${{ runner.temp }}/anex-b2b-live
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          python3 - <<'PY'
+          import http.cookiejar
+          import json
+          import os
+          from pathlib import Path
+          import socket
+          import urllib.error
+          import urllib.request
+
+          OP='anex-preview-b2b-live-20260917-v1'
+          ENDPOINT='https://anytoour.ru/_preview/search3-anex-candidate/api-anex-search3-preview.php'
+          out=Path(os.environ['EVIDENCE_DIR'])/'summary.json'
+          jar=http.cookiejar.CookieJar()
+          opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+          def save(value):
+              tmp=out.with_suffix('.tmp')
+              tmp.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2)+'\n', encoding='utf-8')
+              tmp.replace(out)
+
+          def post(payload):
+              raw=json.dumps(payload, separators=(',',':'), ensure_ascii=False).encode('utf-8')
+              req=urllib.request.Request(ENDPOINT, data=raw, method='POST', headers={
+                  'Content-Type':'application/json',
+                  'Accept':'application/json',
+                  'Sec-Fetch-Site':'none',
+                  'User-Agent':'AnyTour-ANEX-B2B-live-20260917-v1',
+              })
+              try:
+                  with opener.open(req, timeout=120) as response:
+                      body=response.read(2_000_001)
+                      if len(body)>2_000_000: raise RuntimeError('response_too_large')
+                      return response.status, json.loads(body.decode('utf-8','strict'))
+              except urllib.error.HTTPError as error:
+                  body=error.read(200001)
+                  try: data=json.loads(body.decode('utf-8','strict'))
+                  except Exception: data={'ok':False,'error':'non_json_http_error'}
+                  return error.code, data
+
+          summary={
+              'schema_version':1,
+              'operation_id':OP,
+              'published_source':'19b246e92659d92cdd6ffce9f8bd511b8a90c5b8',
+              'scenario':{'departureId':1,'countryId':4,'country':'Turkey','date':'2026-10-20','nights':7,'adults':2,'children':0,'currency':'RUB'},
+              'supplier_replay_allowed':False,
+              'booking_calls':0,
+              'mapping_writes':0,
+              'search':{'attempted':False},
+              'additional_prices':{'attempted':False},
+          }
+          save(summary)
+
+          search={
+              'action':'search','generation':1,
+              'params':{
+                  'departureId':1,'countryId':4,
+                  'dateFrom':'2026-10-20','dateTo':'2026-10-20',
+                  'nightsFrom':7,'nightsTo':7,
+                  'adults':2,'childs':[],
+                  'currency':'RUB','meal':'',
+                  'hotelIds':[],'regionIds':[],'subregionIds':[],
+                  'operatorIds':[],'hotelServices':[],'hotelTypes':[],
+                  'arrivalId':'','hotelCategory':'','hotelRating':'',
+                  'priceFrom':'','priceTo':'','onlyDirect':False,'onlyCharter':False,
+              }
+          }
+          summary['search']={'attempted':True,'completed':False}
+          save(summary)
+          try:
+              status,data=post(search)
+          except (TimeoutError, socket.timeout, urllib.error.URLError, OSError) as error:
+              summary['status']='search_transport_unknown_no_replay'
+              summary['search']['result']='transport_unknown'
+              summary['search']['error_kind']=type(error).__name__
+              save(summary)
+              print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+              raise SystemExit(1)
+          if status!=200 or not isinstance(data,dict) or data.get('ok') is not True or not isinstance(data.get('data'),dict):
+              summary['status']='search_http_failed_no_replay'
+              summary['search'].update({'http_status':status,'public_error':data.get('error') if isinstance(data,dict) else 'invalid_response'})
+              save(summary)
+              print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+              raise SystemExit(1)
+          result=data['data']
+          hotels=result.get('hotels')
+          if not isinstance(hotels,list) or len(hotels)>300 or result.get('provider')!='anex' or result.get('generation')!=1:
+              raise SystemExit('invalid_search_response')
+          tour_count=0; concrete=[]
+          search_ref=result.get('search_ref')
+          for hotel in hotels:
+              if not isinstance(hotel,dict) or not isinstance(hotel.get('local_id'),int): continue
+              tours=hotel.get('tours')
+              if not isinstance(tours,list): continue
+              tour_count+=len(tours)
+              for tour in tours:
+                  if (isinstance(tour,dict) and tour.get('kind')=='concrete'
+                          and isinstance(tour.get('offer_ref'),str)
+                          and isinstance(tour.get('search_ref'),str)
+                          and tour.get('search_ref')==search_ref):
+                      concrete.append((hotel['local_id'],tour))
+          summary['search'].update({'completed':True,'http_status':200,'mapped_hotels':len(hotels),'mapped_tours':tour_count,
+                                    'concrete_retained_tours':len(concrete),'external_search_pending':bool(result.get('external_search_pending'))})
+          if not isinstance(search_ref,str) or len(search_ref)!=32:
+              summary['status']='search_session_missing'
+              save(summary); print(json.dumps(summary,ensure_ascii=False,sort_keys=True)); raise SystemExit(1)
+          if not concrete:
+              summary['status']='search_completed_no_concrete_offer'
+              save(summary); print(json.dumps(summary,ensure_ascii=False,sort_keys=True)); raise SystemExit(1)
+
+          local_id,tour=concrete[0]
+          summary['additional_prices']={'attempted':True,'completed':False,'selected_local_hotel_id':local_id}
+          save(summary)
+          apd={'action':'additional_prices_batch','generation':1,'search_ref':search_ref,
+               'items':[{'offer_ref':tour['offer_ref'],'local_hotel_id':local_id}]}
+          try:
+              status,data=post(apd)
+          except (TimeoutError, socket.timeout, urllib.error.URLError, OSError) as error:
+              summary['status']='apd_transport_unknown_no_replay'
+              summary['additional_prices'].update({'result':'transport_unknown','error_kind':type(error).__name__})
+              save(summary); print(json.dumps(summary,ensure_ascii=False,sort_keys=True)); raise SystemExit(1)
+          if status!=200 or not isinstance(data,dict) or data.get('ok') is not True or not isinstance(data.get('data'),dict):
+              summary['status']='apd_http_failed_no_replay'
+              summary['additional_prices'].update({'http_status':status,'public_error':data.get('error') if isinstance(data,dict) else 'invalid_response'})
+              save(summary); print(json.dumps(summary,ensure_ascii=False,sort_keys=True)); raise SystemExit(1)
+          batch=data['data']; offers=batch.get('offers')
+          if batch.get('status')!='additional_prices_batch' or not isinstance(offers,list) or len(offers)!=1 or not isinstance(offers[0],dict):
+              raise SystemExit('invalid_apd_response')
+          item=offers[0]; evidence=item.get('additional_prices')
+          summary['additional_prices'].update({'completed':item.get('status')=='additional_prices','http_status':200,
+              'status':item.get('status'),'retryable':bool(item.get('retryable')),'final_price_ready':bool(item.get('finalPriceReady'))})
+          if isinstance(evidence,dict):
+              summary['additional_prices'].update({
+                  'source':evidence.get('source'),
+                  'application_state':evidence.get('application_state'),
+                  'total_count':evidence.get('total_count'),
+                  'arithmetic_applied':bool(evidence.get('arithmetic_applied')),
+                  'final_price_verified':bool(evidence.get('final_price_verified')),
+                  'search_price':evidence.get('search_price'),
+                  'party_surcharge':evidence.get('party_surcharge'),
+                  'search_plus_additional':evidence.get('search_plus_additional'),
+              })
+          if item.get('status')!='additional_prices' or not isinstance(evidence,dict) or evidence.get('source')!='anex_b2b_additional_prices_daily':
+              summary['status']='apd_not_completed_no_replay'
+              save(summary); print(json.dumps(summary,ensure_ascii=False,sort_keys=True)); raise SystemExit(1)
+          summary['status']='completed'
+          save(summary)
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+      - name: Preserve sanitized one-shot receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-preview-b2b-live-20260917-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/anex-b2b-live/summary.json
+          if-no-files-found: error
+          retention-days: 30
