@@ -746,6 +746,17 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.doesNotMatch(await hotelInfo.innerText(), /&#|&(?:amp|lt|gt|nbsp);|alert\(1\)/, 'hotel details contain neither entity noise nor encoded active markup');
     assert.equal(await hotelInfo.locator('script,img,style,iframe').count(), 0, 'encoded markup creates no active content in hotel details');
     assert.ok((await hotelInfo.locator('summary').boundingBox()).height >= 44, 'hotel details disclosure keeps a full touch target');
+    if (width > 760) {
+      const openDetailsGeometry = await card.evaluate(node => {
+        const rect = selector => {
+          const box = node.querySelector(selector).getBoundingClientRect();
+          return { width: box.width, height: box.height };
+        };
+        return { photo: rect('.hotel-photo'), body: rect('.hotel-body') };
+      });
+      assert.ok(openDetailsGeometry.photo.height <= 360, 'desktop hotel details keep the photo bounded to its media region: ' + JSON.stringify(openDetailsGeometry));
+      assert.ok(openDetailsGeometry.photo.height < openDetailsGeometry.body.height, 'long desktop hotel details do not stretch the photo to the copy height: ' + JSON.stringify(openDetailsGeometry));
+    }
     assert.equal((await snapshot(page)).overflow, false, width + ': decoded hotel details fit the viewport');
     if (!previous && [375,1440].includes(width)) await card.screenshot({ path: path.join(output, `hotel-details-entities-${width}.png`), animations: 'disabled' });
     await card.locator('.hotel-gallery-thumb').nth(1).click();

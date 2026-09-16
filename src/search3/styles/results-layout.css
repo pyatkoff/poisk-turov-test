@@ -302,6 +302,9 @@ margin:0;background:#f5f7fb;color:#17233b;
 & :is(.tour-more-toggle,.tour-list-more,.empty-edit-search):hover{background:#eef2ff}
 & .hotel-gallery-thumb:hover{border-color:#9aa9e8}
 }
+@media(min-width:761px){
+& .hotel-main:has(.hotel-details[open]) .hotel-photo:has(img){align-self:start;width:100%;height:auto;aspect-ratio:4/3}
+}
 @media(max-width:760px){
 & .hotel-main{display:flex;flex-direction:column}
 & .hotel-photo{flex:0 0 auto;width:100%;height:auto;min-height:0;aspect-ratio:16/9;max-height:260px}
