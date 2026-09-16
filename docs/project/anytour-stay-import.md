@@ -99,8 +99,8 @@ rollback after INSERTs, failure after COMMIT, and real COMMIT with simulated los
 `--unit-only` is allowed locally but refused in CI. Missing PDO/fixture is failure.
 
 This source addition does not claim actual server installation or populated real
-supplier mappings. MAIN bootstrap #2667 owns its separate three-file preflight;
-its operation is not extended or replayed here. Live stay installation requires
+supplier mappings. SEARCH bootstrap #2667 (claim5699409340) owns a separate
+six-file read-only preflight; its operation is not extended or replayed here. Live stay installation requires
 terminal hotel-bootstrap evidence and its own checked CURRENT operation. Population
 then needs actual reviewed rows with existing independent hotel-source bridges.
 Thereafter the consumer can be wired to `search3-local-candidate` under renderer
