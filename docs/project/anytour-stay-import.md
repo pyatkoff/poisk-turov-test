@@ -56,7 +56,9 @@ php scripts/catalog/anytour_stay_import.php --manifest=/private/op/reviewed.json
 ```
 
 The plan reports proposed rooms/mappings, already-present mappings, normalized
-manifest digest, current-state digest and `planSha256`. One REPEATABLE READ READ ONLY
+manifest digest, current-state digest and `planSha256`. The state binds a sanitized
+fingerprint of the database name, server hostname and port, not just identical data
+rows. Moving a plan to another named database fails even with byte-identical rows. One REPEATABLE READ READ ONLY
 transaction inspects all rows. All seven previously installed InnoDB tables and
 hotel schema version1 are required. This guard is not a substitute for the separate
 installation owner's exact CURRENT schema/constraint acceptance.
@@ -95,7 +97,8 @@ The new CI has NO server secrets or deployment step. It runs the unchanged #2668
 suite plus this importer suite in separate disposable loopback MySQL8 databases.
 Tests cover 1000 real room+mapping inserts, unchanged repeat, preserved source/profile
 rows, three-source convergence, plus-meal identity, source/profile drift, negatives,
-rollback after INSERTs, failure after COMMIT, and real COMMIT with simulated lost ack.
+rollback after INSERTs, failure after COMMIT, real COMMIT with simulated lost ack,
+and refusal to reuse a plan on a second actual database with identical copied rows.
 `--unit-only` is allowed locally but refused in CI. Missing PDO/fixture is failure.
 
 This source addition does not claim actual server installation or populated real

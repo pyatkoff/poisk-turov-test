@@ -83,6 +83,18 @@ $again = $import->plan($large);
 ok($again['createRooms'] === 0 && $again['createMappings'] === 0 && $again['unchangedMappings'] === 1000, 'fresh repeat plan is a no-op');
 $noop = $import->apply($large, $again['planSha256'], $checkpoint);
 ok($noop['createdRooms'] === 0 && $noop['createdMappings'] === 0 && $after === measure($pdo), 'fresh no-op apply preserves all rows');
+// An actual second database with identical rows must NOT accept the first database's plan.
+$pdo->exec('CREATE DATABASE anytour_stay_import_clone_fixture');
+$clone = new PDO(str_replace('dbname=anytour_stay_import_fixture;', 'dbname=anytour_stay_import_clone_fixture;', $dsn), 'root', (string)getenv('ANYTOUR_STAY_IMPORT_TEST_PASSWORD'), $options);
+foreach (['anytour_catalog_control', 'anytour_hotels', 'anytour_hotel_sources', 'anytour_meal_plans', 'anytour_room_categories', 'anytour_hotel_rooms', 'anytour_stay_mappings'] as $table) {
+    $clone->exec($pdo->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_NUM)[1]);
+    $clone->exec("INSERT INTO `$table` SELECT * FROM anytour_stay_import_fixture.`$table`");
+}
+ok(measure($clone) === measure($pdo), 'clone contains exactly the same source/profile/room/mapping rows');
+$cloneImport = new AnyTourStayImport($clone); $clonePlan = $cloneImport->plan($large);
+ok($clonePlan['planSha256'] !== $again['planSha256'], 'target database identity is bound into plan hash');
+fails(fn() => $cloneImport->apply($large, $again['planSha256'], $checkpoint), 'identical clone cannot use another database plan');
+ok(measure($clone) === measure($pdo), 'cross-database plan refusal writes nothing');
 // Three providers share one explicitly reviewed local room, never by source numeric ID equality.
 $converge = batch([entry('anex', '00015', $a, 'shared-sea', '001'), entry('andromeda', '00015', $a, 'shared-sea', '999'), entry('tourvisor', '00015', $a, 'shared-sea', 'SV')], 'fixture-converge');
 $p = $import->plan($converge); $res = $import->apply($converge, $p['planSha256'], $checkpoint);
@@ -148,4 +160,4 @@ $pdo->beginTransaction(); fails(fn() => $import->plan($drift), 'nested caller tr
 $pdo->exec('UPDATE anytour_catalog_control SET schema_version=2 WHERE singleton_id=1');
 fails(fn() => $import->plan($drift), 'unsupported schema version rejected');
 $pdo->exec('UPDATE anytour_catalog_control SET schema_version=1 WHERE singleton_id=1');
-echo "ANYTOUR_STAY_IMPORT_OK checks=$n pure=$pure sql=REAL_MYSQL batch1000=1 rollback=1 drift=1 postcommit=1 uncertain_commit=1 live_db_writes=0 supplier_calls=0\n";
+echo "ANYTOUR_STAY_IMPORT_OK checks=$n pure=$pure sql=REAL_MYSQL batch1000=1 rollback=1 drift=1 postcommit=1 uncertain_commit=1 database_binding=1 live_db_writes=0 supplier_calls=0\n";

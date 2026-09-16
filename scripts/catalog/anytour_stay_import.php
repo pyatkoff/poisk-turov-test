@@ -105,7 +105,12 @@ final class AnyTourStayImport
         }
         $control = $this->one('SELECT schema_version FROM anytour_catalog_control WHERE singleton_id=1', [], $lock);
         if (!$control || (int)$control['schema_version'] !== 1) throw new RuntimeException('Unsupported hotel schema version');
-        return $tables;
+        // Bind a reviewed plan to the configured database, not merely identical cloned rows.
+        $identity = $this->pdo->query('SELECT DATABASE() AS database_name, @@hostname AS server_host, @@port AS server_port')->fetch(PDO::FETCH_ASSOC);
+        if (!$identity || !is_string($identity['database_name']) || $identity['database_name'] === '') {
+            throw new RuntimeException('Explicit target database identity required');
+        }
+        return ['tables' => $tables, 'databaseIdentitySha256' => self::digest($identity)];
     }
     /** Current authoritative rows only. This neither discovers nor invents hotel-source links. */
     private function inspect(array $manifest, bool $lock): array
