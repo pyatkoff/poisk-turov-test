@@ -1,13 +1,27 @@
 'use strict';
-const fs=require('node:fs');
-const vm=require('node:vm');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
 
-function run(path){vm.runInThisContext(fs.readFileSync(path,'utf8'),{filename:path});}
+const root = path.resolve(__dirname, '../..');
+const sources = ['v2/search3-room-normalizer-v1.js', 'v2/results-renderer-v5.js'];
 
-function loadSearch3Renderer(){
-  run('v2/search3-room-normalizer-v1.js');
-  run('v2/results-renderer-v5.js');
-  return window.V2Results;
+// Use the same context for dependencies and renderer. No browser globals are
+// invented here: each regression keeps ownership of its own fixtures.
+function loadSearch3Renderer(sandbox) {
+  if (sandbox !== undefined && (sandbox === null || typeof sandbox !== 'object')) {
+    throw new TypeError('Renderer sandbox must be an object');
+  }
+  const context = sandbox === undefined ? null
+    : (vm.isContext(sandbox) ? sandbox : vm.createContext(sandbox));
+  for (const relativePath of sources) {
+    const filename = path.join(root, relativePath);
+    const source = fs.readFileSync(filename, 'utf8');
+    if (context) vm.runInContext(source, context, { filename });
+    else vm.runInThisContext(source, { filename });
+  }
+  // Preserve the existing no-argument/global-window callers.
+  return (context || globalThis).window.V2Results;
 }
 
-module.exports={loadSearch3Renderer};
+module.exports = { loadSearch3Renderer };
