@@ -21,7 +21,7 @@ function expect_error(callable $fn, string $needle, string $label): void
 
 function fixture_dto(string $provider, int $legacyHotelId, string $salt, string $price = '199390'): array
 {
-    $now = 1789581600;
+    $now = 1789581600; // 2026-09-16T18:00:00Z
     $operatorRaw = match ($provider) {
         'anex' => 'ANEX',
         'andromeda' => 'FUN&SUN',
@@ -40,6 +40,9 @@ function fixture_dto(string $provider, int $legacyHotelId, string $salt, string 
             'cross_provider_equivalence_verified' => false,
             'supplier_code_exposed' => false,
         ],
+        // Current INT -> SEARCH handoff calls this local_hotel_id. In the independent
+        // catalogue bridge it is the explicit legacy catalog/Tourvisor target, not the
+        // new AnyTour primary key.
         'local_hotel_id' => $legacyHotelId,
         'identity' => [
             'search_ref_digest' => hash('sha256', 'search:' . $provider . ':' . $salt),
@@ -86,6 +89,7 @@ function private_call(string $method, mixed ...$args): mixed
     return $m->invoke(null, ...$args);
 }
 
+// Pure contract checks always run, including on developer machines without PDO drivers.
 $tv = fixture_dto('tourvisor', 101, 'tv-1', '199390');
 $anex = fixture_dto('anex', 101, 'anex-1', '196500');
 $andromeda = fixture_dto('andromeda', 101, 'andromeda-1', '195000');
@@ -98,6 +102,7 @@ foreach ([$tv, $anex, $andromeda] as $dto) {
     check($listing['selection_state'] === 'refresh_required' && $listing['booking_enabled'] === false, 'pure-no-stale-selection-' . $dto['provider']);
     check(!array_key_exists('context', $listing) && !array_key_exists('local_hotel_id', $listing), 'pure-context-stripped-' . $dto['provider']);
 }
+
 $bad = $tv; $bad['finalPriceReady'] = false;
 expect_error(fn() => private_call('validateDto', $bad), 'ANYTOUR_OFFER_READINESS', 'pure-ready-failclosed');
 $bad = $tv; $bad['identity']['offer_ref_digest'] = 'abc';
@@ -108,6 +113,7 @@ $bad = $tv; $bad['provider'] = 'samo';
 expect_error(fn() => private_call('validateDto', $bad), 'ANYTOUR_OFFER_PROVIDER', 'pure-provider-namespace');
 $bad = $tv; $bad['operator']['supplier_code_exposed'] = true;
 expect_error(fn() => private_call('validateDto', $bad), 'ANYTOUR_OFFER_OPERATOR', 'pure-private-operator-code');
+
 echo "ANYTOUR_OFFER_STORE_PURE_OK checks=20 providers=3\n";
 
 $requireSql = in_array('--require-sql', $argv, true);
@@ -118,7 +124,9 @@ if ($dsn === '') {
     exit(0);
 }
 check(in_array('mysql', PDO::getAvailableDrivers(), true), 'pdo_mysql-required');
-$pdo = new PDO($dsn, (string)getenv('ANYTOUR_OFFER_TEST_USER'), (string)getenv('ANYTOUR_OFFER_TEST_PASSWORD'), [
+$user = (string)getenv('ANYTOUR_OFFER_TEST_USER');
+$password = (string)getenv('ANYTOUR_OFFER_TEST_PASSWORD');
+$pdo = new PDO($dsn, $user, $password, [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     PDO::ATTR_EMULATE_PREPARES => false,
@@ -144,21 +152,22 @@ exec_sql_file($pdo, __DIR__ . '/../v2/data/migrations/20260916-anytour-offer-sto
 
 $nowSql = '2026-09-16 18:00:00';
 $profile = json_encode(['name' => 'Fixture Hotel'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-$insertHotel = $pdo->prepare('INSERT INTO anytour_hotels (profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES (:json,:sha,1,1,:at,:at)');
-$insertHotel->execute(['json'=>$profile,'sha'=>hash('sha256',$profile),'at'=>$nowSql]);
+$insertHotel = $pdo->prepare('INSERT INTO anytour_hotels (profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES (:json,:sha,1,1,:created,:updated)');
+$insertHotel->execute(['json'=>$profile,'sha'=>hash('sha256',$profile),'created'=>$nowSql,'updated'=>$nowSql]);
 $own1 = (int)$pdo->lastInsertId();
 $profile2 = json_encode(['name' => 'Other Hotel'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-$insertHotel->execute(['json'=>$profile2,'sha'=>hash('sha256',$profile2),'at'=>$nowSql]);
+$insertHotel->execute(['json'=>$profile2,'sha'=>hash('sha256',$profile2),'created'=>$nowSql,'updated'=>$nowSql]);
 $own2 = (int)$pdo->lastInsertId();
 $source = json_encode(['fixture'=>true], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-$bridge = $pdo->prepare("INSERT INTO anytour_hotel_sources (namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES ('legacy_catalog',:legacy,:own,'test',:json,:sha,:at,:at)");
-$bridge->execute(['legacy'=>'101','own'=>$own1,'json'=>$source,'sha'=>hash('sha256',$source),'at'=>$nowSql]);
-$bridge->execute(['legacy'=>'202','own'=>$own2,'json'=>$source,'sha'=>hash('sha256',$source),'at'=>$nowSql]);
+$bridge = $pdo->prepare("INSERT INTO anytour_hotel_sources (namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES ('legacy_catalog',:legacy,:own,'test',:json,:sha,:first_seen,:last_seen)");
+$bridge->execute(['legacy'=>'101','own'=>$own1,'json'=>$source,'sha'=>hash('sha256',$source),'first_seen'=>$nowSql,'last_seen'=>$nowSql]);
+$bridge->execute(['legacy'=>'202','own'=>$own2,'json'=>$source,'sha'=>hash('sha256',$source),'first_seen'=>$nowSql,'last_seen'=>$nowSql]);
 
 $at = new DateTimeImmutable('2026-09-16T18:00:00Z');
 $expires = $at->modify('+30 minutes');
 $scope = hash('sha256', 'MOW|EG|2026-10-05|2026-10-05|7|7|2|7');
 
+// Three providers coexist for one own AnyTour hotel. Tourvisor deliberately has two offers.
 $tvRefresh = AnyTourOfferStoreV1::beginRefresh($pdo, 'tourvisor', $scope, $at);
 AnyTourOfferStoreV1::upsertReadyOffer($pdo, $tvRefresh, $own1, $tv, $expires, $at);
 $tv2 = fixture_dto('tourvisor', 101, 'tv-2', '205000');
@@ -168,6 +177,7 @@ check(AnyTourOfferStoreV1::completeRefresh($pdo, $tvRefresh, $at)['expiredUnseen
 $anexRefresh = AnyTourOfferStoreV1::beginRefresh($pdo, 'anex', $scope, $at);
 AnyTourOfferStoreV1::upsertReadyOffer($pdo, $anexRefresh, $own1, $anex, $expires, $at);
 AnyTourOfferStoreV1::completeRefresh($pdo, $anexRefresh, $at);
+
 $andRefresh = AnyTourOfferStoreV1::beginRefresh($pdo, 'andromeda', $scope, $at);
 AnyTourOfferStoreV1::upsertReadyOffer($pdo, $andRefresh, $own1, $andromeda, $expires, $at);
 AnyTourOfferStoreV1::completeRefresh($pdo, $andRefresh, $at);
@@ -183,6 +193,7 @@ foreach ($read['items'] as $item) {
     check(!array_key_exists('context', $item['offer']), 'read-no-expired-context');
 }
 
+// Same identity is an upsert, not a duplicate row; a successful complete refresh expires unseen TV rows only.
 $tvRefresh2 = AnyTourOfferStoreV1::beginRefresh($pdo, 'tourvisor', $scope, $at->modify('+1 minute'));
 $tvUpdated = fixture_dto('tourvisor', 101, 'tv-1', '198000');
 AnyTourOfferStoreV1::upsertReadyOffer($pdo, $tvRefresh2, $own1, $tvUpdated, $expires, $at->modify('+1 minute'));
@@ -195,11 +206,13 @@ $tvRows = array_values(array_filter($read['items'], fn($x) => $x['provider'] ===
 check(count($tvRows) === 1 && $tvRows[0]['price'] === '198000', 'same-identity-updated');
 check((int)$pdo->query("SELECT COUNT(*) FROM anytour_offers WHERE provider='tourvisor' AND scope_sha256=" . $pdo->quote($scope))->fetchColumn() === 2, 'upsert-not-third-row');
 
+// Abort/partial refresh never deletes the last complete snapshot.
 $abortToken = AnyTourOfferStoreV1::beginRefresh($pdo, 'anex', $scope, $at->modify('+3 minutes'));
 AnyTourOfferStoreV1::abortRefresh($pdo, $abortToken, $at->modify('+3 minutes'));
 $read = AnyTourOfferStoreV1::readScope($pdo, $scope, $at->modify('+4 minutes'));
 check(count(array_filter($read['items'], fn($x) => $x['provider'] === 'anex')) === 1, 'aborted-refresh-preserves-prior');
 
+// Busy lease blocks concurrent same-provider same-scope refresh; stale lease is abandoned, not replayed.
 $busyScope = hash('sha256', 'busy-scope');
 $busy = AnyTourOfferStoreV1::beginRefresh($pdo, 'andromeda', $busyScope, $at, 60);
 expect_error(fn() => AnyTourOfferStoreV1::beginRefresh($pdo, 'andromeda', $busyScope, $at->modify('+10 seconds'), 60), 'ANYTOUR_OFFER_REFRESH_BUSY', 'busy-refresh');
@@ -208,21 +221,25 @@ $replacement = AnyTourOfferStoreV1::beginRefresh($pdo, 'andromeda', $busyScope, 
 check($pdo->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='abandoned'")->fetchColumn() >= 1, 'stale-refresh-abandoned');
 AnyTourOfferStoreV1::abortRefresh($pdo, $replacement, $at->modify('+1 minute'));
 
+// Mapping is explicit: a legacy 202 offer cannot be stored under AnyTour hotel 1.
 $mapScope = hash('sha256', 'mapping-scope');
 $mapRefresh = AnyTourOfferStoreV1::beginRefresh($pdo, 'tourvisor', $mapScope, $at);
 $wrongHotel = fixture_dto('tourvisor', 202, 'wrong-own', '180000');
 expect_error(fn() => AnyTourOfferStoreV1::upsertReadyOffer($pdo, $mapRefresh, $own1, $wrongHotel, $expires, $at), 'ANYTOUR_OFFER_HOTEL_BRIDGE', 'explicit-own-bridge');
 AnyTourOfferStoreV1::abortRefresh($pdo, $mapRefresh, $at);
 
+// Provider refresh cannot smuggle a different provider DTO.
 $providerScope = hash('sha256', 'provider-scope');
 $providerRefresh = AnyTourOfferStoreV1::beginRefresh($pdo, 'tourvisor', $providerScope, $at);
 expect_error(fn() => AnyTourOfferStoreV1::upsertReadyOffer($pdo, $providerRefresh, $own1, $anex, $expires, $at), 'ANYTOUR_OFFER_PROVIDER_SCOPE', 'provider-scope-isolation');
 AnyTourOfferStoreV1::abortRefresh($pdo, $providerRefresh, $at);
 
+// No caller-owned transaction: atomicity stays inside the store.
 $pdo->beginTransaction();
 expect_error(fn() => AnyTourOfferStoreV1::beginRefresh($pdo, 'tourvisor', hash('sha256','tx'), $at), 'ANYTOUR_OFFER_CALLER_TRANSACTION', 'caller-transaction-rejected');
 $pdo->rollBack();
 
+// Six-hour hard cap and expiry filtering.
 $expiryScope = hash('sha256', 'expiry-scope');
 $expiryRefresh = AnyTourOfferStoreV1::beginRefresh($pdo, 'tourvisor', $expiryScope, $at);
 expect_error(fn() => AnyTourOfferStoreV1::upsertReadyOffer($pdo, $expiryRefresh, $own1, $tv, $at->modify('+7 hours'), $at), 'ANYTOUR_OFFER_EXPIRY', 'expiry-cap');
@@ -230,6 +247,7 @@ AnyTourOfferStoreV1::upsertReadyOffer($pdo, $expiryRefresh, $own1, $tv, $at->mod
 AnyTourOfferStoreV1::completeRefresh($pdo, $expiryRefresh, $at);
 check(count(AnyTourOfferStoreV1::readScope($pdo, $expiryScope, $at->modify('+6 minutes'))['items']) === 0, 'expired-hidden');
 
+// Payload tamper is never silently served.
 $pdo->exec("UPDATE anytour_offers SET payload_json='{}' WHERE provider='anex' AND scope_sha256=" . $pdo->quote($scope));
 expect_error(fn() => AnyTourOfferStoreV1::readScope($pdo, $scope, $at->modify('+5 minutes')), 'ANYTOUR_OFFER_PAYLOAD_INTEGRITY', 'payload-integrity');
 
