@@ -1,0 +1,39 @@
+name: INT natural actualization observation
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-price-actualization-observation.php'
+      - 'tests/three-provider-price-actualization-observation-test.php'
+      - '.github/workflows/int-natural-actualization-observation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate supplier-free observation contract
+        run: |
+          set -euo pipefail
+          php -l app/integrations/three-provider-price-actualization-observation.php
+          php -l tests/three-provider-price-actualization-observation-test.php
+          php -d allow_url_fopen=0 tests/three-provider-price-actualization-observation-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-price-actualization-observation.php').read_text()
+          for forbidden in (
+              'curl_', 'file_get_contents(', 'PDO', 'mysqli_', 'bron(', 'bron_ticket',
+              'INSERT ', 'UPDATE ', 'DELETE ', 'supplier_offer_id', 'offer_ref', 'search_ref',
+              'externalOfferId', 'claiminc'
+          ):
+              assert forbidden not in src, forbidden
+          assert "'exact_match'" in src
+          assert "'listing_price'" in src
+          assert "'verified_quote_price'" in src
+          assert 'finalPriceReady' in src
+          assert 'final_price_verified' in src
+          print('INT natural actualization static boundary: PASS')
+          PY
