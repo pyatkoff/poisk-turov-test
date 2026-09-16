@@ -73,6 +73,7 @@ const flights = [
     assert.equal(await root.getByRole('textbox', { name: 'Телефон (обязательно)' }).count(), 1, 'phone has an associated accessible label');
     assert.equal(await root.getByRole('checkbox', { name: /Согласен на обработку персональных данных/ }).count(), 1, 'consent has an associated accessible label');
     assert.equal(await root.getByRole('button', { name: 'Отправить заявку' }).count(), 1, 'lead submit has one accessible action name');
+    assert.equal((await root.locator('.lead-form .section-heading span').innerText()).trim(), 'Менеджер получит выбранный тур и выбранный рейс.', 'confirmed flight keeps the selected-flight handoff copy');
     assert.equal(await root.locator('.lead-message[aria-live="polite"]').count(), 1, 'lead feedback is exposed as a polite live region');
     assert.equal(await page.evaluate(() => document.activeElement?.name), 'phone', 'lead transition moves focus to the required phone field');
     assert.deepEqual(posts, [], 'screen-reader acceptance sends no POST requests');

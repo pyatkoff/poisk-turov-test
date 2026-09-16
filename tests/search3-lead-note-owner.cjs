@@ -5,4 +5,6 @@ assert.ok(!bundle.includes('search3-lead-protection'));
 assert.ok(!bundle.includes('Мы отправим выбранный тур менеджеру'));
 const lead=fs.readFileSync(path.join(__dirname,'../v2/lead-form-guard-v1.js'),'utf8');
 for(const marker of ['input[name="phone"]','selectionSummary','v2:lead-started','v2:lead-success','v2:lead-error'])assert.ok(lead.includes(marker),'lead owner remains: '+marker);
+assert.ok(lead.includes('confirmedFlightContext(e&&e.detail)'),'lead copy reuses the canonical rendered-flight truth');
+assert.ok(lead.includes('Рейс и время уточнит менеджер.'),'unknown flight copy remains explicit and truthful');
 console.log('PASS: duplicate lead note absent; lead form lifecycle owner remains');

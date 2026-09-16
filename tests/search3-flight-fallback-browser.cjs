@@ -107,6 +107,7 @@ async function verifyLocalizedFlightTradeoff(browser) {
     prices: Array.from(document.querySelectorAll('#selectedTour .flight-choice>b')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
     tradeoffs: Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
     wrongDigitCollapse: document.body.textContent.includes('+827 664 ₽ к минимальной'),
+    leadHeading: document.querySelector('#selectedTour .lead-form .section-heading span')?.textContent.trim(),
     leadRequests: window.__fallbackTest.leadRequests
   }));
   if (
@@ -117,6 +118,7 @@ async function verifyLocalizedFlightTradeoff(browser) {
     || state.tradeoffs[0] !== 'Самая низкая цена'
     || state.tradeoffs[1] !== '+17 217,6 ₽ к минимальной'
     || state.wrongDigitCollapse
+    || state.leadHeading !== 'Менеджер получит выбранный тур. Рейс и время уточнит менеджер.'
     || state.leadRequests !== 0
   ) throw new Error('localized flight tradeoff failed: ' + JSON.stringify(state));
   console.log('SEARCH3_LOCALIZED_FLIGHT_TRADEOFF_OK ' + JSON.stringify(state));
