@@ -5,7 +5,9 @@ on:
     paths:
       - scripts/diagnostics/hotel_match_frontier_geography_evidence.py
       - scripts/diagnostics/hotel_match_hierarchy_current_apply.php
+      - scripts/diagnostics/hotel_match_name_evidence_recovery.py
       - tests/hotel_match_frontier_geography_evidence_test.py
+      - tests/hotel_match_name_evidence_recovery_test.py
       - .github/workflows/hotel-match-frontier-geography-evidence-check.yml
 permissions: {contents: read, actions: read}
 jobs:
@@ -58,6 +60,24 @@ jobs:
           echo "07acd60e176baa601041b18caf8da49a6514e87ac7d1043a61bed669a21a539a  $RUNNER_TEMP/match-hierarchy-output/geography.json" | sha256sum -c -
           echo "712aa93f1476ff6b0549d1f1ed606e4c999ef3076c8c6fce3dbd06614682da97  $RUNNER_TEMP/match-hierarchy-output/identity.json" | sha256sum -c -
           printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/match-hierarchy-output/source-sha.txt"
+      - name: Read completed CURRENT artifact for offline recovery only
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/match-recovery-inputs"
+          cp "$RUNNER_TEMP/match-geo-inputs/census.zip" "$RUNNER_TEMP/match-recovery-inputs/match-census-10394524643.zip"
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10455217564/zip > "$RUNNER_TEMP/match-recovery-inputs/match-hierarchy-current-35116182779.zip"
+      - name: Audit all recovered pairs without supplier or database access
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_name_evidence_recovery.py)" = d08adf50e5d48ae674594e87d058afb345d0e6c3
+          test "$(git hash-object tests/hotel_match_name_evidence_recovery_test.py)" = 810c419f92e718aa8fb0a8adbeaf3cf143cb18c3
+          export MATCH_RECOVERY_INPUT_DIR="$RUNNER_TEMP/match-recovery-inputs"
+          python3 -m py_compile scripts/diagnostics/hotel_match_name_evidence_recovery.py tests/hotel_match_name_evidence_recovery_test.py
+          python3 tests/hotel_match_name_evidence_recovery_test.py 2>&1 | tee "$RUNNER_TEMP/match-hierarchy-output/recovery-tests.txt"
+          python3 scripts/diagnostics/hotel_match_name_evidence_recovery.py "$MATCH_RECOVERY_INPUT_DIR/match-hierarchy-current-35116182779.zip" "$MATCH_RECOVERY_INPUT_DIR/match-census-10394524643.zip" "$RUNNER_TEMP/match-hierarchy-output/recovery.json" --audit-output "$RUNNER_TEMP/match-hierarchy-output/pair-audit.json"
+          echo "73a6d537ed852e85bcf6601792a226f6a552ed9e7e690f64245297838ebc929c  $RUNNER_TEMP/match-hierarchy-output/recovery.json" | sha256sum -c -
+          echo "d9ee55245c3bc442659d373ff280e773603da74c29e7301b0395abcfa457f1b6  $RUNNER_TEMP/match-hierarchy-output/pair-audit.json" | sha256sum -c -
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: match-frontier-hierarchy-identity-${{ github.sha }}
