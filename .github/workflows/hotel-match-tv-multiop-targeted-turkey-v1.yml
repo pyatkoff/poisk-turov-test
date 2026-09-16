@@ -1,0 +1,94 @@
+name: MATCH TV targeted multi-operator Turkey v1
+on:
+  push:
+    branches: [ops/match-tv-multiop-targeted-turkey-1971-20260916-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_v1.php
+      - .github/workflows/hotel-match-tv-multiop-targeted-turkey-v1.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-tv-multiop-targeted-turkey-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-tv-multiop-targeted-turkey-1971-20260916-v1
+  OUT: /tmp/match-tv-multiop-targeted-turkey-v1
+jobs:
+  acquire:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate exact read-only diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_v1.php
+          php scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_v1.php --self-test
+          grep -Fq "const OP='hotel-match-tv-multiop-targeted-turkey-1971-20260916-v1'" scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_v1.php
+          grep -Fq "'hotelIds'=>array_values($focus)" scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_v1.php
+          ! grep -Fq "'operatorIds'" scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_v1.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_v1.php
+      - name: Create runner reservation before SSH DB Tourvisor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['OUT'])/'runner-reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_db_tourvisor','no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-tv-multiop-turkey-reservation-${{ github.run_id }}
+          path: ${{ env.OUT }}/runner-reservation.json
+          retention-days: 90
+      - name: Run immutable Turkey acquisition
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          cleanup(){ ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=900 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < scripts/diagnostics/hotel_match_tv_multiop_targeted_turkey_v1.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
+          trc=$?
+          set -e
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export RC="$rc" TRC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['OUT'])
+          def load(n):
+            try:return json.loads((p/n).read_text())
+            except:return {}
+          r=load('result.json'); c=load('receipt.json')
+          rh=hashlib.sha256((p/'result.json').read_bytes()).hexdigest() if (p/'result.json').exists() else None
+          ok=(r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('source_sha')==os.environ['GITHUB_SHA'] and c.get('result_sha256')==rh and c.get('readback_verified') is True and c.get('no_replay') is True and r.get('database_writes')==0 and r.get('mapping_writes')==0 and r.get('supplier_calls')==0 and isinstance(r.get('tourvisor_calls'),int) and r.get('tourvisor_calls')<=39)
+          gate={'verified':ok,'status':r.get('status'),'reason':r.get('reason'),'current_focus_count':r.get('current_focus_count'),'pruned':r.get('pruned'),'search_id':r.get('search_id'),'selected_pairs':r.get('selected_pairs'),'captured':r.get('captured'),'tourvisor_calls':r.get('tourvisor_calls'),'result_sha256':rh,'remote_exit':int(os.environ['RC']),'tar_exit':int(os.environ['TRC']),'no_replay':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-tv-multiop-turkey-${{ github.run_id }}
+          path: ${{ env.OUT }}/
+          retention-days: 90
