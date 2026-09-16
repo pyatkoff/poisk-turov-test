@@ -44,6 +44,9 @@ expect($readerCalls === 1, 'budget deferral must reach the local pre-transport g
 expect(($result['offers'][0]['status'] ?? null) === 'unknown', 'public status remains fail-closed');
 expect(array_key_exists('additional_prices', $result['offers'][0])
     && $result['offers'][0]['additional_prices'] === null, 'deferred APD must expose no money');
+expect(($result['offers'][0]['retryable'] ?? null) === true, 'unsent budget deferral must be classified retryable');
+expect(($result['offers'][0]['retry_reason'] ?? null) === 'session_budget_deferred',
+    'unsent budget deferral must expose only the bounded local reason');
 expect(!isset($state['additional_prices'][$digest]), 'unsent budget deferral must not become durable unknown');
 expect(count($checkpoints) === 2, 'budget deferral must checkpoint reservation and rollback');
 expect(($checkpoints[0][1]['status'] ?? null) === 'unknown' && $checkpoints[1][1] === null,
@@ -66,6 +69,8 @@ $result = anytour_anex_additional_prices_batch_execute(
 expect($readerCalls === 2, 'later batch must retry the context after local budget recovery');
 expect(($result['offers'][0]['status'] ?? null) === 'complete', 'retried APD context must complete');
 expect(($result['offers'][0]['additional_prices'] ?? null) === $evidence, 'completed evidence must be returned unchanged');
+expect(($result['offers'][0]['retryable'] ?? null) === false && ($result['offers'][0]['retry_reason'] ?? 'sentinel') === null,
+    'completed APD context must not request another retry');
 expect(($state['additional_prices'][$digest]['status'] ?? null) === 'complete', 'successful retry must become durable complete');
 
 $unknownDigest = hash('sha256', "779\0" . "3\0" . "2026-10-18\0" . "7");
@@ -75,7 +80,7 @@ $unknownPlan['contexts'][0]['supplier_tour_program_id'] = '779';
 $unknownPlan['offers'][0]['context_digest'] = $unknownDigest;
 $unknownState = [];
 $unknownCalls = 0;
-anytour_anex_additional_prices_batch_execute(
+$unknownResult = anytour_anex_additional_prices_batch_execute(
     $unknownPlan,
     $unknownState,
     static function(array $context) use (&$unknownCalls): array {
@@ -86,7 +91,10 @@ anytour_anex_additional_prices_batch_execute(
 );
 expect(($unknownState['additional_prices'][$unknownDigest]['status'] ?? null) === 'unknown',
     'supplier-observed APD unknown must remain durable');
-anytour_anex_additional_prices_batch_execute(
+expect(($unknownResult['offers'][0]['retryable'] ?? null) === false
+    && ($unknownResult['offers'][0]['retry_reason'] ?? null) === 'durable_unknown',
+    'supplier-observed APD unknown must be explicitly non-retryable');
+$unknownResult = anytour_anex_additional_prices_batch_execute(
     $unknownPlan,
     $unknownState,
     static function(array $context) use (&$unknownCalls): array {
@@ -96,5 +104,8 @@ anytour_anex_additional_prices_batch_execute(
     static function(array $next, string $contextDigest): void {}
 );
 expect($unknownCalls === 1, 'durable supplier unknown must remain no-replay');
+expect(($unknownResult['offers'][0]['retryable'] ?? null) === false
+    && ($unknownResult['offers'][0]['retry_reason'] ?? null) === 'durable_unknown',
+    'cached durable unknown must remain non-retryable');
 
 echo "ANEX AdditionalPricesDaily budget deferral regression: OK\n";
