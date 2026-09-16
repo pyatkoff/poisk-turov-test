@@ -27,15 +27,28 @@ $resolved=[
         'price'=>['amount'=>'73092','currency'=>'RUB'],
     ],
 ];
+$details=static function(string $number,string $airline,string $airlineName,string $from,string $to,
+    string $depart,string $arrive,string $bagage,string $bagageNote,string $duration):array{
+    return [['detail'=>[[
+        'external'=>'1','flight_number'=>$number,'marketing_airline'=>$airline,
+        'full_marketing_airline'=>$airlineName,'departureAirportCode'=>$from,'arrivalAirportCode'=>$to,
+        'depart_datetime'=>$depart,'arrival_datetime'=>$arrive,'bagage'=>$bagage,'bagage_note'=>$bagageNote,
+        'SegmentDuration'=>$duration,'requestid'=>'detail-request-private','offer_id'=>'detail-offer-private',
+        'externalOfferId'=>'detail-external-offer-private',
+    ]]]];
+};
 $getFlights=$package;
 $getFlights['groups']=[['group'=>[
     ['id'=>'g0','required'=>'true','oneItem'=>'true'],
     ['id'=>'g1','required'=>'true','oneItem'=>'true'],
 ]]];
 $getFlights['variants']=[['transports'=>[['transport'=>[
-    ['uid'=>'supplier_out_a','groupId'=>'g0','direction'=>'0','type'=>'ttAvia','name'=>'OUT A','datebeg'=>'2026-09-20','dateend'=>'2026-09-20'],
-    ['uid'=>'supplier_out_b','groupId'=>'g0','direction'=>'0','type'=>'ttAvia','name'=>'OUT B','datebeg'=>'2026-09-20','dateend'=>'2026-09-20'],
-    ['uid'=>'supplier_back_a','groupId'=>'g1','direction'=>'1','type'=>'ttAvia','name'=>'BACK A','datebeg'=>'2026-09-27','dateend'=>'2026-09-27'],
+    ['uid'=>'supplier_out_a','groupId'=>'g0','direction'=>'0','type'=>'ttAvia','name'=>'OUT A','datebeg'=>'2026-09-20','dateend'=>'2026-09-20',
+        'details'=>$details('DP 994','DP','Pobeda','VKO','IST','2026-09-20T06:00:00','2026-09-20T11:10:00','0PC','No baggage','05:10')],
+    ['uid'=>'supplier_out_b','groupId'=>'g0','direction'=>'0','type'=>'ttAvia','name'=>'OUT B','datebeg'=>'2026-09-20','dateend'=>'2026-09-20',
+        'details'=>$details('DP 995','DP','Pobeda','VKO','IST','2026-09-20T07:35:00','2026-09-20T12:50:00','0PC','No baggage','05:15')],
+    ['uid'=>'supplier_back_a','groupId'=>'g1','direction'=>'1','type'=>'ttAvia','name'=>'BACK A','datebeg'=>'2026-09-27','dateend'=>'2026-09-27',
+        'details'=>$details('DP 996','DP','Pobeda','IST','VKO','2026-09-27T18:40:00','2026-09-27T23:25:00','0PC','No baggage','04:45')],
 ]]]]];
 
 $initialCalls=[];$initialBudget=0;
@@ -65,8 +78,17 @@ if(!is_array($retained)||count($initial['flights']??[])!==3)throw new RuntimeExc
 foreach($initial['flights'] as $flight){
     if(!is_string($flight['flight_ref']??null)||!preg_match('/^flight_[a-f0-9]{32}$/D',$flight['flight_ref']))throw new RuntimeException('PUBLIC_REF');
 }
+$outFacts=$initial['flights'][1]['flight_details']??null;
+if(!is_array($outFacts)||($outFacts['source']??null)!=='andromeda_transport_detail'
+    ||($outFacts['external_transport']??null)!==true||($outFacts['flight_number']??null)!=='DP 995'
+    ||($outFacts['airline_code']??null)!=='DP'||($outFacts['airline_name']??null)!=='Pobeda'
+    ||($outFacts['departure_airport_code']??null)!=='VKO'||($outFacts['arrival_airport_code']??null)!=='IST'
+    ||($outFacts['departure_datetime']??null)!=='2026-09-20T07:35:00'||($outFacts['arrival_datetime']??null)!=='2026-09-20T12:50:00'
+    ||($outFacts['duration']??null)!=='05:15'||($outFacts['baggage_code']??null)!=='0PC'
+    ||($outFacts['baggage_note']??null)!=='No baggage')throw new RuntimeException('PUBLIC_FLIGHT_FACTS');
 $encoded=json_encode($initial,JSON_THROW_ON_ERROR);
-foreach(['supplier_out_a','supplier_out_b','supplier_back_a','SID_initial','catalog-private'] as $secret){
+foreach(['supplier_out_a','supplier_out_b','supplier_back_a','SID_initial','catalog-private',
+    'detail-request-private','detail-offer-private','detail-external-offer-private'] as $secret){
     if(str_contains($encoded,$secret))throw new RuntimeException('PRIVATE_LEAK_'.$secret);
 }
 
@@ -120,8 +142,13 @@ $final=AnyTourAndromedaSelectedQuote::continueWithFlights(
 if($continuedCalls!==['changeservice','changeservice','calc']||$continuedBudget!==3)throw new RuntimeException('CONTINUATION_CALLS');
 if(($final['state']??null)!=='quote_verified'||($final['final_price_verified']??null)!==true
     ||($final['final_price']['amount']??null)!=='81234'||($final['booking_enabled']??null)!==false)throw new RuntimeException('FINAL_QUOTE');
+if(($final['flights'][0]['flight_details']['flight_number']??null)!=='DP 995'
+    ||($final['flights'][1]['flight_details']['flight_number']??null)!=='DP 996'
+    ||($final['flights'][0]['flight_details']['external_transport']??null)!==true
+    ||($final['flights'][1]['flight_details']['external_transport']??null)!==true)throw new RuntimeException('FINAL_FLIGHT_FACTS');
 $finalEncoded=json_encode($final,JSON_THROW_ON_ERROR);
-foreach(['supplier_out_a','supplier_out_b','supplier_back_a','supplier_back_default','SID_continue','catalog-private'] as $secret){
+foreach(['supplier_out_a','supplier_out_b','supplier_back_a','supplier_back_default','SID_continue','catalog-private',
+    'detail-request-private','detail-offer-private','detail-external-offer-private'] as $secret){
     if(str_contains($finalEncoded,$secret))throw new RuntimeException('FINAL_PRIVATE_LEAK_'.$secret);
 }
 
