@@ -2,7 +2,7 @@ name: INT Andromeda served accuracy readback
 
 on:
   push:
-    branches: ['feat/int-andromeda-served-accuracy-readback-20260916']
+    branches: ['fix/int-andromeda-served-runtime-probe-20260916']
     paths:
       - 'scripts/diagnostics/andromeda_served_price_accuracy_remote.py'
       - 'tests/andromeda-served-price-accuracy-remote-test.py'
@@ -27,7 +27,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected=$'READ_ONLY_ANDROMEDA_ACCURACY_V1\nBASE=18a945362d9894fea5310ba9573ad84e9f6755d7\n'
+          expected=$'READ_ONLY_ANDROMEDA_ACCURACY_V2\nBASE=defc69ec7017b0d2369feabf3c363dbb082f1840\n'
           actual=''
           if [[ -f runtime-control/int-andromeda-served-accuracy-readback.txt ]]; then actual="$(cat runtime-control/int-andromeda-served-accuracy-readback.txt)"$'\n'; fi
           if [[ "$actual" == "$expected" ]]; then echo 'run_live=true' >> "$GITHUB_OUTPUT"; else echo 'run_live=false' >> "$GITHUB_OUTPUT"; fi
@@ -37,7 +37,7 @@ jobs:
           ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
           path: helper
           persist-credentials: false
-      - name: Read aggregate accuracy from server without writes or supplier calls
+      - name: Re-read aggregate accuracy and actual deployed capability without writes or supplier calls
         if: steps.control.outputs.run_live == 'true'
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}

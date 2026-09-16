@@ -19,12 +19,22 @@ try {
     $directory=dirname($config['catalog_path']).'/searches';
     if(realpath($directory)!==$directory||!is_dir($directory)||is_link($directory))throw new RuntimeException('search_store_missing');
 
+    // Capability belongs to the deployed quote endpoint that writes the checkpoint field,
+    // plus the helper that resolves the served receipt and compares it with the verified quote.
+    // Do not infer support from a historical/nonexistent endpoint name or from the field name
+    // appearing somewhere unrelated in the runtime tree.
+    $quotePath=$target.'/api-andromeda-quote-preview.php';
+    $observationPath=$target.'/app/integrations/andromeda-price-observation.php';
     $runtimeSupports=false;
-    foreach([$target.'/api-andromeda-selected-quote.php',$target.'/app/integrations/andromeda-price-observation.php'] as $source){
-        if(is_file($source)&&!is_link($source)){
-            $text=file_get_contents($source);
-            if(is_string($text)&&strpos($text,'served_price_observation')!==false)$runtimeSupports=true;
-        }
+    if(realpath($quotePath)===$quotePath && is_file($quotePath) && !is_link($quotePath)
+        && realpath($observationPath)===$observationPath && is_file($observationPath) && !is_link($observationPath)){
+        $quoteText=file_get_contents($quotePath);
+        $observationText=file_get_contents($observationPath);
+        $runtimeSupports=is_string($quoteText)&&is_string($observationText)
+            && strpos($quoteText,'served_price_observation')!==false
+            && strpos($quoteText,'AnyTourAndromedaPriceObservation::compareServed')!==false
+            && strpos($observationText,'function compareServed')!==false
+            && strpos($observationText,'function resolveServed')!==false;
     }
 
     $scan=['matched_files'=>0,'completed_checkpoints'=>0,'observations'=>0,'no_observation'=>0,'not_completed'=>0,'invalid_files'=>0];

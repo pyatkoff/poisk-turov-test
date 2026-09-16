@@ -21,6 +21,16 @@ try: module.validate(bad); raise AssertionError('private key accepted')
 except ValueError: pass
 for forbidden in ('curl_','PDO','mysqli_','file_put_contents(','fopen(','unlink(','rename(','mkdir('):
     assert forbidden not in module.PHP, forbidden
-for required in ("/_preview/search3-anex-candidate",'.andromeda-private.php','/searches','served_price_observation','supplier_calls','remote_writes'):
+for required in (
+    '/_preview/search3-anex-candidate', '.andromeda-private.php', '/searches',
+    'api-andromeda-quote-preview.php', 'app/integrations/andromeda-price-observation.php',
+    "strpos($quoteText,'served_price_observation')", 'AnyTourAndromedaPriceObservation::compareServed',
+    "strpos($observationText,'function compareServed')", "strpos($observationText,'function resolveServed')",
+    'supplier_calls', 'remote_writes'
+):
     assert required in module.PHP, required
-print('Andromeda remote served-price accuracy: sanitized/read-only contract PASS')
+assert 'api-andromeda-selected-quote.php' not in module.PHP
+# The capability flag must require the real emitter and helper together, not OR across arbitrary files.
+assert '$runtimeSupports=is_string($quoteText)&&is_string($observationText)' in module.PHP
+assert module.PHP.count("$runtimeSupports=true") == 0
+print('Andromeda remote served-price accuracy: actual deployed capability/read-only contract PASS')
