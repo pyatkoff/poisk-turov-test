@@ -19,6 +19,7 @@ on:
       - 'tests/anex-additional-prices-batch-test.php'
       - 'tests/anex-additional-prices-daily-cache-test.php'
       - 'tests/anex-additional-prices-batch-daily-unknown-test.php'
+      - 'tests/anex-additional-prices-budget-deferral-test.php'
       - 'app/integrations/three-provider-offer-context.php'
       - 'app/integrations/three-provider-room-placement.php'
       - 'app/integrations/three-provider-meal-family.php'
@@ -84,6 +85,7 @@ jobs:
           php -d allow_url_fopen=0 tests/anex-additional-prices-batch-test.php
           php -d allow_url_fopen=0 tests/anex-additional-prices-daily-cache-test.php
           php -d allow_url_fopen=0 tests/anex-additional-prices-batch-daily-unknown-test.php
+          php -d allow_url_fopen=0 tests/anex-additional-prices-budget-deferral-test.php
           php -d allow_url_fopen=0 tests/three-provider-anex-offer-test.php
           php -d allow_url_fopen=0 tests/anex-normalizer-smoke.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
