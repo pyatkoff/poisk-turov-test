@@ -1,0 +1,202 @@
+name: Search3 actual canonical catalogue initialization
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_catalog_initialize.php'
+      - 'tests/anytour_catalog_initialize_test.php'
+      - '.github/workflows/search3-anytour-catalog-initialize.yml'
+permissions:
+  contents: read
+concurrency:
+  group: anytour-canonical-catalog-operations
+  cancel-in-progress: false
+jobs:
+  checked-initializer:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/search3-catalog-current-20260916'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      artifact_id: ${{ steps.retained.outputs.artifact-id }}
+      head: ${{ github.event.pull_request.head.sha }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_preflight_fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 3
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Verify real installation, partial-state and seed contracts before private access
+        env:
+          ANYTOUR_PREFLIGHT_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_preflight_fixture;charset=utf8mb4'
+          ANYTOUR_TEST_PASSWORD: fixture-only-password
+        run: |
+          php -l scripts/catalog/anytour_catalog_initialize.php
+          php -l tests/anytour_catalog_initialize_test.php
+          php tests/anytour_catalog_preflight_test.php
+          php tests/anytour_catalog_initialize_test.php
+      - name: Retain fixed source and reservation before SSH credentials
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,subprocess,tarfile
+          source='0e9a87f8bf01070da6a33225dc0211795a59f4a3'
+          op='anytour-catalog-initialize-1646-20260916-v1'
+          files=['v2/data/anytour-canonical-catalog-v1.php','v2/data/hotel-presentation-read-v1.php','v2/data/hotel-details-v1.php','v2/data/db-v1.php','scripts/catalog/anytour_catalog_current.php','v2/data/migrations/20260916-anytour-canonical-catalog.sql','v2/data/migrations/20260916-anytour-stay-catalog.sql','scripts/catalog/anytour_catalog_initialize.php']
+          work=pathlib.Path('retained'); work.mkdir()
+          for name in files[:7]:
+              a=subprocess.check_output(['git','rev-parse','HEAD:'+name]).strip()
+              pin='d3e0a2d7cf0301ddb1d3848b4120493f729341ad' if name=='scripts/catalog/anytour_catalog_current.php' else source
+              b=subprocess.check_output(['git','rev-parse',pin+':'+name]).strip()
+              assert a==b, 'data source changed'
+          payload={name:hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() for name in files}
+          with tarfile.open(work/'payload.tar.gz','w:gz') as t:
+              for name in files:
+                  data=pathlib.Path(name).read_bytes(); info=tarfile.TarInfo('payload/'+name)
+                  info.size=len(data); info.mode=0o600; info.mtime=0
+                  t.addfile(info,io.BytesIO(data))
+          reservation={'operation':op,'dataSource':source,'executionSource':os.environ['EXACT_HEAD'],'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'files':payload,'expectedNewTables':7,'expectedOwnProfiles':1000,'supplierCalls':0}
+          (work/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          (work/'transport.sha256').write_text(''.join(hashlib.sha256((work/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in ['payload.tar.gz','reservation.json']))
+          PY
+      - id: retained
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-initialize-reservation-${{ github.run_id }}
+          path: retained/
+          if-no-files-found: error
+          retention-days: 30
+  on-host-initialize:
+    needs: checked-initializer
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.checked-initializer.outputs.artifact_id }}
+          path: retained
+          merge-multiple: true
+      - name: Recheck authorization and exact Security result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.checked-initializer.outputs.head }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5700943000 > claim.json
+          gh api repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs > checks.json
+          python3 - <<'PY'
+          import datetime,json
+          c=json.load(open('claim.json')); checks=json.load(open('checks.json'))['check_runs']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert 'search-catalog-initialize-20260916' in c['body']
+          age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+          assert 0<=age.total_seconds()<5400,'claim expired'
+          assert any(x['name']=='guard' and x['conclusion']=='success' for x in checks),'exact Security not green'
+          PY
+          cd retained && sha256sum -c transport.sha256
+      - name: Initialize only absent own tables and seed reviewed 1000 profiles
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] && [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          mkdir -p evidence
+          key="$RUNNER_TEMP/catalog-key"; known="$RUNNER_TEMP/catalog-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 -d > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$REMOTE_USER@$HOST"
+          path='.anytour-operations/anytour-catalog-initialize-1646-20260916-v1'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/anytour-catalog-initialize-1646-20260916-v1"'
+          scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz} "$remote:$path/"
+          set +e
+          ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          cd "$HOME/.anytour-operations/anytour-catalog-initialize-1646-20260916-v1"
+          sha256sum -c transport.sha256
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          r=json.load(open('reservation.json'))
+          assert r['operation']=='anytour-catalog-initialize-1646-20260916-v1' and r['attempt']==1
+          assert r['dataSource']=='0e9a87f8bf01070da6a33225dc0211795a59f4a3'
+          with tarfile.open('payload.tar.gz','r:gz') as t:
+              members=t.getmembers()
+              assert len(members)==len(r['files'])==8
+              assert {m.name for m in members}=={'payload/'+n for n in r['files']}
+              for m in members:
+                  assert m.isfile() and 0<m.size<100000 and '..' not in pathlib.PurePosixPath(m.name).parts
+                  data=t.extractfile(m).read(); assert hashlib.sha256(data).hexdigest()==r['files'][m.name[8:]]
+                  p=pathlib.Path(m.name); p.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+                  with p.open('xb') as f: f.write(data)
+          PY
+          set +e
+          php -d display_errors=0 payload/scripts/catalog/anytour_catalog_initialize.php
+          status=$?
+          set -e
+          if test -s journal.jsonl; then sha256sum journal.jsonl > journal.sha256; fi
+          test "$status" = 0
+          sha256sum result.json > result.sha256
+          REMOTE
+          rc=$?
+          scp "${opts[@]}" "$remote:$path/result.json" evidence/result.json
+          copied=$?
+          scp "${opts[@]}" "$remote:$path/result.sha256" evidence/result.sha256
+          hashed=$?
+          scp "${opts[@]}" "$remote:$path/journal.jsonl" evidence/journal.jsonl
+          scp "${opts[@]}" "$remote:$path/journal.sha256" evidence/journal.sha256
+          set -e
+          cp retained/reservation.json evidence/reservation.json
+          printf '{"ssh_exit":%s,"result_copy_exit":%s,"hash_copy_exit":%s,"noReplay":true}\n' "$rc" "$copied" "$hashed" > evidence/transport-result.json
+          test "$rc" = 0 && test "$copied" = 0 && test "$hashed" = 0
+          (cd evidence && sha256sum -c result.sha256 && sha256sum -c journal.sha256)
+          python3 - <<'PY'
+          import json
+          r=json.load(open('evidence/result.json'))
+          assert r['status']=='initialized_seeded_verified' and r['legacyWrites']==0 and r['supplierCalls']==0
+          print(json.dumps(r,ensure_ascii=False))
+          PY
+      - name: Retain terminal result or exact failed-operation state
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-initialize-result-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
