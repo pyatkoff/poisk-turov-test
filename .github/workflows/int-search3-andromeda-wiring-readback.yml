@@ -1,0 +1,32 @@
+name: INT Search3 Andromeda wiring readback
+on:
+  push:
+    branches: ['feat/int-search3-andromeda-wiring-readback-20260916']
+    paths: ['scripts/diagnostics/search3_andromeda_wiring_readback.py','tests/search3-andromeda-wiring-readback-test.py','.github/workflows/int-search3-andromeda-wiring-readback.yml','runtime-control/int-search3-andromeda-wiring-readback.txt']
+  pull_request:
+    paths: ['scripts/diagnostics/search3_andromeda_wiring_readback.py','tests/search3-andromeda-wiring-readback-test.py','.github/workflows/int-search3-andromeda-wiring-readback.yml','runtime-control/int-search3-andromeda-wiring-readback.txt']
+permissions: {contents: read}
+jobs:
+  read-only:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - run: python3 tests/search3-andromeda-wiring-readback-test.py
+      - id: control
+        shell: bash --noprofile --norc -e -o pipefail {0}
+        run: |
+          expected=$'READ_ONLY_SEARCH3_ANDROMEDA_WIRING_V1\nBASE=278318cbeb0352c0d9010b817f83fca2e3e40dc7\n'; actual=''
+          if [[ -f runtime-control/int-search3-andromeda-wiring-readback.txt ]]; then actual="$(cat runtime-control/int-search3-andromeda-wiring-readback.txt)"$'\n'; fi
+          if [[ "$actual" == "$expected" ]]; then echo 'run_live=true' >> "$GITHUB_OUTPUT"; else echo 'run_live=false' >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.control.outputs.run_live == 'true' && github.event_name == 'push'
+        with: {ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa, path: helper, persist-credentials: false}
+      - name: Inspect deployed wiring without HTTP or supplier calls
+        if: steps.control.outputs.run_live == 'true' && github.event_name == 'push'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: python3 -B scripts/diagnostics/search3_andromeda_wiring_readback.py --read-only
