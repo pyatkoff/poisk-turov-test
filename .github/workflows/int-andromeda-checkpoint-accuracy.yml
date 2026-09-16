@@ -1,0 +1,35 @@
+name: INT Andromeda checkpoint accuracy
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-served-price-checkpoint-reader.php'
+      - 'scripts/diagnostics/andromeda_served_price_accuracy.php'
+      - 'tests/andromeda-served-price-checkpoint-reader-test.php'
+      - '.github/workflows/int-andromeda-checkpoint-accuracy.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          php -l app/integrations/andromeda-served-price-checkpoint-reader.php
+          php -l scripts/diagnostics/andromeda_served_price_accuracy.php
+          php -l tests/andromeda-served-price-checkpoint-reader-test.php
+          php -d allow_url_fopen=0 tests/andromeda-served-price-checkpoint-reader-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          paths = [
+              Path('app/integrations/andromeda-served-price-checkpoint-reader.php'),
+              Path('scripts/diagnostics/andromeda_served_price_accuracy.php'),
+          ]
+          src = '\n'.join(p.read_text() for p in paths)
+          for forbidden in ('curl_', 'file_put_contents(', 'fopen(', 'PDO', 'mysqli_', 'INSERT ', 'UPDATE ', 'DELETE ', 'unlink(', 'rename(', 'mkdir('):
+              assert forbidden not in src, forbidden
+          for required in ('*-quote-v1.json', '*-quote-flight-v1.json', 'served_price_observation', 'natural_customer_actualizations', 'completed_quote_checkpoints'):
+              assert required in src, required
+          print('INT Andromeda checkpoint accuracy read-only boundary: PASS')
+          PY
