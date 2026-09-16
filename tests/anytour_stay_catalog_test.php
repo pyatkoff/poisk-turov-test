@@ -172,10 +172,19 @@ rejects(fn()=>$pdo->exec('UPDATE anytour_stay_mappings SET meal_id='.$allInclusi
 rejects(fn()=>$pdo->exec('UPDATE anytour_stay_mappings SET state=\'rejected\' WHERE kind=\'room\' AND state=\'accepted\''),'negative decisions cannot keep active targets',PDOException::class);
 rejects(fn()=>$pdo->exec('DELETE FROM anytour_hotel_rooms WHERE id='.$sea),'referenced local room cannot disappear',PDOException::class);
 $refs100=array_fill(0,100,$roomRef);
-$queriesBefore=(int)$pdo->query("SHOW SESSION STATUS LIKE 'Com_stmt_execute'")->fetch(PDO::FETCH_NUM)[1];
+// PDO may also prepare/execute the SHOW probe itself. Measure that overhead on
+// this same connection instead of attributing the measurement query to resolve().
+$executions=static fn(): int => (int)$pdo->query("SHOW SESSION STATUS LIKE 'Com_stmt_execute'")->fetch(PDO::FETCH_NUM)[1];
+$probeBefore=$executions(); $probeAfter=$executions();
+$probeOverhead=$probeAfter-$probeBefore;
+check(in_array($probeOverhead,[0,1],true),'query counter probe has stable bounded overhead');
+$queriesBefore=$executions();
 $hundred=$catalog->resolve($scope,$refs100);
-$queriesAfter=(int)$pdo->query("SHOW SESSION STATUS LIKE 'Com_stmt_execute'")->fetch(PDO::FETCH_NUM)[1];
-check(count($hundred['items'])===100 && $queriesAfter-$queriesBefore===1,'100 references use one prepared SELECT');
+$queriesAfter=$executions();
+$batchExecutions=$queriesAfter-$queriesBefore-$probeOverhead;
+check(count($hundred['items'])===100,'100 references preserve the complete output');
+check($batchExecutions===1,'100 references use one prepared SELECT: observed='.($queriesAfter-$queriesBefore).' probe='.$probeOverhead);
+echo "ANYTOUR_STAY_QUERY_METER batch_executions=$batchExecutions probe_overhead=$probeOverhead\n";
 foreach ([[],array_fill(0,101,$roomRef),['key'=>$roomRef],[null]] as $bad) rejects(fn()=>$catalog->resolve($scope,$bad),'batch validation',InvalidArgumentException::class);
 check($pdo->query('SELECT * FROM anytour_hotel_sources ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)===$baselineSources,'existing source rows unchanged after fixture restores');
 check($pdo->query('SELECT * FROM anytour_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)===$baselineHotels,'canonical profiles untouched');
