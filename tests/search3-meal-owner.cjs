@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { loadSearch3Renderer } = require('./helpers/search3-renderer-bootstrap');
 
 let apiCalls = 0;
 const select = { value: '', options: [] };
@@ -54,8 +55,7 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   assert.doesNotMatch(presentation, /meal-quick|meal-native-select|V2PrimaryMealUXV1/);
 
   const rendererWindow = {};
-  const rendererSource = fs.readFileSync(path.join(__dirname, '../v2/results-renderer-v5.js'), 'utf8');
-  vm.runInNewContext(rendererSource, {
+  loadSearch3Renderer({
     window: rendererWindow,
     document: { readyState: 'loading', addEventListener() {}, querySelector() { return null; } }
   });
