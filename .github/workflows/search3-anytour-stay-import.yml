@@ -1,0 +1,51 @@
+name: Search3 reviewed stay batch import
+on:
+  pull_request:
+    paths:
+      - 'scripts/catalog/anytour_stay_import.php'
+      - 'tests/anytour_stay_import_test.php'
+      - 'v2/data/anytour-stay-catalog-v1.php'
+      - 'v2/data/migrations/20260916-anytour-stay-catalog.sql'
+      - 'v2/data/migrations/20260916-anytour-canonical-catalog.sql'
+      - '.github/workflows/search3-anytour-stay-import.yml'
+permissions:
+  contents: read
+jobs:
+  stay-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_stay_import_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Syntax
+        run: |
+          php -l scripts/catalog/anytour_stay_import.php
+          php -l tests/anytour_stay_import_test.php
+      - name: Real isolated MySQL baseline and 1000-row importer
+        env:
+          ANYTOUR_STAY_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_fixture;charset=utf8mb4'
+          ANYTOUR_STAY_TEST_PASSWORD: fixture-only-password
+          ANYTOUR_STAY_IMPORT_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_import_fixture;charset=utf8mb4'
+          ANYTOUR_STAY_IMPORT_TEST_PASSWORD: fixture-only-password
+        run: |
+          php -r '$p=new PDO(getenv("ANYTOUR_STAY_IMPORT_TEST_DSN"),"root",getenv("ANYTOUR_STAY_IMPORT_TEST_PASSWORD")); $p->exec("CREATE DATABASE anytour_stay_fixture");'
+          php tests/anytour_stay_catalog_test.php
+          php tests/anytour_stay_import_test.php
