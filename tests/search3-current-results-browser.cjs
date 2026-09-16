@@ -677,7 +677,7 @@ async function checkHydratedHotelFacets(page, width, previous, details) {
     const coverageItems=Array.from({length:100},(_,index)=>({...items[index%items.length],id:'category-coverage-'+index,name:'Отель покрытия '+index,category:index===99?null:3+(index%3),rating:4+(index%2)*.5,tours:[{...tour,id:'category-coverage-tour-'+index,price:90000+index}]}));
     await render(coverageItems);
     assert.equal(await category.isVisible(),true,'99 known categories out of 100 expose the useful category facet');
-    assert.equal(await page.locator('[data-search3-category-coverage]').innerText(),'Категория указана у 99 из 100 отелей','partial coverage is explicit instead of pretending to be complete');
+    assert.equal(await category.locator('option').first().innerText(),'Любая категория · 99/100','partial coverage is explicit instead of pretending to be complete');
     assert.deepEqual(await category.locator('option').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','5','4','3']);
     assert.equal((await visible()).length,100,'the unknown-category hotel remains visible until the visitor selects a category');
     await category.selectOption('5');
