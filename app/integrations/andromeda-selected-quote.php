@@ -472,7 +472,7 @@ final class AnyTourAndromedaSelectedQuote
         foreach (array_keys($specs) as $public) {
             if (count($facts[$public] ?? []) === 1) $out[$public] = array_key_first($facts[$public]);
         }
-        if (count($external) === 1) $out['external_transport'] = array_key_first($external) === '1';
+        if (count($external) === 1) $out['external_transport'] = (string)array_key_first($external) === '1';
         return count($out) > 1 ? $out : null;
     }
 
