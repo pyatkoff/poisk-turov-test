@@ -17,7 +17,18 @@ foreach ($excludedJs as $excluded) {
     if (!in_array($excluded, $fullJs, true)) lean_bundle_fail('legacy owner missing: ' . $excluded);
     if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
 }
-if (count($fullJs) !== count($search3Js) + count($excludedJs)) lean_bundle_fail('unexpected JavaScript scope delta');
+// Search3 has one explicitly scoped dependency; compare ordered owners, not just counts.
+$search3OnlyJs = ['search3-canonical-profiles-v1.js'];
+if (count(array_unique($fullJs)) !== count($fullJs) || count(array_unique($search3Js)) !== count($search3Js)) lean_bundle_fail('duplicate JavaScript owner');
+foreach ($search3OnlyJs as $scoped) {
+    if (in_array($scoped, $fullJs, true)) lean_bundle_fail('Search3-only owner leaked into legacy: ' . $scoped);
+    if (count(array_keys($search3Js, $scoped, true)) !== 1) lean_bundle_fail('Search3-only owner is not exact: ' . $scoped);
+}
+if (array_values(array_diff($search3Js, $search3OnlyJs)) !== array_values(array_diff($fullJs, $excludedJs))) lean_bundle_fail('unexpected JavaScript scope owners or order');
+$roomIndex = array_search('search3-room-normalizer-v1.js', $search3Js, true);
+$profileIndex = array_search('search3-canonical-profiles-v1.js', $search3Js, true);
+$rendererIndex = array_search('results-renderer-v5.js', $search3Js, true);
+if ($roomIndex === false || $profileIndex === false || $rendererIndex === false || $roomIndex >= $profileIndex || $profileIndex + 1 !== $rendererIndex) lean_bundle_fail('Search3 renderer dependencies are out of order');
 if ($search3Css !== ['design-system-v2.css', 'site-header-v2.css', 'site-footer-v1.css', 'current-price-calendar-v1.css']) lean_bundle_fail('Search3 must load the canonical shared shell and current price calendar CSS');
 if (count(array_keys($search3Css, 'site-header-v2.css', true)) !== 1) lean_bundle_fail('canonical shared header owner is not exact');
 if (!in_array('site-footer-v1.css', $fullCss, true)) lean_bundle_fail('canonical shared footer owner missing');
@@ -48,6 +59,9 @@ if (!in_array('flight-empty-recovery-v1.js', $fullJs, true)) lean_bundle_fail('c
 if (!in_array('flight-empty-recovery-v1.js', $search3Js, true)) lean_bundle_fail('canonical flight recovery runtime missing from Search3');
 $initialJs = v2_bundle_phase_files('js', 'search3', 'initial');
 $selectedJs = v2_bundle_phase_files('js', 'search3', 'selected');
+foreach ($search3OnlyJs as $scoped) {
+    if (count(array_keys($initialJs, $scoped, true)) !== 1 || in_array($scoped, $selectedJs, true)) lean_bundle_fail('Search3-only owner must load in the initial phase: ' . $scoped);
+}
 if (count(array_keys($selectedJs, 'flight-empty-recovery-v1.js', true)) !== 1) lean_bundle_fail('flight recovery selected owner is not exact');
 if (count(array_keys($search3Js, 'flight-empty-recovery-v1.js', true)) !== 1) lean_bundle_fail('flight recovery eager owner is not exact');
 if (!in_array('price-confidence-v1.js', $fullJs, true)) lean_bundle_fail('legacy price confidence runtime missing');
