@@ -91,6 +91,71 @@ final class AnyTourCanonicalCatalog
         return [$batch, hash('sha256', self::json($batch))];
     }
 
+    /**
+     * Inspect a bounded saved-data cohort BEFORE the additive schema exists.
+     * A fingerprint is evidence, never authorization to create tables or seed.
+     * Existing/partial target schemas always require separate ownership review.
+     */
+    public function preflight(array $legacyIds): array
+    {
+        $ids = self::ids($legacyIds);
+        if ($this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
+            throw new RuntimeException('MySQL-compatible database required');
+        }
+        $this->begin(false);
+        try {
+            $version = (string)$this->pdo->query('SELECT VERSION()')->fetchColumn();
+            $database = (string)$this->pdo->query('SELECT DATABASE()')->fetchColumn();
+            if ($database === '') throw new RuntimeException('Explicit database required');
+            $rows = $this->pdo->query("SELECT TABLE_NAME, ENGINE, TABLE_TYPE FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN
+                ('catalog_hotels','catalog_hotel_details','anytour_catalog_control','anytour_hotels','anytour_hotel_sources')")
+                ->fetchAll(PDO::FETCH_ASSOC);
+            $tables = [];
+            foreach ($rows as $row) $tables[$row['TABLE_NAME']] = $row;
+            foreach (['catalog_hotels', 'catalog_hotel_details'] as $name) {
+                if (($tables[$name]['ENGINE'] ?? null) !== 'InnoDB'
+                    || ($tables[$name]['TABLE_TYPE'] ?? null) !== 'BASE TABLE') {
+                    throw new RuntimeException('Saved source must be existing InnoDB base tables');
+                }
+            }
+            $present = [];
+            foreach (['anytour_catalog_control', 'anytour_hotels', 'anytour_hotel_sources'] as $name) {
+                if (isset($tables[$name])) $present[] = $name;
+            }
+            [$batch, $hash] = $this->sourceBatch($ids);
+            $descriptions = $images = $savedDetails = 0;
+            $unnamed = [];
+            foreach ($batch['items'] as $source) {
+                if (trim($source['name']) === '') $unnamed[] = $source['id'];
+                if ($source['description'] !== null) $descriptions++;
+                if ($source['images'] !== []) $images++;
+                if ($source['detailsAvailable']) $savedDetails++;
+            }
+            // Metadata is not transactionally frozen against later DDL. Recheck at execution.
+            $schemaState = $present === [] ? 'absent' :
+                (count($present) === 3 ? 'present_requires_review' : 'partial_requires_review');
+            preg_match('/[0-9]+\.[0-9]+\.[0-9]+/', $version, $numericVersion);
+            $result = [
+                'status' => 'preflight_read_only',
+                'database_name_sha256' => hash('sha256', $database),
+                'server_version' => $numericVersion[0] ?? 'unrecognized',
+                'target_schema_state' => $schemaState, 'target_tables_present' => $present,
+                'requestedIds' => $ids, 'source_sha256' => $hash,
+                'source_profiles' => count($batch['items']), 'missingIds' => $batch['missingIds'],
+                'unnamedIds' => $unnamed, 'profiles_with_description' => $descriptions,
+                'profiles_with_images' => $images, 'profiles_with_saved_details' => $savedDetails,
+                'migration_authorized' => false, 'seed_authorized' => false,
+                'writes' => 0, 'supplier_calls' => 0,
+            ];
+            $this->pdo->commit();
+            return $result;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
     public function plan(array $legacyIds): array
     {
         $ids = self::ids($legacyIds);
