@@ -66,10 +66,13 @@ class OwnerGateTest(unittest.TestCase):
         self.assertIn("pull_request:", text)
         self.assertNotIn("\n  push:", text)
         self.assertIn(gate.COMMAND, text)
-        self.assertIn("ae67f22fa5a143b1e102960cc0f37b4d4b720927", text)
-        self.assertIn("35126041765", text)
+        self.assertIn("19b246e92659d92cdd6ffce9f8bd511b8a90c5b8", text)
+        self.assertIn("35163119188", text)
         self.assertIn("feature/anex-search-adapter-20260907", text)
         self.assertIn("scripts/diagnostics/anex_search3_preview_deploy.py", text)
+        self.assertIn("scripts/diagnostics/anex_search3_preview_deploy_safe.py", text)
+        self.assertIn("secrets.ANEX_API_TOKEN", text)
+        self.assertIn("secrets.ANEX_B2B_TOKEN", text)
         self.assertIn("ANEX_B2B_TOKEN_READY", text)
         self.assertIn("publish-anex-search3-preview-2530-v1", text)
         self.assertIn("/_preview/search3-anex-candidate/", text)
@@ -79,6 +82,9 @@ class OwnerGateTest(unittest.TestCase):
         self.assertIn("production_entry_changes", text)
         self.assertIn("actions: read", text)
         self.assertIn("contents: read", text)
+        secret_check = text.index("Require both GitHub ANEX credentials")
+        reserve = text.index("Reserve this publication exactly once")
+        self.assertLess(secret_check, reserve)
 
 
 if __name__ == "__main__":

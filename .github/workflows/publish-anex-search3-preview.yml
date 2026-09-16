@@ -19,9 +19,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SOURCE_SHA: ae67f22fa5a143b1e102960cc0f37b4d4b720927
+  SOURCE_SHA: 19b246e92659d92cdd6ffce9f8bd511b8a90c5b8
   SOURCE_BRANCH: feature/anex-search-adapter-20260907
-  SOURCE_RUN_ID: '35126041765'
+  SOURCE_RUN_ID: '35163119188'
   OPERATION_ID: publish-anex-search3-preview-2530-v1
   EXPECTED_ROUTE: /_preview/search3-anex-candidate/
   OWNER_COMMAND: /publish-anex-search3-preview-2530-v1
@@ -112,12 +112,31 @@ jobs:
           test "$(git -C candidate rev-parse HEAD)" = "$SOURCE_SHA"
           cd candidate
           python3 -B tests/anex_search3_preview_deploy_test.py
+          python3 -B tests/anex_search3_preview_safe_deploy_test.py
           php -l v2/api-anex-search3-preview.php
           php tests/anex-search3-preview-smoke.php
           node --check v2/anex-search3-preview-v1.js
           grep -F 'target="$project/_preview/search3-anex-candidate"' scripts/diagnostics/anex_search3_preview_deploy.py >/dev/null
           ! grep -F 'target="$project/_preview/search3-site-candidate"' scripts/diagnostics/anex_search3_preview_deploy.py
           grep -F 'production_entry_changes": False' scripts/diagnostics/anex_search3_preview_deploy.py >/dev/null
+          grep -F '_B2B_ENV = "ANEX_B2B_TOKEN"' scripts/diagnostics/anex_search3_preview_deploy_safe.py >/dev/null
+      - name: Require both GitHub ANEX credentials without revealing them
+        env:
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_B2B_TOKEN: ${{ secrets.ANEX_B2B_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          api=os.environ.get('ANEX_API_TOKEN','')
+          b2b=os.environ.get('ANEX_B2B_TOKEN','')
+          if not api.strip() or len(api) > 16384 or '\x00' in api:
+              raise SystemExit('anex_api_secret_missing_or_invalid')
+          if (not b2b or len(b2b) > 16384 or b2b.lower().startswith('bearer ')
+                  or re.search(r'[\x00-\x20\x7f]', b2b)):
+              raise SystemExit('anex_b2b_secret_missing_or_invalid')
+          print('ANEX_B2B_TOKEN_READY')
+          PY
       - name: Prepare private SSH transport
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -126,22 +145,6 @@ jobs:
           install -d -m 700 "$RUNNER_TEMP/anex-preview-control"
           printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > "$RUNNER_TEMP/anex-preview-control/key"
           chmod 600 "$RUNNER_TEMP/anex-preview-control/key"
-      - name: Preflight server B2B credential without revealing it
-        env:
-          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import os, shlex, subprocess
-          root=os.environ['RUNNER_TEMP']+'/anex-preview-control'
-          php=r'''$home=(string)getenv("HOME");$root=realpath($home."/www/anytoour.ru");$private=realpath($home."/.anytoour-anex");if(!$root||!$private||is_link($private)){exit(2);}foreach([$root."/config.php",$private."/search3-preview.php"] as $f){if(is_file($f)&&!is_link($f)){require_once $f;}}if(!defined("ANEX_B2B_TOKEN")||!is_string(ANEX_B2B_TOKEN)||trim(ANEX_B2B_TOKEN)===""||stripos(ANEX_B2B_TOKEN,"Bearer ")===0||preg_match('/[\\x00-\\x20\\x7f]/',ANEX_B2B_TOKEN)){exit(3);}echo "ANEX_B2B_TOKEN_READY\\n";'''
-          cmd=['ssh','-T','-i',root+'/key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+root+'/known_hosts','-o','ConnectTimeout=15','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(php)]
-          r=subprocess.run(cmd,text=True,capture_output=True,timeout=45)
-          if r.returncode or r.stdout != 'ANEX_B2B_TOKEN_READY\n':
-              raise SystemExit('anex_b2b_preflight_failed')
-          print(r.stdout.strip())
-          PY
       - name: Reserve this publication exactly once before server mutation
         env:
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -174,6 +177,7 @@ jobs:
       - name: Publish exact checked INT source to the isolated ANEX preview
         env:
           ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_B2B_TOKEN: ${{ secrets.ANEX_B2B_TOKEN }}
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -181,7 +185,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$ANEX_CATALOG_ARTIFACT_DIR"
-          python3 -B candidate/scripts/diagnostics/anex_search3_preview_deploy.py | tee "$ANEX_CATALOG_ARTIFACT_DIR/publisher-stdout.jsonl"
+          python3 -B candidate/scripts/diagnostics/anex_search3_preview_deploy_safe.py | tee "$ANEX_CATALOG_ARTIFACT_DIR/publisher-stdout.jsonl"
           python3 - <<'PY'
           import json, os
           from pathlib import Path
