@@ -1,0 +1,114 @@
+name: MATCH received non-ANEX missing-native INSERT v4
+on:
+  push:
+    branches: [ops/match-received-nonanex-insert-1971-20260916-v4]
+    paths:
+      - scripts/diagnostics/hotel_match_received_nonanex_insert_v4_bundle.py
+      - .github/workflows/hotel-match-received-nonanex-insert-v4.yml
+permissions: {contents: read}
+concurrency: {group: match-received-nonanex-insert-1971-v4, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-received-nonanex-insert-1971-20260916-v4
+jobs:
+  guarded-insert:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Build and validate missing-native insert bundle
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/diagnostics/hotel_match_received_nonanex_apply_bundle.py scripts/diagnostics/hotel_match_received_nonanex_insert_v4_bundle.py
+          test "$(sha256sum reports/hotel-match-received-union-current-20260915.json | awk '{print $1}')" = d9a9a9cbbb8b4d3f77600c309fac8aa4334ebcb0812888725504c580bbdba8c6
+          out="$RUNNER_TEMP/nonanex-insert.php"
+          python3 scripts/diagnostics/hotel_match_received_nonanex_insert_v4_bundle.py "$out" | tee "$RUNNER_TEMP/bundle.json"
+          php -l "$out"
+          php "$out" --self-test
+          python3 - "$out" "$RUNNER_TEMP/bundle.json" <<'PY'
+          import json,pathlib,sys
+          s=pathlib.Path(sys.argv[1]).read_text(); meta=json.loads(pathlib.Path(sys.argv[2]).read_text())
+          assert meta['operation_id']=='hotel-match-received-nonanex-insert-1971-20260916-v4'
+          assert meta['parent_operation_id']=='hotel-match-received-nonanex-current-1971-20260916-v1'
+          assert meta['parent_run_id']==35049809798 and meta['parent_result_sha256']=='9c851185282fb85bb56e281a65fb56f6c3daf26686cd3b6a72a7dbdc355f41e6'
+          assert meta['v3_operation_id']=='hotel-match-received-nonanex-apply-1971-20260916-v3' and meta['v3_run_id']==35053671498
+          assert meta['v3_result_sha256']=='70f8262b9541829084e47f9a115e0b7d26cf9446628eaa73e9469cdc0775c32a'
+          assert meta['planned_count']==20 and meta['planned_frequency']==167 and meta['maximum_database_writes']==20 and meta['insert_only'] is True
+          assert meta['supplier_calls']==meta['tourvisor_calls']==0
+          assert 'SET TRANSACTION ISOLATION LEVEL SERIALIZABLE' in s and 'FOR UPDATE' in s and '$db->commit()' in s
+          assert 'START TRANSACTION READ ONLY' not in s
+          assert s.count('INSERT INTO andromeda_hotel_identities')==1
+          assert '$up=$db->prepare' not in s and 'conditional_write_mismatch' not in s
+          assert "supplier_namespace='operator_115'" in s and "supplier_namespace='operator_5'" not in s
+          assert 'native_appeared_since_missing_snapshot' in s and 'insert_only_missing_native' in s
+          assert 'unknown_after_commit' in s and 'post_commit_readback' in s
+          print('offline_insert_contract_PASS')
+          PY
+      - name: Reserve before SSH or database access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_db_access','coordination_issue':2530,'claim_comment_id':5691822953,'queue_issue':1971,'purpose':'insert-only guarded store for exact20 CURRENT-absent operator_115 identities','parent_operation_id':'hotel-match-received-nonanex-current-1971-20260916-v1','parent_run_id':35049809798,'parent_result_sha256':'9c851185282fb85bb56e281a65fb56f6c3daf26686cd3b6a72a7dbdc355f41e6','v3_operation_id':'hotel-match-received-nonanex-apply-1971-20260916-v3','v3_run_id':35053671498,'v3_result_sha256':'70f8262b9541829084e47f9a115e0b7d26cf9446628eaa73e9469cdc0775c32a','planned_count':20,'planned_frequency':167,'maximum_database_writes':20,'supplier_calls':0,'tourvisor_calls':0,'insert_only':True,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-received-nonanex-insert-v4-reservation
+          path: ${{ runner.temp }}/hotel-match-received-nonanex-insert-1971-20260916-v4/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Execute one server-CURRENT insert-only transaction
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; phpfile="$RUNNER_TEMP/nonanex-insert.php"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test ! -e \"\$p\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php" < "$phpfile" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,sys
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server'
+          reservation=json.loads((s/'reservation.json').read_text()); assert reservation['operation_id']==os.environ['OPERATION_ID'] and reservation['source_sha']==os.environ['GITHUB_SHA']
+          receipt=json.loads((s/'receipt.json').read_text()); assert receipt['operation_id']==os.environ['OPERATION_ID'] and receipt['source_sha']==os.environ['GITHUB_SHA']
+          assert receipt['supplier_calls']==receipt['tourvisor_calls']==0 and receipt['no_replay'] is True
+          state=receipt['state']; gate={'operation_id':receipt['operation_id'],'state':state,'readback_verified':receipt.get('readback_verified',False),'remote_rc':int(os.environ['REMOTE_RC']),'no_replay':True}
+          if state=='completed_committed':
+              r=json.loads((s/'result.json').read_text()); digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+              assert receipt['result_sha256']==digest and receipt['readback_verified'] is True
+              assert r['operation_id']==os.environ['OPERATION_ID'] and r['source_sha']==os.environ['GITHUB_SHA'] and r['state']=='completed_committed'
+              assert r['parent_operation_id']=='hotel-match-received-nonanex-current-1971-20260916-v1' and r['parent_run_id']==35049809798
+              assert r['v3_operation_id']=='hotel-match-received-nonanex-apply-1971-20260916-v3' and r['v3_run_id']==35053671498 and r['v3_result_sha256']=='70f8262b9541829084e47f9a115e0b7d26cf9446628eaa73e9469cdc0775c32a'
+              assert r['plan_count']==20 and r['no_replay'] is True and r['supplier_calls']==r['tourvisor_calls']==r['operator_5_writes']==0
+              assert r['database_writes']==r['mapping_writes']==r['written']==len(r['post_commit_readback']) and 0 <= r['written'] <= 20
+              assert len({x['native_hotel_id'] for x in r['post_commit_readback']})==r['written'] and len({x['local_hotel_id'] for x in r['post_commit_readback']})==r['written']
+              assert all(x['supplier_namespace']=='operator_115' and x['decision_status']=='accepted' for x in r['post_commit_readback'])
+              gate.update({'result_sha256':digest,'plan_count':20,'written':r['written'],'written_frequency':r['written_frequency'],'write_holds':len(r.get('write_holds',[])),'guard_route_counts':r.get('guard_route_counts',{}),'guard_reason_counts':r.get('guard_reason_counts',{}),'post_commit_readback':r['post_commit_readback']})
+              (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True)+'\n'); print(json.dumps(gate,sort_keys=True)); assert os.environ['REMOTE_RC']=='0'
+          else:
+              assert state in {'rolled_back','unknown_after_commit'}
+              f=json.loads((s/'failure.json').read_text()); digest=hashlib.sha256((s/'failure.json').read_bytes()).hexdigest(); assert receipt['failure_sha256']==digest and f['state']==state
+              gate.update({'failure_sha256':digest,'phase':f.get('phase'),'readback_verified':False}); (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True)+'\n'); print(json.dumps(gate,sort_keys=True)); sys.exit(2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-received-nonanex-insert-v4-result
+          path: ${{ runner.temp }}/hotel-match-received-nonanex-insert-1971-20260916-v4/
+          if-no-files-found: warn
+          retention-days: 90
