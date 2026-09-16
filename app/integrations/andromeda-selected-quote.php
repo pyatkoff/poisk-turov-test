@@ -427,6 +427,55 @@ final class AnyTourAndromedaSelectedQuote
         ];
     }
 
+    private static function safeFlightDetail($value, int $max, ?string $pattern = null): ?string
+    {
+        if (!is_string($value) || $value === '' || strlen($value) > $max
+            || preg_match('/[\x00-\x1F\x7F]/', $value)) return null;
+        if ($pattern !== null && preg_match($pattern, $value) !== 1) return null;
+        return $value;
+    }
+
+    /** Whitelisted public facts only; raw transport details and supplier identifiers stay private. */
+    private static function transportDetails(array $flight): ?array
+    {
+        $specs = [
+            'flight_number' => [['flight_number'], 32, '/^[A-Za-z0-9 .()\/-]{1,32}$/D'],
+            'airline_code' => [['marketing_airline', 'airline'], 8, '/^[A-Za-z0-9]{2,8}$/D'],
+            'airline_name' => [['full_marketing_airline', 'full_airline'], 120, null],
+            'departure_airport_code' => [['departureAirportCode'], 8, '/^[A-Z0-9]{2,8}$/D'],
+            'arrival_airport_code' => [['arrivalAirportCode'], 8, '/^[A-Z0-9]{2,8}$/D'],
+            'departure_datetime' => [['depart_datetime'], 32, '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?$/D'],
+            'arrival_datetime' => [['arrival_datetime'], 32, '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?$/D'],
+            'duration' => [['SegmentDuration', 'fly_duration'], 16, '/^\d{1,3}:\d{2}$/D'],
+            'baggage_code' => [['bagage'], 32, '/^[A-Za-z0-9 +._\/-]{1,32}$/D'],
+            'baggage_note' => [['bagage_note'], 120, null],
+        ];
+        $facts = [];
+        $external = [];
+        foreach (($flight['details'] ?? []) as $block) {
+            if (!is_array($block) || !is_array($block['detail'] ?? null)) continue;
+            foreach ($block['detail'] as $detail) {
+                if (!is_array($detail)) continue;
+                foreach ($specs as $public => [$keys, $max, $pattern]) {
+                    $value = null;
+                    foreach ($keys as $key) {
+                        $value = self::safeFlightDetail($detail[$key] ?? null, $max, $pattern);
+                        if ($value !== null) break;
+                    }
+                    if ($value !== null) $facts[$public][$value] = true;
+                }
+                $rawExternal = (string)($detail['external'] ?? '');
+                if (in_array($rawExternal, ['0', '1'], true)) $external[$rawExternal] = true;
+            }
+        }
+        $out = ['source' => 'andromeda_transport_detail'];
+        foreach (array_keys($specs) as $public) {
+            if (count($facts[$public] ?? []) === 1) $out[$public] = array_key_first($facts[$public]);
+        }
+        if (count($external) === 1) $out['external_transport'] = (string)array_key_first($external) === '1';
+        return count($out) > 1 ? $out : null;
+    }
+
     private static function publicFlight(array $flight): array
     {
         $out = [
@@ -437,6 +486,7 @@ final class AnyTourAndromedaSelectedQuote
             'class' => is_string($flight['onlineClass'] ?? null) ? substr($flight['onlineClass'], 0, 80)
                 : (is_string($flight['class'] ?? null) ? substr($flight['class'], 0, 80) : null),
             'transport_markup_reported' => self::transportMarkup($flight),
+            'flight_details' => self::transportDetails($flight),
         ];
         foreach (['departure', 'arrival'] as $side) {
             $point = null;
