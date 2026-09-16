@@ -1,0 +1,37 @@
+name: MATCH ANEX HOTELLIST SAFE2 write contract v1
+on:
+  push:
+    branches: [ops/match-anex-hotellist-safe2-write-contract-1971-20260916-v1]
+    paths: ['scripts/diagnostics/hotel_match_anex_hotellist_safe2_write_contract_v1.php','.github/workflows/hotel-match-anex-hotellist-safe2-write-contract-v1.yml']
+permissions: {contents: read, actions: read}
+env: {OPERATION_ID: hotel-match-anex-hotellist-safe2-write-contract-1971-20260916-v1, OUT: /tmp/match-anex-hotellist-safe2-write-contract-v1}
+jobs:
+  inspect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ github.sha }}', fetch-depth: 1, persist-credentials: false}
+      - run: php scripts/diagnostics/hotel_match_anex_hotellist_safe2_write_contract_v1.php --self-test
+      - name: Reserve
+        run: |
+          mkdir -p "$OUT"; python3 - <<'PY'
+          import json,os,pathlib
+          (pathlib.Path(os.environ['OUT'])/'runner-reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_db','read_only':True,'no_replay':True})+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-anex-safe2-contract-reservation-${{ github.run_id }}', path: '${{ env.OUT }}/runner-reservation.json', retention-days: 90}
+      - name: Inspect CURRENT contract
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi; chmod 600 "$key"; set +e
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0" < scripts/diagnostics/hotel_match_anex_hotellist_safe2_write_contract_v1.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"; rc=$?
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"; trc=$?; set -e; rm -f "$key" "$known"; if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi; export RC="$rc" TRC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['OUT']);r=json.loads((p/'result.json').read_text());c=json.loads((p/'receipt.json').read_text());rh=hashlib.sha256((p/'result.json').read_bytes()).hexdigest();ok=r.get('status')=='completed_read_only' and c.get('result_sha256')==rh and c.get('readback_verified') is True and int(os.environ['TRC'])==0;print(json.dumps({'verified':ok,'result_sha256':rh,'remote_exit':int(os.environ['RC'])}));raise SystemExit(0 if ok else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-anex-safe2-contract-${{ github.run_id }}', path: '${{ env.OUT }}/', retention-days: 90}
