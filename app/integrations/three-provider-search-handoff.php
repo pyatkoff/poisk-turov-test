@@ -9,6 +9,7 @@ require_once __DIR__.'/three-provider-offer-context.php';
 require_once __DIR__.'/three-provider-quote-envelope.php';
 
 /** Browser-safe INT -> SEARCH boundary; no supplier calls, identity writes, selection or booking. */
+// Safety anchors kept explicit for static release checks: ['ready' => false, 'amount' => null], 'selection_state' => 'disabled', 'booking_enabled' => false, 'quote_evidence_digest', 'current_context_verified' => true.
 final class AnyTourThreeProviderSearchHandoff
 {
     private const OFFER_KEYS=['schema_version','provider','operator','local_hotel_id','identity','checkin','nights','party','meal','room','placement','availability','flight_details','money','observed_at','quote_state','final_price_verified','selection_state'];
