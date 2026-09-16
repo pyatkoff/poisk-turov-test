@@ -18,8 +18,8 @@ jobs:
       - name: Verify exact offline source
         run: |
           set -euo pipefail
-          test "$(git hash-object scripts/diagnostics/hotel_match_frontier_geography_evidence.py)" = a433f6c46fddd03e42b5a2a4fc5083c646b3e9af
-          test "$(git hash-object tests/hotel_match_frontier_geography_evidence_test.py)" = 914e44ef7f94f0e458bfc29f6fe370a267824bd2
+          test "$(git hash-object scripts/diagnostics/hotel_match_frontier_geography_evidence.py)" = 850ef42aa529e314a46d9fd0f696b4d8d41f9a67
+          test "$(git hash-object tests/hotel_match_frontier_geography_evidence_test.py)" = f61e81a3d8cef605aaafe1678fa451e157c4f13a
           python3 -m py_compile scripts/diagnostics/hotel_match_frontier_geography_evidence.py tests/hotel_match_frontier_geography_evidence_test.py
       - name: Download only two existing evidence artifacts
         env: {GH_TOKEN: '${{ github.token }}'}
@@ -28,17 +28,21 @@ jobs:
           mkdir "$RUNNER_TEMP/match-geo-inputs"
           gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10447857357/zip > "$RUNNER_TEMP/match-geo-inputs/dossier.zip"
           gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10394524643/zip > "$RUNNER_TEMP/match-geo-inputs/census.zip"
-      - name: Test full frontier and reproduce geography support
+      - name: Test hierarchy and compound cases then review the full frontier
         run: |
           set -euo pipefail
           export MATCH_GEO_DOSSIER_ZIP="$RUNNER_TEMP/match-geo-inputs/dossier.zip"
           export MATCH_GEO_CENSUS_ZIP="$RUNNER_TEMP/match-geo-inputs/census.zip"
-          python3 tests/hotel_match_frontier_geography_evidence_test.py
-          python3 scripts/diagnostics/hotel_match_frontier_geography_evidence.py "$MATCH_GEO_DOSSIER_ZIP" "$MATCH_GEO_CENSUS_ZIP" "$RUNNER_TEMP/match-frontier-geography-20260916.json"
-          echo "a7e32249fd1a63e8783e92f8871314644ef5cf3fa1c6593b23be87c0b1dd75e8  $RUNNER_TEMP/match-frontier-geography-20260916.json" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/match-hierarchy-output"
+          python3 tests/hotel_match_frontier_geography_evidence_test.py 2>&1 | tee "$RUNNER_TEMP/match-hierarchy-output/tests.txt"
+          python3 scripts/diagnostics/hotel_match_frontier_geography_evidence.py "$MATCH_GEO_DOSSIER_ZIP" "$MATCH_GEO_CENSUS_ZIP" "$RUNNER_TEMP/match-hierarchy-output/geography.json"
+          python3 scripts/diagnostics/hotel_match_frontier_geography_evidence.py "$MATCH_GEO_DOSSIER_ZIP" "$MATCH_GEO_CENSUS_ZIP" "$RUNNER_TEMP/match-hierarchy-output/identity.json" --review-hotels
+          echo "07acd60e176baa601041b18caf8da49a6514e87ac7d1043a61bed669a21a539a  $RUNNER_TEMP/match-hierarchy-output/geography.json" | sha256sum -c -
+          echo "712aa93f1476ff6b0549d1f1ed606e4c999ef3076c8c6fce3dbd06614682da97  $RUNNER_TEMP/match-hierarchy-output/identity.json" | sha256sum -c -
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/match-hierarchy-output/source-sha.txt"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-frontier-geography-${{ github.sha }}
-          path: ${{ runner.temp }}/match-frontier-geography-20260916.json
+          name: match-frontier-hierarchy-identity-${{ github.sha }}
+          path: ${{ runner.temp }}/match-hierarchy-output/
           if-no-files-found: error
           retention-days: 90
