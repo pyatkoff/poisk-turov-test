@@ -15,16 +15,16 @@ permissions:
   actions: read
 
 concurrency:
-  group: ${{ github.event_name == 'issue_comment' && github.event.issue.number == 2530 && 'publish-anex-search3-preview-2530-v1' || format('check-anex-search3-preview-control-{0}', github.run_id) }}
+  group: ${{ github.event_name == 'issue_comment' && github.event.issue.number == 2530 && 'publish-anex-search3-preview-2530-v2' || format('check-anex-search3-preview-control-{0}', github.run_id) }}
   cancel-in-progress: false
 
 env:
-  SOURCE_SHA: ae67f22fa5a143b1e102960cc0f37b4d4b720927
+  SOURCE_SHA: 929a4b3f6206429c41760004b44f1d3004d66129
   SOURCE_BRANCH: feature/anex-search-adapter-20260907
-  SOURCE_RUN_ID: '35126041765'
-  OPERATION_ID: publish-anex-search3-preview-2530-v1
+  SOURCE_RUN_ID: '35160429770'
+  OPERATION_ID: publish-anex-search3-preview-2530-v2
   EXPECTED_ROUTE: /_preview/search3-anex-candidate/
-  OWNER_COMMAND: /publish-anex-search3-preview-2530-v1
+  OWNER_COMMAND: /publish-anex-search3-preview-2530-v2
 
 jobs:
   control-contract:
@@ -112,12 +112,15 @@ jobs:
           test "$(git -C candidate rev-parse HEAD)" = "$SOURCE_SHA"
           cd candidate
           python3 -B tests/anex_search3_preview_deploy_test.py
+          python3 -B tests/anex_search3_preview_safe_deploy_test.py
+          python3 -m py_compile scripts/diagnostics/anex_search3_preview_deploy_safe.py
           php -l v2/api-anex-search3-preview.php
           php tests/anex-search3-preview-smoke.php
           node --check v2/anex-search3-preview-v1.js
           grep -F 'target="$project/_preview/search3-anex-candidate"' scripts/diagnostics/anex_search3_preview_deploy.py >/dev/null
           ! grep -F 'target="$project/_preview/search3-site-candidate"' scripts/diagnostics/anex_search3_preview_deploy.py
           grep -F 'production_entry_changes": False' scripts/diagnostics/anex_search3_preview_deploy.py >/dev/null
+          grep -F 'ANEX_PRIVATE_CONFIG_READY' scripts/diagnostics/anex_search3_preview_deploy_safe.py >/dev/null
       - name: Prepare private SSH transport
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -181,7 +184,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$ANEX_CATALOG_ARTIFACT_DIR"
-          python3 -B candidate/scripts/diagnostics/anex_search3_preview_deploy.py | tee "$ANEX_CATALOG_ARTIFACT_DIR/publisher-stdout.jsonl"
+          python3 -B candidate/scripts/diagnostics/anex_search3_preview_deploy_safe.py | tee "$ANEX_CATALOG_ARTIFACT_DIR/publisher-stdout.jsonl"
           python3 - <<'PY'
           import json, os
           from pathlib import Path
