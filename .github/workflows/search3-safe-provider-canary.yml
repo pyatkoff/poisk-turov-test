@@ -1,0 +1,51 @@
+name: Search3 safe provider canary
+
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'v2/anex-final-price-provider-v1.js'
+      - 'v2/andromeda-local-endpoint-v1.js'
+      - 'v2/bundle-manifest-v1.php'
+      - 'tests/anex-final-price-provider-v1.test.js'
+      - 'tests/search3-local-provider-endpoint-fallback.test.js'
+      - '.github/workflows/search3-safe-provider-canary.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  provider-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Syntax and focused provider checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check v2/anex-final-price-provider-v1.js
+          node --check v2/andromeda-local-endpoint-v1.js
+          node --check tests/anex-final-price-provider-v1.test.js
+          node tests/anex-final-price-provider-v1.test.js
+          node tests/search3-local-provider-endpoint-fallback.test.js
+      - name: Search3-only bundle ordering
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '
+            require "v2/bundle-manifest-v1.php";
+            $s=v2_bundle_files("js","search3");
+            $f=v2_bundle_files("js","full");
+            foreach (["andromeda-local-endpoint-v1.js","andromeda-provider-v1.js","anex-final-price-provider-v1.js"] as $name) {
+              if (!in_array($name,$s,true)) throw new RuntimeException("missing:$name");
+            }
+            if (in_array("andromeda-local-endpoint-v1.js",$f,true) || in_array("anex-final-price-provider-v1.js",$f,true)) throw new RuntimeException("full-route-contamination");
+            $a=array_search("andromeda-local-endpoint-v1.js",$s,true);
+            $b=array_search("andromeda-provider-v1.js",$s,true);
+            $c=array_search("anex-final-price-provider-v1.js",$s,true);
+            if (!($a+1===$b && $b+1===$c)) throw new RuntimeException("provider-order");
+            echo "SEARCH3_SAFE_PROVIDER_BUNDLE_OK search3=".count($s)." full=".count($f).PHP_EOL;
+          '
