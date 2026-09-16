@@ -1,0 +1,82 @@
+name: MATCH Andromeda state116 compact4 apply v1
+on:
+  push:
+    branches: [ops/match-andromeda-state116-compact4-apply-1971-20260916-v1]
+    paths:
+      - 'scripts/diagnostics/hotel_match_andromeda_state116_compact4_apply_v1.php'
+      - '.github/workflows/hotel-match-andromeda-state116-compact4-apply-v1.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-andromeda-state116-compact4-apply-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-andromeda-state116-compact4-apply-1971-20260916-v1
+  OUT: /tmp/match-andromeda-state116-compact4-apply-v1
+jobs:
+  apply:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '${{ github.sha }}'
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate guarded writer
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_andromeda_state116_compact4_apply_v1.php
+          php scripts/diagnostics/hotel_match_andromeda_state116_compact4_apply_v1.php --self-test
+          grep -Fq "const WANT=['2000034034'=>47661,'2000072953'=>81596,'2000115230'=>148690,'509293'=>24495]" scripts/diagnostics/hotel_match_andromeda_state116_compact4_apply_v1.php
+          grep -Fq "supplier_namespace='andromeda_catalog'" scripts/diagnostics/hotel_match_andromeda_state116_compact4_apply_v1.php
+          grep -Fq "decision_status='pending'" scripts/diagnostics/hotel_match_andromeda_state116_compact4_apply_v1.php
+          grep -Fq 'FOR UPDATE' scripts/diagnostics/hotel_match_andromeda_state116_compact4_apply_v1.php
+          grep -Fq 'post_commit_readback' scripts/diagnostics/hotel_match_andromeda_state116_compact4_apply_v1.php
+      - name: Reserve before SSH DB write
+        shell: bash
+        run: |
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import json,os,pathlib
+          (pathlib.Path(os.environ['OUT'])/'runner-reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_db_write','requested':4,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 'match-state116-compact4-reservation-${{ github.run_id }}'
+          path: '${{ env.OUT }}/runner-reservation.json'
+          retention-days: 90
+      - name: Run immutable guarded writer
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; set +e
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0 -d memory_limit=768M" < scripts/diagnostics/hotel_match_andromeda_state116_compact4_apply_v1.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"; rc=$?
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"; trc=$?; set -e; rm -f "$key" "$known"
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export RC="$rc" TRC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['OUT'])
+          def load(n):
+              try:return json.loads((p/n).read_text())
+              except Exception:return {}
+          r=load('result.json');c=load('receipt.json');rr=load('runner-reservation.json');rh=hashlib.sha256((p/'result.json').read_bytes()).hexdigest() if (p/'result.json').exists() else None
+          w=r.get('written_count');h=r.get('held_count');ok=(r.get('state')=='committed' and isinstance(w,int) and isinstance(h,int) and w+h==4 and r.get('post_commit_readback_verified') is True and r.get('database_writes')==w and r.get('mapping_writes')==w and all(r.get(k)==0 for k in ('supplier_calls','tourvisor_calls','booking_calls','lead_calls')) and c.get('result_sha256')==rh and c.get('readback_verified') is True and rr.get('state')=='reserved_before_ssh_db_write' and int(os.environ['RC'])==0 and int(os.environ['TRC'])==0)
+          g={'verified':ok,'written_count':w,'held_count':h,'written':r.get('written'),'held':r.get('held'),'post_commit_readback_verified':r.get('post_commit_readback_verified'),'result_sha256':rh,'remote_exit':int(os.environ['RC']),'tar_exit':int(os.environ['TRC']),'no_replay':True};(p/'workflow-readback.json').write_text(json.dumps(g,sort_keys=True,indent=2)+'\n');print(json.dumps(g,sort_keys=True));raise SystemExit(0 if ok else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 'match-state116-compact4-${{ github.run_id }}'
+          path: '${{ env.OUT }}/'
+          retention-days: 90
