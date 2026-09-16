@@ -675,7 +675,39 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         $result = $gateway->handle(['action' => 'offer', 'search_ref' => $request['search_ref'],
             'offer_key' => $key, 'local_hotel_id' => $local], $state['gateway']);
         unset($result['offer_key']);
-        return array_replace($reply, $result);
+        if (($result['status'] ?? null) !== 'current' || ($offer['kind'] ?? null) !== 'concrete') {
+            return array_replace($reply, $result);
+        }
+        $application = null;
+        $readyAmount = null;
+        $tour = $savedEntry['supplier_tour_program_id'] ?? null;
+        $currency = $savedEntry['supplier_currency_id'] ?? null;
+        $checkin = $offer['checkin'] ?? null;
+        $nights = $offer['nights'] ?? null;
+        if (is_string($tour) && preg_match('/\A[1-9][0-9]{0,17}\z/D', $tour)
+            && is_string($currency) && preg_match('/\A[1-9][0-9]{0,17}\z/D', $currency)
+            && is_string($checkin) && preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D', $checkin)
+            && is_int($nights) && $nights >= 1 && $nights <= 60) {
+            $digest = hash('sha256', implode("\0", [$tour, $currency, $checkin, (string) $nights]));
+            $attempt = $state['additional_prices'][$digest] ?? null;
+            if (is_array($attempt) && ($attempt['status'] ?? null) === 'complete' && is_array($attempt['evidence'] ?? null)) {
+                $application = anytour_anex_search3_additional_application($attempt['evidence'], $offer);
+                if (($application['application_state'] ?? null) === 'applied'
+                    && is_array($application['search_plus_additional'] ?? null)
+                    && ($application['search_plus_additional']['currency'] ?? null) === 'RUB'
+                    && is_string($application['search_plus_additional']['amount'] ?? null)
+                    && preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D', $application['search_plus_additional']['amount'])
+                    && preg_match('/[1-9]/', $application['search_plus_additional']['amount'])) {
+                    $readyAmount = $application['search_plus_additional']['amount'];
+                }
+            }
+        }
+        return array_replace($reply, $result, [
+            'finalPriceReady' => $readyAmount !== null,
+            'finalPrice' => $readyAmount,
+            'price' => $readyAmount,
+            'additional_prices' => $application,
+        ]);
     }
     if ($offer['kind'] !== 'group_minimum') return array_replace($reply, ['status' => 'not_grouped']);
     $attempt = $state['expansions'][$key] ?? null;
