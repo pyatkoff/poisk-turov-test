@@ -21,6 +21,7 @@ $newCheckpoint="\$search=h2_call('search_create','/tours/search',\$params);\$sid
 if(substr_count($src,$oldCheckpoint)!==1)throw new RuntimeException('v2_checkpoint_marker_changed');
 $src=str_replace($oldCheckpoint,$newCheckpoint,$src);
 if(str_contains($src,$oldOp)||str_contains($src,'2026-11-15')||substr_count($src,"search_created_before_poll")!==1)throw new RuntimeException('v3_patch_incomplete');
+if(in_array('--emit',$argv??[],true)){echo $src;exit(0);}
 $tmp=sys_get_temp_dir().'/hotel-match-tv-multiop-targeted-v3-'.getmypid().'.php';
 if(file_put_contents($tmp,$src,LOCK_EX)!==strlen($src))throw new RuntimeException('v3_temp_write_failed');
 try{require $tmp;}finally{@unlink($tmp);}
