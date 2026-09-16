@@ -4,8 +4,15 @@ on:
   pull_request:
     paths:
       - 'v2/results-renderer-v5.js'
+      - 'v2/search3-room-normalizer-v1.js'
+      - 'v2/bundle-manifest-v1.php'
       - 'v2/search3-shared-runtime.json'
       - 'v2/assets/operator-logos/**'
+      - 'tests/helpers/search3-renderer-bootstrap.js'
+      - 'tests/search3-room-normalizer.test.js'
+      - 'tests/search3-renderer-bootstrap.cjs'
+      - 'tests/search3-room-runtime-contract.cjs'
+      - 'tests/search3-owner-size-guard.test.js'
       - 'tests/search3-renderer-date-display.test.js'
       - 'tests/search3-hotel-operator-card.test.js'
       - 'tests/search3-hotel-card-summary.test.js'
@@ -31,8 +38,18 @@ jobs:
           node-version: '24'
       - name: Install pinned Search3 build tools
         run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
-      - name: Syntax check canonical renderer
-        run: node --check v2/results-renderer-v5.js
+      - name: Syntax check canonical renderer and room owner
+        run: |
+          node --check v2/results-renderer-v5.js
+          node --check v2/search3-room-normalizer-v1.js
+          node --check tests/helpers/search3-renderer-bootstrap.js
+          node --check tests/search3-room-runtime-contract.cjs
+      - name: Verify room owner and renderer dependency contracts
+        run: |
+          node tests/search3-room-normalizer.test.js
+          node tests/search3-renderer-bootstrap.cjs
+          node tests/search3-room-runtime-contract.cjs
+          node tests/search3-owner-size-guard.test.js
       - name: Verify display-only date normalization and exact operator cards
         run: |
           node tests/search3-renderer-date-display.test.js
