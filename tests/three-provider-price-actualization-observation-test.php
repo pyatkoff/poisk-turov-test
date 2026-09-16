@@ -93,6 +93,32 @@ $stable = AnyTourThreeProviderPriceActualizationObservation::fromListingAndVerif
 actualization_check($stable['exact_match'] === true);
 actualization_check($stable['listing_price'] === $stable['verified_quote_price']);
 
+// Decimal spelling is not a price change. Preserve both supplier money facts exactly.
+foreach ([
+    ['199390', '199390.00', true],
+    ['199390.0', '199390', true],
+    ['199390.10', '199390.1', true],
+    ['0.1', '0.10', true],
+    ['999999999999.9', '999999999999.90', true],
+    ['199390.00', '199390.01', false],
+    ['999999999999.98', '999999999999.99', false],
+] as [$listed, $quoted, $expected]) {
+    $listing = actualization_listing($listed);
+    $quote = actualization_quote($quoted);
+    $before = [$listing, $quote];
+    $observation = AnyTourThreeProviderPriceActualizationObservation::fromListingAndVerifiedQuote($listing, $quote);
+    actualization_check($observation['exact_match'] === $expected);
+    actualization_check($observation['listing_price']['amount'] === $listed
+        && $observation['verified_quote_price']['amount'] === $quoted);
+    actualization_check([$listing, $quote] === $before);
+}
+foreach (['199390.001', '0199390', '1e5', '0.00'] as $invalid) {
+    actualization_reject(static function () use ($invalid): void {
+        AnyTourThreeProviderPriceActualizationObservation::fromListingAndVerifiedQuote(
+            actualization_listing('199390'), actualization_quote($invalid));
+    }, 'THREE_PROVIDER_ACTUALIZATION_QUOTE_MONEY');
+}
+
 // Fail closed: never compare different retained offers or unverified/not-ready money.
 $wrongHotel = actualization_quote();
 $wrongHotel['local_hotel_id'] = 999;
