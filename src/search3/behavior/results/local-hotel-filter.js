@@ -141,7 +141,7 @@ function numericCoverage(list,minimum){
 function syncHotelFacets(){
   const regions=cardTextValues('region'),categories=cardValues('category'),ratings=cardValues('rating'),seas=cardValues('seaDistance'),complete=list=>sourceItems.length>1&&list.length===sourceItems.length&&list.every(value=>value>0);
   const region=syncTextSelect(regionField,regionSelect,regions,'Все курорты');
-  const category=syncSelect(categoryField,categorySelect,complete(categories)?categories:[],'Любая категория',value=>value+'★');
+  const categoryState=numericCoverage(categories,.95),category=syncSelect(categoryField,categorySelect,categoryState.available?categories.filter(value=>value>0):[],'Любая категория'+(categoryState.available?' · '+categoryState.known+'/'+categoryState.total:''),value=>value+'★');
   syncPresets(categoryPresets,categorySelect,Array.from(categorySelect.options).slice(1).map(item=>({value:item.value,label:item.textContent})),'0');
   const rating=numericCoverage(ratings,.95);ratingField.hidden=!rating.available;ratingCoverage.textContent=rating.available?'Рейтинг указан у '+rating.known+' из '+rating.total+' отелей':'';if(!rating.available)ratingSelect.value='0';
   const seaComplete=complete(seas);seaField.hidden=!seaComplete;if(!seaComplete)seaSelect.value='0';
