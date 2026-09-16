@@ -11,10 +11,20 @@ function hmha_write(string $path,array $x):string{
 }
 function hmha_query(PDO $db,string $sql,array $args=[]):array{$q=$db->prepare($sql);$q->execute(array_values($args));$r=$q->fetchAll(PDO::FETCH_ASSOC);hmha_require(count($r)<=150000,'query_budget');return$r;}
 function hmha_protected($v,string $key='',int $depth=0):bool{
- if($depth>20)return true;if(is_array($v)){foreach($v as $k=>$x)if(hmha_protected($x,(string)$k,$depth+1))return true;return false;}
- if(!preg_match('/manual|exclude|exclusion|conflict|reject|review/i',$key))return false;
+ if($depth>20)return true;
+ $sensitive=preg_match('/manual|exclude|exclusion|conflict|reject|review|protect/i',$key)===1;
+ if(is_array($v)){
+  // A structured decision/exclusion is protected as a whole, not just its leaf keys.
+  // Do not interpret an unknown nested decision schema as permission to overwrite it.
+  if($sensitive&&$v!==[])return true;
+  foreach($v as $k=>$x)if(hmha_protected($x,(string)$k,$depth+1))return true;
+  return false;
+ }
+ if(!$sensitive)return false;
+ if($v===null)return false;
  if(is_bool($v))return$v;if(is_numeric($v))return(float)$v!=0;
- return is_string($v)&&!in_array(strtolower(trim($v)),['','false','none','no','null'],true);
+ if(is_string($v))return!in_array(strtolower(trim($v)),['','false','none','no','null'],true);
+ return true;
 }
 function hmha_source(array $e):array{return is_array($e['source']??null)?$e['source']:$e;}
 function hmha_states(array $e):array{
@@ -109,6 +119,38 @@ if(in_array('--self-test',$argv??[],true)){
  hmha_require(hmha_distance([36,31],[36,31])<0.00001&&hmha_distance([36,31],[37,31])>100,'distance');$n++;
  $pts=[];hmha_points(['source'=>['lat'=>36,'lon'=>31],'nested'=>[['latitude'=>37,'longitude'=>31]]],$pts);hmha_require(count($pts)===2,'recursive_points');$n++;
  $tmp=tempnam(sys_get_temp_dir(),'hmha-');unlink($tmp);hmha_write($tmp,['ok'=>true]);$refused=false;try{hmha_write($tmp,['ok'=>false]);}catch(Throwable$e){$refused=true;}unlink($tmp);hmha_require($refused,'durable_no_replay');$n++;
+ // Exercise the real source guard with matching hashes: no digest failure can mask a missed hold.
+ $keys=['manual','manual_decision','pair_exclusions','conflict','review','rejected','protected','PROTECTED'];
+ $positive=[true,1,'1','yes',['status'=>'rejected'],[['local_hotel_id'=>10,'reason'=>'different building']],['status'=>'accepted','target'=>10]];
+ $negative=[false,0,'0','false','none','no','null','',null,[]];
+ foreach($keys as$key){
+  foreach([false,true]as$wrapped){
+   foreach([1=>$positive,0=>$negative]as$expected=>$values)foreach($values as$value){
+    $ev=['source'=>['name'=>'Manual Review Hotel','stateKey'=>5]];
+    if($wrapped)$ev['source']['metadata']=[$key=>$value];else$ev[$key]=$value;
+    $bytes=hmha_json($ev);$hash=hash('sha256',$bytes);
+    $row=['decision_status'=>'pending','local_hotel_id'=>null,'evidence_json'=>$bytes,'evidence_sha256'=>$hash];
+    $plan=['external_hotel_id'=>'1','state_key'=>5,'evidence_sha256'=>$hash,'evidence_bytes_sha256'=>$hash];
+    $got=hmha_source_holds($row,$plan,[]);
+    hmha_require($got===($expected?['protected_source']:[]),'structured_protection_regression');$n++;
+   }
+  }
+ }
+ $batchHeld=0;
+ for($i=0;$i<2000;$i++){
+  $ev=['source'=>['stateKey'=>5,'name'=>'Fixture Hotel '.$i]];
+  if($i%2)$ev['metadata']['pair_exclusions']=[['local_hotel_id'=>$i+1]];
+  $bytes=hmha_json($ev);$hash=hash('sha256',$bytes);
+  $row=['decision_status'=>'pending','local_hotel_id'=>null,'evidence_json'=>$bytes,'evidence_sha256'=>$hash];
+  $plan=['external_hotel_id'=>(string)($i+1),'state_key'=>5,'evidence_sha256'=>$hash,'evidence_bytes_sha256'=>$hash];
+  $got=hmha_source_holds($row,$plan,[]);
+  hmha_require($got===($i%2?['protected_source']:[]),'bulk_protection_regression');
+  hmha_require($row['evidence_json']===$bytes&&$row['evidence_sha256']===$hash,'source_not_mutated');
+  $batchHeld+=(int)in_array('protected_source',$got,true);
+ }
+ hmha_require($batchHeld===1000,'bulk_protection_count');$n++;
+ $deep=['manual'=>true];for($i=0;$i<25;$i++)$deep=['node'=>$deep];
+ hmha_require(hmha_protected($deep),'depth_fail_closed');$n++;
  echo "$n guarded apply self-tests PASS\n";exit;
 }
 hmha_main();
