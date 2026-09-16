@@ -82,17 +82,7 @@ function anytour_anex_additional_prices_batch_plan(array $items, array $state): 
     ];
 }
 
-/**
- * Execute each unique private context at most once.
- *
- * `$reader` receives one private planner context and must return already-validated public-safe
- * evidence. The executor itself never performs transport. New contexts are persisted as unknown
- * before invoking the reader; supplier-observed unknown/reserved attempts are not replayed, while
- * completed evidence is reused without a reader call. A local `ANEX_RATE_LIMIT` raised by the
- * existing runtime client factory happens before supplier transport; that unsent attempt is rolled
- * back to absent state and explicitly marked retryable so a later visible-card batch may try it
- * after the session budget recovers. Durable unknown state remains non-retryable.
- */
+/** Execute each unique private context at most once; completed evidence is retained for exact-offer reads. */
 function anytour_anex_additional_prices_batch_execute(array $plan, array &$state, callable $reader, callable $checkpoint): array
 {
     $contexts = $plan['contexts'] ?? null;
@@ -154,8 +144,16 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
             || !is_string($item['offer_ref'] ?? null) || !is_int($item['local_hotel_id'] ?? null)) {
             throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
         }
+        $offerRef = $item['offer_ref'];
+        if (($results[$digest]['status'] ?? null) === 'complete' && is_array($results[$digest]['evidence'] ?? null)) {
+            $entry =& $state['gateway']['saved_offers']['offers'][$offerRef];
+            if (!is_array($entry) || !is_array($entry['offer'] ?? null)) throw new InvalidArgumentException('ANEX_INVALID_SESSION');
+            $entry['additional_prices_context_digest'] = $digest;
+            $entry['additional_prices_evidence'] = $results[$digest]['evidence'];
+            unset($entry);
+        }
         $publicOffers[] = [
-            'offer_ref' => $item['offer_ref'],
+            'offer_ref' => $offerRef,
             'local_hotel_id' => $item['local_hotel_id'],
             'context_digest' => $digest,
             'status' => $results[$digest]['status'],
