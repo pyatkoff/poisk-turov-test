@@ -1,0 +1,39 @@
+name: Search3 local hotel catalog
+
+on:
+  pull_request:
+    paths:
+      - 'v2/data/hotel-details-read-v1.php'
+      - 'v2/data/hotel-presentation-read-v1.php'
+      - 'v2/data/hotel-details-v1.php'
+      - 'v2/data/db-v1.php'
+      - 'tests/search3-local-hotel-catalog-test.php'
+      - '.github/workflows/search3-local-hotel-catalog.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-hotel-catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, mbstring
+          coverage: none
+      - name: Check local profile read syntax
+        run: |
+          php -l v2/data/hotel-details-read-v1.php
+          php -l v2/data/hotel-presentation-read-v1.php
+          php -l tests/search3-local-hotel-catalog-test.php
+      - name: Verify real disposable SQL and local HTTP contracts
+        run: php tests/search3-local-hotel-catalog-test.php
+      - name: Preserve existing hotel media normalization
+        run: php tests/hotel-details-smoke.php
