@@ -1,5 +1,4 @@
 import importlib.util
-import os
 from pathlib import Path
 import unittest
 
@@ -74,7 +73,8 @@ class OwnerGateTest(unittest.TestCase):
         self.assertIn("ANEX_B2B_TOKEN_READY", text)
         self.assertIn("publish-anex-search3-preview-2530-v1", text)
         self.assertIn("/_preview/search3-anex-candidate/", text)
-        self.assertNotIn("search3-site-candidate", text)
+        self.assertEqual(text.count("search3-site-candidate"), 1)
+        self.assertIn("! grep -F", text)
         self.assertNotIn("/poisk-turov/?", text)
         self.assertIn("production_entry_changes", text)
         self.assertIn("actions: read", text)
