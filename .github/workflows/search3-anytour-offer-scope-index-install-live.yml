@@ -1,0 +1,135 @@
+name: Search3 AnyTour scope index live install
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - '.github/workflows/search3-anytour-offer-scope-index-install-live.yml'
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: anytour-offer-scope-index-install-2690
+  cancel-in-progress: false
+jobs:
+  install-once:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/local-2690-offer-scope-index-install-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Retain exact payload and reservation before private access
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse 91f62404f0b7ebab79fc54d4f42d852deb916596:v2/data/migrations/20260917-anytour-offer-scope-index.sql)" = "$(git rev-parse HEAD:v2/data/migrations/20260917-anytour-offer-scope-index.sql)"
+          mkdir retained
+          tar -czf retained/payload.tar.gz \
+            v2/data/migrations/20260917-anytour-offer-scope-index.sql \
+            v2/data/db-v1.php \
+            scripts/catalog/anytour_offer_scope_index_install_v1.php
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          r={'operation':'anytour-offer-scope-index-install-2690-20260917-v1','dataSource':'91f62404f0b7ebab79fc54d4f42d852deb916596','executionSource':os.environ['HEAD_SHA'],'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'expectedOfferStoreSchema':2,'supplierCalls':0,'oldScopeBackfill':0,'noReplay':True}
+          pathlib.Path('retained/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          for n in ['payload.tar.gz','reservation.json']:
+              p=pathlib.Path('retained')/n
+              print(hashlib.sha256(p.read_bytes()).hexdigest(),n,file=open('retained/transport.sha256','a'))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-scope-index-live-reservation-${{ github.run_id }}
+          path: retained/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Recheck exact head, fresh owner claim and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5718622469 > local-claim.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5718623662 > coordination-claim.json
+          python3 - <<'PY'
+          import datetime,json
+          for path in ('local-claim.json','coordination-claim.json'):
+              c=json.load(open(path))
+              assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+              assert 'anytour-offer-scope-index-install-2690-20260917-v1' in c['body']
+              assert 'NO REPLAY' in c['body'] and 'old SHA scope backfill' in c['body']
+              age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+              assert 0<=age.total_seconds()<5400
+          PY
+          for i in $(seq 1 45); do
+            state=$(gh api repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs --jq '[.check_runs[]|select(.name=="guard")]|last|(.status+":"+(.conclusion//""))' || true)
+            test "$state" = 'completed:success' && exit 0
+            test "$state" = 'completed:failure' && exit 1
+            sleep 2
+          done
+          exit 1
+      - name: Execute fixed private install and retain readback
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]
+          [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 -d > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$REMOTE_USER@$HOST"; dir='.anytour-operations/anytour-offer-scope-index-install-2690-20260917-v1'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/anytour-offer-scope-index-install-2690-20260917-v1"'
+          scp "${opts[@]}" retained/payload.tar.gz retained/reservation.json "$remote:$dir/"
+          set +e
+          ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd "$HOME/.anytour-operations/anytour-offer-scope-index-install-2690-20260917-v1"
+          mkdir payload
+          tar -xzf payload.tar.gz -C payload --strip-components=0
+          php -d display_errors=0 payload/scripts/catalog/anytour_offer_scope_index_install_v1.php
+          sha256sum journal.jsonl result.json > readback.sha256
+          REMOTE
+          rc=$?
+          set -e
+          mkdir evidence
+          scp "${opts[@]}" "$remote:$dir/journal.jsonl" evidence/journal.jsonl || true
+          scp "${opts[@]}" "$remote:$dir/result.json" evidence/result.json || true
+          scp "${opts[@]}" "$remote:$dir/readback.sha256" evidence/readback.sha256 || true
+          cp retained/reservation.json evidence/reservation.json
+          printf '{"ssh_exit":%s,"noReplay":true}\n' "$rc" > evidence/transport.json
+          test "$rc" = 0
+          (cd evidence && sha256sum -c readback.sha256)
+          python3 - <<'PY'
+          import json
+          r=json.load(open('evidence/result.json'))
+          assert r['status']=='scope_index_installed_verified' and r['offerStoreSchemaVersion']==2
+          assert r['oldScopeBackfill']==0 and r['supplierCalls']==0 and r['offerWrites']==0
+          assert r['mappingWrites']==0 and r['canonicalWrites']==0 and r['publicFileWrites']==0
+          assert [c['COLUMN_NAME'] for c in r['schema']['columns']]==['scope_sha256','scope_version','family_sha256','params_json','params_sha256','first_seen_at','last_seen_at']
+          PY
+      - name: Retain terminal evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-scope-index-live-result-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
