@@ -30,7 +30,8 @@ if($result['status']!=='complete'||$result['queued']!==1||count($calls)!==1||(in
 $saved=AnyTourAnexProgramApdStoreV1::readApd($db,['supplier_program_id'=>778,'date_beg'=>'2026-09-20','nights'=>7,'supplier_currency_id'=>3],$now);
 if($saved['state']!=='rate'||$saved['rates']['adult']!=='10384'||!$saved['fresh'])throw new RuntimeException('PREWARM_SAVE');
 if(AnyTourAnexApdPrewarmV1::ttlSeconds('2026-09-20',$now)!==3600)throw new RuntimeException('TTL_NEAR');
-if(AnyTourAnexApdPrewarmV1::ttlSeconds('2026-10-10',$now)!==3*3600)throw new RuntimeException('TTL_MEDIUM');
+if(AnyTourAnexApdPrewarmV1::ttlSeconds('2026-09-30',$now)!==3*3600)throw new RuntimeException('TTL_MEDIUM');
+if(AnyTourAnexApdPrewarmV1::ttlSeconds('2026-10-10',$now)!==8*3600)throw new RuntimeException('TTL_LATER');
 if(AnyTourAnexApdPrewarmV1::ttlSeconds('2026-11-20',$now)!==18*3600)throw new RuntimeException('TTL_FAR');
 
 echo "ANEX_APD_PREWARM_OK queued=1 regular_skipped=1 fresh_skipped=1 ttl=proximity\n";
