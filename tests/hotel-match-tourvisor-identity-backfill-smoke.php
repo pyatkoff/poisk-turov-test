@@ -21,7 +21,7 @@ check_backfill($status === 0, 'backfill self-test failed: ' . implode("\n", $out
 check_backfill(str_contains(implode("\n", $output), 'PASS'), 'backfill PASS marker');
 
 $observer = (string)file_get_contents($root . '/v2/data/operator-identity-observer-v1.php');
-check_backfill(str_contains($observer, "'tourvisor|' . $hotelId . '|' . $operatorId"), 'stable link-independent fingerprint');
+check_backfill(str_contains($observer, "'tourvisor|' . \$hotelId . '|' . \$operatorId"), 'stable link-independent fingerprint');
 check_backfill(str_contains($observer, 'operator_link=COALESCE(VALUES(operator_link),operator_link)'), 'later link enrichment');
 check_backfill(str_contains($observer, "'native_id_conflict'=>0"), 'native conflict evidence field');
 
