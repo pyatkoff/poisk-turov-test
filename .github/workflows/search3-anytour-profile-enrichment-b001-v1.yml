@@ -1,0 +1,318 @@
+name: Search3 AnyTour profile enrichment B001 v1
+
+on:
+  push:
+    branches:
+      - ops/local-2690-profile-fill-missing-b001-20260917-v1
+    paths:
+      - 'scripts/catalog/anytour_profile_enrichment_batch.php'
+      - '.github/workflows/search3-anytour-profile-enrichment-b001-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-profile-fill-missing-2690-20260917-b001-v1
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BASE_RELEASE: 44a8c8abac4432f5f518e9e5a10f4c66979452f4
+  OPERATION_ID: anytour-profile-fill-missing-2690-20260917-b001-v1
+  DEMAND_THROUGH: '2026-09-17T21:30:00Z'
+  BATCH_LIMIT: '100'
+  REMOTE_OPERATION_ROOT: .anytour-operations
+
+jobs:
+  apply-once:
+    if: >-
+      github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+
+      - name: Pin exact merged product source and operations-only diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/local-2690-profile-fill-missing-b001-20260917-v1'
+          git fetch --no-tags origin release/search3-production-ready-v1
+          test "$(git merge-base HEAD origin/release/search3-production-ready-v1)" = "$EXPECTED_BASE_RELEASE"
+          test "$(git rev-parse origin/release/search3-production-ready-v1)" = "$EXPECTED_BASE_RELEASE"
+          expected=$'.github/workflows/search3-anytour-profile-enrichment-b001-v1.yml\nscripts/catalog/anytour_profile_enrichment_batch.php'
+          actual="$(git diff --name-only "$EXPECTED_BASE_RELEASE"...HEAD | sort)"
+          test "$actual" = "$expected"
+          for f in \
+            v2/data/hotel-details-v1.php \
+            v2/data/hotel-presentation-read-v1.php \
+            v2/data/anytour-profile-enrichment-v1.php; do
+            git show "$EXPECTED_BASE_RELEASE:$f" > "$RUNNER_TEMP/base-$(basename "$f")"
+            cmp "$RUNNER_TEMP/base-$(basename "$f")" "$f"
+          done
+          php -l v2/data/hotel-details-v1.php
+          php -l v2/data/hotel-presentation-read-v1.php
+          php -l v2/data/anytour-profile-enrichment-v1.php
+          php -l scripts/catalog/anytour_profile_enrichment_batch.php
+          grep -Fq "Room/meal concepts and traits are intentionally" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'legacyWrites'=>0" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'mappingWrites'=>0" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'supplierCalls'=>0" v2/data/anytour-profile-enrichment-v1.php
+          sha256sum \
+            v2/data/hotel-details-v1.php \
+            v2/data/hotel-presentation-read-v1.php \
+            v2/data/anytour-profile-enrichment-v1.php \
+            scripts/catalog/anytour_profile_enrichment_batch.php > source-sha256.txt
+          python3 - <<'PY'
+          import json, os
+          reservation = {
+              'schema_version': 1,
+              'operation': os.environ['OPERATION_ID'],
+              'state': 'reserved_before_private_access',
+              'base_release_sha': os.environ['EXPECTED_BASE_RELEASE'],
+              'head_sha': os.environ['GITHUB_SHA'],
+              'run_id': os.environ['GITHUB_RUN_ID'],
+              'run_attempt': os.environ['GITHUB_RUN_ATTEMPT'],
+              'demand_through': os.environ['DEMAND_THROUGH'],
+              'batch_limit': int(os.environ['BATCH_LIMIT']),
+              'supplier_calls_allowed': 0,
+              'room_meal_fields_allowed': False,
+              'traits_allowed': False,
+          }
+          with open('reservation.json','w',encoding='utf-8') as f:
+              json.dump(reservation,f,sort_keys=True,separators=(',',':'))
+              f.write('\n')
+          PY
+
+      - name: Persist durable runner reservation before SSH or DB access
+        uses: actions/upload-artifact@v4
+        with:
+          name: anytour-profile-enrichment-b001-reservation
+          path: |
+            reservation.json
+            source-sha256.txt
+          if-no-files-found: error
+
+      - name: Prepare ephemeral SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Reserve exclusive server operation before DB access
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "bash -s -- '$REMOTE_OPERATION_ROOT' '$OPERATION_ID' '$EXPECTED_BASE_RELEASE' '$GITHUB_SHA' '$DEMAND_THROUGH' '$BATCH_LIMIT'" <<'REMOTE'
+          set -euo pipefail
+          root="$1"; operation="$2"; base="$3"; head="$4"; through="$5"; limit="$6"
+          umask 077
+          mkdir -p "$HOME/$root"
+          op="$HOME/$root/$operation"
+          if ! mkdir "$op"; then
+            echo 'SERVER_OPERATION_ALREADY_RESERVED_NO_REPLAY' >&2
+            exit 73
+          fi
+          mkdir "$op/stage"
+          test -s "$HOME/www/anytoour.ru/data/db-v1.php"
+          python3 - "$op/server-reservation.json" "$operation" "$base" "$head" "$through" "$limit" <<'PY'
+          import json,sys
+          path,operation,base,head,through,limit=sys.argv[1:]
+          value={'schema_version':1,'operation':operation,'state':'server_reserved_before_db','base_release_sha':base,'head_sha':head,'demand_through':through,'batch_limit':int(limit)}
+          with open(path,'x',encoding='utf-8') as f:
+              json.dump(value,f,sort_keys=True,separators=(',',':')); f.write('\n')
+          PY
+          REMOTE
+
+      - name: Stage exact merged read-only dependencies and wrapper in operation directory
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          target="$remote:$REMOTE_OPERATION_ROOT/$OPERATION_ID/stage/"
+          scp "${opts[@]}" \
+            v2/data/hotel-details-v1.php \
+            v2/data/hotel-presentation-read-v1.php \
+            v2/data/anytour-profile-enrichment-v1.php \
+            scripts/catalog/anytour_profile_enrichment_batch.php \
+            "$target"
+          ssh "${opts[@]}" "$remote" "cd '$REMOTE_OPERATION_ROOT/$OPERATION_ID/stage' && sha256sum hotel-details-v1.php hotel-presentation-read-v1.php anytour-profile-enrichment-v1.php anytour_profile_enrichment_batch.php > ../server-source-sha256.txt"
+
+      - name: Capture two byte-identical CURRENT read-only plans
+        id: plan_guard
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          op="$REMOTE_OPERATION_ROOT/$OPERATION_ID"
+          for n in 1 2; do
+            ssh "${opts[@]}" "$remote" "bash -s -- '$op' '$BATCH_LIMIT' '$DEMAND_THROUGH' '$n'" <<'REMOTE' > "plan-$n.json"
+          set -euo pipefail
+          op="$1"; limit="$2"; through="$3"; n="$4"
+          site="$HOME/www/anytoour.ru"
+          out="$HOME/$op/plan-$n.json"
+          test ! -e "$out"
+          ANYTOUR_SITE_ROOT="$site" php "$HOME/$op/stage/anytour_profile_enrichment_batch.php" \
+            --mode=plan --limit="$limit" --demand-through="$through" > "$out"
+          cat "$out"
+          REMOTE
+          done
+          cmp plan-1.json plan-2.json
+          python3 - <<'PY'
+          import json,os,re
+          p=json.load(open('plan-1.json',encoding='utf-8'))
+          if p.get('status')!='prepared_read_only' or p.get('writes')!=0 or p.get('supplierCalls')!=0:
+              raise SystemExit('plan not read-only')
+          if p.get('limit')!=int(os.environ['BATCH_LIMIT']): raise SystemExit('limit mismatch')
+          if p.get('demandThrough')!='2026-09-17 21:30:00': raise SystemExit('demand cutoff mismatch')
+          if p.get('roomMealFieldsExcluded') is not True or p.get('traitsExcluded') is not True:
+              raise SystemExit('architecture exclusion missing')
+          selected=p.get('selected')
+          if not isinstance(selected,list) or len(selected)>int(os.environ['BATCH_LIMIT']): raise SystemExit('invalid selected count')
+          allowed={'region','subRegion','category','rating','coordinates','description','primaryImage','images','address','place','build','repair','square','hotelInformation.infrastructure','hotelInformation.services'}
+          seen=set()
+          for item in selected:
+              own=item.get('anytourHotelId')
+              if not isinstance(own,int) or own<1 or own in seen: raise SystemExit('invalid/duplicate canonical target')
+              seen.add(own)
+              patch=item.get('patch')
+              if not isinstance(patch,dict) or not patch or not set(patch).issubset(allowed): raise SystemExit('unsafe patch fields')
+          sha=p.get('planSha256')
+          if not isinstance(sha,str) or not re.fullmatch(r'[a-f0-9]{64}',sha): raise SystemExit('bad plan sha')
+          with open('plan-sha256.txt','w') as f: f.write(sha+'\n')
+          with open('selected-count.txt','w') as f: f.write(str(len(selected))+'\n')
+          print('CURRENT_PLAN_OK selected=%d scanned=%s active=%s plan=%s' % (len(selected),p.get('scannedProfiles'),p.get('activeProfiles'),sha))
+          PY
+          echo "selected_count=$(cat selected-count.txt)" >> "$GITHUB_OUTPUT"
+          echo "plan_sha=$(cat plan-sha256.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Apply exact fill-missing batch once
+        if: steps.plan_guard.outputs.selected_count != '0'
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PLAN_SHA: ${{ steps.plan_guard.outputs.plan_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          op="$REMOTE_OPERATION_ROOT/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "bash -s -- '$op' '$OPERATION_ID' '$BATCH_LIMIT' '$DEMAND_THROUGH' '$PLAN_SHA'" <<'REMOTE' > result.json
+          set -euo pipefail
+          op="$1"; operation="$2"; limit="$3"; through="$4"; plan="$5"
+          site="$HOME/www/anytoour.ru"
+          result="$HOME/$op/result.json"
+          test ! -e "$result"
+          tmp="$result.tmp"
+          ANYTOUR_SITE_ROOT="$site" php "$HOME/$op/stage/anytour_profile_enrichment_batch.php" \
+            --mode=apply --operation="$operation" --limit="$limit" --demand-through="$through" \
+            --expected-plan-sha256="$plan" > "$tmp"
+          mv "$tmp" "$result"
+          cat "$result"
+          REMOTE
+
+      - name: Record terminal no-write result when no saved fill is available
+        if: steps.plan_guard.outputs.selected_count == '0'
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PLAN_SHA: ${{ steps.plan_guard.outputs.plan_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          value={
+            'schema_version':1,'operation':os.environ['OPERATION_ID'],
+            'status':'terminal_no_fillable_saved_evidence','planSha256':os.environ['PLAN_SHA'],
+            'profilesUpdated':0,'fieldsFilled':0,'profileWrites':0,'provenanceWrites':0,
+            'legacyWrites':0,'mappingWrites':0,'supplierCalls':0,
+          }
+          with open('result.json','w',encoding='utf-8') as f:
+              json.dump(value,f,sort_keys=True,separators=(',',':')); f.write('\n')
+          PY
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          scp "${opts[@]}" result.json "$USER_VALUE@$HOST_VALUE:$REMOTE_OPERATION_ROOT/$OPERATION_ID/result.json"
+
+      - name: Verify terminal result and ownership boundaries
+        env:
+          SELECTED_COUNT: ${{ steps.plan_guard.outputs.selected_count }}
+          PLAN_SHA: ${{ steps.plan_guard.outputs.plan_sha }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('result.json',encoding='utf-8'))
+          selected=int(os.environ['SELECTED_COUNT'])
+          if r.get('planSha256')!=os.environ['PLAN_SHA']: raise SystemExit('terminal plan mismatch')
+          for key in ('legacyWrites','mappingWrites','supplierCalls'):
+              if r.get(key)!=0: raise SystemExit('ownership violation '+key)
+          if selected==0:
+              if r.get('status')!='terminal_no_fillable_saved_evidence' or r.get('profilesUpdated')!=0:
+                  raise SystemExit('invalid no-write terminal')
+          else:
+              if r.get('status')!='committed_verified': raise SystemExit('apply not committed_verified')
+              if r.get('profilesUpdated')!=selected or r.get('profileWrites')!=selected or r.get('provenanceWrites')!=selected:
+                  raise SystemExit('unexpected write count')
+              if not isinstance(r.get('fieldsFilled'),int) or r['fieldsFilled']<selected:
+                  raise SystemExit('unexpected field count')
+          print('TERMINAL_VERIFIED status=%s selected=%d updated=%s fields=%s supplier_calls=0' % (
+              r.get('status'),selected,r.get('profilesUpdated'),r.get('fieldsFilled')))
+          PY
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          scp "${opts[@]}" "$USER_VALUE@$HOST_VALUE:$REMOTE_OPERATION_ROOT/$OPERATION_ID/server-reservation.json" server-reservation.json
+          scp "${opts[@]}" "$USER_VALUE@$HOST_VALUE:$REMOTE_OPERATION_ROOT/$OPERATION_ID/server-source-sha256.txt" server-source-sha256.txt
+          cmp source-sha256.txt server-source-sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anytour-profile-enrichment-b001-terminal
+          path: |
+            reservation.json
+            source-sha256.txt
+            server-reservation.json
+            server-source-sha256.txt
+            plan-1.json
+            plan-2.json
+            plan-sha256.txt
+            selected-count.txt
+            result.json
+          if-no-files-found: warn
