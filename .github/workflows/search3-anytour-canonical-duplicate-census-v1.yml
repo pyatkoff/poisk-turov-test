@@ -1,0 +1,137 @@
+name: Search3 AnyTour canonical duplicate census v1
+
+on:
+  push:
+    branches:
+      - diag/local-2690-canonical-duplicate-census-20260917-v1
+    paths:
+      - 'scripts/catalog/anytour_catalog_duplicate_census.php'
+      - '.github/workflows/search3-anytour-canonical-duplicate-census-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: search3-local-canonical-duplicate-census-v1
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BASE_RELEASE: 996a2ece8aef332c1a31ed6c7e2da790759bcc99
+  OPERATION_ID: anytour-canonical-duplicate-census-2690-20260917-v1
+
+jobs:
+  current-read-only:
+    if: >-
+      github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      REMOTE_TMP: /tmp/anytour-canonical-duplicate-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Pin ancestry and enforce read-only source surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/diag/local-2690-canonical-duplicate-census-20260917-v1'
+          git fetch --no-tags origin release/search3-production-ready-v1
+          test "$(git merge-base HEAD origin/release/search3-production-ready-v1)" = "$EXPECTED_BASE_RELEASE"
+          php -l scripts/catalog/anytour_catalog_duplicate_census.php
+          grep -Fq 'SET TRANSACTION READ ONLY' scripts/catalog/anytour_catalog_duplicate_census.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)[[:space:]]+(INTO|TABLE|FROM|anytour_)' scripts/catalog/anytour_catalog_duplicate_census.php
+          sha256sum scripts/catalog/anytour_catalog_duplicate_census.php | tee duplicate-census-source.sha256
+      - name: Prepare ephemeral SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Stage only the read-only duplicate census
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir '$REMOTE_TMP'; test -s \"\$HOME/www/anytoour.ru/data/db-v1.php\""
+          scp "${opts[@]}" scripts/catalog/anytour_catalog_duplicate_census.php "$remote:$REMOTE_TMP/census.php"
+      - name: Read CURRENT duplicate evidence once
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "bash -s -- '$REMOTE_TMP' '$OPERATION_ID' '$EXPECTED_BASE_RELEASE'" <<'REMOTE' | tee canonical-duplicate-current.json
+          set -euo pipefail
+          tmp="$1"; operation="$2"; base_release="$3"
+          root="$HOME/www/anytoour.ru"
+          ANYTOUR_SITE_ROOT="$root" php "$tmp/census.php" "--operation=$operation" "--base-release-sha=$base_release"
+          REMOTE
+      - name: Verify aggregate receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          rows=[line.strip() for line in open('canonical-duplicate-current.json',encoding='utf-8') if line.strip().startswith('{')]
+          if len(rows)!=1: raise SystemExit('expected one duplicate census receipt')
+          r=json.loads(rows[0])
+          if r.get('operation')!='anytour-canonical-duplicate-census-2690-20260917-v1': raise SystemExit('operation mismatch')
+          if r.get('base_release_sha')!='996a2ece8aef332c1a31ed6c7e2da790759bcc99': raise SystemExit('base mismatch')
+          if r.get('status')!='completed_read_only': raise SystemExit('not completed read-only')
+          for key in ('writes','supplier_calls','mapping_writes','legacy_writes','site_file_writes'):
+              if r.get(key)!=0: raise SystemExit(f'ownership violation: {key}')
+          if r.get('profiles',{}).get('invalidProfileJson')!=0: raise SystemExit('invalid profile json')
+          if r.get('hard_identity_conflicts',{}).get('sameNamespaceExternalKeyToMultipleCanonicalHotels')!=0:
+              raise SystemExit('hard source-key identity conflict found; inspect artifact')
+          print('CANONICAL_DUPLICATE_CURRENT_OK active=%d legacy=%d no_legacy=%d exact_profile_groups=%d name_geo_groups=%d strict_groups=%d coordinate_groups=%d' % (
+              r['profiles']['active'],r['legacy_catalog']['canonicalWithLegacy'],r['legacy_catalog']['canonicalWithoutLegacy'],
+              r['duplicate_suspects']['exactProfileSha256']['groups'],r['duplicate_suspects']['sameNormalizedNameCountryRegion']['groups'],
+              r['duplicate_suspects']['sameNormalizedNameCountryRegionCoordinates5dp']['groups'],r['duplicate_suspects']['sameCountryCoordinates5dp']['groups']))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anytour-canonical-duplicate-current
+          path: |
+            canonical-duplicate-current.json
+            duplicate-census-source.sha256
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Remove temporary remote files
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ -s "$key" && -n "${HOST_VALUE:-}" && -n "${USER_VALUE:-}" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$REMOTE_TMP'" || true
+          fi
