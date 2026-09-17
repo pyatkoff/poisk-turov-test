@@ -53,7 +53,7 @@ function bridge_dto(int $legacyId, string $providerHotelDigest, int $issued): ar
             'meal'=>['raw'=>'AI'],'room'=>['raw'=>'STANDARD'],'placement'=>['raw'=>'2AD'],
             'availability'=>['hotel'=>['raw'=>'available']],
             'flight_details'=>['state'=>'search_summary_only'],
-            'observed_at'=>gmdate('Y-m-d\\TH:i:s\\Z',$issued),
+            'observed_at'=>gmdate('Y-m-d\TH:i:s\Z',$issued),
         ],
         'money'=>['search_price_with_surcharge'=>['amount'=>'199390','currency'=>'RUB']],
         'quote_state'=>'unknown','final_price_verified'=>false,'quote_evidence_digest'=>null,
@@ -159,13 +159,31 @@ bridge_expect(
     'reassignment-needs-explicit-reconcile'
 );
 
-// A not-yet-materialized provider identity retains the bounded migration fallback only.
+// A not-yet-materialized provider identity may use the bounded compatibility path,
+// but only while that exact provider ref is CURRENT accepted to the claimed local ID.
+$db->prepare("INSERT INTO andromeda_hotel_identities(supplier_namespace,external_hotel_id,local_hotel_id,decision_status) VALUES('andromeda_catalog','7999',202,'accepted')")->execute();
 $legacyDigest = hash('sha256', 'andromeda_catalog:7999');
 $legacyOffer = [[
     'provider'=>'andromeda','provider_hotel_ref_digest'=>$legacyDigest,
     'legacy_hotel_id'=>202,'anytour_hotel_id'=>$owns[202],
 ]];
-bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $legacyOffer)) === 1, 'progressive-legacy-fallback');
+bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $legacyOffer)) === 1, 'accepted-progressive-fallback');
+
+// A supplier hotel with the same legacy target but no exact accepted identity must fail closed.
+$unacceptedDigest = hash('sha256', 'andromeda_catalog:7888');
+$unacceptedOffer = [[
+    'provider'=>'andromeda','provider_hotel_ref_digest'=>$unacceptedDigest,
+    'legacy_hotel_id'=>202,'anytour_hotel_id'=>$owns[202],
+]];
+bridge_check(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $unacceptedOffer) === [], 'unaccepted-fallback-blocked');
+bridge_check(!AnyTourProviderIdentityBridgeV1::allowsOffer($db, 'andromeda', $unacceptedDigest, 202, $owns[202]), 'unaccepted-admission-blocked');
+
+// Non-Andromeda providers keep their existing legacy compatibility behavior.
+$anexOffer = [[
+    'provider'=>'anex','provider_hotel_ref_digest'=>hash('sha256', 'anex:fixture'),
+    'legacy_hotel_id'=>202,'anytour_hotel_id'=>$owns[202],
+]];
+bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $anexOffer)) === 1, 'anex-legacy-unchanged');
 
 // Unresolved accepted identity is never invented.
 $missing = AnyTourProviderIdentityBridgeV1::materializeAcceptedAndromeda($db, [
@@ -173,4 +191,4 @@ $missing = AnyTourProviderIdentityBridgeV1::materializeAcceptedAndromeda($db, [
 ], $now->modify('+2 minutes'));
 bridge_check($missing['materialized'] === 0 && $missing['unresolved'] === 1, 'unresolved-no-guess');
 
-echo "ANYTOUR_PROVIDER_IDENTITY_BRIDGE_OK direct_without_legacy=1 store_read=1 stale_fail_closed=1 unresolved=1\n";
+echo "ANYTOUR_PROVIDER_IDENTITY_BRIDGE_OK direct_without_legacy=1 store_read=1 stale_fail_closed=1 fallback_acceptance=1 unresolved=1\n";
