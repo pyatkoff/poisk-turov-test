@@ -44,16 +44,15 @@ vm.runInNewContext(catalogSource, { window, document, console, fetch, URLSearchP
   assert.equal(await catalogs.loadMeals('BB'), true);
   assert.equal(apiCalls, 1, 'meal catalog is loaded once');
 
-  const presentation = fs.readFileSync(path.join(__dirname, '../src/search3/behavior/search-form/secondary-controls.js'), 'utf8');
+  const retiredPresentation = path.join(__dirname, '../src/search3/behavior/search-form/secondary-controls.js');
   const lifecycle = fs.readFileSync(path.join(__dirname, '../v2/search-lifecycle-v6.js'), 'utf8');
   const markup = fs.readFileSync(path.join(__dirname, '../v2/index.php'), 'utf8');
-  assert.equal(presentation.replace(/\/\*[\s\S]*?\*\//g, '').trim(), '', 'retired meal projection stays provenance-only');
+  assert.equal(fs.existsSync(retiredPresentation), false, 'retired meal projection source stays absent');
   assert.match(catalogSource, /name==='food'.*loadMeals\(token\)/, 'catalog owner lazily loads meals on native focus');
   assert.match(lifecycle, /new URLSearchParams\(window\.location\.search\|\|''\)/, 'lifecycle owns URL hydration');
   assert.match(lifecycle, /'food'.*setField\(name,queryValue/, 'lifecycle restores the exact food URL state');
   assert.match(lifecycle, /meal:f\.get\('food'\)\|\|''/, 'FormData keeps the exact meal search value');
   assert.match(markup, /<select name="food">/, 'server markup keeps the canonical meal control');
-  assert.doesNotMatch(presentation, /meal-quick|meal-native-select|V2PrimaryMealUXV1/, 'retired duplicate meal controls stay retired');
 
   const rendererWindow = {};
   loadSearch3Renderer({
