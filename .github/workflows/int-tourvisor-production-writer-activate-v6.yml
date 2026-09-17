@@ -1,0 +1,111 @@
+name: INT Tourvisor production writer activation v6
+
+on:
+  push:
+    branches:
+      - 'ops/int-tourvisor-production-writer-20260917-v6'
+    paths:
+      - '.github/workflows/int-tourvisor-production-writer-activate-v6.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-anytoour-production
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: aef434f65d2e481a081ac80f9c8b59babe87bc90
+  OPERATION_ID: int-tourvisor-production-writer-20260917-v6
+
+jobs:
+  activate:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Bind exact release and byte-pinned activator
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-tourvisor-production-writer-activate-v6.yml'
+          test "${changed[1]}" = 'scripts/ops/int-tourvisor-production-writer-activate-v6.sh'
+          test "$(git hash-object scripts/ops/int-tourvisor-production-writer-activate-v6.sh)" = '6cd8459687cc1d700067f6d36ad396f8bfe7ee01'
+          test "$(git ls-remote origin refs/heads/release/search3-production-ready-v1 | awk '{print $1}')" = "$BASE_SHA"
+          php -l v2/api-v2.php >/dev/null
+          php -l app/integrations/tourvisor-anytour-offer-autosave.php >/dev/null
+          grep -Fq "'catalogs'" app/integrations/tourvisor-anytour-offer-autosave.php
+          grep -Fq "'tourvisor-offer-autosave'" app/integrations/tourvisor-anytour-offer-autosave.php
+          grep -Fq 'Require all denied' app/integrations/tourvisor-anytour-offer-autosave.php
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "PRODUCTION_WRITER_V6_SOURCE_BOUND release=$BASE_SHA control=$(git rev-parse HEAD)"
+
+      - name: Prepare v6 acceptance path from pinned activator
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp scripts/ops/int-tourvisor-production-writer-activate-v6.sh "$RUNNER_TEMP/activate-v6.sh"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'activate-v6.sh'
+          s=p.read_text()
+          replacements={
+            'writer-runtime-v5':'writer-runtime-v6',
+            'PRODUCTION_WRITER_V5':'PRODUCTION_WRITER_V6',
+            'state_dir="$site/.cache/tourvisor-offer-autosave"':'state_dir="$site/.cache/catalogs/tourvisor-offer-autosave"',
+            'https://anytoour.ru/.cache/tourvisor-offer-autosave/$state_name':'https://anytoour.ru/.cache/catalogs/tourvisor-offer-autosave/$state_name',
+            '"operation"=>"int-tourvisor-production-writer-20260917-v5"':'"operation"=>"int-tourvisor-production-writer-20260917-v6"',
+          }
+          for old,new in replacements.items():
+              count=s.count(old)
+              assert count>=1,(old,count)
+              s=s.replace(old,new)
+          p.write_text(s)
+          PY
+          bash -n "$RUNNER_TEMP/activate-v6.sh"
+          grep -Fq 'state_dir="$site/.cache/catalogs/tourvisor-offer-autosave"' "$RUNNER_TEMP/activate-v6.sh"
+          grep -Fq 'https://anytoour.ru/.cache/catalogs/tourvisor-offer-autosave/$state_name' "$RUNNER_TEMP/activate-v6.sh"
+          grep -Fq 'status=\"completed\"' "$RUNNER_TEMP/activate-v6.sh"
+          grep -Fq '"operation"=>"int-tourvisor-production-writer-20260917-v6"' "$RUNNER_TEMP/activate-v6.sh"
+          echo PRODUCTION_WRITER_V6_ACCEPTANCE_PATCH_OK
+
+      - name: Activate writer and prove persistent private state plus DB refresh
+        id: activate
+        continue-on-error: true
+        shell: bash
+        run: bash "$RUNNER_TEMP/activate-v6.sh"
+
+      - name: Preserve sanitized activation receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$RUNNER_TEMP/receipt.json" || printf '{"status":"runner_no_receipt","operation":"%s"}\n' "$OPERATION_ID" > "$RUNNER_TEMP/receipt.json"
+          cat "$RUNNER_TEMP/receipt.json"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: int-tourvisor-production-writer-v6-${{ github.run_id }}
+          path: ${{ runner.temp }}/receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Fail after rollback/evidence preservation
+        if: steps.activate.outcome != 'success'
+        run: exit 1
