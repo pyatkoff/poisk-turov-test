@@ -32,13 +32,13 @@ function create(refresh){
   if(!profiles.has(own))throw new Error('Offer profile missing');
   let bucket=storedOffers.get(own);if(!bucket){bucket=new Map();storedOffers.set(own,bucket);}bucket.set(identity,{tour,legacyHotelId:legacy,source});links.set(legacy,own);if(!anchors.has(own))anchors.set(own,legacy);return identity;
  }
- function ensureView(groups,own,anchor){const p=profiles.get(own);if(!p)return null;let view=groups.get(own);if(view)return view;const stable=id(anchor)||id(anchors.get(own))||id(p.id);if(!anchors.has(own)&&stable)anchors.set(own,stable);view=Object.assign({},p,{id:anchors.get(own)||stable,anytourHotelId:p.id,canonicalLegacyIds:[],canonicalOfferLinks:[],tours:[],providers:[],picturelink:p.primaryImage||'',price:0});groups.set(own,view);return view;}
+ function ensureView(groups,own,anchor){const p=profiles.get(own);if(!p)return null;let view=groups.get(own);if(view)return view;const saved=anchors.get(own),stable=id(saved)?saved:id(anchor)?anchor:p.id;if(!anchors.has(own)&&id(stable))anchors.set(own,stable);view=Object.assign({},p,{id:anchors.get(own)||stable,anytourHotelId:p.id,canonicalLegacyIds:[],canonicalOfferLinks:[],tours:[],providers:[],picturelink:p.primaryImage||'',price:0});groups.set(own,view);return view;}
  function addTour(view,tour,legacy,seen){const key=offerIdentity(tour);if(key&&seen.has(key))return;if(key)seen.add(key);view.tours.push(tour);if(legacy&&!view.canonicalLegacyIds.includes(legacy))view.canonicalLegacyIds.push(legacy);if(!view.canonicalOfferLinks.some(link=>link.tour===tour&&String(link.legacyHotelId)===String(legacy)))view.canonicalOfferLinks.push({tour,legacyHotelId:legacy});const provider=String(tour&&tour.provider||'').toLowerCase();if(provider&&!view.providers.includes(provider))view.providers.push(provider);}
  function project(){
   const groups=new Map(),seenByOwn=new Map();
   storedOffers.forEach((bucket,own)=>{const first=bucket.values().next().value,view=ensureView(groups,own,first&&first.legacyHotelId);if(!view)return;let seen=seenByOwn.get(own);if(!seen){seen=new Set();seenByOwn.set(own,seen);}bucket.forEach(record=>addTour(view,record.tour,record.legacyHotelId,seen));});
   raw.forEach(h=>{
-   const old=legacyId(h),own=links.get(old),view=ensureView(groups,own,old),tours=Array.isArray(h&&h.tours)?h.tours:[];if(!view||!tours.length)return;
+   const old=legacyId(h),own=links.get(old),view=ensureView(groups,own,h&&h.id),tours=Array.isArray(h&&h.tours)?h.tours:[];if(!view||!tours.length)return;
    let seen=seenByOwn.get(own);if(!seen){seen=new Set();seenByOwn.set(own,seen);}tours.forEach(t=>addTour(view,t,old,seen));
    view.providers=Array.from(new Set(view.providers.concat(Array.isArray(h.providers)?h.providers:[h.provider||'tourvisor']).map(v=>String(v||'').toLowerCase()).filter(Boolean)));
    if(h.andromedaExpansion&&(!view.andromedaExpansion||view.andromedaExpansion.status!=='loading'))view.andromedaExpansion=h.andromedaExpansion;
