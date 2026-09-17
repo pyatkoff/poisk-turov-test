@@ -110,10 +110,10 @@ final class AnyTourIdentityOnlyHotelContentV1
                     GROUP BY hotel_id
                 ) x ON x.hotel_id=CAST(CONVERT(s.external_key USING ascii) AS UNSIGNED)
                 WHERE a.is_active=1 AND JSON_VALID(a.profile_json)=1
-                  AND COALESCE(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.name'))),'')<>''
-                  AND COALESCE(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.country.name'))),'')<>''
-                  AND COALESCE(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.description'))),'')=''
-                  AND COALESCE(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.primaryImage'))),'')=''
+                  AND COALESCE(NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.name'))),'null'),'')<>''
+                  AND COALESCE(NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.country.name'))),'null'),'')<>''
+                  AND COALESCE(NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.description'))),'null'),'')=''
+                  AND COALESCE(NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.primaryImage'))),'null'),'')=''
                   AND COALESCE(JSON_LENGTH(JSON_EXTRACT(a.profile_json,'$.images')),0)=0
                   AND COALESCE(JSON_LENGTH(JSON_EXTRACT(a.profile_json,'$.hotelInformation.infrastructure')),0)=0
                   AND COALESCE(JSON_LENGTH(JSON_EXTRACT(a.profile_json,'$.hotelInformation.services')),0)=0
@@ -227,8 +227,8 @@ final class AnyTourIdentityOnlyHotelContentV1
             'services_json'=>$detail['services_json'],'room_types'=>$detail['room_types'],'raw_json'=>$rawJson,'fetched_at'=>$fetchedAt,
         ]);
         if ($detail['primary_image_url'] !== null) {
-            $image = $this->pdo->prepare('UPDATE catalog_hotels SET primary_image_url=COALESCE(primary_image_url,?), image_updated_at=IF(primary_image_url IS NULL,?,image_updated_at), synced_at=? WHERE id=?');
-            $image->execute([$detail['primary_image_url'],$fetchedAt,$fetchedAt,$hotelId]);
+            $image = $this->pdo->prepare('UPDATE catalog_hotels SET image_updated_at=IF(primary_image_url IS NULL,?,image_updated_at), primary_image_url=COALESCE(primary_image_url,?), synced_at=? WHERE id=?');
+            $image->execute([$fetchedAt,$detail['primary_image_url'],$fetchedAt,$hotelId]);
         }
     }
 
