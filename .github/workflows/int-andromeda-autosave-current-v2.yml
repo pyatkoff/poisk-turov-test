@@ -2,7 +2,7 @@ name: INT read current Andromeda autosave state v2
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
     branches: [feature/anex-search-adapter-20260907]
     paths:
       - '.github/workflows/int-andromeda-autosave-current-v2.yml'
