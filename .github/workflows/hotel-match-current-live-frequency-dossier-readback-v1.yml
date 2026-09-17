@@ -1,0 +1,51 @@
+name: MATCH CURRENT live-frequency dossier readback v1
+on:
+  push:
+    branches: [diag/match-current-live-frequency-dossier-1971-20260917-v1]
+    paths: [.github/workflows/hotel-match-current-live-frequency-dossier-readback-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-current-live-frequency-dossier-readback-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-current-live-frequency-dossier-readback-1971-20260917-v1
+  TARGET_OPERATION_ID: hotel-match-current-live-frequency-dossier-1971-20260917-v1
+jobs:
+  readback:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+      - name: Reserve before remote readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'target_operation_id':os.environ['TARGET_OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_remote_readback','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - name: Read durable target result only
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'rm -f "$key" "$known"' EXIT
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H" "set -e; p=\"\$HOME/.anytoour-match/operations/$TARGET_OPERATION_ID\"; test -f \"\$p/result.json\"; cat \"\$p/result.json\"" > "$out/target-result.json"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];r=json.loads((p/'target-result.json').read_text());g={'target_operation_id':os.environ['TARGET_OPERATION_ID'],'target_state':r.get('state'),'error_code':r.get('error_code'),'database_writes':r.get('database_writes'),'mapping_writes':r.get('mapping_writes'),'supplier_calls':r.get('supplier_calls'),'tourvisor_calls':r.get('tourvisor_calls'),'samo_andromeda_calls':r.get('samo_andromeda_calls'),'target_result_sha256':hashlib.sha256((p/'target-result.json').read_bytes()).hexdigest(),'no_replay':True};(p/'readback.json').write_text(json.dumps(g,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(g,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-current-live-frequency-dossier-readback-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-current-live-frequency-dossier-readback-1971-20260917-v1/
+          retention-days: 90
