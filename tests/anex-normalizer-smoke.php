@@ -21,7 +21,7 @@ $row = json_decode('{
     "hotel":"Грейс Кристалл", "star":"3*", "meal":"BB", "room":"Standard",
     "checkIn":"20260914", "checkOut":"20260921", "nights":7,
     "adult":2, "child":0, "packetType":0, "price":"790.00", "currency":"EUR",
-    "convertedPrice":"84 617.00 RUB", "grouped":1, "bron":1,
+    "convertedPrice":"84 617.00 RUB", "grouped":1, "bron":1, "freightExternal":"Y",
     "hotelAvailability":"YYYY", "freights":{"econom":{"in":"Y", "out":"R"}},
     "description":"Never copy descriptions", "url":"https://private.invalid/secret"
 }', true, 32, JSON_THROW_ON_ERROR);
@@ -38,6 +38,11 @@ anex_normalizer_check($group['supplier_booking_flag'] === true, 'bron is separat
 anex_normalizer_check($group['hotel']['local_id'] === 40430 && $resolverCalls === [['anex_online', '30160']], 'provider-scoped mapping');
 anex_normalizer_check($group['price'] === ['amount' => '790.00', 'currency' => 'EUR'], 'native decimal precision');
 anex_normalizer_check($group['converted_price'] === ['amount' => '84617.00', 'currency' => 'RUB'], 'supplier conversion parsed separately');
+anex_normalizer_check($group['flight_type'] === 'regular', 'explicit freightExternal Y retained as regular flight');
+$internalFlight = anytour_anex_normalize_prices(['prices' => [array_replace($row, ['freightExternal' => 'N'])]], $context)['offers'][0];
+$unknownFlight = anytour_anex_normalize_prices(['prices' => [array_replace($row, ['freightExternal' => 'unknown'])]], $context)['offers'][0];
+anex_normalizer_check($internalFlight['flight_type'] === null && $unknownFlight['flight_type'] === null,
+    'non-external or unknown freight is not guessed as regular');
 anex_normalizer_check($group['availability']['flight_outbound_economy'] === 'Y'
     && $group['availability']['flight_return_economy'] === 'R', 'observed flight marker direction');
 anex_normalizer_check($group['supplier_offer_id'] === 'fixture-offer-1'

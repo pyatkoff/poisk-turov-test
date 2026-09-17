@@ -186,6 +186,9 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
         'external_hotel_place_id' => anytour_anex_normalizer_id($row['htPlaceKey'] ?? null),
         'price' => ['amount' => $amount, 'currency' => $currency],
         'converted_price' => anytour_anex_normalizer_converted($row['convertedPrice'] ?? null),
+        // ANEX marks externally-priced GDS/regular transport with freightExternal=Y.
+        // Unknown/missing values stay unknown; never infer regular from empty APD.
+        'flight_type' => anytour_anex_normalizer_flight_type($row['freightExternal'] ?? null),
         'availability' => [
             'hotel' => anytour_anex_normalizer_availability($row['hotelAvailability'] ?? null, true),
             // SAMO's observed econom.in denotes outward, econom.out return.
@@ -265,6 +268,13 @@ function anytour_anex_normalizer_flag($value): ?bool
         return false;
     }
     return null;
+}
+
+function anytour_anex_normalizer_flight_type($value): ?string
+{
+    if (!is_string($value)) return null;
+    $value = strtoupper(trim($value));
+    return $value === 'Y' ? 'regular' : null;
 }
 
 function anytour_anex_normalizer_availability($value, bool $hotel = false): ?string

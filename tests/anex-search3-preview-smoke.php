@@ -36,7 +36,8 @@ search3_reject(static function () use ($params) { anytour_anex_search3_core(arra
 $context = anytour_anex_search3_core($params);
 $row = ['id' => 'supplier-private-claim', 'hotelKey' => 1, 'hotel' => 'Supplier hotel', 'checkIn' => $date,
     'checkOut' => (new DateTimeImmutable($date))->modify('+7 days')->format('Y-m-d'), 'nights' => 7,
-    'adult' => 2, 'child' => 0, 'grouped' => true, 'price' => '12345.50', 'currency' => 'RUB', 'packetType' => 0, 'meal' => 'AI'];
+    'adult' => 2, 'child' => 0, 'grouped' => true, 'price' => '12345.50', 'currency' => 'RUB', 'packetType' => 0,
+    'meal' => 'AI', 'freightExternal' => 'Y'];
 $registry = AnyTourAnexSearchMappingRegistry::fromRows([['anex_hotel_id' => 1, 'catalog_hotel_id' => 999,
     'existing_catalog_hotel_id' => 999, 'enabled' => 1, 'match_class' => 'exact', 'scope' => 'preview',
     'approval_policy' => 'owner_exact_and_strong_20260908']]);
@@ -46,6 +47,7 @@ $metadata = [999 => ['id' => 999, 'name' => 'Local catalog hotel', 'country_id' 
 $hotels = anytour_anex_search3_project($normalized['offers'], $metadata, $params);
 search3_check(count($hotels) === 1 && $hotels[0]['local_id'] === 999, 'only mapped catalog IDs are rendered, no numeric namespace fallback');
 search3_check($hotels[0]['rating'] === 4.5, 'shared sorting receives the catalog rating');
+search3_check($hotels[0]['tours'][0]['flight_type'] === 'regular', 'explicit ANEX regular-flight fact reaches public Search3 projection');
 search3_check($hotels[0]['name'] === 'Local catalog hotel', 'hotel name comes from own catalog');
 search3_check($hotels[0]['catalog']['hotel_id'] === 999 && $hotels[0]['catalog']['source'] === 'tourvisor'
     && $hotels[0]['catalog']['image_url'] === null && $hotels[0]['catalog']['sea_distance'] === null,
@@ -232,7 +234,7 @@ $resolver = static function (string $namespace, string $id) use (&$local): ?int 
     return $local;
 };
 $nativeRow = array_replace($row, ['price' => '123.45', 'currency' => 'EUR', 'convertedPrice' => '12345.50 RUB',
-    'room' => 'Standard-Room', 'htPlace' => 'DBL / 2 ADL', 'meal' => 'AI WITHOUT ALCOHOL']);
+    'room' => 'Standard-Room', 'htPlace' => 'DBL / 2 ADL', 'meal' => 'AI WITHOUT ALCOHOL', 'freightExternal' => 'Y']);
 $transportCalls = 0;
 $expansionQueries = [];
 $factory = static function () use (&$transportCalls, &$expansionQueries, $nativeRow): AnyTourAnexClient {
@@ -258,6 +260,7 @@ $groupTour = $cards[0]['tours'][0];
 search3_check(preg_match('/\A[a-f0-9]{32}\z/D', $groupTour['search_ref']) === 1
     && $groupTour['offer_ref'] === $groups['offers'][0]['offer_key'], 'same-session references not projected');
 search3_check($groupTour['kind'] === 'group_minimum' && $groupTour['selection_enabled'] === false, 'minimum became selectable');
+search3_check($groupTour['flight_type'] === 'regular', 'saved grouped offer keeps explicit regular-flight fact');
 search3_check($groupTour['price']['currency'] === 'RUB' && $groupTour['price']['amount'] === '12345.50', 'existing RUB display changed');
 
 $readFactoryCalls = 0;
