@@ -128,7 +128,7 @@ jobs:
           opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
           op=".anytour-operations/$OPERATION_ID"
-          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytoour-match\"; mkdir \"\$HOME/$op\""
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytour-operations\"; mkdir \"\$HOME/$op\""
           scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php "$remote:$op/"
 
       - name: Run live canary once
@@ -184,7 +184,7 @@ jobs:
           set -u
           if [[ -s "$RUNNER_TEMP/key" && -s "$RUNNER_TEMP/known" ]]; then
             opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15)
-            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf \"\$HOME/.anytoour-match/$OPERATION_ID\"" || true
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf \"\$HOME/.anytour-operations/$OPERATION_ID\"" || true
           fi
 
       - name: Require completed canary
