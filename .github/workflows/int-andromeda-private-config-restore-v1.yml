@@ -48,7 +48,7 @@ jobs:
           ]
           for x in required:
               if x not in t: raise SystemExit('missing restore control pin: '+x)
-          live=t.split("php=r'''",1)[1].split("'''",1)[0]
+          live=t.rsplit("php=r'''",1)[1].split("'''",1)[0]
           subprocess.run(['php','-l'],input='<?php\n'+live,text=True,check=True)
           for forbidden in ['booking(', 'bron_ticket', 'INSERT INTO', 'UPDATE catalog_', 'DELETE FROM', 'supplier->']:
               if forbidden in live: raise SystemExit('forbidden restore behavior: '+forbidden)
