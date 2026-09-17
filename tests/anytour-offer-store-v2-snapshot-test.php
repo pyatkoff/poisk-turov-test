@@ -45,13 +45,21 @@ $page=search3_local_results_build($pdo,$params,$at->modify('+6 minutes'));need_v
 need_v2((int)$pdo->query("SELECT COUNT(*) FROM anytour_offers WHERE provider='anex'")->fetchColumn()===3,'refresh-history-retained');need_v2((int)$pdo->query("SELECT COUNT(*) FROM anytour_offers WHERE provider='anex' AND is_active=1")->fetchColumn()===1,'old-and-aborted-versions-deactivated-on-complete');
 $state=$pdo->query("SELECT active_refresh_token,latest_complete_refresh_token FROM anytour_offer_scope_state WHERE provider='anex'")->fetch(PDO::FETCH_ASSOC);need_v2($state['active_refresh_token']===null&&$state['latest_complete_refresh_token']===$third,'latest-complete-switch');
 
-$current=$pdo->prepare("SELECT id,payload_json,payload_sha256,display_price,currency FROM anytour_offers WHERE provider='anex' AND scope_sha256=? AND last_refresh_token=? AND is_active=1");$current->execute([$scope,$third]);$stored=$current->fetch(PDO::FETCH_ASSOC);need_v2(is_array($stored),'current-row');$id=(int)$stored['id'];
+$current=$pdo->prepare("SELECT id,payload_json,payload_sha256,display_price,currency,last_seen_at,expires_at FROM anytour_offers WHERE provider='anex' AND scope_sha256=? AND last_refresh_token=? AND is_active=1");$current->execute([$scope,$third]);$stored=$current->fetch(PDO::FETCH_ASSOC);need_v2(is_array($stored),'current-row');$id=(int)$stored['id'];
 $pdo->prepare('UPDATE anytour_offers SET currency=? WHERE id=?')->execute(['USD',$id]);
 error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 minutes')),'ANYTOUR_OFFER_LISTING_INTEGRITY','db-currency-fail-closed');
 $pdo->prepare('UPDATE anytour_offers SET currency=? WHERE id=?')->execute([$stored['currency'],$id]);
 $pdo->prepare('UPDATE anytour_offers SET display_price=? WHERE id=?')->execute(['0.00',$id]);
 error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 minutes')),'ANYTOUR_OFFER_PRICE_INTEGRITY','non-positive-price-fail-closed');
 $pdo->prepare('UPDATE anytour_offers SET display_price=? WHERE id=?')->execute([$stored['display_price'],$id]);
+
+$pdo->prepare('UPDATE anytour_offers SET expires_at=last_seen_at WHERE id=?')->execute([$id]);
+error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+4 minutes')),'ANYTOUR_OFFER_TIME_INTEGRITY','non-positive-visibility-window-fail-closed');
+$pdo->prepare('UPDATE anytour_offers SET expires_at=? WHERE id=?')->execute([$stored['expires_at'],$id]);
+$lastSeen=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',(string)$stored['last_seen_at'],new DateTimeZone('UTC'));need_v2($lastSeen!==false,'stored-last-seen-parse');
+$tooLong=$lastSeen->modify('+21601 seconds')->format('Y-m-d H:i:s');$pdo->prepare('UPDATE anytour_offers SET expires_at=? WHERE id=?')->execute([$tooLong,$id]);
+error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 minutes')),'ANYTOUR_OFFER_TIME_INTEGRITY','overlong-visibility-window-fail-closed');
+$pdo->prepare('UPDATE anytour_offers SET expires_at=? WHERE id=?')->execute([$stored['expires_at'],$id]);
 
 $payload=json_decode((string)$stored['payload_json'],true,512,JSON_THROW_ON_ERROR);$payload['booking_enabled']=true;$mutated=json_encode($payload,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
 $pdo->prepare('UPDATE anytour_offers SET payload_json=?,payload_sha256=? WHERE id=?')->execute([$mutated,hash('sha256',$mutated),$id]);
@@ -62,4 +70,4 @@ error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 mi
 $pdo->prepare('UPDATE anytour_offers SET payload_json=?,payload_sha256=? WHERE id=?')->execute([$stored['payload_json'],$stored['payload_sha256'],$id]);
 $read=AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 minutes'));need_v2(count($read['items'])===1&&$read['items'][0]['price']==='188000','integrity-restored');
 
-echo "ANYTOUR_OFFER_STORE_V2_SNAPSHOT_OK versions=3 visible=1 aborted_hidden=1 db_first=1 listing_integrity=1 positive_price=1\n";
+echo "ANYTOUR_OFFER_STORE_V2_SNAPSHOT_OK versions=3 visible=1 aborted_hidden=1 db_first=1 listing_integrity=1 positive_price=1 time_integrity=1\n";
