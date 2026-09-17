@@ -97,7 +97,7 @@ readiness_check($tvNotReady['finalPriceReady'] === false);
 readiness_check($tvNotReady['finalPrice'] === null && $tvNotReady['price'] === null);
 readiness_check($tvNotReady['money']['search_price']['amount'] === '119114');
 
-// Direct ANEX readiness consumes only the existing party-specific surcharge estimator result.
+// Direct ANEX readiness consumes the existing per-passenger surcharge estimator result.
 [$anex, $anexRetained, $anexCurrent] = readiness_setup(readiness_raw(
     'anex',
     2,
@@ -125,13 +125,13 @@ readiness_reject(static function () use ($anex, $anexRetained, $anexCurrent, $no
     AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer($anex, $anexRetained, $anexCurrent, $now, $tampered);
 });
 
-// Andromeda with explicit party-specific fuel is listing-ready. This remains a listing
-// price only: a later selected regular/external transport quote may still reprice it.
+// Andromeda get_flights markup is already scoped to the current tourist party. It is
+// listing-ready only when that explicit party surcharge is present, and is added once.
 [$andromeda, $andromedaRetained, $andromedaCurrent] = readiness_setup(readiness_raw(
     'andromeda',
     3,
     null,
-    [['kind' => 'fuel_adult', 'amount' => '7185.60', 'currency' => 'RUB', 'source' => 'andromeda_additional']],
+    [['kind' => 'party_transport_surcharge', 'amount' => '21556.80', 'currency' => 'RUB', 'source' => 'andromeda_get_flights_transport']],
     '144790'
 ));
 $andromedaPriced = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromeda['money'], 3, 0);
@@ -141,15 +141,16 @@ $andromedaReady = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
 readiness_check($andromedaReady['finalPriceReady'] === true);
 readiness_check($andromedaReady['finalPrice'] === '166346.80' && $andromedaReady['price'] === '166346.80');
 readiness_check($andromedaReady['money']['search_price_with_surcharge']['amount'] === '166346.80');
+readiness_check($andromedaReady['money']['additional_prices_reported'][0]['source'] === 'andromeda_additional');
 readiness_check($andromedaReady['money']['search_price']['amount'] === '144790');
 readiness_check($andromedaReady['final_price_verified'] === false && $andromedaReady['quote_state'] === 'unknown');
 
-// An explicit zero fuel rate is known fuel, not missing fuel; the base listing amount is usable.
+// An explicit zero party surcharge is known transport money, not missing money.
 [$andromedaZero, $andromedaZeroRetained, $andromedaZeroCurrent] = readiness_setup(readiness_raw(
     'andromeda',
     3,
     null,
-    [['kind' => 'fuel_adult', 'amount' => '0', 'currency' => 'RUB', 'source' => 'andromeda_additional']],
+    [['kind' => 'party_transport_surcharge', 'amount' => '0', 'currency' => 'RUB', 'source' => 'andromeda_additional']],
     '185125'
 ));
 $andromedaZeroPriced = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromedaZero['money'], 3, 0);
@@ -161,16 +162,27 @@ readiness_check($andromedaZeroReady['finalPriceReady'] === true
     && $andromedaZeroReady['finalPrice'] === '185125' && $andromedaZeroReady['price'] === '185125');
 readiness_check($andromedaZeroReady['final_price_verified'] === false && $andromedaZeroReady['quote_state'] === 'unknown');
 
-// Missing fuel is still fail-closed and never falls back to the base search price.
+// Missing party surcharge is still fail-closed and never falls back to base search price.
 $andromedaUnknown = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
     $andromeda, $andromedaRetained, $andromedaCurrent, $now
 );
 readiness_check($andromedaUnknown['finalPriceReady'] === false && $andromedaUnknown['finalPrice'] === null
     && $andromedaUnknown['price'] === null);
-$wrongPartyPrice = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromeda['money'], 2, 0);
-readiness_reject(static function () use ($andromeda, $andromedaRetained, $andromedaCurrent, $now, $wrongPartyPrice): void {
+
+// Passenger counts must not multiply a supplier party-level markup. The neutral money
+// result is identical and remains acceptable for the retained offer context.
+$andromedaDifferentPartyArgs = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromeda['money'], 2, 0);
+readiness_check($andromedaDifferentPartyArgs === $andromedaPriced);
+$andromedaSameReady = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
+    $andromeda, $andromedaRetained, $andromedaCurrent, $now, $andromedaDifferentPartyArgs
+);
+readiness_check($andromedaSameReady['finalPrice'] === '166346.80');
+
+$tamperedAndromeda = $andromedaPriced;
+$tamperedAndromeda['search_price_with_surcharge']['amount'] = '166346.79';
+readiness_reject(static function () use ($andromeda, $andromedaRetained, $andromedaCurrent, $now, $tamperedAndromeda): void {
     AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
-        $andromeda, $andromedaRetained, $andromedaCurrent, $now, $wrongPartyPrice
+        $andromeda, $andromedaRetained, $andromedaCurrent, $now, $tamperedAndromeda
     );
 });
 
