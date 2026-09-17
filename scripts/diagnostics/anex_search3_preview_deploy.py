@@ -21,6 +21,7 @@ import tarfile
 import tempfile
 
 PREVIEW_ROUTE = "/_preview/search3-anex-candidate/"
+_SAFE_WRAPPER_ACTIVE = False
 EXCLUDED_NAMES = {
     "_preview", ".git", ".env", ".anex-private.php", "config.php", "localconfig.php", "api.php", "api-v2.php",
     "lead-adapter.php", "lead-adapter-v2.php", "lead-bridge-v1.php",
@@ -49,6 +50,12 @@ HTACCESS = '''Options -Indexes
   Require all granted
 </Files>
 '''
+
+
+def require_safe_wrapper() -> None:
+    """Refuse mutation unless the dual-secret wrapper activated this module in-process."""
+    if _SAFE_WRAPPER_ACTIVE is not True:
+        raise ValueError("dual-secret ANEX preview safe wrapper required")
 
 
 def copy_public_tree(source: Path, target: Path) -> None:
@@ -250,8 +257,10 @@ def ssh_deploy(payload: Path, manifest: dict) -> dict:
 
 
 def main() -> int:
-    phase = "build"
+    phase = "safe_wrapper_gate"
     try:
+        require_safe_wrapper()
+        phase = "build"
         repo = Path(__file__).resolve().parents[2]
         artifact = Path(os.environ["ANEX_CATALOG_ARTIFACT_DIR"])
         source_sha = os.environ.get("SOURCE_SHA", os.environ.get("GITHUB_SHA", ""))
