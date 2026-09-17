@@ -1,0 +1,28 @@
+name: MATCH ANEX three-source resort-star resolver v1
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php'
+      - 'tests/hotel_match_anex_three_source_resort_star_v1_test.php'
+      - '.github/workflows/hotel-match-anex-three-source-resort-star-v1.yml'
+permissions:
+  contents: read
+concurrency:
+  group: match-anex-three-source-resort-star-v1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  resolver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate pure resolver
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php
+          php -l tests/hotel_match_anex_three_source_resort_star_v1_test.php
+          php tests/hotel_match_anex_three_source_resort_star_v1_test.php
+          ! grep -Eq '\b(?:curl_|INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\b' scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php
+          grep -Fq "'mapping_writes'=>0" scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php
+          grep -Fq "'price_only_auto_accept'=>false" scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php
