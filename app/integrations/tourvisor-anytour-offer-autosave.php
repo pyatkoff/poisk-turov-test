@@ -321,11 +321,49 @@ final class AnyTourTourvisorOfferAutosaveV1
         return $state;
     }
 
+    private static function stateDirectory(): string
+    {
+        $docRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), "/\\");
+        if ($docRoot !== '' && is_dir($docRoot)) {
+            return $docRoot . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR . 'tourvisor-offer-autosave';
+        }
+        return rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR);
+    }
+
+    private static function ensureStateDirectory(string $dir): void
+    {
+        if (!is_dir($dir) && !@mkdir($dir, 0770, true) && !is_dir($dir)) {
+            throw new RuntimeException('TOURVISOR_AUTOSAVE_STATE_DIR_CREATE');
+        }
+        if (!is_writable($dir)) throw new RuntimeException('TOURVISOR_AUTOSAVE_STATE_DIR');
+
+        $docRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), "/\\");
+        $cachePrefix = $docRoot === '' ? '' : $docRoot . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR;
+        if ($cachePrefix === '' || !str_starts_with($dir . DIRECTORY_SEPARATOR, $cachePrefix)) return;
+
+        $guard = $dir . DIRECTORY_SEPARATOR . '.htaccess';
+        $expected = "Require all denied\n";
+        if (!is_file($guard)) {
+            $tmp = $guard . '.' . bin2hex(random_bytes(6)) . '.tmp';
+            if (@file_put_contents($tmp, $expected, LOCK_EX) === false) {
+                throw new RuntimeException('TOURVISOR_AUTOSAVE_STATE_GUARD_WRITE');
+            }
+            @chmod($tmp, 0640);
+            if (!@rename($tmp, $guard)) {
+                @unlink($tmp);
+                throw new RuntimeException('TOURVISOR_AUTOSAVE_STATE_GUARD_RENAME');
+            }
+        }
+        if (@file_get_contents($guard) !== $expected) {
+            throw new RuntimeException('TOURVISOR_AUTOSAVE_STATE_GUARD_INVALID');
+        }
+    }
+
     private static function writeState(int $searchId, array $state): void
     {
-        $path = self::statePath($searchId);
-        $dir = dirname($path);
-        if (!is_dir($dir) || !is_writable($dir)) throw new RuntimeException('TOURVISOR_AUTOSAVE_STATE_DIR');
+        $dir = self::stateDirectory();
+        self::ensureStateDirectory($dir);
+        $path = self::statePathInDirectory($searchId, $dir);
         $json = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $tmp = $path . '.' . bin2hex(random_bytes(6)) . '.tmp';
         if (@file_put_contents($tmp, $json, LOCK_EX) === false) throw new RuntimeException('TOURVISOR_AUTOSAVE_STATE_WRITE');
@@ -338,7 +376,12 @@ final class AnyTourTourvisorOfferAutosaveV1
 
     private static function statePath(int $searchId): string
     {
-        return rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+        return self::statePathInDirectory($searchId, self::stateDirectory());
+    }
+
+    private static function statePathInDirectory(int $searchId, string $dir): string
+    {
+        return rtrim($dir, DIRECTORY_SEPARATOR)
             . DIRECTORY_SEPARATOR . 'anytour-tourvisor-offer-' . hash('sha256', (string)$searchId) . '.json';
     }
 
