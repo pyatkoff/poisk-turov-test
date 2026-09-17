@@ -1,0 +1,143 @@
+name: Read Andromeda first page v2
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/andromeda-first-page-readonly-v2.yml'
+      - 'scripts/diagnostics/andromeda_first_page_readonly_v2.php'
+      - 'scripts/diagnostics/andromeda_first_page_owner_gate_v2.py'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+env:
+  OWNER_COMMAND: /read-andromeda-first-page-2530-v2
+
+jobs:
+  contract:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.number == 2530 &&
+       github.event.comment.body == '/read-andromeda-first-page-2530-v2')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify strict read-only boundary
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/andromeda_first_page_readonly_v2.php
+          python3 -m py_compile scripts/diagnostics/andromeda_first_page_owner_gate_v2.py
+          python3 - <<'PY'
+          from pathlib import Path
+          php=Path('scripts/diagnostics/andromeda_first_page_readonly_v2.php').read_text()
+          flow=Path('.github/workflows/andromeda-first-page-readonly-v2.yml').read_text()
+          for token in ['INSERT INTO','UPDATE anytour_','DELETE FROM','REPLACE INTO','CREATE TABLE','ALTER TABLE','DROP TABLE','curl_init','curl_exec','AnyTourAndromedaTransport','ensureLogin','getFlights','broninit','gateway.samo.ru']:
+              if token in php: raise SystemExit('read-only diagnostic contains forbidden token: '+token)
+          for token in ["'filesystem_writes'=>0","'supplier_calls'=>0","'db_writes'=>0","missing_pages","advertised_pages_count","auth_checkpoint_present"]:
+              if token not in php: raise SystemExit('missing evidence token: '+token)
+          if '\n  workflow_dispatch:' in flow or '\n  push:' in flow: raise SystemExit('unexpected trigger')
+          print('ANDROMEDA_FIRST_PAGE_V2_CONTRACT_OK')
+          PY
+
+  authorize:
+    needs: contract
+    if: >-
+      github.event_name == 'issue_comment' && github.event.issue.number == 2530 &&
+      github.event.comment.body == '/read-andromeda-first-page-2530-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      allowed: ${{ steps.gate.outputs.allowed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - id: gate
+        name: Authorize exact owner read
+        run: |
+          set -euo pipefail
+          python3 -B scripts/diagnostics/andromeda_first_page_owner_gate_v2.py
+          echo 'allowed=true' >> "$GITHUB_OUTPUT"
+      - name: Require current main
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+  inspect:
+    needs: authorize
+    if: needs.authorize.outputs.allowed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Prepare ephemeral runner key
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/andromeda-first-page-v2"
+          printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > "$RUNNER_TEMP/andromeda-first-page-v2/key"
+          chmod 600 "$RUNNER_TEMP/andromeda-first-page-v2/key"
+          ssh-keygen -y -f "$RUNNER_TEMP/andromeda-first-page-v2/key" >/dev/null
+      - name: Read one post-publication first-page cohort only
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/andromeda-first-page-v2"
+          ssh -T -i "$root/key" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            -o "UserKnownHostsFile=$root/known_hosts" -o ConnectTimeout=15 -o LogLevel=ERROR \
+            -l "$ANYTOOUR_DEPLOY_USER" "$ANYTOOUR_DEPLOY_HOST" \
+            'php -d display_errors=0 -d log_errors=0' \
+            < scripts/diagnostics/andromeda_first_page_readonly_v2.php > "$root/result.json"
+          test -s "$root/result.json"
+      - name: Classify exact cohort state
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'andromeda-first-page-v2/result.json'
+          d=json.loads(p.read_text()); f=d['first_page']
+          for k in ['filesystem_writes','supplier_calls','db_writes','booking_calls','lead_calls']:
+              if d.get(k)!=0: raise SystemExit('unexpected side effect '+k)
+          if f['missing_pages']:
+              assessment='expired_incomplete_cohort' if f['expired'] else 'live_incomplete_cohort'
+          elif f['first_page_rejected_count']>0:
+              assessment='all_pages_present_but_rejected_rows'
+          else:
+              assessment='all_pages_present_needs_narrower_consistency_check'
+          d['assessment']=assessment
+          p.write_text(json.dumps(d,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print('ANDROMEDA_FIRST_PAGE_V2_ASSESSMENT='+assessment)
+          print('advertised_pages='+str(f['advertised_pages_count']))
+          print('present_pages='+','.join(map(str,f['present_pages'])))
+          print('missing_pages='+','.join(map(str,f['missing_pages'])))
+          print('first_page_offers='+str(f['first_page_offer_count']))
+          print('first_page_mapped='+str(f['first_page_retained_mapped_count']))
+          print('first_page_owned='+str(f['first_page_andromeda_owned_count']))
+          print('first_page_owned_surcharge='+str(f['first_page_owned_complete_surcharge_count']))
+          print('expired='+str(f['expired']).lower())
+          print('auth_checkpoint='+str(f['auth_checkpoint_present'] and f['auth_created_matches']).lower())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-first-page-readonly-v2-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-first-page-v2/result.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove runner key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/andromeda-first-page-v2/key"
