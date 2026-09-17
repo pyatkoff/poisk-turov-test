@@ -1,0 +1,66 @@
+name: Search3 AnyTour canonical content collector v1
+
+on:
+  pull_request:
+    branches:
+      - release/search3-production-ready-v1
+    paths:
+      - 'v2/data/collect-anytour-canonical-hotel-details-v1.php'
+      - 'tests/anytour-canonical-hotel-content-collector-v1-test.php'
+      - '.github/workflows/search3-anytour-canonical-content-collector-v1.yml'
+  push:
+    branches:
+      - local/2690-canonical-content-collector-v1
+    paths:
+      - 'v2/data/collect-anytour-canonical-hotel-details-v1.php'
+      - 'tests/anytour-canonical-hotel-content-collector-v1-test.php'
+      - '.github/workflows/search3-anytour-canonical-content-collector-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: search3-anytour-canonical-content-collector-v1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  canonical-content-collector:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_canonical_content_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Lint and enforce LOCAL boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/collect-anytour-canonical-hotel-details-v1.php
+          php -l tests/anytour-canonical-hotel-content-collector-v1-test.php
+          grep -Fq "a.namespace='" v2/data/collect-anytour-canonical-hotel-details-v1.php
+          grep -Fq "ANYTOUR_CANONICAL_CONTENT_ALIAS_NAMESPACE" v2/data/collect-anytour-canonical-hotel-details-v1.php
+          ! grep -Fq "a.namespace='legacy_catalog'" v2/data/collect-anytour-canonical-hotel-details-v1.php
+          grep -Fq "v2_data_tv_get('/hotels/' . $hotelId)" v2/data/collect-anytour-canonical-hotel-details-v1.php
+          grep -Fq "http-budget',250,1,3000" v2/data/collect-anytour-canonical-hotel-details-v1.php
+          grep -Fq "v2_hotel_detail_is_generic_product_name" v2/data/collect-anytour-canonical-hotel-details-v1.php
+      - name: Exercise canonical identity-only queue on disposable MySQL
+        env:
+          ANYTOUR_CANONICAL_CONTENT_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_canonical_content_fixture;charset=utf8mb4'
+          ANYTOUR_CANONICAL_CONTENT_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour-canonical-hotel-content-collector-v1-test.php
