@@ -3,7 +3,7 @@
 declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 
-const ANYTOUR_OFFER_CURRENT_OPERATION = 'anytour-offer-store-current-2693-20260917-v1';
+const ANYTOUR_OFFER_CURRENT_OPERATION = 'anytour-offer-store-current-2693-20260917-v2';
 const ANYTOUR_OFFER_CURRENT_SOURCE = 'a3f7b3b0aad1b7bd82dd3116fbc3e619466dd4ff';
 const ANYTOUR_OFFER_CURRENT_PROVIDERS = ['tourvisor','anex','andromeda'];
 const ANYTOUR_OFFER_CURRENT_TABLES = [
