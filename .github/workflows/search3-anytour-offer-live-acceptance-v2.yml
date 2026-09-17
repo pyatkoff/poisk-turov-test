@@ -1,0 +1,238 @@
+name: Search3 AnyTour live offer acceptance v2
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_offer_live_acceptance_v2.php'
+      - 'tests/anytour_offer_live_acceptance_v2_test.php'
+      - '.github/workflows/search3-anytour-offer-live-acceptance-v2.yml'
+permissions:
+  contents: read
+concurrency:
+  group: anytour-offer-live-acceptance-2693-20260917-v2
+  cancel-in-progress: false
+jobs:
+  checked-reader:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/local-2693-offer-live-acceptance-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      artifact_id: ${{ steps.retained.outputs.artifact-id }}
+      head: ${{ github.event.pull_request.head.sha }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_offer_accept_fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Verify collector semantics against isolated schema v2
+        env:
+          ANYTOUR_OFFER_ACCEPT_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_offer_accept_fixture;charset=utf8mb4'
+          ANYTOUR_OFFER_ACCEPT_TEST_PASSWORD: fixture-only-password
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_offer_live_acceptance_v2.php
+          php -l tests/anytour_offer_live_acceptance_v2_test.php
+          php tests/anytour_offer_live_acceptance_v2_test.php
+      - name: Verify unchanged LOCAL data dependencies
+        run: |
+          set -euo pipefail
+          base='c0c849ddbe6482cf908bed8766d2344c6febe9e8'
+          for f in \
+            v2/data/db-v1.php \
+            v2/data/migrations/20260916-anytour-canonical-catalog.sql \
+            v2/data/migrations/20260916-anytour-offer-store.sql \
+            v2/data/migrations/20260917-anytour-offer-store-v2.sql; do
+            test "$(git rev-parse HEAD:$f)" = "$(git rev-parse $base:$f)"
+          done
+      - name: Retain exact payload and reservation before SSH credentials
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,tarfile
+          op='anytour-offer-live-acceptance-2693-20260917-v2'
+          source='c0c849ddbe6482cf908bed8766d2344c6febe9e8'
+          files=['scripts/catalog/anytour_offer_live_acceptance_v2.php','v2/data/db-v1.php']
+          work=pathlib.Path('retained');work.mkdir()
+          payload={name:hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() for name in files}
+          with tarfile.open(work/'payload.tar.gz','w:gz') as t:
+              for name in files:
+                  data=pathlib.Path(name).read_bytes();info=tarfile.TarInfo('payload/'+name)
+                  info.size=len(data);info.mode=0o600;info.mtime=0;t.addfile(info,io.BytesIO(data))
+          reservation={'operation':op,'dataSource':source,'executionSource':os.environ['EXACT_HEAD'],'run':int(os.environ['GITHUB_RUN_ID']),
+              'attempt':1,'files':payload,'databaseWrites':0,'supplierCalls':0,'selectionAuthority':False}
+          (work/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          (work/'transport.sha256').write_text(''.join(hashlib.sha256((work/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in ['payload.tar.gz','reservation.json']))
+          PY
+      - id: retained
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-offer-live-acceptance-v2-reservation-${{ github.run_id }}
+          path: retained/
+          if-no-files-found: error
+          retention-days: 30
+
+  on-host-read:
+    needs: checked-reader
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.checked-reader.outputs.artifact_id }}
+          path: retained
+          merge-multiple: true
+      - name: Recheck claims and exact Security result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.checked-reader.outputs.head }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5712555307 > claim-local.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5712556824 > claim-coord.json
+          python3 - <<'PY'
+          import datetime,json
+          for name in ['claim-local.json','claim-coord.json']:
+              c=json.load(open(name));assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+              assert 'offer-live-acceptance' in c['body'] and ('READ ONLY' in c['body'] or 'read-only' in c['body'])
+              age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+              assert 0<=age.total_seconds()<5400,'claim expired'
+          PY
+          ok=0
+          for _ in $(seq 1 30); do
+            gh api repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs > checks.json
+            if python3 - <<'PY'
+          import json,sys
+          checks=json.load(open('checks.json'))['check_runs']
+          sys.exit(0 if any(x['name']=='guard' and x['conclusion']=='success' for x in checks) else 1)
+          PY
+            then ok=1; break; fi
+            sleep 10
+          done
+          test "$ok" = 1
+          cd retained && sha256sum -c transport.sha256
+      - name: Inspect live AnyTour offer store READ ONLY
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] && [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          mkdir -p evidence
+          key="$RUNNER_TEMP/offer-accept-key";known="$RUNNER_TEMP/offer-accept-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 -d > "$key"; fi
+          chmod 600 "$key";ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$REMOTE_USER@$HOST";path='.anytour-operations/anytour-offer-live-acceptance-2693-20260917-v2'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/anytour-offer-live-acceptance-2693-20260917-v2"'
+          scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz} "$remote:$path/"
+          set +e
+          ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          cd "$HOME/.anytour-operations/anytour-offer-live-acceptance-2693-20260917-v2"
+          sha256sum -c transport.sha256
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          r=json.load(open('reservation.json'))
+          assert r['operation']=='anytour-offer-live-acceptance-2693-20260917-v2' and r['attempt']==1
+          assert r['dataSource']=='c0c849ddbe6482cf908bed8766d2344c6febe9e8'
+          assert r['databaseWrites']==0 and r['supplierCalls']==0 and r['selectionAuthority'] is False
+          with tarfile.open('payload.tar.gz','r:gz') as t:
+              members=t.getmembers();assert len(members)==len(r['files'])==2
+              assert {m.name for m in members}=={'payload/'+n for n in r['files']}
+              for m in members:
+                  assert m.isfile() and 0<m.size<250000 and '..' not in pathlib.PurePosixPath(m.name).parts
+                  data=t.extractfile(m).read();assert hashlib.sha256(data).hexdigest()==r['files'][m.name[8:]]
+                  p=pathlib.Path(m.name);p.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+                  with p.open('xb') as f:f.write(data)
+          PY
+          php -d display_errors=0 payload/scripts/catalog/anytour_offer_live_acceptance_v2.php
+          sha256sum result.json > result.sha256
+          REMOTE
+          rc=$?
+          scp "${opts[@]}" "$remote:$path/result.json" evidence/result.json;copied=$?
+          scp "${opts[@]}" "$remote:$path/result.sha256" evidence/result.sha256;hashed=$?
+          set -e
+          cp retained/reservation.json evidence/reservation.json
+          printf '{"ssh_exit":%s,"result_copy_exit":%s,"hash_copy_exit":%s,"noReplay":true}\n' "$rc" "$copied" "$hashed" > evidence/transport-result.json
+          test "$rc" = 0 && test "$copied" = 0 && test "$hashed" = 0
+          (cd evidence && sha256sum -c result.sha256)
+          python3 - <<'PY'
+          import json
+          r=json.load(open('evidence/result.json'))
+          assert r['status']=='live_acceptance_read_only' and r['offerStoreSchemaVersion']==2
+          assert r['databaseWrites']==0 and r['supplierCalls']==0 and r['selectionAuthority'] is False
+          assert r['overall']['storedRows']>0 and r['overall']['visibleRows']>0 and r['overall']['visibleHotels']>0 and r['overall']['completedScopes']>0
+          assert r['storedByProvider']['tourvisor']['rows']>0 and r['visibleByProvider']['tourvisor']['rows']>0 and r['visibleByProvider']['tourvisor']['hotels']>0
+          assert r['scopeState']['tourvisor']['completedScopes']>0
+          i=r['integrity'];assert i['unknownProviderRows']==0 and i['invalidListingRows']==0 and i['payloadDigestMismatchRows']==0 and i['operatorDigestMismatchRows']==0 and i['orphanLatestCompleteScopes']==0
+          safe={k:r[k] for k in ['status','observedAt','catalogSchemaVersion','offerStoreSchemaVersion','canonical','overall','storedByProvider','visibleByProvider','scopeState','refreshes','integrity','databaseWrites','supplierCalls','selectionAuthority']}
+          print(json.dumps(safe,ensure_ascii=False,sort_keys=True))
+          PY
+      - name: Verify nonzero local-candidate DB-first HTTP contract
+        run: |
+          python3 - <<'PY'
+          import html,json,re,urllib.parse,urllib.request
+          base='https://anytoour.ru/_preview/search3-local-candidate/'
+          owner_url=base+'poisk-turov/?from=1&country=4&dateFrom=2026-10-05&dateTo=2026-10-10&daysFrom=7&daysTill=10&count_people=2&child_count=0&stars=5'
+          page=urllib.request.urlopen(owner_url,timeout=30);body=page.read().decode('utf-8','replace')
+          assert page.status==200 and re.search(r'<meta\s+name=["\']robots["\'][^>]*noindex',body,re.I)
+          scripts=[html.unescape(x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',body,re.I)]
+          raw=next(x for x in scripts if 'bundle-v1.php' in x);bundle_url=urllib.parse.urljoin(owner_url,raw)
+          query=urllib.parse.parse_qs(urllib.parse.urlparse(bundle_url).query);assert query.get('scope')==['search3']
+          params={'departureId':'1','countryId':'4','dateFrom':'2026-10-05','dateTo':'2026-10-10','nightsFrom':'7','nightsTo':'10','adults':'2','childs':[],'meal':'','hotelCategory':'5','hotelRating':'','hotelTypes':[],'hotelIds':[],'hotelServices':[],'arrivalId':'','regionIds':[],'subregionIds':[],'operatorIds':[],'priceFrom':'','priceTo':'','currency':'RUB','onlyCharter':'false','onlyDirect':'false'}
+          req=urllib.request.Request(base+'data/search3-local-results-read-v1.php',data=json.dumps({'params':params},separators=(',',':')).encode(),method='POST',headers={'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'AnyTourSearch3'})
+          response=urllib.request.urlopen(req,timeout=30);payload=json.loads(response.read());result=payload['data']
+          assert response.status==200 and payload.get('ok') is True and result['source']=='anytour-db-first-results-v1'
+          assert result['offerStoreSchemaVersion']==2 and result['selectionAuthority'] is False
+          assert result['hotelCount']>0 and result['offerCount']>0 and result['providerOfferCounts'].get('tourvisor',0)>0
+          assert sum(result['providerOfferCounts'].values())==result['offerCount'] and result['storedOfferCount']>=result['offerCount']
+          for h in result['hotels']:
+              assert h['offers'] and h['anytourHotelId']==h['hotel']['id']
+              assert all(o['listing']['selection_state']=='refresh_required' and o['listing']['booking_enabled'] is False for o in h['offers'])
+          print(json.dumps({'status':'local_candidate_db_first_http_nonzero_ok','http':200,'hotelCount':result['hotelCount'],'offerCount':result['offerCount'],'storedOfferCount':result['storedOfferCount'],'providerOfferCounts':result['providerOfferCounts'],'selectionAuthority':False,'supplierCalls':0,'dbWrites':0},sort_keys=True))
+          PY
+      - name: Retain terminal acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-offer-live-acceptance-v2-result-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
