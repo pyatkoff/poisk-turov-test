@@ -5,9 +5,11 @@ on:
     branches: [release/search3-production-ready-v1]
     paths:
       - 'v2/data/anytour-provider-identity-bridge-v1.php'
+      - 'v2/data/anytour-provider-identity-bridge-v2.php'
       - 'v2/data/anytour-offer-store-v1.php'
       - 'v2/data/anytour-offer-store-read-v2.php'
       - 'tests/anytour-provider-identity-bridge-v1-test.php'
+      - 'tests/anytour-provider-identity-bridge-v2-test.php'
       - '.github/workflows/search3-anytour-provider-identity-bridge.yml'
 
 permissions:
@@ -43,10 +45,13 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/data/anytour-provider-identity-bridge-v1.php
+          php -l v2/data/anytour-provider-identity-bridge-v2.php
           php -l v2/data/anytour-offer-store-v1.php
           php -l v2/data/anytour-offer-store-read-v2.php
           php -l tests/anytour-provider-identity-bridge-v1-test.php
+          php -l tests/anytour-provider-identity-bridge-v2-test.php
           php tests/anytour-provider-identity-bridge-v1-test.php
+          php tests/anytour-provider-identity-bridge-v2-test.php
       - name: Exercise direct provider binding against disposable MySQL
         env:
           ANYTOUR_PROVIDER_BRIDGE_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=anytour_provider_bridge_test;charset=utf8mb4
@@ -56,3 +61,4 @@ jobs:
         run: |
           set -euo pipefail
           php tests/anytour-provider-identity-bridge-v1-test.php
+          php tests/anytour-provider-identity-bridge-v2-test.php
