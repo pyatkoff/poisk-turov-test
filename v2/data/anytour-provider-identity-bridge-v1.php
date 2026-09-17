@@ -32,7 +32,10 @@ final class AnyTourProviderIdentityBridgeV1
     }
 
     /**
-     * Keep only rows whose AnyTour target is authorized now.
+     * Keep only rows whose provider identity still points to the claimed AnyTour ID.
+     * Profile activity is intentionally NOT checked here: DB-first historically counts
+     * a stored offer first and lets canonical catalog hydration withhold an inactive
+     * profile. Admission separately requires an active profile in allowsOffer().
      *
      * A present direct Andromeda binding is authoritative for that digest: if its
      * stored MATCH tuple is stale, malformed or no longer accepted, the row is
@@ -68,7 +71,7 @@ final class AnyTourProviderIdentityBridgeV1
 
         $direct = self::directSources($db, array_keys($andromedaDigests));
         $currentAccepted = self::currentAndromedaAccepted($db, $direct);
-        $legacyTargets = self::legacyTargets($db, array_keys($legacyIds));
+        $legacyTargets = self::legacyTargets($db, array_keys($legacyIds), false);
 
         $out = [];
         foreach ($rows as $index => $row) {
@@ -97,6 +100,9 @@ final class AnyTourProviderIdentityBridgeV1
         int $legacyHotelId,
         int $anytourHotelId
     ): bool {
+        $active = $db->prepare('SELECT 1 FROM anytour_hotels WHERE id=:id AND is_active=1 LIMIT 1');
+        $active->execute(['id'=>$anytourHotelId]);
+        if ($active->fetchColumn() === false) return false;
         $rows = self::filterOfferRows($db, [[
             'provider' => $provider,
             'provider_hotel_ref_digest' => $providerHotelRefDigest,
@@ -109,7 +115,8 @@ final class AnyTourProviderIdentityBridgeV1
     /**
      * Materialize only exact CURRENT accepted Andromeda mappings requested by caller.
      * No MATCH row is created/updated. The existing legacy->AnyTour link is read once
-     * only to locate today's independent profile. Runtime direct reads do not need it.
+     * only to locate today's active independent profile. Runtime direct reads do not
+     * need that legacy source afterwards.
      *
      * @param list<array{supplier_namespace:string,external_hotel_id:string|int}> $refs
      */
@@ -121,7 +128,7 @@ final class AnyTourProviderIdentityBridgeV1
         }
         $wanted = [];
         foreach ($refs as $ref) {
-            if (!is_array($ref) || array_keys($ref) !== ['supplier_namespace','external_hotel_id']) {
+            if (!is_array($ref) || !self::exactKeys($ref, ['supplier_namespace','external_hotel_id'])) {
                 throw new InvalidArgumentException('ANYTOUR_PROVIDER_BRIDGE_REF');
             }
             $namespace = self::supplierNamespace($ref['supplier_namespace']);
@@ -136,11 +143,11 @@ final class AnyTourProviderIdentityBridgeV1
             $accepted = self::acceptedForRefs($db, array_values($wanted));
             $localIds = [];
             foreach ($accepted as $local) if (is_int($local) && $local > 0) $localIds[$local] = true;
-            $targets = self::legacyTargets($db, array_keys($localIds));
+            $targets = self::legacyTargets($db, array_keys($localIds), true);
 
             $insert = $db->prepare("INSERT INTO anytour_hotel_sources
                 (namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at)
-                VALUES (:namespace,:external_key,:own,'match_accepted_bridge',:source_json,:source_sha,:seen,:seen)");
+                VALUES (:namespace,:external_key,:own,'match_accepted_bridge',:source_json,:source_sha,:first_seen,:last_seen)");
             $lock = $db->prepare("SELECT anytour_hotel_id,acquired_via,source_json,source_sha256
                 FROM anytour_hotel_sources WHERE namespace=:namespace AND external_key=:external_key FOR UPDATE");
             $touch = $db->prepare("UPDATE anytour_hotel_sources SET source_json=:source_json,source_sha256=:source_sha,last_seen_at=:seen
@@ -168,7 +175,7 @@ final class AnyTourProviderIdentityBridgeV1
                 if ($existing === false) {
                     $insert->execute([
                         'namespace'=>self::DIRECT_NAMESPACE,'external_key'=>$digest,'own'=>$own,
-                        'source_json'=>$json,'source_sha'=>$sha,'seen'=>$seen,
+                        'source_json'=>$json,'source_sha'=>$sha,'first_seen'=>$seen,'last_seen'=>$seen,
                     ]);
                     ++$created;
                 } else {
@@ -224,14 +231,13 @@ final class AnyTourProviderIdentityBridgeV1
         if ($digests === []) return [];
         $result = [];
         foreach (array_chunk($digests, 500) as $chunk) {
-            $sql = "SELECT CAST(s.external_key AS CHAR) AS external_key,s.anytour_hotel_id,s.source_json,s.source_sha256,h.is_active
-                FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id
-                WHERE s.namespace=? AND s.external_key IN (" . implode(',', array_fill(0, count($chunk), '?')) . ')';
+            $sql = "SELECT CAST(external_key AS CHAR) AS external_key,anytour_hotel_id,acquired_via,source_json,source_sha256
+                FROM anytour_hotel_sources WHERE namespace=? AND external_key IN ("
+                . implode(',', array_fill(0, count($chunk), '?')) . ')';
             $query = $db->prepare($sql); $query->execute(array_merge([self::DIRECT_NAMESPACE], $chunk));
             foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $digest = (string)$row['external_key'];
-                $decoded = self::decodeDirectSource($row, $digest);
-                $result[$digest] = $decoded;
+                $result[$digest] = self::decodeDirectSource($row, $digest);
             }
         }
         return $result;
@@ -240,7 +246,8 @@ final class AnyTourProviderIdentityBridgeV1
     private static function decodeDirectSource(array $row, string $digest): array
     {
         $base = ['valid'=>false,'anytour_hotel_id'=>(int)($row['anytour_hotel_id'] ?? 0)];
-        if (($row['is_active'] ?? null) != 1 || !is_string($row['source_json'] ?? null)
+        if (($row['acquired_via'] ?? null) !== 'match_accepted_bridge'
+            || !is_string($row['source_json'] ?? null)
             || !is_string($row['source_sha256'] ?? null)
             || hash('sha256', $row['source_json']) !== $row['source_sha256']) return $base;
         try { $source = json_decode($row['source_json'], true, 16, JSON_THROW_ON_ERROR); }
@@ -316,15 +323,16 @@ final class AnyTourProviderIdentityBridgeV1
         return $out;
     }
 
-    private static function legacyTargets(PDO $db, array $legacyIds): array
+    private static function legacyTargets(PDO $db, array $legacyIds, bool $requireActive): array
     {
         if ($legacyIds === []) return [];
         $result = [];
         foreach (array_chunk(array_map('strval', $legacyIds), 500) as $chunk) {
+            $join = $requireActive ? ' JOIN anytour_hotels h ON h.id=s.anytour_hotel_id' : '';
+            $active = $requireActive ? ' AND h.is_active=1' : '';
             $sql = "SELECT CAST(s.external_key AS CHAR) AS external_key,s.anytour_hotel_id
-                FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id
-                WHERE s.namespace='legacy_catalog' AND h.is_active=1 AND s.external_key IN ("
-                . implode(',', array_fill(0, count($chunk), '?')) . ')';
+                FROM anytour_hotel_sources s" . $join . " WHERE s.namespace='legacy_catalog'" . $active
+                . " AND s.external_key IN (" . implode(',', array_fill(0, count($chunk), '?')) . ')';
             $query = $db->prepare($sql); $query->execute($chunk);
             foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $legacy = self::positiveInt($row['external_key'] ?? null);
