@@ -1,0 +1,46 @@
+name: INT direct ANEX AnyTour offer autosave
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/anex-anytour-offer-autosave.php'
+      - 'app/integrations/anex-additional-prices-batch.php'
+      - 'tests/anex-anytour-offer-autosave-test.php'
+      - 'tests/anex-additional-prices-batch-test.php'
+      - '.github/workflows/int-anex-anytour-offer-autosave.yml'
+  push:
+    branches:
+      - 'feat/int-anex-search-autosave-20260917'
+    paths:
+      - 'app/integrations/anex-anytour-offer-autosave.php'
+      - 'app/integrations/anex-additional-prices-batch.php'
+      - 'tests/anex-anytour-offer-autosave-test.php'
+      - 'tests/anex-additional-prices-batch-test.php'
+      - '.github/workflows/int-anex-anytour-offer-autosave.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint
+        run: |
+          set -euo pipefail
+          php -l app/integrations/anex-anytour-offer-autosave.php
+          php -l app/integrations/anex-additional-prices-batch.php
+          php -l tests/anex-anytour-offer-autosave-test.php
+          php -l tests/anex-additional-prices-batch-test.php
+      - name: Autosave contract
+        run: php tests/anex-anytour-offer-autosave-test.php
+      - name: Existing APD batch regression
+        run: php tests/anex-additional-prices-batch-test.php
+      - name: No supplier transport in autosave helper
+        run: |
+          set -euo pipefail
+          ! grep -E '\b(curl_|fsockopen|stream_socket_client)\b' app/integrations/anex-anytour-offer-autosave.php
+          grep -Fq 'anytour_anex_anytour_offer_autosave_runtime($plan, $state, $results);' app/integrations/anex-additional-prices-batch.php
+          echo INT_ANEX_ANYTOUR_AUTOSAVE_GATE_OK
