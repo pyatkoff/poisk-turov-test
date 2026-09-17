@@ -2,16 +2,16 @@
 """Provider evidence graph v2: current Tourvisor target-space + future AnyTour canonical preference.
 
 v2 is an immutable successor to graph v1. It reuses v1 parsing, evidence authority,
-public-geo adapters, veto logic and connected-component mechanics. The only semantic
-change is target selection for provider resolution:
+veto logic and connected-component mechanics, while correcting target-space semantics:
 
-1. If a component contains a proven ``anytour:hotel:*`` node, resolve against those
-   canonical nodes.
-2. Otherwise resolve against ``tourvisor:hotel:*`` nodes, because the historical
-   AnyTour MATCH catalog and accepted provider mappings are Tourvisor-ID backed.
+1. Current historical MATCH targets are ``tourvisor:hotel:*`` because ``catalog_hotels.id``
+   is Tourvisor-backed.
+2. A future ``anytour:hotel:*`` node becomes the preferred canonical target only when
+   it has actual direct/accepted support in the graph.
+3. Retained public/brand geo ``top_local_id`` values are also Tourvisor-backed and are
+   adapted to ``tourvisor:hotel:*``; public corroboration never creates canonical IDs.
 
-No numeric equality creates a canonical edge. An AnyTour canonical node is considered
-only when an actual graph edge places it in the connected component.
+No numeric equality across namespaces creates an edge or canonical relationship.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Iterator, Sequence
 
 V1_PATH = Path(__file__).with_name("hotel_match_provider_evidence_graph_v1.py")
 _spec = importlib.util.spec_from_file_location("hotel_match_provider_evidence_graph_v1", V1_PATH)
@@ -36,17 +36,61 @@ EvidenceError = v1.EvidenceError
 EvidenceEdge = v1.EvidenceEdge
 edge_from_record = v1.edge_from_record
 load_jsonl = v1.load_jsonl
-load_public_geo_tsv = v1.load_public_geo_tsv
+
+
+def _split_node(key: str) -> tuple[str, str, str]:
+    parts = key.split(":", 2)
+    if len(parts) != 3 or not all(parts):
+        raise EvidenceError("invalid_node_key")
+    return parts[0], parts[1], parts[2]
+
+
+def load_public_geo_tsv(path: Path) -> Iterator[EvidenceEdge]:
+    """Reuse v1 parsing but correct historical `top_local_id` to Tourvisor space."""
+    for edge in v1.load_public_geo_tsv(path):
+        source_namespace, source_kind, source_id = _split_node(edge.source)
+        target_namespace, target_kind, target_id = _split_node(edge.target)
+        if target_namespace != "anytour" or target_kind != "hotel":
+            raise EvidenceError(f"{path}: unexpected v1 public-geo target")
+        yield edge_from_record(
+            {
+                "source": {
+                    "namespace": source_namespace,
+                    "kind": source_kind,
+                    "id": source_id,
+                },
+                "target": {
+                    "namespace": "tourvisor",
+                    "kind": "hotel",
+                    "id": target_id,
+                },
+                "evidence_type": edge.evidence_type,
+                "authority": edge.authority,
+                "polarity": edge.polarity,
+                "provenance": dict(edge.provenance),
+                "attributes": dict(edge.attributes),
+            }
+        )
 
 
 class EvidenceGraph(v1.EvidenceGraph):
     """v1 graph mechanics with explicit current/future resolution target spaces."""
 
-    @staticmethod
-    def _resolution_targets(component: set[str]) -> tuple[str, list[str]]:
-        anytour = sorted(node for node in component if node.startswith("anytour:hotel:"))
-        if anytour:
-            return "anytour", anytour
+    def _resolution_targets(self, component: set[str]) -> tuple[str, list[str]]:
+        canonical: list[str] = []
+        for node in sorted(component):
+            if not node.startswith("anytour:hotel:"):
+                continue
+            # Merely mentioning a node in observation/corroboration is not proof that
+            # the AnyTour canonical identity exists. Require direct/accepted support.
+            if any(
+                self.edges[edge_id].polarity == "support"
+                and self.edges[edge_id].authority in v1.AUTHORITATIVE
+                for edge_id in self.adjacency.get(node, ())
+            ):
+                canonical.append(node)
+        if canonical:
+            return "anytour", canonical
         tourvisor = sorted(node for node in component if node.startswith("tourvisor:hotel:"))
         return "tourvisor", tourvisor
 
@@ -73,8 +117,7 @@ class EvidenceGraph(v1.EvidenceGraph):
             item = {"target": target, "path": path, "veto": veto}
             qualified.append(item)
             # The first edge leaves the provider node. If that mapping is already
-            # accepted, a later accepted canonical bridge must not downgrade it to
-            # merely a candidate.
+            # accepted, a later accepted canonical bridge must not downgrade it.
             if path_edges and path_edges[0].authority == "accepted":
                 accepted.append(item)
 
