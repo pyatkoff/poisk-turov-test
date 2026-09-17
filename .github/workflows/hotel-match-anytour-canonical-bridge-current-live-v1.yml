@@ -1,0 +1,129 @@
+name: MATCH AnyTour canonical bridge CURRENT live v1
+on:
+  push:
+    branches: [ops/match-anytour-canonical-bridge-current-v1-1971-20260917]
+    paths: [.github/workflows/hotel-match-anytour-canonical-bridge-current-live-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-anytour-canonical-bridge-current-live-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-anytour-canonical-bridge-current-1971-20260917-v1
+  EXPORTER_BLOB: a26ae888bb851216f80f03c689ba9102c5041839
+jobs:
+  export:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+      - name: Verify exact read-only source and reserve
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=scripts/diagnostics/hotel_match_anytour_canonical_bridge_export_v1.php
+          test "$(git hash-object "$src")" = "$EXPORTER_BLOB"
+          php -l "$src"
+          php "$src" --self-test
+          grep -Fq 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' "$src"
+          grep -Fq "s.namespace='legacy_catalog'" "$src"
+          ! grep -Eiq '(curl|wget|gateway\.samo|api\.tourvisor|parser\.anextour|AdditionalPricesDaily)' "$src"
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({
+            'operation_id':os.environ['OPERATION_ID'],
+            'source_sha':os.environ['GITHUB_SHA'],
+            'state':'reserved_before_db_access',
+            'coordination_issue':2530,
+            'queue_issue':1971,
+            'claim_comment_id':5718672499,
+            'database_writes':0,'mapping_writes':0,'supplier_calls':0,
+            'tourvisor_calls':0,'samo_andromeda_calls':0,'no_replay':True,
+          },sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-anytour-canonical-bridge-current-v1-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-anytour-canonical-bridge-current-1971-20260917-v1/reservation.json
+          retention-days: 90
+      - name: Run CURRENT read-only export
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          remote_dir="\$HOME/.anytoour-match/operations/$OPERATION_ID"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"$remote_dir\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; p=\"$remote_dir\"; cat > \"\$p/hotel_match_anytour_canonical_bridge_export_v1.php\"; sync" < scripts/diagnostics/hotel_match_anytour_canonical_bridge_export_v1.php
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M \"$remote_dir/hotel_match_anytour_canonical_bridge_export_v1.php\"" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > "$out/remote-exit.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"$remote_dir\" -czf - reservation.json hotel_match_anytour_canonical_bridge_export_v1.php canonical-bridge.jsonl census.json result.json receipt.json" > "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+      - name: Independently verify CURRENT canonical bridge export
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['GITHUB_WORKSPACE'])
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; s=p/'server'
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          local=(root/'scripts/diagnostics/hotel_match_anytour_canonical_bridge_export_v1.php').read_bytes()
+          remote=(s/'hotel_match_anytour_canonical_bridge_export_v1.php').read_bytes()
+          assert local==remote
+          result_b=(s/'result.json').read_bytes(); result=json.loads(result_b)
+          census_b=(s/'census.json').read_bytes(); census=json.loads(census_b)
+          receipt=json.loads((s/'receipt.json').read_text())
+          edge_b=(s/'canonical-bridge.jsonl').read_bytes()
+          lines=[x for x in edge_b.decode('utf-8').splitlines() if x.strip()]
+          records=[json.loads(x) for x in lines]
+          source_ids=[]
+          for r in records:
+            assert r['source']['namespace']=='tourvisor' and r['source']['kind']=='hotel'
+            assert r['target']['namespace']=='anytour' and r['target']['kind']=='hotel'
+            assert r['authority']=='accepted' and r['polarity']=='support'
+            assert r['evidence_type']=='legacy_catalog_canonical_bridge'
+            assert int(r['source']['id'])>0 and int(r['target']['id'])>0
+            assert r['provenance']['acquired_via']=='saved_catalog'
+            source_ids.append(r['source']['id'])
+          assert len(source_ids)==len(set(source_ids))
+          result_sha=hashlib.sha256(result_b).hexdigest(); census_sha=hashlib.sha256(census_b).hexdigest(); edge_sha=hashlib.sha256(edge_b).hexdigest()
+          zero=['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_andromeda_calls']
+          ok=(
+            result.get('state')=='completed_read_only'
+            and result.get('operation_id')==os.environ['OPERATION_ID']
+            and result.get('source_sha')==os.environ['GITHUB_SHA']
+            and int(census.get('source_rows') or 0)>0
+            and int(census.get('accepted_edges') or -1)==len(records)
+            and int(census.get('accepted_edges') or 0)+int(census.get('inactive_held') or 0)==int(census.get('source_rows') or -1)
+            and int(census.get('distinct_legacy_ids') or -1)==int(census.get('source_rows') or -2)
+            and result.get('edge_sha256')==edge_sha
+            and result.get('census_sha256')==census_sha
+            and receipt.get('result_sha256')==result_sha
+            and receipt.get('readback_verified') is True
+            and all(int(result.get(k) or 0)==0 for k in zero)
+            and all(int(receipt.get(k) or 0)==0 for k in zero)
+          )
+          gate={'verified':ok,'state':result.get('state'),'census':census,'edge_sha256':edge_sha,'census_sha256':census_sha,'result_sha256':result_sha,'no_replay':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-anytour-canonical-bridge-current-v1-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-anytour-canonical-bridge-current-1971-20260917-v1/
+          retention-days: 90
