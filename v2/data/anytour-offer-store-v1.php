@@ -13,6 +13,7 @@ final class AnyTourOfferStoreV1
     private const TOUR=['checkin','nights','party','meal','room','placement','availability','flight_details','observed_at'];
     private const PARTY=['adults','children','child_ages'];
     private const CTX=['generation','page','issued_at','expires_at','current_context_verified'];
+    private const MAX_LISTING_TTL_SECONDS=86400;
 
     public static function beginRefresh(PDO $db,string $provider,string $scope,DateTimeImmutable $now,int $lease=900):string
     {
@@ -45,7 +46,7 @@ final class AnyTourOfferStoreV1
         self::outsideTx($db); $token=self::digest($token,'ANYTOUR_OFFER_REFRESH_TOKEN');
         if($ownHotelId<1) throw new InvalidArgumentException('ANYTOUR_OFFER_HOTEL_ID');
         $v=self::validateDto($dto); $seen=self::sqlTime($seenAt); $expires=self::sqlTime($expiresAt);
-        if($expires<=$seen||$expiresAt->getTimestamp()-$seenAt->getTimestamp()>21600) throw new InvalidArgumentException('ANYTOUR_OFFER_EXPIRY');
+        if($expires<=$seen||$expiresAt->getTimestamp()-$seenAt->getTimestamp()>self::MAX_LISTING_TTL_SECONDS) throw new InvalidArgumentException('ANYTOUR_OFFER_EXPIRY');
         return self::tx($db,static function()use($db,$token,$ownHotelId,$dto,$v,$seen,$expires):array{
             $r=self::refreshLock($db,$token); if(($r['status']??null)!=='running') throw new DomainException('ANYTOUR_OFFER_REFRESH_NOT_RUNNING');
             $state=self::scopeLock($db,(string)$r['provider'],(string)$r['scope_sha256']);

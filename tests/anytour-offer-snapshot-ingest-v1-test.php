@@ -128,16 +128,18 @@ check_snapshot(count($stored)===2, 'stored-two');
 foreach ($stored as $item) {
     check_snapshot($item['source_context_expires_at']==='2026-09-17 03:15:00', 'source-context-preserved');
     check_snapshot($item['last_seen_at']==='2026-09-17 03:00:00', 'listing-seen-at');
-    check_snapshot($item['expires_at']==='2026-09-17 09:00:00', 'listing-six-hour-expiry');
+    check_snapshot($item['expires_at']==='2026-09-18 03:00:00', 'listing-one-day-expiry');
 }
 $afterContext=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+20 minutes'));
 check_snapshot(count($afterContext['items'])===2, 'visible-after-provider-context-expiry');
 foreach ($afterContext['items'] as $item) {
     check_snapshot(($item['offer']['selection_state']??null)==='refresh_required', 'cached-refresh-required');
     check_snapshot(($item['offer']['booking_enabled']??null)===false, 'cached-booking-disabled');
-    check_snapshot($item['expiresAt']==='2026-09-17T09:00:00Z', 'cached-bounded-expiry');
+    check_snapshot($item['expiresAt']==='2026-09-18T03:00:00Z', 'cached-one-day-expiry');
 }
-$afterListing=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+6 hours'));
+$beforeListingExpiry=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+23 hours 59 minutes'));
+check_snapshot(count($beforeListingExpiry['items'])===2, 'visible-through-one-day-window');
+$afterListing=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+24 hours'));
 check_snapshot(count($afterListing['items'])===0, 'hidden-at-local-listing-expiry');
 
 $updated=$rowA;$updated['dto']=dto_snapshot('anex',101,'a2','198000',$issued+60);$updated['expires_at']='2026-09-17T03:16:00Z';
@@ -193,4 +195,4 @@ check_snapshot(count($visible['items'])===1 && $visible['items'][0]['provider']=
 $source=file_get_contents(__DIR__.'/../v2/data/anytour-offer-snapshot-ingest-v1.php');
 check_snapshot(is_string($source) && !preg_match('/\b(?:curl_|file_get_contents\s*\(\s*[\'\"]https?:|fsockopen|stream_socket_client)\b/i',$source), 'no-supplier-transport');
 
-echo "ANYTOUR_OFFER_SNAPSHOT_INGEST_OK complete=2 aborted=1 providers=2 schema=2 cached_listing_ttl=21600\n";
+echo "ANYTOUR_OFFER_SNAPSHOT_INGEST_OK complete=2 aborted=1 providers=2 schema=2 cached_listing_ttl=86400\n";
