@@ -1,0 +1,27 @@
+name: Search3 local DB-first browser
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'v2/search3-local-db-provider-v1.js'
+      - 'v2/bundle-manifest-v1.php'
+      - 'tests/search3-local-db-provider-v1.test.js'
+      - 'tests/search3-lean-base-bundle-smoke.php'
+      - '.github/workflows/search3-local-db-browser.yml'
+permissions:
+  contents: read
+jobs:
+  db-first-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: JavaScript syntax and runtime contract
+        run: |
+          node --check v2/search3-local-db-provider-v1.js
+          node tests/search3-local-db-provider-v1.test.js
+      - name: Search3-only dependency order and legacy isolation
+        run: php tests/search3-lean-base-bundle-smoke.php
