@@ -195,7 +195,7 @@ final class AnyTourAnexThreeSourceResortStarV1
             $native = [];
             foreach ($offers as $row) $native[$row['original_anex_hotel_id']] = true;
             if (count($native) !== 1) { $andromedaConflicts[] = ['andromeda_hotel_id'=>$andrId,'reason'=>'multiple_original_anex_ids']; continue; }
-            $anexId = array_key_first($native);
+            $anexId = (string)array_key_first($native);
             $buckets = [];
             foreach ($offers as $row) $buckets[$row['bucket']] = true;
             $andromedaByAnex[$anexId][$andrId] = ['buckets'=>array_keys($buckets),'name_key'=>self::first($offers)['name_key'] ?? ''];
@@ -214,7 +214,7 @@ final class AnyTourAnexThreeSourceResortStarV1
                 continue;
             }
             if (count($directIds) === 1) {
-                $anexId = array_key_first($directIds);
+                $anexId = (string)array_key_first($directIds);
                 $directTv[] = [
                     'tv_hotel_id'=>$tvId,'anex_hotel_id'=>$anexId,
                     'andromeda_hotel_ids'=>array_keys($andromedaByAnex[$anexId] ?? []),
@@ -225,9 +225,10 @@ final class AnyTourAnexThreeSourceResortStarV1
             }
 
             $bucketIds = [];
-            foreach ($offers as $row) foreach (array_keys($anexByBucket[$row['bucket']] ?? []) as $anexId) $bucketIds[$anexId] = true;
+            foreach ($offers as $row) foreach (array_keys($anexByBucket[$row['bucket']] ?? []) as $anexId) $bucketIds[(string)$anexId] = true;
             $possible = [];
-            foreach (array_keys($bucketIds) as $anexId) {
+            foreach (array_keys($bucketIds) as $anexIdRaw) {
+                $anexId = (string)$anexIdRaw;
                 if (!isset($anex[$anexId]) || count($andromedaByAnex[$anexId] ?? []) !== 1) continue;
                 $relation = self::relation($anex[$anexId], $offers);
                 $nameExact = (self::first($anex[$anexId])['name_key'] ?? '') !== ''
@@ -237,7 +238,7 @@ final class AnyTourAnexThreeSourceResortStarV1
                 if (!$nameExact && !$priceStrong) continue;
                 $possible[] = [
                     'anex_hotel_id'=>$anexId,
-                    'andromeda_hotel_id'=>array_key_first($andromedaByAnex[$anexId]),
+                    'andromeda_hotel_id'=>(string)array_key_first($andromedaByAnex[$anexId]),
                     'name_exact'=>$nameExact,
                     'price_relation'=>$relation,
                     'strong'=>$priceStrong || ($nameExact && $priceSome),
@@ -256,7 +257,7 @@ final class AnyTourAnexThreeSourceResortStarV1
 
         $buckets = [];
         foreach (array_keys($anexByBucket) as $bucket) {
-            $a = array_keys($anexByBucket[$bucket]);
+            $a = array_map('strval', array_keys($anexByBucket[$bucket]));
             $d = [];
             foreach ($a as $anexId) foreach (($andromedaByAnex[$anexId] ?? []) as $andrId=>$meta) {
                 if (in_array($bucket, $meta['buckets'], true)) $d[$andrId] = true;
