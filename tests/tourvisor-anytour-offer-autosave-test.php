@@ -52,7 +52,7 @@ tv_autosave_check(is_file($statePath), 'state_file');
 $readMethod = new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class, 'readState');
 $state = $readMethod->invoke(null, $searchId, $now);
 tv_autosave_check(is_array($state) && ($state['scope'] ?? null) === $scope, 'scope_roundtrip');
-tv_autosave_check(($state['terminal_at'] ?? 'missing') === null, 'not_terminal_initially');
+tv_autosave_check(array_key_exists('terminal_at', $state) && $state['terminal_at'] === null, 'not_terminal_initially');
 
 $partial = AnyTourTourvisorOfferAutosaveV1::captureSearchStatus($searchId, ['progress' => 99], $now->modify('+10 seconds'));
 tv_autosave_check(($partial['ok'] ?? null) === false && ($partial['reason'] ?? null) === 'not_terminal', 'partial_rejected');
