@@ -191,10 +191,10 @@ final class AnyTourAnexProgramApdStoreV1
         $cash=self::nullableMoney($row['cashrate']??null,'ANEX_APD_CASHRATE',8);
         $cadult=self::nullableMoney($row['price_converted_adult']??null,'ANEX_APD_CONVERTED_ADULT');
         $cchild=self::nullableMoney($row['price_converted_chd']??null,'ANEX_APD_CONVERTED_CHILD');
-        return ['state'=>'rate']+$base+[
+        return array_replace(['state'=>'rate']+$base,[
             'price_adult'=>$adult,'price_child'=>$child,'cashrate'=>$cash,
             'price_converted_adult'=>$cadult,'price_converted_child'=>$cchild,
-        ];
+        ]);
     }
 
     private static function positiveInt($value,int $max,string $error):int
