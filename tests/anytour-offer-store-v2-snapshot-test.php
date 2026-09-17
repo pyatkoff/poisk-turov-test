@@ -5,7 +5,7 @@ require_once __DIR__.'/../v2/data/anytour-offer-store-v1.php';
 
 function need_v2(bool $ok,string $label):void{if(!$ok)throw new RuntimeException('CHECK_FAILED:'.$label);}
 function error_v2(callable $call,string $expected,string $label):void{
- try{$call();}catch(RuntimeException $e){need_v2($e->getMessage()===$expected,$label.'-error');return;}
+ try{$call();}catch(Throwable $e){need_v2($e->getMessage()===$expected,$label.'-error');return;}
  throw new RuntimeException('CHECK_FAILED:'.$label.'-did-not-fail');
 }
 function sql_file_v2(PDO $pdo,string $path):void{$sql=preg_replace('/^\s*--.*$/m','',(string)file_get_contents($path));foreach(preg_split('/;\s*(?:\r?\n|$)/',$sql)?:[] as $statement){$statement=trim($statement);if($statement!=='')$pdo->exec($statement);}}
@@ -70,4 +70,17 @@ error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 mi
 $pdo->prepare('UPDATE anytour_offers SET payload_json=?,payload_sha256=? WHERE id=?')->execute([$stored['payload_json'],$stored['payload_sha256'],$id]);
 $read=AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 minutes'));need_v2(count($read['items'])===1&&$read['items'][0]['price']==='188000','integrity-restored');
 
-echo "ANYTOUR_OFFER_STORE_V2_SNAPSHOT_OK versions=3 visible=1 aborted_hidden=1 db_first=1 listing_integrity=1 positive_price=1 time_integrity=1\n";
+// Multi-provider capacity regression: the old global 5,000-row default could hide a later provider completely.
+$tvToken=hash('sha256','tourvisor:bulk:complete');$bulkSeen='2026-09-16 18:10:00';$bulkExpires='2026-09-16 20:10:00';
+$pdo->prepare("INSERT INTO anytour_offer_scope_state(provider,scope_sha256,active_refresh_token,latest_complete_refresh_token,revision,updated_at) VALUES('tourvisor',?,NULL,?,1,?)")->execute([$scope,$tvToken,$bulkSeen]);
+$tvPayload=json_encode(['schema_version'=>1,'provider'=>'tourvisor','listingPriceReady'=>true,'listingPrice'=>'100000','currency'=>'RUB','selection_state'=>'refresh_required','booking_enabled'=>false],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);$tvPayloadSha=hash('sha256',$tvPayload);
+$pdo->exec('CREATE TEMPORARY TABLE anytour_offer_bulk_seq_v2(n INT UNSIGNED NOT NULL PRIMARY KEY) ENGINE=MEMORY');
+for($start=1;$start<=5000;$start+=500){$end=min(5000,$start+499);$values=[];for($n=$start;$n<=$end;$n++)$values[]='('.$n.')';$pdo->exec('INSERT INTO anytour_offer_bulk_seq_v2(n) VALUES '.implode(',',$values));}
+$qScope=$pdo->quote($scope);$qToken=$pdo->quote($tvToken);$qPayload=$pdo->quote($tvPayload);$qPayloadSha=$pdo->quote($tvPayloadSha);$qSeen=$pdo->quote($bulkSeen);$qExpires=$pdo->quote($bulkExpires);$emptyHash=$pdo->quote(hash('sha256','{}'));
+$pdo->exec("INSERT INTO anytour_offers(anytour_hotel_id,legacy_hotel_id,provider,scope_sha256,search_ref_digest,offer_ref_digest,provider_hotel_ref_digest,identity_sha256,operator_json,operator_sha256,checkin,nights,adults,children,child_ages_json,party_sha256,meal_json,room_json,placement_json,display_price,currency,final_price_ready,final_price_verified,payload_json,payload_sha256,observed_at,source_context_expires_at,last_refresh_token,last_seen_at,expires_at,is_active) SELECT $own,101,'tourvisor',$qScope,SHA2(CONCAT('tv-search:',n),256),SHA2(CONCAT('tv-offer:',n),256),SHA2('tv-hotel',256),SHA2(CONCAT('tv-identity:',n),256),'{}',$emptyHash,'2026-10-05',7,2,0,'[]',SHA2('[]',256),'{}','{}','{}',100000.00,'RUB',1,0,$qPayload,$qPayloadSha,$qSeen,'2026-09-16 18:25:00',$qToken,$qSeen,$qExpires,1 FROM anytour_offer_bulk_seq_v2");
+$limited=AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+11 minutes'),5000);$limitedProviders=array_count_values(array_column($limited['items'],'provider'));need_v2(count($limited['items'])===5000&&($limitedProviders['tourvisor']??0)===5000&&!isset($limitedProviders['anex']),'explicit-old-cap-demonstrates-provider-starvation');
+$wide=AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+11 minutes'));$wideProviders=array_count_values(array_column($wide['items'],'provider'));need_v2(count($wide['items'])===5001&&($wideProviders['tourvisor']??0)===5000&&($wideProviders['anex']??0)===1,'default-read-keeps-later-provider');
+$page=search3_local_results_build($pdo,$params,$at->modify('+11 minutes'));$counts=(array)$page['providerOfferCounts'];need_v2($page['hotelCount']===1&&$page['eligibleHotelCount']===1&&$page['offerCount']===5001&&$page['storedOfferCount']===5001&&$page['omittedHotelCount']===0&&$page['omittedOfferCount']===0&&($counts['tourvisor']??0)===5000&&($counts['anex']??0)===1,'db-first-multiprovider-cap');
+error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+11 minutes'),15001),'ANYTOUR_OFFER_READ_LIMIT','read-limit-still-bounded');
+
+echo "ANYTOUR_OFFER_STORE_V2_SNAPSHOT_OK versions=3 visible=5001 aborted_hidden=1 db_first=1 listing_integrity=1 positive_price=1 time_integrity=1 multiprovider_cap=1\n";
