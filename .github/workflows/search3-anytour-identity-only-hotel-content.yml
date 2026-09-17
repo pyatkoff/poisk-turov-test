@@ -1,0 +1,56 @@
+name: Search3 AnyTour identity-only hotel content
+
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_identity_only_hotel_content_v1.php'
+      - 'tests/anytour_identity_only_hotel_content_test.php'
+      - '.github/workflows/search3-anytour-identity-only-hotel-content.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  identity-only-content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_identity_content_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, curl
+          coverage: none
+      - name: Validate isolated LOCAL content queue
+        env:
+          ANYTOUR_IDENTITY_CONTENT_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_identity_content_fixture;charset=utf8mb4'
+          ANYTOUR_IDENTITY_CONTENT_TEST_PASSWORD: fixture-only-password
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_identity_only_hotel_content_v1.php
+          php -l tests/anytour_identity_only_hotel_content_test.php
+          grep -Fq "s.namespace='legacy_catalog'" scripts/catalog/anytour_identity_only_hotel_content_v1.php
+          grep -Fq "d.status<>'generic_product'" scripts/catalog/anytour_identity_only_hotel_content_v1.php
+          grep -Fq "v2_data_tv_get('/hotels/' . \$hotelId)" scripts/catalog/anytour_identity_only_hotel_content_v1.php
+          grep -Fq "'canonicalProfileWrites'=>0" scripts/catalog/anytour_identity_only_hotel_content_v1.php
+          php tests/anytour_identity_only_hotel_content_test.php | tee identity-only-content-test.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-identity-only-content-test
+          path: identity-only-content-test.txt
+          if-no-files-found: error
