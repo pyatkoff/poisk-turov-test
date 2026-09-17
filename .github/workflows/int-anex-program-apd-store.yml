@@ -15,6 +15,7 @@ on:
       - 'tests/anex-apd-prewarm-test.php'
       - 'v2/data/migrations/20260918-anex-program-apd-cache.sql'
       - 'tests/anex-program-apd-store-test.php'
+      - 'tests/anex-program-apd-store-mysql-test.php'
       - 'docs/integrations/fuel-search-pricing-owner-rule-20260914.md'
       - '.github/workflows/int-anex-program-apd-store.yml'
   pull_request:
@@ -28,6 +29,7 @@ on:
       - 'tests/anex-apd-prewarm-test.php'
       - 'v2/data/migrations/20260918-anex-program-apd-cache.sql'
       - 'tests/anex-program-apd-store-test.php'
+      - 'tests/anex-program-apd-store-mysql-test.php'
       - 'docs/integrations/fuel-search-pricing-owner-rule-20260914.md'
       - '.github/workflows/int-anex-program-apd-store.yml'
 
@@ -37,8 +39,25 @@ permissions:
 jobs:
   contract:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: anex_program_store_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, pdo_sqlite
       - name: Validate program/APD persistence contract
         run: |
           set -euo pipefail
@@ -49,8 +68,12 @@ jobs:
           php -l app/integrations/anex-apd-prewarm.php
           php -l scripts/ops/anex_apd_prewarm.php
           php -l tests/anex-program-apd-store-test.php
+          php -l tests/anex-program-apd-store-mysql-test.php
           php -l tests/anex-apd-prewarm-test.php
           php tests/anex-program-apd-store-test.php
+          ANEX_PROGRAM_STORE_MYSQL_DSN='mysql:host=127.0.0.1;port=3306;dbname=anex_program_store_test;charset=utf8mb4' \
+          ANEX_PROGRAM_STORE_MYSQL_USER=root ANEX_PROGRAM_STORE_MYSQL_PASSWORD=root \
+          php tests/anex-program-apd-store-mysql-test.php
           php tests/anex-program-observation-runtime-test.php
           php tests/anex-apd-prewarm-test.php
           grep -Fq 'PRIMARY KEY (supplier_program_id, date_beg, nights, supplier_currency_id)' v2/data/migrations/20260918-anex-program-apd-cache.sql
