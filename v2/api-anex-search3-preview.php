@@ -256,7 +256,8 @@ function anytour_anex_search3_project(array $offers, array $metadata, array $par
         }
         $tour = ['price' => $price, 'checkin' => $offer['checkin'], 'nights' => $offer['nights'],
             'adults' => $offer['adults'], 'children' => $offer['children'], 'meal' => $offer['meal'], 'room' => $offer['room'],
-            'kind' => $offer['kind'], 'final_price_verified' => false];
+            'kind' => $offer['kind'], 'flight_type' => ($offer['flight_type'] ?? null) === 'regular' ? 'regular' : null,
+            'final_price_verified' => false];
         if ($searchRef !== null) {
             if (!is_string($offer['offer_key'] ?? null) || !preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $offer['offer_key'])) {
                 throw new InvalidArgumentException('ANEX_INVALID_SESSION');
