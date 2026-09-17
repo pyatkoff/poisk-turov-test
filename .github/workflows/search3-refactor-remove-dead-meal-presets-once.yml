@@ -59,14 +59,34 @@ jobs:
           grep -Fq 'bindPresets(categoryPresets,categorySelect)' src/search3/behavior/results/local-hotel-filter.js
           grep -Fq 'syncPresets(categoryPresets,categorySelect,Array.from(categorySelect.options)' src/search3/behavior/results/local-hotel-filter.js
 
-      - name: Rebuild canonical Search3 assets and verify
+      - name: Rebuild canonical Search3 assets
         shell: bash
         run: |
           set -euo pipefail
           python3 scripts/build/search3_assets.py --write
+
+      - name: Verify canonical Search3 assets
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 scripts/build/search3_assets.py --check
+
+      - name: Verify source JS syntax
+        shell: bash
+        run: |
+          set -euo pipefail
           node --check src/search3/behavior/results/local-hotel-filter.js
+
+      - name: Verify generated JS syntax
+        shell: bash
+        run: |
+          set -euo pipefail
           node --check v2/search3-results-filters-v1.js
+
+      - name: Verify generated meal cleanup invariants
+        shell: bash
+        run: |
+          set -euo pipefail
           ! grep -Fq 'mealPresets' v2/search3-results-filters-v1.js
           ! grep -Fq "pick('meal:breakfast')" v2/search3-results-filters-v1.js
           ! grep -Fq "pick('meal:all-inclusive')" v2/search3-results-filters-v1.js
