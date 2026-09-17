@@ -1,0 +1,81 @@
+name: Search3 shortlist exact facts once
+
+on:
+  push:
+    branches:
+      - refactor/search3-drop-meal-normalization-20260917
+    paths:
+      - .github/workflows/search3-shortlist-exact-facts-once.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: search3-shortlist-exact-facts-once
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/search3-drop-meal-normalization-20260917
+          fetch-depth: 0
+
+      - name: Patch stale shortlist meal and room assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "refactor/search3-drop-meal-normalization-20260917"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/search3-shortlist-browser.cjs')
+          text = path.read_text()
+          replacements = [
+              ("['Стандарт', 'Семейный', 'Делюкс'], 'different exact room facts retain their offer identity through the shared display labels'", "['STANDARD', 'FAMILY', 'DELUXE'], 'different exact room facts retain their exact supplier labels'"),
+              ("assert.match(snapshots[0].text, /Стандарт/);", "assert.match(snapshots[0].text, /STANDARD/);"),
+              ("assert.match(snapshots[1].text, /Семейный/);", "assert.match(snapshots[1].text, /FAMILY/);"),
+              (".locator('b').innerText(), 'Стандарт');", ".locator('b').innerText(), 'STANDARD');"),
+              ("'Различаются: цена при сохранении.', 'equivalent names and displayed dates do not create false differences'", "'Различаются: питание, номер, цена при сохранении.', 'exact meal and room labels remain distinct while display-equivalent dates do not create false differences'"),
+              ("['Всё включено', 'Всё включено', 'Всё включено'], 'comparison displays one Russian meal label while saved originals remain intact'", "['AI', 'Всё включено', 'All Inclusive'], 'comparison preserves exact meal labels while saved originals remain intact'"),
+              ("['Стандарт', 'Стандарт', 'Стандарт'], 'comparison displays one reviewed Russian room label while saved originals remain intact'", "['STANDARD', 'Standard room', 'Стандартный номер'], 'comparison preserves exact room labels while saved originals remain intact'"),
+              ("assert.equal(await shortlist.locator('dt').evaluateAll(nodes => nodes.some(node => node.textContent.includes('отличается'))), false, 'full view does not incorrectly mark equivalent facts');", "assert.equal(await shortlist.locator('dt').evaluateAll(nodes => nodes.filter(node => node.textContent.includes('отличается')).length), 6, 'full view marks the three exact meal facts and three exact room facts as different');"),
+              (".count(), 7, 'seven equivalent facts are shown once'", ".count(), 5, 'five genuinely equivalent facts are shown once'"),
+              (".count(), 0, 'only differences omits equivalent per-offer facts'", ".count(), 6, 'only differences keeps two exact differing facts per offer'"),
+              ("displayIdentity: { commonFacts: 7,", "displayIdentity: { commonFacts: 5,"),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'exact marker count {count}, expected 1: {old!r}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+          node --check tests/search3-shortlist-browser.cjs
+          ! grep -Fq "['Стандарт', 'Семейный', 'Делюкс']" tests/search3-shortlist-browser.cjs
+          ! grep -Fq "Различаются: цена при сохранении." tests/search3-shortlist-browser.cjs
+          grep -Fq "['AI', 'Всё включено', 'All Inclusive']" tests/search3-shortlist-browser.cjs
+          grep -Fq "['STANDARD', 'Standard room', 'Стандартный номер']" tests/search3-shortlist-browser.cjs
+          git diff --check
+
+      - name: Verify bounded diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only)"
+          test "$changed" = "tests/search3-shortlist-browser.cjs"
+
+      - name: Commit test-only cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/search3-shortlist-browser.cjs
+          git diff --cached --check
+          git commit -m 'test(search3): keep exact shortlist meal and room facts'
+          git push origin HEAD:refactor/search3-drop-meal-normalization-20260917
