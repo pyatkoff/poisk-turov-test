@@ -1,0 +1,100 @@
+name: INT Tourvisor production writer verify v1
+
+on:
+  push:
+    branches:
+      - 'ops/int-tourvisor-production-writer-verify-20260917-v1'
+    paths:
+      - '.github/workflows/int-tourvisor-production-writer-verify-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-tourvisor-production-writer-verify
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: aef434f65d2e481a081ac80f9c8b59babe87bc90
+  ACTIVATION_OPERATION: int-tourvisor-production-writer-20260917-v6
+  EXPECTED_API_SHA: 0aee743972d3ac9eebeb5a54f899355375f4e5891369a2e873ceeb71097f68e2
+  EXPECTED_HELPER_SHA: 8d89ba18ba24d23c73efdb78824a3c6fa7f42766c357d18eb85eeea21d3416e1
+  STATE_NAME: anytour-tourvisor-offer-d7276ba3f858f5419313ef6bee9b8dea09320c7052fd03b1115f2e659c915681.json
+
+jobs:
+  verify:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Bind isolated read-only verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-tourvisor-production-writer-verify-v1.yml'
+          test "${changed[1]}" = 'scripts/diagnostics/int_tourvisor_production_writer_verify_v1.php'
+          php -l scripts/diagnostics/int_tourvisor_production_writer_verify_v1.php >/dev/null
+          diag=scripts/diagnostics/int_tourvisor_production_writer_verify_v1.php
+          ! grep -Eq 'curl_|v2_data_tv_get\(|INSERT|UPDATE|DELETE' "$diag"
+          grep -Fq 'SET TRANSACTION READ ONLY' "$diag"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo PRODUCTION_WRITER_VERIFY_SOURCE_BOUND
+
+      - name: Prepare SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Verify production bytes, state and DB read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          remote_script="/tmp/int-tourvisor-production-writer-verify.${GITHUB_RUN_ID}.php"
+          scp "${scp_opts[@]}" scripts/diagnostics/int_tourvisor_production_writer_verify_v1.php "$remote:$remote_script"
+          ssh "${opts[@]}" "$remote" bash -s -- "$remote_script" "$ACTIVATION_OPERATION" "$EXPECTED_API_SHA" "$EXPECTED_HELPER_SHA" <<'REMOTE' > "$RUNNER_TEMP/result.json"
+          set -euo pipefail
+          script="$1"; operation="$2"; api_sha="$3"; helper_sha="$4"; trap 'rm -f "$script"' EXIT
+          php -l "$script" >/dev/null
+          php "$script" "$HOME/www/anytoour.ru" "$HOME/.anytour-ops" "$operation" "$api_sha" "$helper_sha"
+          REMOTE
+          jq -e '.status == "completed_read_only" and .api_matches_expected and .helper_matches_expected and .private_data_runtime_exists and .deny_guard_exact and .state_exists and .state_mode == 384 and .state_terminal_persisted and .state_saved_persisted and .db.completed_refreshes >= 3 and .db.active_offers >= 223 and .db.ready_rub >= 223 and .supplier_calls == 0 and .db_writes == 0 and .public_writes == 0' "$RUNNER_TEMP/result.json" >/dev/null
+          jq . "$RUNNER_TEMP/result.json"
+
+      - name: Verify state URL remains private
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "https://anytoour.ru/.cache/catalogs/tourvisor-offer-autosave/$STATE_NAME")"
+          test "$code" = 403 -o "$code" = 404
+          echo "STATE_HTTP=$code"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: int-tourvisor-production-writer-verify-${{ github.run_id }}
+          path: ${{ runner.temp }}/result.json
+          if-no-files-found: error
+          retention-days: 30
