@@ -45,7 +45,7 @@ class EvidenceError(ValueError):
 
 def _clean_atom(value: Any, field: str) -> str:
     text = str(value).strip()
-    if not text or len(text) > 240 or "\x00" in text:
+    if not text or len(text) > 240 or "\x00" in text or ":" in text:
         raise EvidenceError(f"invalid {field}")
     return text
 
@@ -178,10 +178,7 @@ class EvidenceGraph:
         edge_ids: set[str] = set()
         for node in component:
             edge_ids.update(self.adjacency.get(node, ()))
-        return sorted(
-            (self.edges[eid] for eid in edge_ids),
-            key=lambda edge: edge.edge_id,
-        )
+        return sorted((self.edges[eid] for eid in edge_ids), key=lambda edge: edge.edge_id)
 
     def affected_components(self, changed_edge_ids: Iterable[str]) -> list[dict[str, Any]]:
         seeds: set[str] = set()
@@ -266,6 +263,15 @@ class EvidenceGraph:
 
         if len(accepted_direct) == 1:
             accepted_item = next(item for item in qualified if item["target"] == accepted_direct[0])
+            competing_clean = [item for item in clean if item["target"] != accepted_direct[0]]
+            if not accepted_item["veto"] and competing_clean:
+                return {
+                    "node": provider_node,
+                    "classification": "conflict",
+                    "targets": [accepted_item, *competing_clean],
+                    "component_size": len(component),
+                    "reason": "authoritative_evidence_disagrees_with_accepted",
+                }
             if not accepted_item["veto"]:
                 return {
                     "node": provider_node,
