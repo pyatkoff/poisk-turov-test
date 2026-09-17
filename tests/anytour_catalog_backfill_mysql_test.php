@@ -22,7 +22,7 @@ final class BackfillObservedPDO extends PDO {
     public bool $probeReadOnly = false;
     public bool $writeRejected = false;
     public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false {
-        if ($this->probeReadOnly && str_contains($query, 'content_ready_total')) {
+        if ($this->probeReadOnly && str_contains($query, 'FROM catalog_hotels h')) {
             $this->probeReadOnly = false;
             try { $this->exec("INSERT INTO catalog_hotels(id,name) VALUES (999999,'FORBIDDEN_PROBE')"); }
             catch (PDOException $e) {
@@ -53,14 +53,14 @@ foreach (array_values(array_filter(array_map('trim',explode(';',$sql)))) as $sta
 $pdo->exec("INSERT INTO catalog_hotels(id,name,is_active) VALUES
  (10,'Ready 10',1),(11,'Already owned 11',1),(12,'Failed 12',1),(13,'Blank description 13',1),
  (14,'No images 14',1),(15,'Invalid images 15',1),(16,'Inactive 16',0),(17,'   ',1),
- (18,'Ready 18',1),(19,'Ready 19',1)");
+ (18,'Ready 18',1),(19,'Ready 19',1),(20,'Unsafe media 20',1)");
 $good='[\"https://fixture.test/one.jpg\"]';
 $details=$pdo->prepare('INSERT INTO catalog_hotel_details(hotel_id,status,description,images_json,fetched_at) VALUES (?,?,?,?,?)');
 foreach ([
  [10,'success','Desc 10',$good],[11,'success','Desc 11',$good],[12,'failure','Desc 12',$good],
  [13,'success','   ',$good],[14,'success','Desc 14','[]'],[15,'success','Desc 15','not-json'],
  [16,'success','Desc 16',$good],[17,'success','Desc 17',$good],[18,'success','Desc 18',$good],
- [19,'success','Desc 19',$good],
+ [19,'success','Desc 19',$good],[20,'success','Desc 20','[\"http://unsafe.test/one.jpg\"]'],
 ] as $row) $details->execute([$row[0],$row[1],$row[2],$row[3],'2026-09-17 01:00:00']);
 
 $catalog = new AnyTourCanonicalCatalog($pdo);
@@ -77,7 +77,8 @@ $planner = new AnyTourCatalogBackfillV1($pdo);
 $pdo->probeReadOnly=true; $report=$planner->planNext(2);
 bfVerify($pdo->writeRejected, 'MySQL enforces read-only planner transaction');
 bfVerify($report['status']==='backfill_plan_read_only' && $report['writes']===0 && $report['supplier_calls']===0, 'planner is explicitly read-only');
-bfVerify($report['content_ready_total']===4 && $report['content_ready_bridged']===1 && $report['content_ready_missing']===3, 'coverage separates owned and missing content-ready hotels');
+bfVerify($report['saved_detail_candidates']===7, 'saved detail candidate pool is reported before media sanitization');
+bfVerify($report['content_ready_total']===4 && $report['content_ready_bridged']===1 && $report['content_ready_missing']===3, 'coverage uses the canonical safe-media presentation reader');
 bfVerify($report['selectedIds']===[10,18] && $report['selected']===2 && $report['remaining_after_selected']===1, 'deterministic next missing cohort');
 bfVerify($report['canonical_plan']['source_profiles']===2 && $report['canonical_plan']['existing_bridges']===0
     && $report['canonical_plan']['missingIds']===[] && $report['ready_for_seed_review']===true, 'selected IDs reuse canonical source digest contract');
@@ -120,4 +121,4 @@ foreach ([[],array_merge($args,['--apply=1']),array_merge($args,['--limit=2']),
     bfVerify(!str_contains($err,$dsn) && !str_contains($err,$password), 'CLI failure stays sanitized');
 }
 bfVerify(bfState($pdo)===$stable, 'CLI planning performs no database writes');
-echo "ANYTOUR_BACKFILL_MYSQL_OK checks=$checks selected=2 remaining=2 readonly_engine=1 cli=1 real_mysql=1 live_database=0\n";
+echo "ANYTOUR_BACKFILL_MYSQL_OK checks=$checks selected=2 remaining=2 readonly_engine=1 safe_media=1 cli=1 real_mysql=1 live_database=0\n";
