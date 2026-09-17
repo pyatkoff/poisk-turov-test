@@ -58,7 +58,7 @@ jobs:
           p=pathlib.Path('scripts/catalog/anytour_live24h_seed_manifest_v1.json')
           raw=p.read_bytes(); m=json.loads(raw)
           assert m['schema_version']==1
-          assert m['operation_id']=='anytour-canonical-live24h-seed-2690-20260917-v1'
+          assert m['operation_id']=='anytour-canonical-live24h-seed-2690-20260917-v2'
           assert m['source_operation']=='hotel-match-missing-canonical-priority-1971-20260917-v2'
           assert m['source_run']==35255169735
           assert m['source_payload_sha256']=='e403b2473125185ce52918f01b9d5df0ffaef4cfdfff0c5114bbdaaed2a1c2de'
@@ -66,7 +66,7 @@ jobs:
           assert m['expected_count']==85 and len(ids)==85 and len(set(ids))==85
           assert all(type(x) is int and x>0 for x in ids)
           assert ids[:5]==[9297,141583,81043,49820,1162]
-          assert hashlib.sha256(raw).hexdigest()=='7073be5b872b09d5fd0485b3ecc8cd5df9c7637c8dcd1be267fae2ffd661abd6'
+          assert hashlib.sha256(raw).hexdigest()=='a0ae016aaa30c0b4677e871ceb59259b4fedf234f0d5fc15c52e108f74adad60'
           PY
       - name: Retain fixed source and durable reservation before SSH credentials
         env:
@@ -76,7 +76,7 @@ jobs:
           python3 - <<'PY'
           import hashlib,io,json,os,pathlib,subprocess,tarfile
           base='aad46900e2dd66b54e401942f251ab8aebacf564'
-          op='anytour-canonical-live24h-seed-2690-20260917-v1'
+          op='anytour-canonical-live24h-seed-2690-20260917-v2'
           files=[
             'v2/data/anytour-canonical-catalog-v1.php',
             'v2/data/hotel-presentation-read-v1.php',
@@ -137,7 +137,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
-          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5718946247 > claim.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5719028736 > claim.json
           for i in $(seq 1 30); do
             gh api repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs > checks.json
             if python3 - <<'PY'
@@ -152,7 +152,7 @@ jobs:
           import datetime,json
           c=json.load(open('claim.json')); checks=json.load(open('checks.json'))['check_runs']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          assert 'anytour-canonical-live24h-seed-2690-20260917-v1' in c['body']
+          assert 'anytour-canonical-live24h-seed-2690-20260917-v2' in c['body']
           age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
           assert 0<=age.total_seconds()<7200,'claim expired'
           assert any(x['name']=='guard' and x['conclusion']=='success' for x in checks),'exact Security not green'
@@ -176,20 +176,20 @@ jobs:
           test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
           opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
           remote="$REMOTE_USER@$HOST"
-          path='.anytour-operations/anytour-canonical-live24h-seed-2690-20260917-v1'
-          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/anytour-canonical-live24h-seed-2690-20260917-v1"'
+          path='.anytour-operations/anytour-canonical-live24h-seed-2690-20260917-v2'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/anytour-canonical-live24h-seed-2690-20260917-v2"'
           scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz} "$remote:$path/"
           set +e
           ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
           set -euo pipefail
           umask 077
-          cd "$HOME/.anytour-operations/anytour-canonical-live24h-seed-2690-20260917-v1"
+          cd "$HOME/.anytour-operations/anytour-canonical-live24h-seed-2690-20260917-v2"
           printf 'state=reserved\n' > checkpoint.env
           sha256sum -c transport.sha256
           python3 - <<'PY'
           import hashlib,json,pathlib,tarfile
           r=json.load(open('reservation.json'))
-          assert r['operation']=='anytour-canonical-live24h-seed-2690-20260917-v1' and r['attempt']==1 and r['expectedIds']==85
+          assert r['operation']=='anytour-canonical-live24h-seed-2690-20260917-v2' and r['attempt']==1 and r['expectedIds']==85
           with tarfile.open('payload.tar.gz','r:gz') as t:
               members=t.getmembers(); assert len(members)==len(r['files'])==6
               assert {m.name for m in members}=={'payload/'+n for n in r['files']}
@@ -206,10 +206,10 @@ jobs:
           print(','.join(map(str,m['tourvisor_hotel_ids'])))
           PY
           )
-          php -d display_errors=0 payload/scripts/catalog/anytour_catalog_seed.php --ids="$ids" > plan.json
+          php -d display_errors=0 -r '$_SERVER["DOCUMENT_ROOT"]=getenv("HOME")."/www/anytoour.ru"; require "payload/scripts/catalog/anytour_catalog_seed.php";' -- --ids="$ids" > plan.json
           cp plan.json plan-first.json
           sleep 1
-          php -d display_errors=0 payload/scripts/catalog/anytour_catalog_seed.php --ids="$ids" > plan-second.json
+          php -d display_errors=0 -r '$_SERVER["DOCUMENT_ROOT"]=getenv("HOME")."/www/anytoour.ru"; require "payload/scripts/catalog/anytour_catalog_seed.php";' -- --ids="$ids" > plan-second.json
           python3 - <<'PY'
           import json
           a=json.load(open('plan-first.json')); b=json.load(open('plan-second.json'))
@@ -222,7 +222,7 @@ jobs:
           printf 'state=planned\n' > checkpoint.env
           source_sha=$(cat source.sha)
           printf 'state=apply_started\n' > checkpoint.env
-          php -d display_errors=0 payload/scripts/catalog/anytour_catalog_seed.php --ids="$ids" --apply-source-sha256="$source_sha" > result.json
+          php -d display_errors=0 -r '$_SERVER["DOCUMENT_ROOT"]=getenv("HOME")."/www/anytoour.ru"; require "payload/scripts/catalog/anytour_catalog_seed.php";' -- --ids="$ids" --apply-source-sha256="$source_sha" > result.json
           printf 'state=apply_returned\n' > checkpoint.env
           python3 - <<'PY'
           import json
