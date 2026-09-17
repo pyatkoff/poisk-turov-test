@@ -1,0 +1,54 @@
+name: Search3 local DB-first results
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'v2/data/anytour-search-scope-v1.php'
+      - 'v2/data/search3-local-results-read-v1.php'
+      - 'tests/search3_local_db_results_test.php'
+      - 'v2/data/anytour-offer-store-v1.php'
+      - 'v2/data/anytour-canonical-catalog-v1.php'
+      - 'v2/data/migrations/20260916-anytour-offer-store.sql'
+      - '.github/workflows/search3-local-db-results.yml'
+permissions:
+  contents: read
+jobs:
+  db-first-reader:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_local_results_fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Syntax
+        run: |
+          php -l v2/data/anytour-search-scope-v1.php
+          php -l v2/data/search3-local-results-read-v1.php
+          php -l tests/search3_local_db_results_test.php
+      - name: Existing offer store regression
+        env:
+          ANYTOUR_OFFER_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_local_results_fixture;charset=utf8mb4'
+          ANYTOUR_OFFER_TEST_USER: root
+          ANYTOUR_OFFER_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour-offer-store-v1-test.php --require-sql
+      - name: DB first reader regression
+        env:
+          ANYTOUR_LOCAL_RESULTS_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_local_results_fixture;charset=utf8mb4'
+          ANYTOUR_LOCAL_RESULTS_TEST_PASSWORD: fixture-only-password
+        run: php tests/search3_local_db_results_test.php
