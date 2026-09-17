@@ -20,7 +20,7 @@ concurrency:
 
 env:
   EXPECTED_BASE_RELEASE: 5b21e7f554da8da4f49f92e4fe67842fd1fbeff0
-  OPERATION_ID: anytour-tourvisor-hotel-content-2690-20260917-b003-v1
+  OPERATION_ID: anytour-tourvisor-hotel-content-2690-20260918-b003-v1
   CLAIM_COMMENT_ID: '5721987177'
   CANDIDATE_SCOPE: canonical
   HOTEL_LIMIT: '100'
@@ -37,7 +37,7 @@ jobs:
       github.triggering_actor == 'pyatkoff' &&
       github.run_attempt == 1 &&
       github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
-      github.event.pull_request.head.ref == 'ops/local-tourvisor-content-canonical-2690-20260917-b003-v1'
+      github.event.pull_request.head.ref == 'ops/local-tourvisor-content-canonical-2690-20260918-b003-v1'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
