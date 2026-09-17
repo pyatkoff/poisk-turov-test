@@ -1,0 +1,181 @@
+name: Search3 AnyTour canonical coverage census v1
+
+on:
+  push:
+    branches:
+      - diag/local-2690-canonical-coverage-census-20260917-v1
+    paths:
+      - 'scripts/catalog/anytour_catalog_coverage_census.php'
+      - 'tests/anytour_catalog_coverage_census_test.php'
+      - '.github/workflows/search3-anytour-canonical-coverage-census-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: search3-local-canonical-coverage-census-v1
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BASE_RELEASE: 996a2ece8aef332c1a31ed6c7e2da790759bcc99
+  OPERATION_ID: anytour-canonical-coverage-census-2690-20260917-v1
+
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_coverage_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@2f6f0d8b22e67751b4d9e9d5ba08c9256f449f28
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Pin ancestry and enforce read-only source surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/diag/local-2690-canonical-coverage-census-20260917-v1'
+          git fetch --no-tags origin release/search3-production-ready-v1
+          test "$(git merge-base HEAD origin/release/search3-production-ready-v1)" = "$EXPECTED_BASE_RELEASE"
+          php -l scripts/catalog/anytour_catalog_coverage_census.php
+          php -l tests/anytour_catalog_coverage_census_test.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)[[:space:]]+(INTO|TABLE|FROM|anytour_)' scripts/catalog/anytour_catalog_coverage_census.php
+          grep -Fq 'SET TRANSACTION READ ONLY' scripts/catalog/anytour_catalog_coverage_census.php
+          grep -Fq "'writes'=>0" scripts/catalog/anytour_catalog_coverage_census.php
+          grep -Fq "'supplier_calls'=>0" scripts/catalog/anytour_catalog_coverage_census.php
+      - name: Run disposable MySQL coverage regression
+        env:
+          ANYTOUR_COVERAGE_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_coverage_fixture;charset=utf8mb4'
+          ANYTOUR_COVERAGE_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour_catalog_coverage_census_test.php | tee fixture-result.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anytour-canonical-coverage-fixture
+          path: fixture-result.txt
+          if-no-files-found: error
+
+  current-read-only:
+    needs: fixture
+    if: >-
+      github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      REMOTE_TMP: /tmp/anytour-canonical-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Recheck exact operation source and ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/diag/local-2690-canonical-coverage-census-20260917-v1'
+          git fetch --no-tags origin release/search3-production-ready-v1
+          test "$(git merge-base HEAD origin/release/search3-production-ready-v1)" = "$EXPECTED_BASE_RELEASE"
+          sha256sum scripts/catalog/anytour_catalog_coverage_census.php | tee census-source.sha256
+      - name: Prepare ephemeral SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Stage only the read-only census
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir '$REMOTE_TMP'; test -s \"\$HOME/www/anytoour.ru/data/db-v1.php\""
+          scp "${opts[@]}" scripts/catalog/anytour_catalog_coverage_census.php "$remote:$REMOTE_TMP/census.php"
+      - name: Read CURRENT canonical coverage once
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "bash -s -- '$REMOTE_TMP' '$OPERATION_ID' '$EXPECTED_BASE_RELEASE'" <<'REMOTE' | tee canonical-coverage-current.json
+          set -euo pipefail
+          tmp="$1"; operation="$2"; base_release="$3"
+          root="$HOME/www/anytoour.ru"
+          ANYTOUR_SITE_ROOT="$root" php "$tmp/census.php" "--operation=$operation" "--base-release-sha=$base_release"
+          REMOTE
+      - name: Verify aggregate receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          rows=[line.strip() for line in open('canonical-coverage-current.json',encoding='utf-8') if line.strip().startswith('{')]
+          if len(rows)!=1: raise SystemExit('expected one census receipt')
+          r=json.loads(rows[0])
+          if r.get('operation')!='anytour-canonical-coverage-census-2690-20260917-v1': raise SystemExit('operation mismatch')
+          if r.get('base_release_sha')!='996a2ece8aef332c1a31ed6c7e2da790759bcc99': raise SystemExit('base mismatch')
+          if r.get('status')!='completed_read_only': raise SystemExit('not completed read-only')
+          for key in ('writes','supplier_calls','mapping_writes','legacy_writes','site_file_writes'):
+              if r.get(key)!=0: raise SystemExit(f'ownership violation: {key}')
+          profiles=r.get('profiles') or {}
+          if not isinstance(profiles.get('active'),int) or profiles['active']<1: raise SystemExit('no active canonical profiles')
+          integrity=r.get('integrity') or {}
+          if integrity.get('ok') is not True: raise SystemExit('catalog integrity mismatch surfaced by census')
+          modes=((r.get('sources') or {}).get('active_hotel_modes') or {})
+          if sum(v for v in modes.values() if isinstance(v,int)) != profiles['active']:
+              raise SystemExit('source-mode coverage does not span active profiles')
+          print('CANONICAL_COVERAGE_CURRENT_OK active=%d identity=%d card=%d detail=%d identity_only=%d legacy_only=%d direct_only=%d legacy_and_direct=%d' % (
+              profiles['active'],r['readiness']['identityReady'],r['readiness']['cardReady'],r['readiness']['detailReady'],
+              r['readiness']['identityOnly'],modes['legacyOnly'],modes['directOnly'],modes['legacyAndDirect']))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anytour-canonical-coverage-current
+          path: |
+            canonical-coverage-current.json
+            census-source.sha256
+          if-no-files-found: warn
+      - name: Remove temporary remote files
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ -s "$key" && -n "${HOST_VALUE:-}" && -n "${USER_VALUE:-}" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$REMOTE_TMP'" || true
+          fi
