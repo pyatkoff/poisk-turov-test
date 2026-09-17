@@ -325,7 +325,8 @@ final class AnyTourTourvisorOfferAutosaveV1
     {
         $docRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), "/\\");
         if ($docRoot !== '' && is_dir($docRoot)) {
-            return $docRoot . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR . 'tourvisor-offer-autosave';
+            return $docRoot . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR . 'catalogs'
+                . DIRECTORY_SEPARATOR . 'tourvisor-offer-autosave';
         }
         return rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR);
     }

@@ -8,7 +8,7 @@ on:
       - '.github/workflows/tourvisor-autosave-persistent-state-check.yml'
   push:
     branches:
-      - 'fix/int-tourvisor-persistent-state-cache-20260917'
+      - 'fix/int-tourvisor-state-under-catalog-cache-20260917'
     paths:
       - 'app/integrations/tourvisor-anytour-offer-autosave.php'
       - 'tests/tourvisor-autosave-persistent-state-test.php'
@@ -38,11 +38,12 @@ jobs:
         run: |
           set -euo pipefail
           php tests/tourvisor-autosave-persistent-state-test.php
-      - name: Enforce private cache and no provider behavior drift
+      - name: Enforce private catalog cache and no provider behavior drift
         run: |
           set -euo pipefail
           helper=app/integrations/tourvisor-anytour-offer-autosave.php
           grep -Fq "'.cache'" "$helper"
+          grep -Fq "'catalogs'" "$helper"
           grep -Fq "'tourvisor-offer-autosave'" "$helper"
           grep -Fq 'Require all denied' "$helper"
           grep -Fq 'sys_get_temp_dir()' "$helper"

@@ -29,6 +29,8 @@ $originalDocumentRoot = $_SERVER['DOCUMENT_ROOT'] ?? null;
 $root = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
     . DIRECTORY_SEPARATOR . 'anytour-state-docroot-' . bin2hex(random_bytes(8));
 if (!mkdir($root, 0770, true) && !is_dir($root)) throw new RuntimeException('fixture_root_create');
+$catalogCache = $root . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR . 'catalogs';
+if (!mkdir($catalogCache, 0770, true) && !is_dir($catalogCache)) throw new RuntimeException('fixture_catalog_cache_create');
 
 $scope = [
     'departureId'=>1,'countryId'=>4,'dateFrom'=>'2026-10-05','dateTo'=>'2026-10-08',
@@ -46,8 +48,9 @@ $readState = new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class, 'readS
 
 try {
     $_SERVER['DOCUMENT_ROOT'] = $root;
-    $expectedDir = $root . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR . 'tourvisor-offer-autosave';
-    persistent_state_check($stateDirectory->invoke(null) === $expectedDir, 'web_uses_gateway_cache');
+    $expectedDir = $catalogCache . DIRECTORY_SEPARATOR . 'tourvisor-offer-autosave';
+    persistent_state_check($stateDirectory->invoke(null) === $expectedDir, 'web_uses_existing_catalog_cache');
+    persistent_state_check(is_dir($catalogCache) && is_writable($catalogCache), 'catalog_cache_parent_preexists_writable');
 
     $expectedPath = $expectedDir . DIRECTORY_SEPARATOR
         . 'anytour-tourvisor-offer-' . hash('sha256', (string)$searchId) . '.json';
