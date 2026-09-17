@@ -2,7 +2,7 @@
 const results=document.getElementById('results'),actions=document.querySelector('#resultsTools .results-tools__actions'),rail=document.querySelector('.results-filter-rail'),summary=document.getElementById('resultSummary');
 if(!results||!actions||!rail)return;
 const desktop=window.matchMedia('(min-width:1025px)');
-let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,mealPresets=null,operatorField=null,operatorSelect=null,regionField=null,regionSelect=null,budgetField=null,budgetInput=null,ratingField=null,ratingSelect=null,ratingCoverage=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null,activeList=null;
+let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,operatorField=null,operatorSelect=null,regionField=null,regionSelect=null,budgetField=null,budgetInput=null,ratingField=null,ratingSelect=null,ratingCoverage=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null,activeList=null;
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false,nightsField=null,nightsSelect=null,flightField=null,flightSelect=null,budgetMinInput=null,budgetHint=null,mobileResultsButton=null;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
 function id(value){return String(value&&value.id!==undefined&&value.id!==null?value.id:'');}
@@ -100,7 +100,7 @@ function ensure(){
   field.innerHTML='<span>Название отеля</span><input type="search" autocomplete="off" placeholder="Введите название" aria-describedby="search3HotelFilterStatus"><small id="search3HotelFilterStatus" aria-live="polite"></small>';
   budgetField=document.createElement('div');budgetField.className='search3-budget-filter';budgetField.hidden=true;
   budgetField.innerHTML='<span>Бюджет на тур</span><div class="search3-budget-range"><label><span>Цена от, ₽</span><input class="search3-budget-min" type="number" min="0" step="1" inputmode="numeric" placeholder="Любая" aria-describedby="search3BudgetHint"></label><label><span>Цена до, ₽</span><input class="search3-budget-max" type="number" min="0" max="0" step="1" inputmode="numeric" value="0" aria-describedby="search3BudgetHint"></label></div><small id="search3BudgetHint" aria-live="polite"></small>';
-  mealField=document.createElement('div');mealField.className='search3-meal-filter';mealField.hidden=true;mealField.innerHTML='<label><span>Питание</span><select aria-describedby="search3HotelFilterStatus"><option value="">Любое питание</option></select></label><div class="search3-filter-presets" role="group" aria-label="Быстрый выбор питания" hidden></div>';
+  mealField=document.createElement('div');mealField.className='search3-meal-filter';mealField.hidden=true;mealField.innerHTML='<label><span>Питание</span><select aria-describedby="search3HotelFilterStatus"><option value="">Любое питание</option></select></label>';
   nightsField=document.createElement('label');nightsField.className='search3-offer-filter search3-nights-filter';nightsField.hidden=true;nightsField.innerHTML='<span>Ночей</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любое количество</option></select>';
   flightField=document.createElement('label');flightField.className='search3-offer-filter search3-flight-filter';flightField.hidden=true;flightField.innerHTML='<span>Тип перелёта</span><select aria-describedby="search3HotelFilterStatus"><option value="">Любой перелёт</option></select>';
   nightsSelect=nightsField.querySelector('select');flightSelect=flightField.querySelector('select');
@@ -111,11 +111,11 @@ function ensure(){
   ratingField=document.createElement('label');ratingField.className='search3-rating-filter';ratingField.hidden=true;ratingField.innerHTML='<span>Рейтинг гостей</span><select aria-describedby="search3HotelFilterStatus search3RatingCoverage"><option value="0">Любой рейтинг</option><option value="4">4,0 и выше</option><option value="4.5">4,5 и выше</option></select><small id="search3RatingCoverage" data-search3-rating-coverage></small>';
   seaField=document.createElement('label');seaField.className='search3-sea-filter';seaField.hidden=true;seaField.innerHTML='<span>До моря</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любое расстояние</option><option value="200">До 200 м</option><option value="500">До 500 м</option><option value="1000">До 1 км</option></select>';
   resetButton=document.createElement('button');resetButton.type='button';resetButton.className='search3-filter-reset';resetButton.textContent='Сбросить фильтры';resetButton.hidden=true;
-  input=field.querySelector('input');status=field.querySelector('small');budgetInput=budgetField.querySelector('input');mealSelect=mealField.querySelector('select');mealPresets=mealField.querySelector('.search3-filter-presets');operatorSelect=operatorField.querySelector('select');regionSelect=regionField.querySelector('select');categorySelect=categoryField.querySelector('select');categoryPresets=categoryField.querySelector('.search3-filter-presets');ratingSelect=ratingField.querySelector('select');ratingCoverage=ratingField.querySelector('[data-search3-rating-coverage]');seaSelect=seaField.querySelector('select');
+  input=field.querySelector('input');status=field.querySelector('small');budgetInput=budgetField.querySelector('input');mealSelect=mealField.querySelector('select');operatorSelect=operatorField.querySelector('select');regionSelect=regionField.querySelector('select');categorySelect=categoryField.querySelector('select');categoryPresets=categoryField.querySelector('.search3-filter-presets');ratingSelect=ratingField.querySelector('select');ratingCoverage=ratingField.querySelector('[data-search3-rating-coverage]');seaSelect=seaField.querySelector('select');
   input.addEventListener('input',apply);regionSelect.addEventListener('change',apply);categorySelect.addEventListener('change',apply);ratingSelect.addEventListener('change',apply);seaSelect.addEventListener('change',apply);
   mealSelect.addEventListener('change',()=>window.V2Results.rerender());
   operatorSelect.addEventListener('change',()=>window.V2Results.rerender());
-  bindPresets(mealPresets,mealSelect);bindPresets(categoryPresets,categorySelect);
+  bindPresets(categoryPresets,categorySelect);
   budgetInput=budgetField.querySelector('.search3-budget-max');budgetMinInput=budgetField.querySelector('.search3-budget-min');budgetHint=budgetField.querySelector('small');
   budgetInput.addEventListener('change',()=>setBudget(budgetInput.value));
   budgetMinInput.addEventListener('change',()=>{const value=Number(budgetMinInput.value);budgetMinInput.value=Number.isFinite(value)&&value>0?String(Math.round(value)):'';window.V2Results.rerender();});
@@ -166,10 +166,7 @@ function syncMeal(items){
   const previous=mealSelect.value,available=complete&&labels.size>1;mealSelect.replaceChildren(option('','Любое питание'));
   if(available)Array.from(labels).sort((a,b)=>a[1].localeCompare(b[1],'ru')).forEach(([value,label])=>mealSelect.appendChild(option(value,label)));
   mealSelect.value=available&&labels.has(previous)?previous:'';mealField.hidden=!available;
-  const options=Array.from(mealSelect.options).slice(1),pick=value=>options.find(item=>item.value===value),quick=[];
-  const breakfast=pick('meal:breakfast'),inclusive=pick('meal:all-inclusive');
-  [breakfast,inclusive].forEach(item=>{if(item&&!quick.some(choice=>choice.value===item.value))quick.push({value:item.value,label:item===breakfast?'Завтрак':'Всё включено'});});
-  syncPresets(mealPresets,mealSelect,quick,'');return mealSelect.value;
+return mealSelect.value;
 }
 function syncOperator(items){
   const labels=new Map(),api=window.V2Results;

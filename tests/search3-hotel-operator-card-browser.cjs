@@ -89,7 +89,7 @@ module.exports=async function checkOperatorCards(page,width,output){
       assert.doesNotMatch(await row.innerText(),/от \d|7–10|Разные варианты перелёта/);
       assert.doesNotMatch(await row.innerText(),/Источник|Tourvisor/,'expanded exact offer keeps provider provenance out of customer copy');
       assert.doesNotMatch(await row.innerText(),/Туристы|Размещение/,'expanded offer row does not repeat search party or a second placement field');
-      assert.match(await row.innerText(),/Стандарт · Двухместное/,'reviewed room and placement labels stay together as one compact exact-offer fact');
+      assert.match(await row.innerText(),/STANDARD · Двухместное/,'exact supplier room and reviewed placement stay together as one compact offer fact');
       assert.equal(await row.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),String(offer.price)+'₽');
       const identity=await page.evaluate(t=>window.V2Results.operatorIdentity(t),offer),badge=row.locator('.hotel-operator');
       assert.equal(await badge.getAttribute('title'),'Туроператор: '+identity.label,'hover text names the actual operator');

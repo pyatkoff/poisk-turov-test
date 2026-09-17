@@ -9,11 +9,14 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/anytour-search-scope-v1.php';
+require_once __DIR__ . '/anytour-offer-scope-index-v1.php';
 require_once __DIR__ . '/anytour-offer-store-v1.php';
 
 final class AnyTourOfferSnapshotIngestV1
 {
     private const MAX_OFFERS = 5000;
+    private const LOCAL_LISTING_TTL_SECONDS = 86400;
+    private const MAX_PRODUCER_EXPIRY_SECONDS = 21600;
     private const ROW_KEYS = ['anytour_hotel_id', 'dto', 'expires_at'];
 
     /**
@@ -37,6 +40,9 @@ final class AnyTourOfferSnapshotIngestV1
 
         $scope = AnyTourSearchScopeV1::fromParams($searchParams);
         $prepared = self::prepareRows($provider, $rows, $now);
+        // Scope metadata is additive and has no selection authority. During a rolling
+        // deployment the index may not yet exist; exact-scope persistence remains safe.
+        $scopeIndexed = AnyTourOfferScopeIndexV1::recordIfInstalled($db, $scope, $now);
         $token = AnyTourOfferStoreV1::beginRefresh($db, $provider, $scope['digest'], $now);
         $written = [];
 
@@ -75,6 +81,7 @@ final class AnyTourOfferSnapshotIngestV1
             'provider' => $provider,
             'scopeVersion' => $scope['version'],
             'scopeDigest' => $scope['digest'],
+            'scopeIndexed' => $scopeIndexed,
             'refreshTokenDigest' => hash('sha256', $token),
             'offerCount' => count($written),
             'hotelCount' => count($hotels),
@@ -101,6 +108,7 @@ final class AnyTourOfferSnapshotIngestV1
     {
         $prepared = [];
         $identities = [];
+        $listingExpires = $now->setTimestamp($now->getTimestamp() + self::LOCAL_LISTING_TTL_SECONDS);
         foreach ($rows as $row) {
             if (!is_array($row) || !self::exactKeys($row, self::ROW_KEYS)) {
                 throw new InvalidArgumentException('ANYTOUR_OFFER_SNAPSHOT_ROW');
@@ -124,15 +132,18 @@ final class AnyTourOfferSnapshotIngestV1
             }
             $identities[$identityDigest] = true;
 
-            $expires = self::utc($row['expires_at'] ?? null);
-            $seconds = $expires->getTimestamp() - $now->getTimestamp();
-            if ($seconds <= 0 || $seconds > 21600) {
+            // The producer expiry is still a required freshness assertion for accepting
+            // this snapshot. It is not the lifetime of the cached LOCAL listing: supplier
+            // context remains inside the DTO and selection is always refresh-required.
+            $producerExpires = self::utc($row['expires_at'] ?? null);
+            $producerSeconds = $producerExpires->getTimestamp() - $now->getTimestamp();
+            if ($producerSeconds <= 0 || $producerSeconds > self::MAX_PRODUCER_EXPIRY_SECONDS) {
                 throw new InvalidArgumentException('ANYTOUR_OFFER_SNAPSHOT_EXPIRY');
             }
             $prepared[] = [
                 'anytour_hotel_id' => $ownId,
                 'dto' => $dto,
-                'expires_at' => $expires,
+                'expires_at' => $listingExpires,
             ];
         }
         return $prepared;

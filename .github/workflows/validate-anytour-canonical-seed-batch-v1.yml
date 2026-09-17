@@ -1,0 +1,36 @@
+name: Validate AnyTour canonical seed batch v1
+on:
+  push:
+    branches:
+      - 'feat/local-canonical-batch-seeder-v1-2690-20260917'
+    paths:
+      - 'scripts/catalog/anytour_canonical_seed_batch_manifest_v1.py'
+      - 'tests/anytour_canonical_seed_batch_manifest_v1_test.py'
+      - '.github/workflows/validate-anytour-canonical-seed-batch-v1.yml'
+      - '.github/workflows/search3-anytour-canonical-batch-seed-v1.yml'
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_canonical_seed_batch_manifest_v1.py'
+      - 'tests/anytour_canonical_seed_batch_manifest_v1_test.py'
+      - '.github/workflows/validate-anytour-canonical-seed-batch-v1.yml'
+      - '.github/workflows/search3-anytour-canonical-batch-seed-v1.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Validate manifest boundary
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/catalog/anytour_canonical_seed_batch_manifest_v1.py tests/anytour_canonical_seed_batch_manifest_v1_test.py
+          python3 tests/anytour_canonical_seed_batch_manifest_v1_test.py
+          grep -Fq 'MAX_BATCH = 1000' scripts/catalog/anytour_canonical_seed_batch_manifest_v1.py
+          grep -Fq 'existing_bridges' .github/workflows/search3-anytour-canonical-batch-seed-v1.yml
+          grep -Fq 'noReplayAfterApply' .github/workflows/search3-anytour-canonical-batch-seed-v1.yml
+          ! grep -Eiq '(gateway\.samo|api\.tourvisor|parser\.anextour|AdditionalPricesDaily)' .github/workflows/search3-anytour-canonical-batch-seed-v1.yml

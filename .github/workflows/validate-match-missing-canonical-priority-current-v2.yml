@@ -1,0 +1,41 @@
+name: Validate MATCH missing canonical priority v2
+on:
+  push:
+    branches: [fix/match-missing-canonical-priority-v2-1971-20260917]
+    paths:
+      - scripts/diagnostics/hotel_match_missing_canonical_priority_current_v2.php
+      - tests/hotel-match-missing-canonical-priority-current-v2-smoke.php
+      - .github/workflows/validate-match-missing-canonical-priority-current-v2.yml
+      - scripts/diagnostics/hotel_match_missing_canonical_priority_current_v1.php
+  pull_request:
+    paths:
+      - scripts/diagnostics/hotel_match_missing_canonical_priority_current_v2.php
+      - tests/hotel-match-missing-canonical-priority-current-v2-smoke.php
+      - .github/workflows/validate-match-missing-canonical-priority-current-v2.yml
+      - scripts/diagnostics/hotel_match_missing_canonical_priority_current_v1.php
+permissions: {contents: read}
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, fetch-depth: 1}
+      - name: Lint and staged extraction contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_missing_canonical_priority_current_v2.php
+          php -l tests/hotel-match-missing-canonical-priority-current-v2-smoke.php
+          php scripts/diagnostics/hotel_match_missing_canonical_priority_current_v2.php --self-test
+          php tests/hotel-match-missing-canonical-priority-current-v2-smoke.php
+      - name: Fail-closed read-only guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=scripts/diagnostics/hotel_match_missing_canonical_priority_current_v2.php
+          grep -Fq 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' "$src"
+          grep -Fq "decision_status='accepted'" "$src"
+          grep -Fq "namespace='legacy_catalog'" "$src"
+          grep -Fq 'array_chunk($missing,500)' "$src"
+          ! grep -Eiq '(curl|wget|gateway\.samo|api\.tourvisor|parser\.anextour|AdditionalPricesDaily)' "$src"

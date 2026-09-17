@@ -137,9 +137,9 @@ with sync_playwright() as p:
         check(page.locator('.hotel-card').count()==2,f'{width}: real filters receive two own groups')
         if width<1025: page.locator('.search3-mobile-filter-panel > summary').click()
         meal=page.locator('.search3-meal-filter select')
-        # Selectors follow the actual controls, not a test-only filtering function.
-        if meal.count()==0: meal=page.locator('select').filter(has=page.locator('option[value="meal:all-inclusive"]'))
-        meal.select_option('meal:all-inclusive');page.wait_for_timeout(50)
+        # Selectors follow the actual exact-label controls, not a test-only filtering function.
+        if meal.count()==0: meal=page.locator('select').filter(has=page.locator('option[value="meal:label:ai"]'))
+        meal.select_option('meal:label:ai');page.wait_for_timeout(50)
         budget=page.locator('.search3-budget-filter input[type="number"]')
         if budget.count()==0: budget=page.locator('input[type="number"]')
         budget.last.fill('150000');budget.last.dispatch_event('change');page.wait_for_timeout(80)

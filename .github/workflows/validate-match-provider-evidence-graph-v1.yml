@@ -1,0 +1,30 @@
+name: Validate MATCH provider evidence graph v1
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py'
+      - 'tests/hotel_match_provider_evidence_graph_v1_test.py'
+      - '.github/workflows/validate-match-provider-evidence-graph-v1.yml'
+  push:
+    paths:
+      - 'scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py'
+      - 'tests/hotel_match_provider_evidence_graph_v1_test.py'
+      - '.github/workflows/validate-match-provider-evidence-graph-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-graph-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile graph tool and tests
+        run: |
+          python3 -m py_compile \
+            scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py \
+            tests/hotel_match_provider_evidence_graph_v1_test.py
+      - name: Run focused graph contract
+        run: python3 tests/hotel_match_provider_evidence_graph_v1_test.py
