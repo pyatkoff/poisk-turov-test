@@ -5,11 +5,14 @@ on:
     paths:
       - 'v2/data/anytour-search-scope-v1.php'
       - 'v2/data/search3-local-results-read-v1.php'
+      - 'v2/data/anytour-offer-store-read-v2.php'
       - 'v2/data/.htaccess'
       - 'tests/search3_local_db_results_test.php'
+      - 'tests/anytour-offer-store-v2-snapshot-test.php'
       - 'v2/data/anytour-offer-store-v1.php'
       - 'v2/data/anytour-canonical-catalog-v1.php'
       - 'v2/data/migrations/20260916-anytour-offer-store.sql'
+      - 'v2/data/migrations/20260917-anytour-offer-store-v2.sql'
       - '.github/workflows/search3-local-db-results.yml'
 permissions:
   contents: read
@@ -41,7 +44,9 @@ jobs:
         run: |
           php -l v2/data/anytour-search-scope-v1.php
           php -l v2/data/search3-local-results-read-v1.php
+          php -l v2/data/anytour-offer-store-read-v2.php
           php -l tests/search3_local_db_results_test.php
+          php -l tests/anytour-offer-store-v2-snapshot-test.php
           python3 - <<'PY'
           import pathlib,re
           text=pathlib.Path('v2/data/.htaccess').read_text()
@@ -57,6 +62,11 @@ jobs:
           ANYTOUR_OFFER_TEST_USER: root
           ANYTOUR_OFFER_TEST_PASSWORD: fixture-only-password
         run: php tests/anytour-offer-store-v1-test.php --require-sql
+      - name: Completed snapshot visibility regression
+        env:
+          ANYTOUR_OFFER_V2_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_local_results_fixture;charset=utf8mb4'
+          ANYTOUR_OFFER_V2_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour-offer-store-v2-snapshot-test.php
       - name: DB first reader regression
         env:
           ANYTOUR_LOCAL_RESULTS_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_local_results_fixture;charset=utf8mb4'
