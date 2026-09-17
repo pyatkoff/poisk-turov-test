@@ -5,8 +5,6 @@
       "behavior/search-form.js",
       "behavior/search-form/primary-controls.js",
       "behavior/search-form/secondary-controls.js",
-      "behavior/filter-rail.js",
-      "behavior/mobile-search-entry.js",
       "behavior/results/toolbar.js",
       "behavior/results/local-hotel-filter.js",
       "behavior/results/shortlist.js",
@@ -18,9 +16,7 @@
     "search3-entry-v1.css": [
       "styles/entry-native-controls.css"
     ],
-    "search3-entry-v1.js": [
-      "behavior/entry-v1.js"
-    ],
+    "search3-entry-v1.js": [],
     "search3-results-cards-v2.css": [
       "styles/result-cards.css"
     ],
