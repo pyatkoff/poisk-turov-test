@@ -167,7 +167,7 @@ function hmf_group_hotels(array $rows, string $provider): array {
     }
     foreach ($out as &$h) {
         ksort($h['operator_fingerprint']);
-        $h['native_anex_hotel_ids'] = array_keys($h['native_anex_hotel_ids']);
+        $h['native_anex_hotel_ids'] = array_map('strval', array_keys($h['native_anex_hotel_ids']));
         sort($h['native_anex_hotel_ids'], SORT_STRING);
         $h['urls'] = array_keys($h['urls']);
         sort($h['urls'], SORT_STRING);
