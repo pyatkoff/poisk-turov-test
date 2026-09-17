@@ -1,0 +1,125 @@
+name: INT diagnose ANEX live persistence failures
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - '.github/workflows/int-anex-live-persistence-diagnosis.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event.pull_request.head.ref == 'diag/int-anex-live-persistence-failures-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Prepare strict SSH
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/ssh/key"
+          chmod 600 "$RUNNER_TEMP/ssh/key"
+          ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+
+      - name: Read DB counts and sanitized runtime markers only
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          remote="$REMOTE_USER@$HOST"; key="$RUNNER_TEMP/ssh/key"; known="$RUNNER_TEMP/ssh/known_hosts"
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 "$remote" 'bash -s' > evidence/result.json <<'REMOTE'
+          set -euo pipefail
+          cd "$HOME/www/anytoour.ru"
+          php -d display_errors=0 <<'PHP'
+          <?php
+          declare(strict_types=1);
+          error_reporting(0);
+          require_once 'config.php';
+          $dbFile=is_file('data/db-v1.php')?'data/db-v1.php':'v2/data/db-v1.php';
+          require_once $dbFile;
+          $db=v2_data_db();
+          $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $db->exec('START TRANSACTION READ ONLY');
+          $count=static function(string $sql)use($db):int{return (int)$db->query($sql)->fetchColumn();};
+          $runtime="$HOME/www/anytoour.ru/_preview/search3-anex-candidate/app/integrations/anex-search-mapping-registry.php";
+          $mappingCount=null;
+          if(is_file($runtime)&&!is_link($runtime)){
+              require_once $runtime;
+              try{$mappingCount=AnyTourAnexSearchMappingRegistry::fromPdo($db)->count();}catch(Throwable $e){$mappingCount=-1;}
+          }
+          $out=[
+            'schema'=>[
+              'programs_table'=>$count("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anytour_anex_programs'"),
+              'contexts_table'=>$count("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anytour_anex_program_contexts'"),
+              'apd_table'=>$count("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anytour_anex_apd_rates'"),
+            ],
+            'counts'=>[
+              'programs'=>$count('SELECT COUNT(*) FROM anytour_anex_programs'),
+              'contexts'=>$count('SELECT COUNT(*) FROM anytour_anex_program_contexts'),
+              'apd'=>$count('SELECT COUNT(*) FROM anytour_anex_apd_rates'),
+              'apd_rate'=>$count("SELECT COUNT(*) FROM anytour_anex_apd_rates WHERE apd_state='rate'"),
+              'anex_offers'=>$count("SELECT COUNT(*) FROM anytour_offers WHERE provider='anex'"),
+              'legacy_links'=>$count("SELECT COUNT(*) FROM anytour_hotel_sources WHERE namespace='legacy_catalog'"),
+              'active_anytour_hotels'=>$count("SELECT COUNT(*) FROM anytour_hotels WHERE is_active=1"),
+              'anex_mapping_registry'=>$mappingCount,
+            ],
+            'writes'=>0,'supplier_calls'=>0,
+          ];
+          $db->rollBack();
+          echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+          PHP
+          REMOTE
+          python3 - <<'PY'
+          import json
+          p='evidence/result.json'
+          v=json.load(open(p))
+          assert v['schema']=={'programs_table':1,'contexts_table':1,'apd_table':1}
+          assert v['writes']==0 and v['supplier_calls']==0
+          print(json.dumps(v,sort_keys=True))
+          PY
+
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 "$remote" 'bash -s' > evidence/markers.txt <<'REMOTE'
+          set -euo pipefail
+          tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
+          find "$HOME" -maxdepth 6 -type f \( -name 'error_log' -o -name 'error.log' -o -name 'php*.log' -o -name '*error*.log' \) -mmin -360 -print0 2>/dev/null |
+            xargs -0 -r grep -h -E 'ANEX_PROGRAM_OBSERVATION_FAILED|ANEX_ANYTOUR_AUTOSAVE_FAILED|ANEX_ANYTOUR_AUTOSAVE_OK' 2>/dev/null |
+            tail -n 40 > "$tmp" || true
+          python3 - "$tmp" <<'PY'
+          import re,sys
+          allowed=re.compile(r'(ANEX_PROGRAM_OBSERVATION_FAILED|ANEX_ANYTOUR_AUTOSAVE_FAILED|ANEX_ANYTOUR_AUTOSAVE_OK)(?:\s+([A-Za-z0-9_:-]{1,120}))?')
+          for line in open(sys.argv[1],errors='ignore'):
+              m=allowed.search(line)
+              if m:
+                  print(m.group(1)+((' '+m.group(2)) if m.group(2) else ''))
+          PY
+          REMOTE
+          echo '--- sanitized markers ---'
+          cat evidence/markers.txt
+
+      - name: Upload sanitized diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: direct-anex-persistence-diagnosis-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 14
