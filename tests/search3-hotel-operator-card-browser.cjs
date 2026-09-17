@@ -36,7 +36,11 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.ok((await toggle.boundingBox()).height>=44);
     if(width<=760){
       assert.ok((await toggle.boundingBox()).width>=(await card.boundingBox()).width-40,'mobile disclosure follows the full-width reference');
+      await page.mouse.move(0,0);
       assert.equal(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 81, 12)','mobile hotel disclosure uses the approved orange action');
+      await toggle.hover();
+      assert.equal(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','hover feedback keeps the approved darker orange');
+      await page.mouse.move(0,0);
     }else{
       assert.ok((await toggle.boundingBox()).width<260,'desktop disclosure remains a compact secondary action');
       assert.notEqual(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','desktop disclosure retains its secondary styling');
