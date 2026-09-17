@@ -254,6 +254,41 @@ class ProviderEvidenceGraphTest(unittest.TestCase):
         with self.assertRaises(mod.EvidenceError):
             mod.edge_from_record(record)
 
+    def test_public_geo_packet_adapter_preserves_authority_boundary(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "public.tsv"
+            path.write_text(
+                "# MATCH public brand/geo evidence v2\n"
+                "input_run=35243466737 input_result_sha256=abc\n"
+                "namespace\texternal_id\tandromeda_id\tsource_name\tofficial_name\tofficial_geo\t"
+                "top_local_id\ttop_local_name\tgeo_relation\tevidence_sha256\tofficial_url\n"
+                "operator_315\t29619\t9180\tTUI AQI Pegasos Club\tAQI Pegasos Club\tAntalya / Alanya\t"
+                "1275\tAQI PEGASOS CLUB\tmatch\tmsha\thttps://example.com/match\n"
+                "operator_315\t854061\t2000090661\tWoxx Hotel\tWoxx Hotel\tIstanbul\t"
+                "99465\tWOX EW HOTEL\tconflict\tcsha\thttps://example.com/conflict\n"
+                "operator_342\t17362\t218356\tDarkhill Hotel\tDarkhill Hotel\tIstanbul\t"
+                "102245\tKERTHILL HOTEL\tinsufficient\tisha\thttps://example.com/insufficient\n",
+                encoding="utf-8",
+            )
+            edges = list(mod.load_public_geo_tsv(path))
+            self.assertEqual(3, len(edges))
+            by_type = {edge.evidence_type: edge for edge in edges}
+            self.assertEqual("corroboration", by_type["official_geo_match"].authority)
+            self.assertEqual("support", by_type["official_geo_match"].polarity)
+            self.assertEqual("corroboration", by_type["official_geo_conflict"].authority)
+            self.assertEqual("conflict", by_type["official_geo_conflict"].polarity)
+            self.assertEqual("observation", by_type["official_geo_insufficient"].authority)
+            graph = mod.EvidenceGraph(edges)
+            self.assertEqual(
+                "needs_evidence",
+                graph.resolve_provider_node("operator_315:hotel:29619")["classification"],
+            )
+            self.assertEqual(
+                "needs_evidence",
+                graph.resolve_provider_node("operator_315:hotel:854061")["classification"],
+            )
+            self.assertEqual("35243466737", by_type["official_geo_match"].provenance["input_run"])
+
     def test_cli_output_is_deterministic_and_keeps_provenance(self):
         records = [
             rec(
