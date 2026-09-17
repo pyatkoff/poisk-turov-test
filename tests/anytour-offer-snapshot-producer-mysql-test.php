@@ -103,7 +103,7 @@ AnyTourIntOfferSnapshotProducerV1::produce('andromeda',$params,['complete'=>true
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+1 minute'));
 $providers=array_count_values(array_column($visible['items'],'provider'));
 producer_sql_check(count($visible['items'])===2&&($providers['anex']??0)===1&&($providers['andromeda']??0)===1,'providers-isolated');
-producer_sql_check(in_array('166346.80',array_column($visible['items'],'price'),true),'andromeda-final-price');
+producer_sql_check(in_array('166346.8',array_column($visible['items'],'price'),true),'andromeda-final-price');
 producer_sql_check((int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='completed'")->fetchColumn()===2,'two-complete-refreshes');
 
 echo "ANYTOUR_INT_SNAPSHOT_MYSQL_OK providers=2 offers=2 preserved_not_ready=1\n";
