@@ -3,63 +3,51 @@ name: Temporary Andromeda checkpoint patch
 on:
   push:
     branches:
-      - fix/int-andromeda-page-session-checkpoint-2506-20260917
+      - 'fix/int-andromeda-page-session-checkpoint-2506-20260917'
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.event.head_commit.message == 'ops: apply scoped Andromeda checkpoint patch'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: fix/int-andromeda-page-session-checkpoint-2506-20260917
+          ref: 'fix/int-andromeda-page-session-checkpoint-2506-20260917'
           fetch-depth: 0
       - name: Apply minimal state-sync fix and regression
-        shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('v2/api-andromeda-search3-preview.php')
-          text = path.read_text()
-          old = "$handler=new AnyTourAndromedaSearch($state,static function($next)use($path){return anytour_andromeda_search3_save($path,$next);},true,true);"
-          new = """$handler=new AnyTourAndromedaSearch($state,static function($next)use($path,&$state){
+          path=Path('v2/api-andromeda-search3-preview.php')
+          text=path.read_text()
+          old="$handler=new AnyTourAndromedaSearch($state,static function($next)use($path){return anytour_andromeda_search3_save($path,$next);},true,true);"
+          new="""$handler=new AnyTourAndromedaSearch($state,static function($next)use($path,&$state){
               $saved=anytour_andromeda_search3_save($path,$next);
               if($saved)$state=$next;
               return $saved;
           },true,true);"""
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one checkpoint callback, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
+          if text.count(old)!=1:
+              raise SystemExit('checkpoint callback contract changed')
+          path.write_text(text.replace(old,new,1))
           PY
           cat > tests/andromeda-page-session-checkpoint-test.py <<'PY'
           #!/usr/bin/env python3
           from pathlib import Path
-
-          endpoint = Path('v2/api-andromeda-search3-preview.php').read_text()
-          required = (
-              'static function($next)use($path,&$state)',
-              '$saved=anytour_andromeda_search3_save($path,$next);',
-              'if($saved)$state=$next;',
-              'return $saved;',
-              "['created_at'=>$state['store']['created_at'],'session'=>$client->privateSession()]",
-              "['directory'=>$directory,'store'=>$state['store'],'created_at'=>$number===1?$state['store']['created_at']:$first['store']['created_at']]",
-          )
-          for token in required:
-              assert token in endpoint, token
-          forbidden = '$handler=new AnyTourAndromedaSearch($state,static function($next)use($path){return anytour_andromeda_search3_save($path,$next);},true,true);'
-          assert forbidden not in endpoint
-          print('Andromeda page-session checkpoint state sync: PASS')
+          endpoint=Path('v2/api-andromeda-search3-preview.php').read_text()
+          for required in ('static function($next)use($path,&$state)','$saved=anytour_andromeda_search3_save($path,$next);','if($saved)$state=$next;','return $saved;',"['created_at'=>$state['store']['created_at'],'session'=>$client->privateSession()]", "['directory'=>$directory,'store'=>$state['store'],'created_at'=>$number===1?$state['store']['created_at']:$first['store']['created_at']]"):
+              assert required in endpoint, required
+          assert 'static function($next)use($path){return anytour_andromeda_search3_save($path,$next);}' not in endpoint
+          print('Andromeda page-session checkpoint state sync PASS')
           PY
           php -l v2/api-andromeda-search3-preview.php
           python3 tests/andromeda-page-session-checkpoint-test.py
           git rm .github/workflows/_temp-andromeda-page-session-checkpoint-2506.yml
           git add v2/api-andromeda-search3-preview.php tests/andromeda-page-session-checkpoint-test.py
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'INT: keep Andromeda page checkpoint state aligned'
           git push origin HEAD:fix/int-andromeda-page-session-checkpoint-2506-20260917
