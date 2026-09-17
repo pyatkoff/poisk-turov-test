@@ -84,8 +84,9 @@ function create(refresh){
   if(error){const button=document.createElement('button');button.type='button';button.className='secondary canonical-profile-retry';button.textContent='Повторить загрузку';button.addEventListener('click',()=>{failed.clear();refresh();});node.appendChild(button);}
   results.prepend(node);
  }
+ function requestRefresh(patch){if(!patch||typeof patch!=='object'||Array.isArray(patch))return refresh();const previous=options;options=Object.assign({},options,patch);try{return refresh();}finally{options=previous;}}
  root.addEventListener('v2:search-started',reset);root.addEventListener('v2:search-reset',reset);
- const api={read(list,opts){raw=list.slice();options=Object.assign({},opts);pump();return project();},source:()=>raw,options:()=>options,details:h=>profiles.get(id(h&&h.anytourHotelId))||null,status,reset,upsertHotel:putProfile,upsertOffer,upsertLegacyOffer,setLegacyHotelState,clearOffers,refresh:()=>refresh()};activeOwner=api;return api;
+ const api={read(list,opts){raw=list.slice();options=Object.assign({},opts);pump();return project();},source:()=>raw,options:()=>options,details:h=>profiles.get(id(h&&h.anytourHotelId))||null,status,reset,upsertHotel:putProfile,upsertOffer,upsertLegacyOffer,setLegacyHotelState,clearOffers,refresh:requestRefresh};activeOwner=api;return api;
 }
 root.Search3CanonicalProfilesV1=Object.freeze({create,current:()=>activeOwner});
 })(window);
