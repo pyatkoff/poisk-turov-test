@@ -53,13 +53,25 @@ final class AnyTourThreeProviderMoneyFacts
             if (!is_string($kind) || !preg_match('/\A[a-z][a-z0-9_]{0,39}\z/D', $kind)) {
                 throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
             }
-            if ($provider === 'andromeda' && $kind !== 'party_transport_surcharge') {
-                throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
+            $source = $fact['source'];
+            if ($provider === 'andromeda') {
+                if ($kind !== 'party_transport_surcharge'
+                    || !is_string($source)
+                    || !in_array($source, [
+                        'andromeda_additional',
+                        'andromeda_get_flights_transport',
+                        'andromeda_get_flights_transport_converted',
+                    ], true)) {
+                    throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
+                }
+                // Preserve a strict provider-neutral source contract. The supplier-specific
+                // transport provenance is validated above and by the upstream surcharge fact.
+                $source = 'andromeda_additional';
             }
             $money = self::moneyFact([
                 'amount' => $fact['amount'],
                 'currency' => $fact['currency'],
-                'source' => $fact['source'],
+                'source' => $source,
             ], true, $provider, 'additional');
             $additional[] = ['kind' => $kind] + $money;
         }
@@ -284,11 +296,7 @@ final class AnyTourThreeProviderMoneyFacts
             throw new InvalidArgumentException('THREE_PROVIDER_MONEY_CURRENCY');
         }
         $source = $value['source'];
-        $allowedSources = [$provider . '_' . $expectedKind];
-        if ($provider === 'andromeda' && $expectedKind === 'additional') {
-            $allowedSources = ['andromeda_get_flights_transport', 'andromeda_get_flights_transport_converted'];
-        }
-        if (!is_string($source) || !in_array($source, $allowedSources, true)) {
+        if (!is_string($source) || $source !== $provider . '_' . $expectedKind) {
             throw new InvalidArgumentException('THREE_PROVIDER_MONEY_SOURCE');
         }
         return ['amount' => $amount, 'currency' => $currency, 'source' => $source];
