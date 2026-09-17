@@ -39,6 +39,30 @@ class IsolationTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.isolate(payload)
 
+    def test_provider_identity_bridge_is_packaged_but_not_public_php(self):
+        bridge = ROOT / "v2/data/anytour-provider-identity-bridge-v1.php"
+        store = (ROOT / "v2/data/anytour-offer-store-v1.php").read_text()
+        workflow = (ROOT / ".github/workflows/build-search3-whole-site-preview.yml").read_text()
+
+        self.assertTrue(bridge.is_file())
+        self.assertIn("require_once __DIR__ . '/anytour-provider-identity-bridge-v1.php';", store)
+
+        # The whole-site artifact copies v2/data because the DB-first offer store
+        # requires this bridge at runtime; it must not be accidentally excluded.
+        self.assertIn('v2/ "$payload/"', workflow)
+        self.assertNotIn("--exclude='data/'", workflow)
+        self.assertNotIn("--exclude='data/**'", workflow)
+        self.assertNotIn("--exclude='anytour-provider-identity-bridge-v1.php'", workflow)
+
+        # Internal PHP is deny-by-default in the preview package. Only the three
+        # explicit public entry points may override that default; the identity
+        # bridge must never become a directly callable HTTP endpoint.
+        self.assertIn('<FilesMatch "\\.php$">', workflow)
+        self.assertIn('Require all denied', workflow)
+        self.assertNotIn('<Files "anytour-provider-identity-bridge-v1.php">', workflow)
+        for public_entry in ("index.php", "bundle-v1.php", "preview-lead-disabled.php"):
+            self.assertIn(f'<Files "{public_entry}">', workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
