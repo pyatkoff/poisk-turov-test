@@ -27,14 +27,14 @@ $identities = [
     identity('andromeda_catalog','5','500','accepted',[],'5'),
     identity('andromeda_catalog','6','600','accepted',[],'6'),
 
-    identity('operator_315','p1',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'1','hotel_name'=>'ALPHA HOTEL','country_id'=>4]]],'a'),
-    identity('operator_315','p2',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'1','hotel_name'=>'ALPHA HOTEL','country_id'=>4]]],'b'),
-    identity('operator_315','p2','100','accepted',[],'c'),
-    identity('operator_342','p3',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'2','hotel_name'=>'MISSING HOTEL','country_id'=>4]]],'d'),
-    identity('operator_5','p4',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'3','hotel_name'=>'INACTIVE HOTEL','country_id'=>4]]],'e'),
-    identity('operator_5','p5',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'4','hotel_name'=>'PROTECTED HOTEL','country_id'=>4]],'manual_review'=>true],'f'),
-    identity('operator_5','p6',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'5','hotel_name'=>'DECISION HOTEL','country_id'=>4]]],'0'),
-    identity('operator_5','p7',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'6','hotel_name'=>'ALREADY ANEX','country_id'=>4]]],'7'),
+    identity('operator_315','101',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'1','hotel_name'=>'ALPHA HOTEL','country_id'=>4]]],'a'),
+    identity('operator_315','102',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'1','hotel_name'=>'ALPHA HOTEL','country_id'=>4]]],'b'),
+    identity('operator_315','102','100','accepted',[],'c'),
+    identity('operator_342','103',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'2','hotel_name'=>'MISSING HOTEL','country_id'=>4]]],'d'),
+    identity('operator_5','104',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'3','hotel_name'=>'INACTIVE HOTEL','country_id'=>4]]],'e'),
+    identity('operator_5','105',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'4','hotel_name'=>'PROTECTED HOTEL','country_id'=>4]],'manual_review'=>true],'f'),
+    identity('operator_5','106',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'5','hotel_name'=>'DECISION HOTEL','country_id'=>4]]],'0'),
+    identity('operator_5','107',null,'pending',['provider_bridges'=>[['andromeda_hotel_id'=>'6','hotel_name'=>'ALREADY ANEX','country_id'=>4]]],'7'),
 ];
 
 $catalog = [
@@ -46,10 +46,10 @@ $catalog = [
     ['id'=>600,'country_id'=>4,'country_name'=>'Turkey','region_id'=>10,'region_name'=>'Antalya','subregion_id'=>11,'subregion_name'=>'Side','name'=>'ALREADY ANEX','category'=>'4*','latitude'=>36.5,'longitude'=>30.5,'is_active'=>1],
 ];
 $anexMappings = [
-    ['anex_hotel_id'=>'p7','catalog_hotel_id'=>'600','enabled'=>1],
+    ['anex_hotel_id'=>'107','catalog_hotel_id'=>'600','enabled'=>1],
 ];
 $decisions = [
-    ['anex_hotel_id'=>'p6','catalog_hotel_id'=>'500'],
+    ['anex_hotel_id'=>'106','catalog_hotel_id'=>'500'],
 ];
 
 $rows = abr_build_dossier($identities, $anexMappings, $catalog, $decisions, []);
@@ -57,16 +57,16 @@ $byId = [];
 foreach ($rows as $row) $byId[$row['provider_namespace'] . '/' . $row['provider_hotel_id']] = $row;
 
 at(count($rows) === 5, 'accepted identity and enabled ANEX source must be subtracted');
-at(isset($byId['operator_315/p1']), 'clean anchored residual exists');
-at(!isset($byId['operator_315/p2']), 'accepted provider source subtracted');
-at(!isset($byId['operator_5/p7']), 'accepted ANEX source subtracted');
-at($byId['operator_315/p1']['status'] === 'review_saved_evidence', 'clean row remains review-only');
-at($byId['operator_315/p1']['name_relation']['exact_primary'] === true, 'exact primary name detected');
-at($byId['operator_315/p1']['country_relation'] === 'same', 'same country detected');
-at($byId['operator_342/p3']['status'] === 'hold_target_missing', 'missing target held');
-at($byId['operator_5/p4']['status'] === 'hold_target_inactive', 'inactive target held');
-at($byId['operator_5/p5']['status'] === 'hold_protected', 'embedded manual/protected state held');
-at($byId['operator_5/p6']['status'] === 'hold_protected', 'paired manual decision held');
+at(isset($byId['operator_315/101']), 'clean anchored residual exists');
+at(!isset($byId['operator_315/102']), 'accepted provider source subtracted');
+at(!isset($byId['operator_5/107']), 'accepted ANEX source subtracted');
+at($byId['operator_315/101']['status'] === 'review_saved_evidence', 'clean row remains review-only');
+at($byId['operator_315/101']['name_relation']['exact_primary'] === true, 'exact primary name detected');
+at($byId['operator_315/101']['country_relation'] === 'same', 'same country detected');
+at($byId['operator_342/103']['status'] === 'hold_target_missing', 'missing target held');
+at($byId['operator_5/104']['status'] === 'hold_target_inactive', 'inactive target held');
+at($byId['operator_5/105']['status'] === 'hold_protected', 'embedded manual/protected state held');
+at($byId['operator_5/106']['status'] === 'hold_protected', 'paired manual decision held');
 
 $former = abr_name_relation('OLD NAME HOTEL', 'NEW NAME (EX. OLD NAME HOTEL)');
 at($former['exact_any_form'] === true, 'former-name exact form detected');
