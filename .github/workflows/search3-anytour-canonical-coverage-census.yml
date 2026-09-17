@@ -1,0 +1,110 @@
+name: Search3 AnyTour canonical coverage census
+
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_canonical_coverage_census.php'
+      - 'v2/data/anytour-provider-identity-bridge-v2.php'
+      - 'v2/data/anytour-offer-store-read-v2.php'
+      - '.github/workflows/search3-anytour-canonical-coverage-census.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-canonical-coverage-census-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Lint read-only census
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_canonical_coverage_census.php
+          ! grep -Eq 'INSERT|UPDATE|DELETE|REPLACE|ALTER|CREATE TABLE|DROP TABLE|curl|wget' scripts/catalog/anytour_canonical_coverage_census.php
+          grep -F 'SET TRANSACTION READ ONLY' scripts/catalog/anytour_canonical_coverage_census.php
+
+  census:
+    if: >-
+      github.actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      REMOTE_TMP: /tmp/anytour-canonical-census-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Verify containment
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_BASE_REF" = 'release/search3-production-ready-v1'
+          [[ "$BASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test "$BASE_SHA" = '996a2ece8aef332c1a31ed6c7e2da790759bcc99'
+      - name: Prepare ephemeral SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Run live read-only census
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir '$REMOTE_TMP'; test -s \"\$HOME/www/anytoour.ru/data/db-v1.php\""
+          scp "${opts[@]}" scripts/catalog/anytour_canonical_coverage_census.php "$remote:$REMOTE_TMP/census.php"
+          ssh "${opts[@]}" "$remote" "ANYTOUR_SITE_ROOT=\"\$HOME/www/anytoour.ru\" php '$REMOTE_TMP/census.php'" | tee canonical-coverage-census.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('canonical-coverage-census.json'))
+          assert r['mode']=='read_only'
+          assert r['writes']==0 and r['supplier_calls']==0 and r['mapping_writes']==0
+          print('SANITIZED_CENSUS='+json.dumps(r,sort_keys=True,separators=(',',':')))
+          PY
+          {
+            echo '### AnyTour canonical coverage census'
+            echo '```json'
+            cat canonical-coverage-census.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove temporary remote files
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ -s "$key" && -n "${HOST_VALUE:-}" && -n "${USER_VALUE:-}" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$REMOTE_TMP'" || true
+          fi
