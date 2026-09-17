@@ -88,6 +88,7 @@ final class AnyTourAndromedaSearch3PageOrchestrator
         $result['hotels'] = array_values(array_map(static fn(int $id): array => $hotels[$id], $hotelOrder));
         $result['page'] = $target;
         $result['pages_count'] = $target;
+        $result['status'] = $last['status'] ?? $first['status'] ?? 'complete';
         $result['external_search_pending'] = false;
         $result['received_offers'] = $received;
         $result['mapped_offers'] = $mapped;
