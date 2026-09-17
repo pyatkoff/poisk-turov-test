@@ -1,0 +1,51 @@
+{
+  "schema": "match-official-hotel-name-proof/1",
+  "operation_id": "hotel-match-official-hotel-name-proof-apply-1971-20260917-v1",
+  "frontier_current_result_sha256": "c90f87dc1e3ec438501bbba5bcd475d7bc49e884611f76e051e627b59075cc2e",
+  "live_tourvisor_artifact_id": 10495245638,
+  "live_tourvisor_country_id": 4,
+  "provider_calls": 0,
+  "database_writes": 0,
+  "candidates": [
+    {
+      "external_hotel_id": "235275",
+      "source_evidence_sha256": "36524694f8d1a4ec5ebe44bd4f95527684f632370306a528a2297cc622a69810",
+      "source_name": "Krizantem",
+      "source_state_key": "5",
+      "source_town": "Аланья",
+      "local_hotel_id": 1311,
+      "local_name": "KAILA KRIZANTEM HOTEL",
+      "local_region": "Аланья",
+      "local_subregion": "Обакой",
+      "official_name": "Kaila Krizantem Hotel",
+      "official_geo": "Oba, Alanya, Antalya",
+      "official_relation": "hotel owner states the property opened as Krizantem Hotel and the current property is Kaila Krizantem Hotel",
+      "official_urls": [
+        "https://kailakrizantemhotel.com/about-us/",
+        "https://kailakrizantemhotel.com/get-in-touch/"
+      ],
+      "canonical_fact_sha256": "f69616d7c8ecbf1c996271717ae63a8d6ef5c92d34b0a76580ad8e4c8678ada8"
+    },
+    {
+      "external_hotel_id": "2000041631",
+      "source_evidence_sha256": "1cafa71c6bc29620a61a3123e0b059e9ac8d2113fd710df5780321d687e03928",
+      "source_name": "Adelmar",
+      "source_state_key": "5",
+      "source_town": "Шишли",
+      "local_hotel_id": 59144,
+      "local_name": "ADELMAR SISLI",
+      "local_region": "Стамбул",
+      "local_subregion": "Шишли",
+      "official_name": "Adelmar Hotel Istanbul Şişli",
+      "official_geo": "Şişli, Istanbul",
+      "official_relation": "hotel owner identifies the property as Adelmar Hotel Istanbul Şişli",
+      "official_urls": [
+        "https://www.adelmarhotel.com/about-us/",
+        "https://www.adelmarhotel.com/contact-us/"
+      ],
+      "canonical_fact_sha256": "3f00e5aa300e8c2ee138276e6c2847cc14fe4e88c968e52ce9a05fc4c93572a5"
+    }
+  ],
+  "safe_to_write_now": false,
+  "writer_requirement": "transaction-time CURRENT guards and per-row post-COMMIT readback"
+}
