@@ -244,6 +244,13 @@ final class AnyTourAnexThreeSourceResortStarV1
                     'strong'=>$priceStrong || ($nameExact && $priceSome),
                 ];
             }
+            // Exact normalized hotel identity outranks a price-only candidate inside the
+            // same resort/star/date bucket. Price can corroborate identity, but must not
+            // make an unrelated same-priced hotel compete with an exact-name candidate.
+            if (count($possible) > 1) {
+                $exactNamed = array_values(array_filter($possible, static fn(array $p): bool => ($p['name_exact'] ?? false) === true));
+                if (count($exactNamed) === 1) $possible = $exactNamed;
+            }
             if (count($possible) === 1 && ($possible[0]['strong'] ?? false)) {
                 $candidates[] = ['tv_hotel_id'=>$tvId] + $possible[0] + [
                     'evidence'=>'unique_resort_star_date_candidate_with_andromeda_native_anchor',
