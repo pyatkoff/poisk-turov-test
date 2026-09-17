@@ -1,0 +1,339 @@
+name: Search3 AnyTour Tourvisor hotel content hydration B001 v1
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - '.github/workflows/search3-anytour-tourvisor-content-hydration-b001-v1.yml'
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: anytour-tourvisor-hotel-content-hydration
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BASE_RELEASE: 58af8a0841fd94e7f4a2d444add399851399c37f
+  OPERATION_ID: anytour-tourvisor-hotel-content-2690-20260917-b001-v1
+  CLAIM_COMMENT_ID: '5721757912'
+  HOTEL_LIMIT: '250'
+  MAX_ATTEMPTS: '1'
+  HTTP_BUDGET: '250'
+  FRESH_DAYS: '365'
+  MIN_INTERVAL_MS: '550'
+
+jobs:
+  hydrate-current:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/local-tourvisor-content-hydration-2690-20260917-b001-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Pin exact operation and merged dependencies
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$BASE_SHA" = "$EXPECTED_BASE_RELEASE"
+          test "$(git merge-base "$HEAD_SHA" "$BASE_SHA")" = "$EXPECTED_BASE_RELEASE"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          test "${#changed[@]}" = 1
+          test "${changed[0]}" = '.github/workflows/search3-anytour-tourvisor-content-hydration-b001-v1.yml'
+          for path in \
+            v2/data/db-v1.php \
+            v2/data/tourvisor-client-v1.php \
+            v2/data/hotel-details-v1.php \
+            v2/data/collect-hotel-details-v1.php; do
+            test "$(git rev-parse "$HEAD_SHA:$path")" = "$(git rev-parse "$EXPECTED_BASE_RELEASE:$path")"
+          done
+          test "$HOTEL_LIMIT" = 250
+          test "$MAX_ATTEMPTS" = 1
+          test "$HTTP_BUDGET" = 250
+          test $(( HOTEL_LIMIT * MAX_ATTEMPTS )) -le "$HTTP_BUDGET"
+          php -l v2/data/tourvisor-client-v1.php >/dev/null
+          php -l v2/data/hotel-details-v1.php >/dev/null
+          php -l v2/data/collect-hotel-details-v1.php >/dev/null
+          grep -Fq "hotel_details_int(\$argv, 'http-budget', 3000, 1, 3000)" v2/data/collect-hotel-details-v1.php
+          grep -Fq 'v2_hotel_detail_is_generic_product_name' v2/data/collect-hotel-details-v1.php
+
+      - name: Verify fresh owner claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import datetime,json,os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          body=c['body']
+          assert os.environ['OPERATION_ID'] in body
+          assert 'ops/local-tourvisor-content-hydration-2690-20260917-b001-v1' in body
+          assert 'http-budget=250' in body and 'max-attempts=1' in body
+          created=datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+          age=datetime.datetime.now(datetime.timezone.utc)-created
+          assert 0 <= age.total_seconds() < 7200, 'owner claim expired'
+          PY
+
+      - id: reservation
+        name: Retain immutable reservation before supplier access
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          files=['v2/data/db-v1.php','v2/data/tourvisor-client-v1.php','v2/data/hotel-details-v1.php','v2/data/collect-hotel-details-v1.php']
+          payload={p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in files}
+          r={
+            'operation':os.environ['OPERATION_ID'],
+            'baseRelease':os.environ['EXPECTED_BASE_RELEASE'],
+            'executionSource':os.environ['HEAD_SHA'],
+            'pr':int(os.environ['PR_NUMBER']),
+            'run':int(os.environ['GITHUB_RUN_ID']),
+            'attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'claimCommentId':int(os.environ['CLAIM_COMMENT_ID']),
+            'hotelLimit':int(os.environ['HOTEL_LIMIT']),
+            'maxAttemptsPerHotel':int(os.environ['MAX_ATTEMPTS']),
+            'httpBudget':int(os.environ['HTTP_BUDGET']),
+            'worstCaseHttpAttempts':int(os.environ['HOTEL_LIMIT'])*int(os.environ['MAX_ATTEMPTS']),
+            'freshDays':int(os.environ['FRESH_DAYS']),
+            'minIntervalMs':int(os.environ['MIN_INTERVAL_MS']),
+            'dependencies':payload,
+            'supplierContract':'GET https://api.tourvisor.ru/search/api/v1/hotels/{hotelId}',
+            'genericAccommodationProductsExcluded':True,
+            'allowedDbWrites':['catalog_hotel_details','catalog_hotels'],
+            'canonicalProfileWrites':0,
+            'mappingWrites':0,
+            'leadWrites':0,
+            'noReplayAfterProviderAccess':True,
+          }
+          raw=(json.dumps(r,sort_keys=True,ensure_ascii=False)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+      - id: reserve_artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-tourvisor-content-b001-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Require exact-head Security green
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            gh api "repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs" > checks.json
+            if python3 - <<'PY'
+          import json,sys
+          runs=json.load(open('checks.json'))['check_runs']
+          sys.exit(0 if any(x['name']=='guard' and x['conclusion']=='success' for x in runs) else 1)
+          PY
+            then exit 0; fi
+            sleep 5
+          done
+          echo 'Exact-head Security guard did not become green before provider access' >&2
+          exit 1
+
+      - name: Prepare ephemeral SSH identity
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          known="$RUNNER_TEMP/known_hosts"
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+          test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+
+      - name: Stage exact merged collector in exclusive operation directory
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"; known="$RUNNER_TEMP/known_hosts"
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -L \"\$HOME/.anytour-operations\"; mkdir -p \"\$HOME/.anytour-operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+          scp "${opts[@]}" \
+            v2/data/db-v1.php \
+            v2/data/tourvisor-client-v1.php \
+            v2/data/hotel-details-v1.php \
+            v2/data/collect-hotel-details-v1.php \
+            reservation/reservation.json \
+            "$remote:$op/payload/"
+
+      - name: Collect first CURRENT hotel-content batch once
+        id: live
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/anytoour_key"; known="$RUNNER_TEMP/known_hosts"
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-operations/$OPERATION_ID"
+          set +e
+          ssh "${opts[@]}" "$remote" "OPERATION_ID='$OPERATION_ID' HOTEL_LIMIT='$HOTEL_LIMIT' MAX_ATTEMPTS='$MAX_ATTEMPTS' HTTP_BUDGET='$HTTP_BUDGET' FRESH_DAYS='$FRESH_DAYS' MIN_INTERVAL_MS='$MIN_INTERVAL_MS' bash -s" <<'REMOTE' > terminal/collector.log 2>&1
+          set -euo pipefail
+          umask 077
+          op="$HOME/.anytour-operations/$OPERATION_ID"
+          root="$HOME/www/anytoour.ru"
+          cd "$op"
+          test -f "$root/config.php"
+          test -f payload/reservation.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('payload/reservation.json'))
+          assert r['operation']==os.environ['OPERATION_ID']
+          assert r['hotelLimit']==int(os.environ['HOTEL_LIMIT'])==250
+          assert r['maxAttemptsPerHotel']==int(os.environ['MAX_ATTEMPTS'])==1
+          assert r['httpBudget']==int(os.environ['HTTP_BUDGET'])==250
+          assert r['worstCaseHttpAttempts']<=r['httpBudget']
+          PY
+          php -l payload/tourvisor-client-v1.php >/dev/null
+          php -l payload/hotel-details-v1.php >/dev/null
+          php -l payload/collect-hotel-details-v1.php >/dev/null
+          export ANYTOUR_ROOT="$root"
+          php -d display_errors=0 -r '
+            $root=getenv("ANYTOUR_ROOT");
+            require $root . "/config.php";
+            $_SERVER["DOCUMENT_ROOT"]=$root;
+            require "payload/collect-hotel-details-v1.php";
+          ' -- \
+            --limit="$HOTEL_LIMIT" \
+            --fresh-days="$FRESH_DAYS" \
+            --min-interval-ms="$MIN_INTERVAL_MS" \
+            --max-attempts="$MAX_ATTEMPTS" \
+            --http-budget="$HTTP_BUDGET"
+          REMOTE
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/ssh-exit.txt
+          echo "ssh_exit=$rc" >> "$GITHUB_OUTPUT"
+
+      - name: Build terminal receipt and enforce quota
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,re
+          log=pathlib.Path('terminal/collector.log').read_text(errors='replace') if pathlib.Path('terminal/collector.log').exists() else ''
+          exit_code=int(pathlib.Path('terminal/ssh-exit.txt').read_text().strip()) if pathlib.Path('terminal/ssh-exit.txt').exists() else 999
+          lines=[x.strip() for x in log.splitlines() if x.startswith('ANYTOUR_HOTEL_DETAILS_DONE ')]
+          metrics={}
+          if len(lines)==1:
+              for token in lines[0].split()[1:]:
+                  if '=' in token:
+                      k,v=token.split('=',1)
+                      if re.fullmatch(r'-?\d+',v): metrics[k]=int(v)
+                      else: metrics[k]=v
+          attempts=int(metrics.get('http_attempts',0))
+          selected=int(metrics.get('selected',0))
+          assert 0 <= attempts <= 250, f'HTTP quota exceeded: {attempts}'
+          assert 0 <= selected <= 250, f'hotel selection exceeded: {selected}'
+          receipt={
+              'operation':'anytour-tourvisor-hotel-content-2690-20260917-b001-v1',
+              'baseRelease':'58af8a0841fd94e7f4a2d444add399851399c37f',
+              'run':int(__import__('os').environ['GITHUB_RUN_ID']),
+              'attempt':int(__import__('os').environ['GITHUB_RUN_ATTEMPT']),
+              'sshExit':exit_code,
+              'providerAccessed':attempts>0,
+              'noReplay':attempts>0,
+              'maxHttpAttempts':250,
+              'metrics':metrics,
+              'collectorLogSha256':hashlib.sha256(log.encode()).hexdigest(),
+              'status':'completed' if exit_code==0 and len(lines)==1 else 'terminal_failed_inspect_before_any_next_operation',
+              'canonicalProfileWrites':0,
+              'mappingWrites':0,
+              'leadWrites':0,
+          }
+          pathlib.Path('terminal/receipt.json').write_text(json.dumps(receipt,sort_keys=True,ensure_ascii=False)+'\n')
+          pathlib.Path('terminal/terminal.sha256').write_text(
+              hashlib.sha256(pathlib.Path('terminal/receipt.json').read_bytes()).hexdigest()+'  receipt.json\n'+
+              hashlib.sha256(log.encode()).hexdigest()+'  collector.log\n'
+          )
+          print('CONTENT_HYDRATION_TERMINAL '+json.dumps(receipt,sort_keys=True,ensure_ascii=False))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: anytour-tourvisor-content-b001-terminal-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Remove temporary remote operation payload
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/anytoour_key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ -s "$key" && -s "$known" && -n "${HOST_VALUE:-}" && -n "${USER_VALUE:-}" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf \"\$HOME/.anytour-operations/$OPERATION_ID\"" || true
+          fi
+
+      - name: Require successful terminal collection
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f terminal/receipt.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('terminal/receipt.json'))
+          assert r['status']=='completed',r
+          assert r['sshExit']==0,r
+          assert r['metrics'].get('http_attempts',0)<=250,r
+          PY
