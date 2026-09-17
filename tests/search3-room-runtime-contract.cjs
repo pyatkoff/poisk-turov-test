@@ -102,4 +102,27 @@ for (const [offer, expected] of [
   assert.equal(packed.roomLabel(offer), expected);
 }
 
-console.log(`SEARCH3_ROOM_RUNTIME_CONTRACT_OK raw_supplier_facts=${samples.length} no_search3_normalizer=1 raw_compact=1 immutable_input=1 escaped_display=1`);
+const meals = [
+  [{ meal: 'AI' }, 'AI', 'meal:label:ai'],
+  [{ meal: { name: 'AI' } }, 'AI', 'meal:label:ai'],
+  [{ meal: { name: 'AI', fullName: 'Всё включено' } }, 'Всё включено', 'meal:label:всё включено'],
+  [{ meal: { name: 'UAI', fullName: 'Ultra All Inclusive без алкоголя' } }, 'Ultra All Inclusive без алкоголя', 'meal:label:ultra all inclusive без алкоголя'],
+  [{ meal: '  Half   Board\t' }, 'Half Board', 'meal:label:half board']
+];
+for (const [offer, expectedLabel, expectedKey] of meals) {
+  const before = JSON.stringify(offer);
+  for (const results of [raw, packed]) {
+    assert.equal(results.rawMealLabel(offer), expectedLabel, 'meal display preserves the supplier fact and only collapses whitespace');
+    assert.equal(results.mealLabel(offer), expectedLabel, 'Search3 does not translate meal codes at render time');
+    const identity = results.mealIdentity(offer);
+    assert.equal(identity && identity.key, expectedKey, 'meal filtering uses the exact displayed supplier fact');
+    assert.equal(identity && identity.label, expectedLabel, 'meal identity label matches customer-visible supplier fact');
+  }
+  assert.equal(JSON.stringify(offer), before, 'meal display does not mutate supplier facts');
+}
+assert.equal(raw.mealLabel({ meal: 'AI' }), 'AI', 'AI without supplier fullName never becomes Всё включено');
+assert.equal(packed.mealLabel({ meal: 'AI' }), 'AI');
+assert.equal(raw.mealLabel({ meal: { name: 'AI', fullName: 'Всё включено' } }), 'Всё включено', 'supplier fullName is shown exactly');
+assert.equal(packed.mealLabel({ meal: { name: 'AI', fullName: 'Всё включено' } }), 'Всё включено');
+
+console.log(`SEARCH3_ROOM_RUNTIME_CONTRACT_OK raw_supplier_facts=${samples.length} exact_meal_facts=${meals.length} no_search3_normalizer=1 raw_compact=1 immutable_input=1 escaped_display=1`);

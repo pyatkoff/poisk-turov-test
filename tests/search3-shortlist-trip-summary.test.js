@@ -90,12 +90,12 @@ assert.deepEqual(compare([
   same,
   { ...same, date: '12.09.2026', meal: 'Всё включено', operator: 'Анекс' },
   { ...same, date: '2026-09-12T04:30:00Z', meal: 'All Inclusive', operator: 'ANEX' }
-]), { keys: [], common: ['date', 'nights', 'party', 'meal', 'room', 'placement', 'operator'] }, 'equivalent displayed dates, reviewed meal and operator aliases do not create false differences');
-assert.deepEqual(compare([same, { ...same, room: 'Standard room' }, { ...same, room: 'Стандартный номер' }]).keys, [], 'reviewed room aliases do not create false differences');
+]), { keys: ['meal'], common: ['date', 'nights', 'party', 'room', 'placement', 'operator'] }, 'equivalent displayed dates and reviewed operator aliases stay common while unproven meal labels remain distinct');
+assert.deepEqual(compare([same, { ...same, room: 'Standard room' }, { ...same, room: 'Стандартный номер' }]).keys, ['room'], 'unproven room labels remain distinct instead of being guessed equivalent by SEARCH');
 assert.deepEqual(compare([same, { ...same, placement: 'dbl' }, { ...same, placement: 'DBL ' }]).keys, [], 'reviewed placement aliases use the same displayed comparison identity');
 assert.deepEqual(compare([same, { ...same, placement: 'supplier special' }]).keys, ['placement'], 'unknown placement values remain distinct');
 const poolView = { ...same, room: 'Standard Pool View' };
-assert.deepEqual(compare([poolView, { ...same, room: 'Стандарт · вид на бассейн' }]).keys, [], 'the reviewed pool-view labels compare as the same room description');
+assert.deepEqual(compare([poolView, { ...same, room: 'Стандарт · вид на бассейн' }]).keys, ['room'], 'unproven localized pool-view labels remain distinct without a canonical mapping');
 for (const room of ['STANDARD', 'STANDARD LAND VIEW', 'STANDARD SEA VIEW', 'STANDARD POOL VIEW WITH PRIVATE POOL']) {
   assert.deepEqual(compare([poolView, { ...same, room }]).keys, ['room'], 'pool view remains distinct from ' + room);
 }

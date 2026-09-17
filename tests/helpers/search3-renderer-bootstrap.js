@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
-const sources = ['v2/search3-room-normalizer-v1.js', 'v2/results-renderer-v5.js'];
+const sources = ['v2/results-renderer-v5.js'];
 
 // Use the same context for dependencies and renderer. No browser globals are
 // invented here: each regression keeps ownership of its own fixtures.
