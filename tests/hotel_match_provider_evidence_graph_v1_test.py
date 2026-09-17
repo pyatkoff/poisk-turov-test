@@ -145,6 +145,33 @@ class ProviderEvidenceGraphTest(unittest.TestCase):
             {item["target"] for item in result["targets"]},
         )
 
+    def test_new_direct_evidence_cannot_hide_conflict_with_accepted_mapping(self):
+        accepted = self.edge(
+            "operator_315", "hotel", "x",
+            "anytour", "hotel", "10",
+            "accepted_mapping", "accepted",
+        )
+        native = self.edge(
+            "operator_315", "hotel", "x",
+            "tourvisor", "hotel", "2",
+            "new_direct_native", "direct",
+        )
+        other = self.edge(
+            "tourvisor", "hotel", "2",
+            "anytour", "hotel", "20",
+            "accepted_tv_anchor", "accepted",
+        )
+        result = self.graph(accepted, native, other).resolve_provider_node("operator_315:hotel:x")
+        self.assertEqual("conflict", result["classification"])
+        self.assertEqual(
+            {"anytour:hotel:10", "anytour:hotel:20"},
+            {item["target"] for item in result["targets"]},
+        )
+
+    def test_node_key_rejects_colon_ambiguity(self):
+        with self.assertRaises(mod.EvidenceError):
+            mod.node_key({"namespace": "operator:315", "kind": "hotel", "id": "1"})
+
     def test_manual_or_exclusion_protection_vetoes_candidate(self):
         native = self.edge(
             "operator_5", "hotel", "18819",
