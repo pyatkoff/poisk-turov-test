@@ -86,7 +86,7 @@ producer_sql_check($receipt['published']===true&&$receipt['readyOfferCount']===1
 $scope=AnyTourSearchScopeV1::fromParams($params)['digest'];
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now);
 producer_sql_check(count($visible['items'])===1&&$visible['items'][0]['provider']==='anex','anex-visible');
-producer_sql_check($visible['items'][0]['price']==='110000'&&$visible['items'][0]['selection_state']==='refresh_required','anex-final-price');
+producer_sql_check($visible['items'][0]['price']==='110000'&&($visible['items'][0]['offer']['selection_state']??null)==='refresh_required','anex-final-price');
 
 $badOffer=AnyTourThreeProviderOfferContract::fromSearch(producer_sql_raw('anex',3417,2,[],'100000','sql-not-ready'));
 $badRetained=AnyTourThreeProviderOfferContext::retain($badOffer,51,1,$issued,900);
@@ -104,6 +104,6 @@ $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+1 minute')
 $providers=array_count_values(array_column($visible['items'],'provider'));
 producer_sql_check(count($visible['items'])===2&&($providers['anex']??0)===1&&($providers['andromeda']??0)===1,'providers-isolated');
 producer_sql_check(in_array('166346.80',array_column($visible['items'],'price'),true),'andromeda-final-price');
-producer_sql_check((int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='complete'")->fetchColumn()===2,'two-complete-refreshes');
+producer_sql_check((int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='completed'")->fetchColumn()===2,'two-complete-refreshes');
 
 echo "ANYTOUR_INT_SNAPSHOT_MYSQL_OK providers=2 offers=2 preserved_not_ready=1\n";
