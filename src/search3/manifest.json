@@ -10,21 +10,7 @@
       "behavior/results/toolbar.js",
       "behavior/results/local-hotel-filter.js",
       "behavior/results/shortlist.js",
-      "behavior/maket7-lock.js",
-      "behavior/flight-presentation.js",
-      "behavior/presentation-text.js",
-      "behavior/booking-summary.js",
-      "behavior/booking/format.js",
-      "behavior/booking-stepper.js",
-      "behavior/final-sections.js",
-      "behavior/flight-continue.js",
-      "behavior/review-heading.js",
-      "behavior/summary-cta.js",
-      "behavior/lead-note.js",
-      "behavior/tour-detail-rail.js",
-      "behavior/tour-presentation.js",
-      "behavior/flight-price-presentation.js",
-      "behavior/selected-tour-handoff.js"
+      "behavior/summary-cta.js"
     ],
     "search3-results-filters-v1.css": [
       "styles/results-layout.css"
