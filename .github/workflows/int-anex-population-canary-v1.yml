@@ -2,7 +2,7 @@ name: INT direct ANEX DB population canary v1
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
     branches: [feature/anex-search-adapter-20260907]
     paths:
       - '.github/workflows/int-anex-population-canary-v1.yml'
@@ -141,7 +141,7 @@ jobs:
           $c=$db->prepare("SELECT id,name FROM catalog_countries WHERE is_active=1 AND (name=? OR name LIKE ?) ORDER BY (name=?) DESC,id LIMIT 3");
           $c->execute(['Турция','Турц%','Турция']);$countries=$c->fetchAll(PDO::FETCH_ASSOC);
           if(!$deps||!$countries)exit(2);
-          $one=static fn(string $sql):(int)$db->query($sql)->fetchColumn();
+          $one=static fn(string $sql): int => (int)$db->query($sql)->fetchColumn();
           $classes=[];foreach($db->query("SELECT flight_class,COUNT(*) n,SUM(observation_count) obs FROM anytour_anex_program_contexts GROUP BY flight_class")->fetchAll(PDO::FETCH_ASSOC) as $r)$classes[$r['flight_class']]=['rows'=>(int)$r['n'],'observations'=>(int)$r['obs']];
           $out=[
             'departure_id'=>(int)$deps[0]['id'],'departure_name'=>(string)$deps[0]['name'],
@@ -302,7 +302,7 @@ jobs:
           <?php
           declare(strict_types=1);error_reporting(0);ini_set('display_errors','0');
           require_once 'config.php';require_once 'v2/data/db-v1.php';$db=v2_data_db();$db->exec('START TRANSACTION READ ONLY');
-          $one=static fn(string $sql):(int)$db->query($sql)->fetchColumn();
+          $one=static fn(string $sql): int => (int)$db->query($sql)->fetchColumn();
           $classes=[];foreach($db->query("SELECT flight_class,COUNT(*) n,SUM(observation_count) obs FROM anytour_anex_program_contexts GROUP BY flight_class")->fetchAll(PDO::FETCH_ASSOC) as $r)$classes[$r['flight_class']]=['rows'=>(int)$r['n'],'observations'=>(int)$r['obs']];
           $out=[
             'programs'=>$one('SELECT COUNT(*) FROM anytour_anex_programs'),
