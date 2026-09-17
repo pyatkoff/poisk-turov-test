@@ -8,6 +8,7 @@ on:
       - 'app/integrations/three-provider-meal-family.php'
       - 'app/integrations/three-provider-room-placement.php'
       - 'tests/andromeda-public-projection-*'
+      - 'tests/andromeda-search3-page-orchestrator-test.php'
       - 'tests/andromeda-detail-selection-smoke.php'
       - 'tests/andromeda-cached-hotel-offers-smoke.php'
       - 'tests/andromeda-filter-request-smoke.php'
@@ -47,6 +48,8 @@ jobs:
           cp change/app/integrations/three-provider-room-placement.php runtime/app/integrations/three-provider-room-placement.php
           cp change/app/integrations/andromeda-selected-offer.php runtime/app/integrations/andromeda-selected-offer.php
           php -l runtime/v2/api-andromeda-search3-preview.php
+          php -l change/tests/andromeda-search3-page-orchestrator-test.php
+          php change/tests/andromeda-search3-page-orchestrator-test.php runtime
           php -l runtime/app/integrations/andromeda-client.php
           php -l runtime/app/integrations/andromeda-normalizer.php
           php change/tests/andromeda-canonical-transport-smoke.php runtime

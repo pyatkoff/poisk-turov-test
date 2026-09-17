@@ -573,6 +573,52 @@ function anytour_andromeda_search3_record_response(array $data): array {
     }
 }
 
+/** Normal grouped HTTP search must consume the complete advertised page cohort on one persisted supplier session. */
+function anytour_andromeda_search3_run_pages(array $request,callable $runner): array {
+    if((array_key_exists('page',$request) && $request['page']!==1) || ($request['action']??null)!==null || isset($request['hotel_scope']))return $runner($request);
+    $pages=[];$target=1;
+    for($number=1;$number<=$target;++$number){
+        if($number>1000)throw new RuntimeException('andromeda_pages_exceeded');
+        $next=$request;$next['page']=$number;$page=$runner($next);
+        anytour_andromeda_search3_validate_projected_page($page,$number,$pages[0]??null);
+        $advertised=(int)$page['pages_count'];
+        if($advertised<$number||$advertised>1000)throw new RuntimeException('andromeda_pages_invalid');
+        $pages[]=$page;$target=max($target,$advertised);
+    }
+    return anytour_andromeda_search3_merge_projected_pages($pages);
+}
+function anytour_andromeda_search3_validate_projected_page(array $page,int $number,?array $first): void {
+    if(($page['provider']??null)!=='andromeda'||($page['page']??null)!==$number||!is_int($page['pages_count']??null)
+        ||!is_array($page['hotels']??null)||!is_int($page['generation']??null)||!is_string($page['search_ref']??null))
+        throw new RuntimeException('andromeda_projection_invalid');
+    if($first!==null && (($page['generation']??null)!==($first['generation']??null)||($page['search_ref']??null)!==($first['search_ref']??null)))
+        throw new RuntimeException('andromeda_page_context_mismatch');
+}
+function anytour_andromeda_search3_merge_projected_pages(array $pages): array {
+    if(!$pages)throw new InvalidArgumentException('andromeda_pages_empty');
+    $first=$pages[0];$hotels=[];$order=[];$seen=[];$received=0;$mapped=0;$target=1;
+    foreach($pages as $index=>$page){
+        anytour_andromeda_search3_validate_projected_page($page,$index+1,$first);$target=max($target,(int)$page['pages_count']);
+        $received+=(int)($page['received_offers']??0);$mapped+=(int)($page['mapped_offers']??0);
+        foreach($page['hotels'] as $hotel){
+            $id=$hotel['local_id']??null;
+            if(!is_int($id)||$id<1||!is_array($hotel['tours']??null))throw new RuntimeException('andromeda_projection_invalid');
+            if(!isset($hotels[$id])){$hotels[$id]=$hotel;$hotels[$id]['tours']=[];$order[]=$id;}
+            elseif(empty($hotels[$id]['andromeda_content'])&&!empty($hotel['andromeda_content']))$hotels[$id]['andromeda_content']=$hotel['andromeda_content'];
+            foreach($hotel['tours'] as $tour){
+                $ref=$tour['offer_ref']??null;
+                if(!is_string($ref)||!preg_match('/^offer_[a-f0-9]{64}$/D',$ref))throw new RuntimeException('andromeda_offer_ref_invalid');
+                if(isset($seen[$ref]))continue;$seen[$ref]=true;$hotels[$id]['tours'][]=$tour;
+            }
+        }
+    }
+    $last=$pages[count($pages)-1];if((int)$last['page']!==$target)throw new RuntimeException('andromeda_pages_incomplete');
+    $result=$first;$result['hotels']=array_values(array_map(static fn(int $id):array=>$hotels[$id],$order));
+    $result['page']=$target;$result['pages_count']=$target;$result['status']=$last['status']??$first['status']??'complete';
+    $result['external_search_pending']=false;$result['received_offers']=$received;$result['mapped_offers']=$mapped;$result['selection_enabled']=false;
+    return $result;
+}
+
 function anytour_andromeda_search3_http(): void {
     header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
     if(!is_file(__DIR__.'/.andromeda-private.php'))anytour_anex_search3_out(['ok'=>false,'error'=>'not_found'],404);
@@ -597,10 +643,12 @@ function anytour_andromeda_search3_http(): void {
         $saved['excluded_operator_ids']=$config['excluded_operator_ids']??[];
         anytour_andromeda_search3_params($request,$pdo,$saved);
         if(isset($request['action'])&&!in_array($request['action'],['offer_detail','hotel_offers'],true))throw new InvalidArgumentException();
-        $data=($request['action']??null)==='offer_detail'
-            ?anytour_andromeda_search3_detail($request,$pdo,$saved,$config,$session)
-            :anytour_andromeda_search3_run($request,$pdo,$saved,$config,$session);
-        if(($request['action']??null)!=='offer_detail')$data=anytour_andromeda_search3_record_response($data);
+        if(($request['action']??null)==='offer_detail')$data=anytour_andromeda_search3_detail($request,$pdo,$saved,$config,$session);
+        else{
+            $runner=static fn(array $pageRequest):array=>anytour_andromeda_search3_run($pageRequest,$pdo,$saved,$config,$session);
+            $data=anytour_andromeda_search3_run_pages($request,$runner);
+            $data=anytour_andromeda_search3_record_response($data);
+        }
         anytour_anex_search3_out(['ok'=>true,'data'=>$data],200);
     }catch(OverflowException $e){anytour_anex_search3_out(['ok'=>false,'error'=>'monthly_quota_exhausted'],429);
     }catch(DomainException $e){anytour_anex_search3_out(['ok'=>false,'error'=>'search_not_supported'],422);
