@@ -240,7 +240,7 @@ async function checkJourney(browser, width) {
     await render(page, 731);
     await openFilters(page, width);
     const meal = page.locator('.search3-meal-filter select');
-    await meal.selectOption('meal:all-inclusive');
+    await meal.selectOption('meal:label:всё включено');
     await discloseMatchingOffers(page);
     const savedActions = [await addOffer(page, 'offer-standard', true)];
     const one = await checkComparisonGeometry(page, width, 1);
@@ -402,7 +402,7 @@ async function checkIntermediateGeometry(browser, width) {
   try {
     await render(page, 731);
     await openFilters(page, width);
-    await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
+    await page.locator('.search3-meal-filter select').selectOption('meal:label:всё включено');
     await discloseMatchingOffers(page);
     const geometry = [], savedActions = [];
     for (const [index, id] of ['offer-standard', 'offer-family', 'offer-third'].entries()) {
@@ -559,7 +559,7 @@ async function checkStorageFailure(browser, width, mode) {
   try {
     await render(page, 731);
     await openFilters(page, width);
-    await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
+    await page.locator('.search3-meal-filter select').selectOption('meal:label:всё включено');
     await discloseMatchingOffers(page);
     await addOffer(page, 'offer-standard', true);
     await openComparison(page, width);
@@ -590,7 +590,7 @@ async function checkCorruptStorage(browser, width) {
     assert.match(compact(await page.locator('.search3-shortlist-status').innerText()), /повреж|сброш|не удалось/i, 'corrupt reset is explained');
     await render(page, 731);
     await openFilters(page, width);
-    await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
+    await page.locator('.search3-meal-filter select').selectOption('meal:label:всё включено');
     await discloseMatchingOffers(page);
     await addOffer(page, 'offer-standard');
     assert.equal(await page.locator('#results .hotel-card').count(), 3, 'corrupt storage cannot break search rendering');
