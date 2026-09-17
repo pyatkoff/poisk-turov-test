@@ -62,13 +62,21 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
-          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5707723106 > claim.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5707685896 > claim.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5707723106 > amendment.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5707950657 > correction.json
           python3 - <<'PY'
           import datetime,json
-          c=json.load(open('claim.json'))
-          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          assert 'anytour-offer-store-migrate-v2-2693-20260917-v1' in c['body']
-          age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+          claim=json.load(open('claim.json'))
+          amendment=json.load(open('amendment.json'))
+          correction=json.load(open('correction.json'))
+          for c in (claim,amendment,correction):
+              assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert 'anytour-offer-store-migrate-v2-2693-20260917-v1' in claim['body']
+          assert 'single checked empty-store migration only' in amendment['body']
+          assert 'one corrected PR synchronize only' in correction['body']
+          assert 'anytour-offer-store-migrate-v2-2693-20260917-v1' in correction['body']
+          age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(correction['created_at'].replace('Z','+00:00'))
           assert 0<=age.total_seconds()<5400
           PY
           for i in $(seq 1 30); do
