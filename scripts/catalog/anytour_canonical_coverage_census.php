@@ -44,13 +44,22 @@ try {
     }
 
     $accepted=$db->query("SELECT local_hotel_id FROM andromeda_hotel_identities WHERE decision_status='accepted' AND local_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN);
-    $acceptedAlias=0;$acceptedLegacyOnly=0;$acceptedMissing=0;
+    $acceptedAlias=0;$acceptedAliasUnusable=0;$acceptedLegacyOnly=0;$acceptedLegacyUnusable=0;$acceptedMissing=0;$acceptedInvalid=0;
     foreach($accepted as $value){
-        $local=(int)$value;if($local<1)continue;
-        if(isset($aliases[$local])&&($active[$aliases[$local]]??false)){++$acceptedAlias;continue;}
-        if(!array_key_exists($local,$aliases)&&isset($legacy[$local])&&($active[$legacy[$local]]??false)){++$acceptedLegacyOnly;continue;}
-        if(!array_key_exists($local,$aliases)&&!isset($legacy[$local]))++$acceptedMissing;
+        $local=(int)$value;
+        if($local<1){++$acceptedInvalid;continue;}
+        if(array_key_exists($local,$aliases)){
+            if($active[$aliases[$local]]??false)++$acceptedAlias;else ++$acceptedAliasUnusable;
+            continue;
+        }
+        if(array_key_exists($local,$legacy)){
+            if($active[$legacy[$local]]??false)++$acceptedLegacyOnly;else ++$acceptedLegacyUnusable;
+            continue;
+        }
+        ++$acceptedMissing;
     }
+    $acceptedClassified=$acceptedAlias+$acceptedAliasUnusable+$acceptedLegacyOnly+$acceptedLegacyUnusable+$acceptedMissing+$acceptedInvalid;
+    if($acceptedClassified!==count($accepted))fail_census('ACCEPTED_PARTITION');
 
     $result=[
         'schema_version'=>1,
@@ -66,8 +75,12 @@ try {
         'legacy_with_conflicting_local_alias'=>$legacyConflict,
         'accepted_andromeda_refs'=>count($accepted),
         'accepted_andromeda_with_local_alias'=>$acceptedAlias,
+        'accepted_andromeda_alias_unusable'=>$acceptedAliasUnusable,
         'accepted_andromeda_legacy_only'=>$acceptedLegacyOnly,
+        'accepted_andromeda_legacy_unusable'=>$acceptedLegacyUnusable,
         'accepted_andromeda_without_canonical'=>$acceptedMissing,
+        'accepted_andromeda_invalid_local_id'=>$acceptedInvalid,
+        'accepted_andromeda_classified'=>$acceptedClassified,
         'writes'=>0,'supplier_calls'=>0,'mapping_writes'=>0,
     ];
     $db->commit();
