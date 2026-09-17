@@ -1,5 +1,5 @@
 <?php
-/** Enrich every hotel that has actually appeared in AnyTour tour data using the paid Tourvisor hotel-description API. */
+/** Enrich hotels that appeared in AnyTour tour data using the Tourvisor hotel-description API. */
 declare(strict_types=1);
 
 if (PHP_SAPI !== 'cli') {
@@ -40,8 +40,13 @@ function hotel_details_source_total(PDO $pdo): int
     return (int)$pdo->query($sql)->fetchColumn();
 }
 
+/**
+ * Demand-first selector. Generic Fortuna/Roulette products are deliberately
+ * skipped: their concrete hotel is unknown and they are not hotel identities.
+ */
 function hotel_details_pending_rows(PDO $pdo, string $cutoff, string $retryCutoff, int $limit): array
 {
+    $scanLimit = min(50000, max($limit, $limit * 4));
     $sql = "WITH source_rows AS (
         SELECT hotel_id, MAX(seen_at) AS last_seen_at
         FROM (
@@ -51,17 +56,29 @@ function hotel_details_pending_rows(PDO $pdo, string $cutoff, string $retryCutof
         ) u
         GROUP BY hotel_id
     )
-    SELECT s.hotel_id,s.last_seen_at,d.status,d.fetched_at
+    SELECT s.hotel_id,s.last_seen_at,d.status,d.fetched_at,h.name AS catalog_name
     FROM source_rows s
     LEFT JOIN catalog_hotel_details d ON d.hotel_id=s.hotel_id
+    LEFT JOIN catalog_hotels h ON h.id=s.hotel_id
     WHERE d.hotel_id IS NULL
        OR (d.status='failure' AND d.fetched_at < :retry_cutoff)
        OR (d.status<>'failure' AND d.fetched_at < :cutoff)
     ORDER BY s.last_seen_at DESC,s.hotel_id ASC
-    LIMIT {$limit}";
+    LIMIT {$scanLimit}";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['retry_cutoff'=>$retryCutoff,'cutoff'=>$cutoff]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $scanned = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $selected = [];
+    $genericSkipped = 0;
+    foreach ($scanned as $row) {
+        if (v2_hotel_detail_is_generic_product_name($row['catalog_name'] ?? null)) {
+            $genericSkipped++;
+            continue;
+        }
+        $selected[] = $row;
+        if (count($selected) >= $limit) break;
+    }
+    return ['rows'=>$selected,'scanned'=>count($scanned),'generic_skipped'=>$genericSkipped];
 }
 
 function hotel_details_upsert_failure(PDO $pdo, int $hotelId, string $status, string $message, string $now): void
@@ -76,17 +93,34 @@ function hotel_details_upsert_failure(PDO $pdo, int $hotelId, string $status, st
     $stmt->execute(['hotel_id'=>$hotelId,'status'=>$status,'fetched_at'=>$now,'last_error'=>$message]);
 }
 
-$limit = hotel_details_int($argv, 'limit', 50000, 1, 50000);
+$limit = hotel_details_int($argv, 'limit', 3000, 1, 3000);
 $freshDays = hotel_details_int($argv, 'fresh-days', 30, 1, 365);
 $minIntervalMs = hotel_details_int($argv, 'min-interval-ms', 600, 500, 5000);
+$maxAttempts = hotel_details_int($argv, 'max-attempts', 1, 1, 4);
+$httpBudget = hotel_details_int($argv, 'http-budget', 3000, 1, 3000);
+$worstCaseHttpAttempts = $limit * $maxAttempts;
+if ($worstCaseHttpAttempts > $httpBudget) {
+    throw new RuntimeException('Hotel detail request plan exceeds explicit HTTP budget');
+}
+putenv('TOURVISOR_HTTP_MAX_ATTEMPTS=' . $maxAttempts);
+
 $now = new DateTimeImmutable('now');
 $cutoff = $now->modify('-' . $freshDays . ' days')->format('Y-m-d H:i:s');
 $retryCutoff = $now->modify('-1 day')->format('Y-m-d H:i:s');
 
 $pdo = v2_data_db();
 $sourceTotal = hotel_details_source_total($pdo);
-$pending = hotel_details_pending_rows($pdo, $cutoff, $retryCutoff, $limit);
-echo 'ANYTOUR_HOTEL_DETAILS_PLAN source_hotels=' . $sourceTotal . ' selected=' . count($pending) . ' fresh_days=' . $freshDays . ' interval_ms=' . $minIntervalMs . "\n";
+$pendingPlan = hotel_details_pending_rows($pdo, $cutoff, $retryCutoff, $limit);
+$pending = $pendingPlan['rows'];
+echo 'ANYTOUR_HOTEL_DETAILS_PLAN source_hotels=' . $sourceTotal
+    . ' selected=' . count($pending)
+    . ' scanned=' . $pendingPlan['scanned']
+    . ' generic_skipped=' . $pendingPlan['generic_skipped']
+    . ' fresh_days=' . $freshDays
+    . ' interval_ms=' . $minIntervalMs
+    . ' max_attempts=' . $maxAttempts
+    . ' http_budget=' . $httpBudget
+    . ' worst_case_http_attempts=' . $worstCaseHttpAttempts . "\n";
 
 $saveDetail = $pdo->prepare("INSERT INTO catalog_hotel_details (
     hotel_id,status,source_hash,country_id,region_id,subregion_id,name,category,rating,hotel_type,
@@ -131,9 +165,16 @@ $failed = 0;
 $catalogInserted = 0;
 $withImages = 0;
 $withDescriptions = 0;
+$genericRuntimeSkipped = 0;
+$hotelsAttempted = 0;
+$budgetStopped = false;
 $lastRequestAt = 0.0;
 
-foreach ($pending as $index => $sourceRow) {
+foreach ($pending as $sourceRow) {
+    if (v2_data_tv_http_attempt_count() >= $httpBudget) {
+        $budgetStopped = true;
+        break;
+    }
     $hotelId = (int)$sourceRow['hotel_id'];
     if ($hotelId <= 0) continue;
 
@@ -141,12 +182,18 @@ foreach ($pending as $index => $sourceRow) {
     if ($lastRequestAt > 0 && $elapsedMs < $minIntervalMs) usleep((int)(($minIntervalMs - $elapsedMs) * 1000));
     $lastRequestAt = microtime(true);
     $fetchedAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
+    $hotelsAttempted++;
 
     try {
         $payload = v2_data_tv_get('/hotels/' . $hotelId);
         $hotel = v2_hotel_detail_object($payload);
         if ($hotel === null || (int)($hotel['id'] ?? 0) !== $hotelId) throw new RuntimeException('hotel detail payload identity mismatch');
         $detail = v2_hotel_detail_normalized($hotel);
+        if (($detail['generic_product'] ?? false) === true) {
+            // Never persist a Fortuna/Roulette product as a concrete hotel.
+            $genericRuntimeSkipped++;
+            continue;
+        }
         $rawJson = json_encode($hotel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $sourceHash = hash('sha256', $rawJson);
 
@@ -200,9 +247,11 @@ foreach ($pending as $index => $sourceRow) {
         }
     }
 
-    $done = $index + 1;
-    if ($done % 50 === 0 || $done === count($pending)) {
-        echo 'ANYTOUR_HOTEL_DETAILS_PROGRESS done=' . $done . '/' . count($pending) . ' success=' . $success . ' not_found=' . $notFound . ' failed=' . $failed . "\n";
+    if ($hotelsAttempted % 50 === 0 || $hotelsAttempted === count($pending)) {
+        echo 'ANYTOUR_HOTEL_DETAILS_PROGRESS done=' . $hotelsAttempted . '/' . count($pending)
+            . ' http_attempts=' . v2_data_tv_http_attempt_count()
+            . ' success=' . $success . ' not_found=' . $notFound . ' failed=' . $failed
+            . ' generic_runtime_skipped=' . $genericRuntimeSkipped . "\n";
     }
 }
 
@@ -216,5 +265,16 @@ $freshSuccess = (int)$freshCountStmt->fetchColumn();
 $imageCount = (int)$pdo->query("SELECT COUNT(*) FROM catalog_hotel_details WHERE status='success' AND primary_image_url IS NOT NULL AND TRIM(primary_image_url)<>''")->fetchColumn();
 $descriptionCount = (int)$pdo->query("SELECT COUNT(*) FROM catalog_hotel_details WHERE status='success' AND description IS NOT NULL AND TRIM(description)<>''")->fetchColumn();
 
-echo 'ANYTOUR_HOTEL_DETAILS_DONE source_hotels=' . $sourceTotal . ' attempted=' . count($pending) . ' success=' . $success . ' not_found=' . $notFound . ' failed=' . $failed . ' catalog_inserted=' . $catalogInserted . ' batch_images=' . $withImages . ' batch_descriptions=' . $withDescriptions . ' fresh_success=' . $freshSuccess . ' total_images=' . $imageCount . ' total_descriptions=' . $descriptionCount . "\n";
+echo 'ANYTOUR_HOTEL_DETAILS_DONE source_hotels=' . $sourceTotal
+    . ' selected=' . count($pending)
+    . ' attempted=' . $hotelsAttempted
+    . ' http_attempts=' . v2_data_tv_http_attempt_count()
+    . ' http_budget=' . $httpBudget
+    . ' budget_stopped=' . ($budgetStopped ? 1 : 0)
+    . ' generic_pre_skipped=' . $pendingPlan['generic_skipped']
+    . ' generic_runtime_skipped=' . $genericRuntimeSkipped
+    . ' success=' . $success . ' not_found=' . $notFound . ' failed=' . $failed
+    . ' catalog_inserted=' . $catalogInserted . ' batch_images=' . $withImages
+    . ' batch_descriptions=' . $withDescriptions . ' fresh_success=' . $freshSuccess
+    . ' total_images=' . $imageCount . ' total_descriptions=' . $descriptionCount . "\n";
 if ($failed > 0 && $success === 0) exit(2);

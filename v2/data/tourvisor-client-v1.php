@@ -31,6 +31,25 @@ function v2_data_query_string(array $params): string
     return implode('&', $parts);
 }
 
+/**
+ * Default behavior remains the historical four-attempt retry contract.
+ * Data collectors may lower it explicitly to bind a paid/daily request budget.
+ */
+function v2_data_tv_max_attempts(): int
+{
+    $raw = trim((string)getenv('TOURVISOR_HTTP_MAX_ATTEMPTS'));
+    if ($raw === '') return 4;
+    if (!preg_match('/^[1-4]$/D', $raw)) {
+        throw new RuntimeException('TOURVISOR_HTTP_MAX_ATTEMPTS must be 1..4');
+    }
+    return (int)$raw;
+}
+
+function v2_data_tv_http_attempt_count(): int
+{
+    return (int)($GLOBALS['__anytour_tv_http_attempt_count'] ?? 0);
+}
+
 function v2_data_tv_retry_delay_seconds(int $attempt, ?int $retryAfter): int
 {
     if ($retryAfter !== null && $retryAfter > 0) return min(15, $retryAfter);
@@ -46,11 +65,12 @@ function v2_data_tv_get(string $path, array $params = []): array
     $query = v2_data_query_string($params);
     if ($query !== '') $url .= '?' . $query;
 
-    $maxAttempts = 4;
+    $maxAttempts = v2_data_tv_max_attempts();
     $lastStatus = 0;
     $lastError = '';
 
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        $GLOBALS['__anytour_tv_http_attempt_count'] = v2_data_tv_http_attempt_count() + 1;
         $retryAfter = null;
         $ch = curl_init($url);
         curl_setopt_array($ch, [
