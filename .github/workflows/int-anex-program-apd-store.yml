@@ -4,8 +4,12 @@ on:
   push:
     branches:
       - 'feat/int-anex-program-apd-cache-20260918-v2'
+      - 'feat/int-anex-program-runtime-wire-20260918'
     paths:
       - 'app/integrations/anex-program-apd-store.php'
+      - 'app/integrations/anex-program-observation-runtime.php'
+      - 'v2/api-anex-search3-preview.php'
+      - 'tests/anex-program-observation-runtime-test.php'
       - 'app/integrations/anex-apd-prewarm.php'
       - 'scripts/ops/anex_apd_prewarm.php'
       - 'tests/anex-apd-prewarm-test.php'
@@ -16,6 +20,9 @@ on:
   pull_request:
     paths:
       - 'app/integrations/anex-program-apd-store.php'
+      - 'app/integrations/anex-program-observation-runtime.php'
+      - 'v2/api-anex-search3-preview.php'
+      - 'tests/anex-program-observation-runtime-test.php'
       - 'app/integrations/anex-apd-prewarm.php'
       - 'scripts/ops/anex_apd_prewarm.php'
       - 'tests/anex-apd-prewarm-test.php'
@@ -36,11 +43,15 @@ jobs:
         run: |
           set -euo pipefail
           php -l app/integrations/anex-program-apd-store.php
+          php -l app/integrations/anex-program-observation-runtime.php
+          php -l v2/api-anex-search3-preview.php
+          php -l tests/anex-program-observation-runtime-test.php
           php -l app/integrations/anex-apd-prewarm.php
           php -l scripts/ops/anex_apd_prewarm.php
           php -l tests/anex-program-apd-store-test.php
           php -l tests/anex-apd-prewarm-test.php
           php tests/anex-program-apd-store-test.php
+          php tests/anex-program-observation-runtime-test.php
           php tests/anex-apd-prewarm-test.php
           grep -Fq 'PRIMARY KEY (supplier_program_id, date_beg, nights, supplier_currency_id)' v2/data/migrations/20260918-anex-program-apd-cache.sql
           grep -Fq 'anytour_anex_program_contexts' v2/data/migrations/20260918-anex-program-apd-cache.sql
