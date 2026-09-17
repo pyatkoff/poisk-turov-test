@@ -2,7 +2,7 @@ name: INT direct ANEX DB population canary v2
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
     branches: [feature/anex-search-adapter-20260907]
     paths:
       - 'scripts/diagnostics/direct_anex_population_canary_v2.php'
