@@ -29,9 +29,7 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             $read=$catalog->read($chunk);
             foreach($read['items'] as $profile)$profiles[(int)$profile['id']]=$profile;
         }
-        // Keep a stable JSON object contract even when an exact scope has zero offers.
-        // Provider values are constrained by the offer-store admission boundary.
-        $groups=[];$providerCounts=['tourvisor'=>0,'anex'=>0,'andromeda'=>0];$withheld=0;
+        $groups=[];$providerCounts=[];$withheld=0;
         foreach($stored['items'] as $item){
             $own=(int)$item['anytourHotelId'];$profile=$profiles[$own]??null;
             if(!$profile){$withheld++;continue;}
@@ -52,7 +50,7 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             'source'=>'anytour-db-first-results-v1','offerStoreSchemaVersion'=>$version,'scopeVersion'=>$scope['version'],'scopeDigest'=>$scope['digest'],'scope'=>$scope['params'],
             'generatedAt'=>$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
             'hotelCount'=>count($hotels),'offerCount'=>array_sum($providerCounts),'storedOfferCount'=>count($stored['items']),
-            'withheldOfferCount'=>$withheld,'providerOfferCounts'=>$providerCounts,'selectionAuthority'=>false,'hotels'=>$hotels,
+            'withheldOfferCount'=>$withheld,'providerOfferCounts'=>(object)$providerCounts,'selectionAuthority'=>false,'hotels'=>$hotels,
         ];
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw$e;}
 }
