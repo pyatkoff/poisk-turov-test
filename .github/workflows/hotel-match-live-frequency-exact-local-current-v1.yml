@@ -1,0 +1,102 @@
+name: MATCH live-frequency exact-local CURRENT v1
+
+on:
+  push:
+    branches: [diag/match-live-frequency-exact-local-current-1971-20260917-v1]
+    paths: [.github/workflows/hotel-match-live-frequency-exact-local-current-v1.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: match-live-frequency-exact-local-current-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-live-frequency-exact-local-current-1971-20260917-v1
+
+jobs:
+  review:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Reserve before DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','coordination_issue':2530,'queue_issue':1971,'claim_comment_id':5714099605,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-live-frequency-exact-local-current-v1-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-live-frequency-exact-local-current-1971-20260917-v1/reservation.json
+          retention-days: 90
+
+      - name: Run CURRENT mass review
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          cat > "$RUNNER_TEMP/review.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const OP='hotel-match-live-frequency-exact-local-current-1971-20260917-v1';
+          function req($v,$m){if(!$v)throw new RuntimeException($m);} function q(PDO $d,string $s,array $a=[]):array{$p=$d->prepare($s);$p->execute(array_values($a));$r=$p->fetchAll(PDO::FETCH_ASSOC);req(count($r)<=100000,'row_budget');return$r;}
+          function norm($s):string{$s=(string)$s;if(function_exists('mb_strtolower'))$s=mb_strtolower($s,'UTF-8');else$s=strtolower($s);$s=str_replace('ё','е',$s);$s=preg_replace('/[^\p{L}\p{N}]+/u',' ',$s)??$s;return trim(preg_replace('/\s+/u',' ',$s)??$s);}
+          function forms($s):array{$raw=trim((string)$s);$a=[norm($raw)];$x=preg_replace('/\s*\((?:ex|ех)\.?[^)]*\)\s*$/iu','',$raw);if(is_string($x)&&trim($x)!==$raw)$a[]=norm($x);$out=[];foreach($a as$f){if($f==='')continue;$out[$f]=1;$tok=preg_split('/\s+/u',$f,-1,PREG_SPLIT_NO_EMPTY)?:[];$g=array_values(array_filter($tok,fn($t)=>!in_array($t,['hotel','отель'],true)));if(count($g)>=1&&count($g)!==count($tok))$out[implode(' ',$g)]=1;}return array_keys($out);}
+          function protectedEvidence($v,$k='',$z=0):bool{if($z>24)return true;if(is_array($v)){foreach($v as$k2=>$x)if(protectedEvidence($x,(string)$k2,$z+1))return true;return false;}if(!preg_match('/manual|exclude|exclusion|conflict|reject|review/i',$k))return false;if(is_bool($v))return$v;if(is_numeric($v))return(float)$v!=0;return is_string($v)&&!in_array(strtolower(trim($v)),['','false','none','no','null'],true);}
+          function hints($v,array &$h,array $path=[],int $z=0):void{if($z>24||!is_array($v))return;foreach($v as$k=>$x){$key=(string)$k;$p=$path;$p[]=$key;if(is_array($x)){hints($x,$h,$p,$z+1);continue;}if(!is_scalar($x)||is_bool($x))continue;$s=trim((string)$x);if($s==='')continue;$pl=strtolower(implode('.',$p));if(in_array($key,['country_id','countryId','countryKey'],true)&&ctype_digit($s))$h['countries'][(int)$s]=1;if(in_array($key,['hotel_name','hotelName','source_hotel_name','sourceHotelName','source_name','sourceName','hotel_title','hotelTitle'],true))$h['names'][$s]=1;if($key==='name'&&str_contains($pl,'hotel'))$h['names'][$s]=1;if(in_array($key,['latitude','lat'],true)&&is_numeric($s))$h['lat'][(string)(float)$s]=1;if(in_array($key,['longitude','lon','lng'],true)&&is_numeric($s))$h['lon'][(string)(float)$s]=1;if(in_array($key,['andromeda_hotel_id'],true)&&ctype_digit($s))$h['andromeda_ids'][$s]=1;}}
+          function km($a,$b,$c,$d):float{$r=6371.0;$p1=deg2rad((float)$a);$p2=deg2rad((float)$c);$dp=deg2rad((float)$c-(float)$a);$dl=deg2rad((float)$d-(float)$b);$x=sin($dp/2)**2+cos($p1)*cos($p2)*sin($dl/2)**2;return 2*$r*asin(min(1,sqrt($x)));}
+          function tokenCount($s):int{$t=preg_split('/\s+/u',norm($s),-1,PREG_SPLIT_NO_EMPTY)?:[];$t=array_values(array_filter($t,fn($x)=>!in_array($x,['hotel','отель','resort','spa'],true)));return count(array_unique($t));}
+          $sha=(string)getenv('MATCH_SOURCE_SHA');req(PHP_SAPI==='cli'&&getenv('MATCH_OPERATION_ID')===OP&&preg_match('/^[a-f0-9]{40}$/D',$sha),'operation_guard');$dir=(string)getenv('HOME').'/.anytoour-match/operations/'.OP;$rv=json_decode((string)file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);req(($rv['state']??'')==='reserved_before_db_access'&&($rv['source_sha']??'')===$sha,'reservation');
+          $o=['operation_id'=>OP,'source_sha'=>$sha,'state'=>'failed_no_replay','no_replay'=>true,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0];$db=null;
+          try{$root=realpath(getcwd());req(is_string($root)&&basename($root)==='anytoour.ru','root');require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+            $obs=[];foreach(q($db,"SELECT hotel_id,COUNT(*) obs_total,COUNT(DISTINCT search_id) searches_total,SUM(observed_at>=UTC_TIMESTAMP()-INTERVAL 24 HOUR) obs_24h,COUNT(DISTINCT CASE WHEN observed_at>=UTC_TIMESTAMP()-INTERVAL 24 HOUR THEN search_id END) searches_24h,MAX(observed_at) last_seen FROM tour_price_observations GROUP BY hotel_id")as$r)$obs[(int)$r['hotel_id']]=['obs_total'=>(int)$r['obs_total'],'searches_total'=>(int)$r['searches_total'],'obs_24h'=>(int)$r['obs_24h'],'searches_24h'=>(int)$r['searches_24h'],'last_seen'=>(string)$r['last_seen']];
+            $cat=[];$idx=[];if($obs){$ids=array_keys($obs);foreach(array_chunk($ids,500)as$ch){$ph=implode(',',array_fill(0,count($ch),'?'));foreach(q($db,"SELECT id,country_id,name,normalized_name,region_name,subregion_name,latitude,longitude FROM catalog_hotels WHERE is_active=1 AND id IN ($ph)",$ch)as$h){$id=(int)$h['id'];$cat[$id]=$h;foreach(forms($h['name']) as$f)$idx[(int)$h['country_id']][$f][$id][]=['catalog_name','current'];foreach(forms($h['normalized_name'])as$f)$idx[(int)$h['country_id']][$f][$id][]=['normalized_name','current'];}foreach(q($db,"SELECT a.hotel_id,a.alias,a.normalized_alias,a.source,h.country_id FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id AND h.is_active=1 WHERE a.hotel_id IN ($ph)",$ch)as$a){$id=(int)$a['hotel_id'];if(!isset($cat[$id]))continue;foreach(array_merge(forms($a['alias']),forms($a['normalized_alias']))as$f)$idx[(int)$a['country_id']][$f][$id][]=['alias',(string)$a['source']];}}}
+            $accepted=[];foreach(q($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id FROM andromeda_hotel_identities WHERE decision_status='accepted' AND local_hotel_id IS NOT NULL")as$r)$accepted[(string)$r['supplier_namespace']][(int)$r['local_hotel_id']][]=(string)$r['external_hotel_id'];
+            $andAuth=[];foreach(q($db,"SELECT external_hotel_id,local_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL")as$r)$andAuth[(string)$r['external_hotel_id']]=(int)$r['local_hotel_id'];
+            $pending=q($db,"SELECT supplier_namespace,external_hotel_id,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace IN ('andromeda_catalog','operator_315','operator_342','operator_5') AND decision_status='pending' AND local_hotel_id IS NULL ORDER BY supplier_namespace,CAST(external_hotel_id AS UNSIGNED),external_hotel_id");
+            $safe=[];$holds=[];$reasons=[];$examined=0;foreach($pending as$r){$examined++;$e=json_decode((string)$r['evidence_json'],true,64,JSON_THROW_ON_ERROR);req(is_array($e),'evidence_shape');$ns=(string)$r['supplier_namespace'];$ext=(string)$r['external_hotel_id'];if(protectedEvidence($e)){$reasons['protected']=($reasons['protected']??0)+1;continue;}$h=['names'=>[],'countries'=>[],'lat'=>[],'lon'=>[],'andromeda_ids'=>[]];hints($e,$h);$names=array_keys($h['names']);$countries=array_map('intval',array_keys($h['countries']));sort($countries);$andIds=array_keys($h['andromeda_ids']);
+              if(count($names)!==1){$reasons[count($names)===0?'no_unique_name':'ambiguous_name']=($reasons[count($names)===0?'no_unique_name':'ambiguous_name']??0)+1;continue;}if(count($countries)!==1){$reasons[count($countries)===0?'no_unique_country':'ambiguous_country']=($reasons[count($countries)===0?'no_unique_country':'ambiguous_country']??0)+1;continue;}$name=$names[0];$country=$countries[0];$locals=[];$prov=[];foreach(forms($name)as$f)foreach($idx[$country][$f]??[]as$lid=>$ps){$locals[(int)$lid]=1;foreach($ps as$p)$prov[(int)$lid][]=$p;}$lids=array_keys($locals);sort($lids,SORT_NUMERIC);if(count($lids)!==1){$reason=count($lids)===0?'no_exact_observed_local':'ambiguous_exact_observed_local';$reasons[$reason]=($reasons[$reason]??0)+1;continue;}$lid=(int)$lids[0];if(isset($accepted[$ns][$lid])&&!in_array($ext,$accepted[$ns][$lid],true)){$reasons['same_namespace_target_occupied']=($reasons['same_namespace_target_occupied']??0)+1;continue;}$c=$cat[$lid];$dist=null;$lat=array_keys($h['lat']);$lon=array_keys($h['lon']);if(count($lat)===1&&count($lon)===1&&$c['latitude']!==null&&$c['longitude']!==null)$dist=km((float)$lat[0],(float)$lon[0],(float)$c['latitude'],(float)$c['longitude']);if($dist!==null&&$dist>5.0){$reasons['geo_over_5km']=($reasons['geo_over_5km']??0)+1;continue;}
+              $authority='none';if($ns!=='andromeda_catalog'&&count($andIds)===1&&isset($andAuth[$andIds[0]])){$authority=$andAuth[$andIds[0]]===$lid?'same_target':'different_target';if($authority==='different_target'){$reasons['andromeda_authority_conflict']=($reasons['andromeda_authority_conflict']??0)+1;continue;}}
+              $tokens=tokenCount($name);$geoPositive=$dist!==null&&$dist<=1.0;$eligible=($ns==='andromeda_catalog'&&($tokens>=2||$geoPositive))||($ns!=='andromeda_catalog'&&$authority==='same_target');if(!$eligible){$reasons['exact_but_needs_independent_identity']=($reasons['exact_but_needs_independent_identity']??0)+1;continue;}$row=['supplier_namespace'=>$ns,'external_hotel_id'=>$ext,'source_evidence_sha256'=>(string)$r['evidence_sha256'],'source_name'=>$name,'country_id'=>$country,'local_id'=>$lid,'local_name'=>(string)$c['name'],'region_name'=>$c['region_name'],'subregion_name'=>$c['subregion_name'],'distance_km'=>$dist===null?null:round($dist,3),'andromeda_authority'=>$authority,'alias_provenance'=>$prov[$lid]??[],'live'=>$obs[$lid]];$safe[]=$row;}
+            usort($safe,function($a,$b){$x=$b['live']['searches_24h']<=>$a['live']['searches_24h'];if($x)return$x;$x=$b['live']['searches_total']<=>$a['live']['searches_total'];if($x)return$x;return $a['local_id']<=>$b['local_id'];});ksort($reasons);$db->exec('ROLLBACK');$o['state']='completed_read_only';$o['pending_total']=count($pending);$o['examined']=$examined;$o['observed_local_hotels']=count($obs);$o['safe_count']=count($safe);$o['safe_candidates']=$safe;$o['reason_counts']=$reasons;$o['read_at_utc']=gmdate('c');$o['transaction']='REPEATABLE READ / READ ONLY';
+          }catch(Throwable $e){if($db instanceof PDO&&$db->inTransaction())$db->rollBack();$o['error_code']=preg_match('/^[a-z_]{2,100}$/D',$e->getMessage())?$e->getMessage():'sanitized_failure';}
+          $j=json_encode($o,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";file_put_contents($dir.'/result.json',$j,LOCK_EX);$dig=hash('sha256',$j);$rc=['operation_id'=>OP,'source_sha'=>$sha,'state'=>$o['state'],'result_sha256'=>$dig,'readback_verified'=>true,'no_replay'=>true,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0];file_put_contents($dir.'/receipt.json',json_encode($rc,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n",LOCK_EX);echo json_encode(['state'=>$o['state'],'pending_total'=>$o['pending_total']??null,'examined'=>$o['examined']??null,'observed_local_hotels'=>$o['observed_local_hotels']??null,'safe_count'=>$o['safe_count']??null,'reason_counts'=>$o['reason_counts']??[],'safe_candidates'=>$o['safe_candidates']??[],'result_sha256'=>$dig],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";if($o['state']!=='completed_read_only')exit(2);
+          PHP
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < "$RUNNER_TEMP/review.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server';r=json.loads((s/'result.json').read_text());c=json.loads((s/'receipt.json').read_text());h=hashlib.sha256((s/'result.json').read_bytes()).hexdigest();ok=(r.get('state')=='completed_read_only' and r.get('pending_total')==1525 and r.get('examined')==1525 and c.get('result_sha256')==h and c.get('readback_verified') is True and all(r.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_andromeda_calls']));g={'verified':ok,'pending_total':r.get('pending_total'),'examined':r.get('examined'),'observed_local_hotels':r.get('observed_local_hotels'),'safe_count':r.get('safe_count'),'reason_counts':r.get('reason_counts'),'safe_candidates':r.get('safe_candidates'),'result_sha256':h,'no_replay':True};(p/'workflow-readback.json').write_text(json.dumps(g,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(g,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if ok else 2)
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-live-frequency-exact-local-current-v1-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-live-frequency-exact-local-current-1971-20260917-v1/
+          retention-days: 90
