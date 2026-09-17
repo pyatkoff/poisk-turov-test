@@ -10,8 +10,9 @@ $hotels = [[
     'common'=>['latitude'=>26.85,'longitude'=>33.99],
     'tours'=>[
         ['id'=>'tour-1','operator'=>['id'=>10,'name'=>'ANEX'],'operatorLink'=>'https://online.anextour.ru/search?hotelCode=5844&foo=bar'],
-        ['id'=>'tour-2','operator'=>['id'=>11,'name'=>'FUN&SUN'],'operatorLink'=>'https://fstravel.com/hotel/abc?hotels=30752'],
-        ['id'=>'tour-3','operator'=>['id'=>11,'name'=>'FUN&SUN']],
+        ['id'=>'tour-2','operator'=>['id'=>11,'name'=>'FUN&SUN'],'operatorLink'=>'https://fstravel.com/hotel/abc?foo=bar'],
+        ['id'=>'tour-3','operator'=>['id'=>11,'name'=>'FUN&SUN'],'operatorLink'=>'https://fstravel.com/hotel/abc?hotels=30752'],
+        ['id'=>'tour-4','operator'=>['id'=>11,'name'=>'FUN&SUN']],
     ],
 ]];
 $rows = v2_operator_identity_extract($hotels,['searchId'=>99,'countryId'=>1,'source'=>'user_search']);
@@ -22,6 +23,7 @@ check($rows[0]['operator_link_host']==='online.anextour.ru','host');
 check($rows[0]['latitude']===26.85 && $rows[0]['longitude']===33.99,'coords');
 check($rows[0]['native_id_type']==='hotelCode' && $rows[0]['native_id_value']==='5844','ANEX hotelCode evidence');
 check($rows[1]['native_id_type']==='hotels' && $rows[1]['native_id_value']==='30752','single hotels evidence');
+check($rows[1]['operator_link_query']==='hotels=30752','native-bearing link replaces earlier non-native link');
 check($rows[1]['native_id_conflict']===0,'no false native conflict');
 
 check(v2_operator_identity_safe_link('http://example.com/x')===null,'http rejected');
@@ -45,7 +47,7 @@ check(v2_operator_identity_fingerprint(21477,10)===v2_operator_identity_fingerpr
 check(v2_operator_identity_fingerprint(21477,10)!==v2_operator_identity_fingerprint(21477,11),'operator separates fingerprint');
 
 $conflict = $hotels;
-$conflict[0]['tours'][]=['id'=>'tour-4','operator'=>['id'=>11,'name'=>'FUN&SUN'],'operatorLink'=>'https://fstravel.com/hotel/abc?hotels=99999'];
+$conflict[0]['tours'][]=['id'=>'tour-5','operator'=>['id'=>11,'name'=>'FUN&SUN'],'operatorLink'=>'https://fstravel.com/hotel/abc?hotels=99999'];
 $conflictRows = v2_operator_identity_extract($conflict,['searchId'=>100,'countryId'=>1]);
 $fun = array_values(array_filter($conflictRows, static fn(array $row): bool => $row['operator_id']===11));
 check(count($fun)===1 && $fun[0]['native_id_conflict']===1,'conflicting native ids retained as conflict, not authority');
