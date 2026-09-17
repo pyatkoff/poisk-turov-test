@@ -36,13 +36,19 @@ $pdo->prepare('UPDATE anytour_hotels SET is_active=0 WHERE id=?')->execute([$own
 $before=[(int)$pdo->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn(),(int)$pdo->query('SELECT COUNT(*) FROM anytour_hotels')->fetchColumn()];
 $result=search3_local_results_build($pdo,$p,$at);$after=[(int)$pdo->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn(),(int)$pdo->query('SELECT COUNT(*) FROM anytour_hotels')->fetchColumn()];
 need($before===$after,'reader writes nothing');need($result['offerStoreSchemaVersion']===2&&$result['scopeDigest']===$scope['digest']&&$result['scopeVersion']===1,'exact v2 scope echoed');need($result['storedOfferCount']===3&&$result['withheldOfferCount']===1,'inactive own profile withheld');
-need($result['hotelCount']===1&&$result['offerCount']===2&&$result['selectionAuthority']===false,'one canonical card two offers');$group=$result['hotels'][0];need($group['anytourHotelId']===$owns[101]&&$group['hotel']['name']==='Первый AnyTour отель'&&$group['hotel']['catalog']==='anytour','first-party profile');
+need($result['hotelCount']===1&&$result['offerCount']===2&&$result['selectionAuthority']===false,'one canonical card two offers');
+need($result['providerOfferCounts']===['andromeda'=>0,'anex'=>1,'tourvisor'=>1],'provider count map includes zero-count known provider');
+$group=$result['hotels'][0];need($group['anytourHotelId']===$owns[101]&&$group['hotel']['name']==='Первый AnyTour отель'&&$group['hotel']['catalog']==='anytour','first-party profile');
 need($group['providers']===['anex','tourvisor'],'providers grouped under one hotel');need(count($group['offers'])===2&&$group['offers'][0]['price']==='120000','offers sorted by price');
 foreach($group['offers'] as $offer){need(($offer['listing']['selection_state']??null)==='refresh_required'&&($offer['listing']['booking_enabled']??null)===false,'cached listing cannot select/book');need(!array_key_exists('context',$offer['listing']),'ephemeral provider context absent');}
 $deleteBridge=$pdo->prepare("DELETE FROM anytour_hotel_sources WHERE namespace='legacy_catalog' AND external_key=? AND anytour_hotel_id=?");$deleteBridge->execute(['101',$owns[101]]);need($deleteBridge->rowCount()===1,'accepted bridge revoked');
 $revoked=search3_local_results_build($pdo,$p,$at);need($revoked['storedOfferCount']===1&&$revoked['withheldOfferCount']===1,'revoked identity offers fail closed before canonical grouping');need($revoked['hotelCount']===0&&$revoked['offerCount']===0,'revoked identity cannot render cached canonical card');
+need($revoked['providerOfferCounts']===['andromeda'=>0,'anex'=>0,'tourvisor'=>0],'revoked scope keeps stable zero provider map');
 $source=json_encode(['id'=>101]);$bridge->execute(['101',$owns[101],$source,hash('sha256',$source)]);
 $restored=search3_local_results_build($pdo,$p,$at);need($restored['storedOfferCount']===3&&$restored['hotelCount']===1&&$restored['offerCount']===2,'restored accepted bridge restores cached visibility');
+need($restored['providerOfferCounts']===['andromeda'=>0,'anex'=>1,'tourvisor'=>1],'restored provider counts stable');
 $empty=$p;$empty['dateFrom']='2026-11-01';$empty['dateTo']='2026-11-02';$none=search3_local_results_build($pdo,$empty,$at);need($none['hotelCount']===0&&$none['offerCount']===0,'unknown scope returns truthful empty set');
+need($none['providerOfferCounts']===['andromeda'=>0,'anex'=>0,'tourvisor'=>0],'empty scope has explicit zero provider map');
+need(json_encode($none['providerOfferCounts'],JSON_THROW_ON_ERROR)==='{"andromeda":0,"anex":0,"tourvisor":0}','empty provider counts encode as JSON object, never array');
 $pdo->exec("UPDATE anytour_offers SET payload_json='{}' WHERE provider='tourvisor'");$integrityFailed=false;try{search3_local_results_build($pdo,$p,$at);}catch(RuntimeException $e){$integrityFailed=str_contains($e->getMessage(),'PAYLOAD_INTEGRITY');}need($integrityFailed,'corrupt stored payload fails closed');
-echo "SEARCH3_LOCAL_DB_RESULTS_OK scope_v1=1 store_v2=1 stored=3 rendered=2 hotels=1 withheld=1 revoked_identity_hidden=2 writes=0\n";
+echo "SEARCH3_LOCAL_DB_RESULTS_OK scope_v1=1 store_v2=1 stored=3 rendered=2 hotels=1 withheld=1 provider_map=stable revoked_identity_hidden=2 writes=0\n";
