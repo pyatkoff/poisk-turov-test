@@ -47,7 +47,8 @@ function decisionFactsHtml(h){return decisionFacts(h).map(x=>'<span class="'+esc
 function choiceHint(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];return tours.length===1&&!h.andromedaExpansion?'1 вариант тура':'';}
 function tourFact(label,value){return value?'<span class="tour-fact"><small>'+esc(label)+'</small><b>'+esc(value)+'</b></span>':'';}
 const REGULAR_FLIGHT_NOTE='Возможна доплата за регулярный рейс. Точную стоимость необходимо уточнить.';
-function flightBadge(t){if(!t||typeof t.isCharter!=='boolean')return'';const regular=t.isCharter===false,label=regular?'Регулярный рейс':'Чартерный рейс',hint=regular?' title="'+esc(REGULAR_FLIGHT_NOTE)+'" tabindex="0" aria-label="'+esc(label+'. '+REGULAR_FLIGHT_NOTE)+'"':'';return '<span class="tour-fact tour-flight-badge"'+hint+'><small>Перелёт</small><b>'+esc(label)+'</b></span>';}
+function localCandidateFlightBadges(){return /^\/_preview\/search3-local-candidate(?:\/|$)/.test(window.location&&window.location.pathname||'');}
+function flightBadge(t){if(!t||typeof t.isCharter!=='boolean')return'';const regular=t.isCharter===false;if(!localCandidateFlightBadges())return tourFact('Перелёт',regular?'Регулярный рейс':'Чартер');const label=regular?'Регулярный рейс':'Чартерный рейс',hint=regular?' title="'+esc(REGULAR_FLIGHT_NOTE)+'" tabindex="0" aria-label="'+esc(label+'. '+REGULAR_FLIGHT_NOTE)+'"':'';return '<span class="tour-fact tour-flight-badge"'+hint+'><small>Перелёт</small><b>'+esc(label)+'</b></span>';}
 function tourNeedsCheck(t){return String(t&&t.provider||'').toLowerCase()==='andromeda'||(t&&t.selectionEnabled===false)||(t&&t.selection_enabled===false);}
 
 function providerDetailId(t){const ref=String(t&&t.offerRef||'').replace(/[^a-z0-9_-]/gi,'');return ref?'andromeda-detail-'+ref:'';}
