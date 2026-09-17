@@ -28,9 +28,9 @@ final class AnyTourCatalogBackfillV1
     }
 
     /**
-     * Content-ready here is deliberately narrow: active named saved hotel + successful
-     * detail row + nonblank saved description + a nonempty JSON image array. It does
-     * not infer hotel identity, provider links, room/meal mappings or canonical prose.
+     * Content-ready is deliberately narrow: active named saved hotel + successful
+     * detail row + nonblank saved description + at least one image accepted by the
+     * same presentation sanitizer used by the canonical seed. No identity is inferred.
      */
     public function planNext(mixed $requestedLimit): array
     {
@@ -39,71 +39,75 @@ final class AnyTourCatalogBackfillV1
         $catalog->assertSchema();
         $this->beginReadOnly();
         try {
-            $eligibility = "h.is_active=1
-                AND TRIM(h.name)<>''
-                AND d.status='success'
-                AND d.description IS NOT NULL AND TRIM(d.description)<>''
-                AND d.images_json IS NOT NULL AND JSON_VALID(d.images_json)=1
-                AND JSON_TYPE(d.images_json)='ARRAY' AND JSON_LENGTH(d.images_json)>0";
-            $countsSql = "SELECT COUNT(*) AS content_ready_total,
-                    SUM(CASE WHEN s.id IS NULL THEN 1 ELSE 0 END) AS content_ready_missing,
-                    SUM(CASE WHEN s.id IS NOT NULL THEN 1 ELSE 0 END) AS content_ready_bridged
+            $stmt = $this->pdo->query("SELECT h.id
                 FROM catalog_hotels h
                 JOIN catalog_hotel_details d ON d.hotel_id=h.id
-                LEFT JOIN anytour_hotel_sources s
-                  ON s.namespace='legacy_catalog' AND s.external_key=CAST(h.id AS CHAR)
-                WHERE $eligibility";
-            $counts = $this->pdo->query($countsSql)->fetch(PDO::FETCH_ASSOC);
-            if (!is_array($counts)) throw new RuntimeException('Could not count content-ready hotel coverage');
+                WHERE h.is_active=1 AND TRIM(h.name)<>''
+                  AND d.status='success'
+                  AND d.description IS NOT NULL AND TRIM(d.description)<>''
+                ORDER BY h.id ASC");
+            if ($stmt === false) throw new RuntimeException('Could not select saved detail candidates');
+            $candidateIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
 
-            $selectSql = "SELECT h.id
-                FROM catalog_hotels h
-                JOIN catalog_hotel_details d ON d.hotel_id=h.id
-                LEFT JOIN anytour_hotel_sources s
-                  ON s.namespace='legacy_catalog' AND s.external_key=CAST(h.id AS CHAR)
-                WHERE $eligibility AND s.id IS NULL
-                ORDER BY h.id ASC
-                LIMIT $limit";
-            $stmt = $this->pdo->query($selectSql);
-            if ($stmt === false) throw new RuntimeException('Could not select next content-ready hotel cohort');
-            $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+            $bridges = [];
+            foreach (array_chunk($candidateIds, AnyTourCanonicalCatalog::BATCH_LIMIT) as $chunk) {
+                foreach ($catalog->legacyTargets($chunk) as $legacyId => $ownId) $bridges[(int)$legacyId] = $ownId;
+            }
+
+            $contentReadyTotal = $contentReadyBridged = $contentReadyMissing = 0;
+            $selected = [];
+            foreach (array_chunk($candidateIds, HOTEL_PRESENTATION_READ_LIMIT) as $chunk) {
+                $read = hotel_presentation_read_many($this->pdo, $chunk);
+                foreach ($read['items'] as $profile) {
+                    // The shared reader has already removed unsafe/invalid media here.
+                    if ($profile['description'] === null || $profile['images'] === []) continue;
+                    $legacyId = (int)$profile['id'];
+                    $contentReadyTotal++;
+                    if (isset($bridges[$legacyId])) {
+                        $contentReadyBridged++;
+                        continue;
+                    }
+                    $contentReadyMissing++;
+                    if (count($selected) < $limit) $selected[] = $legacyId;
+                }
+            }
             $this->pdo->commit();
         } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $e;
         }
 
-        $missing = (int)$counts['content_ready_missing'];
         $report = [
             'status' => 'backfill_plan_read_only',
-            'definition' => 'active_named_success_description_nonempty_images_array',
+            'definition' => 'active_named_success_description_safe_images',
             'limit' => $limit,
-            'content_ready_total' => (int)$counts['content_ready_total'],
-            'content_ready_bridged' => (int)$counts['content_ready_bridged'],
-            'content_ready_missing' => $missing,
-            'selectedIds' => $ids,
-            'selected' => count($ids),
-            'remaining_after_selected' => max(0, $missing - count($ids)),
+            'saved_detail_candidates' => count($candidateIds),
+            'content_ready_total' => $contentReadyTotal,
+            'content_ready_bridged' => $contentReadyBridged,
+            'content_ready_missing' => $contentReadyMissing,
+            'selectedIds' => $selected,
+            'selected' => count($selected),
+            'remaining_after_selected' => max(0, $contentReadyMissing - count($selected)),
             'writes' => 0,
             'supplier_calls' => 0,
             'seed_authorized' => false,
         ];
-        if ($ids === []) {
+        if ($selected === []) {
             $report['canonical_plan'] = null;
             $report['ready_for_seed_review'] = false;
             return $report;
         }
 
-        // Reuse the existing canonical DTO/digest. A concurrent bridge or source drift
-        // is visible here and therefore cannot silently become seed authorization.
-        $canonicalPlan = $catalog->plan($ids);
+        // Reuse the existing canonical DTO/digest after the selection snapshot. A
+        // concurrent bridge/source change is visible and cannot become authorization.
+        $canonicalPlan = $catalog->plan($selected);
         $report['canonical_plan'] = [
             'source_sha256' => $canonicalPlan['source_sha256'],
             'source_profiles' => $canonicalPlan['source_profiles'],
             'missingIds' => $canonicalPlan['missingIds'],
             'existing_bridges' => $canonicalPlan['existing_bridges'],
         ];
-        $report['ready_for_seed_review'] = $canonicalPlan['source_profiles'] === count($ids)
+        $report['ready_for_seed_review'] = $canonicalPlan['source_profiles'] === count($selected)
             && $canonicalPlan['missingIds'] === [] && $canonicalPlan['existing_bridges'] === 0;
         return $report;
     }
