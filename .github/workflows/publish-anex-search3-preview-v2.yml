@@ -1,0 +1,239 @@
+name: Publish checked ANEX Search3 preview v2
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-anex-search3-preview-v2.yml'
+      - 'scripts/diagnostics/anex_search3_preview_owner_gate_v2.py'
+      - 'tests/anex_search3_preview_owner_control_v2_test.py'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.event_name == 'issue_comment' && github.event.issue.number == 2530 && 'publish-anex-search3-preview-2530-v2' || format('check-anex-search3-preview-v2-control-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+env:
+  SOURCE_SHA: 7d21538b56a463ced185dd893361469e92911c77
+  SOURCE_BRANCH: feat/int-anex-search-autosave-review-20260917
+  SOURCE_RUN_ID: '35217396175'
+  OPERATION_ID: publish-anex-search3-preview-2530-v2
+  EXPECTED_ROUTE: /_preview/search3-anex-candidate/
+  OWNER_COMMAND: /publish-anex-search3-preview-2530-v2
+
+jobs:
+  control-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify bounded v2 owner-control contract
+        run: |
+          set -euo pipefail
+          python3 -B tests/anex_search3_preview_owner_control_v2_test.py
+          python3 -m py_compile scripts/diagnostics/anex_search3_preview_owner_gate_v2.py
+
+  authorize:
+    needs: control-contract
+    if: github.event_name == 'issue_comment'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    outputs:
+      allowed: ${{ steps.allow.outputs.allowed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Authorize exact fresh owner command
+        id: allow
+        run: |
+          set -euo pipefail
+          python3 -B scripts/diagnostics/anex_search3_preview_owner_gate_v2.py
+          echo 'allowed=true' >> "$GITHUB_OUTPUT"
+      - name: Verify current main and exact green INT source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.parse, urllib.request
+          repo=os.environ['GITHUB_REPOSITORY']
+          token=os.environ['GH_TOKEN']
+          source=os.environ['SOURCE_SHA']
+          branch=os.environ['SOURCE_BRANCH']
+          run_id=os.environ['SOURCE_RUN_ID']
+          def get(path):
+              req=urllib.request.Request('https://api.github.com/repos/'+repo+path,
+                  headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  return json.load(r)
+          main=get('/branches/main')['commit']['sha']
+          if main != os.environ['GITHUB_SHA']:
+              raise SystemExit('main_drift')
+          feature=get('/branches/'+urllib.parse.quote(branch,safe=''))['commit']['sha']
+          if feature != source:
+              raise SystemExit('source_branch_drift')
+          run=get('/actions/runs/'+run_id)
+          if run.get('head_sha') != source or run.get('status') != 'completed' or run.get('conclusion') != 'success':
+              raise SystemExit('source_run_not_green')
+          checks=get('/commits/'+source+'/check-runs?per_page=100').get('check_runs',[])
+          required = {'focused', 'guard', 'offline'}
+          for name in required:
+              matches=[x for x in checks if x.get('name') == name]
+              if not matches or not all(x.get('status') == 'completed' and x.get('conclusion') == 'success' for x in matches):
+                  raise SystemExit('required_check_not_green:'+name)
+          print('ANEX_PREVIEW_V2_SOURCE_PINS_OK')
+          PY
+
+  publish:
+    needs: authorize
+    if: github.event_name == 'issue_comment' && needs.authorize.outputs.allowed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: candidate
+          persist-credentials: false
+      - name: Recheck exact source and confined publisher contract
+        run: |
+          set -euo pipefail
+          test "$(git -C candidate rev-parse HEAD)" = "$SOURCE_SHA"
+          cd candidate
+          python3 -B tests/anex_search3_preview_deploy_test.py
+          python3 -B tests/anex_search3_preview_safe_deploy_test.py
+          php -l v2/api-anex-search3-preview.php
+          php -l app/integrations/anex-anytour-offer-autosave.php
+          php -l app/integrations/anex-additional-prices-batch.php
+          php tests/anex-anytour-offer-autosave-test.php
+          php tests/anex-additional-prices-batch-test.php
+          php tests/anex-search3-preview-smoke.php
+          node --check v2/anex-search3-preview-v1.js
+          grep -F 'target="$project/_preview/search3-anex-candidate"' scripts/diagnostics/anex_search3_preview_deploy.py >/dev/null
+          ! grep -F 'target="$project/_preview/search3-site-candidate"' scripts/diagnostics/anex_search3_preview_deploy.py
+          grep -F 'production_entry_changes": False' scripts/diagnostics/anex_search3_preview_deploy.py >/dev/null
+          grep -F '_B2B_ENV = "ANEX_B2B_TOKEN"' scripts/diagnostics/anex_search3_preview_deploy_safe.py >/dev/null
+      - name: Require both GitHub ANEX credentials without revealing them
+        env:
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_B2B_TOKEN: ${{ secrets.ANEX_B2B_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          api=os.environ.get('ANEX_API_TOKEN','')
+          b2b=os.environ.get('ANEX_B2B_TOKEN','')
+          if not api.strip() or len(api) > 16384 or '\x00' in api:
+              raise SystemExit('anex_api_secret_missing_or_invalid')
+          if (not b2b or len(b2b) > 16384 or b2b.lower().startswith('bearer ')
+                  or re.search(r'[\x00-\x20\x7f]', b2b)):
+              raise SystemExit('anex_b2b_secret_missing_or_invalid')
+          print('ANEX_V2_SECRETS_READY')
+          PY
+      - name: Prepare private SSH transport
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/anex-preview-v2-control"
+          printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > "$RUNNER_TEMP/anex-preview-v2-control/key"
+          chmod 600 "$RUNNER_TEMP/anex-preview-v2-control/key"
+          ssh-keygen -y -f "$RUNNER_TEMP/anex-preview-v2-control/key" >/dev/null
+      - name: Reserve this v2 publication exactly once before server mutation
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re, shlex, subprocess
+          source=os.environ['SOURCE_SHA']; control=os.environ['GITHUB_SHA']; run=os.environ['GITHUB_RUN_ID']; op=os.environ['OPERATION_ID']
+          if not re.fullmatch(r'[0-9a-f]{40}',source) or not re.fullmatch(r'[0-9a-f]{40}',control) or not run.isdigit() or not re.fullmatch(r'[a-z0-9-]+',op):
+              raise SystemExit('invalid_reservation_input')
+          value=json.dumps({'state':'reserved','operation_id':op,'source_sha':source,'control_sha':control,'run_id':int(run),'replay_allowed':False},separators=(',',':'))+'\n'
+          remote='''set -eu
+          private="$HOME/.anytoour-anex"
+          test -d "$private" && test ! -L "$private"
+          op="$private/''' + op + '''"
+          mkdir "$op"
+          chmod 700 "$op"
+          cat > "$op/reservation.json"
+          chmod 600 "$op/reservation.json"
+          printf '%s\\n' ANEX_PREVIEW_V2_PUBLICATION_RESERVED
+          '''
+          root=os.environ['RUNNER_TEMP']+'/anex-preview-v2-control'
+          cmd=['ssh','-T','-i',root+'/key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+root+'/known_hosts','-o','ConnectTimeout=15','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'bash -c '+shlex.quote(remote)]
+          r=subprocess.run(cmd,input=value,text=True,capture_output=True,timeout=45)
+          if r.returncode or r.stdout != 'ANEX_PREVIEW_V2_PUBLICATION_RESERVED\n':
+              raise SystemExit('publication_reservation_failed_or_replayed')
+          print(r.stdout.strip())
+          PY
+      - name: Publish exact checked INT source to isolated ANEX preview
+        env:
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_B2B_TOKEN: ${{ secrets.ANEX_B2B_TOKEN }}
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog-v2
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANEX_CATALOG_ARTIFACT_DIR"
+          python3 -B candidate/scripts/diagnostics/anex_search3_preview_deploy_safe.py | tee "$ANEX_CATALOG_ARTIFACT_DIR/publisher-stdout.jsonl"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])/'anex-search3-preview-deploy.json'
+          value=json.loads(p.read_text())
+          assert value['status']=='deployed'
+          assert value['source_sha']==os.environ['SOURCE_SHA']
+          assert value['route']==os.environ['EXPECTED_ROUTE']
+          assert value['production_entry_changes'] is False
+          print('ANEX_PREVIEW_V2_DEPLOY_RECEIPT_OK')
+          PY
+      - name: Mark v2 reservation completed after verified publisher receipt
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, shlex, subprocess
+          source=os.environ['SOURCE_SHA']; control=os.environ['GITHUB_SHA']; run=os.environ['GITHUB_RUN_ID']; op=os.environ['OPERATION_ID']
+          value=json.dumps({'state':'completed','operation_id':op,'source_sha':source,'control_sha':control,'run_id':int(run),'replay_allowed':False},separators=(',',':'))+'\n'
+          remote='''set -eu
+          op="$HOME/.anytoour-anex/''' + op + '''"
+          test -d "$op" && test ! -L "$op"
+          test -f "$op/reservation.json" && test ! -e "$op/result.json"
+          cat > "$op/result.json"
+          chmod 600 "$op/result.json"
+          printf '%s\\n' ANEX_PREVIEW_V2_PUBLICATION_COMPLETED
+          '''
+          root=os.environ['RUNNER_TEMP']+'/anex-preview-v2-control'
+          cmd=['ssh','-T','-i',root+'/key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+root+'/known_hosts','-o','ConnectTimeout=15','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'bash -c '+shlex.quote(remote)]
+          r=subprocess.run(cmd,input=value,text=True,capture_output=True,timeout=45)
+          if r.returncode or r.stdout != 'ANEX_PREVIEW_V2_PUBLICATION_COMPLETED\n':
+              raise SystemExit('publication_completion_receipt_failed')
+          print(r.stdout.strip())
+          PY
+      - name: Preserve sanitized v2 publication evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-search3-preview-v2-publication-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/anex-catalog-v2/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Remove runner SSH key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/anex-preview-v2-control/key"
