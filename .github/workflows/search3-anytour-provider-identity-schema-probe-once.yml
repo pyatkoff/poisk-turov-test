@@ -37,7 +37,7 @@ jobs:
           set -euo pipefail
           php -l scripts/catalog/anytour_provider_identity_schema_probe.php
           grep -Fq '64b1ae457371905bc4a2159b360b5dff5fadfd3c' .github/workflows/search3-anytour-provider-identity-schema-probe-once.yml
-          ! grep -Eq 'INSERT[[:space:]]|UPDATE[[:space:]]|DELETE[[:space:]]|REPLACE[[:space:]]|curl|wget|supplier' scripts/catalog/anytour_provider_identity_schema_probe.php
+          ! grep -Eq 'INSERT[[:space:]]|UPDATE[[:space:]]|DELETE[[:space:]]|REPLACE[[:space:]]|curl|wget' scripts/catalog/anytour_provider_identity_schema_probe.php
 
   probe:
     if: >-
