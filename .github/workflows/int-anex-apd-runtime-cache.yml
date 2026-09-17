@@ -1,0 +1,36 @@
+name: INT ANEX APD runtime cache
+
+on:
+  push:
+    branches:
+      - 'feat/int-anex-apd-runtime-cache-20260918'
+    paths:
+      - 'app/integrations/anex-apd-cache-runtime.php'
+      - 'app/integrations/anex-additional-prices-batch.php'
+      - 'tests/anex-apd-cache-runtime-test.php'
+      - 'tests/anex-additional-prices-batch-test.php'
+      - '.github/workflows/int-anex-apd-runtime-cache.yml'
+  pull_request:
+    paths:
+      - 'app/integrations/anex-apd-cache-runtime.php'
+      - 'app/integrations/anex-additional-prices-batch.php'
+      - 'tests/anex-apd-cache-runtime-test.php'
+      - 'tests/anex-additional-prices-batch-test.php'
+      - '.github/workflows/int-anex-apd-runtime-cache.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate APD DB-first runtime cache
+        run: |
+          set -euo pipefail
+          php -l app/integrations/anex-apd-cache-runtime.php
+          php -l app/integrations/anex-additional-prices-batch.php
+          php -l tests/anex-apd-cache-runtime-test.php
+          php tests/anex-apd-cache-runtime-test.php
+          php tests/anex-additional-prices-batch-test.php
