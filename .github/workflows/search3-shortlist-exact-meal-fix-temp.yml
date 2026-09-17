@@ -29,10 +29,10 @@ jobs:
           old = 'meal:all-inclusive'
           new = 'meal:label:всё включено'
           count = text.count(old)
-          if count != 5:
-              raise SystemExit(f'expected 5 retired selectors, found {count}')
+          if count != 4:
+              raise SystemExit(f'expected 4 retired selectors, found {count}')
           text = text.replace(old, new)
-          if old in text or text.count(new) < 5:
+          if old in text or text.count(new) < 4:
               raise SystemExit('selector replacement incomplete')
           path.write_text(text, encoding='utf-8')
           PY
