@@ -1,0 +1,98 @@
+name: MATCH identity write schema CURRENT v2
+
+on:
+  push:
+    branches: [diag/match-identity-write-schema-current-1971-20260917-v2]
+    paths: [.github/workflows/hotel-match-identity-write-schema-current-v2.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-identity-write-schema-current-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-identity-write-schema-current-1971-20260917-v2
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+      - name: Reserve before DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','coordination_issue':2530,'queue_issue':1971,'claim_comment_id':5717123925,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-identity-write-schema-current-v2-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-identity-write-schema-current-1971-20260917-v2/reservation.json
+          retention-days: 90
+      - name: Inspect CURRENT schema safely
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          cat > "$RUNNER_TEMP/audit.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const OP='hotel-match-identity-write-schema-current-1971-20260917-v2';
+          function req($v,$m){if(!$v)throw new RuntimeException($m);}
+          function q(PDO $d,string $s,array $a=[]):array{$p=$d->prepare($s);$p->execute(array_values($a));return$p->fetchAll(PDO::FETCH_ASSOC);}
+          function wj($p,$v){$j=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";file_put_contents($p,$j,LOCK_EX);return hash('sha256',$j);}
+          $sha=(string)getenv('MATCH_SOURCE_SHA');req(getenv('MATCH_OPERATION_ID')===OP&&preg_match('/^[a-f0-9]{40}$/D',$sha),'guard');
+          $dir=getenv('HOME').'/.anytoour-match/operations/'.OP;$rv=json_decode((string)file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);req(($rv['state']??'')==='reserved_before_db_access'&&($rv['source_sha']??'')===$sha,'reservation');
+          $root=realpath(getcwd());req(is_string($root)&&basename($root)==='anytoour.ru','root');require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $o=['operation_id'=>OP,'source_sha'=>$sha,'state'=>'failed_no_replay','no_replay'=>true,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0,'phase'=>'before_transaction'];
+          try{
+            $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');$o['phase']='schema_columns';
+            $cols=q($db,"SELECT COLUMN_NAME,COLUMN_TYPE,DATA_TYPE,IS_NULLABLE,COLUMN_DEFAULT,EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='andromeda_hotel_identities' ORDER BY ORDINAL_POSITION");req(count($cols)>0,'identity_table_missing');
+            $names=array_map(fn($r)=>(string)$r['COLUMN_NAME'],$cols);$nameSet=array_fill_keys($names,true);
+            $o['phase']='schema_indexes';$idx=q($db,"SELECT INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COLUMN_NAME,SUB_PART FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='andromeda_hotel_identities' ORDER BY INDEX_NAME,SEQ_IN_INDEX");
+            $o['phase']='guard_tables';$tables=q($db,"SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND (LOWER(TABLE_NAME) LIKE '%hotel%review%' OR LOWER(TABLE_NAME) LIKE '%hotel%excl%' OR LOWER(TABLE_NAME) LIKE '%hotel%conflict%' OR LOWER(TABLE_NAME) LIKE '%hotel%mapping%' OR LOWER(TABLE_NAME) LIKE '%identity%review%' OR LOWER(TABLE_NAME) LIKE '%identity%excl%' OR LOWER(TABLE_NAME) LIKE '%manual%hotel%') ORDER BY TABLE_NAME");
+            $related=[];foreach($tables as$t){$n=(string)$t['TABLE_NAME'];$related[$n]=q($db,"SELECT COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? ORDER BY ORDINAL_POSITION",[$n]);}
+            $o['phase']='namespace_counts';$counts=[];if(isset($nameSet['supplier_namespace'],$nameSet['decision_status'])){$counts=q($db,"SELECT supplier_namespace,decision_status,COUNT(*) row_count FROM andromeda_hotel_identities WHERE supplier_namespace IN ('operator_315','operator_342') GROUP BY supplier_namespace,decision_status ORDER BY supplier_namespace,decision_status");}
+            $o['phase']='accepted_metadata';$meta=[];
+            if(isset($nameSet['supplier_namespace'],$nameSet['decision_status'])){
+              $safe=['supplier_namespace'];foreach(['operator_id','operator_name','evidence_source'] as$c)if(isset($nameSet[$c]))$safe[]=$c;
+              $quoted=array_map(fn($c)=>'`'.$c.'`',$safe);$select=implode(',',$quoted);$sql="SELECT $select,COUNT(*) row_count FROM andromeda_hotel_identities WHERE supplier_namespace IN ('operator_315','operator_342') AND decision_status='accepted' GROUP BY $select ORDER BY supplier_namespace,row_count DESC LIMIT 100";$meta=q($db,$sql);
+            }
+            $o['phase']='required_insert_columns';$required=[];foreach($cols as$c){if(($c['IS_NULLABLE']??'YES')==='NO'&&$c['COLUMN_DEFAULT']===null&&!str_contains(strtolower((string)$c['EXTRA']),'auto_increment'))$required[]=(string)$c['COLUMN_NAME'];}
+            $db->exec('ROLLBACK');$o['state']='completed_read_only';$o['phase']='complete';$o['identity_columns']=$cols;$o['identity_indexes']=$idx;$o['required_insert_columns']=$required;$o['related_guard_tables']=$related;$o['namespace_status_counts']=$counts;$o['accepted_metadata_templates']=$meta;$o['read_at_utc']=gmdate('c');
+          }catch(Throwable$e){if($db->inTransaction())$db->rollBack();$o['error_code']=preg_match('/^[a-z0-9_]{2,120}$/i',$e->getMessage())?$e->getMessage():'sanitized_failure';}
+          $h=wj($dir.'/result.json',$o);wj($dir.'/receipt.json',['operation_id'=>OP,'source_sha'=>$sha,'state'=>$o['state'],'result_sha256'=>$h,'readback_verified'=>true,'no_replay'=>true,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0]);
+          echo json_encode(['state'=>$o['state'],'phase'=>$o['phase'],'identity_columns'=>$o['identity_columns']??[],'identity_indexes'=>$o['identity_indexes']??[],'required_insert_columns'=>$o['required_insert_columns']??[],'related_guard_tables'=>$o['related_guard_tables']??[],'namespace_status_counts'=>$o['namespace_status_counts']??[],'accepted_metadata_templates'=>$o['accepted_metadata_templates']??[],'result_sha256'=>$h],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";if($o['state']!=='completed_read_only')exit(2);
+          PHP
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0" < "$RUNNER_TEMP/audit.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          remote_rc=$?
+          set -e
+          printf '%s\n' "$remote_rc" > "$out/remote-exit.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server';r=json.loads((s/'result.json').read_text());c=json.loads((s/'receipt.json').read_text());h=hashlib.sha256((s/'result.json').read_bytes()).hexdigest();ok=(r.get('state')=='completed_read_only' and c.get('result_sha256')==h and c.get('readback_verified') is True and all(r.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_andromeda_calls']));g={'verified':ok,'phase':r.get('phase'),'identity_columns':r.get('identity_columns'),'identity_indexes':r.get('identity_indexes'),'required_insert_columns':r.get('required_insert_columns'),'related_guard_tables':r.get('related_guard_tables'),'namespace_status_counts':r.get('namespace_status_counts'),'accepted_metadata_templates':r.get('accepted_metadata_templates'),'result_sha256':h};(p/'workflow-readback.json').write_text(json.dumps(g,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(g,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if ok else 2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-identity-write-schema-current-v2-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-identity-write-schema-current-1971-20260917-v2/
+          retention-days: 90
