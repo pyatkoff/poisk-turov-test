@@ -110,8 +110,7 @@ if((getenv('OPERATION_ID')?:'')!==OPERATION_ID)throw new RuntimeException('OPERA
 umask(0077);
 
 $home=(string)getenv('HOME'); $root=realpath($home.'/www/anytoour.ru'); if(!$root)throw new RuntimeException('ROOT');
-$preview=realpath($root.'/_preview/search3-anex-candidate'); if(!$preview)throw new RuntimeException('PREVIEW');
-$res=['schema_version'=>1,'operation'=>OPERATION_ID,'status'=>'blocked','provider_accessed'=>false,
+$res=['schema_version'=>1,'operation'=>OPERATION_ID,'status'=>'blocked','phase'=>'runtime_init','provider_accessed'=>false,
     'criteria'=>['country'=>'Egypt','resort'=>RESORT_LABEL,'date'=>SEARCH_DATE,'nights'=>NIGHTS,'adults'=>ADULTS,'children'=>0,'stars'=>STAR_BUCKETS,'operator'=>'ANEX'],
     'provider_calls'=>['tourvisor'=>0,'anex'=>0,'andromeda'=>0],'mapping_writes'=>0,'database_writes'=>0,'booking_calls'=>0];
 try{
@@ -125,12 +124,11 @@ try{
 
     require_once m3_find_file($root,'/app/integrations/andromeda-client.php');
     require_once m3_find_file($root,'/app/integrations/andromeda-transport.php');
-    $andConfigPath=$preview.'/.andromeda-private.php';
-    if(!is_file($andConfigPath)||is_link($andConfigPath))throw new RuntimeException('ANDROMEDA_CONFIG');
-    $andConfig=require $andConfigPath;
-    if(!is_array($andConfig)||($andConfig['enabled']??false)!==true||empty($andConfig['username'])||empty($andConfig['password']))throw new RuntimeException('ANDROMEDA_CONFIG');
+    $andUser=getenv('ANDROMEDA_USERNAME'); $andPassword=getenv('ANDROMEDA_PASSWORD');
+    if(!is_string($andUser)||trim($andUser)===''||!is_string($andPassword)||$andPassword==='')throw new RuntimeException('ANDROMEDA_CREDENTIALS');
 
     // Direct ANEX dictionary/date preflight.
+    $res['phase']='anex_preflight';
     if(!defined('ANEX_API_TOKEN')||!is_string(ANEX_API_TOKEN)||trim(ANEX_API_TOKEN)==='')throw new RuntimeException('ANEX_TOKEN');
     $anexClient=new AnyTourAnexClient(ANEX_API_TOKEN); $cache=[];
     $aDeparture=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($anexClient,'SearchTour_TOWNFROMS',[],$cache),['Москва','Moscow']);
@@ -143,8 +141,9 @@ try{
     $res['provider_calls']['anex']=$anexClient->requestsMade();
 
     // Andromeda dictionaries: Moscow -> Egypt -> exact Sharm + exact 3/4/5 star IDs + ANEX operator.
+    $res['phase']='andromeda_catalog';
     $andBase=new AnyTourAndromedaClient(new AnyTourAndromedaTransport(true),true);
-    $andBase->login($andConfig['username'],$andConfig['password']); $res['provider_calls']['andromeda']++;
+    $andBase->login($andUser,$andPassword); $res['provider_calls']['andromeda']++;
     $townfrom=$andBase->catalog('townfrom'); $res['provider_calls']['andromeda']++;
     $d=m3_dict_id($townfrom['TOWNFROM'],['Москва','Moscow']);
     $states=$andBase->catalog('state',['TOWNFROMINC'=>$d]); $res['provider_calls']['andromeda']++;
@@ -158,7 +157,7 @@ try{
     $andrRows=[]; $nativeByStar=[];
     foreach(STAR_BUCKETS as $star){
         $client=new AnyTourAndromedaClient(new AnyTourAndromedaTransport(true),true);
-        $client->login($andConfig['username'],$andConfig['password']); $res['provider_calls']['andromeda']++;
+        $client->login($andUser,$andPassword); $res['provider_calls']['andromeda']++;
         $params=['TOWNFROMINC'=>$d,'STATEINC'=>$state,'CHECKIN_BEG'=>SEARCH_DATE_COMPACT,'CHECKIN_END'=>SEARCH_DATE_COMPACT,
             'NIGHTS_FROM'=>NIGHTS,'NIGHTS_TILL'=>NIGHTS,'ADULT'=>ADULTS,'CHILD'=>0,'CURRENCYINC'=>$currency,
             'STARS'=>(string)$starIds[$star],'OPERATORS'=>'5','TOWNTOINC'=>(string)$townTo,'PACKETTYPE'=>0,'PAGE'=>1,'GROUP_BY'=>32];
@@ -179,6 +178,7 @@ try{
     $res['provider_accessed']=true;
 
     // Direct ANEX, targeted only to native IDs observed in Andromeda ANEX rows.
+    $res['phase']='direct_anex_prices';
     $anexRows=[];
     foreach(STAR_BUCKETS as $star){
         $ids=array_map('strval',array_keys($nativeByStar[$star]??[])); sort($ids,SORT_STRING); $ids=array_slice($ids,0,30);
@@ -202,6 +202,7 @@ try{
     }
 
     // Tourvisor: same resort/date/party, operator ANEX only, exact requested category.
+    $res['phase']='tourvisor_search';
     $ops=v2_data_tv_get('/operators',['departureId'=>1,'countryId'=>COUNTRY_LOCAL_ID]);
     $res['provider_calls']['tourvisor']=v2_data_tv_http_attempt_count();
     $tvOp=m3_dict_id(m3_rows($ops,['operators','items']),['ANEX','ANEX TOUR','ANEX Tour','Анекс Тур']);
@@ -242,6 +243,7 @@ try{
     $first=AnyTourAnexThreeSourceResortStarV1::resolve(['schema_version'=>1,'anex'=>$anexRows,'andromeda'=>$andrRows,'tourvisor'=>$tvRows]);
 
     // Direct confirmation pass: exact normalized name within the same star bucket only.
+    $res['phase']='tourvisor_operator_link';
     $anexName=[];
     foreach($anexRows as $a){$k=AnyTourAnexThreeSourceResortStarV1::nameKey($a['hotel_name']);if($k!=='')$anexName[$a['stars']][$k][$a['anex_hotel_id']]=true;}
     $detailTargets=[];
@@ -262,7 +264,7 @@ try{
 
     $final=AnyTourAnexThreeSourceResortStarV1::resolve(['schema_version'=>1,'anex'=>$anexRows,'andromeda'=>$andrRows,'tourvisor'=>$tvRows]);
     $res += [
-        'status'=>'completed','rows'=>['anex'=>count($anexRows),'andromeda'=>count($andrRows),'tourvisor'=>count($tvRows)],
+        'status'=>'completed','phase'=>'completed','rows'=>['anex'=>count($anexRows),'andromeda'=>count($andrRows),'tourvisor'=>count($tvRows)],
         'native_anex_ids_from_andromeda'=>count(array_unique(array_map(fn($r)=>$r['original_hotel_id'],$andrRows))),
         'pre_detail_counts'=>$first['counts'],'post_detail_counts'=>$final['counts'],
         'direct_detail_checks'=>$directDetails,
@@ -275,7 +277,9 @@ try{
     $msg=$e->getMessage(); $res['status']='terminal_failed_no_retry';
     $res['error']=preg_match('/^[A-Z0-9_]{2,80}$/D',$msg)?$msg:'SANITIZED_FAILURE';
     $res['provider_calls']['tourvisor']=function_exists('v2_data_tv_http_attempt_count')?v2_data_tv_http_attempt_count():$res['provider_calls']['tourvisor'];
-    $res['no_replay']=$res['provider_accessed']||array_sum($res['provider_calls'])>0;
+    if(isset($anexClient) && is_object($anexClient) && method_exists($anexClient,'requestsMade')) $res['provider_calls']['anex']=$anexClient->requestsMade();
+    $res['provider_accessed']=$res['provider_accessed']||array_sum($res['provider_calls'])>0;
+    $res['no_replay']=$res['provider_accessed'];
 }
 $digest=m3_write($outDir.'/result.json',$res);
 m3_write($outDir.'/receipt.json',['operation'=>OPERATION_ID,'status'=>$res['status'],'result_sha256'=>$digest,'provider_accessed'=>$res['provider_accessed'],
