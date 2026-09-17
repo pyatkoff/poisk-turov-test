@@ -1,0 +1,38 @@
+name: MATCH operator fingerprint room evidence
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php
+      - tests/hotel_match_operator_fingerprint_room_evidence_v1_test.php
+      - .github/workflows/hotel-match-operator-fingerprint-room-evidence-v1.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Pure MATCH resolver checks
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php
+          php -l tests/hotel_match_operator_fingerprint_room_evidence_v1_test.php
+          php scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php --self-test
+          php tests/hotel_match_operator_fingerprint_room_evidence_v1_test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php').read_text()
+          for bad in ['curl_', 'new PDO', 'INSERT ', 'UPDATE ', 'DELETE ', 'TOURVISOR_JWT', 'ANDROMEDA_PASSWORD']:
+              assert bad not in p, bad
+          for good in ["'database_writes' => 0","'mapping_writes' => 0","'supplier_calls' => 0",'room_candidates','operator_fingerprint','native_anex_overlap']:
+              assert good in p, good
+          print('MATCH_OPERATOR_FINGERPRINT_ROOM_EVIDENCE_BOUNDARY_OK')
+          PY
