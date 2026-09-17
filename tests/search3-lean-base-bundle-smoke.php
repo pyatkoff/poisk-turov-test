@@ -17,8 +17,8 @@ foreach ($excludedJs as $excluded) {
     if (!in_array($excluded, $fullJs, true)) lean_bundle_fail('legacy owner missing: ' . $excluded);
     if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
 }
-// Search3 has four explicitly scoped dependencies; compare ordered owners, not just counts.
-$search3OnlyJs = ['search3-canonical-profiles-v1.js', 'search3-local-db-provider-v1.js', 'andromeda-local-endpoint-v1.js', 'anex-final-price-provider-v1.js'];
+// Search3 has five explicitly scoped dependencies; compare ordered owners, not just counts.
+$search3OnlyJs = ['search3-canonical-profiles-v1.js', 'search3-local-db-provider-v1.js', 'search3-local-offer-persist-v1.js', 'andromeda-local-endpoint-v1.js', 'anex-final-price-provider-v1.js'];
 if (count(array_unique($fullJs)) !== count($fullJs) || count(array_unique($search3Js)) !== count($search3Js)) lean_bundle_fail('duplicate JavaScript owner');
 foreach ($search3OnlyJs as $scoped) {
     if (in_array($scoped, $fullJs, true)) lean_bundle_fail('Search3-only owner leaked into legacy: ' . $scoped);
@@ -31,11 +31,12 @@ $rendererIndex = array_search('results-renderer-v5.js', $search3Js, true);
 if ($roomIndex === false || $profileIndex === false || $rendererIndex === false || $roomIndex >= $profileIndex || $profileIndex + 1 !== $rendererIndex) lean_bundle_fail('Search3 renderer dependencies are out of order');
 $lifecycleIndex = array_search('search-lifecycle-v6.js', $search3Js, true);
 $dbIndex = array_search('search3-local-db-provider-v1.js', $search3Js, true);
+$persistIndex = array_search('search3-local-offer-persist-v1.js', $search3Js, true);
 $andromedaShimIndex = array_search('andromeda-local-endpoint-v1.js', $search3Js, true);
 $andromedaIndex = array_search('andromeda-provider-v1.js', $search3Js, true);
 $anexIndex = array_search('anex-final-price-provider-v1.js', $search3Js, true);
-if ($lifecycleIndex === false || $dbIndex === false || $andromedaShimIndex === false || $andromedaIndex === false || $anexIndex === false
-    || $lifecycleIndex + 1 !== $dbIndex || $dbIndex + 1 !== $andromedaShimIndex || $andromedaShimIndex + 1 !== $andromedaIndex || $andromedaIndex + 1 !== $anexIndex) lean_bundle_fail('Search3 DB/provider dependencies are out of order');
+if ($lifecycleIndex === false || $dbIndex === false || $persistIndex === false || $andromedaShimIndex === false || $andromedaIndex === false || $anexIndex === false
+    || $lifecycleIndex + 1 !== $dbIndex || $dbIndex + 1 !== $persistIndex || $persistIndex + 1 !== $andromedaShimIndex || $andromedaShimIndex + 1 !== $andromedaIndex || $andromedaIndex + 1 !== $anexIndex) lean_bundle_fail('Search3 DB/provider dependencies are out of order');
 if ($search3Css !== ['design-system-v2.css', 'site-header-v2.css', 'site-footer-v1.css', 'current-price-calendar-v1.css']) lean_bundle_fail('Search3 must load the canonical shared shell and current price calendar CSS');
 if (count(array_keys($search3Css, 'site-header-v2.css', true)) !== 1) lean_bundle_fail('canonical shared header owner is not exact');
 if (!in_array('site-footer-v1.css', $fullCss, true)) lean_bundle_fail('canonical shared footer owner missing');
