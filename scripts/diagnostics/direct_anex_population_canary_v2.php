@@ -113,7 +113,8 @@ function canary_project_root(): string
     $home = rtrim((string)getenv('HOME'), '/');
     if ($home === '') throw new RuntimeException('CANARY_HOME');
     $root = $home . '/www/anytoour.ru';
-    if (!is_dir($root) || is_link($root) || !is_file($root . '/config.php') || !is_file($root . '/v2/data/db-v1.php')) {
+    if (!is_dir($root) || is_link($root) || !is_file($root . '/config.php')
+        || (!is_file($root . '/data/db-v1.php') && !is_file($root . '/v2/data/db-v1.php'))) {
         throw new RuntimeException('CANARY_PROJECT_ROOT');
     }
     return $root;
@@ -123,7 +124,8 @@ function canary_db(string $root): PDO
 {
     chdir($root);
     require_once $root . '/config.php';
-    require_once $root . '/v2/data/db-v1.php';
+    $helper = is_file($root . '/data/db-v1.php') ? $root . '/data/db-v1.php' : $root . '/v2/data/db-v1.php';
+    require_once $helper;
     $db = v2_data_db();
     if (!$db instanceof PDO || $db->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
         throw new RuntimeException('CANARY_DB');
