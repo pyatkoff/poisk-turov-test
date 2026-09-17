@@ -1,0 +1,90 @@
+name: MATCH passive native CURRENT v1
+
+on:
+  push:
+    branches: [diag/match-passive-native-current-1971-20260917-v1]
+    paths: [.github/workflows/hotel-match-passive-native-current-v1.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-passive-native-current-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-passive-native-current-1971-20260917-v1
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+      - name: Reserve before DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','coordination_issue':2530,'queue_issue':1971,'claim_comment_id':5717302576,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-passive-native-current-v1-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-passive-native-current-1971-20260917-v1/reservation.json
+          retention-days: 90
+      - name: Audit CURRENT passive evidence
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          cat > "$RUNNER_TEMP/audit.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const OP='hotel-match-passive-native-current-1971-20260917-v1';
+          const CORE8=[1,2,4,8,9,10,12,16];
+          function rq($v,$m){if(!$v)throw new RuntimeException($m);} function q(PDO$d,string$s,array$a=[]):array{$p=$d->prepare($s);$p->execute(array_values($a));$r=$p->fetchAll(PDO::FETCH_ASSOC);rq(count($r)<100000,'row_budget');return$r;} function wj($p,$v){$j=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";file_put_contents($p,$j,LOCK_EX);return hash('sha256',$j);}
+          $sha=(string)getenv('MATCH_SOURCE_SHA');rq(getenv('MATCH_OPERATION_ID')===OP&&preg_match('/^[a-f0-9]{40}$/D',$sha),'guard');$dir=getenv('HOME').'/.anytoour-match/operations/'.OP;$rv=json_decode((string)file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);rq(($rv['state']??'')==='reserved_before_db_access'&&($rv['source_sha']??'')===$sha,'reservation');
+          $root=realpath(getcwd());rq(is_string($root)&&basename($root)==='anytoour.ru','root');require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $o=['operation_id'=>OP,'source_sha'=>$sha,'state'=>'failed_no_replay','no_replay'=>true,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0];
+          try{
+            $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+            $cols=array_column(q($db,"SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tour_operator_identity_observations' ORDER BY ORDINAL_POSITION"),'COLUMN_NAME');foreach(['hotel_id','operator_id','country_id','last_seen_at','observation_count','operator_link_host','native_id_type','native_id_value','native_id_conflict']as$c)rq(in_array($c,$cols,true),'missing_'.$c);
+            $tot=q($db,"SELECT COUNT(*) rows_total,COUNT(DISTINCT hotel_id) hotels,COUNT(DISTINCT operator_id) operators,SUM(operator_link IS NOT NULL) link_rows,SUM(native_id_value IS NOT NULL) native_rows,SUM(native_id_conflict<>0) native_conflict_rows,MIN(first_seen_at) first_seen,MAX(last_seen_at) last_seen FROM tour_operator_identity_observations")[0];
+            $recent=q($db,"SELECT SUM(last_seen_at>=UTC_TIMESTAMP()-INTERVAL 24 HOUR) rows_24h,SUM(last_seen_at>=UTC_TIMESTAMP()-INTERVAL 2 HOUR) rows_2h,SUM(native_id_value IS NOT NULL AND last_seen_at>=UTC_TIMESTAMP()-INTERVAL 24 HOUR) native_24h FROM tour_operator_identity_observations")[0];
+            $dist=q($db,"SELECT operator_id,COALESCE(operator_link_host,'<none>') host,COALESCE(native_id_type,'<none>') native_type,COUNT(*) rows_count,SUM(native_id_value IS NOT NULL) native_count,SUM(native_id_conflict<>0) conflict_count,MAX(last_seen_at) last_seen FROM tour_operator_identity_observations WHERE operator_id IN (25,43) GROUP BY operator_id,host,native_type ORDER BY operator_id,native_count DESC,rows_count DESC LIMIT 100");
+            $rows=q($db,"SELECT id,hotel_id,hotel_name,country_id,region_id,subregion_id,operator_id,operator_name,operator_link_host,native_id_type,native_id_value,native_id_conflict,first_seen_at,last_seen_at,observation_count,source FROM tour_operator_identity_observations WHERE operator_id IN (25,43) AND native_id_type='hotels' AND native_id_value REGEXP '^[1-9][0-9]{0,19}$' AND native_id_conflict=0 ORDER BY observation_count DESC,last_seen_at DESC,id ASC");
+            $cand=[];$reasons=[];$seen=[];foreach($rows as$r){$op=(int)$r['operator_id'];$ns=$op===25?'operator_315':'operator_342';$ext=(string)$r['native_id_value'];$lid=(int)$r['hotel_id'];$key=$ns.'/'.$ext;if(isset($seen[$key])&&$seen[$key]!==$lid){$reasons['passive_native_multi_local']=($reasons['passive_native_multi_local']??0)+1;continue;}$seen[$key]=$lid;
+              $cat=q($db,'SELECT id,country_id,name,is_active FROM catalog_hotels WHERE id=?',[$lid]);if(count($cat)!==1||!in_array((int)$cat[0]['country_id'],CORE8,true)||(int)$cat[0]['is_active']!==1){$reasons['target_not_active_core8']=($reasons['target_not_active_core8']??0)+1;continue;}if((int)$r['country_id']!==(int)$cat[0]['country_id']){$reasons['country_mismatch']=($reasons['country_mismatch']??0)+1;continue;}
+              $idrow=q($db,"SELECT local_hotel_id,decision_status,evidence_sha256 FROM andromeda_hotel_identities WHERE supplier_namespace=? AND external_hotel_id=?",[$ns,$ext]);$occ=q($db,"SELECT external_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace=? AND decision_status='accepted' AND local_hotel_id=?",[$ns,$lid]);
+              $route='absent_prepared';if($idrow!==[]){$x=$idrow[0];if($x['decision_status']==='accepted'&&(int)$x['local_hotel_id']===$lid)$route='already_accepted_same';elseif($x['decision_status']==='pending'&&$x['local_hotel_id']===null)$route='pending_exact_native';else$route='existing_identity_hold';}elseif($occ!==[])$route='target_occupied_hold';
+              $reasons[$route]=($reasons[$route]??0)+1;if(in_array($route,['absent_prepared','pending_exact_native'],true))$cand[]=['namespace'=>$ns,'external_hotel_id'=>$ext,'local_id'=>$lid,'local_name'=>(string)$cat[0]['name'],'country_id'=>(int)$cat[0]['country_id'],'operator_id'=>$op,'operator_name'=>$r['operator_name'],'host'=>$r['operator_link_host'],'observation_count'=>(int)$r['observation_count'],'first_seen'=>$r['first_seen_at'],'last_seen'=>$r['last_seen_at'],'source'=>$r['source'],'route'=>$route];
+            }
+            usort($cand,fn($a,$b)=>($b['observation_count']<=>$a['observation_count'])?:strcmp((string)$b['last_seen'],(string)$a['last_seen']));ksort($reasons);$db->exec('ROLLBACK');$o['state']='completed_read_only';$o['table_totals']=$tot;$o['recent']=$recent;$o['operator_distribution']=$dist;$o['eligible_rows']=count($rows);$o['candidate_count']=count($cand);$o['reason_counts']=$reasons;$o['candidates']=$cand;$o['read_at_utc']=gmdate('c');
+          }catch(Throwable$e){if($db->inTransaction())$db->rollBack();$o['error_code']=preg_match('/^[a-z0-9_]{2,120}$/i',$e->getMessage())?$e->getMessage():'sanitized_failure';}
+          $h=wj($dir.'/result.json',$o);wj($dir.'/receipt.json',['operation_id'=>OP,'source_sha'=>$sha,'state'=>$o['state'],'result_sha256'=>$h,'readback_verified'=>true,'no_replay'=>true,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0]);echo json_encode(['state'=>$o['state'],'table_totals'=>$o['table_totals']??null,'recent'=>$o['recent']??null,'operator_distribution'=>$o['operator_distribution']??[],'eligible_rows'=>$o['eligible_rows']??null,'candidate_count'=>$o['candidate_count']??null,'reason_counts'=>$o['reason_counts']??[],'candidates'=>$o['candidates']??[],'result_sha256'=>$h],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";if($o['state']!=='completed_read_only')exit(2);
+          PHP
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=256M" < "$RUNNER_TEMP/audit.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server';r=json.loads((s/'result.json').read_text());c=json.loads((s/'receipt.json').read_text());h=hashlib.sha256((s/'result.json').read_bytes()).hexdigest();ok=(r.get('state')=='completed_read_only' and c.get('result_sha256')==h and c.get('readback_verified') is True and all(r.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_andromeda_calls']));g={'verified':ok,'table_totals':r.get('table_totals'),'recent':r.get('recent'),'operator_distribution':r.get('operator_distribution'),'eligible_rows':r.get('eligible_rows'),'candidate_count':r.get('candidate_count'),'reason_counts':r.get('reason_counts'),'candidates':r.get('candidates'),'result_sha256':h};(p/'workflow-readback.json').write_text(json.dumps(g,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(g,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if ok else 2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-passive-native-current-v1-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-passive-native-current-1971-20260917-v1/
+          retention-days: 90
