@@ -5,6 +5,7 @@ on:
     paths:
       - 'v2/data/anytour-search-scope-v1.php'
       - 'v2/data/search3-local-results-read-v1.php'
+      - 'v2/data/.htaccess'
       - 'tests/search3_local_db_results_test.php'
       - 'v2/data/anytour-offer-store-v1.php'
       - 'v2/data/anytour-canonical-catalog-v1.php'
@@ -36,11 +37,20 @@ jobs:
           php-version: '8.3'
           extensions: pdo_mysql, mbstring
           coverage: none
-      - name: Syntax
+      - name: Syntax and exact Apache data allowlist
         run: |
           php -l v2/data/anytour-search-scope-v1.php
           php -l v2/data/search3-local-results-read-v1.php
           php -l tests/search3_local_db_results_test.php
+          python3 - <<'PY'
+          import pathlib,re
+          text=pathlib.Path('v2/data/.htaccess').read_text()
+          grants=re.findall(r'<Files\s+"([^"]+\.php)">\s*Require all granted\s*</Files>',text,re.S)
+          assert grants==['hotel-details-read-v1.php','search3-local-results-read-v1.php'],grants
+          endpoint=pathlib.Path('v2/data/search3-local-results-read-v1.php').read_text()
+          assert '/_preview/search3-local-candidate/data' in endpoint
+          assert "search3_local_results_out(['ok'=>false,'error'=>'Local DB results are isolated to local preview'],403)" in endpoint
+          PY
       - name: Existing offer store regression
         env:
           ANYTOUR_OFFER_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_local_results_fixture;charset=utf8mb4'
