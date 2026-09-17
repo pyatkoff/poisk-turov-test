@@ -9,6 +9,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/anytour-search-scope-v1.php';
+require_once __DIR__ . '/anytour-offer-scope-index-v1.php';
 require_once __DIR__ . '/anytour-offer-store-v1.php';
 
 final class AnyTourOfferSnapshotIngestV1
@@ -39,6 +40,9 @@ final class AnyTourOfferSnapshotIngestV1
 
         $scope = AnyTourSearchScopeV1::fromParams($searchParams);
         $prepared = self::prepareRows($provider, $rows, $now);
+        // Scope metadata is additive and has no selection authority. During a rolling
+        // deployment the index may not yet exist; exact-scope persistence remains safe.
+        $scopeIndexed = AnyTourOfferScopeIndexV1::recordIfInstalled($db, $scope, $now);
         $token = AnyTourOfferStoreV1::beginRefresh($db, $provider, $scope['digest'], $now);
         $written = [];
 
@@ -77,6 +81,7 @@ final class AnyTourOfferSnapshotIngestV1
             'provider' => $provider,
             'scopeVersion' => $scope['version'],
             'scopeDigest' => $scope['digest'],
+            'scopeIndexed' => $scopeIndexed,
             'refreshTokenDigest' => hash('sha256', $token),
             'offerCount' => count($written),
             'hotelCount' => count($hotels),

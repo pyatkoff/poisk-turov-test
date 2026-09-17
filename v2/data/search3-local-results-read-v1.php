@@ -3,11 +3,29 @@
 declare(strict_types=1);
 require_once __DIR__.'/db-v1.php';
 require_once __DIR__.'/anytour-offer-store-read-v2.php';
+require_once __DIR__.'/anytour-offer-scope-index-v1.php';
 require_once __DIR__.'/anytour-canonical-catalog-v1.php';
 require_once __DIR__.'/anytour-search-scope-v1.php';
 
 const SEARCH3_LOCAL_RESULTS_MAX_OFFERS=15000;
 const SEARCH3_LOCAL_RESULTS_MAX_HOTELS=5000;
+
+/** Re-prove facts carried by each cached concrete offer before cross-scope reuse. */
+function search3_local_cached_offer_matches_scope(array $item,array $scope): bool
+{
+    $listing=$item['offer']??null;$tour=is_array($listing)?($listing['tour']??null):null;
+    if(!is_array($tour))return false;
+    $checkin=$tour['checkin']??null;$nights=$tour['nights']??null;$party=$tour['party']??null;
+    if(!is_string($checkin)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$checkin)
+        ||$checkin<$scope['dateFrom']||$checkin>$scope['dateTo'])return false;
+    if(!is_int($nights)||$nights<$scope['nightsFrom']||$nights>$scope['nightsTo'])return false;
+    if(!is_array($party)||($party['adults']??null)!==$scope['adults'])return false;
+    $ages=$party['child_ages']??null;$children=$party['children']??null;
+    if(!is_array($ages)||!array_is_list($ages)||!is_int($children)||$children!==count($ages)||$children!==count($scope['childs']))return false;
+    foreach($ages as $age)if(!is_int($age))return false;
+    sort($ages,SORT_NUMERIC);
+    return $ages===$scope['childs'];
+}
 
 function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $now,int $limit=SEARCH3_LOCAL_RESULTS_MAX_OFFERS): array
 {
@@ -20,8 +38,17 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
     try{
         $version=(int)$pdo->query('SELECT schema_version FROM anytour_offer_store_control WHERE singleton_id=1')->fetchColumn();
         if($version!==2)throw new RuntimeException('Unsupported AnyTour offer-store schema');
-        $stored=AnyTourOfferStoreReadV2::readScope($pdo,$scope['digest'],$now,$limit);
-        if(!hash_equals($scope['digest'],(string)$stored['scopeDigest']))throw new RuntimeException('Offer-store scope mismatch');
+        $exact=AnyTourOfferStoreReadV2::readScope($pdo,$scope['digest'],$now,$limit);
+        if(!hash_equals($scope['digest'],(string)$exact['scopeDigest']))throw new RuntimeException('Offer-store scope mismatch');
+        $mode='exact';$sourceScopes=[$scope['digest']];$stored=$exact;
+        if($exact['items']===[]){
+            $sourceScopes=AnyTourOfferScopeIndexV1::compatibleDigests($pdo,$scope,$now);
+            if($sourceScopes!==[]){
+                $stored=AnyTourOfferStoreReadV2::readScopes($pdo,$sourceScopes,$now,$limit);
+                $stored['items']=array_values(array_filter($stored['items'],static fn($item)=>is_array($item)&&search3_local_cached_offer_matches_scope($item,$scope['params'])));
+                if($stored['items']===[]){$sourceScopes=[];$mode='none';}else $mode='compatible';
+            }else{$stored=['source'=>'anytour-offer-store-v2','scopeDigests'=>[],'items'=>[]];$mode='none';}
+        }
         $ids=[];foreach($stored['items'] as $item)$ids[(int)$item['anytourHotelId']]=(int)$item['anytourHotelId'];
         sort($ids,SORT_NUMERIC);
         $profiles=[];$catalog=new AnyTourCanonicalCatalog($pdo);
@@ -38,6 +65,7 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
                 'provider'=>$item['provider'],'legacyHotelId'=>$item['legacyHotelId'],'price'=>$item['price'],'currency'=>$item['currency'],
                 'observedAt'=>$item['observedAt'],'lastSeenAt'=>$item['lastSeenAt'],'expiresAt'=>$item['expiresAt'],'listing'=>$item['offer'],
             ];
+            if(isset($item['sourceScopeDigest']))$offer['sourceScopeDigest']=$item['sourceScopeDigest'];
             if(($offer['listing']['selection_state']??null)!=='refresh_required'||($offer['listing']['booking_enabled']??null)!==false)throw new RuntimeException('Stored listing gained selection authority');
             $groups[$own]['offers'][]=$offer;$groups[$own]['providers'][$item['provider']]=true;
             $price=(float)$item['price'];if($groups[$own]['minPrice']===null||$price<(float)$groups[$own]['minPrice'])$groups[$own]['minPrice']=$item['price'];
@@ -54,6 +82,7 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
         ksort($providerCounts);$pdo->commit();
         return[
             'source'=>'anytour-db-first-results-v1','offerStoreSchemaVersion'=>$version,'scopeVersion'=>$scope['version'],'scopeDigest'=>$scope['digest'],'scope'=>$scope['params'],
+            'matchMode'=>$mode,'partial'=>$mode==='compatible','sourceScopeDigests'=>$sourceScopes,
             'generatedAt'=>$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
             'hotelCount'=>count($hotels),'eligibleHotelCount'=>$eligibleHotelCount,'offerCount'=>array_sum($providerCounts),'storedOfferCount'=>count($stored['items']),
             'withheldOfferCount'=>$withheld,'omittedHotelCount'=>$omittedHotelCount,'omittedOfferCount'=>$omittedOfferCount,
