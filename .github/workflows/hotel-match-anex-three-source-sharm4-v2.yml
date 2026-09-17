@@ -1,0 +1,140 @@
+name: MATCH ANEX three-source Sharm 4star v2
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_andromeda_sharm4_capture_v2.php
+      - scripts/diagnostics/hotel_match_anex_tv_sharm4_from_checkpoint_v2.php
+      - .github/workflows/hotel-match-anex-three-source-sharm4-v2.yml
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: match-anex-three-source-sharm4-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-three-source-sharm4-1971-20260918-v2
+  EXPECTED_BASE: ed1cb35ec613c00a51d6a0e00fa683a40fdcb886
+  CLAIM_COMMENT_ID: '5722332844'
+jobs:
+  canary:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 && github.event.pull_request.head.ref == 'ops/match-anex-three-source-sharm4-1971-20260918-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin scope and lint
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$BASE_SHA" = "$EXPECTED_BASE"
+          test "$(git merge-base "$HEAD_SHA" "$BASE_SHA")" = "$EXPECTED_BASE"
+          php -l scripts/diagnostics/hotel_match_andromeda_sharm4_capture_v2.php
+          php -l scripts/diagnostics/hotel_match_anex_tv_sharm4_from_checkpoint_v2.php
+          test "$(git rev-parse "$HEAD_SHA:scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php")" = "$(git rev-parse "$EXPECTED_BASE:scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php")"
+      - name: Verify claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          body="$(gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" --jq '.body')"
+          grep -Fq "$OPERATION_ID" <<<"$body"
+          grep -Fq '4★' <<<"$body"
+      - name: Reservation
+        run: |
+          mkdir -p reservation
+          printf '{"operation":"%s","run":%s,"stage_a_max":6,"stage_b_anex_max":6,"stage_b_tv_max":18,"writes":0}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" > reservation/reservation.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sharm4-v2-reservation-${{ github.run_id }}
+          path: reservation/
+          retention-days: 90
+      - name: Require Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          for i in $(seq 1 30); do gh api "repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs" --jq '.check_runs[]|select(.name=="guard" and .conclusion=="success")|.id' | grep -Eq '^[0-9]+$' && exit 0; sleep 5; done; exit 1
+      - name: Capture Andromeda 4star checkpoint
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p checkpoint
+          OPERATION_ID="$OPERATION_ID" php scripts/diagnostics/hotel_match_andromeda_sharm4_capture_v2.php --execute "$RUNNER_TEMP/checkpoint"
+          cp "$RUNNER_TEMP/checkpoint/"* checkpoint/
+          php -r '$r=json_decode(file_get_contents("checkpoint/andromeda.json"),true,64,JSON_THROW_ON_ERROR);if(($r["status"]??"")!=="completed"||($r["calls_started"]??99)>6||count($r["rows"]??[])<1)exit(1);'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sharm4-v2-andromeda-checkpoint-${{ github.run_id }}
+          path: checkpoint/
+          retention-days: 90
+      - name: Prepare SSH
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$RUNNER_TEMP/known" 2>/dev/null
+      - name: Stage checkpoint and server resolver
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "mkdir -p \"\$HOME/.anytour-operations\"; test ! -e \"\$HOME/$op\"; mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" checkpoint/andromeda.json scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php scripts/diagnostics/hotel_match_anex_tv_sharm4_from_checkpoint_v2.php "$remote:$op/"
+      - name: Capture direct ANEX and Tourvisor from checkpoint once
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytour-operations/$OPERATION_ID"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' php \"\$HOME/$op/hotel_match_anex_tv_sharm4_from_checkpoint_v2.php\" --execute \"\$HOME/$op\" \"\$HOME/$op/andromeda.json\"" > terminal/stdout.log 2>terminal/stderr.log
+          rc=$?; set -e; printf '%s\n' "$rc" > terminal/ssh-exit.txt
+          scp "${opts[@]}" "$remote:$op/result.json" terminal/result.json || true
+          scp "${opts[@]}" "$remote:$op/receipt.json" terminal/receipt.json || true
+      - name: Validate terminal
+        if: always()
+        run: |
+          set -euo pipefail
+          test -s terminal/result.json && test -s terminal/receipt.json
+          php -r '$r=json_decode(file_get_contents("terminal/receipt.json"),true,64,JSON_THROW_ON_ERROR);if(($r["mapping_writes"]??-1)!==0||($r["database_writes"]??-1)!==0||($r["booking_calls"]??-1)!==0||($r["provider_calls"]["anex"]??99)>6||($r["provider_calls"]["tourvisor"]??99)>18)exit(1);'
+          php -r '$r=json_decode(file_get_contents("terminal/result.json"),true,64,JSON_THROW_ON_ERROR);echo json_encode(["status"=>$r["status"]??null,"phase"=>$r["phase"]??null,"provider_calls"=>$r["provider_calls"]??null,"rows"=>$r["rows"]??null,"resolver_counts"=>$r["resolver_counts"]??null],JSON_UNESCAPED_SLASHES),"\n";'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sharm4-v2-terminal-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Cleanup
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -u
+          if [[ -s "$RUNNER_TEMP/key" && -s "$RUNNER_TEMP/known" ]]; then opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15); ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf \"\$HOME/.anytour-operations/$OPERATION_ID\"" || true; fi
+      - name: Require complete
+        if: always()
+        run: php -r '$r=json_decode(file_get_contents("terminal/result.json"),true,64,JSON_THROW_ON_ERROR);if(($r["status"]??"")!=="completed")exit(1);'
