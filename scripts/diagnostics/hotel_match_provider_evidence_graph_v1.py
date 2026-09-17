@@ -26,6 +26,7 @@ evidence, but never authorize a mapping.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 from collections import defaultdict, deque
@@ -345,6 +346,88 @@ def load_jsonl(paths: Sequence[Path]) -> Iterator[EvidenceEdge]:
                     raise EvidenceError(f"{path}:{line_no}: {exc}") from exc
 
 
+PUBLIC_GEO_COLUMNS = {
+    "namespace",
+    "external_id",
+    "andromeda_id",
+    "source_name",
+    "official_name",
+    "official_geo",
+    "top_local_id",
+    "top_local_name",
+    "geo_relation",
+    "evidence_sha256",
+    "official_url",
+}
+
+
+def load_public_geo_tsv(path: Path) -> Iterator[EvidenceEdge]:
+    """Adapt the retained MATCH public/brand geo packet into graph edges.
+
+    This adapter preserves the packet's original authority boundary:
+    `match` is corroboration only, `conflict` is a veto, and `insufficient`
+    remains a non-authoritative observation. No provider native-ID equivalence
+    is inferred from the public page.
+    """
+    raw_lines = path.read_text(encoding="utf-8").splitlines()
+    header_index = next(
+        (i for i, line in enumerate(raw_lines) if line.startswith("namespace\texternal_id\t")),
+        None,
+    )
+    if header_index is None:
+        raise EvidenceError(f"{path}: missing public-geo TSV header")
+    metadata: dict[str, str] = {}
+    for line in raw_lines[:header_index]:
+        for token in line.split():
+            if "=" in token:
+                key, value = token.split("=", 1)
+                if key and value:
+                    metadata[key] = value
+    reader = csv.DictReader(raw_lines[header_index:], delimiter="\t")
+    if reader.fieldnames is None or not PUBLIC_GEO_COLUMNS.issubset(set(reader.fieldnames)):
+        raise EvidenceError(f"{path}: unexpected public-geo TSV columns")
+    for row_no, row in enumerate(reader, header_index + 2):
+        relation = (row.get("geo_relation") or "").strip().lower()
+        if relation not in {"match", "conflict", "insufficient"}:
+            raise EvidenceError(f"{path}:{row_no}: unsupported geo_relation {relation!r}")
+        authority = "corroboration" if relation in {"match", "conflict"} else "observation"
+        polarity = "conflict" if relation == "conflict" else "support"
+        record = {
+            "source": {
+                "namespace": row["namespace"],
+                "kind": "hotel",
+                "id": row["external_id"],
+            },
+            "target": {
+                "namespace": "anytour",
+                "kind": "hotel",
+                "id": row["top_local_id"],
+            },
+            "evidence_type": f"official_geo_{relation}",
+            "authority": authority,
+            "polarity": polarity,
+            "provenance": {
+                "source_file": path.name,
+                "input_run": metadata.get("input_run"),
+                "input_result_sha256": metadata.get("input_result_sha256"),
+                "evidence_sha256": row.get("evidence_sha256"),
+                "official_url": row.get("official_url"),
+            },
+            "attributes": {
+                "andromeda_id": row.get("andromeda_id"),
+                "source_name": row.get("source_name"),
+                "official_name": row.get("official_name"),
+                "official_geo": row.get("official_geo"),
+                "top_local_name": row.get("top_local_name"),
+                "geo_relation": relation,
+            },
+        }
+        try:
+            yield edge_from_record(record)
+        except EvidenceError as exc:
+            raise EvidenceError(f"{path}:{row_no}: {exc}") from exc
+
+
 def write_graph(path: Path, graph: EvidenceGraph, resolve_nodes: Sequence[str], changed: Sequence[str]) -> None:
     payload = graph.as_dict(resolve_nodes=resolve_nodes, changed_edge_ids=changed)
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
@@ -354,7 +437,8 @@ def write_graph(path: Path, graph: EvidenceGraph, resolve_nodes: Sequence[str], 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", action="append", required=True, type=Path, help="normalized evidence JSONL")
+    parser.add_argument("--input", action="append", default=[], type=Path, help="normalized evidence JSONL")
+    parser.add_argument("--public-geo-tsv", action="append", default=[], type=Path, help="retained MATCH public/brand geo TSV")
     parser.add_argument("--output", required=True, type=Path, help="deterministic graph JSON")
     parser.add_argument("--resolve-node", action="append", default=[], help="provider node key to classify")
     parser.add_argument("--changed-edge", action="append", default=[], help="edge_id whose component changed")
@@ -363,7 +447,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    graph = EvidenceGraph(load_jsonl(args.input))
+    if not args.input and not args.public_geo_tsv:
+        raise EvidenceError("at least one --input or --public-geo-tsv is required")
+    edges = list(load_jsonl(args.input))
+    for path in args.public_geo_tsv:
+        edges.extend(load_public_geo_tsv(path))
+    graph = EvidenceGraph(edges)
     write_graph(args.output, graph, args.resolve_node, args.changed_edge)
     print(
         f"MATCH_PROVIDER_EVIDENCE_GRAPH_OK nodes={len(graph.nodes)} "
