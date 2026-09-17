@@ -25,5 +25,12 @@ $m=hm_match($tv,$samo);
 need(count($m)===1 && $m[0]['tv_hotel_id']===101 && $m[0]['samo_hotel_id']==='9001','unique_match');
 need(($m[0]['price_gap']['relative']??1)<0.02,'price_gap');
 need(hm_url('https://user:pass@example.test/x')===null,'url_credentials');
+need(hm_url('https://example.test/hotel?session=secret')===null,'url_query_secret');
+$merged=hm_tv_merge_rows(
+  [['id'=>1,'name'=>'A','tours'=>[['id'=>'t1','price'=>100]]]],
+  [['id'=>1,'name'=>'A','tours'=>[['id'=>'t2','price'=>110]]],['id'=>2,'name'=>'B','tours'=>[['id'=>'t3','price'=>120]]]]
+);
+$sig=hm_tv_signatures($merged);
+need($sig['hotels']===2 && $sig['tours']===3,'continue_union');
 
 echo "MATCH_TV_SAMO_BIBLIO_TEST_OK\n";
