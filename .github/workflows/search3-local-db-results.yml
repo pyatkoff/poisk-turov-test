@@ -4,6 +4,8 @@ on:
     branches: [release/search3-production-ready-v1]
     paths:
       - 'v2/data/anytour-search-scope-v1.php'
+      - 'v2/data/anytour-offer-scope-index-v1.php'
+      - 'v2/data/anytour-offer-snapshot-ingest-v1.php'
       - 'v2/data/search3-local-results-read-v1.php'
       - 'v2/data/anytour-offer-store-read-v2.php'
       - 'v2/data/.htaccess'
@@ -13,6 +15,7 @@ on:
       - 'v2/data/anytour-canonical-catalog-v1.php'
       - 'v2/data/migrations/20260916-anytour-offer-store.sql'
       - 'v2/data/migrations/20260917-anytour-offer-store-v2.sql'
+      - 'v2/data/migrations/20260917-anytour-offer-scope-index.sql'
       - '.github/workflows/search3-local-db-results.yml'
 permissions:
   contents: read
@@ -43,6 +46,8 @@ jobs:
       - name: Syntax and exact Apache data allowlist
         run: |
           php -l v2/data/anytour-search-scope-v1.php
+          php -l v2/data/anytour-offer-scope-index-v1.php
+          php -l v2/data/anytour-offer-snapshot-ingest-v1.php
           php -l v2/data/search3-local-results-read-v1.php
           php -l v2/data/anytour-offer-store-read-v2.php
           php -l tests/search3_local_db_results_test.php
@@ -55,6 +60,8 @@ jobs:
           endpoint=pathlib.Path('v2/data/search3-local-results-read-v1.php').read_text()
           assert '/_preview/search3-local-candidate/data' in endpoint
           assert "search3_local_results_out(['ok'=>false,'error'=>'Local DB results are isolated to local preview'],403)" in endpoint
+          migration=pathlib.Path('v2/data/migrations/20260917-anytour-offer-scope-index.sql').read_text()
+          assert 'CREATE TABLE IF NOT EXISTS anytour_offer_scopes' in migration
           PY
       - name: Existing offer store regression
         env:
