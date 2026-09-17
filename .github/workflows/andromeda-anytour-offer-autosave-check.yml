@@ -7,6 +7,9 @@ on:
       - 'app/integrations/three-provider-money-facts.php'
       - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-anytour-offer-autosave-test.php'
+      - 'tests/three-provider-money-facts-test.php'
+      - 'tests/three-provider-final-price-readiness-test.php'
+      - 'tests/three-provider-search-price-with-surcharge-smoke.php'
       - '.github/workflows/andromeda-anytour-offer-autosave-check.yml'
 
 permissions:
@@ -49,8 +52,12 @@ jobs:
           for token in required:
               if token not in autosave and token not in money:
                   raise SystemExit('missing autosave contract token: '+token)
-          if "'andromeda-anytour-offer-autosave'" not in endpoint:
-              raise SystemExit('endpoint autosave dependency not installed')
+          if "andromeda-anytour-offer-autosave.php" not in endpoint:
+              raise SystemExit('endpoint autosave optional loader missing')
+          if "is_file($andromedaAutosave)&&!is_link($andromedaAutosave)" not in endpoint:
+              raise SystemExit('endpoint autosave loader is not fail-open')
+          if "function_exists('anytour_andromeda_anytour_offer_autosave_runtime')" not in endpoint:
+              raise SystemExit('endpoint autosave hook is not optional')
           if 'anytour_andromeda_anytour_offer_autosave_runtime(' not in endpoint:
               raise SystemExit('endpoint autosave hook not installed')
           if "if ($searchFacts['provider'] === 'andromeda')" not in money:
