@@ -26,7 +26,7 @@ for(const offer of [tour,other]){
   assert.match(row,new RegExp(' · '+offer.nights+' ноч\\.'));
   assert.ok(row.includes('data-tid="'+offer.id+'"'));
   assert.ok(row.includes(api.money(offer.price)));
-  assert.ok(row.includes('<b>'+(offer===tour?'Завтрак':'Всё включено')+'</b>'),'known meals use the common Russian display label');
+  assert.ok(row.includes('<b>'+(offer===tour?'Завтраки':'Всё включено')+'</b>'),'supplier-provided meal labels remain exact');
   assert.match(row,new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
   assert.equal((row.match(/class="hotel-price"/g)||[]).length,1);
   assert.match(row,/<small>Номер<\/small><b>Стандарт · Двухместное<\/b>/,'reviewed room and placement labels stay together as one exact offer fact');
