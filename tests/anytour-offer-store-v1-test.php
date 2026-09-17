@@ -239,13 +239,14 @@ $pdo->beginTransaction();
 expect_error(fn() => AnyTourOfferStoreV1::beginRefresh($pdo, 'tourvisor', hash('sha256','tx'), $at), 'ANYTOUR_OFFER_CALLER_TRANSACTION', 'caller-transaction-rejected');
 $pdo->rollBack();
 
-// Six-hour hard cap and expiry filtering.
+// One-day hard cap and expiry filtering.
 $expiryScope = hash('sha256', 'expiry-scope');
 $expiryRefresh = AnyTourOfferStoreV1::beginRefresh($pdo, 'tourvisor', $expiryScope, $at);
-expect_error(fn() => AnyTourOfferStoreV1::upsertReadyOffer($pdo, $expiryRefresh, $own1, $tv, $at->modify('+7 hours'), $at), 'ANYTOUR_OFFER_EXPIRY', 'expiry-cap');
-AnyTourOfferStoreV1::upsertReadyOffer($pdo, $expiryRefresh, $own1, $tv, $at->modify('+5 minutes'), $at);
+expect_error(fn() => AnyTourOfferStoreV1::upsertReadyOffer($pdo, $expiryRefresh, $own1, $tv, $at->modify('+24 hours 1 second'), $at), 'ANYTOUR_OFFER_EXPIRY', 'expiry-cap');
+AnyTourOfferStoreV1::upsertReadyOffer($pdo, $expiryRefresh, $own1, $tv, $at->modify('+24 hours'), $at);
 AnyTourOfferStoreV1::completeRefresh($pdo, $expiryRefresh, $at);
-check(count(AnyTourOfferStoreV1::readScope($pdo, $expiryScope, $at->modify('+6 minutes'))['items']) === 0, 'expired-hidden');
+check(count(AnyTourOfferStoreV1::readScope($pdo, $expiryScope, $at->modify('+23 hours 59 minutes'))['items']) === 1, 'one-day-visible');
+check(count(AnyTourOfferStoreV1::readScope($pdo, $expiryScope, $at->modify('+24 hours'))['items']) === 0, 'one-day-expired-hidden');
 
 // Payload tamper is never silently served.
 $pdo->exec("UPDATE anytour_offers SET payload_json='{}' WHERE provider='anex' AND scope_sha256=" . $pdo->quote($scope));

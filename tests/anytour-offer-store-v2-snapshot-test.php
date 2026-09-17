@@ -52,12 +52,11 @@ $pdo->prepare('UPDATE anytour_offers SET currency=? WHERE id=?')->execute([$stor
 $pdo->prepare('UPDATE anytour_offers SET display_price=? WHERE id=?')->execute(['0.00',$id]);
 error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 minutes')),'ANYTOUR_OFFER_PRICE_INTEGRITY','non-positive-price-fail-closed');
 $pdo->prepare('UPDATE anytour_offers SET display_price=? WHERE id=?')->execute([$stored['display_price'],$id]);
-
 $pdo->prepare('UPDATE anytour_offers SET expires_at=last_seen_at WHERE id=?')->execute([$id]);
 error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+4 minutes')),'ANYTOUR_OFFER_TIME_INTEGRITY','non-positive-visibility-window-fail-closed');
 $pdo->prepare('UPDATE anytour_offers SET expires_at=? WHERE id=?')->execute([$stored['expires_at'],$id]);
 $lastSeen=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',(string)$stored['last_seen_at'],new DateTimeZone('UTC'));need_v2($lastSeen!==false,'stored-last-seen-parse');
-$tooLong=$lastSeen->modify('+21601 seconds')->format('Y-m-d H:i:s');$pdo->prepare('UPDATE anytour_offers SET expires_at=? WHERE id=?')->execute([$tooLong,$id]);
+$tooLong=$lastSeen->modify('+86401 seconds')->format('Y-m-d H:i:s');$pdo->prepare('UPDATE anytour_offers SET expires_at=? WHERE id=?')->execute([$tooLong,$id]);
 error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 minutes')),'ANYTOUR_OFFER_TIME_INTEGRITY','overlong-visibility-window-fail-closed');
 $pdo->prepare('UPDATE anytour_offers SET expires_at=? WHERE id=?')->execute([$stored['expires_at'],$id]);
 
