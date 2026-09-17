@@ -1,0 +1,45 @@
+name: Search3 AnyTour scope index install test
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_offer_scope_index_install_v1.php'
+      - 'tests/anytour_offer_scope_index_install_v1_test.php'
+      - '.github/workflows/search3-anytour-offer-scope-index-install-test.yml'
+      - '.github/workflows/search3-anytour-offer-scope-index-install-live.yml'
+permissions:
+  contents: read
+jobs:
+  mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_scope_index_fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Verify exact merged migration and one-shot installer
+        env:
+          ANYTOUR_SCOPE_INDEX_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_scope_index_fixture;charset=utf8mb4'
+          ANYTOUR_SCOPE_INDEX_TEST_PASSWORD: fixture-only-password
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_offer_scope_index_install_v1.php
+          php -l tests/anytour_offer_scope_index_install_v1_test.php
+          test "$(git rev-parse 91f62404f0b7ebab79fc54d4f42d852deb916596:v2/data/migrations/20260917-anytour-offer-scope-index.sql)" = "$(git rev-parse HEAD:v2/data/migrations/20260917-anytour-offer-scope-index.sql)"
+          php tests/anytour_offer_scope_index_install_v1_test.php
