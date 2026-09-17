@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline regression for LOCAL #2688.
+"""Offline regression for LOCAL #2690 (continuation of #2688).
 
 A direct ANEX result adds a hotel after the first Search3 render. The new hotel must
 remain withheld until its accepted legacy identity resolves to an AnyTour canonical
@@ -55,6 +55,28 @@ def base_hotel(legacy):
     }
 
 
+def request_rows(page):
+    return page.evaluate(r'''()=>__requests.map((request,index)=>{
+      const url=new URL(request.url,'https://fixture.invalid/');
+      let body=null;
+      try{body=request.options&&request.options.body?JSON.parse(request.options.body):null;}catch(_){body=null;}
+      return {
+        index,
+        pathname:url.pathname,
+        method:String(request.options&&request.options.method||'GET').toUpperCase(),
+        action:body&&typeof body==='object'?String(body.action||''):'',
+        body,
+        legacyIds:url.searchParams.getAll('legacyHotelIds[]')
+      };
+    })''')
+
+
+def one_request(page, predicate, label, checks):
+    matches = [row for row in request_rows(page) if predicate(row)]
+    check(len(matches) == 1, label, checks)
+    return matches[0]
+
+
 def canonical_payload(page, index, links):
     ids = page.evaluate('(i)=>new URL(__requests[i].url,"https://fixture.invalid/").searchParams.getAll("legacyHotelIds[]").map(Number)', index)
     return {
@@ -101,12 +123,20 @@ with sync_playwright() as p:
       new Function('window',code)(fake);
     }""", ANEX)
 
-    # Request 0: ANEX search begins. Request 1: canonical profile for initial Tourvisor hotel.
     page.evaluate('dispatchEvent(new CustomEvent("v2:search-reset",{detail:{generation:1}}))')
     page.evaluate('(items)=>V2Results.render(items)', [base_hotel(102)])
     page.wait_for_timeout(50)
-    check(page.evaluate('__requests.length') == 2, 'initial ANEX and canonical requests are isolated', checks)
-    resolve(page, 1, canonical_payload(page, 1, {102: 1}))
+    anex_search = one_request(
+        page,
+        lambda row: row['pathname'].endswith('/api-anex-search3-preview.php') and row['method'] == 'POST' and row['action'] == '',
+        'one initial ANEX search request is present', checks,
+    )
+    first_canonical = one_request(
+        page,
+        lambda row: row['pathname'].endswith('/data/hotel-details-read-v1.php') and row['legacyIds'] == ['102'],
+        'initial Tourvisor hotel requests its canonical AnyTour profile', checks,
+    )
+    resolve(page, first_canonical['index'], canonical_payload(page, first_canonical['index'], {102: 1}))
     check(page.locator('.hotel-card').count() == 1, 'initial hotel renders from AnyTour catalog', checks)
     check(page.locator('.hotel-title').inner_text() == 'Наш локальный отель 1', 'initial supplier title is replaced', checks)
 
@@ -122,10 +152,14 @@ with sync_playwright() as p:
         'country': 'НЕЛЬЗЯ', 'region': 'НЕЛЬЗЯ', 'category': 3, 'rating': 2,
         'catalog': {'image_url': 'https://fixture.invalid/anex-supplier.svg'}, 'tours': [anex_tour],
     }
-    resolve(page, 0, {'ok': True, 'data': {'provider': 'anex', 'generation': 1, 'search_ref': search_ref, 'hotels': [anex_hotel]}})
-    check(page.evaluate('__requests.length') == 3, 'ANEX requests final-price batch only after valid search', checks)
-    batch_body = page.evaluate('()=>JSON.parse(__requests[2].options.body)')
-    check(batch_body['action'] == 'additional_prices_batch' and batch_body['items'] == [{'offer_ref': offer_ref, 'local_hotel_id': 106}], 'final-price request retains accepted local identity', checks)
+    resolve(page, anex_search['index'], {'ok': True, 'data': {'provider': 'anex', 'generation': 1, 'search_ref': search_ref, 'hotels': [anex_hotel]}})
+    batch_request = one_request(
+        page,
+        lambda row: row['pathname'].endswith('/api-anex-search3-preview.php') and row['method'] == 'POST' and row['action'] == 'additional_prices_batch',
+        'ANEX requests one final-price batch after valid search', checks,
+    )
+    batch_body = batch_request['body']
+    check(batch_body['items'] == [{'offer_ref': offer_ref, 'local_hotel_id': 106}], 'final-price request retains accepted local identity', checks)
 
     batch = {
         'ok': True, 'data': {
@@ -141,21 +175,23 @@ with sync_playwright() as p:
             }],
         },
     }
-    resolve(page, 2, batch, wait=120)
-    check(page.evaluate('__requests.length') == 4, 'new ANEX hotel triggers post-merge canonical hydration', checks)
-    requested = page.evaluate('()=>new URL(__requests[3].url,"https://fixture.invalid/").searchParams.getAll("legacyHotelIds[]")')
-    check(requested == ['106'], 'post-merge hydration asks only for newly admitted legacy hotel', checks)
+    resolve(page, batch_request['index'], batch, wait=120)
+    post_canonical = one_request(
+        page,
+        lambda row: row['pathname'].endswith('/data/hotel-details-read-v1.php') and row['legacyIds'] == ['106'],
+        'new ANEX hotel triggers canonical hydration only for its accepted legacy id', checks,
+    )
     check(page.locator('.hotel-card').count() == 1, 'new supplier hotel is withheld before AnyTour profile resolves', checks)
     check('НЕЛЬЗЯ' not in page.locator('#results').inner_text(), 'no supplier hotel presentation leaks while hydrating', checks)
 
-    resolve(page, 3, canonical_payload(page, 3, {106: 2}), wait=150)
+    resolve(page, post_canonical['index'], canonical_payload(page, post_canonical['index'], {106: 2}), wait=150)
     check(page.locator('.hotel-card').count() == 2, 'new ANEX hotel appears after AnyTour hydration', checks)
     titles = page.locator('.hotel-title').all_inner_texts()
     check(set(titles) == {'Наш локальный отель 1', 'Наш локальный отель 2'}, 'both cards use first-party hotel titles', checks)
     check('НЕЛЬЗЯ' not in page.locator('#results').inner_text(), 'supplier name/country/region never replace first-party profile', checks)
     check('anex-supplier.svg' not in page.locator('#results').inner_html(), 'supplier hotel image never becomes presentation fallback', checks)
     provider_state = page.evaluate('''()=>{const h=V2Results.state.items.find(x=>x.anytourHotelId===2);const t=h&&h.tours.find(x=>x.provider==='anex');return h&&t?{id:h.id,anytourHotelId:h.anytourHotelId,provider:t.provider,price:t.price,nights:t.nights,date:t.date,finalPriceReady:t.finalPriceReady,fuelIncluded:t.fuelIncluded,offerRef:t.offerRef}:null;}''')
-    check(provider_state == {'id': 106, 'anytourHotelId': 2, 'provider': 'anex', 'price': 119000, 'nights': 7, 'date': '05.10.2026', 'finalPriceReady': True, 'fuelIncluded': True, 'offerRef': offer_ref}, 'canonical hotel keeps exact admitted ANEX offer facts and final price', checks)
+    check(provider_state == {'id': '106', 'anytourHotelId': 2, 'provider': 'anex', 'price': 119000, 'nights': 7, 'date': '05.10.2026', 'finalPriceReady': True, 'fuelIncluded': True, 'offerRef': offer_ref}, 'canonical hotel keeps exact admitted ANEX offer facts and final price', checks)
     before = page.evaluate('__requests.length')
     page.evaluate('V2Results.rerender()')
     page.wait_for_timeout(80)
