@@ -101,15 +101,15 @@ $db->exec("CREATE TABLE andromeda_hotel_identities (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
 $at = '2026-09-17 14:45:00';
-$insertHotel = $db->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES(:json,:sha,1,1,:at,:at)');
-$insertLegacy = $db->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',:legacy,:own,'fixture',:json,:sha,:at,:at)");
+$insertHotel = $db->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES(:json,:sha,1,1,:created,:updated)');
+$insertLegacy = $db->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',:legacy,:own,'fixture',:json,:sha,:first_seen,:last_seen)");
 $owns = [];
 foreach ([101=>'Direct Alpha',202=>'Legacy Beta'] as $legacy => $name) {
     $profile = json_encode(['name'=>$name], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-    $insertHotel->execute(['json'=>$profile,'sha'=>hash('sha256',$profile),'at'=>$at]);
+    $insertHotel->execute(['json'=>$profile,'sha'=>hash('sha256',$profile),'created'=>$at,'updated'=>$at]);
     $own = (int)$db->lastInsertId(); $owns[$legacy] = $own;
     $source = json_encode(['fixture'=>true], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-    $insertLegacy->execute(['legacy'=>(string)$legacy,'own'=>$own,'json'=>$source,'sha'=>hash('sha256',$source),'at'=>$at]);
+    $insertLegacy->execute(['legacy'=>(string)$legacy,'own'=>$own,'json'=>$source,'sha'=>hash('sha256',$source),'first_seen'=>$at,'last_seen'=>$at]);
 }
 $db->prepare("INSERT INTO andromeda_hotel_identities(supplier_namespace,external_hotel_id,local_hotel_id,decision_status) VALUES('andromeda_catalog','7001',101,'accepted')")->execute();
 
