@@ -1,0 +1,219 @@
+name: INT ANEX program APD schema installation
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/ops/anex_program_apd_install.php'
+      - 'tests/anex_program_apd_install_test.php'
+      - '.github/workflows/int-anex-program-apd-install.yml'
+permissions:
+  contents: read
+concurrency:
+  group: anytour-canonical-catalog-operations
+  cancel-in-progress: false
+jobs:
+  checked-installer:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/int-anex-program-apd-install-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      artifact_id: ${{ steps.retained.outputs.artifact-id }}
+      head: ${{ github.event.pull_request.head.sha }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_anex_apd_install_fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Verify installer before private access
+        env:
+          ANEX_APD_INSTALL_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_anex_apd_install_fixture;charset=utf8mb4'
+          ANEX_APD_INSTALL_TEST_PASSWORD: fixture-only-password
+        run: |
+          set -euo pipefail
+          php -l scripts/ops/anex_program_apd_install.php
+          php -l tests/anex_program_apd_install_test.php
+          php tests/anex_program_apd_install_test.php
+      - name: Retain exact migration and reservation before SSH credentials
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,subprocess,tarfile
+          source='d8a11376535f6ea44ba0e83694a449fa54f84ab1'
+          op='anex-program-apd-install-2506-20260918-v1'
+          claim=5722558274
+          files=[
+            'v2/data/migrations/20260918-anex-program-apd-cache.sql',
+            'v2/data/db-v1.php',
+            'scripts/ops/anex_program_apd_install.php',
+          ]
+          work=pathlib.Path('retained'); work.mkdir()
+          for name in files[:2]:
+              assert subprocess.check_output(['git','rev-parse','HEAD:'+name]).strip()==subprocess.check_output(['git','rev-parse',source+':'+name]).strip(), 'pinned source changed: '+name
+          payload={name:hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() for name in files}
+          with tarfile.open(work/'payload.tar.gz','w:gz') as t:
+              for name in files:
+                  data=pathlib.Path(name).read_bytes()
+                  info=tarfile.TarInfo('payload/'+name); info.size=len(data); info.mode=0o600; info.mtime=0
+                  t.addfile(info,io.BytesIO(data))
+          reservation={
+            'operation':op,'dataSource':source,'executionSource':os.environ['EXACT_HEAD'],
+            'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'files':payload,
+            'ownerClaimComment':claim,'expectedNewTables':3,'supplierCalls':0,'offerWrites':0,
+            'mappingWrites':0,'noReplay':True,
+          }
+          (work/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          (work/'transport.sha256').write_text(''.join(hashlib.sha256((work/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in ['payload.tar.gz','reservation.json']))
+          PY
+      - id: retained
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anex-program-apd-install-reservation-${{ github.run_id }}
+          path: retained/
+          if-no-files-found: error
+          retention-days: 30
+
+  on-host-install:
+    needs: checked-installer
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.checked-installer.outputs.artifact_id }}
+          path: retained
+          merge-multiple: true
+      - name: Recheck owner authorization and exact Security result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.checked-installer.outputs.head }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5722558274 > claim.json
+          python3 - <<'PY'
+          import datetime,json
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert 'anex-program-apd-install-2506-20260918-v1' in c['body'] and 'one-shot additive ANEX program/APD schema install' in c['body']
+          age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+          assert 0<=age.total_seconds()<7200,'claim expired'
+          PY
+          ok=0
+          for i in $(seq 1 36); do
+            gh api repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs > checks.json
+            if python3 - <<'PY'
+          import json
+          checks=json.load(open('checks.json'))['check_runs']
+          raise SystemExit(0 if any(x['name']=='guard' and x['conclusion']=='success' for x in checks) else 1)
+          PY
+            then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = 1
+          cd retained && sha256sum -c transport.sha256
+      - name: Install only the absent ANEX program/APD schema
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] && [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          mkdir -p evidence
+          key="$RUNNER_TEMP/anex-apd-install-key"; known="$RUNNER_TEMP/anex-apd-install-known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 -d > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$REMOTE_USER@$HOST"; path='.anytour-operations/anex-program-apd-install-2506-20260918-v1'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/anex-program-apd-install-2506-20260918-v1"'
+          scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz} "$remote:$path/"
+          set +e
+          ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          cd "$HOME/.anytour-operations/anex-program-apd-install-2506-20260918-v1"
+          sha256sum -c transport.sha256
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          r=json.load(open('reservation.json'))
+          assert r['operation']=='anex-program-apd-install-2506-20260918-v1' and r['attempt']==1 and r['noReplay'] is True
+          assert r['dataSource']=='d8a11376535f6ea44ba0e83694a449fa54f84ab1' and r['ownerClaimComment']==5722558274
+          assert r['expectedNewTables']==3 and r['supplierCalls']==0 and r['offerWrites']==0 and r['mappingWrites']==0
+          with tarfile.open('payload.tar.gz','r:gz') as t:
+              members=t.getmembers(); assert len(members)==len(r['files'])==3
+              assert {m.name for m in members}=={'payload/'+n for n in r['files']}
+              for m in members:
+                  assert m.isfile() and 0<m.size<250000 and '..' not in pathlib.PurePosixPath(m.name).parts
+                  data=t.extractfile(m).read(); assert hashlib.sha256(data).hexdigest()==r['files'][m.name[8:]]
+                  p=pathlib.Path(m.name); p.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+                  with p.open('xb') as f: f.write(data)
+          PY
+          set +e
+          php -d display_errors=0 payload/scripts/ops/anex_program_apd_install.php
+          status=$?
+          set -e
+          test -s journal.jsonl && sha256sum journal.jsonl > journal.sha256
+          if test "$status" = 0; then sha256sum result.json > result.sha256; fi
+          exit "$status"
+          REMOTE
+          rc=$?
+          scp "${opts[@]}" "$remote:$path/journal.jsonl" evidence/journal.jsonl; journal_copy=$?
+          scp "${opts[@]}" "$remote:$path/journal.sha256" evidence/journal.sha256; journal_hash=$?
+          scp "${opts[@]}" "$remote:$path/result.json" evidence/result.json; result_copy=$?
+          scp "${opts[@]}" "$remote:$path/result.sha256" evidence/result.sha256; result_hash=$?
+          set -e
+          cp retained/reservation.json evidence/reservation.json
+          printf '{"ssh_exit":%s,"journal_copy_exit":%s,"journal_hash_exit":%s,"result_copy_exit":%s,"result_hash_exit":%s,"noReplay":true}\n' "$rc" "$journal_copy" "$journal_hash" "$result_copy" "$result_hash" > evidence/transport-result.json
+          test "$journal_copy" = 0 && test "$journal_hash" = 0 && (cd evidence && sha256sum -c journal.sha256)
+          test "$rc" = 0 && test "$result_copy" = 0 && test "$result_hash" = 0 && (cd evidence && sha256sum -c result.sha256)
+          python3 - <<'PY'
+          import json
+          r=json.load(open('evidence/result.json'))
+          assert r['status']=='anex_program_apd_schema_installed_verified'
+          assert r['offerStoreSchemaVersion']==2 and r['offerCountBefore']==r['offerCountAfter']
+          assert r['counts']=={'anytour_anex_programs':0,'anytour_anex_program_contexts':0,'anytour_anex_apd_rates':0}
+          assert r['tablesCreated']==3 and r['supplierCalls']==0 and r['offerWrites']==0 and r['mappingWrites']==0
+          assert r['projectConfigurationUnchanged'] is True and r['noReplay'] is True
+          print(json.dumps(r,ensure_ascii=False,sort_keys=True))
+          PY
+      - name: Retain terminal installation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anex-program-apd-install-result-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
