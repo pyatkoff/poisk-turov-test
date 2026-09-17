@@ -1,0 +1,33 @@
+name: Validate MATCH provider evidence graph v2
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py'
+      - 'scripts/diagnostics/hotel_match_provider_evidence_graph_v2.py'
+      - 'tests/hotel_match_provider_evidence_graph_v2_test.py'
+      - '.github/workflows/validate-match-provider-evidence-graph-v2.yml'
+  push:
+    paths:
+      - 'scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py'
+      - 'scripts/diagnostics/hotel_match_provider_evidence_graph_v2.py'
+      - 'tests/hotel_match_provider_evidence_graph_v2_test.py'
+      - '.github/workflows/validate-match-provider-evidence-graph-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-graph-v2-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile graph v1/v2 and tests
+        run: |
+          python3 -m py_compile \
+            scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py \
+            scripts/diagnostics/hotel_match_provider_evidence_graph_v2.py \
+            tests/hotel_match_provider_evidence_graph_v2_test.py
+      - name: Run current/future target-space contract
+        run: python3 tests/hotel_match_provider_evidence_graph_v2_test.py
