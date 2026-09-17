@@ -1,0 +1,266 @@
+name: Search3 AnyTour identity-only content B001 v1
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - '.github/workflows/search3-anytour-identity-only-content-b001-v1.yml'
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: anytour-identity-only-hotel-content-operations
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BASE_RELEASE: 2eed95d288a27b1cb82041be3fe3fab9c2ef079f
+  OPERATION_ID: anytour-identity-only-hotel-content-2690-20260917-b001-v1
+  CLAIM_COMMENT_ID: '5722091266'
+  LIMIT_VALUE: '80'
+  RETRY_BEFORE: '2026-09-16T22:30:00Z'
+  DEMAND_THROUGH: '2026-09-17T22:30:00Z'
+  MAX_ATTEMPTS: '1'
+  HTTP_BUDGET: '80'
+  MIN_INTERVAL_MS: '550'
+
+jobs:
+  hydrate-current:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/local-identity-only-hotel-content-2690-20260917-b001-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Pin exact operation and merged content tool
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$BASE_SHA" = "$EXPECTED_BASE_RELEASE"
+          test "$(git merge-base "$HEAD_SHA" "$BASE_SHA")" = "$EXPECTED_BASE_RELEASE"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          test "${#changed[@]}" = 1
+          test "${changed[0]}" = '.github/workflows/search3-anytour-identity-only-content-b001-v1.yml'
+          for path in \
+            scripts/catalog/anytour_identity_only_hotel_content_v1.php \
+            v2/data/db-v1.php \
+            v2/data/tourvisor-client-v1.php \
+            v2/data/hotel-details-v1.php; do
+            test "$(git rev-parse "$HEAD_SHA:$path")" = "$(git rev-parse "$EXPECTED_BASE_RELEASE:$path")"
+          done
+          php -l scripts/catalog/anytour_identity_only_hotel_content_v1.php >/dev/null
+          test "$LIMIT_VALUE" = 80 && test "$MAX_ATTEMPTS" = 1 && test "$HTTP_BUDGET" = 80 && test "$MIN_INTERVAL_MS" = 550
+          test $(( LIMIT_VALUE * MAX_ATTEMPTS )) -le "$HTTP_BUDGET"
+          grep -Fq "s.namespace='legacy_catalog'" scripts/catalog/anytour_identity_only_hotel_content_v1.php
+          grep -Fq "v2_data_tv_get('/hotels/' . \$hotelId)" scripts/catalog/anytour_identity_only_hotel_content_v1.php
+          grep -Fq "'canonicalProfileWrites'=>0" scripts/catalog/anytour_identity_only_hotel_content_v1.php
+
+      - name: Verify fresh owner claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import datetime,json,os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          body=c['body']
+          assert os.environ['OPERATION_ID'] in body and 'limit80' in body and 'HTTP budget80' in body
+          created=datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+          assert 0 <= (datetime.datetime.now(datetime.timezone.utc)-created).total_seconds() < 7200
+          PY
+
+      - name: Retain immutable reservation before SSH/provider access
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          files=['scripts/catalog/anytour_identity_only_hotel_content_v1.php','v2/data/db-v1.php','v2/data/tourvisor-client-v1.php','v2/data/hotel-details-v1.php']
+          r={'operation':os.environ['OPERATION_ID'],'baseRelease':os.environ['EXPECTED_BASE_RELEASE'],'executionSource':os.environ['HEAD_SHA'],
+             'pr':int(os.environ['PR_NUMBER']),'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'claimCommentId':int(os.environ['CLAIM_COMMENT_ID']),
+             'limit':80,'retryBefore':os.environ['RETRY_BEFORE'],'demandThrough':os.environ['DEMAND_THROUGH'],'maxAttempts':1,'httpBudget':80,'minIntervalMs':550,
+             'dependencies':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in files},
+             'supplierContract':'GET https://api.tourvisor.ru/search/api/v1/hotels/{hotelId}','canonicalProfileWrites':0,'mappingWrites':0,
+             'genericAccommodationProductsExcluded':True,'noReplayAfterProviderAccess':True}
+          raw=(json.dumps(r,sort_keys=True,ensure_ascii=False)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-identity-only-content-b001-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Require exact-head Security green
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            gh api "repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs" > checks.json
+            if python3 - <<'PY'
+          import json,sys
+          runs=json.load(open('checks.json'))['check_runs']
+          sys.exit(0 if any(x['name']=='guard' and x['conclusion']=='success' for x in runs) else 1)
+          PY
+            then exit 0; fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Prepare SSH identity and stage exact payload tree
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 -d > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -L \"\$HOME/.anytour-operations\"; mkdir -p \"\$HOME/.anytour-operations\"; mkdir \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload/scripts/catalog\" \"\$HOME/$op/payload/v2/data\""
+          scp "${opts[@]}" scripts/catalog/anytour_identity_only_hotel_content_v1.php "$remote:$op/payload/scripts/catalog/"
+          scp "${opts[@]}" v2/data/{db-v1.php,tourvisor-client-v1.php,hotel-details-v1.php} "$remote:$op/payload/v2/data/"
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/payload/"
+
+      - name: Plan twice and hydrate exact identity-only cohort once
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytour-operations/$OPERATION_ID"
+          set +e
+          ssh "${opts[@]}" "$remote" "OPERATION_ID='$OPERATION_ID' LIMIT_VALUE='$LIMIT_VALUE' RETRY_BEFORE='$RETRY_BEFORE' DEMAND_THROUGH='$DEMAND_THROUGH' MAX_ATTEMPTS='$MAX_ATTEMPTS' HTTP_BUDGET='$HTTP_BUDGET' MIN_INTERVAL_MS='$MIN_INTERVAL_MS' bash -s" <<'REMOTE' > terminal/server.log 2>&1
+          set -euo pipefail
+          op="$HOME/.anytour-operations/$OPERATION_ID"; root="$HOME/www/anytoour.ru"; cd "$op"
+          test -f "$root/config.php" && test -f payload/reservation.json
+          runner() {
+            php -d display_errors=0 -r '
+              $root=getenv("HOME")."/www/anytoour.ru";
+              require $root."/config.php";
+              $_SERVER["DOCUMENT_ROOT"]=$root;
+              $_SERVER["SCRIPT_FILENAME"]=realpath("payload/scripts/catalog/anytour_identity_only_hotel_content_v1.php");
+              require "payload/scripts/catalog/anytour_identity_only_hotel_content_v1.php";
+            ' -- "$@"
+          }
+          runner --limit="$LIMIT_VALUE" --retry-before="$RETRY_BEFORE" --demand-through="$DEMAND_THROUGH" > plan-first.json
+          sleep 1
+          runner --limit="$LIMIT_VALUE" --retry-before="$RETRY_BEFORE" --demand-through="$DEMAND_THROUGH" > plan-second.json
+          cmp -s plan-first.json plan-second.json
+          python3 - <<'PY'
+          import json,os
+          p=json.load(open('plan-first.json'))
+          assert p['status']=='prepared_read_only' and p['supplierCalls']==0 and p['writes']==0
+          assert p['limit']==80 and 0 < len(p['selected']) <= 80
+          assert p['eligibleIdentityOnly'] >= len(p['selected'])
+          open('plan-sha.txt','w').write(p['planSha256']+'\n')
+          print('IDENTITY_ONLY_CONTENT_PLAN eligible=%d selected=%d generic=%d sha=%s' % (p['eligibleIdentityOnly'],len(p['selected']),p['genericPreSkipped'],p['planSha256']))
+          PY
+          plan_sha="$(cat plan-sha.txt)"
+          runner --limit="$LIMIT_VALUE" --retry-before="$RETRY_BEFORE" --demand-through="$DEMAND_THROUGH" \
+            --apply-plan-sha="$plan_sha" --max-attempts="$MAX_ATTEMPTS" --http-budget="$HTTP_BUDGET" --min-interval-ms="$MIN_INTERVAL_MS" > result.json
+          cat result.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('result.json'))
+          assert r['status']=='completed'
+          assert 0 < r['selected'] <= 80 and 0 <= r['httpAttempts'] <= 80
+          assert r['canonicalProfileWrites']==0 and r['mappingWrites']==0
+          assert r['success']+r['notFound']+r['failed']+r['genericRuntimeSkipped'] <= r['selected']
+          PY
+          sha256sum plan-first.json plan-second.json result.json > result.sha256
+          REMOTE
+          rc=$?; set -e
+          printf '%s\n' "$rc" > terminal/ssh-exit.txt
+          for f in plan-first.json plan-second.json result.json result.sha256; do scp "${opts[@]}" "$remote:$op/$f" "terminal/$f" || true; done
+
+      - name: Seal terminal receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          rc=int(pathlib.Path('terminal/ssh-exit.txt').read_text().strip()) if pathlib.Path('terminal/ssh-exit.txt').exists() else 999
+          plan=json.load(open('terminal/plan-first.json')) if pathlib.Path('terminal/plan-first.json').exists() and pathlib.Path('terminal/plan-first.json').stat().st_size else {}
+          result=json.load(open('terminal/result.json')) if pathlib.Path('terminal/result.json').exists() and pathlib.Path('terminal/result.json').stat().st_size else {}
+          accessed=int(result.get('httpAttempts',0))>0
+          good=rc==0 and result.get('status')=='completed'
+          receipt={'operation':os.environ['OPERATION_ID'],'baseRelease':os.environ['EXPECTED_BASE_RELEASE'],'run':int(os.environ['GITHUB_RUN_ID']),
+                   'sshExit':rc,'providerAccessed':accessed,'noReplay':accessed,'planEligible':plan.get('eligibleIdentityOnly'),
+                   'planSelected':len(plan.get('selected',[])) if isinstance(plan,dict) else None,'result':result,
+                   'status':'terminal_completed' if good else 'terminal_inspect_before_any_next_operation'}
+          raw=(json.dumps(receipt,sort_keys=True,ensure_ascii=False)+'\n').encode(); pathlib.Path('terminal/receipt.json').write_bytes(raw)
+          pathlib.Path('terminal/terminal.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  receipt.json\n')
+          print('IDENTITY_ONLY_CONTENT_B001_TERMINAL '+raw.decode().strip())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: anytour-identity-only-content-b001-terminal-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Cleanup remote operation
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"
+          if [[ -s "$key" && -s "$known" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf \"\$HOME/.anytour-operations/$OPERATION_ID\"" || true
+          fi
+
+      - name: Require successful terminal canary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('terminal/receipt.json')); assert r['status']=='terminal_completed',r
+          assert r['planSelected'] and r['planSelected'] > 0
+          assert r['result'].get('httpAttempts',0) <= 80
+          PY
