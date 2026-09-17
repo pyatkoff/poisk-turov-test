@@ -1,0 +1,33 @@
+name: INT ANEX flight type handoff
+
+on:
+  push:
+    branches:
+      - 'fix/int-anex-flight-type-handoff-20260918'
+    paths:
+      - 'app/integrations/anex-normalizer.php'
+      - 'v2/api-anex-search3-preview.php'
+      - 'tests/anex-flight-type-handoff-test.php'
+      - '.github/workflows/int-anex-flight-type-handoff.yml'
+  pull_request:
+    paths:
+      - 'app/integrations/anex-normalizer.php'
+      - 'v2/api-anex-search3-preview.php'
+      - 'tests/anex-flight-type-handoff-test.php'
+      - '.github/workflows/int-anex-flight-type-handoff.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate ANEX flight type handoff
+        run: |
+          set -euo pipefail
+          php -l app/integrations/anex-normalizer.php
+          php -l v2/api-anex-search3-preview.php
+          php -l tests/anex-flight-type-handoff-test.php
+          php tests/anex-flight-type-handoff-test.php
