@@ -1,0 +1,23 @@
+name: Search3 local data access
+
+on:
+  pull_request:
+    paths:
+      - 'v2/data/.htaccess'
+      - 'v2/data/search3-local-results-read-v1.php'
+      - 'tests/search3-local-data-access-v1-test.php'
+      - '.github/workflows/search3-local-data-access.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Endpoint syntax
+        run: php -l v2/data/search3-local-results-read-v1.php
+      - name: Exact read allowlist and route isolation
+        run: php tests/search3-local-data-access-v1-test.php
