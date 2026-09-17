@@ -1,0 +1,32 @@
+name: Search3 local offer persistence
+
+on:
+  pull_request:
+    paths:
+      - 'v2/search3-local-offer-persist-v1.js'
+      - 'v2/data/search3-local-offers-write-v1.php'
+      - 'v2/bundle-manifest-v1.php'
+      - 'tests/search3-local-offer-persist-v1.test.js'
+      - 'tests/search3-local-offers-write-v1-test.php'
+      - 'tests/search3-lean-base-bundle-smoke.php'
+      - '.github/workflows/search3-local-offer-persist.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check v2/search3-local-offer-persist-v1.js
+          php -l v2/data/search3-local-offers-write-v1.php
+      - name: Browser persistence regression
+        run: node tests/search3-local-offer-persist-v1.test.js
+      - name: Store DTO regression
+        run: php tests/search3-local-offers-write-v1-test.php
+      - name: Search3 bundle isolation
+        run: php tests/search3-lean-base-bundle-smoke.php
