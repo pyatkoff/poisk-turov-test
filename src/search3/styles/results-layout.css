@@ -231,7 +231,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-decision-line>.hotel-decision-rating{background:#edf8f1;color:#24623b}
 & .hotel-decision-line>.hotel-decision-sea{background:#edf5ff;color:#245e99}
 & .hotel-description-summary{display:-webkit-box;margin:10px 0 2px;overflow:hidden;color:#34425a;font-size:13px;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-& .hotel-description-summary:has(+.hotel-details[open]){display:none}
+& .hotel-description-summary:has(+.hotel-details[open]){-webkit-line-clamp:unset}
+& .hotel-description-summary:has(+.hotel-details[open] .hotel-description){display:none}
 & .hotel-details{margin-top:4px;border-top:1px solid var(--at-line-soft,#e9edf6)}
 & .hotel-details>summary{display:flex;align-items:center;min-height:44px;color:#2743cb;font-size:14px;font-weight:700;cursor:pointer;list-style:none}
 & .hotel-details>summary::-webkit-details-marker{display:none}
@@ -306,6 +307,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-main:has(.hotel-details[open]) .hotel-photo:has(img){align-self:start;width:100%;height:auto;aspect-ratio:4/3}
 }
 @media(max-width:760px){
+& .hotel-card{border-radius:14px;box-shadow:none}
 & .hotel-main{display:flex;flex-direction:column}
 & .hotel-photo{flex:0 0 auto;width:100%;height:auto;min-height:0;aspect-ratio:16/9;max-height:260px}
 & .hotel-photo:has(.photo-placeholder){aspect-ratio:auto;max-height:none;padding:14px 18px 0}
@@ -313,6 +315,10 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-body{padding:16px 18px}
 & .hotel-title{font-size:21px}
 & .hotel-details-facts{grid-template-columns:1fr}
+& .hotel-offers-summary{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;padding:16px 18px 18px}
+& .hotel-offers-summary>.hotel-price{justify-self:end;font-size:clamp(26px,7.5vw,32px);font-weight:800;color:#2743cb;letter-spacing:-.035em}
+& .hotel-offers-summary .tour-more-toggle{justify-self:stretch;width:100%;max-width:none;min-height:50px;margin:0;padding:12px 16px;border:1px solid #ff510c;border-radius:11px;background:#ff510c;color:#fff;font-size:19px;font-weight:700;text-align:center}
+& .hotel-offers-summary .tour-more-toggle:hover{background:#d83d00;border-color:#d83d00}
 & .tour-row{grid-template-columns:1fr;padding:10px 12px;gap:10px}
 & .tour-meta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 10px;align-items:baseline}
 & .tour-meta>small{grid-column:2;grid-row:1}
