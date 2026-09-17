@@ -193,6 +193,9 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
             'flight_outbound_economy' => anytour_anex_normalizer_availability($econom['in'] ?? null),
             'flight_return_economy' => anytour_anex_normalizer_availability($econom['out'] ?? null),
         ],
+        // SearchTour explicitly distinguishes external/GDS freight from ANEX-internal freight.
+        // Preserve only the exact supplier Y/N fact; unknown values are never guessed.
+        'flight_type' => anytour_anex_normalizer_flight_type($row['freightExternal'] ?? null),
         'supplier_booking_flag' => anytour_anex_normalizer_flag($row['bron'] ?? null),
         'final_price_verified' => false,
     ];
@@ -264,6 +267,13 @@ function anytour_anex_normalizer_flag($value): ?bool
     if ($value === false || $value === 0 || $value === '0') {
         return false;
     }
+    return null;
+}
+
+function anytour_anex_normalizer_flight_type($value): ?string
+{
+    if ($value === 'Y') return 'regular';
+    if ($value === 'N') return 'charter';
     return null;
 }
 
