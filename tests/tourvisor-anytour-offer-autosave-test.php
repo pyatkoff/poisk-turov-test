@@ -92,6 +92,58 @@ $nested = AnyTourTourvisorOfferAutosaveV1::captureSearchStart(
 );
 tv_autosave_check(($nested['ok'] ?? null) === true && ($nested['searchId'] ?? null) === $nestedId, 'nested_search_id');
 
+// Exercise the exact Tourvisor row -> protected finalPriceReady path without DB or supplier I/O.
+$entryMethod = new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class, 'entryFromTour');
+$baseTour = [
+    'id' => 'TV-OFFER-1',
+    'date' => '2026-10-05',
+    'nights' => 7,
+    'price' => 150824,
+    'currency' => 'RUB',
+    'meal' => ['id' => 7, 'name' => 'Все включено'],
+    'roomType' => 'Standard Room',
+    'operator' => ['id' => 5, 'name' => 'PEGAS Touristik'],
+    'fuelCharge' => 31710,
+];
+$entry = $entryMethod->invoke(
+    null,
+    $searchId,
+    3417,
+    77,
+    $baseTour,
+    2,
+    0,
+    [],
+    '2026-09-17T09:30:00Z',
+    $now
+);
+tv_autosave_check(is_array($entry), 'tour_row_compiled');
+$dto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
+    $entry['offer'], $entry['retained'], $entry['current'], $now->getTimestamp(), $entry['priced_money']
+);
+tv_autosave_check(($dto['finalPriceReady'] ?? null) === true, 'reported_fuel_ready');
+tv_autosave_check(($dto['price'] ?? null) === '150824' && ($dto['finalPrice'] ?? null) === '150824', 'search_price_is_final_listing_price');
+tv_autosave_check(($dto['money']['fuel_charge_reported']['amount'] ?? null) === '31710', 'fuel_fact_retained');
+
+$zeroTour = $baseTour;
+$zeroTour['id'] = 'TV-OFFER-2';
+$zeroTour['fuelCharge'] = 0;
+$zeroEntry = $entryMethod->invoke(null, $searchId, 3417, 77, $zeroTour, 2, 0, [], '2026-09-17T09:30:00Z', $now);
+$zeroDto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
+    $zeroEntry['offer'], $zeroEntry['retained'], $zeroEntry['current'], $now->getTimestamp(), $zeroEntry['priced_money']
+);
+tv_autosave_check(($zeroDto['finalPriceReady'] ?? null) === true && ($zeroDto['price'] ?? null) === '150824', 'explicit_zero_fuel_ready');
+
+$unknownTour = $baseTour;
+$unknownTour['id'] = 'TV-OFFER-3';
+unset($unknownTour['fuelCharge']);
+$unknownEntry = $entryMethod->invoke(null, $searchId, 3417, 77, $unknownTour, 2, 0, [], '2026-09-17T09:30:00Z', $now);
+$unknownDto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
+    $unknownEntry['offer'], $unknownEntry['retained'], $unknownEntry['current'], $now->getTimestamp(), $unknownEntry['priced_money']
+);
+tv_autosave_check(($unknownDto['finalPriceReady'] ?? null) === false, 'missing_fuel_not_ready');
+tv_autosave_check(($unknownDto['price'] ?? 'sentinel') === null && ($unknownDto['finalPrice'] ?? 'sentinel') === null, 'missing_fuel_no_base_fallback');
+
 $helperSource = (string)file_get_contents(__DIR__ . '/../app/integrations/tourvisor-anytour-offer-autosave.php');
 $apiSource = (string)file_get_contents(__DIR__ . '/../v2/api-v2.php');
 
