@@ -70,6 +70,12 @@ final class AnyTourStayCatalog
         $stmt=$this->pdo->prepare($sql); $stmt->execute($params);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+    /** Transitional-safe read capability check; never installs or mutates schema. */
+    public function readable(): bool
+    {
+        $stmt=$this->pdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('anytour_meal_plans','anytour_hotel_rooms')");
+        return (int)$stmt->fetchColumn()===2;
+    }
     public function meals(): array
     {
         $rows=$this->pdo->query('SELECT id,code,name_ru,family_code,qualifiers_json FROM anytour_meal_plans WHERE is_active=1 ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
