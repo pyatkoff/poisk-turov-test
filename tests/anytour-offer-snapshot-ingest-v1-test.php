@@ -98,15 +98,15 @@ run_sql_file($db, __DIR__.'/../v2/data/migrations/20260917-anytour-offer-store-v
 check_snapshot((int)$db->query('SELECT schema_version FROM anytour_offer_store_control WHERE singleton_id=1')->fetchColumn() === 2, 'schema-v2');
 
 $time = '2026-09-17 03:00:00';
-$insertHotel = $db->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES(:json,:sha,1,1,:at,:at)');
-$insertBridge = $db->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',:legacy,:own,'test',:json,:sha,:at,:at)");
+$insertHotel = $db->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES(:json,:sha,1,1,:created,:updated)');
+$insertBridge = $db->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',:legacy,:own,'test',:json,:sha,:first_seen,:last_seen)");
 $owns=[];
 foreach ([101=>'Alpha Hotel',202=>'Beta Hotel'] as $legacy=>$name) {
     $profile=json_encode(['name'=>$name],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
-    $insertHotel->execute(['json'=>$profile,'sha'=>hash('sha256',$profile),'at'=>$time]);
+    $insertHotel->execute(['json'=>$profile,'sha'=>hash('sha256',$profile),'created'=>$time,'updated'=>$time]);
     $own=(int)$db->lastInsertId();$owns[$legacy]=$own;
     $source=json_encode(['fixture'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
-    $insertBridge->execute(['legacy'=>(string)$legacy,'own'=>$own,'json'=>$source,'sha'=>hash('sha256',$source),'at'=>$time]);
+    $insertBridge->execute(['legacy'=>(string)$legacy,'own'=>$own,'json'=>$source,'sha'=>hash('sha256',$source),'first_seen'=>$time,'last_seen'=>$time]);
 }
 
 $now = new DateTimeImmutable('2026-09-17T03:00:00Z');
@@ -123,15 +123,12 @@ $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now);
 check_snapshot(count($visible['items'])===2, 'first-visible');
 check_snapshot(array_column($visible['items'],'price')===['199390','205000'], 'first-prices');
 
-// A complete replacement makes only the new snapshot visible and expires unseen rows.
 $updated=$rowA;$updated['dto']=dto_snapshot('anex',101,'a2','198000',$issued+60);$updated['expires_at']='2026-09-17T03:31:00Z';
 $second=AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'anex',$params,[$updated],$now->modify('+1 minute'));
 check_snapshot($second['offerCount']===1 && $second['expiredUnseen']===2, 'replace-summary');
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+1 minute'));
 check_snapshot(count($visible['items'])===1 && $visible['items'][0]['price']==='198000', 'replace-visible');
 
-// If row 2 fails its accepted legacy->AnyTour bridge, row 1 may exist physically under
-// the running token but the refresh is aborted and v2 keeps the prior completed snapshot.
 $good=$updated;$good['dto']=dto_snapshot('anex',101,'partial-good','197000',$issued+120);$good['expires_at']='2026-09-17T03:32:00Z';
 $bad=$rowB;$bad['anytour_hotel_id']=$owns[101];$bad['dto']=dto_snapshot('anex',202,'partial-bad','190000',$issued+120);$bad['expires_at']='2026-09-17T03:32:00Z';
 expect_snapshot_error(
@@ -143,7 +140,6 @@ check_snapshot(count($visible['items'])===1 && $visible['items'][0]['price']==='
 check_snapshot((int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='aborted'")->fetchColumn()===1, 'aborted-recorded');
 check_snapshot((int)$db->query("SELECT COUNT(*) FROM anytour_offers WHERE display_price=197000")->fetchColumn()===1, 'partial-row-retained-invisible');
 
-// Duplicate source identity is rejected before a refresh starts.
 $before=(int)$db->query('SELECT COUNT(*) FROM anytour_offer_refreshes')->fetchColumn();
 $duplicate=$good;$duplicate['anytour_hotel_id']=$owns[202];
 expect_snapshot_error(
@@ -152,14 +148,12 @@ expect_snapshot_error(
 );
 check_snapshot((int)$db->query('SELECT COUNT(*) FROM anytour_offer_refreshes')->fetchColumn()===$before, 'duplicate-no-refresh');
 
-// Provider snapshots stay independent under the same canonical Search3 scope.
 $and=['anytour_hotel_id'=>$owns[202],'dto'=>dto_snapshot('andromeda',202,'and','210000',$issued+180),'expires_at'=>'2026-09-17T03:33:00Z'];
 AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'andromeda',$params,[$and],$now->modify('+3 minutes'));
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+3 minutes'));
 $providers=array_count_values(array_column($visible['items'],'provider'));
 check_snapshot(count($visible['items'])===2 && ($providers['anex']??0)===1 && ($providers['andromeda']??0)===1, 'provider-independent');
 
-// Never allow this writer to run against schema v1 semantics.
 $db->exec('UPDATE anytour_offer_store_control SET schema_version=1 WHERE singleton_id=1');
 expect_snapshot_error(
     fn()=>AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'anex',$params,[],$now->modify('+4 minutes')),
@@ -167,7 +161,6 @@ expect_snapshot_error(
 );
 $db->exec('UPDATE anytour_offer_store_control SET schema_version=2 WHERE singleton_id=1');
 
-// A trusted completed empty snapshot is a real provider result and retires only that provider.
 $empty=AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'anex',$params,[],$now->modify('+4 minutes'));
 check_snapshot($empty['offerCount']===0 && $empty['hotelCount']===0, 'empty-complete');
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+4 minutes'));
