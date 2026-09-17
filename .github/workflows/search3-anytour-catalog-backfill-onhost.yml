@@ -19,7 +19,7 @@ jobs:
       github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
       github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
       github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
-      github.event.pull_request.head.ref == 'ops/local-2690-catalog-backfill-onhost-20260917-v2'
+      github.event.pull_request.head.ref == 'ops/local-2690-catalog-backfill-onhost-20260917-v3'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     outputs:
@@ -65,7 +65,7 @@ jobs:
           python3 - <<'PY'
           import hashlib,io,json,os,pathlib,subprocess,tarfile
           source='7e52b07e872479cc853661854ff5d082d5f3a67d'
-          op='local-catalog-backfill-onhost-20260917-v2'
+          op='local-catalog-backfill-onhost-20260917-v3'
           files=[
             'v2/data/anytour-canonical-catalog-v1.php',
             'v2/data/anytour-catalog-backfill-v1.php',
@@ -124,13 +124,13 @@ jobs:
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
-          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5710259103 > claim.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5710321034 > claim.json
           python3 - <<'PY'
           import datetime,json,os,subprocess,time
           c=json.load(open('claim.json'))
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          assert 'local-catalog-backfill-onhost-20260917-v2' in c['body']
-          assert 'ops/local-2690-catalog-backfill-onhost-20260917-v2' in c['body']
+          assert 'local-catalog-backfill-onhost-20260917-v3' in c['body']
+          assert 'ops/local-2690-catalog-backfill-onhost-20260917-v3' in c['body']
           age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
           assert 0<=age.total_seconds()<5400,'LOCAL live claim expired'
           head=os.environ['HEAD_SHA']
@@ -163,19 +163,19 @@ jobs:
           test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
           opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
           remote="$REMOTE_USER@$HOST"
-          path='.anytour-operations/local-catalog-backfill-onhost-20260917-v2'
-          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/local-catalog-backfill-onhost-20260917-v2"'
+          path='.anytour-operations/local-catalog-backfill-onhost-20260917-v3'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/local-catalog-backfill-onhost-20260917-v3"'
           scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz} "$remote:$path/"
           set +e
           ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
           set -euo pipefail
           umask 077
-          cd "$HOME/.anytour-operations/local-catalog-backfill-onhost-20260917-v2"
+          cd "$HOME/.anytour-operations/local-catalog-backfill-onhost-20260917-v3"
           sha256sum -c transport.sha256
           python3 - <<'PY'
           import hashlib,json,pathlib,tarfile
           r=json.load(open('reservation.json'))
-          assert r['operation']=='local-catalog-backfill-onhost-20260917-v2' and r['attempt']==1 and r['noReplay'] is True
+          assert r['operation']=='local-catalog-backfill-onhost-20260917-v3' and r['attempt']==1 and r['noReplay'] is True
           assert r['dataSource']=='7e52b07e872479cc853661854ff5d082d5f3a67d' and r['maxProfiles']==1000
           with tarfile.open('payload.tar.gz','r:gz') as t:
               members=t.getmembers()
@@ -211,7 +211,7 @@ jobs:
           import json
           r=json.load(open('evidence/result.json'))
           assert r['status']=='backfill_seeded_verified' and 1<=r['selected']<=1000
-          assert r['operation']=='local-catalog-backfill-onhost-20260917-v2'
+          assert r['operation']=='local-catalog-backfill-onhost-20260917-v3'
           assert r['dataSource']=='7e52b07e872479cc853661854ff5d082d5f3a67d'
           assert r['after']['hotels']==r['before']['hotels']+r['selected']
           assert r['after']['sources']==r['before']['sources']+r['selected']
