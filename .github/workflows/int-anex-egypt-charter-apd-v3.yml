@@ -1,0 +1,54 @@
+name: INT ANEX Egypt charter APD v3
+
+on:
+  push:
+    branches:
+      - 'ops/int-anex-egypt-charter-apd-20260917-v3'
+    paths:
+      - '.github/workflows/int-anex-egypt-charter-apd-v3.yml'
+      - 'scripts/ops/int_anex_egypt_charter_apd_v3.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-anex-egypt-charter-apd-20260917-v3
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: 7fb963e6685b25611e42713bb68035a78f097381
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+          persist-credentials: false
+      - name: Bind Egypt diagnostic-only diff
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-anex-egypt-charter-apd-v3.yml'
+          test "${changed[1]}" = 'scripts/ops/int_anex_egypt_charter_apd_v3.py'
+          python3 -m py_compile scripts/ops/int_anex_egypt_charter_apd_v3.py
+      - name: Scan live Egypt non-GDS ANEX programs and APD
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 -B scripts/ops/int_anex_egypt_charter_apd_v3.py "$RUNNER_TEMP/anex-egypt-charter-apd.json"
+      - name: Preserve Egypt charter evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-anex-egypt-charter-apd-${{ github.run_id }}
+          path: ${{ runner.temp }}/anex-egypt-charter-apd.json
+          if-no-files-found: error
+          retention-days: 30
