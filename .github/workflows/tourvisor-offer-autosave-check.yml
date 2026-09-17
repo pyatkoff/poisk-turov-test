@@ -6,6 +6,7 @@ on:
       - 'v2/api-v2.php'
       - 'app/integrations/tourvisor-anytour-offer-autosave.php'
       - 'app/integrations/anytour-offer-snapshot-producer.php'
+      - 'app/integrations/andromeda-price-observation.php'
       - 'app/integrations/three-provider-*.php'
       - 'tests/tourvisor-anytour-offer-autosave-test.php'
       - '.github/workflows/tourvisor-offer-autosave-check.yml'
@@ -16,6 +17,7 @@ on:
       - 'v2/api-v2.php'
       - 'app/integrations/tourvisor-anytour-offer-autosave.php'
       - 'app/integrations/anytour-offer-snapshot-producer.php'
+      - 'app/integrations/andromeda-price-observation.php'
       - 'app/integrations/three-provider-*.php'
       - 'tests/tourvisor-anytour-offer-autosave-test.php'
       - '.github/workflows/tourvisor-offer-autosave-check.yml'
@@ -42,6 +44,7 @@ jobs:
           php -l v2/api-v2.php >/dev/null
           php -l app/integrations/tourvisor-anytour-offer-autosave.php >/dev/null
           php -l app/integrations/anytour-offer-snapshot-producer.php >/dev/null
+          php -l app/integrations/andromeda-price-observation.php >/dev/null
           php -l app/integrations/three-provider-search-handoff.php >/dev/null
           php -l tests/tourvisor-anytour-offer-autosave-test.php >/dev/null
       - name: Verify exact green INT dependencies
@@ -51,6 +54,7 @@ jobs:
           test "$(git hash-object app/integrations/three-provider-money-facts.php)" = '0f066d164516b318fc8a1086525bf2f44260d822'
           test "$(git hash-object app/integrations/three-provider-search-handoff.php)" = '51432c0dd4c14cd6e0121551cb456f88de0a0623'
           test "$(git hash-object app/integrations/anytour-offer-snapshot-producer.php)" = 'a99a5791300d7844b189d57d480ab253d4da83e4'
+          test "$(git hash-object app/integrations/andromeda-price-observation.php)" = 'c42a325f49f6951836e2e93243c8a003f219afb5'
           echo 'EXACT_GREEN_INT_DEPENDENCIES_OK'
       - name: Run focused fail-closed autosave contract
         shell: bash

@@ -144,7 +144,7 @@ $unknownDto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
 tv_autosave_check(($unknownDto['finalPriceReady'] ?? null) === false, 'missing_fuel_not_ready');
 tv_autosave_check(
     array_key_exists('price', $unknownDto) && $unknownDto['price'] === null
-    && array_key_exists('finalPrice', $unknownDto) && $unknownDto['finalPrice'] === null,
+        && array_key_exists('finalPrice', $unknownDto) && $unknownDto['finalPrice'] === null,
     'missing_fuel_no_base_fallback'
 );
 
