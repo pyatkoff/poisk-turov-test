@@ -1,0 +1,114 @@
+name: INT Tourvisor autosave state diagnostic v1
+
+on:
+  push:
+    branches:
+      - 'ops/int-tourvisor-state-diagnose-20260917-v1'
+    paths:
+      - '.github/workflows/int-tourvisor-state-diagnose-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-tourvisor-state-diagnose
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: f61eb807193ba7eb7d692661f56f62c6f051ca7c
+  OPERATION_ID: int-tourvisor-state-diagnose-20260917-v1
+
+jobs:
+  diagnose:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Bind exact read-only source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = '.github/workflows/int-tourvisor-state-diagnose-v1.yml'
+          test "$(git ls-remote origin refs/heads/release/search3-production-ready-v1 | awk '{print $1}')" = "$BASE_SHA"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo STATE_DIAG_SOURCE_BOUND
+
+      - name: Prepare SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Inspect sealed state and cache paths only
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          ssh "${opts[@]}" "$remote" php -r '
+            $home=(string)getenv("HOME");
+            $site=$home."/www/anytoour.ru";
+            $ops=$home."/.anytour-ops";
+            $read=function(string $op)use($ops):array{
+              $dir=$ops."/".$op;
+              $start=$dir."/search-start.json";
+              $id=0;
+              if(is_file($start)){
+                $x=json_decode((string)file_get_contents($start),true);
+                $id=(int)($x["searchId"]??($x["data"]["searchId"]??0));
+              }
+              $path=$id>0 ? rtrim(sys_get_temp_dir(),DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR."anytour-tourvisor-offer-".hash("sha256",(string)$id).".json" : "";
+              $state=null;
+              if($path!==""&&is_file($path)){
+                $x=json_decode((string)file_get_contents($path),true);
+                if(is_array($x))$state=["version"=>$x["version"]??null,"search_id"=>$x["search_id"]??null,"started_at"=>$x["started_at"]??null,"terminal_at"=>$x["terminal_at"]??null,"saved_at"=>$x["saved_at"]??null];
+              }
+              return ["search_id"=>$id,"state_path"=>$path,"host_state_exists"=>$path!==""&&is_file($path),"state"=>$state,"ledger_state"=>is_file($dir."/state")?trim((string)file_get_contents($dir."/state")):null];
+            };
+            $cache=$site."/.cache/catalogs";
+            $cacheFiles=is_dir($cache)?glob($cache."/*.json") : [];
+            $api=$site."/api-v2.php";
+            $out=[
+              "schema_version"=>1,
+              "operation"=>"int-tourvisor-state-diagnose-20260917-v1",
+              "status"=>"completed_read_only",
+              "cli_sys_temp_dir"=>sys_get_temp_dir(),
+              "v3"=>$read("int-tourvisor-production-writer-20260917-v3"),
+              "v4"=>$read("int-tourvisor-production-writer-20260917-v4"),
+              "catalog_cache"=>["exists"=>is_dir($cache),"json_files"=>is_array($cacheFiles)?count($cacheFiles):0,"shell_writable"=>is_dir($cache)&&is_writable($cache)],
+              "production_api_sha256"=>is_file($api)?hash_file("sha256",$api):null,
+              "sibling_app_exists"=>file_exists($home."/www/app")||is_link($home."/www/app"),
+              "sibling_v2_exists"=>file_exists($home."/www/v2")||is_link($home."/www/v2"),
+              "supplier_calls"=>0,"db_calls"=>0,"writes"=>0
+            ];
+            echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+          ' > "$RUNNER_TEMP/result.json"
+          jq -e '.status == "completed_read_only" and .supplier_calls == 0 and .db_calls == 0 and .writes == 0' "$RUNNER_TEMP/result.json" >/dev/null
+          jq . "$RUNNER_TEMP/result.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: int-tourvisor-state-diagnose-${{ github.run_id }}
+          path: ${{ runner.temp }}/result.json
+          if-no-files-found: error
+          retention-days: 30
