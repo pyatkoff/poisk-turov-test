@@ -1,0 +1,261 @@
+name: MATCH TV-SAMO Biblio resort-star canary v1
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php
+      - tests/hotel_match_tv_samo_biblio_resort_star_v1_test.php
+      - .github/workflows/hotel-match-tv-samo-biblio-resort-star-v1.yml
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: match-tv-samo-biblio-resort-star-1971-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-tv-samo-biblio-resort-star-1971-20260918-v2
+  CLAIM_COMMENT_ID: '5722238197'
+  EXPECTED_BASE: ed1cb35ec613c00a51d6a0e00fa683a40fdcb886
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate isolated full-drain canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.base.sha }}" = "$EXPECTED_BASE"
+          test "$(git merge-base "${{ github.event.pull_request.head.sha }}" "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE...${{ github.event.pull_request.head.sha }}")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" = 3
+          printf '%s\n' "${changed[@]}" | grep -Fxq scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php
+          printf '%s\n' "${changed[@]}" | grep -Fxq tests/hotel_match_tv_samo_biblio_resort_star_v1_test.php
+          printf '%s\n' "${changed[@]}" | grep -Fxq .github/workflows/hotel-match-tv-samo-biblio-resort-star-v1.yml
+          git diff --quiet "$EXPECTED_BASE" -- app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php v2/data/tourvisor-client-v1.php
+          php -l scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php
+          php -l tests/hotel_match_tv_samo_biblio_resort_star_v1_test.php
+          php scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php --self-test
+          php tests/hotel_match_tv_samo_biblio_resort_star_v1_test.php
+          grep -Fq "'/tours/search/'.\$sid.'/continue'" scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php
+          grep -Fq "for(\$page=1;\$page<=HM_MAX_SAMO_PAGES;\$page++)" scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php
+          grep -Fq "if(\$page>=\$pagesCount)break" scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php
+          grep -Fq "'database_writes'=>0" scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php
+
+  live-canary:
+    needs: validate
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'match/tv-samo-biblio-resort-star-1971-20260918-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify owner claim and exact source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$BASE_SHA" = "$EXPECTED_BASE"
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import datetime,json,os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          b=c['body']
+          assert os.environ['OPERATION_ID'] in b
+          assert 'Biblio' in b and '3★/4★/5★' in b
+          assert '/continue' in b and 'PAGES_COUNT' in b
+          created=datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+          assert 0 <= (datetime.datetime.now(datetime.timezone.utc)-created).total_seconds() < 7200
+          PY
+
+      - name: Retain reservation before provider access
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          deps=[
+            'scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php',
+            'app/integrations/andromeda-client.php',
+            'app/integrations/andromeda-transport.php',
+            'app/integrations/andromeda-network-transport-failure.php',
+            'v2/data/tourvisor-client-v1.php',
+          ]
+          r={
+            'operation':os.environ['OPERATION_ID'],
+            'state':'reserved_before_provider_access',
+            'source_sha':os.environ['HEAD_SHA'],
+            'base_sha':os.environ['EXPECTED_BASE'],
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'pr':int(os.environ['PR_NUMBER']),
+            'claim_comment_id':int(os.environ['CLAIM_COMMENT_ID']),
+            'route':'Moscow->Turkey/Antalya',
+            'operator':'Biblio-Globus',
+            'stars':[3,4,5],
+            'nights':7,'adults':2,
+            'tourvisor_continue_required':True,
+            'andromeda_full_pages_required':True,
+            'dependencies':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in deps},
+            'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_writes':0,
+            'no_replay_after_provider_access':True,
+          }
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-tv-samo-biblio-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Require exact-head Security green
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 36); do
+            gh api "repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs" > checks.json
+            if python3 - <<'PY'
+          import json,sys
+          runs=json.load(open('checks.json'))['check_runs']
+          sys.exit(0 if any(x['name']=='guard' and x['conclusion']=='success' for x in runs) else 1)
+          PY
+            then exit 0; fi
+            sleep 5
+          done
+          echo "Security guard did not become green" >&2
+          exit 1
+
+      - name: Prepare SSH and stage exact payload
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytoour-match/operations\"; test ! -e \"\$HOME/$op\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json scripts/diagnostics/hotel_match_tv_samo_biblio_resort_star_v1.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php v2/data/tourvisor-client-v1.php "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\"; chmod 600 \"\$HOME/$op/reservation.json\" \"\$HOME/$op/payload/\"*"
+
+      - name: Run one full-drain live evidence canary
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANDROMEDA_USERNAME_VALUE: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD_VALUE: ${{ secrets.ANDROMEDA_PASSWORD }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"
+          set +e
+          printf '%s\n%s\n' "$ANDROMEDA_USERNAME_VALUE" "$ANDROMEDA_PASSWORD_VALUE" | ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php \"\$HOME/$op/payload/hotel_match_tv_samo_biblio_resort_star_v1.php\" --execute" > terminal/remote-stdout.txt 2> terminal/remote-stderr.txt
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz 2>>terminal/remote-stderr.txt
+          trc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          printf '%s\n' "$trc" > terminal/tar-exit.txt
+
+      - name: Verify terminal full-drain evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True)
+          if not (p/'server-operation.tgz').exists():
+              raise SystemExit('missing server operation archive')
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              names=sorted(t.getnames()); assert names==['receipt.json','reservation.json','result.json'],names
+              for m in t.getmembers():
+                  assert m.isfile() and m.size < 20_000_000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          res=json.loads((s/'result.json').read_text()); rec=json.loads((s/'receipt.json').read_text())
+          assert (pathlib.Path('reservation/reservation.json').read_bytes()==(s/'reservation.json').read_bytes())
+          assert rec['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert rec['readback_verified'] is True and rec['database_writes']==rec['mapping_writes']==0
+          assert res['database_writes']==res['mapping_writes']==res['booking_calls']==res['lead_writes']==0
+          if res['state']=='completed_read_only':
+              assert res['route']['tv_operator']==18 and res['route']['samo_operator']==115
+              assert set(res['stars'])=={'3','4','5'}
+              for star,x in res['stars'].items():
+                  assert x['tourvisor']['fully_drained'] is True
+                  assert x['andromeda']['pages_count']==x['andromeda']['pages_drained']
+                  rounds=x['tourvisor']['continue_rounds']
+                  assert len(rounds)>=2, (star,rounds)
+              summary={
+                  'state':res['state'],'selected_date':res['selected_date'],
+                  'tv_calls':res['tv_calls'],'andromeda_calls':res['andromeda_calls'],
+                  'stars':{k:{
+                    'tv_hotels':v['tourvisor']['unique_hotels'],
+                    'samo_hotels':v['andromeda']['unique_hotels'],
+                    'matches':v['unique_exact_name_matches'],
+                    'tv_continue_rounds':len(v['tourvisor']['continue_rounds'])-1,
+                    'samo_pages':v['andromeda']['pages_drained'],
+                  } for k,v in res['stars'].items()},
+                  'result_sha256':rec['result_sha256'],
+              }
+              print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          else:
+              print(json.dumps({'state':res['state'],'reason':res.get('reason'),'result_sha256':rec['result_sha256']},ensure_ascii=False))
+              raise SystemExit(2)
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-samo-biblio-result-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
