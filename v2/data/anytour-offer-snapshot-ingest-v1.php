@@ -14,7 +14,8 @@ require_once __DIR__ . '/anytour-offer-store-v1.php';
 final class AnyTourOfferSnapshotIngestV1
 {
     private const MAX_OFFERS = 5000;
-    private const LOCAL_LISTING_TTL_SECONDS = 21600;
+    private const LOCAL_LISTING_TTL_SECONDS = 86400;
+    private const MAX_PRODUCER_EXPIRY_SECONDS = 21600;
     private const ROW_KEYS = ['anytour_hotel_id', 'dto', 'expires_at'];
 
     /**
@@ -131,7 +132,7 @@ final class AnyTourOfferSnapshotIngestV1
             // context remains inside the DTO and selection is always refresh-required.
             $producerExpires = self::utc($row['expires_at'] ?? null);
             $producerSeconds = $producerExpires->getTimestamp() - $now->getTimestamp();
-            if ($producerSeconds <= 0 || $producerSeconds > self::LOCAL_LISTING_TTL_SECONDS) {
+            if ($producerSeconds <= 0 || $producerSeconds > self::MAX_PRODUCER_EXPIRY_SECONDS) {
                 throw new InvalidArgumentException('ANYTOUR_OFFER_SNAPSHOT_EXPIRY');
             }
             $prepared[] = [
