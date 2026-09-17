@@ -1,0 +1,88 @@
+name: INT AnyTour offer snapshot producer
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'app/integrations/anytour-offer-snapshot-producer.php'
+      - 'tests/anytour-offer-snapshot-producer-test.php'
+      - 'tests/anytour-offer-snapshot-producer-mysql-test.php'
+      - '.github/workflows/anytour-offer-snapshot-producer-check.yml'
+
+permissions:
+  contents: read
+
+env:
+  LOCAL_RELEASE_SHA: b0d9b4867c295599489065cdcf65c447d5353c94
+
+jobs:
+  producer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: anytour_int_snapshot_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - name: Checkout INT exact PR head
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Checkout pinned LOCAL ingest boundary
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ env.LOCAL_RELEASE_SHA }}
+          path: _local_release
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql
+      - name: Lint producer and focused regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/integrations/anytour-offer-snapshot-producer.php
+          php -l tests/anytour-offer-snapshot-producer-test.php
+          php -l tests/anytour-offer-snapshot-producer-mysql-test.php
+      - name: Exercise existing protected final-price handoff without supplier calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -d allow_url_fopen=0 tests/anytour-offer-snapshot-producer-test.php
+      - name: Exercise producer through actual LOCAL ingestor against disposable MySQL
+        env:
+          ANYTOUR_RELEASE_ROOT: ${{ github.workspace }}/_local_release
+          ANYTOUR_OFFER_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=anytour_int_snapshot_test;charset=utf8mb4
+          ANYTOUR_OFFER_TEST_USER: root
+          ANYTOUR_OFFER_TEST_PASSWORD: root
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C _local_release rev-parse HEAD)" = "$LOCAL_RELEASE_SHA"
+          php -d allow_url_fopen=0 tests/anytour-offer-snapshot-producer-mysql-test.php
+      - name: Static ownership boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/integrations/anytour-offer-snapshot-producer.php').read_text()
+          forbidden = ('curl_', 'fsockopen', 'stream_socket_client', 'AdditionalPricesDaily',
+                       'withSearchSurchargeEstimate(', 'INSERT ', 'UPDATE ', 'DELETE ', 'PDO ')
+          for token in forbidden:
+              assert token not in p, token
+          assert 'AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer' in p
+          assert 'REFRESH_INCOMPLETE' in p
+          assert 'no_final_price_ready_resolved_offers' in p
+          print('INT producer ownership boundary: PASS')
+          PY
