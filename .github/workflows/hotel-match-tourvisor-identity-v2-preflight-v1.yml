@@ -1,0 +1,115 @@
+name: MATCH Tourvisor identity v2 preflight
+
+on:
+  push:
+    branches: [ops/match-tourvisor-identity-v2-preflight-1971-20260917-v1]
+    paths: [.github/workflows/hotel-match-tourvisor-identity-v2-preflight-v1.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: match-tourvisor-identity-v2-preflight-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-tourvisor-identity-v2-preflight-1971-20260917-v1
+
+jobs:
+  preflight:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Reserve before DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({
+            'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],
+            'state':'reserved_before_db_access','coordination_issue':2530,'queue_issue':1971,
+            'claim_comment_id':5715663939,'database_writes':0,'schema_writes':0,'mapping_writes':0,
+            'supplier_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,'no_replay':True
+          },sort_keys=True)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-tv-identity-v2-preflight-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-tourvisor-identity-v2-preflight-1971-20260917-v1/reservation.json
+          retention-days: 90
+
+      - name: Run CURRENT read-only preflight
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          cat > "$RUNNER_TEMP/preflight.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const OP='hotel-match-tourvisor-identity-v2-preflight-1971-20260917-v1';
+          function req($v,$m){if(!$v)throw new RuntimeException($m);}
+          function one(PDO $d,string $s):array{$r=$d->query($s)->fetch(PDO::FETCH_ASSOC);return is_array($r)?$r:[];}
+          function all(PDO $d,string $s):array{$r=$d->query($s)->fetchAll(PDO::FETCH_ASSOC);req(count($r)<=5000,'row_budget');return$r;}
+          function writej(string $p,array $v):string{$j=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";req(file_put_contents($p,$j,LOCK_EX)===strlen($j),'write');return hash('sha256',$j);}
+          $sha=(string)getenv('MATCH_SOURCE_SHA');req(PHP_SAPI==='cli'&&(string)getenv('MATCH_OPERATION_ID')===OP&&preg_match('/^[a-f0-9]{40}$/D',$sha),'operation_guard');
+          $dir=(string)getenv('HOME').'/.anytoour-match/operations/'.OP;$rv=json_decode((string)file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);req(($rv['state']??'')==='reserved_before_db_access'&&($rv['source_sha']??'')===$sha,'reservation');
+          $out=['operation_id'=>OP,'source_sha'=>$sha,'state'=>'failed_no_replay','database_writes'=>0,'schema_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0,'no_replay'=>true];$db=null;
+          try{
+            $root=realpath(getcwd());req(is_string($root)&&basename($root)==='anytoour.ru','root');require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+            $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+            $table=one($db,"SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tour_operator_identity_observations'");req(strtoupper((string)($table['ENGINE']??''))==='INNODB','table_contract');
+            $cols=all($db,"SELECT COLUMN_NAME,IS_NULLABLE,DATA_TYPE,COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tour_operator_identity_observations' ORDER BY ORDINAL_POSITION");$cm=[];foreach($cols as$c)$cm[(string)$c['COLUMN_NAME']]=$c;
+            $idx=all($db,"SELECT INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tour_operator_identity_observations' ORDER BY INDEX_NAME,SEQ_IN_INDEX");
+            $rows=(int)$db->query("SELECT COUNT(*) FROM tour_operator_identity_observations")->fetchColumn();
+            $dups=(int)$db->query("SELECT COUNT(*) FROM (SELECT hotel_id,operator_id FROM tour_operator_identity_observations GROUP BY hotel_id,operator_id HAVING COUNT(*)>1) x")->fetchColumn();
+            $expected=(int)$db->query("SELECT COUNT(*) FROM (SELECT p.hotel_id,p.operator_id FROM tour_price_observations p JOIN catalog_hotels c ON c.id=p.hotel_id WHERE p.operator_id IS NOT NULL AND p.operator_id>0 GROUP BY p.hotel_id,p.operator_id) x")->fetchColumn();
+            $coverage=one($db,"SELECT COUNT(DISTINCT p.hotel_id) distinct_hotels,COUNT(DISTINCT p.operator_id) distinct_operators,COUNT(DISTINCT c.country_id) distinct_countries,COUNT(DISTINCT p.search_id) distinct_searches,MAX(p.observed_at) last_observed_at FROM tour_price_observations p JOIN catalog_hotels c ON c.id=p.hotel_id WHERE p.operator_id IS NOT NULL AND p.operator_id>0");
+            $operators=all($db,"SELECT operator_id,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT search_id) distinct_searches,MAX(observed_at) last_seen FROM tour_price_observations WHERE operator_id IS NOT NULL AND operator_id>0 GROUP BY operator_id ORDER BY distinct_hotels DESC,operator_id LIMIT 40");
+            $unique=false;foreach($idx as$i)if((string)$i['INDEX_NAME']==='uq_operator_identity_hotel_operator'&&(int)$i['NON_UNIQUE']===0)$unique=true;
+            $nativePresent=isset($cm['native_id_type'],$cm['native_id_value'],$cm['native_id_conflict']);
+            $linkNullable=isset($cm['operator_link'])&&$cm['operator_link']['IS_NULLABLE']==='YES';$tourNullable=isset($cm['tour_id'])&&$cm['tour_id']['IS_NULLABLE']==='YES';
+            if(!$nativePresent&&!$linkNullable&&!$tourNullable&&!$unique)$schema='legacy_v1_ready';elseif($nativePresent&&$linkNullable&&$tourNullable&&$unique)$schema='v2_present';else $schema='unexpected_schema';
+            $db->exec('ROLLBACK');
+            $out+=['state'=>'completed_read_only','schema_state'=>$schema,'identity_rows'=>$rows,'duplicate_hotel_operator_groups'=>$dups,'expected_backfill_pairs'=>$expected,'price_history_coverage'=>$coverage,'operator_coverage'=>$operators,'native_columns_present'=>$nativePresent,'operator_link_nullable'=>$linkNullable,'tour_id_nullable'=>$tourNullable,'unique_hotel_operator_present'=>$unique,'read_at_utc'=>gmdate('c')];
+          }catch(Throwable $e){if($db instanceof PDO&&$db->inTransaction())$db->rollBack();$out['error_code']=preg_match('/^[a-z0-9_]{2,120}$/Di',$e->getMessage())?$e->getMessage():'sanitized_failure';}
+          $h=writej($dir.'/result.json',$out);writej($dir.'/receipt.json',['operation_id'=>OP,'source_sha'=>$sha,'state'=>$out['state'],'result_sha256'=>$h,'readback_verified'=>true,'database_writes'=>0,'schema_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0,'no_replay'=>true]);
+          echo json_encode($out+['result_sha256'=>$h],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";if($out['state']!=='completed_read_only')exit(2);
+          PHP
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=256M" < "$RUNNER_TEMP/preflight.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server';r=json.loads((s/'result.json').read_text());c=json.loads((s/'receipt.json').read_text());h=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          ok=(r.get('state')=='completed_read_only' and c.get('result_sha256')==h and c.get('readback_verified') is True and all(r.get(k)==0 for k in ['database_writes','schema_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_andromeda_calls']))
+          g={'verified':ok,'schema_state':r.get('schema_state'),'identity_rows':r.get('identity_rows'),'duplicate_hotel_operator_groups':r.get('duplicate_hotel_operator_groups'),'expected_backfill_pairs':r.get('expected_backfill_pairs'),'price_history_coverage':r.get('price_history_coverage'),'operator_coverage':r.get('operator_coverage'),'result_sha256':h,'no_replay':True}
+          (p/'workflow-readback.json').write_text(json.dumps(g,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(g,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if ok else 2)
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-identity-v2-preflight-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-tourvisor-identity-v2-preflight-1971-20260917-v1/
+          retention-days: 90
