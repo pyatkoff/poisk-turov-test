@@ -11,7 +11,6 @@ ROOT=Path(__file__).resolve().parents[1]
 PAYLOAD=ROOT/'v2'
 CODE=(ROOT/'v2/search3-canonical-profiles-v1.js').read_text()+'\n'+(ROOT/'v2/results-renderer-v5.js').read_text()
 ORIGINAL=Path(os.environ['SEARCH3_BASE_RENDERER']).read_text()
-ROOM=(PAYLOAD/'search3-room-normalizer-v1.js').read_text()
 SCOPED_CSS=json.loads(subprocess.check_output(['php','-r', 'require '+json.dumps(str(PAYLOAD/'bundle-manifest-v1.php'))+'; echo json_encode(v2_bundle_files("css","search3"));'],text=True))
 CSS_FILES=SCOPED_CSS+['search3-results-filters-v1.css','search3-entry-v1.css','search3-results-cards-v2.css','search3-selected-flow-v2.css']
 CSS='\n'.join((PAYLOAD/f).read_text() for f in CSS_FILES)
@@ -67,7 +66,7 @@ def boot(browser,path='/_preview/search3-local-candidate/poisk-turov/',width=144
     # No navigation: Chromium policy denies every network destination in this runtime.
     # Render local HTML in about:blank; only the location dependency is an explicit fixture.
     page.set_content(HTML)
-    page.add_script_tag(content=SETUP);page.add_script_tag(content=ROOM)
+    page.add_script_tag(content=SETUP)
     page.evaluate("""({code,path})=>{
       const fixtureLocation=new URL(path,'https://fixture.invalid/');
       const fixtureWindow=new Proxy(window,{
@@ -155,7 +154,7 @@ with sync_playwright() as p:
         page.locator('.search3-hotel-filter input').fill('НЕЛЬЗЯ');page.locator('.search3-hotel-filter input').dispatch_event('input');page.wait_for_timeout(50)
         check(page.locator('.hotel-card:not([hidden])').count()==0,f'{width}: name filtering does not use supplier name')
         page.evaluate('Search3LocalHotelFilter.clear();V2Results.rerender();');page.wait_for_timeout(50)
-        page.evaluate("""()=>{window.__apiCalls=[];V2Runtime.api=async(action,params)=>{__apiCalls.push({action,params});if(action==='tour'){const tour=__source.flatMap(h=>h.tours).find(t=>t.id===params.tourId);return {...tour,hotel:{id:102,name:'Наш тестовый отель 1'},adults:2,childs:0,currency:'RUB',departure:{name:'Тестовый город'}};}if(action==='flights')return [];throw new Error('Unexpected action '+action);};}""")
+        page.evaluate("""()=>{window.__apiCalls=[];V2Runtime.api=async(action,params)=>{__apiCalls.push({action,params});if(action==='tour'){const tour=__source.flatMap(h=>h.tours).find(t=>t.id===params.tourId);return window.__tourResponse={...tour,hotel:{id:1,name:'НЕЛЬЗЯ: название из supplier details',country:{name:'НЕЛЬЗЯ: страна из details'},region:{name:'НЕЛЬЗЯ: курорт из details'}},hotelDescription:'НЕЛЬЗЯ: описание из supplier details',picture:'https://fixture.example/supplier-detail.svg',adults:2,childs:0,currency:'RUB',departure:{name:'Тестовый город'}};}if(action==='flights')return [];throw new Error('Unexpected action '+action);};}""")
         page.evaluate('window.V2Catalogs={renderChildAges(){},init:async()=>{},handleChange(){},updateServiceCount(){}}')
         page.add_script_tag(content=LIFECYCLE)
         page.add_script_tag(content=CONTROLLER)
@@ -163,6 +162,18 @@ with sync_playwright() as p:
         target=page.locator('.direct-tour').filter(has_text='Выбрать тур').first
         tid=target.get_attribute('data-tid');target.click();page.wait_for_timeout(100)
         check(page.evaluate('V2TourController.currentTour.id')==tid,f'{width}: actual controller selects original tour ID')
+        selected=page.locator('#selectedTour')
+        check(selected.locator('h2').inner_text()=='Наш тестовый отель 1',f'{width}: selected title stays canonical despite coincident supplier hotel ID')
+        check('Тестовая страна · Наш курорт' in selected.inner_text(),f'{width}: selected geography stays canonical')
+        check(selected.locator('.selected-picture img').get_attribute('src')==profile(1)['primaryImage'],f'{width}: selected photo stays canonical')
+        check(selected.locator('.selected-picture img').get_attribute('alt')=='Фото отеля Наш тестовый отель 1',f'{width}: selected canonical photo has useful alternative text')
+        check(selected.locator('.hotel-desc').inner_text()==profile(1)['description'],f'{width}: selected description stays canonical')
+        check('НЕЛЬЗЯ' not in selected.inner_text(),f'{width}: supplier hotel presentation never replaces AnyTour profile')
+        check(page.evaluate('V2TourController.currentTour===__tourResponse && __tourResponse.hotel.id===1 && __tourResponse.hotelDescription.startsWith("НЕЛЬЗЯ")'),f'{width}: presentation does not mutate supplier tour or lead source')
+        check('05.10.2026' in selected.inner_text() and 'Standard Sea View' in selected.inner_text(),f'{width}: exact offer date and raw room survive canonical presentation')
+        check(not page.evaluate('document.documentElement.scrollWidth>innerWidth+1'),f'{width}: selected canonical photo has no horizontal overflow')
+        page.screenshot(path=str(OUT/f'canonical-selected-{width}.png'),full_page=True)
+
         check(page.evaluate('__apiCalls[0].params.tourId')==tid,f'{width}: native tour request identity unchanged')
         check(set(page.evaluate('__apiCalls.map(x=>x.action)'))<={'tour','flights'},f'{width}: no lead or extra search in controller path')
         page.locator('#selectedTour .back-results').first.click();page.wait_for_timeout(150)

@@ -252,6 +252,30 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             source = (ROOT / 'v2' / name).read_bytes()
             if name == 'tour-controller-v4.js':
+                # Reviewed canonical hotel presentation only. Reverse every exact
+                # display insertion before the existing business/transport digest.
+                # The supplier tour and lead source remain byte-for-byte protected.
+                canonical_fragments = (
+                    (",selectedHotelProfile=null", ""),
+                    ("// Capture presentation from the admitted exact offer, never from supplier hotel IDs.\n"
+                     "function canonicalSelectedHotel(tid){\n"
+                     " const owner=window.Search3CanonicalProfilesV1&&window.Search3CanonicalProfilesV1.current();\n"
+                     " if(!owner)return null;\n"
+                     " const items=window.V2Results&&window.V2Results.state&&window.V2Results.state.items||[],matches=items.filter(h=>Array.isArray(h.tours)&&h.tours.some(t=>String(t&&t.id||'')===String(tid)));\n"
+                     " return matches.length===1?owner.details(matches[0])||{}:{};\n"
+                     "}\n", ""),
+                    ("h=selectedHotelProfile||t.hotel||{}", "h=t.hotel||{}"),
+                    ("desc=clean(selectedHotelProfile?selectedHotelProfile.description:t.hotelDescription)", "desc=clean(t.hotelDescription)"),
+                    ("pic=selectedHotelProfile?selectedHotelProfile.primaryImage||'':t.picture||h.picturelink||''", "pic=t.picture||h.picturelink||''"),
+                    ("h.name||(selectedHotelProfile?'Отель':t.name||'Тур')", "h.name||t.name||'Тур'"),
+                    ("alt=\"'+esc(selectedHotelProfile&&h.name?'Фото отеля '+h.name:'')+'\"", 'alt=""'),
+                    ("selectedHotelProfile=canonicalSelectedHotel(tid);", ""),
+                    ("selectedHotelProfile=canonicalSelectedHotel(currentTour.id);", ""),
+                    (";selectedHotelProfile=null;", ";"),
+                )
+                for reviewed, original in canonical_fragments:
+                    self.assertEqual(source.count(reviewed.encode()), 1, 'one canonical selected hotel display seam')
+                    source = source.replace(reviewed.encode(), original.encode(), 1)
                 # Reviewed provider receipt handoff only. Reverse the exact
                 # Andromeda selection seam before applying the older display
                 # reversals and comparing the frozen Tourvisor controller.
