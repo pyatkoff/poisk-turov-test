@@ -1,0 +1,47 @@
+name: Search3 AnyTour offer store v2 migration check
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_offer_store_migrate_v2.php'
+      - 'tests/anytour_offer_store_migrate_v2_test.php'
+      - 'v2/data/migrations/20260917-anytour-offer-store-v2.sql'
+      - 'tests/anytour-offer-store-v2-snapshot-test.php'
+      - '.github/workflows/search3-anytour-offer-migrate-v2.yml'
+permissions:
+  contents: read
+jobs:
+  verify-migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_offer_migrate_v2_fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Syntax and real MySQL migration contracts
+        env:
+          ANYTOUR_OFFER_MIGRATE_V2_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_offer_migrate_v2_fixture;charset=utf8mb4'
+          ANYTOUR_OFFER_MIGRATE_V2_TEST_PASSWORD: fixture-only-password
+          ANYTOUR_OFFER_V2_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_offer_migrate_v2_fixture;charset=utf8mb4'
+          ANYTOUR_OFFER_V2_TEST_PASSWORD: fixture-only-password
+        run: |
+          php -l scripts/catalog/anytour_offer_store_migrate_v2.php
+          php -l tests/anytour_offer_store_migrate_v2_test.php
+          php tests/anytour_offer_store_migrate_v2_test.php
+          php tests/anytour-offer-store-v2-snapshot-test.php
