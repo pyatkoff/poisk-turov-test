@@ -120,6 +120,83 @@ jobs:
           print('andromeda_completed_refreshes='+str(db['andromeda_completed_refreshes_total']))
           PY
 
+      - name: Classify post-publish incomplete cohort gaps
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -T -i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes             -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null             -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2             "$REMOTE_USER@$HOST" 'php -d display_errors=0 -d log_errors=0'             > "$RUNNER_TEMP/audit/cohort-gaps.json" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          error_reporting(0);
+          $published=1789658123;
+          $home=rtrim((string)getenv('HOME'),'/');
+          $dir=$home.'/.anytoour-andromeda/searches';
+          if($home===''||!is_dir($dir)||is_link($dir))exit(2);
+          $read=static function(string $p,int $max=3000000):?array{
+              if(is_link($p)||!is_file($p))return null;
+              $n=filesize($p);if(!is_int($n)||$n<2||$n>$max)return null;
+              try{$v=json_decode((string)file_get_contents($p),true,64,JSON_THROW_ON_ERROR);return is_array($v)?$v:null;}
+              catch(Throwable){return null;}
+          };
+          $counts=[
+            'post_first'=>0,'first_rejected'=>0,'zero_pages_with_offers'=>0,'missing_page'=>0,
+            'invalid_page'=>0,'page_rejected'=>0,'pages_regressed'=>0,'complete'=>0,
+            'auth_missing'=>0,'auth_created_mismatch'=>0,'auth_valid'=>0,
+            'first_status_complete'=>0,'first_status_partial'=>0,'other_first_status'=>0,
+          ];
+          $missingAt=[];$advertised=[];$latest=[];
+          foreach(new DirectoryIterator($dir) as $e){
+              if($e->isDot()||$e->isLink()||!$e->isFile())continue;
+              if(!preg_match('/\A([a-f0-9]{64})-1\.json\z/D',$e->getFilename(),$m))continue;
+              $ref=$m[1];$first=$read($e->getPathname());if(!is_array($first)||!is_array($first['store']??null))continue;
+              $created=$first['store']['created_at']??null;if(!is_int($created)||$created<$published)continue;
+              ++$counts['post_first'];
+              $status=$first['status']??null;
+              if($status==='complete')++$counts['first_status_complete'];elseif($status==='partial')++$counts['first_status_partial'];else ++$counts['other_first_status'];
+              $snap=$first['store']['snapshot']??null;
+              if(!is_array($snap)||($snap['provider']??null)!=='andromeda'||($snap['search_ref']??null)!==$ref||!is_int($first['generation']??null)
+                ||($snap['generation']??null)!==$first['generation']||($snap['page']??null)!==1||!is_int($snap['pages_count']??null)
+                ||!is_array($snap['offers']??null)||!is_array($snap['rejected']??null)){++$counts['invalid_page'];continue;}
+              $target=$snap['pages_count'];
+              $advertised[(string)$target]=($advertised[(string)$target]??0)+1;
+              $auth=$read($dir.'/'.$ref.'-auth.json',65536);
+              if(!is_array($auth)){++$counts['auth_missing'];}
+              elseif(($auth['created_at']??null)!==$created){++$counts['auth_created_mismatch'];}
+              else{++$counts['auth_valid'];}
+              if($snap['rejected']!==[]){++$counts['first_rejected'];$latest['first_rejected']=max($latest['first_rejected']??0,$created);continue;}
+              if($target===0&&$snap['offers']!==[]){++$counts['zero_pages_with_offers'];continue;}
+              $reason=null;
+              for($page=2;$page<=$target&&$page<=1000;++$page){
+                  $path=$dir.'/'.$ref.'-'.$created.'-'.$page.'.json';
+                  if(!is_file($path)||is_link($path)){$reason='missing_page';$missingAt[(string)$page]=($missingAt[(string)$page]??0)+1;break;}
+                  $state=$read($path);$s=is_array($state)?($state['store']['snapshot']??null):null;
+                  if(!is_array($state)||!is_array($s)||($state['search_ref']??null)!==$ref||($state['generation']??null)!==$first['generation']
+                    ||($s['provider']??null)!=='andromeda'||($s['search_ref']??null)!==$ref||($s['generation']??null)!==$first['generation']
+                    ||($s['page']??null)!==$page||!is_int($s['pages_count']??null)||!is_array($s['rejected']??null)){$reason='invalid_page';break;}
+                  if($s['rejected']!==[]){$reason='page_rejected';break;}
+                  if($s['pages_count']<$page){$reason='pages_regressed';break;}
+                  $target=max($target,$s['pages_count']);
+              }
+              if($reason===null){++$counts['complete'];$reason='complete';}
+              else ++$counts[$reason];
+              $latest[$reason]=max($latest[$reason]??0,$created);
+          }
+          ksort($advertised,SORT_NATURAL);ksort($missingAt,SORT_NATURAL);ksort($latest,SORT_STRING);
+          echo json_encode(['counts'=>$counts,'advertised_pages'=>$advertised,'missing_at_page'=>$missingAt,'latest_created_at'=>$latest,
+            'filesystem_writes'=>0,'supplier_calls'=>0,'db_writes'=>0],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+          PHP
+          python3 - <<'PY'
+          import json,os
+          p=os.environ['RUNNER_TEMP']+'/audit/cohort-gaps.json'
+          d=json.load(open(p))
+          assert d['filesystem_writes']==d['supplier_calls']==d['db_writes']==0
+          assert d['counts']['post_first']==15,d
+          print(json.dumps(d,sort_keys=True))
+          PY
+
       - name: Upload sanitized state
         if: always()
         uses: actions/upload-artifact@v4
