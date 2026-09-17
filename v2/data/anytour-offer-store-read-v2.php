@@ -5,6 +5,8 @@ declare(strict_types=1);
 final class AnyTourOfferStoreReadV2
 {
     private const PROVIDERS=['tourvisor'=>true,'anex'=>true,'andromeda'=>true];
+    /** Three provider snapshots may each contain up to 5,000 accepted offers. */
+    private const MAX_SCOPE_OFFERS=15000;
 
     private static function digest(mixed $value): string
     {
@@ -44,9 +46,9 @@ final class AnyTourOfferStoreReadV2
             throw new RuntimeException('ANYTOUR_OFFER_LISTING_INTEGRITY');
         }
     }
-    public static function readScope(PDO $db,string $scope,DateTimeImmutable $now,int $limit=1000): array
+    public static function readScope(PDO $db,string $scope,DateTimeImmutable $now,int $limit=self::MAX_SCOPE_OFFERS): array
     {
-        $scope=self::digest($scope);if($limit<1||$limit>5000)throw new InvalidArgumentException('ANYTOUR_OFFER_READ_LIMIT');
+        $scope=self::digest($scope);if($limit<1||$limit>self::MAX_SCOPE_OFFERS)throw new InvalidArgumentException('ANYTOUR_OFFER_READ_LIMIT');
         $sql='SELECT o.anytour_hotel_id,o.legacy_hotel_id,o.provider,o.payload_json,o.payload_sha256,o.display_price,o.currency,o.observed_at,o.last_seen_at,o.expires_at '
             .'FROM anytour_offers o JOIN anytour_offer_scope_state s ON s.provider=o.provider AND s.scope_sha256=o.scope_sha256 '
             .'AND s.latest_complete_refresh_token IS NOT NULL AND s.latest_complete_refresh_token=o.last_refresh_token '
