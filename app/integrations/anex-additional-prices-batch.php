@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/anex-anytour-offer-autosave.php';
+require_once __DIR__ . '/anex-apd-cache-runtime.php';
 
 /**
  * Build a server-only AdditionalPricesDaily batch plan for visible retained direct-ANEX offers.
@@ -115,6 +116,7 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
         }
         $attempt = $state['additional_prices'][$digest] ?? null;
         if (is_array($attempt) && ($attempt['status'] ?? null) === 'complete' && is_array($attempt['evidence'] ?? null)) {
+            anytour_anex_apd_cache_write_runtime($context, $attempt['evidence'], $state);
             $results[$digest] = ['status' => 'complete', 'cached' => true, 'evidence' => $attempt['evidence'],
                 'retryable' => false, 'retry_reason' => null];
             continue;
@@ -122,6 +124,14 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
         if ($attempt !== null) {
             $results[$digest] = ['status' => 'unknown', 'cached' => true, 'evidence' => null,
                 'retryable' => false, 'retry_reason' => 'durable_unknown'];
+            continue;
+        }
+        $dbCache = anytour_anex_apd_cache_read_runtime($context);
+        if (($dbCache['hit'] ?? false) === true && is_array($dbCache['evidence'] ?? null)) {
+            $state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => $dbCache['evidence']];
+            $checkpoint($state, $digest);
+            $results[$digest] = ['status' => 'complete', 'cached' => true, 'evidence' => $dbCache['evidence'],
+                'retryable' => false, 'retry_reason' => null];
             continue;
         }
         $state['additional_prices'][$digest] = ['status' => 'unknown'];
@@ -145,6 +155,7 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
         }
         if (!is_array($evidence)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
         $state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => $evidence];
+        anytour_anex_apd_cache_write_runtime($context, $evidence, $state);
         $results[$digest] = ['status' => 'complete', 'cached' => false, 'evidence' => $evidence,
             'retryable' => false, 'retry_reason' => null];
     }
