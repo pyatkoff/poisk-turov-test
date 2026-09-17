@@ -11,4 +11,5 @@ ALTER TABLE tour_operator_identity_observations
     ADD COLUMN native_id_type VARCHAR(40) NULL AFTER operator_link_query,
     ADD COLUMN native_id_value VARCHAR(255) NULL AFTER native_id_type,
     ADD COLUMN native_id_conflict TINYINT(1) NOT NULL DEFAULT 0 AFTER native_id_value,
+    ADD UNIQUE KEY uq_operator_identity_hotel_operator (hotel_id,operator_id),
     ADD KEY idx_operator_identity_native (operator_id,native_id_type,native_id_value,last_seen_at);

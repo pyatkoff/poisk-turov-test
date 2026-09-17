@@ -11,6 +11,7 @@ foreach ([
     'ADD COLUMN native_id_type VARCHAR(40) NULL',
     'ADD COLUMN native_id_value VARCHAR(255) NULL',
     'ADD COLUMN native_id_conflict TINYINT(1) NOT NULL DEFAULT 0',
+    'ADD UNIQUE KEY uq_operator_identity_hotel_operator (hotel_id,operator_id)',
     'idx_operator_identity_native',
 ] as $needle) check_backfill(str_contains($migration, $needle), 'migration contract: ' . $needle);
 
