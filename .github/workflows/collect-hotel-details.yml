@@ -2,8 +2,9 @@ name: Collect AnyTour hotel details
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, release/search3-production-ready-v1]
     paths:
+      - 'v2/data/tourvisor-client-v1.php'
       - 'v2/data/hotel-details-v1.php'
       - 'v2/data/migrate-hotel-details-v1.php'
       - 'v2/data/collect-hotel-details-v1.php'
@@ -12,6 +13,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'v2/data/tourvisor-client-v1.php'
       - 'v2/data/hotel-details-v1.php'
       - 'v2/data/migrate-hotel-details-v1.php'
       - 'v2/data/collect-hotel-details-v1.php'
@@ -22,9 +24,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Maximum unique tour hotelIds to enrich in this run (1-30000)'
+        description: 'Maximum unique hotel IDs to enrich in this run (1-3000)'
         required: true
-        default: '30000'
+        default: '3000'
         type: string
       fresh_days:
         description: 'Skip hotel descriptions refreshed within this many days (1-365)'
@@ -32,9 +34,19 @@ on:
         default: '30'
         type: string
       min_interval_ms:
-        description: 'Minimum interval between paid hotel API calls; 550ms stays below 120/min'
+        description: 'Minimum interval between hotel API calls'
         required: true
         default: '550'
+        type: string
+      max_attempts:
+        description: 'Maximum HTTP attempts per selected hotel (1-4)'
+        required: true
+        default: '1'
+        type: string
+      http_budget:
+        description: 'Hard per-run worst-case HTTP attempt budget (1-3000)'
+        required: true
+        default: '3000'
         type: string
 
 concurrency:
@@ -47,10 +59,11 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - name: Validate paid hotel enrichment tooling
+      - name: Validate quota-safe hotel enrichment tooling
         shell: bash
         run: |
           set -euo pipefail
+          php -l v2/data/tourvisor-client-v1.php >/dev/null
           php -l v2/data/hotel-details-v1.php >/dev/null
           php -l v2/data/migrate-hotel-details-v1.php >/dev/null
           php -l v2/data/collect-hotel-details-v1.php >/dev/null
@@ -59,6 +72,10 @@ jobs:
           grep -Fq "v2_data_tv_get('/hotels/' . \$hotelId)" v2/data/collect-hotel-details-v1.php
           grep -Fq 'tour_price_observations' v2/data/collect-hotel-details-v1.php
           grep -Fq 'hot_tours_current' v2/data/collect-hotel-details-v1.php
+          grep -Fq "hotel_details_int(\$argv, 'http-budget', 3000, 1, 3000)" v2/data/collect-hotel-details-v1.php
+          grep -Fq "hotel_details_int(\$argv, 'max-attempts', 1, 1, 4)" v2/data/collect-hotel-details-v1.php
+          grep -Fq 'v2_hotel_detail_is_generic_product_name' v2/data/collect-hotel-details-v1.php
+          grep -Fq 'TOURVISOR_HTTP_MAX_ATTEMPTS' v2/data/tourvisor-client-v1.php
           echo ANYTOUR_HOTEL_DETAILS_TOOLING_OK
 
   collect-production:
@@ -84,21 +101,27 @@ jobs:
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
 
-      - name: Enrich every hotel found in AnyTour tour data
+      - name: Enrich demand-bearing hotels within explicit request budget
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          LIMIT_VALUE: ${{ inputs.limit || '30000' }}
+          LIMIT_VALUE: ${{ inputs.limit || '3000' }}
           FRESH_DAYS_VALUE: ${{ inputs.fresh_days || '30' }}
           INTERVAL_VALUE: ${{ inputs.min_interval_ms || '550' }}
+          MAX_ATTEMPTS_VALUE: ${{ inputs.max_attempts || '1' }}
+          HTTP_BUDGET_VALUE: ${{ inputs.http_budget || '3000' }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
           [[ "$LIMIT_VALUE" =~ ^[0-9]+$ ]] && [[ "$FRESH_DAYS_VALUE" =~ ^[0-9]+$ ]] && [[ "$INTERVAL_VALUE" =~ ^[0-9]+$ ]]
-          test "$LIMIT_VALUE" -ge 1 && test "$LIMIT_VALUE" -le 30000
+          [[ "$MAX_ATTEMPTS_VALUE" =~ ^[0-9]+$ ]] && [[ "$HTTP_BUDGET_VALUE" =~ ^[0-9]+$ ]]
+          test "$LIMIT_VALUE" -ge 1 && test "$LIMIT_VALUE" -le 3000
           test "$FRESH_DAYS_VALUE" -ge 1 && test "$FRESH_DAYS_VALUE" -le 365
           test "$INTERVAL_VALUE" -ge 500 && test "$INTERVAL_VALUE" -le 5000
+          test "$MAX_ATTEMPTS_VALUE" -ge 1 && test "$MAX_ATTEMPTS_VALUE" -le 4
+          test "$HTTP_BUDGET_VALUE" -ge 1 && test "$HTTP_BUDGET_VALUE" -le 3000
+          test $(( LIMIT_VALUE * MAX_ATTEMPTS_VALUE )) -le "$HTTP_BUDGET_VALUE"
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
@@ -115,6 +138,6 @@ jobs:
             root=\"\$HOME/www/anytoour.ru/data\"
             php -l \"\$root/collect-hotel-details-v1.php\" >/dev/null
             php \"\$root/migrate-hotel-details-v1.php\"
-            php \"\$root/collect-hotel-details-v1.php\" --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE'
+            php \"\$root/collect-hotel-details-v1.php\" --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE' --max-attempts='$MAX_ATTEMPTS_VALUE' --http-budget='$HTTP_BUDGET_VALUE'
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
           "
