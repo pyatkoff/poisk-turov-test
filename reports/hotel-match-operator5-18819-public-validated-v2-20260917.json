@@ -1,0 +1,47 @@
+{
+  "evidence_type": "sealed_public_operator_catalog_identity",
+  "supplier": "ANEX",
+  "native_hotel_id": "18819",
+  "hotel_name": "Grand Uysal Beach & Spa",
+  "country": "Turkey",
+  "city": "Alanya",
+  "giata_id": "26743",
+  "latitude": 36.528713,
+  "longitude": 32.04812,
+  "page_sha256": "45f5fad8097dc417ec9e5e1fe8b69947bec25456df100f5690b36be600385ffa",
+  "http_status": 200,
+  "required_markers_verified": 6,
+  "representation_normalized": true,
+  "verified": true,
+  "provenance": {
+    "operation_id": "hotel-match-operator5-18819-public-apply-1971-20260917-v2",
+    "run_id": "35225665006",
+    "source_sha": "c39e1d6541cb254c38eb1803c4ef0e456db263da",
+    "reservation_artifact_id": "10498904320",
+    "result_artifact_id": "10498759630",
+    "result_artifact_zip_sha256": "eb00d345c5fda79926cb93ef81cbe4e22122ab1f163a42e77ef376c33851631e",
+    "server_result_sha256": "6ad323c623f637dd73bd885136c2d99f61f144fe4eae83233186860bb8672c2c",
+    "public_fetch_preceded_by_durable_reservation": true,
+    "v2_database_writes": 0,
+    "v2_mapping_writes": 0,
+    "v2_terminal_state": "completed_no_write",
+    "v2_error_code": "native_country"
+  },
+  "candidate_local": {
+    "local_hotel_id": 56551,
+    "name": "GRAND UYSAL BEACH & SPA HOTEL",
+    "country_id": 4,
+    "region": "Аланья",
+    "subregion": "Обакой",
+    "latitude": 36.5288585,
+    "longitude": 32.0479114,
+    "coordinate_distance_m": 25
+  },
+  "identity_context": {
+    "operator_namespace": "operator_5",
+    "operator_external_hotel_id": "18819",
+    "stored_bridge_andromeda_id": "118706",
+    "accepted_same_local_andromeda_id": "2000086116",
+    "policy": "resolve operator-native identity only; preserve andromeda_catalog/118706 pending"
+  }
+}
