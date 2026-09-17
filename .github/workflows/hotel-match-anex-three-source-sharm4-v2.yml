@@ -72,8 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p checkpoint
-          OPERATION_ID="$OPERATION_ID" php scripts/diagnostics/hotel_match_andromeda_sharm4_capture_v2.php --execute "$RUNNER_TEMP/checkpoint"
-          cp "$RUNNER_TEMP/checkpoint/"* checkpoint/
+          OPERATION_ID="$OPERATION_ID" php scripts/diagnostics/hotel_match_andromeda_sharm4_capture_v2.php --execute checkpoint
           php -r '$r=json_decode(file_get_contents("checkpoint/andromeda.json"),true,64,JSON_THROW_ON_ERROR);if(($r["status"]??"")!=="completed"||($r["calls_started"]??99)>6||count($r["rows"]??[])<1)exit(1);'
       - uses: actions/upload-artifact@v4
         with:
