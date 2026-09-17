@@ -1,0 +1,57 @@
+name: INT ANEX fresh rows export v2
+
+on:
+  push:
+    branches:
+      - 'ops/int-anex-fresh-rows-20260917-v2'
+    paths:
+      - '.github/workflows/int-anex-fresh-rows-export-v2.yml'
+      - 'scripts/ops/int_anex_fresh_rows_export_v2.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-anex-fresh-rows-export-20260917-v2
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: 9b9f912a3a87b6215be4f816e45312bbabded552
+  SOURCE_SHA: 7d21538b56a463ced185dd893361469e92911c77
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 6
+          persist-credentials: false
+      - name: Bind corrected diagnostic-only diff
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-anex-fresh-rows-export-v2.yml'
+          test "${changed[1]}" = 'scripts/ops/int_anex_fresh_rows_export_v2.py'
+          git diff --quiet "$SOURCE_SHA" HEAD -- app/integrations/anex-client.php app/integrations/anex-normalizer.php app/integrations/anex-search-mapping-registry.php
+          python3 -m py_compile scripts/ops/int_anex_fresh_rows_export_v1.py scripts/ops/int_anex_fresh_rows_export_v2.py
+      - name: Run corrected one-shot read-only ANEX export
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/anex-fresh-rows-v2"
+          python3 -B scripts/ops/int_anex_fresh_rows_export_v2.py "$RUNNER_TEMP/anex-fresh-rows-v2"
+      - name: Preserve fresh ANEX rows
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-anex-fresh-rows-v2-${{ github.run_id }}
+          path: ${{ runner.temp }}/anex-fresh-rows-v2/
+          if-no-files-found: error
+          retention-days: 30
