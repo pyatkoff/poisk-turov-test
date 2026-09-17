@@ -1,0 +1,106 @@
+name: Search3 refactor remove dead meal presets once
+
+on:
+  push:
+    branches:
+      - refactor/search3-drop-meal-normalization-20260917
+
+permissions:
+  contents: write
+
+concurrency:
+  group: search3-refactor-remove-dead-meal-presets-once
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/search3-drop-meal-normalization-20260917
+          fetch-depth: 0
+
+      - name: Verify branch and patch exact retired meal preset markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "refactor/search3-drop-meal-normalization-20260917"
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/search3/behavior/results/local-hotel-filter.js')
+          text = path.read_text()
+          replacements = [
+              (
+                  "mealField=null,mealSelect=null,mealPresets=null,operatorField",
+                  "mealField=null,mealSelect=null,operatorField",
+              ),
+              (
+                  "  mealField=document.createElement('div');mealField.className='search3-meal-filter';mealField.hidden=true;mealField.innerHTML='<label><span>Питание</span><select aria-describedby=\"search3HotelFilterStatus\"><option value=\"\">Любое питание</option></select></label><div class=\"search3-filter-presets\" role=\"group\" aria-label=\"Быстрый выбор питания\" hidden></div>';",
+                  "  mealField=document.createElement('div');mealField.className='search3-meal-filter';mealField.hidden=true;mealField.innerHTML='<label><span>Питание</span><select aria-describedby=\"search3HotelFilterStatus\"><option value=\"\">Любое питание</option></select></label>';",
+              ),
+              (
+                  "mealSelect=mealField.querySelector('select');mealPresets=mealField.querySelector('.search3-filter-presets');operatorSelect",
+                  "mealSelect=mealField.querySelector('select');operatorSelect",
+              ),
+              (
+                  "  bindPresets(mealPresets,mealSelect);bindPresets(categoryPresets,categorySelect);",
+                  "  bindPresets(categoryPresets,categorySelect);",
+              ),
+              (
+                  "  const options=Array.from(mealSelect.options).slice(1),pick=value=>options.find(item=>item.value===value),quick=[];\n  const breakfast=pick('meal:breakfast'),inclusive=pick('meal:all-inclusive');\n  [breakfast,inclusive].forEach(item=>{if(item&&!quick.some(choice=>choice.value===item.value))quick.push({value:item.value,label:item===breakfast?'Завтрак':'Всё включено'});});\n  syncPresets(mealPresets,mealSelect,quick,'');return mealSelect.value;",
+                  "  return mealSelect.value;",
+              ),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'exact marker count {count}, expected 1: {old[:100]!r}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+          ! grep -Fq 'mealPresets' src/search3/behavior/results/local-hotel-filter.js
+          ! grep -Fq "pick('meal:breakfast')" src/search3/behavior/results/local-hotel-filter.js
+          ! grep -Fq "pick('meal:all-inclusive')" src/search3/behavior/results/local-hotel-filter.js
+          ! grep -Fq 'Быстрый выбор питания' src/search3/behavior/results/local-hotel-filter.js
+
+      - name: Rebuild canonical Search3 assets and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/build/search3_assets.py --write
+          python3 scripts/build/search3_assets.py --check
+          node --check src/search3/behavior/results/local-hotel-filter.js
+          node --check v2/search3-results-filters-v1.js
+          ! grep -Fq 'mealPresets' v2/search3-results-filters-v1.js
+          ! grep -Fq "pick('meal:breakfast')" v2/search3-results-filters-v1.js
+          ! grep -Fq "pick('meal:all-inclusive')" v2/search3-results-filters-v1.js
+          ! grep -Fq 'Быстрый выбор питания' v2/search3-results-filters-v1.js
+
+      - name: Verify bounded diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short
+          changed="$(git diff --name-only)"
+          test -n "$changed"
+          while IFS= read -r path; do
+            case "$path" in
+              src/search3/behavior/results/local-hotel-filter.js|v2/search3-results-filters-v1.js|docs/project/search3-production-import.json) ;;
+              *) echo "unexpected changed path: $path" >&2; exit 1 ;;
+            esac
+          done <<< "$changed"
+          git diff --check
+
+      - name: Commit bounded cleanup to feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/search3/behavior/results/local-hotel-filter.js v2/search3-results-filters-v1.js docs/project/search3-production-import.json
+          git diff --cached --check
+          git commit -m 'refactor(search3): remove retired meal quick presets'
+          git push origin HEAD:refactor/search3-drop-meal-normalization-20260917
