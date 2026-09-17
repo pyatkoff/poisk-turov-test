@@ -3,6 +3,8 @@ declare(strict_types=1);
 require_once __DIR__.'/api-anex-search3-preview.php';
 $andromedaApp=is_file(__DIR__.'/app/integrations/andromeda-client.php')?__DIR__.'/app/integrations':__DIR__.'/../app/integrations';
 foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';
+$andromedaAutosave=$andromedaApp.'/andromeda-anytour-offer-autosave.php';
+if(is_file($andromedaAutosave)&&!is_link($andromedaAutosave))require_once $andromedaAutosave;
 
 /** Resolve one semantic supplier value from the saved provider dictionary. */
 function anytour_andromeda_search3_dictionary_id(array $rows,array $names,string $error): string {
@@ -428,6 +430,12 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
             AnyTourAndromedaHotelObservations::record($pdo,$page,$observationCountry);
         }
         catch(Throwable $ignored) {}
+        if(function_exists('anytour_andromeda_anytour_offer_autosave_runtime')){
+            try {
+                anytour_andromeda_anytour_offer_autosave_runtime($request,$pdo,$saved,$directory,$ref,$generation);
+            }
+            catch(Throwable $ignored) {}
+        }
         return anytour_andromeda_search3_project($request,$pdo,$page,$saved,
             ['directory'=>$directory,'store'=>$state['store'],'created_at'=>$number===1?$state['store']['created_at']:$first['store']['created_at']]);
     }finally{flock($lock,LOCK_UN);fclose($lock);}

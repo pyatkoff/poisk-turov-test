@@ -6,9 +6,9 @@ declare(strict_types=1);
  *
  * Search price, fuel, additional charges, package buyer money and quote money remain
  * independent facts with independent evidence. No surcharge is inferred implicitly.
- * The dedicated search-estimate method may add only explicit per-passenger surcharge
- * facts to the preserved base search price; missing/ambiguous surcharge stays unknown.
- * A verified quote is still a later, supplier-authoritative fact.
+ * Direct ANEX supplies per-passenger AdditionalPricesDaily rates. Andromeda/SAMO
+ * supplies a transport markup for the already-selected tourist party; that party
+ * surcharge is added exactly once and must never be multiplied by passenger count.
  */
 final class AnyTourThreeProviderMoneyFacts
 {
@@ -16,9 +16,6 @@ final class AnyTourThreeProviderMoneyFacts
     private const SEARCH_CAPABILITIES = [
         'tourvisor' => ['fuel' => true, 'additional' => false],
         'anex' => ['fuel' => false, 'additional' => true],
-        // Transport surcharge facts are allowed only when an upstream Andromeda
-        // transport-directory contract has actually supplied them. This class does not
-        // discover, guess or synthesize that still-unproven supplier binding.
         'andromeda' => ['fuel' => false, 'additional' => true],
     ];
 
@@ -53,14 +50,28 @@ final class AnyTourThreeProviderMoneyFacts
                 throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
             }
             $kind = $fact['kind'];
-            if (!is_string($kind) || !preg_match('/\A[a-z][a-z0-9_]{0,39}\z/D', $kind)
-                || ($provider === 'andromeda' && !in_array($kind, ['fuel_adult', 'fuel_child'], true))) {
+            if (!is_string($kind) || !preg_match('/\A[a-z][a-z0-9_]{0,39}\z/D', $kind)) {
                 throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
+            }
+            $source = $fact['source'];
+            if ($provider === 'andromeda') {
+                if ($kind !== 'party_transport_surcharge'
+                    || !is_string($source)
+                    || !in_array($source, [
+                        'andromeda_additional',
+                        'andromeda_get_flights_transport',
+                        'andromeda_get_flights_transport_converted',
+                    ], true)) {
+                    throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
+                }
+                // Preserve a strict provider-neutral source contract. The supplier-specific
+                // transport provenance is validated above and by the upstream surcharge fact.
+                $source = 'andromeda_additional';
             }
             $money = self::moneyFact([
                 'amount' => $fact['amount'],
                 'currency' => $fact['currency'],
-                'source' => $fact['source'],
+                'source' => $source,
             ], true, $provider, 'additional');
             $additional[] = ['kind' => $kind] + $money;
         }
@@ -71,7 +82,6 @@ final class AnyTourThreeProviderMoneyFacts
             'search_price' => $search,
             'fuel_charge_reported' => $fuel,
             'additional_prices_reported' => $additional,
-            // Search evidence cannot fill these fields. They require later package/quote evidence.
             'package_buyer_price' => null,
             'quote_price' => null,
             'search_price_fuel_relation' => 'unknown',
@@ -81,12 +91,11 @@ final class AnyTourThreeProviderMoneyFacts
     }
 
     /**
-     * Derive the search-card estimate from an explicit adult/child surcharge contract.
+     * Derive a search-card estimate from explicit supplier surcharge evidence.
      *
-     * This never turns the estimate into a verified final price and never mutates the
-     * base search or surcharge facts. Direct ANEX supplies these rates from
-     * AdditionalPricesDaily. Andromeda may use the same neutral shape only after its
-     * transport-directory binding is independently proven upstream.
+     * ANEX: fuel_adult/fuel_child are per-passenger rates and are multiplied by the
+     * party counts. Andromeda: party_transport_surcharge already covers the current
+     * tourist party and is added once, regardless of adults/children count.
      */
     public static function withSearchSurchargeEstimate(
         array $searchFacts,
@@ -101,14 +110,45 @@ final class AnyTourThreeProviderMoneyFacts
             throw new InvalidArgumentException('THREE_PROVIDER_SURCHARGE_PARTY');
         }
 
+        if ($searchFacts['provider'] === 'andromeda') {
+            return self::withAndromedaPartySurcharge($searchFacts);
+        }
+        return self::withAnexPerPassengerSurcharge($searchFacts, $adults, $children);
+    }
+
+    private static function withAndromedaPartySurcharge(array $searchFacts): array
+    {
+        $facts = $searchFacts['additional_prices_reported'];
+        if (count($facts) !== 1 || ($facts[0]['kind'] ?? null) !== 'party_transport_surcharge'
+            || ($facts[0]['currency'] ?? null) !== ($searchFacts['search_price']['currency'] ?? null)) {
+            throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
+        }
+        $baseAmount = $searchFacts['search_price']['amount'];
+        $surchargeAmount = $facts[0]['amount'];
+        $scale = max(self::decimalScale($baseAmount), self::decimalScale($surchargeAmount));
+        $base = self::decimalUnits($baseAmount, $scale);
+        $surcharge = self::decimalUnits($surchargeAmount, $scale);
+        if ($base === null || $surcharge === null || $base > PHP_INT_MAX - $surcharge) {
+            throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
+        }
+        $next = $searchFacts;
+        $next['search_price_with_surcharge'] = [
+            'amount' => self::decimalString($base + $surcharge, $scale),
+            'currency' => $searchFacts['search_price']['currency'],
+            'source' => 'derived_search_estimate',
+        ];
+        $next['arithmetic_applied'] = true;
+        return $next;
+    }
+
+    private static function withAnexPerPassengerSurcharge(array $searchFacts, int $adults, int $children): array
+    {
         $rates = [];
         foreach ($searchFacts['additional_prices_reported'] as $fact) {
             $kind = $fact['kind'];
             if (!in_array($kind, ['fuel_adult', 'fuel_child'], true)) continue;
-            if (array_key_exists($kind, $rates)) {
-                throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
-            }
-            if ($fact['currency'] !== $searchFacts['search_price']['currency']) {
+            if (array_key_exists($kind, $rates)
+                || $fact['currency'] !== $searchFacts['search_price']['currency']) {
                 throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
             }
             $rates[$kind] = $fact['amount'];
@@ -148,14 +188,6 @@ final class AnyTourThreeProviderMoneyFacts
         return $next;
     }
 
-    /**
-     * Attach a supplier-verified quote without changing any search money fact.
-     *
-     * Current evidence proves this flow only for Andromeda. Tourvisor/direct ANEX
-     * remain unsupported here until an equivalent selected-package quote contract is
-     * independently verified. This method never calculates delta, fuel, conversion or
-     * a fallback between search/package/quote amounts.
-     */
     public static function withVerifiedQuote(
         array $searchFacts,
         ?array $packageBuyerPrice,
@@ -175,7 +207,6 @@ final class AnyTourThreeProviderMoneyFacts
         $next['package_buyer_price'] = $package;
         $next['quote_price'] = $quote;
         $next['final_price_verified'] = true;
-        // Explicitly preserve the no-arithmetic search/fuel semantics of the final quote path.
         $next['search_price_fuel_relation'] = 'unknown';
         $next['arithmetic_applied'] = false;
         return $next;

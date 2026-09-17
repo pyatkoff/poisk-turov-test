@@ -1,0 +1,66 @@
+name: Andromeda AnyTour offer autosave
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-anytour-offer-autosave.php'
+      - 'app/integrations/three-provider-money-facts.php'
+      - 'v2/api-andromeda-search3-preview.php'
+      - 'tests/andromeda-anytour-offer-autosave-test.php'
+      - 'tests/three-provider-money-facts-test.php'
+      - 'tests/three-provider-final-price-readiness-test.php'
+      - 'tests/three-provider-search-price-with-surcharge-smoke.php'
+      - '.github/workflows/andromeda-anytour-offer-autosave-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '${{ github.event.pull_request.head.sha }}'
+          persist-credentials: false
+      - name: Lint and focused contract
+        run: |
+          set -euo pipefail
+          php -l app/integrations/three-provider-money-facts.php
+          php -l app/integrations/andromeda-anytour-offer-autosave.php
+          php -l v2/api-andromeda-search3-preview.php
+          php -l tests/andromeda-anytour-offer-autosave-test.php
+          php tests/andromeda-anytour-offer-autosave-test.php
+      - name: Verify supplier-free persistence boundary
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          autosave=Path('app/integrations/andromeda-anytour-offer-autosave.php').read_text()
+          endpoint=Path('v2/api-andromeda-search3-preview.php').read_text()
+          money=Path('app/integrations/three-provider-money-facts.php').read_text()
+          for forbidden in ['AnyTourAndromedaTransport(', '->login(', '->price(', 'bron_ticket', 'broninit', 'gateway.samo.ru']:
+              if forbidden in autosave:
+                  raise SystemExit('autosave contains supplier action: '+forbidden)
+          required=[
+              'AnyTourAndromedaOfferAutosaveV1',
+              'replaceCompleteSnapshot',
+              "'party_transport_surcharge'",
+              'andromeda_get_flights_transport',
+              'anytour_andromeda_anytour_offer_autosave_runtime',
+          ]
+          for token in required:
+              if token not in autosave and token not in money:
+                  raise SystemExit('missing autosave contract token: '+token)
+          if "andromeda-anytour-offer-autosave.php" not in endpoint:
+              raise SystemExit('endpoint autosave optional loader missing')
+          if "is_file($andromedaAutosave)&&!is_link($andromedaAutosave)" not in endpoint:
+              raise SystemExit('endpoint autosave loader is not fail-open')
+          if "function_exists('anytour_andromeda_anytour_offer_autosave_runtime')" not in endpoint:
+              raise SystemExit('endpoint autosave hook is not optional')
+          if 'anytour_andromeda_anytour_offer_autosave_runtime(' not in endpoint:
+              raise SystemExit('endpoint autosave hook not installed')
+          if "if ($searchFacts['provider'] === 'andromeda')" not in money:
+              raise SystemExit('Andromeda party arithmetic split missing')
+          print('Andromeda autosave static boundary PASS')
+          PY

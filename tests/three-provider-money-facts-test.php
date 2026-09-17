@@ -69,16 +69,22 @@ money_check($andromeda['package_buyer_price']===null);
 money_check($andromeda['quote_price']===null);
 money_check($andromeda['final_price_verified']===false);
 
+// Andromeda get_flights markup already covers the selected tourist party. Supplier
+// provenance is accepted at the boundary, then canonicalized to provider-neutral
+// `andromeda_additional`; the amount is added once regardless of party size.
 $andromedaSurcharge=AnyTourThreeProviderMoneyFacts::fromSearch(
     'andromeda',
     ['amount'=>'124864','currency'=>'RUB','source'=>'andromeda_search'],
     null,
-    [['kind'=>'fuel_adult','amount'=>'5389.50','currency'=>'RUB','source'=>'andromeda_additional']]
+    [['kind'=>'party_transport_surcharge','amount'=>'10779','currency'=>'RUB','source'=>'andromeda_get_flights_transport']]
 );
+money_check($andromedaSurcharge['additional_prices_reported'][0]['source']==='andromeda_additional');
 $andromedaEstimate=AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromedaSurcharge,2,0);
-money_check($andromedaEstimate['search_price_with_surcharge']['amount']==='135643.00');
+money_check($andromedaEstimate['search_price_with_surcharge']['amount']==='135643');
 money_check($andromedaEstimate['search_price']['amount']==='124864');
 money_check($andromedaEstimate['final_price_verified']===false&&$andromedaEstimate['arithmetic_applied']===true);
+$andromedaDifferentParty=AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromedaSurcharge,5,3);
+money_check($andromedaDifferentParty['search_price_with_surcharge']['amount']==='135643');
 
 try {
     AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromeda,2,0);
@@ -117,7 +123,7 @@ $wrongCurrency=AnyTourThreeProviderMoneyFacts::fromSearch(
     'andromeda',
     ['amount'=>'100000','currency'=>'RUB','source'=>'andromeda_search'],
     null,
-    [['kind'=>'fuel_adult','amount'=>'50','currency'=>'USD','source'=>'andromeda_additional']]
+    [['kind'=>'party_transport_surcharge','amount'=>'50','currency'=>'USD','source'=>'andromeda_additional']]
 );
 try {
     AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($wrongCurrency,2,0);
@@ -222,7 +228,8 @@ $badCases=[
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'tourvisor_additional']]),
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'anex_additional_estimated']]),
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('tourvisor',['amount'=>'1','currency'=>'RUB','source'=>'tourvisor_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'tourvisor_additional']]),
-    fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',['amount'=>'1','currency'=>'RUB','source'=>'andromeda_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'tourvisor_additional']]),
+    fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',['amount'=>'1','currency'=>'RUB','source'=>'andromeda_search'],null,[['kind'=>'fuel_adult','amount'=>'1','currency'=>'RUB','source'=>'andromeda_additional']]),
+    fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',['amount'=>'1','currency'=>'RUB','source'=>'andromeda_search'],null,[['kind'=>'party_transport_surcharge','amount'=>'1','currency'=>'RUB','source'=>'andromeda_unverified']]),
 ];
 foreach($badCases as $case){try{$case();money_check(false);}catch(InvalidArgumentException $e){money_check(true);}}
 
