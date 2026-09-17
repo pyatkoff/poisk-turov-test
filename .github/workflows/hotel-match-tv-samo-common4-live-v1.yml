@@ -30,7 +30,6 @@ jobs:
       github.repository == 'pyatkoff/poisk-turov-test' &&
       github.actor == 'pyatkoff' &&
       github.run_attempt == 1 &&
-      github.run_number == 1 &&
       github.ref == 'refs/heads/ops/match-common4-live-1971-20260918-v1'
     runs-on: ubuntu-latest
     timeout-minutes: 55
