@@ -1,0 +1,164 @@
+name: Search3 AnyTour provider identity materialize
+
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_provider_identity_materialize.php'
+      - 'v2/data/anytour-provider-identity-bridge-v1.php'
+      - '.github/workflows/search3-anytour-provider-identity-materialize.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Read-only plan or exact-plan apply'
+        required: true
+        type: choice
+        options: [plan, apply]
+      expected_release_sha:
+        description: 'Exact 40-char release head to execute'
+        required: true
+        type: string
+      expected_plan_sha:
+        description: 'Required only for apply; from the immediately preceding plan receipt'
+        required: false
+        type: string
+      confirmation:
+        description: 'plan-local-andromeda-identity-2690 or apply-local-andromeda-identity-2690'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: search3-local-andromeda-identity-materialize
+  cancel-in-progress: false
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Validate bounded LOCAL operation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_provider_identity_materialize.php
+          php -l v2/data/anytour-provider-identity-bridge-v1.php
+          test "$(grep -c "provider_ref_digest:andromeda" scripts/catalog/anytour_provider_identity_materialize.php)" -ge 1
+          ! grep -Eq 'curl|wget|lead|metrika|booking|DELETE FROM anytour_hotel_sources|UPDATE andromeda_hotel_identities|INSERT INTO andromeda_hotel_identities' scripts/catalog/anytour_provider_identity_materialize.php
+
+  materialize:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      REMOTE_TMP: /tmp/anytour-provider-identity-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+
+      - name: Verify exact release and explicit confirmation
+        env:
+          MODE: ${{ inputs.mode }}
+          EXPECTED_RELEASE_SHA: ${{ inputs.expected_release_sha }}
+          EXPECTED_PLAN_SHA: ${{ inputs.expected_plan_sha }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/release/search3-production-ready-v1'
+          test "$GITHUB_SHA" = "$EXPECTED_RELEASE_SHA"
+          [[ "$EXPECTED_RELEASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          if [[ "$MODE" == plan ]]; then
+            test "$CONFIRMATION" = 'plan-local-andromeda-identity-2690'
+            test -z "$EXPECTED_PLAN_SHA"
+          elif [[ "$MODE" == apply ]]; then
+            test "$CONFIRMATION" = 'apply-local-andromeda-identity-2690'
+            [[ "$EXPECTED_PLAN_SHA" =~ ^[a-f0-9]{64}$ ]]
+          else
+            exit 64
+          fi
+
+      - name: Prepare ephemeral SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Execute temporary read-only plan or exact-plan apply
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          MODE: ${{ inputs.mode }}
+          EXPECTED_RELEASE_SHA: ${{ inputs.expected_release_sha }}
+          EXPECTED_PLAN_SHA: ${{ inputs.expected_plan_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir '$REMOTE_TMP'; test -s \"\$HOME/www/anytoour.ru/config.php\"; test -s \"\$HOME/www/anytoour.ru/data/db-v1.php\""
+          scp "${opts[@]}" scripts/catalog/anytour_provider_identity_materialize.php "$remote:$REMOTE_TMP/materialize.php"
+          scp "${opts[@]}" v2/data/anytour-provider-identity-bridge-v1.php "$remote:$REMOTE_TMP/bridge.php"
+          ssh "${opts[@]}" "$remote" "bash -s -- '$REMOTE_TMP' '$MODE' '$EXPECTED_RELEASE_SHA' '$EXPECTED_PLAN_SHA'" <<'REMOTE' | tee provider-identity-receipt.json
+          set -euo pipefail
+          tmp="$1"; mode="$2"; release_sha="$3"; expected_plan_sha="$4"
+          root="$HOME/www/anytoour.ru"
+          args=("--mode=$mode" "--release-sha=$release_sha")
+          if [[ "$mode" == apply ]]; then args+=("--expected-plan-sha=$expected_plan_sha"); fi
+          ANYTOUR_SITE_ROOT="$root" \
+          ANYTOUR_PROVIDER_BRIDGE_FILE="$tmp/bridge.php" \
+          ANYTOUR_OPERATION_RELEASE_SHA="$release_sha" \
+            php "$tmp/materialize.php" "${args[@]}"
+          REMOTE
+          python3 - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('provider-identity-receipt.json')
+          lines=[x.strip() for x in p.read_text().splitlines() if x.strip().startswith('{')]
+          if len(lines)!=1: raise SystemExit('receipt shape mismatch')
+          r=json.loads(lines[0])
+          if r.get('mapping_writes')!=0 or r.get('supplier_calls')!=0 or r.get('profile_writes')!=0 or r.get('legacy_source_writes')!=0 or r.get('site_file_writes')!=0:
+              raise SystemExit('ownership receipt mismatch')
+          print('SANITIZED_RECEIPT=' + json.dumps(r, separators=(',',':'), sort_keys=True))
+          with open(pathlib.Path.home()/'.unused','w') if False else open('/dev/null','w') as _: pass
+          PY
+          {
+            echo '### AnyTour provider identity receipt'
+            echo '```json'
+            cat provider-identity-receipt.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove temporary remote operation files
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ -s "$key" && -n "${HOST_VALUE:-}" && -n "${USER_VALUE:-}" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$REMOTE_TMP'" || true
+          fi
