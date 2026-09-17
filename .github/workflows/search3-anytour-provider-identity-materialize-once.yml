@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  EXPECTED_BEFORE_SHA: baa3300309260ea72ff932c89ffdbf92d82cacca
+  EXPECTED_BEFORE_SHA: 5469099d33ca4971157799ed3f134b3779bd9117
 
 jobs:
   preflight:
@@ -35,12 +35,12 @@ jobs:
           set -euo pipefail
           php -l scripts/catalog/anytour_provider_identity_materialize.php
           php -l v2/data/anytour-provider-identity-bridge-v1.php
-          grep -Fq 'baa3300309260ea72ff932c89ffdbf92d82cacca' .github/workflows/search3-anytour-provider-identity-materialize-once.yml
+          grep -Fq '5469099d33ca4971157799ed3f134b3779bd9117' .github/workflows/search3-anytour-provider-identity-materialize-once.yml
 
   operate:
     if: >-
       github.event_name == 'push' &&
-      github.event.before == 'baa3300309260ea72ff932c89ffdbf92d82cacca' &&
+      github.event.before == '5469099d33ca4971157799ed3f134b3779bd9117' &&
       github.actor == 'pyatkoff' &&
       github.event.sender.id == 226193297
     runs-on: ubuntu-latest
@@ -51,6 +51,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
+          fetch-depth: 2
 
       - name: Pin exact release transition
         shell: bash
