@@ -13,8 +13,11 @@ function v2_search3_asset_tags(string $type): string
     if (!in_array($type, ['css', 'js'], true)) {
         throw new InvalidArgumentException('Invalid Search3 asset type');
     }
+    $names = $type === 'js'
+        ? ['search3-results-filters-v1', 'search3-results-cards-v2']
+        : ['search3-results-filters-v1', 'search3-entry-v1', 'search3-results-cards-v2', 'search3-selected-flow-v2'];
     $html = '';
-    foreach (['search3-results-filters-v1', 'search3-entry-v1', 'search3-results-cards-v2', 'search3-selected-flow-v2'] as $name) {
+    foreach ($names as $name) {
         $url = htmlspecialchars(v2_asset($name . '.' . $type), ENT_QUOTES, 'UTF-8');
         $id = $name . ($type === 'css' ? '-style' : '-script');
         $html .= $type === 'css'

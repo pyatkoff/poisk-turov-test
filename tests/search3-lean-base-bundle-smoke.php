@@ -88,4 +88,20 @@ if (!str_contains($search3Url, '&scope=search3')) lean_bundle_fail('Search3 scop
 if (str_contains($search3Url, 'search-redesign-v2.js')) lean_bundle_fail('Search3 closure exposes excluded owner');
 if (str_contains($search3Url, 'phase=')) lean_bundle_fail('Search3 page runtime must use one eager bundle');
 
+if (!defined('V2_SEARCH3_PRESENTATION')) define('V2_SEARCH3_PRESENTATION', true);
+require_once __DIR__ . '/../v2/search3-presentation-v1.php';
+$presentationJs = v2_search3_asset_tags('js');
+$presentationCss = v2_search3_asset_tags('css');
+if (substr_count($presentationJs, '<script ') !== 2) lean_bundle_fail('Search3 presentation must request exactly two live JavaScript owners');
+foreach (['search3-results-filters-v1-script', 'search3-results-cards-v2-script'] as $liveOwner) {
+    if (!str_contains($presentationJs, 'id="' . $liveOwner . '"')) lean_bundle_fail('live presentation JavaScript owner missing: ' . $liveOwner);
+}
+foreach (['search3-entry-v1-script', 'search3-selected-flow-v2-script'] as $deadOwner) {
+    if (str_contains($presentationJs, 'id="' . $deadOwner . '"')) lean_bundle_fail('dead presentation JavaScript owner leaked into browser: ' . $deadOwner);
+}
+if (substr_count($presentationCss, '<link ') !== 4) lean_bundle_fail('Search3 presentation CSS owner count changed');
+foreach (['search3-results-filters-v1-style', 'search3-entry-v1-style', 'search3-results-cards-v2-style', 'search3-selected-flow-v2-style'] as $cssOwner) {
+    if (!str_contains($presentationCss, 'id="' . $cssOwner . '"')) lean_bundle_fail('presentation CSS owner missing: ' . $cssOwner);
+}
+
 echo 'SEARCH3_LEAN_BASE_OK full_js=' . count($fullJs) . ' search3_js=' . count($search3Js) . "\n";
