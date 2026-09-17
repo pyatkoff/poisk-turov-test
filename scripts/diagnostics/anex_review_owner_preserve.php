@@ -7,6 +7,27 @@ try{
     if(!$root||!$stage||!$home||$root!==$home.'/www/anytoour.ru'||!preg_match('#\A'.preg_quote($root,'#').'/_preview/\.search3-anex-[0-9a-f]{40}-[0-9a-f]{12}\z#D',$stage))throw new RuntimeException('preserve_scope');
     $target=$root.'/_preview/search3-anex-candidate';
 
+    // The Andromeda credential/config file is deliberately server-only and excluded from every public
+    // payload. A full-directory ANEX preview swap must carry that installed private runtime forward,
+    // without exposing its bytes, digest or size in stdout/manifests/artifacts. If it is not installed,
+    // preserve the fail-closed state; a separate owner-approved operation is required to install it.
+    $andromedaPrivate=['status'=>'not_installed','mode'=>null];
+    $privateSource=$target.'/.andromeda-private.php';
+    $privateDestination=$stage.'/.andromeda-private.php';
+    if(file_exists($privateDestination)||is_link($privateDestination))throw new RuntimeException('preserve_andromeda_private_stage');
+    if(file_exists($privateSource)||is_link($privateSource)){
+        if(!is_file($privateSource)||is_link($privateSource))throw new RuntimeException('preserve_andromeda_private_source');
+        $sourceMode=fileperms($privateSource)&0777;
+        if(($sourceMode&0002)!==0)throw new RuntimeException('preserve_andromeda_private_mode');
+        $size=filesize($privateSource);
+        if(!is_int($size)||$size<1||$size>65536)throw new RuntimeException('preserve_andromeda_private_bound');
+        $raw=file_get_contents($privateSource);
+        if(!is_string($raw)||strlen($raw)!==$size)throw new RuntimeException('preserve_andromeda_private_read');
+        if(file_put_contents($privateDestination,$raw)!==$size||!chmod($privateDestination,0600))throw new RuntimeException('preserve_andromeda_private_write');
+        if((fileperms($privateDestination)&0777)!==0600||hash_file('sha256',$privateDestination)!==hash('sha256',$raw))throw new RuntimeException('preserve_andromeda_private_drift');
+        $andromedaPrivate=['status'=>'preserved','mode'=>'0600'];
+    }
+
     // These five Andromeda core files are installed by the scoped provider publisher but are not yet
     // tracked on the INT base. A full ANEX preview refresh must not silently delete them. If a future
     // payload carries any of them itself, that current source wins and the installed copy is ignored.
@@ -42,7 +63,7 @@ try{
     // Preserve the separate owner panel when it is installed. Runtime preservation above is independent
     // of the panel so a preview refresh remains safe even when the panel has never been activated.
     $private=$home.'/.anytoour-anex/review-owner';
-    if(!file_exists($private)){echo json_encode(['owner_panel'=>'not_installed','runtime_overlay'=>$runtimeOverlay],JSON_THROW_ON_ERROR).PHP_EOL;exit;}
+    if(!file_exists($private)){echo json_encode(['owner_panel'=>'not_installed','runtime_overlay'=>$runtimeOverlay,'andromeda_private_config'=>$andromedaPrivate],JSON_THROW_ON_ERROR).PHP_EOL;exit;}
     if(realpath($private)!==$private||(fileperms($private)&0777)!==0700)throw new RuntimeException('preserve_private');
     $manifest=json_decode(file_get_contents($private.'/manifest.json'),true,16,JSON_THROW_ON_ERROR);
     if(($manifest['status']??'')!=='published'||!preg_match('/\A[0-9a-f]{40}\z/D',$manifest['source_sha']??''))throw new RuntimeException('preserve_manifest');
@@ -63,7 +84,7 @@ try{
     // An explicit overlay keeps both old owner-runtime and new site provenance.
     $files['anex-owner-panel-manifest.json']=hash_file('sha256',$stage.'/anex-owner-panel-manifest.json');
     $sizes=[];foreach($files as $name=>$sha)$sizes[$name]=filesize($stage.'/'.$name);
-    $overlay=['owner_panel'=>'preserved','owner_source_sha'=>$manifest['source_sha'],'baseline_sha256'=>$baseline,'applied_sha256'=>$files,'applied_bytes'=>$sizes,'write_enabled'=>false,'runtime_overlay'=>$runtimeOverlay];
+    $overlay=['owner_panel'=>'preserved','owner_source_sha'=>$manifest['source_sha'],'baseline_sha256'=>$baseline,'applied_sha256'=>$files,'applied_bytes'=>$sizes,'write_enabled'=>false,'runtime_overlay'=>$runtimeOverlay,'andromeda_private_config'=>$andromedaPrivate];
     $sitePath=$stage.'/anex-preview-manifest.json';
     if(is_file($sitePath)){
         $site=json_decode(file_get_contents($sitePath),true,32,JSON_THROW_ON_ERROR);

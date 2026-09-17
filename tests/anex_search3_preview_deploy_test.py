@@ -64,7 +64,7 @@ require dirname(__DIR__) . '/index.php';
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
 
-    def runtime_fixture(self, case, missing=None, current=None, linked=None):
+    def runtime_fixture(self, case, missing=None, current=None, linked=None, private=True, stage_private=False):
         home = self.root / case
         project = home / "www/anytoour.ru"
         target = project / "_preview/search3-anex-candidate/app/integrations"
@@ -82,6 +82,14 @@ require dirname(__DIR__) . '/index.php';
             (target / linked).symlink_to(real)
         if current is not None:
             (stage_runtime / current).write_text("<?php // current source wins\n")
+        if private:
+            config = target.parent.parent / ".andromeda-private.php"
+            config.write_text("<?php return ['enabled'=>true,'token'=>'SERVER_ONLY_PRIVATE_SENTINEL'];\n")
+            config.chmod(0o600)
+        if stage_private:
+            injected = stage / ".andromeda-private.php"
+            injected.write_text("<?php return ['enabled'=>true,'token'=>'PAYLOAD_MUST_NOT_OWN_THIS'];\n")
+            injected.chmod(0o600)
         return home, project, stage, target, stage_runtime
 
     def run_runtime_preserver(self, home, project, stage):
@@ -121,6 +129,7 @@ require dirname(__DIR__) . '/index.php';
         self.assertIn('<Files "api-anex-search3-preview.php">', access)
         self.assertIn('<Files "api-andromeda-search3-preview.php">', access)
         self.assertTrue((payload / "app/integrations/anex-additional-prices-client.php").is_file())
+        self.assertFalse((payload / ".andromeda-private.php").exists())
 
     def test_provider_runtime_dependencies_are_required(self):
         (self.repo / "app/integrations/anex-additional-prices-client.php").unlink()
@@ -138,6 +147,7 @@ require dirname(__DIR__) . '/index.php';
         self.assertEqual(result.returncode, 0, result.stderr)
         value = json.loads(result.stdout)
         self.assertEqual(value["owner_panel"], "not_installed")
+        self.assertEqual(value["andromeda_private_config"], {"status": "preserved", "mode": "0600"})
         overlay = value["runtime_overlay"]
         self.assertEqual(overlay["status"], "preserved")
         self.assertEqual(set(overlay["sha256"]), set(RUNTIME_NAMES))
@@ -148,6 +158,36 @@ require dirname(__DIR__) . '/index.php';
             self.assertEqual((stage_runtime / name).read_bytes(), (target / name).read_bytes())
             self.assertEqual(overlay["sha256"][name], hashlib.sha256((target / name).read_bytes()).hexdigest())
             self.assertEqual(overlay["bytes"][name], (target / name).stat().st_size)
+
+    def test_andromeda_private_config_is_server_only_and_preserved_without_provenance_leak(self):
+        home, project, stage, target, _ = self.runtime_fixture("private-preserve")
+        source = target.parent.parent / ".andromeda-private.php"
+        secret = "<?php return ['enabled'=>true,'token'=>'VERY_PRIVATE_SENTINEL_123'];\n"
+        source.write_text(secret)
+        source.chmod(0o644)
+        result = self.run_runtime_preserver(home, project, stage)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        destination = stage / ".andromeda-private.php"
+        self.assertEqual(destination.read_text(), secret)
+        self.assertEqual(destination.stat().st_mode & 0o777, 0o600)
+        value = json.loads(result.stdout)
+        self.assertEqual(value["andromeda_private_config"], {"status": "preserved", "mode": "0600"})
+        self.assertNotIn("VERY_PRIVATE_SENTINEL_123", result.stdout)
+        self.assertNotIn(hashlib.sha256(secret.encode()).hexdigest(), result.stdout)
+        self.assertNotIn("bytes", json.dumps(value["andromeda_private_config"]))
+        self.assertNotIn("sha256", json.dumps(value["andromeda_private_config"]))
+
+    def test_absent_andromeda_private_config_stays_fail_closed_and_payload_owned_copy_is_rejected(self):
+        home, project, stage, _, _ = self.runtime_fixture("private-absent", private=False)
+        result = self.run_runtime_preserver(home, project, stage)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["andromeda_private_config"], {"status": "not_installed", "mode": None})
+        self.assertFalse((stage / ".andromeda-private.php").exists())
+
+        home, project, stage, _, _ = self.runtime_fixture("private-injected", stage_private=True)
+        injected = self.run_runtime_preserver(home, project, stage)
+        self.assertNotEqual(injected.returncode, 0)
+        self.assertEqual(injected.stderr, "OWNER_PANEL_PRESERVATION_FAILED\n")
 
     def test_missing_or_linked_installed_andromeda_runtime_is_rejected(self):
         home, project, stage, _, _ = self.runtime_fixture("runtime-missing", missing=RUNTIME_NAMES[-1])
