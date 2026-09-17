@@ -1,0 +1,239 @@
+name: Search3 AnyTour profile enrichment B001 v1
+
+on:
+  push:
+    branches:
+      - ops/local-2690-profile-enrichment-b001-20260917-v1
+    paths:
+      - 'scripts/catalog/anytour_profile_enrichment_operation_v1.php'
+      - '.github/workflows/search3-anytour-profile-enrichment-operation-b001-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-profile-enrichment-operations
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BASE_RELEASE: 44a8c8abac4432f5f518e9e5a10f4c66979452f4
+  OPERATION_ID: anytour-profile-enrichment-2690-20260917-b001-v1
+  ENRICH_LIMIT: '250'
+  DEMAND_THROUGH: '2026-09-17T21:30:00Z'
+
+jobs:
+  apply-once:
+    if: >-
+      github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      REMOTE_TMP: /tmp/anytour-profile-enrichment-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Guard exact operation source and release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/local-2690-profile-enrichment-b001-20260917-v1'
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          git fetch --no-tags origin release/search3-production-ready-v1
+          test "$(git rev-parse origin/release/search3-production-ready-v1)" = "$EXPECTED_BASE_RELEASE"
+          test "$(git merge-base HEAD origin/release/search3-production-ready-v1)" = "$EXPECTED_BASE_RELEASE"
+          php -l scripts/catalog/anytour_profile_enrichment_operation_v1.php
+          php -l v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "PROVENANCE_NAMESPACE = 'profile_enrichment:legacy_saved_v1'" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'roomMealFieldsExcluded'=>true" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'traitsExcluded'=>true" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'legacyWrites'=>0" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'mappingWrites'=>0" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'supplierCalls'=>0" v2/data/anytour-profile-enrichment-v1.php
+          printf '%s\n' \
+            '.github/workflows/search3-anytour-profile-enrichment-operation-b001-v1.yml' \
+            'scripts/catalog/anytour_profile_enrichment_operation_v1.php' | sort > expected-paths.txt
+          git diff --name-only "$EXPECTED_BASE_RELEASE"...HEAD | sort > actual-paths.txt
+          cmp expected-paths.txt actual-paths.txt
+          sha256sum \
+            scripts/catalog/anytour_profile_enrichment_operation_v1.php \
+            v2/data/anytour-profile-enrichment-v1.php \
+            v2/data/hotel-presentation-read-v1.php \
+            v2/data/hotel-details-v1.php > exact-sources.sha256
+          python3 - <<'PY'
+          import json, os
+          reservation = {
+              'operation': os.environ['OPERATION_ID'],
+              'base_release_sha': os.environ['EXPECTED_BASE_RELEASE'],
+              'head_sha': os.environ['GITHUB_SHA'],
+              'run_id': os.environ['GITHUB_RUN_ID'],
+              'run_attempt': os.environ['GITHUB_RUN_ATTEMPT'],
+              'state': 'reserved_before_private_access',
+              'limit': int(os.environ['ENRICH_LIMIT']),
+              'demand_through': os.environ['DEMAND_THROUGH'],
+              'supplier_calls': 0,
+              'mapping_writes': 0,
+              'legacy_writes': 0,
+              'room_meal_fields_excluded': True,
+              'traits_excluded': True,
+          }
+          open('reservation.json','w',encoding='utf-8').write(json.dumps(reservation,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+
+      - name: Persist durable reservation before SSH or DB access
+        uses: actions/upload-artifact@v4
+        with:
+          name: anytour-profile-enrichment-b001-reservation
+          path: |
+            reservation.json
+            exact-sources.sha256
+            expected-paths.txt
+            actual-paths.txt
+          if-no-files-found: error
+
+      - name: Prepare ephemeral SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Stage exact merged enrichment component only
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p '$REMOTE_TMP/data'; test -s \"\$HOME/www/anytoour.ru/data/db-v1.php\""
+          scp "${opts[@]}" scripts/catalog/anytour_profile_enrichment_operation_v1.php "$remote:$REMOTE_TMP/runner.php"
+          scp "${opts[@]}" \
+            v2/data/anytour-profile-enrichment-v1.php \
+            v2/data/hotel-presentation-read-v1.php \
+            v2/data/hotel-details-v1.php \
+            "$remote:$REMOTE_TMP/data/"
+
+      - name: Capture two identical CURRENT plans
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          for n in 1 2; do
+            ssh "${opts[@]}" "$remote" "ANYTOUR_SITE_ROOT=\"\$HOME/www/anytoour.ru\" ANYTOUR_ENRICH_COMPONENT_DIR='$REMOTE_TMP/data' php '$REMOTE_TMP/runner.php' --mode=plan --operation='$OPERATION_ID' --limit='$ENRICH_LIMIT' --demand-through='$DEMAND_THROUGH'" > "plan-$n.json"
+          done
+          cmp plan-1.json plan-2.json
+          python3 - <<'PY'
+          import json, os
+          p=json.load(open('plan-1.json',encoding='utf-8'))
+          limit=int(os.environ['ENRICH_LIMIT'])
+          allowed={
+              'region','subRegion','category','rating','coordinates','description','primaryImage','images',
+              'address','place','build','repair','square','hotelInformation.infrastructure','hotelInformation.services'
+          }
+          if p.get('status')!='prepared_read_only' or p.get('writes')!=0 or p.get('supplierCalls')!=0:
+              raise SystemExit('plan is not read-only')
+          if p.get('demandThrough')!='2026-09-17 21:30:00':
+              raise SystemExit('demand boundary drift')
+          if p.get('limit')!=limit or not (1 <= int(p.get('activeProfiles',0)) <= 250000):
+              raise SystemExit('plan bounds invalid')
+          selected=p.get('selected')
+          if not isinstance(selected,list) or not (1 <= len(selected) <= limit):
+              raise SystemExit('NO_FILLABLE_PROFILES_OR_BAD_BATCH')
+          if p.get('roomMealFieldsExcluded') is not True or p.get('traitsExcluded') is not True:
+              raise SystemExit('room/meal/traits exclusion missing')
+          for row in selected:
+              patch=row.get('patch')
+              if not isinstance(patch,dict) or not patch:
+                  raise SystemExit('empty patch')
+              if not set(patch).issubset(allowed):
+                  raise SystemExit('unexpected patch field '+repr(set(patch)-allowed))
+              if any('meal' in k.lower() or 'room' in k.lower() or 'trait' in k.lower() for k in patch):
+                  raise SystemExit('hotel-local stay concept boundary violated')
+          sha=p.get('planSha256')
+          if not isinstance(sha,str) or len(sha)!=64:
+              raise SystemExit('plan sha missing')
+          open('plan-sha.txt','w').write(sha+'\n')
+          print('CURRENT_PLAN_OK selected=%d scanned=%s active=%s plan=%s' % (
+              len(selected), p.get('scannedProfiles'), p.get('activeProfiles'), sha))
+          PY
+
+      - name: Commit exact fill-missing batch once
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          plan_sha="$(cat plan-sha.txt)"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "ANYTOUR_SITE_ROOT=\"\$HOME/www/anytoour.ru\" ANYTOUR_ENRICH_COMPONENT_DIR='$REMOTE_TMP/data' php '$REMOTE_TMP/runner.php' --mode=apply --operation='$OPERATION_ID' --limit='$ENRICH_LIMIT' --demand-through='$DEMAND_THROUGH' --expected-plan-sha='$plan_sha'" > result.json
+          python3 - <<'PY'
+          import json, os
+          r=json.load(open('result.json',encoding='utf-8'))
+          limit=int(os.environ['ENRICH_LIMIT'])
+          if r.get('status')!='committed_verified':
+              raise SystemExit('enrichment did not commit: '+repr(r.get('status')))
+          updated=int(r.get('profilesUpdated',0)); fields=int(r.get('fieldsFilled',0))
+          if not (1 <= updated <= limit) or fields < updated:
+              raise SystemExit('unexpected committed counts')
+          if r.get('profileWrites')!=updated or r.get('provenanceWrites')!=updated:
+              raise SystemExit('write/provenance mismatch')
+          for key in ('legacyWrites','mappingWrites','supplierCalls'):
+              if r.get(key)!=0:
+                  raise SystemExit('ownership violation '+key)
+          allowed={
+              'region','subRegion','category','rating','coordinates','description','primaryImage','images',
+              'address','place','build','repair','square','hotelInformation.infrastructure','hotelInformation.services'
+          }
+          counts=r.get('fieldCounts')
+          if not isinstance(counts,dict) or not set(counts).issubset(allowed):
+              raise SystemExit('unexpected field counts')
+          print('PROFILE_ENRICHMENT_COMMITTED_VERIFIED profiles=%d fields=%d counts=%s' % (updated,fields,json.dumps(counts,sort_keys=True)))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anytour-profile-enrichment-b001-terminal-result
+          path: |
+            reservation.json
+            exact-sources.sha256
+            plan-1.json
+            plan-2.json
+            plan-sha.txt
+            result.json
+          if-no-files-found: warn
+
+      - name: Remove temporary remote files
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ -s "$key" && -n "${HOST_VALUE:-}" && -n "${USER_VALUE:-}" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$REMOTE_TMP'" || true
+          fi
