@@ -63,6 +63,23 @@ class IsolationTest(unittest.TestCase):
         for public_entry in ("index.php", "bundle-v1.php", "preview-lead-disabled.php"):
             self.assertIn(f'<Files "{public_entry}">', workflow)
 
+    def test_offer_first_date_night_contract_is_packaged(self):
+        scope = (ROOT / "v2/data/anytour-search-scope-v1.php").read_text()
+        index = (ROOT / "v2/data/anytour-offer-scope-index-v1.php").read_text()
+        reader = (ROOT / "v2/data/search3-local-results-read-v1.php").read_text()
+
+        # Exact scope remains provenance, while date/night reuse is nominated by
+        # overlapping saved scopes and then re-proved from each concrete offer.
+        self.assertIn("savedCanContributeToCurrent", scope)
+        self.assertIn("$saved['dateTo']<$current['dateFrom']", scope)
+        self.assertIn("$saved['nightsTo']<$current['nightsFrom']", scope)
+        self.assertIn("compatibleDigests", index)
+        self.assertIn("search3_local_cached_offer_matches_scope", reader)
+        self.assertIn("$checkin<$scope['dateFrom']||$checkin>$scope['dateTo']", reader)
+        self.assertIn("$nights<$scope['nightsFrom']||$nights>$scope['nightsTo']", reader)
+        self.assertIn("'partial'=>$mode==='compatible'", reader)
+        self.assertIn("'selectionAuthority'=>false", reader)
+
 
 if __name__ == "__main__":
     unittest.main()
