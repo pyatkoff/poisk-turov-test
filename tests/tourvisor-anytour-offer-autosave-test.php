@@ -92,6 +92,22 @@ $nested = AnyTourTourvisorOfferAutosaveV1::captureSearchStart(
 );
 tv_autosave_check(($nested['ok'] ?? null) === true && ($nested['searchId'] ?? null) === $nestedId, 'nested_search_id');
 
+$routingMethod = new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class, 'ownedOperatorFamily');
+$allowedLabels = [
+    'PEGAS Touristik' => 'pegas',
+    'Пегас Туристик' => 'pegas',
+    'Coral Travel' => 'coral',
+    'Корал Тревел' => 'coral',
+    'Sunmar' => 'sunmar',
+    'Санмар' => 'sunmar',
+];
+foreach ($allowedLabels as $label => $family) {
+    tv_autosave_check($routingMethod->invoke(null, $label) === $family, 'routing_allowed_' . $family);
+}
+foreach (['ANEX', 'FUN&SUN', 'Библио-Глобус', 'Интурист', '', 'Pegasus Holidays'] as $label) {
+    tv_autosave_check($routingMethod->invoke(null, $label) === null, 'routing_rejected_' . ($label === '' ? 'missing' : $label));
+}
+
 // Exercise the exact Tourvisor row -> protected finalPriceReady path without DB or supplier I/O.
 $entryMethod = new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class, 'entryFromTour');
 $baseTour = [
@@ -148,6 +164,21 @@ tv_autosave_check(
     'missing_fuel_no_base_fallback'
 );
 
+$anexTour = $baseTour;
+$anexTour['id'] = 'TV-OFFER-ANEX';
+$anexTour['operator'] = ['id' => 2, 'name' => 'ANEX'];
+tv_autosave_check(
+    $entryMethod->invoke(null, $searchId, 3417, 77, $anexTour, 2, 0, [], '2026-09-17T09:30:00Z', $now) === null,
+    'anex_never_persisted_via_tourvisor'
+);
+$missingOperatorTour = $baseTour;
+$missingOperatorTour['id'] = 'TV-OFFER-NO-OP';
+unset($missingOperatorTour['operator']);
+tv_autosave_check(
+    $entryMethod->invoke(null, $searchId, 3417, 77, $missingOperatorTour, 2, 0, [], '2026-09-17T09:30:00Z', $now) === null,
+    'missing_operator_never_persisted'
+);
+
 $helperSource = (string)file_get_contents(__DIR__ . '/../app/integrations/tourvisor-anytour-offer-autosave.php');
 $apiSource = (string)file_get_contents(__DIR__ . '/../v2/api-v2.php');
 
@@ -157,6 +188,7 @@ tv_autosave_check(strpos($helperSource, "'authoritative_empty' => false") !== fa
 tv_autosave_check(strpos($helperSource, 'withSearchSurchargeEstimate') === false, 'no_new_surcharge_arithmetic');
 tv_autosave_check(strpos($helperSource, 'search_plus_additional') === false, 'no_shadow_price_path');
 tv_autosave_check(strpos($helperSource, 'v2_data_tv_get(') === false && strpos($helperSource, 'curl_') === false, 'no_supplier_io');
+tv_autosave_check(strpos($helperSource, "'no_routed_offers'") !== false, 'routing_fail_closed');
 
 tv_autosave_check(strpos($apiSource, "tourvisor_autosave_start(\$searchParams, \$data);") !== false, 'start_hook');
 tv_autosave_check(strpos($apiSource, 'tourvisor_autosave_status($id, $data);') !== false, 'status_hook');

@@ -22,6 +22,9 @@ require_once dirname(__DIR__, 2) . '/v2/data/anytour-offer-snapshot-ingest-v1.ph
  * No supplier I/O and no price/fuel arithmetic live here. Search price stays the
  * supplier search amount. Presence of Tourvisor fuelCharge is only a readiness gate;
  * the protected finalPriceReady handoff remains the sole listing-price authority.
+ *
+ * Persistence is intentionally source-routed: Tourvisor owns only PEGAS, Coral and
+ * Sunmar offers. ANEX is direct-ANEX-owned; other operators remain SAMO/Andromeda-owned.
  */
 final class AnyTourTourvisorOfferAutosaveV1
 {
@@ -34,7 +37,6 @@ final class AnyTourTourvisorOfferAutosaveV1
 
     public static function captureSearchStart(array $scope, array $response, DateTimeImmutable $now): array
     {
-        // Validate the exact provider-neutral scope without mutating it.
         AnyTourSearchScopeV1::fromParams($scope);
         $searchId = self::extractSearchId($response);
         if ($searchId === null) return self::receipt(false, 'search_id_missing');
@@ -85,17 +87,32 @@ final class AnyTourTourvisorOfferAutosaveV1
 
         $rawOfferCount = 0;
         $legacyIds = [];
+        $routedResponse = [];
         foreach ($response as $hotel) {
             if (!is_array($hotel)) return self::receipt(false, 'malformed_hotel');
             $legacyId = self::positiveInt($hotel['id'] ?? null);
             if ($legacyId === null) return self::receipt(false, 'hotel_id_missing');
-            $legacyIds[$legacyId] = $legacyId;
             $tours = $hotel['tours'] ?? null;
             if (!is_array($tours) || !array_is_list($tours)) return self::receipt(false, 'hotel_tours_missing');
-            $rawOfferCount += count($tours);
-            if ($rawOfferCount > self::MAX_OFFERS) return self::receipt(false, 'too_many_offers');
+
+            $routedTours = [];
+            foreach ($tours as $tour) {
+                if (!is_array($tour)) return self::receipt(false, 'malformed_tour');
+                $operatorRaw = self::firstText($tour, ['operatorName', 'operator']);
+                if (self::ownedOperatorFamily($operatorRaw) === null) continue;
+                $routedTours[] = $tour;
+                ++$rawOfferCount;
+                if ($rawOfferCount > self::MAX_OFFERS) return self::receipt(false, 'too_many_offers');
+            }
+            if ($routedTours === []) continue;
+            $legacyIds[$legacyId] = $legacyId;
+            $hotel['tours'] = $routedTours;
+            $routedResponse[] = $hotel;
         }
-        if ($rawOfferCount === 0) return self::receipt(false, 'empty_not_authoritative');
+        if ($rawOfferCount === 0 || $routedResponse === []) {
+            return self::receipt(false, 'no_routed_offers');
+        }
+        $response = $routedResponse;
 
         $db = v2_data_db();
         $catalog = new AnyTourCanonicalCatalog($db);
@@ -111,7 +128,6 @@ final class AnyTourTourvisorOfferAutosaveV1
             $legacyId = (int)$hotel['id'];
             $ownId = $targets[$legacyId] ?? null;
             foreach ($hotel['tours'] as $tour) {
-                if (!is_array($tour)) return self::receipt(false, 'malformed_tour');
                 $entry = self::entryFromTour(
                     $searchId,
                     $legacyId,
@@ -173,7 +189,7 @@ final class AnyTourTourvisorOfferAutosaveV1
         }
 
         $operatorRaw = self::firstText($tour, ['operatorName', 'operator']);
-        if ($operatorRaw === '') $operatorRaw = null;
+        if (self::ownedOperatorFamily($operatorRaw) === null) return null;
 
         $fuel = null;
         if (array_key_exists('fuelCharge', $tour)) {
@@ -242,6 +258,24 @@ final class AnyTourTourvisorOfferAutosaveV1
         } catch (Throwable $error) {
             return null;
         }
+    }
+
+    private static function ownedOperatorFamily(string $raw): ?string
+    {
+        $value = trim($raw);
+        if ($value === '') return null;
+        $value = mb_strtolower(str_replace('ё', 'е', $value), 'UTF-8');
+        $compact = preg_replace('/[^\p{L}\p{N}]+/u', '', $value) ?? '';
+        if (in_array($compact, ['pegas', 'pegastouristik', 'pegastouristic', 'пегас', 'пегастуристик'], true)) {
+            return 'pegas';
+        }
+        if (in_array($compact, ['coral', 'coraltravel', 'корал', 'коралтревел'], true)) {
+            return 'coral';
+        }
+        if (in_array($compact, ['sunmar', 'sunmartour', 'sunmartravel', 'санмар', 'санмартур'], true)) {
+            return 'sunmar';
+        }
+        return null;
     }
 
     private static function extractSearchId(array $response): ?int
