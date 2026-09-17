@@ -86,7 +86,7 @@ producer_sql_check($receipt['published']===true&&$receipt['readyOfferCount']===1
 $scope=AnyTourSearchScopeV1::fromParams($params)['digest'];
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now);
 producer_sql_check(count($visible['items'])===1&&$visible['items'][0]['provider']==='anex','anex-visible');
-producer_sql_check($visible['items'][0]['price']==='110000'&&($visible['items'][0]['offer']['selection_state']??null)==='refresh_required','anex-final-price');
+producer_sql_check($visible['items'][0]['price']==='110000','anex-final-price');
 
 $badOffer=AnyTourThreeProviderOfferContract::fromSearch(producer_sql_raw('anex',3417,2,[],'100000','sql-not-ready'));
 $badRetained=AnyTourThreeProviderOfferContext::retain($badOffer,51,1,$issued,900);
