@@ -1,0 +1,277 @@
+name: MATCH live provider identity 1971 20260917 v1
+
+on:
+  push:
+    branches:
+      - diag/match-live-provider-identity-1971-20260917-v1
+    paths:
+      - '.github/workflows/match-live-provider-identity-1971-20260917-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotel-match-live-provider-identity-1971-20260917-v1
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OP_ID: hotel-match-live-provider-identity-1971-20260917-v1
+      DATE_FROM: '2026-10-25'
+      DATE_TO: '2026-10-25'
+      NIGHTS: '7'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create no-replay reservation before provider access
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p match-live-provider-evidence
+          python3 - <<'PY'
+          import json, os
+          payload = {
+            'operation_id': os.environ['OP_ID'],
+            'run_id': os.environ['GITHUB_RUN_ID'],
+            'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'source_sha': os.environ['GITHUB_SHA'],
+            'country': 'Turkey',
+            'country_id': 4,
+            'date_from': os.environ['DATE_FROM'],
+            'date_to': os.environ['DATE_TO'],
+            'nights': int(os.environ['NIGHTS']),
+            'adults': 2,
+            'flow': 'published-search3-local-candidate-user-search',
+            'expected_providers': ['tourvisor', 'andromeda'],
+            'max_user_searches': 1,
+            'retry_allowed': False,
+            'db_writes': 0,
+            'mapping_writes': 0,
+            'lead_writes': 0,
+            'booking_writes': 0,
+            'metrika_requests_intended': 0,
+            'denied_collector_2663_reused': False,
+          }
+          with open('match-live-provider-evidence/reservation.json','w',encoding='utf-8') as f:
+              json.dump(payload,f,ensure_ascii=False,sort_keys=True,indent=2)
+          PY
+          sha256sum match-live-provider-evidence/reservation.json > match-live-provider-evidence/reservation.sha256
+
+      - name: Publish reservation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-live-provider-reservation-${{ github.run_id }}
+          path: |
+            match-live-provider-evidence/reservation.json
+            match-live-provider-evidence/reservation.sha256
+          retention-days: 14
+
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Run one published Search3 user search and capture safe identity evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > match-live-provider-evidence/capture.cjs <<'JS'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const { chromium } = require('playwright');
+
+          const outPath = 'match-live-provider-evidence/result.json';
+          const allowed = new Set([
+            'hotelid','hotel_id','hotelId','hotelcode','hotel_code','hotelCode',
+            'source_hotel_id','sourceHotelId','provider_hotel_id','providerHotelId','local_id','localId',
+            'operator_id','operatorId','operator','operator_name','operatorName','tourOperator','tour_operator',
+            'hotel','hotelname','hotel_name','hotelName','name',
+            'country','countryname','country_name','countryName','region','regionname','region_name','regionName',
+            'resort','resortname','resort_name','resortName','town','townname','town_name','townName',
+            'latitude','longitude','lat','lon','lng','provider','source'
+          ]);
+          const identityKeys = /hotel|operator/i;
+          const scalar = v => ['string','number','boolean'].includes(typeof v) || v === null;
+
+          function safeIdentityRows(value, limit = 250) {
+            const rows = [];
+            const seen = new Set();
+            const walk = (v, depth) => {
+              if (rows.length >= limit || depth > 8 || v == null) return;
+              if (Array.isArray(v)) { for (const x of v) walk(x, depth + 1); return; }
+              if (typeof v !== 'object') return;
+              const row = {};
+              for (const [k, x] of Object.entries(v)) {
+                if (allowed.has(k) && scalar(x)) row[k] = x;
+              }
+              const keys = Object.keys(row);
+              if (keys.some(k => identityKeys.test(k))) {
+                const sig = JSON.stringify(row);
+                if (!seen.has(sig)) { seen.add(sig); rows.push(row); }
+              }
+              for (const x of Object.values(v)) walk(x, depth + 1);
+            };
+            walk(value, 0);
+            return rows;
+          }
+
+          (async () => {
+            const result = {
+              operation_id: process.env.OP_ID,
+              run_id: process.env.GITHUB_RUN_ID,
+              run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+              source_sha: process.env.GITHUB_SHA,
+              search: { country: 'Turkey', country_id: 4, date_from: process.env.DATE_FROM, date_to: process.env.DATE_TO, nights: Number(process.env.NIGHTS), adults: 2 },
+              provider_events: [],
+              network: [],
+              page_errors: [],
+              assertions: {},
+              writes: { db: 0, mappings: 0, leads: 0, bookings: 0 },
+            };
+            let browser;
+            try {
+              browser = await chromium.launch({ headless: true });
+              const context = await browser.newContext({
+                viewport: { width: 1440, height: 1000 },
+                extraHTTPHeaders: { 'X-AnyTour-CI': '1' },
+              });
+              await context.route(/https?:\/\/(?:mc\.yandex\.(?:ru|com)|metrika\.yandex\.)\//, route => route.abort());
+              const page = await context.newPage();
+              page.on('pageerror', e => result.page_errors.push(String(e)));
+              await page.addInitScript(() => {
+                window.__matchProviderEvents = [];
+                window.addEventListener('v2:provider-status', event => {
+                  const d = event && event.detail && typeof event.detail === 'object' ? event.detail : {};
+                  window.__matchProviderEvents.push({
+                    at: Date.now(), provider: d.provider || null, status: d.status || null,
+                    generation: d.generation || null, hotels: d.hotels ?? null,
+                    readyOffers: d.readyOffers ?? null, errorCode: d.errorCode || null,
+                  });
+                });
+              });
+
+              const pending = [];
+              page.on('response', response => {
+                const p = (async () => {
+                  try {
+                    const u = new URL(response.url());
+                    let provider = null;
+                    if (/api-andromeda-search3-preview\.php$/.test(u.pathname)) provider = 'andromeda';
+                    else if (/api-anex-search3-preview\.php$/.test(u.pathname)) provider = 'anex';
+                    else if (/\/v2\/api\//.test(u.pathname)) provider = 'tourvisor';
+                    if (!provider) return;
+                    const text = await response.text().catch(() => '');
+                    let parsed = null;
+                    try { parsed = text ? JSON.parse(text) : null; } catch (_) {}
+                    result.network.push({
+                      provider,
+                      path: u.pathname,
+                      method: response.request().method(),
+                      http: response.status(),
+                      bytes: Buffer.byteLength(text),
+                      body_sha256: crypto.createHash('sha256').update(text).digest('hex'),
+                      identity_rows: parsed ? safeIdentityRows(parsed) : [],
+                    });
+                  } catch (e) {
+                    result.page_errors.push('response_capture:' + String(e));
+                  }
+                })();
+                pending.push(p);
+              });
+
+              const u = new URL('https://anytoour.ru/_preview/search3-local-candidate/poisk-turov/');
+              Object.entries({
+                from: '1', country: '4', dateFrom: process.env.DATE_FROM, dateTo: process.env.DATE_TO,
+                daysFrom: process.env.NIGHTS, daysTill: process.env.NIGHTS, count_people: '2', ci_test: '1'
+              }).forEach(([k,v]) => u.searchParams.set(k,v));
+              const response = await page.goto(u.toString(), { waitUntil: 'domcontentloaded', timeout: 45000 });
+              result.page_http = response ? response.status() : null;
+              if (!response || response.status() !== 200) throw new Error('page_http_' + (response && response.status()));
+
+              const deadline = Date.now() + 150000;
+              while (Date.now() < deadline) {
+                result.provider_events = await page.evaluate(() => window.__matchProviderEvents || []);
+                const eventProviders = new Set(result.provider_events.map(x => x && x.provider).filter(Boolean));
+                const netProviders = new Set(result.network.map(x => x.provider));
+                const terminal = new Set(result.provider_events.filter(x => x && ['complete','error'].includes(x.status)).map(x => x.provider));
+                const tvSeen = eventProviders.has('tourvisor') || netProviders.has('tourvisor');
+                const andSeen = eventProviders.has('andromeda') || netProviders.has('andromeda');
+                const andTerminal = terminal.has('andromeda') || result.network.some(x => x.provider === 'andromeda' && x.http >= 200 && x.http < 300);
+                if (tvSeen && andSeen && andTerminal) break;
+                await page.waitForTimeout(1000);
+              }
+              await Promise.allSettled(pending);
+              result.provider_events = await page.evaluate(() => window.__matchProviderEvents || []);
+
+              const providers = new Set([...result.provider_events.map(x => x && x.provider), ...result.network.map(x => x.provider)].filter(Boolean));
+              result.assertions = {
+                tourvisor_observed: providers.has('tourvisor'),
+                andromeda_observed: providers.has('andromeda'),
+                andromeda_http_2xx: result.network.some(x => x.provider === 'andromeda' && x.http >= 200 && x.http < 300),
+                provider_http_429: result.network.some(x => x.http === 429),
+                identity_rows_tourvisor: result.network.filter(x => x.provider === 'tourvisor').reduce((n,x) => n + x.identity_rows.length, 0),
+                identity_rows_andromeda: result.network.filter(x => x.provider === 'andromeda').reduce((n,x) => n + x.identity_rows.length, 0),
+              };
+              fs.writeFileSync(outPath, JSON.stringify(result, null, 2));
+              if (!result.assertions.tourvisor_observed) throw new Error('tourvisor_not_observed');
+              if (!result.assertions.andromeda_observed) throw new Error('andromeda_not_observed');
+              if (result.assertions.provider_http_429) throw new Error('provider_http_429');
+            } catch (e) {
+              result.terminal_error = String(e && e.stack || e);
+              fs.writeFileSync(outPath, JSON.stringify(result, null, 2));
+              throw e;
+            } finally {
+              if (browser) await browser.close().catch(() => {});
+            }
+          })().catch(e => { console.error(e); process.exit(1); });
+          JS
+          node match-live-provider-evidence/capture.cjs
+
+      - name: Create terminal receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f match-live-provider-evidence/result.json || printf '%s\n' '{"terminal_error":"result_missing"}' > match-live-provider-evidence/result.json
+          RESULT_SHA="$(sha256sum match-live-provider-evidence/result.json | awk '{print $1}')"
+          export RESULT_SHA
+          python3 - <<'PY'
+          import json, os
+          receipt = {
+            'operation_id': os.environ['OP_ID'],
+            'run_id': os.environ['GITHUB_RUN_ID'],
+            'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'source_sha': os.environ['GITHUB_SHA'],
+            'result_sha256': os.environ['RESULT_SHA'],
+            'provider_access_via': 'published-search3-local-candidate-user-search',
+            'max_user_searches': 1,
+            'retry_allowed': False,
+            'db_writes': 0,
+            'mapping_writes': 0,
+            'lead_writes': 0,
+            'booking_writes': 0,
+            'denied_collector_2663_reused': False,
+          }
+          with open('match-live-provider-evidence/receipt.json','w',encoding='utf-8') as f:
+              json.dump(receipt,f,ensure_ascii=False,sort_keys=True,indent=2)
+          PY
+          sha256sum match-live-provider-evidence/receipt.json > match-live-provider-evidence/receipt.sha256
+
+      - name: Publish terminal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-live-provider-evidence-${{ github.run_id }}
+          path: |
+            match-live-provider-evidence/result.json
+            match-live-provider-evidence/receipt.json
+            match-live-provider-evidence/receipt.sha256
+          retention-days: 14
