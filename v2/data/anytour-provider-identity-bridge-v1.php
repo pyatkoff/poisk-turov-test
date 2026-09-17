@@ -9,17 +9,23 @@ declare(strict_types=1);
  * in the provider-neutral offer contract. Andromeda's ref is
  * `supplier_namespace:external_hotel_id`. The stored source keeps the accepted MATCH
  * tuple so every read can revalidate current acceptance and fail closed after a
- * reassignment/rejection. `legacy_catalog` is used only to bootstrap today's already
- * existing AnyTour profile while MATCH still targets the historical local ID; it is
- * not required by offer admission/read once a direct binding exists.
+ * reassignment/rejection. Historical accepted local IDs resolve through the
+ * AnyTour-owned `anytour_local_id` alias. `legacy_catalog` is provenance only and is
+ * not a runtime identity dependency.
  */
 final class AnyTourProviderIdentityBridgeV1
 {
     private const DIRECT_PROVIDER = 'andromeda';
     private const DIRECT_NAMESPACE = 'provider_ref_digest:andromeda';
+    private const LOCAL_ALIAS_NAMESPACE = 'anytour_local_id';
+    private const LOCAL_ALIAS_ACQUIRED_VIA = 'canonical_local_alias_v1';
     private const SOURCE_KEYS = [
         'schema_version', 'provider', 'supplier_namespace', 'external_hotel_id',
         'accepted_local_hotel_id',
+    ];
+    private const LOCAL_ALIAS_KEYS = [
+        'accepted_local_hotel_id', 'canonical_hotel_id', 'derived_from_namespace',
+        'derived_from_source_sha256', 'schema_version',
     ];
 
     public static function providerRefDigest(string $providerHotelRef): string
@@ -39,8 +45,10 @@ final class AnyTourProviderIdentityBridgeV1
      *
      * A present direct Andromeda binding is authoritative for that digest: if its
      * stored MATCH tuple is stale, malformed or no longer accepted, the row is
-     * rejected and MUST NOT fall back to legacy_catalog. Rows not migrated yet keep
-     * the legacy compatibility path so the migration can be progressive.
+     * rejected and MUST NOT fall back to a local alias. Rows not materialized yet keep
+     * a bounded compatibility path only when the exact provider-ref digest is still a
+     * CURRENT accepted MATCH identity for the claimed local ID. The local ID itself
+     * resolves only through the independent AnyTour alias, never legacy_catalog.
      */
     public static function filterOfferRows(PDO $db, array $rows): array
     {
@@ -51,6 +59,7 @@ final class AnyTourProviderIdentityBridgeV1
 
         $normalized = [];
         $andromedaDigests = [];
+        $andromedaLegacyIds = [];
         $legacyIds = [];
         foreach ($rows as $index => $row) {
             if (!is_array($row)) throw new InvalidArgumentException('ANYTOUR_PROVIDER_BRIDGE_ROW');
@@ -66,12 +75,16 @@ final class AnyTourProviderIdentityBridgeV1
                 'provider' => $provider, 'digest' => $digest, 'legacy' => $legacy, 'own' => $own,
             ];
             $legacyIds[$legacy] = true;
-            if ($provider === self::DIRECT_PROVIDER) $andromedaDigests[$digest] = true;
+            if ($provider === self::DIRECT_PROVIDER) {
+                $andromedaDigests[$digest] = true;
+                $andromedaLegacyIds[$legacy] = true;
+            }
         }
 
         $direct = self::directSources($db, array_keys($andromedaDigests));
         $currentAccepted = self::currentAndromedaAccepted($db, $direct);
-        $legacyTargets = self::legacyTargets($db, array_keys($legacyIds), false);
+        $fallbackAccepted = self::currentAndromedaAcceptedByDigest($db, array_keys($andromedaLegacyIds));
+        $localTargets = self::localAliasTargets($db, array_keys($legacyIds), false);
 
         $out = [];
         foreach ($rows as $index => $row) {
@@ -88,7 +101,11 @@ final class AnyTourProviderIdentityBridgeV1
                 $out[] = $row;
                 continue;
             }
-            if (($legacyTargets[$meta['legacy']] ?? null) === $meta['own']) $out[] = $row;
+            if ($meta['provider'] === self::DIRECT_PROVIDER
+                && ($fallbackAccepted[$meta['digest']] ?? null) !== $meta['legacy']) {
+                continue;
+            }
+            if (($localTargets[$meta['legacy']] ?? null) === $meta['own']) $out[] = $row;
         }
         return $out;
     }
@@ -114,9 +131,9 @@ final class AnyTourProviderIdentityBridgeV1
 
     /**
      * Materialize only exact CURRENT accepted Andromeda mappings requested by caller.
-     * No MATCH row is created/updated. The existing legacy->AnyTour link is read once
-     * only to locate today's active independent profile. Runtime direct reads do not
-     * need that legacy source afterwards.
+     * No MATCH row is created/updated. The accepted local ID reaches today's active
+     * independent profile through the AnyTour-owned local alias. No legacy_catalog
+     * lookup is required for materialization or later direct reads.
      *
      * @param list<array{supplier_namespace:string,external_hotel_id:string|int}> $refs
      */
@@ -143,7 +160,7 @@ final class AnyTourProviderIdentityBridgeV1
             $accepted = self::acceptedForRefs($db, array_values($wanted));
             $localIds = [];
             foreach ($accepted as $local) if (is_int($local) && $local > 0) $localIds[$local] = true;
-            $targets = self::legacyTargets($db, array_keys($localIds), true);
+            $targets = self::localAliasTargets($db, array_keys($localIds), true);
 
             $insert = $db->prepare("INSERT INTO anytour_hotel_sources
                 (namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at)
@@ -297,6 +314,29 @@ final class AnyTourProviderIdentityBridgeV1
         return $result;
     }
 
+    private static function currentAndromedaAcceptedByDigest(PDO $db, array $legacyIds): array
+    {
+        if ($legacyIds === []) return [];
+        $result = [];
+        foreach (array_chunk(array_map('strval', $legacyIds), 500) as $chunk) {
+            $sql = "SELECT supplier_namespace,CAST(external_hotel_id AS CHAR) AS external_hotel_id,local_hotel_id
+                FROM andromeda_hotel_identities WHERE decision_status='accepted' AND local_hotel_id IN ("
+                . implode(',', array_fill(0, count($chunk), '?')) . ')';
+            try { $query = $db->prepare($sql); $query->execute($chunk); }
+            catch (Throwable) { return []; }
+            foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                try {
+                    $namespace = self::supplierNamespace($row['supplier_namespace'] ?? null);
+                    $external = self::externalId($row['external_hotel_id'] ?? null);
+                    $local = self::positiveInt($row['local_hotel_id'] ?? null);
+                    $digest = self::providerRefDigest($namespace . ':' . $external);
+                } catch (Throwable) { continue; }
+                $result[$digest] = array_key_exists($digest, $result) ? null : $local;
+            }
+        }
+        return $result;
+    }
+
     private static function acceptedForRefs(PDO $db, array $refs): array
     {
         $external = [];
@@ -323,24 +363,46 @@ final class AnyTourProviderIdentityBridgeV1
         return $out;
     }
 
-    private static function legacyTargets(PDO $db, array $legacyIds, bool $requireActive): array
+    private static function localAliasTargets(PDO $db, array $legacyIds, bool $requireActive): array
     {
         if ($legacyIds === []) return [];
         $result = [];
         foreach (array_chunk(array_map('strval', $legacyIds), 500) as $chunk) {
             $join = $requireActive ? ' JOIN anytour_hotels h ON h.id=s.anytour_hotel_id' : '';
             $active = $requireActive ? ' AND h.is_active=1' : '';
-            $sql = "SELECT CAST(s.external_key AS CHAR) AS external_key,s.anytour_hotel_id
-                FROM anytour_hotel_sources s" . $join . " WHERE s.namespace='legacy_catalog'" . $active
+            $sql = "SELECT CAST(s.external_key AS CHAR) AS external_key,s.anytour_hotel_id,s.acquired_via,s.source_json,s.source_sha256
+                FROM anytour_hotel_sources s" . $join . " WHERE s.namespace=?" . $active
                 . " AND s.external_key IN (" . implode(',', array_fill(0, count($chunk), '?')) . ')';
-            $query = $db->prepare($sql); $query->execute($chunk);
+            $query = $db->prepare($sql); $query->execute(array_merge([self::LOCAL_ALIAS_NAMESPACE], $chunk));
             foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                $legacy = self::positiveInt($row['external_key'] ?? null);
-                $own = self::positiveInt($row['anytour_hotel_id'] ?? null);
-                $result[$legacy] = array_key_exists($legacy, $result) ? null : $own;
+                try { $local = self::positiveInt($row['external_key'] ?? null); }
+                catch (Throwable) { continue; }
+                $own = self::decodeLocalAlias($row, $local);
+                $result[$local] = array_key_exists($local, $result) ? null : $own;
             }
         }
         return $result;
+    }
+
+    private static function decodeLocalAlias(array $row, int $localId): ?int
+    {
+        if (($row['acquired_via'] ?? null) !== self::LOCAL_ALIAS_ACQUIRED_VIA
+            || !is_string($row['source_json'] ?? null)
+            || !is_string($row['source_sha256'] ?? null)
+            || !preg_match('/\A[a-f0-9]{64}\z/D', $row['source_sha256'])
+            || !hash_equals($row['source_sha256'], hash('sha256', $row['source_json']))) return null;
+        try {
+            $own = self::positiveInt($row['anytour_hotel_id'] ?? null);
+            $source = json_decode($row['source_json'], true, 16, JSON_THROW_ON_ERROR);
+        } catch (Throwable) { return null; }
+        if (!is_array($source) || !self::exactKeys($source, self::LOCAL_ALIAS_KEYS)
+            || ($source['schema_version'] ?? null) !== 1
+            || ($source['accepted_local_hotel_id'] ?? null) !== $localId
+            || ($source['canonical_hotel_id'] ?? null) !== $own
+            || ($source['derived_from_namespace'] ?? null) !== 'legacy_catalog'
+            || !is_string($source['derived_from_source_sha256'] ?? null)
+            || !preg_match('/\A[a-f0-9]{64}\z/D', $source['derived_from_source_sha256'])) return null;
+        return $own;
     }
 
     private static function supplierNamespace(mixed $value): string

@@ -22,6 +22,22 @@ function v2_hotel_detail_text(mixed $value, int $max = 65535): ?string
     return mb_substr($value, 0, max(1, $max));
 }
 
+/**
+ * Tourvisor may expose Fortuna/Roulette products in hotel-shaped rows even
+ * though the concrete hotel is intentionally unknown until later. They are
+ * accommodation products, not hotel identities, so hotel geography must not
+ * be inferred from them (especially not 0,0 placeholder coordinates).
+ */
+function v2_hotel_detail_is_generic_product_name(mixed $value): bool
+{
+    $name = v2_hotel_detail_text($value, 255);
+    if ($name === null) return false;
+    $name = mb_strtolower($name, 'UTF-8');
+    $name = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $name) ?? $name;
+    $name = trim(preg_replace('/\s+/u', ' ', $name) ?? $name);
+    return preg_match('/^(?:fortuna|roulette|фортуна|рулетка)(?:\s|$)/u', $name) === 1;
+}
+
 function v2_hotel_detail_int(mixed $value): ?int
 {
     $n = filter_var($value, FILTER_VALIDATE_INT);
@@ -78,6 +94,7 @@ function v2_hotel_detail_normalized(array $hotel): array
     $region = is_array($hotel['region'] ?? null) ? $hotel['region'] : [];
     $subRegion = is_array($hotel['subRegion'] ?? null) ? $hotel['subRegion'] : [];
     $images = v2_hotel_detail_images($hotel);
+    $genericProduct = v2_hotel_detail_is_generic_product_name($hotel['name'] ?? null);
 
     return [
         'hotel_id' => v2_hotel_detail_int($hotel['id'] ?? null),
@@ -99,8 +116,8 @@ function v2_hotel_detail_normalized(array $hotel): array
         'build' => v2_hotel_detail_text($common['build'] ?? null, 2000),
         'repair' => v2_hotel_detail_text($common['repair'] ?? null, 2000),
         'square' => v2_hotel_detail_text($common['square'] ?? null, 1000),
-        'latitude' => v2_hotel_detail_float($common['latitude'] ?? null),
-        'longitude' => v2_hotel_detail_float($common['longitude'] ?? null),
+        'latitude' => $genericProduct ? null : v2_hotel_detail_float($common['latitude'] ?? null),
+        'longitude' => $genericProduct ? null : v2_hotel_detail_float($common['longitude'] ?? null),
         'primary_image_url' => $images[0] ?? null,
         'images' => $images,
         'images_json' => v2_hotel_detail_json($images),
@@ -108,5 +125,6 @@ function v2_hotel_detail_normalized(array $hotel): array
         'meals_json' => v2_hotel_detail_json($hotel['meals'] ?? null),
         'services_json' => v2_hotel_detail_json($hotel['services'] ?? null),
         'room_types' => v2_hotel_detail_text($hotel['roomTypes'] ?? null, 100000),
+        'generic_product' => $genericProduct,
     ];
 }
