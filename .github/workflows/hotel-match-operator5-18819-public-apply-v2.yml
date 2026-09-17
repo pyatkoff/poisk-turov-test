@@ -1,0 +1,136 @@
+name: MATCH operator5 18819 public evidence apply v2
+
+on:
+  push:
+    branches: [diag/match-current-live-frequency-dossier-1971-20260917-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_operator5_18819_public_apply_v2.php
+      - reports/hotel-match-operator5-18819-public-anex-evidence-20260917.json
+      - .github/workflows/hotel-match-operator5-18819-public-apply-v2.yml
+
+permissions: {contents: read, actions: read}
+
+concurrency:
+  group: hotel-match-operator5-18819-public-apply-1971-20260917-v2
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-operator5-18819-public-apply-1971-20260917-v2
+
+jobs:
+  apply:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+
+      - name: Validate exact isolated inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_operator5_18819_public_apply_v2.php >/dev/null
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator5_18819_public_apply_v2.php)" = 8d39e283a2acb8a51daded962d9b42cf34c1998f
+          test "$(git hash-object reports/hotel-match-operator5-18819-public-anex-evidence-20260917.json)" = d5cc37f97505d63e3d9077491a936344488a299d
+          python3 - <<'PY'
+          import json
+          d=json.load(open('reports/hotel-match-operator5-18819-public-anex-evidence-20260917.json',encoding='utf-8'))
+          assert d['supplier']=='ANEX' and d['native_hotel_id']=='18819'
+          assert d['candidate_local']['local_hotel_id']==56551
+          assert d['current_conflict_context']['stored_andromeda_bridge']=='118706'
+          assert d['current_conflict_context']['accepted_same_local_andromeda_id']=='2000086116'
+          PY
+
+      - name: Reserve before public evidence and DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({
+            'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],
+            'state':'reserved_before_public_evidence_and_db','coordination_issue':2530,'queue_issue':1971,
+            'claim_comment_id':5714906486,'database_writes':0,'mapping_writes':0,
+            'supplier_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,
+            'public_http_calls':0,'no_replay':True
+          },sort_keys=True)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-operator5-18819-public-apply-v2-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-operator5-18819-public-apply-1971-20260917-v2/reservation.json
+          retention-days: 90
+
+      - name: Fetch normalized public evidence and apply guarded mapping
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known" "$out/public-page.html"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+
+          python3 - <<'PY'
+          import json,os,pathlib
+          r=json.load(open('reports/hotel-match-operator5-18819-public-anex-evidence-20260917.json',encoding='utf-8'))
+          (pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'public-url.txt').write_text(r['source_url'])
+          PY
+          url="$(cat "$out/public-url.txt")"
+          code="$(curl --compressed --silent --show-error --location --max-redirs 3 --connect-timeout 15 --max-time 40 --output "$out/public-page.html" --write-out '%{http_code}' "$url")"
+          test "$code" = 200
+          python3 - <<'PY'
+          import hashlib,html,json,os,pathlib,re
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          report=json.load(open('reports/hotel-match-operator5-18819-public-anex-evidence-20260917.json',encoding='utf-8'))
+          raw=(root/'public-page.html').read_bytes()
+          text=html.unescape(raw.decode('utf-8','replace'))
+          for _ in range(3):
+              text=text.replace('\\"','"').replace("\\'","'").replace('\\/','/')
+              text=re.sub(r'\\u0022','"',text,flags=re.I)
+              text=re.sub(r'\\u0026','&',text,flags=re.I)
+              text=html.unescape(text)
+          checks={
+            'operator':r'"Veranstaltercode"\s*:\s*"ANEX"',
+            'objectcode':r'"Objectcode"\s*:\s*"18819"',
+            'hotel':r'"Hotelname"\s*:\s*"Grand Uysal Beach & Spa"',
+            'giata':r'"GiataID"\s*:\s*\{\s*"value"\s*:\s*"26743"',
+            'city':r'"Stadtname"\s*:\s*"Alanya"',
+            'country':r'"Landcode"\s*:\s*"TR"',
+          }
+          missing=[k for k,p in checks.items() if re.search(p,text) is None]
+          if missing: raise SystemExit('normalized_public_marker_validation_failed:'+','.join(missing))
+          d={'verified':True,'supplier':'ANEX','native_hotel_id':'18819','hotel_name':report['hotel_name'],'city':report['city'],'latitude':report['source_coordinates']['latitude'],'longitude':report['source_coordinates']['longitude'],'giata_id':report['giata_id'],'page_sha256':hashlib.sha256(raw).hexdigest(),'http_status':200,'required_markers_verified':len(checks),'representation_normalized':True}
+          (root/'public-evidence.json').write_text(json.dumps(d,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          (root/'public-page.html').unlink()
+          print(json.dumps({'public_evidence_verified':True,'page_sha256':d['page_sha256'],'markers':d['required_markers_verified']},sort_keys=True))
+          PY
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; cat > \"\$HOME/.anytoour-match/operations/$OPERATION_ID/public-evidence.json\"; sync" < "$out/public-evidence.json"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0" < scripts/diagnostics/hotel_match_operator5_18819_public_apply_v2.php > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json public-evidence.json result.json receipt.json" > "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server'
+          r=json.loads((s/'result.json').read_text());c=json.loads((s/'receipt.json').read_text());h=hashlib.sha256((s/'result.json').read_bytes()).hexdigest();state=r.get('state')
+          counts_ok=((state=='committed_verified' and r.get('database_writes')==1 and r.get('mapping_writes')==1) or (state=='completed_no_write' and r.get('database_writes')==0 and r.get('mapping_writes')==0))
+          ok=state in ('committed_verified','completed_no_write') and counts_ok and c.get('result_sha256')==h and c.get('readback_verified') is True and c.get('supplier_calls')==0 and c.get('tourvisor_calls')==0 and c.get('samo_andromeda_calls')==0 and c.get('public_http_calls')==1
+          g={'verified':ok,'state':state,'error_code':r.get('error_code'),'mapping':r.get('mapping'),'held_118706_preserved':r.get('held_118706_preserved'),'pending_after':r.get('pending_after'),'result_sha256':h,'no_replay':True}
+          (p/'workflow-readback.json').write_text(json.dumps(g,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(g,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if ok else 2)
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-operator5-18819-public-apply-v2-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-operator5-18819-public-apply-1971-20260917-v2/
+          retention-days: 90
