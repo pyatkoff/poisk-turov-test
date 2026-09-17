@@ -1,15 +1,13 @@
-name: Search3 AnyTour provider identity plan once
+name: Search3 AnyTour provider identity materialize once
 
 on:
   pull_request:
     branches: [release/search3-production-ready-v1]
     paths:
-      - 'scripts/catalog/anytour_provider_identity_materialize.php'
       - '.github/workflows/search3-anytour-provider-identity-materialize-once.yml'
   push:
     branches: [release/search3-production-ready-v1]
     paths:
-      - 'scripts/catalog/anytour_provider_identity_materialize.php'
       - '.github/workflows/search3-anytour-provider-identity-materialize-once.yml'
 
 permissions:
@@ -20,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  EXPECTED_BEFORE_SHA: 1b5076f43f91a0cbe9dfb2f8308af11363868030
+  EXPECTED_BEFORE_SHA: 80c39a1fbb697d5267792c005bfaf1d8bbf6b33d
 
 jobs:
   preflight:
@@ -31,29 +29,27 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Validate corrected plan-only operation
+      - name: Validate bounded exact-plan apply
         shell: bash
         run: |
           set -euo pipefail
           php -l scripts/catalog/anytour_provider_identity_materialize.php
           php -l v2/data/anytour-provider-identity-bridge-v1.php
-          grep -Fq '1b5076f43f91a0cbe9dfb2f8308af11363868030' .github/workflows/search3-anytour-provider-identity-materialize-once.yml
+          grep -Fq '80c39a1fbb697d5267792c005bfaf1d8bbf6b33d' .github/workflows/search3-anytour-provider-identity-materialize-once.yml
           grep -Fq 'ORDER BY supplier_namespace,external_hotel_id' scripts/catalog/anytour_provider_identity_materialize.php
           ! grep -Fq 'ORDER BY supplier_namespace,external_hotel_id,id' scripts/catalog/anytour_provider_identity_materialize.php
-          grep -Fq "op_fail('PLAN_ACCEPTED_QUERY')" scripts/catalog/anytour_provider_identity_materialize.php
-          grep -Fq "op_fail('PLAN_LEGACY_TARGET_QUERY')" scripts/catalog/anytour_provider_identity_materialize.php
-          grep -Fq "op_fail('PLAN_DIRECT_QUERY')" scripts/catalog/anytour_provider_identity_materialize.php
+          grep -Fq -- '--expected-plan-sha=' .github/workflows/search3-anytour-provider-identity-materialize-once.yml
 
-  plan:
+  operate:
     if: >-
       github.event_name == 'push' &&
-      github.event.before == '1b5076f43f91a0cbe9dfb2f8308af11363868030' &&
+      github.event.before == '80c39a1fbb697d5267792c005bfaf1d8bbf6b33d' &&
       github.actor == 'pyatkoff' &&
       github.event.sender.id == 226193297
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
-      REMOTE_TMP: /tmp/anytour-provider-identity-plan-${{ github.run_id }}-${{ github.run_attempt }}
+      REMOTE_TMP: /tmp/anytour-provider-identity-apply-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -86,7 +82,7 @@ jobs:
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
 
-      - name: Stage temporary plan files only
+      - name: Stage temporary operation files only
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -100,7 +96,8 @@ jobs:
           scp "${opts[@]}" scripts/catalog/anytour_provider_identity_materialize.php "$remote:$REMOTE_TMP/materialize.php"
           scp "${opts[@]}" v2/data/anytour-provider-identity-bridge-v1.php "$remote:$REMOTE_TMP/bridge.php"
 
-      - name: Execute corrected read-only exact plan
+      - name: Read current exact plan
+        id: plan
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -117,25 +114,64 @@ jobs:
           ANYTOUR_OPERATION_RELEASE_SHA="$release_sha" \
             php "$tmp/materialize.php" --mode=plan "--release-sha=$release_sha"
           REMOTE
-          python3 - <<'PY'
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           lines=[x.strip() for x in open('provider-identity-plan.json') if x.strip().startswith('{')]
           if len(lines)!=1: raise SystemExit('plan receipt shape mismatch')
           r=json.loads(lines[0])
-          if r.get('mode')!='plan': raise SystemExit('plan mode mismatch')
           for k in ('mapping_writes','supplier_calls','profile_writes','legacy_source_writes','site_file_writes'):
               if r.get(k)!=0: raise SystemExit('plan ownership mismatch')
+          if r.get('apply_blocked') is not False or r.get('direct_conflicts')!=0:
+              raise SystemExit('direct provider identity conflict; apply withheld')
+          if r.get('ambiguous_accepted_refs')!=0:
+              raise SystemExit('ambiguous accepted provider identity; apply withheld')
           h=r.get('plan_sha256','')
           if len(h)!=64: raise SystemExit('plan hash missing')
-          print('PLAN_RECEIPT=' + json.dumps(r,separators=(',',':'),sort_keys=True))
+          print('plan_sha='+h)
+          print('resolvable='+str(r.get('resolvable_refs',0)))
+          print('unresolved='+str(r.get('unresolved_refs',0)))
+          print('direct_exact_before='+str(r.get('direct_exact_before',0)))
+          PY
+
+      - name: Apply the exact just-read plan
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PLAN_SHA: ${{ steps.plan.outputs.plan_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$PLAN_SHA" =~ ^[a-f0-9]{64}$ ]]
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "bash -s -- '$REMOTE_TMP' '$GITHUB_SHA' '$PLAN_SHA'" <<'REMOTE' | tee provider-identity-apply.json
+          set -euo pipefail
+          tmp="$1"; release_sha="$2"; plan_sha="$3"; root="$HOME/www/anytoour.ru"
+          ANYTOUR_SITE_ROOT="$root" \
+          ANYTOUR_PROVIDER_BRIDGE_FILE="$tmp/bridge.php" \
+          ANYTOUR_OPERATION_RELEASE_SHA="$release_sha" \
+            php "$tmp/materialize.php" --mode=apply "--release-sha=$release_sha" "--expected-plan-sha=$plan_sha"
+          REMOTE
+          python3 - <<'PY'
+          import json
+          lines=[x.strip() for x in open('provider-identity-apply.json') if x.strip().startswith('{')]
+          if len(lines)!=1: raise SystemExit('apply receipt shape mismatch')
+          r=json.loads(lines[0])
+          for k in ('mapping_writes','supplier_calls','profile_writes','legacy_source_writes','site_file_writes'):
+              if r.get(k)!=0: raise SystemExit('apply ownership mismatch')
+          if r.get('source_stable') is not True or r.get('direct_conflicts_after')!=0:
+              raise SystemExit('post-apply verification mismatch')
+          if r.get('materialized')!=r.get('verified') or r.get('requested')!=r.get('materialized'):
+              raise SystemExit('materialized/readback mismatch')
+          print('APPLY_RECEIPT=' + json.dumps(r,separators=(',',':'),sort_keys=True))
           PY
           {
-            echo '### AnyTour direct Andromeda identity plan — read only'
-            echo '```json'; cat provider-identity-plan.json; echo '```'
-            echo 'No apply step exists in this run.'
+            echo '### AnyTour direct Andromeda identity materialization'
+            echo 'Plan:'; echo '```json'; cat provider-identity-plan.json; echo '```'
+            echo 'Apply:'; echo '```json'; cat provider-identity-apply.json; echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Remove temporary remote plan files
+      - name: Remove temporary remote operation files
         if: always()
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
