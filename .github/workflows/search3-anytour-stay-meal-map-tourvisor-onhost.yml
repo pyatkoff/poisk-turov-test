@@ -1,0 +1,308 @@
+name: LOCAL one-shot reviewed Tourvisor meal mapping
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_stay_meal_map_tourvisor_manifest.py'
+      - 'scripts/catalog/anytour_stay_meal_map_tourvisor_onhost.php'
+      - '.github/workflows/search3-anytour-stay-meal-map-tourvisor-onhost.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: anytour-stay-mapping-operations
+  cancel-in-progress: false
+
+jobs:
+  checked-plan:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/local-2690-stay-meal-map-tourvisor-20260917-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      artifact_id: ${{ steps.retained.outputs.artifact-id }}
+      head: ${{ github.event.pull_request.head.sha }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_stay_import_fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Syntax and existing real-MySQL importer contract
+        env:
+          ANYTOUR_STAY_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_fixture;charset=utf8mb4'
+          ANYTOUR_STAY_TEST_PASSWORD: fixture-only-password
+          ANYTOUR_STAY_IMPORT_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_import_fixture;charset=utf8mb4'
+          ANYTOUR_STAY_IMPORT_TEST_PASSWORD: fixture-only-password
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/catalog/anytour_stay_meal_map_tourvisor_manifest.py
+          php -l scripts/catalog/anytour_stay_meal_map_tourvisor_onhost.php
+          php -l scripts/catalog/anytour_stay_import.php
+          php -l v2/data/anytour-stay-catalog-v1.php
+          php -r '$p=new PDO(getenv("ANYTOUR_STAY_IMPORT_TEST_DSN"),"root",getenv("ANYTOUR_STAY_IMPORT_TEST_PASSWORD")); $p->exec("CREATE DATABASE anytour_stay_fixture");'
+          php tests/anytour_stay_catalog_test.php
+          php tests/anytour_stay_import_test.php
+      - name: Rebuild and seal reviewed manifest from immutable CURRENT evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence-v3 retained
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10485327353/zip > evidence-v3/artifact.zip
+          printf '%s  %s\n' '6484053cfec09c8592c517a18e3344659b2744da1219338ce555018dc0c00331' 'evidence-v3/artifact.zip' | sha256sum -c -
+          python3 - <<'PY'
+          import pathlib,zipfile
+          z=zipfile.ZipFile('evidence-v3/artifact.zip')
+          names=z.namelist()
+          assert names.count('result.json')==1 and names.count('result.sha256')==1
+          assert all('/../' not in '/'+n and not n.startswith('/') for n in names)
+          pathlib.Path('evidence-v3/result.json').write_bytes(z.read('result.json'))
+          expected=z.read('result.sha256').decode().strip().split()[0]
+          assert expected=='766f6e7843af19730c1d8515898f072a46b797c33275af91755a70e2b3d2d5ae'
+          PY
+          printf '%s  %s\n' '766f6e7843af19730c1d8515898f072a46b797c33275af91755a70e2b3d2d5ae' 'evidence-v3/result.json' | sha256sum -c -
+          python3 scripts/catalog/anytour_stay_meal_map_tourvisor_manifest.py \
+            evidence-v3/result.json retained/manifest.json | tee retained/manifest-build.json
+          python3 - <<'PY'
+          import collections,hashlib,json
+          b=json.load(open('retained/manifest-build.json'))
+          assert b['rows']==251 and b['counts']=={'3':81,'4':12,'7':112,'9':46}
+          assert b['currentResultSha256']=='766f6e7843af19730c1d8515898f072a46b797c33275af91755a70e2b3d2d5ae'
+          assert b['artifactId']==10485327353
+          m=json.load(open('retained/manifest.json'))
+          assert m['version']==1 and m['operation']=='local-stay-meal-map-tourvisor-2690-20260917-v1' and len(m['rows'])==251
+          counts=collections.Counter(r['reference']['externalKey'] for r in m['rows'])
+          assert counts=={'3':81,'4':12,'7':112,'9':46}
+          targets={'3':'breakfast','4':'half-board','7':'all-inclusive','9':'ultra-all-inclusive'}
+          assert all(r['reference']['kind']=='meal' and r['reference']['keyKind']=='code'
+                     and r['target']=={'code':targets[r['reference']['externalKey']]} for r in m['rows'])
+          assert len({json.dumps([r['scope'],r['reference']],sort_keys=True,separators=(',',':')) for r in m['rows']})==251
+          print('SEALED_MANIFEST_SHA256='+hashlib.sha256(open('retained/manifest.json','rb').read()).hexdigest())
+          PY
+          php -r '
+            require "scripts/catalog/anytour_stay_import.php";
+            $m=json_decode(file_get_contents("retained/manifest.json"),true,64,JSON_THROW_ON_ERROR);
+            $n=AnyTourStayImport::manifest($m);
+            if (($n["operation"]??"")!=="local-stay-meal-map-tourvisor-2690-20260917-v1" || count($n["rows"])!==251) exit(2);
+            $c=["3"=>0,"4"=>0,"7"=>0,"9"=>0];
+            foreach($n["rows"] as $r){$id=$r["reference"]["externalKey"]; if(!isset($c[$id]))exit(3);$c[$id]++;}
+            if($c!==["3"=>81,"4"=>12,"7"=>112,"9"=>46])exit(4);
+            echo "ANYTOUR_STAY_MEAL_MANIFEST_OK rows=251\n";
+          '
+      - name: Retain exact fresh source, payload and no-replay reservation before private access
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,subprocess,tarfile
+          source='b90390c1c2008e07a91b053107d68822a45dd213'
+          op='local-stay-meal-map-tourvisor-2690-20260917-v1'
+          merged=[
+            'scripts/catalog/anytour_stay_import.php',
+            'v2/data/anytour-stay-catalog-v1.php',
+            'v2/data/db-v1.php',
+          ]
+          files=merged+['scripts/catalog/anytour_stay_meal_map_tourvisor_onhost.php']
+          for name in merged:
+              assert subprocess.check_output(['git','rev-parse','HEAD:'+name]).strip()==subprocess.check_output(['git','rev-parse',source+':'+name]).strip(), 'merged stay source changed'
+          work=pathlib.Path('retained')
+          manifest_sha=hashlib.sha256((work/'manifest.json').read_bytes()).hexdigest()
+          build=json.loads((work/'manifest-build.json').read_text())
+          assert build['manifestSha256']==manifest_sha and build['rows']==251
+          payload={name:hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() for name in files}
+          with tarfile.open(work/'payload.tar.gz','w:gz') as t:
+              for name in files:
+                  data=pathlib.Path(name).read_bytes()
+                  info=tarfile.TarInfo('payload/'+name); info.size=len(data); info.mode=0o600; info.mtime=0
+                  t.addfile(info,io.BytesIO(data))
+          r={
+            'operation':op,'dataSource':source,'executionSource':os.environ['EXACT_HEAD'],
+            'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'files':payload,
+            'manifestSha256':manifest_sha,'manifestRows':251,'expectedRows':251,'expectedNewMappings':251,
+            'currentEvidenceResultSha256':'766f6e7843af19730c1d8515898f072a46b797c33275af91755a70e2b3d2d5ae',
+            'currentEvidenceArtifactId':10485327353,
+            'mealCounts':{'3':81,'4':12,'7':112,'9':46},
+            'targets':{'3':'breakfast','4':'half-board','7':'all-inclusive','9':'ultra-all-inclusive'},
+            'supplierCalls':0,'roomWrites':0,'sourceWrites':0,'canonicalOverwrites':0,'noReplay':True,
+          }
+          (work/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          members=['payload.tar.gz','manifest.json','manifest-build.json','reservation.json']
+          (work/'transport.sha256').write_text(''.join(hashlib.sha256((work/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in members))
+          PY
+      - id: retained
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-stay-meal-map-reservation-${{ github.run_id }}
+          path: retained/
+          if-no-files-found: error
+          retention-days: 30
+
+  on-host-apply:
+    needs: checked-plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.checked-plan.outputs.artifact_id }}
+          path: retained
+          merge-multiple: true
+      - name: Recheck exact head, fresh release, fresh LOCAL claim and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.checked-plan.outputs.head }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.base.sha')" = 'b90390c1c2008e07a91b053107d68822a45dd213'
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/release/search3-production-ready-v1 --jq '.object.sha')" = 'b90390c1c2008e07a91b053107d68822a45dd213'
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5710877522 > claim.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5710893351 > packaging.json
+          python3 - <<'PY'
+          import datetime,json,os,subprocess,time
+          for name in ['claim.json','packaging.json']:
+              c=json.load(open(name))
+              assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+              age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+              assert 0<=age.total_seconds()<5400, 'LOCAL live claim expired'
+          c=json.load(open('claim.json'))
+          assert 'local-stay-meal-map-tourvisor-2690-20260917-v1' in c['body']
+          assert 'ops/local-2690-stay-meal-map-tourvisor-20260917-v1' in c['body']
+          assert 'b90390c1c2008e07a91b053107d68822a45dd213' in c['body']
+          assert '3→`breakfast`' in c['body'] and '4→`half-board`' in c['body'] and '7→`all-inclusive`' in c['body'] and '9→`ultra-all-inclusive`' in c['body']
+          head=os.environ['HEAD_SHA']; ok=False
+          for _ in range(36):
+              checks=json.loads(subprocess.check_output(['gh','api',f'repos/pyatkoff/poisk-turov-test/commits/{head}/check-runs']))['check_runs']
+              if any(x['name']=='guard' and x['conclusion']=='success' for x in checks): ok=True; break
+              if any(x['name']=='guard' and x['status']=='completed' and x['conclusion']!='success' for x in checks): break
+              time.sleep(5)
+          assert ok,'exact-head Security guard not green'
+          PY
+          cd retained && sha256sum -c transport.sha256
+      - name: Apply exactly 251 reviewed meal mappings once
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] && [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          mkdir -p evidence
+          key="$RUNNER_TEMP/stay-key"; known="$RUNNER_TEMP/stay-known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 -d > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$REMOTE_USER@$HOST"
+          path='.anytour-operations/local-stay-meal-map-tourvisor-2690-20260917-v1'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/local-stay-meal-map-tourvisor-2690-20260917-v1"'
+          scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz,manifest.json,manifest-build.json} "$remote:$path/"
+          set +e
+          ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          cd "$HOME/.anytour-operations/local-stay-meal-map-tourvisor-2690-20260917-v1"
+          sha256sum -c transport.sha256
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          r=json.load(open('reservation.json'))
+          assert r['operation']=='local-stay-meal-map-tourvisor-2690-20260917-v1' and r['attempt']==1 and r['noReplay'] is True
+          assert r['dataSource']=='b90390c1c2008e07a91b053107d68822a45dd213'
+          assert r['expectedRows']==r['expectedNewMappings']==r['manifestRows']==251 and r['roomWrites']==r['supplierCalls']==r['sourceWrites']==r['canonicalOverwrites']==0
+          assert r['mealCounts']=={'3':81,'4':12,'7':112,'9':46}
+          assert r['targets']=={'3':'breakfast','4':'half-board','7':'all-inclusive','9':'ultra-all-inclusive'}
+          assert hashlib.sha256(pathlib.Path('manifest.json').read_bytes()).hexdigest()==r['manifestSha256']
+          with tarfile.open('payload.tar.gz','r:gz') as t:
+              members=t.getmembers()
+              assert len(members)==len(r['files'])==4
+              assert {m.name for m in members}=={'payload/'+n for n in r['files']}
+              for m in members:
+                  assert m.isfile() and 0<m.size<250000 and '..' not in pathlib.PurePosixPath(m.name).parts
+                  data=t.extractfile(m).read()
+                  assert hashlib.sha256(data).hexdigest()==r['files'][m.name[8:]]
+                  p=pathlib.Path(m.name); p.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+                  with p.open('xb') as f: f.write(data)
+          PY
+          set +e
+          php -d display_errors=0 payload/scripts/catalog/anytour_stay_meal_map_tourvisor_onhost.php
+          status=$?
+          set -e
+          for f in journal.jsonl plan.json result.json terminal.json; do
+            if test -s "$f"; then sha256sum "$f" > "$f.sha256"; fi
+          done
+          exit "$status"
+          REMOTE
+          rc=$?
+          set -e
+          for f in journal.jsonl journal.jsonl.sha256 plan.json plan.json.sha256 result.json result.json.sha256 terminal.json terminal.json.sha256; do
+            scp "${opts[@]}" "$remote:$path/$f" "evidence/$f" >/dev/null 2>&1 || true
+          done
+          cp retained/{reservation.json,manifest.json,manifest-build.json} evidence/
+          printf '{"ssh_exit":%s,"noReplay":true}\n' "$rc" > evidence/transport-result.json
+          if test -s evidence/journal.jsonl.sha256; then (cd evidence && sha256sum -c journal.jsonl.sha256); fi
+          if test -s evidence/plan.json.sha256; then (cd evidence && sha256sum -c plan.json.sha256); fi
+          if test -s evidence/result.json.sha256; then (cd evidence && sha256sum -c result.json.sha256); fi
+          if test -s evidence/terminal.json.sha256; then (cd evidence && sha256sum -c terminal.json.sha256); fi
+          test "$rc" = 0
+          test -s evidence/journal.jsonl -a -s evidence/plan.json -a -s evidence/result.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('evidence/result.json'))
+          assert r['status']=='meal_mappings_committed_verified'
+          assert r['operation']=='local-stay-meal-map-tourvisor-2690-20260917-v1'
+          assert r['dataSource']=='b90390c1c2008e07a91b053107d68822a45dd213'
+          assert r['currentEvidenceResultSha256']=='766f6e7843af19730c1d8515898f072a46b797c33275af91755a70e2b3d2d5ae'
+          assert r['mappingCounts']=={'3':81,'4':12,'7':112,'9':46}
+          assert r['createdMappings']==251 and r['createdRooms']==0
+          assert r['unresolvedMealIds']==['2'] and r['roomsRemainUnresolved'] is True
+          assert r['supplierCalls']==r['sourceWrites']==r['canonicalOverwrites']==r['publicFileWrites']==0
+          assert r['importReceipt']['status']=='committed_verified'
+          assert r['importReceipt']['createdMappings']==251 and r['importReceipt']['verifiedMappings']==251
+          assert r['postCommitPlan']['createMappings']==0 and r['postCommitPlan']['unchangedMappings']==251
+          print(json.dumps({'status':r['status'],'createdMappings':r['createdMappings'],'mappingCounts':r['mappingCounts'],'meal2':'unresolved','rooms':'unresolved'},ensure_ascii=False))
+          PY
+      - name: Retain terminal reviewed meal mapping receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-stay-meal-map-result-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
