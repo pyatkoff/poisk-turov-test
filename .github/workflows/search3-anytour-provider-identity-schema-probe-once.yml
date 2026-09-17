@@ -1,0 +1,130 @@
+name: Search3 AnyTour provider identity schema probe once
+
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_provider_identity_schema_probe.php'
+      - '.github/workflows/search3-anytour-provider-identity-schema-probe-once.yml'
+  push:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_provider_identity_schema_probe.php'
+      - '.github/workflows/search3-anytour-provider-identity-schema-probe-once.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: search3-local-andromeda-identity-schema-probe
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BEFORE_SHA: 64b1ae457371905bc4a2159b360b5dff5fadfd3c
+
+jobs:
+  preflight:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Validate read-only probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_provider_identity_schema_probe.php
+          grep -Fq '64b1ae457371905bc4a2159b360b5dff5fadfd3c' .github/workflows/search3-anytour-provider-identity-schema-probe-once.yml
+          ! grep -Eq 'INSERT[[:space:]]|UPDATE[[:space:]]|DELETE[[:space:]]|REPLACE[[:space:]]|curl|wget|supplier' scripts/catalog/anytour_provider_identity_schema_probe.php
+
+  probe:
+    if: >-
+      github.event_name == 'push' &&
+      github.event.before == '64b1ae457371905bc4a2159b360b5dff5fadfd3c' &&
+      github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      REMOTE_TMP: /tmp/anytour-provider-identity-schema-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Pin exact release transition
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/release/search3-production-ready-v1'
+          test '${{ github.event.before }}' = "$EXPECTED_BEFORE_SHA"
+          [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
+          git rev-parse HEAD | grep -Fx "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^1)" = "$EXPECTED_BEFORE_SHA"
+
+      - name: Prepare ephemeral SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Execute temporary read-only schema probe
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir '$REMOTE_TMP'; test -s \"\$HOME/www/anytoour.ru/config.php\"; test -s \"\$HOME/www/anytoour.ru/data/db-v1.php\""
+          scp "${opts[@]}" scripts/catalog/anytour_provider_identity_schema_probe.php "$remote:$REMOTE_TMP/probe.php"
+          ssh "${opts[@]}" "$remote" "bash -s -- '$REMOTE_TMP' '$GITHUB_SHA'" <<'REMOTE' | tee provider-identity-schema-receipt.json
+          set -euo pipefail
+          tmp="$1"; release_sha="$2"; root="$HOME/www/anytoour.ru"
+          ANYTOUR_SITE_ROOT="$root" \
+          ANYTOUR_OPERATION_RELEASE_SHA="$release_sha" \
+            php "$tmp/probe.php" "--release-sha=$release_sha"
+          REMOTE
+          python3 - <<'PY'
+          import json
+          lines=[x.strip() for x in open('provider-identity-schema-receipt.json') if x.strip().startswith('{')]
+          if len(lines)!=1: raise SystemExit('schema receipt shape mismatch')
+          r=json.loads(lines[0])
+          if r.get('mode')!='read_only': raise SystemExit('probe mode mismatch')
+          for k in ('database_writes','mapping_writes','supplier_calls','site_file_writes'):
+              if r.get(k)!=0: raise SystemExit('probe ownership mismatch')
+          print('SCHEMA_RECEIPT=' + json.dumps(r,separators=(',',':'),sort_keys=True))
+          PY
+          {
+            echo '### AnyTour provider identity schema probe'
+            echo '```json'; cat provider-identity-schema-receipt.json; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove temporary remote probe
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ -s "$key" && -n "${HOST_VALUE:-}" && -n "${USER_VALUE:-}" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$REMOTE_TMP'" || true
+          fi
