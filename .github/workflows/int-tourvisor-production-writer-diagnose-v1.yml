@@ -1,0 +1,115 @@
+name: INT Tourvisor production writer diagnostic v1
+
+on:
+  push:
+    branches:
+      - 'ops/int-tourvisor-production-writer-diagnose-20260917-v1'
+    paths:
+      - '.github/workflows/int-tourvisor-production-writer-diagnose-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-tourvisor-production-writer-diagnose
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: f61eb807193ba7eb7d692661f56f62c6f051ca7c
+  OPERATION_ID: int-tourvisor-production-writer-diagnose-20260917-v1
+  SEALED_OPERATION: int-tourvisor-production-writer-20260917-v4
+
+jobs:
+  diagnose:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Bind exact read-only diagnostic source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-tourvisor-production-writer-diagnose-v1.yml'
+          test "${changed[1]}" = 'scripts/diagnostics/int_tourvisor_production_writer_diagnose_v1.php'
+          test "$(git ls-remote origin refs/heads/release/search3-production-ready-v1 | awk '{print $1}')" = "$BASE_SHA"
+          php -l scripts/diagnostics/int_tourvisor_production_writer_diagnose_v1.php >/dev/null
+          diag=scripts/diagnostics/int_tourvisor_production_writer_diagnose_v1.php
+          ! grep -Eq 'curl_|v2_data_tv_get\(|autosaveSearchResults\(|replaceCompleteSnapshot\(|\bINSERT\b|\bUPDATE\b|\bDELETE\b' "$diag"
+          grep -Fq 'SET TRANSACTION READ ONLY' "$diag"
+          grep -Fq 'producer_dry_run' "$diag"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "WRITER_DIAG_SOURCE_BOUND release=$BASE_SHA control=$(git rev-parse HEAD)"
+
+      - name: Prepare temporary exact diagnostic runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/writer-diag"
+          mkdir -p "$stage/app" "$stage/v2" "$stage/scripts/diagnostics"
+          cp -a app/integrations "$stage/app/integrations"
+          cp -a v2/data "$stage/v2/data"
+          cp scripts/diagnostics/int_tourvisor_production_writer_diagnose_v1.php "$stage/scripts/diagnostics/"
+          find "$stage/app/integrations" "$stage/v2/data" "$stage/scripts/diagnostics" -type f -name '*.php' -print0 | xargs -0 -r -n 1 -P 2 php -l >/dev/null
+          tar -C "$stage" -czf "$RUNNER_TEMP/writer-diag.tar.gz" .
+          sha256sum "$RUNNER_TEMP/writer-diag.tar.gz"
+
+      - name: Prepare SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Diagnose sealed v4 bytes and current DB read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          archive="/tmp/${OPERATION_ID}.${GITHUB_RUN_ID}.tar.gz"
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/writer-diag.tar.gz" "$remote:$archive"
+          ssh "${opts[@]}" "$remote" bash -s -- "$archive" "$SEALED_OPERATION" <<'REMOTE' > "$RUNNER_TEMP/result.json"
+          set -euo pipefail
+          archive="$1"; sealed="$2"
+          site="$HOME/www/anytoour.ru"
+          ledger="$HOME/.anytour-ops/$sealed"
+          test -s "$site/config.php"
+          test -s "$ledger/search-results.json"
+          test "$(cat "$ledger/state")" = 'failed_rolled_back_terminal_no_replay'
+          work="$(mktemp -d /tmp/int-tourvisor-writer-diag.XXXXXX)"
+          cleanup(){ rm -rf "$work"; rm -f "$archive"; }
+          trap cleanup EXIT
+          tar -C "$work" -xzf "$archive"
+          php -l "$work/scripts/diagnostics/int_tourvisor_production_writer_diagnose_v1.php" >/dev/null
+          php "$work/scripts/diagnostics/int_tourvisor_production_writer_diagnose_v1.php" "$site" "$ledger"
+          REMOTE
+          jq -e '.status == "completed_read_only" and .supplier_calls == 0 and .db_writes == 0 and .public_writes == 0 and (.routed_offer_count > 0)' "$RUNNER_TEMP/result.json" >/dev/null
+          jq . "$RUNNER_TEMP/result.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: int-tourvisor-production-writer-diagnose-${{ github.run_id }}
+          path: ${{ runner.temp }}/result.json
+          if-no-files-found: error
+          retention-days: 30
