@@ -1,0 +1,229 @@
+name: LOCAL one-shot AnyTour canonical backfill
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_catalog_backfill_apply.php'
+      - 'tests/anytour_catalog_backfill_apply_mysql_test.php'
+      - '.github/workflows/search3-anytour-catalog-backfill-onhost.yml'
+permissions:
+  contents: read
+concurrency:
+  group: anytour-canonical-catalog-operations
+  cancel-in-progress: false
+
+jobs:
+  checked-backfill:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/local-2690-catalog-backfill-onhost-20260917-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    outputs:
+      artifact_id: ${{ steps.retained.outputs.artifact-id }}
+      head: ${{ github.event.pull_request.head.sha }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Verify planner and exact-digest apply on disposable MySQL
+        env:
+          MYSQL_PWD: fixture-only-password
+          ANYTOUR_BACKFILL_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_backfill_fixture;charset=utf8mb4'
+          ANYTOUR_BACKFILL_APPLY_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_backfill_apply_fixture;charset=utf8mb4'
+          ANYTOUR_TEST_PASSWORD: fixture-only-password
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_catalog_backfill_apply.php
+          php -l tests/anytour_catalog_backfill_apply_mysql_test.php
+          mysql -h 127.0.0.1 -P 3306 -u root -e 'CREATE DATABASE anytour_backfill_fixture CHARACTER SET utf8mb4; CREATE DATABASE anytour_backfill_apply_fixture CHARACTER SET utf8mb4'
+          php tests/anytour_catalog_backfill_mysql_test.php
+          php tests/anytour_catalog_backfill_apply_mysql_test.php
+      - name: Retain exact source and reservation before private access
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,subprocess,tarfile
+          source='7e52b07e872479cc853661854ff5d082d5f3a67d'
+          op='local-catalog-backfill-onhost-20260917-v1'
+          files=[
+            'v2/data/anytour-canonical-catalog-v1.php',
+            'v2/data/anytour-catalog-backfill-v1.php',
+            'v2/data/hotel-presentation-read-v1.php',
+            'v2/data/hotel-details-v1.php',
+            'v2/data/db-v1.php',
+            'scripts/catalog/anytour_catalog_backfill_apply.php',
+          ]
+          for name in files[:-1]:
+              assert subprocess.check_output(['git','rev-parse','HEAD:'+name]).strip()==subprocess.check_output(['git','rev-parse',source+':'+name]).strip(), 'merged LOCAL data source changed'
+          work=pathlib.Path('retained'); work.mkdir()
+          payload={name:hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() for name in files}
+          with tarfile.open(work/'payload.tar.gz','w:gz') as t:
+              for name in files:
+                  data=pathlib.Path(name).read_bytes(); info=tarfile.TarInfo('payload/'+name)
+                  info.size=len(data); info.mode=0o600; info.mtime=0
+                  t.addfile(info,io.BytesIO(data))
+          reservation={
+            'operation':op,'dataSource':source,'executionSource':os.environ['EXACT_HEAD'],
+            'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'files':payload,
+            'maxProfiles':1000,'supplierCalls':0,'publicFileWrites':0,'noReplay':True,
+          }
+          (work/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          (work/'transport.sha256').write_text(''.join(hashlib.sha256((work/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in ['payload.tar.gz','reservation.json']))
+          PY
+      - id: retained
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-backfill-reservation-${{ github.run_id }}
+          path: retained/
+          if-no-files-found: error
+          retention-days: 30
+
+  on-host-backfill:
+    needs: checked-backfill
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.checked-backfill.outputs.artifact_id }}
+          path: retained
+          merge-multiple: true
+      - name: Recheck exact head, fresh LOCAL claim and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.checked-backfill.outputs.head }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5710058629 > claim.json
+          python3 - <<'PY'
+          import datetime,json,os,subprocess,time
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert 'local-catalog-backfill-onhost-20260917-v1' in c['body']
+          assert 'ops/local-2690-catalog-backfill-onhost-20260917-v1' in c['body']
+          age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+          assert 0<=age.total_seconds()<5400,'LOCAL live claim expired'
+          head=os.environ['HEAD_SHA']
+          ok=False
+          for _ in range(36):
+              raw=subprocess.check_output(['gh','api',f'repos/pyatkoff/poisk-turov-test/commits/{head}/check-runs'])
+              checks=json.loads(raw)['check_runs']
+              if any(x['name']=='guard' and x['conclusion']=='success' for x in checks): ok=True; break
+              if any(x['name']=='guard' and x['status']=='completed' and x['conclusion']!='success' for x in checks): break
+              time.sleep(5)
+          assert ok,'exact-head Security guard not green'
+          PY
+          cd retained && sha256sum -c transport.sha256
+      - name: Seed exactly one reviewed next-missing canonical cohort
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] && [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          mkdir -p evidence
+          key="$RUNNER_TEMP/catalog-key"; known="$RUNNER_TEMP/catalog-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 -d > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$REMOTE_USER@$HOST"
+          path='.anytour-operations/local-catalog-backfill-onhost-20260917-v1'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/local-catalog-backfill-onhost-20260917-v1"'
+          scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz} "$remote:$path/"
+          set +e
+          ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          cd "$HOME/.anytour-operations/local-catalog-backfill-onhost-20260917-v1"
+          sha256sum -c transport.sha256
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          r=json.load(open('reservation.json'))
+          assert r['operation']=='local-catalog-backfill-onhost-20260917-v1' and r['attempt']==1 and r['noReplay'] is True
+          assert r['dataSource']=='7e52b07e872479cc853661854ff5d082d5f3a67d' and r['maxProfiles']==1000
+          with tarfile.open('payload.tar.gz','r:gz') as t:
+              members=t.getmembers()
+              assert len(members)==len(r['files'])==6
+              assert {m.name for m in members}=={'payload/'+n for n in r['files']}
+              for m in members:
+                  assert m.isfile() and 0<m.size<150000 and '..' not in pathlib.PurePosixPath(m.name).parts
+                  data=t.extractfile(m).read(); assert hashlib.sha256(data).hexdigest()==r['files'][m.name[8:]]
+                  p=pathlib.Path(m.name); p.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+                  with p.open('xb') as f: f.write(data)
+          PY
+          set +e
+          php -d display_errors=0 payload/scripts/catalog/anytour_catalog_backfill_apply.php
+          status=$?
+          set -e
+          if test -s journal.jsonl; then sha256sum journal.jsonl > journal.sha256; fi
+          test "$status" = 0
+          sha256sum result.json > result.sha256
+          REMOTE
+          rc=$?
+          scp "${opts[@]}" "$remote:$path/journal.jsonl" evidence/journal.jsonl >/dev/null 2>&1; journal_copy=$?
+          scp "${opts[@]}" "$remote:$path/journal.sha256" evidence/journal.sha256 >/dev/null 2>&1; journal_hash_copy=$?
+          scp "${opts[@]}" "$remote:$path/result.json" evidence/result.json >/dev/null 2>&1; copied=$?
+          scp "${opts[@]}" "$remote:$path/result.sha256" evidence/result.sha256 >/dev/null 2>&1; hashed=$?
+          set -e
+          cp retained/reservation.json evidence/reservation.json
+          printf '{"ssh_exit":%s,"result_copy_exit":%s,"hash_copy_exit":%s,"journal_copy_exit":%s,"journal_hash_copy_exit":%s,"noReplay":true}\n' "$rc" "$copied" "$hashed" "$journal_copy" "$journal_hash_copy" > evidence/transport-result.json
+          test "$journal_copy" = 0 && test "$journal_hash_copy" = 0
+          (cd evidence && sha256sum -c journal.sha256)
+          test "$rc" = 0 && test "$copied" = 0 && test "$hashed" = 0
+          (cd evidence && sha256sum -c result.sha256)
+          python3 - <<'PY'
+          import json
+          r=json.load(open('evidence/result.json'))
+          assert r['status']=='backfill_seeded_verified' and 1<=r['selected']<=1000
+          assert r['operation']=='local-catalog-backfill-onhost-20260917-v1'
+          assert r['dataSource']=='7e52b07e872479cc853661854ff5d082d5f3a67d'
+          assert r['after']['hotels']==r['before']['hotels']+r['selected']
+          assert r['after']['sources']==r['before']['sources']+r['selected']
+          assert r['profilesWithDescription']==r['selected'] and r['profilesWithImages']==r['selected']
+          assert r['legacyWrites']==0 and r['supplierCalls']==0 and r['publicFileWrites']==0 and r['noReplay'] is True
+          print(json.dumps({'status':r['status'],'selected':r['selected'],'before':r['before'],'after':r['after'],'remainingAfterSelected':r['remainingAfterSelected']},ensure_ascii=False))
+          PY
+      - name: Retain terminal result or exact stopped state
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-backfill-result-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
