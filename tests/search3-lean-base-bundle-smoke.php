@@ -12,7 +12,7 @@ $search3Js = v2_bundle_files('js', 'search3');
 $fullCss = v2_bundle_files('css', 'full');
 $search3Css = v2_bundle_files('css', 'search3');
 
-$excludedJs = ['header-current-site.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'hotel-actions-v3.js', 'room-details-v3.js', 'selected-tour-return-v1.js', 'selected-tour-description-v1.js', 'checkout-experience-v1.js', 'price-confidence-v1.js', 'hotel-autocomplete-v1.js', 'search-filters-ux-v1.js', 'search-params-filter-rail-v1.js', 'results-depth-v1.js', 'results-local-filters-v1.js', 'results-filter-autorefresh-v1.js', 'mobile-results-filters-v1.js', 'primary-meal-ux-v1.js', 'search-progress-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'mobile-search-summary-v1.js', 'ds2-results-filters.js', 'search-redesign-v2.js', 'accessibility.js'];
+$excludedJs = ['header-current-site.js', 'search3-room-normalizer-v1.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'hotel-actions-v3.js', 'room-details-v3.js', 'selected-tour-return-v1.js', 'selected-tour-description-v1.js', 'checkout-experience-v1.js', 'price-confidence-v1.js', 'hotel-autocomplete-v1.js', 'search-filters-ux-v1.js', 'search-params-filter-rail-v1.js', 'results-depth-v1.js', 'results-local-filters-v1.js', 'results-filter-autorefresh-v1.js', 'mobile-results-filters-v1.js', 'primary-meal-ux-v1.js', 'search-progress-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'mobile-search-summary-v1.js', 'ds2-results-filters.js', 'search-redesign-v2.js', 'accessibility.js'];
 foreach ($excludedJs as $excluded) {
     if (!in_array($excluded, $fullJs, true)) lean_bundle_fail('legacy owner missing: ' . $excluded);
     if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
@@ -25,12 +25,11 @@ foreach ($search3OnlyJs as $scoped) {
     if (count(array_keys($search3Js, $scoped, true)) !== 1) lean_bundle_fail('Search3-only owner is not exact: ' . $scoped);
 }
 if (array_values(array_diff($search3Js, $search3OnlyJs)) !== array_values(array_diff($fullJs, $excludedJs))) lean_bundle_fail('unexpected JavaScript scope owners or order');
-$roomIndex = array_search('search3-room-normalizer-v1.js', $search3Js, true);
 $profileIndex = array_search('search3-canonical-profiles-v1.js', $search3Js, true);
 $rendererIndex = array_search('results-renderer-v5.js', $search3Js, true);
 $continuityIndex = array_search('search3-results-continuity-v1.js', $search3Js, true);
 $presentationIndex = array_search('search3-hotel-details-presentation-v1.js', $search3Js, true);
-if ($roomIndex === false || $profileIndex === false || $rendererIndex === false || $continuityIndex === false || $presentationIndex === false || $roomIndex >= $profileIndex || $profileIndex + 1 !== $rendererIndex || $rendererIndex + 1 !== $continuityIndex || $continuityIndex + 1 !== $presentationIndex) lean_bundle_fail('Search3 renderer dependencies are out of order');
+if ($profileIndex === false || $rendererIndex === false || $continuityIndex === false || $presentationIndex === false || $profileIndex + 1 !== $rendererIndex || $rendererIndex + 1 !== $continuityIndex || $continuityIndex + 1 !== $presentationIndex) lean_bundle_fail('Search3 renderer dependencies are out of order');
 $lifecycleIndex = array_search('search-lifecycle-v6.js', $search3Js, true);
 $dbIndex = array_search('search3-local-db-provider-v1.js', $search3Js, true);
 $andromedaShimIndex = array_search('andromeda-local-endpoint-v1.js', $search3Js, true);
