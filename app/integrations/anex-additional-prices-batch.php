@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/anex-anytour-offer-autosave.php';
+
 /**
  * Build a server-only AdditionalPricesDaily batch plan for visible retained direct-ANEX offers.
  *
@@ -164,6 +166,11 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
             'retry_reason' => $results[$digest]['retry_reason'],
         ];
     }
+
+    // INT best-effort side effect only. It sees exactly the terminal APD state above;
+    // any persistence failure is contained inside the runtime adapter and never changes
+    // the supplier response returned by this executor.
+    anytour_anex_anytour_offer_autosave_runtime($plan, $state, $results);
 
     return [
         'requested_offers' => count($publicOffers),
