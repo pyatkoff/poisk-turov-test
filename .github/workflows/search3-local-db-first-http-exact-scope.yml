@@ -1,0 +1,134 @@
+name: Search3 LOCAL DB-first exact-scope HTTP acceptance
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - '.github/workflows/search3-local-db-first-http-exact-scope.yml'
+permissions:
+  contents: read
+concurrency:
+  group: local-db-first-http-exact-scope-2693-20260917-v1
+  cancel-in-progress: false
+jobs:
+  exact-scope-http:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/local-2693-db-first-http-exact-scope-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Recheck exact claim and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5712668021 > claim-local.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5712669550 > claim-coord.json
+          python3 - <<'PY'
+          import datetime,json
+          for name in ('claim-local.json','claim-coord.json'):
+              c=json.load(open(name))
+              assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+              assert 'local-db-first-http-exact-scope-2693-20260917-v1' in c['body']
+              age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+              assert 0 <= age.total_seconds() < 5400, 'claim expired'
+          PY
+          ok=0
+          for _ in $(seq 1 30); do
+            gh api repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs > checks.json
+            if python3 - <<'PY'
+          import json,sys
+          checks=json.load(open('checks.json'))['check_runs']
+          sys.exit(0 if any(x['name']=='guard' and x['conclusion']=='success' for x in checks) else 1)
+          PY
+            then ok=1; break; fi
+            sleep 10
+          done
+          test "$ok" = 1
+
+      - name: Verify exact stored scope through local-candidate HTTP
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          python3 - <<'PY'
+          import hashlib,html,json,re,urllib.parse,urllib.request
+          base='https://anytoour.ru/_preview/search3-local-candidate/'
+          owner_url=base+'poisk-turov/?from=1&country=4&dateFrom=2026-10-12&dateTo=2026-10-12&daysFrom=7&daysTill=7&count_people=2&child_count=0'
+          page=urllib.request.urlopen(owner_url,timeout=30)
+          body=page.read().decode('utf-8','replace')
+          assert page.status==200
+          assert re.search(r'<meta\s+name=["\']robots["\'][^>]*noindex',body,re.I)
+          scripts=[html.unescape(x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',body,re.I)]
+          raw=next(x for x in scripts if 'bundle-v1.php' in x)
+          bundle_url=urllib.parse.urljoin(owner_url,raw)
+          assert urllib.parse.parse_qs(urllib.parse.urlparse(bundle_url).query).get('scope')==['search3']
+
+          params={
+            'departureId':1,'countryId':4,'dateFrom':'2026-10-12','dateTo':'2026-10-12',
+            'nightsFrom':7,'nightsTo':7,'adults':2,'childs':[],
+            'meal':'','hotelCategory':'','hotelRating':'','hotelTypes':[],'hotelIds':[],'hotelServices':[],
+            'arrivalId':None,'regionIds':[],'subregionIds':[],'operatorIds':[],
+            'priceFrom':None,'priceTo':None,'currency':'RUB','onlyCharter':False,'onlyDirect':False,
+          }
+          normalized={
+            'scopeVersion':1,'departureId':'1','countryId':'4','dateFrom':'2026-10-12','dateTo':'2026-10-12',
+            'nightsFrom':7,'nightsTo':7,'adults':2,'childs':[],
+            'meal':'','hotelCategory':'','hotelRating':'','hotelTypes':[],'hotelIds':[],'hotelServices':[],
+            'arrivalId':'','regionIds':[],'subregionIds':[],'operatorIds':[],
+            'priceFrom':'','priceTo':'','currency':'RUB','onlyCharter':False,'onlyDirect':False,
+          }
+          expected_digest=hashlib.sha256(json.dumps(normalized,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+          req=urllib.request.Request(
+            base+'data/search3-local-results-read-v1.php',
+            data=json.dumps({'params':params},ensure_ascii=False,separators=(',',':')).encode(),
+            method='POST',headers={'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'AnyTourSearch3'})
+          response=urllib.request.urlopen(req,timeout=30)
+          payload=json.loads(response.read())
+          assert response.status==200 and payload.get('ok') is True
+          result=payload['data']
+          assert result['source']=='anytour-db-first-results-v1'
+          assert result['offerStoreSchemaVersion']==2 and result['scopeVersion']==1
+          assert result['scope']==normalized and result['scopeDigest']==expected_digest
+          assert result['selectionAuthority'] is False
+          assert result['hotelCount']>0 and result['offerCount']>0 and result['storedOfferCount']>=result['offerCount']
+          assert result['providerOfferCounts'].get('tourvisor',0)>0
+          assert sum(result['providerOfferCounts'].values())==result['offerCount']
+          assert result['withheldOfferCount']==0
+          for h in result['hotels']:
+              assert h['offers'] and int(h['anytourHotelId'])==int(h['hotel']['id'])
+              for o in h['offers']:
+                  assert o['listing']['selection_state']=='refresh_required'
+                  assert o['listing']['booking_enabled'] is False
+          safe={
+            'status':'local_candidate_db_first_exact_scope_ok','http':response.status,
+            'scopeDigest':result['scopeDigest'],'hotelCount':result['hotelCount'],'offerCount':result['offerCount'],
+            'storedOfferCount':result['storedOfferCount'],'withheldOfferCount':result['withheldOfferCount'],
+            'providerOfferCounts':result['providerOfferCounts'],'selectionAuthority':False,
+            'supplierCalls':0,'databaseWrites':0,'leadCalls':0,
+          }
+          open('evidence/http-result.json','w').write(json.dumps(safe,ensure_ascii=False,sort_keys=True)+'\n')
+          print(json.dumps(safe,ensure_ascii=False,sort_keys=True))
+          PY
+          sha256sum evidence/http-result.json > evidence/http-result.sha256
+
+      - name: Retain exact-scope HTTP evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: local-db-first-http-exact-scope-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
