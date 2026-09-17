@@ -18,11 +18,15 @@ final class AnyTourOfferStoreReadV2
         if($parts[0]==='0'&&$fraction==='')throw new RuntimeException('ANYTOUR_OFFER_PRICE_INTEGRITY');
         return $parts[0].($fraction===''?'':'.'.$fraction);
     }
-    private static function iso(string $value): string
+    private static function time(string $value): DateTimeImmutable
     {
         $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$value,new DateTimeZone('UTC'));
-        if(!$date)throw new RuntimeException('ANYTOUR_OFFER_TIME_INTEGRITY');
-        return $date->format('Y-m-d\TH:i:s\Z');
+        if(!$date||$date->format('Y-m-d H:i:s')!==$value)throw new RuntimeException('ANYTOUR_OFFER_TIME_INTEGRITY');
+        return $date;
+    }
+    private static function iso(string $value): string
+    {
+        return self::time($value)->format('Y-m-d\TH:i:s\Z');
     }
     private static function listing(array $payload,string $provider,string $price,string $currency): void
     {
@@ -56,9 +60,12 @@ final class AnyTourOfferStoreReadV2
             if(!is_array($payload))throw new RuntimeException('ANYTOUR_OFFER_PAYLOAD_INTEGRITY');
             $provider=(string)$row['provider'];$price=self::decimal((string)$row['display_price']);$currency=(string)$row['currency'];
             self::listing($payload,$provider,$price,$currency);
+            $lastSeen=self::time((string)$row['last_seen_at']);$expires=self::time((string)$row['expires_at']);
+            $visibilitySeconds=$expires->getTimestamp()-$lastSeen->getTimestamp();
+            if($visibilitySeconds<=0||$visibilitySeconds>21600)throw new RuntimeException('ANYTOUR_OFFER_TIME_INTEGRITY');
             $items[]=['anytourHotelId'=>(int)$row['anytour_hotel_id'],'legacyHotelId'=>(int)$row['legacy_hotel_id'],'provider'=>$provider,
                 'price'=>$price,'currency'=>$currency,'observedAt'=>self::iso((string)$row['observed_at']),
-                'lastSeenAt'=>self::iso((string)$row['last_seen_at']),'expiresAt'=>self::iso((string)$row['expires_at']),'offer'=>$payload];
+                'lastSeenAt'=>$lastSeen->format('Y-m-d\TH:i:s\Z'),'expiresAt'=>$expires->format('Y-m-d\TH:i:s\Z'),'offer'=>$payload];
         }
         return['source'=>'anytour-offer-store-v2','scopeDigest'=>$scope,'items'=>$items];
     }
