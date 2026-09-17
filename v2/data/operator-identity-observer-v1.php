@@ -123,6 +123,7 @@ function v2_operator_identity_extract(array $hotels, array $context): array
             $row =& $byOperator[$key];
             if ($row['operator_name'] === null && $operatorName !== null) $row['operator_name'] = $operatorName;
             if ($row['tour_id'] === null && $tourId !== '') $row['tour_id'] = $tourId;
+            $existingHasNativeLink = $row['operator_link'] !== null && $row['native_id_value'] !== null;
             if ($native !== null) {
                 if ($row['native_id_value'] === null) {
                     $row['native_id_type'] = $native['type'];
@@ -131,7 +132,6 @@ function v2_operator_identity_extract(array $hotels, array $context): array
                     $row['native_id_conflict'] = 1;
                 }
             }
-            $existingHasNativeLink = $row['operator_link'] !== null && $row['native_id_value'] !== null;
             if ($link !== null && ($row['operator_link'] === null || ($native !== null && !$existingHasNativeLink))) {
                 $row['operator_link'] = $link['url'];
                 $row['operator_link_host'] = $link['host'];
