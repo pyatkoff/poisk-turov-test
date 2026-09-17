@@ -1,0 +1,60 @@
+name: INT audit latest direct ANEX canonical cohort
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/direct_anex_latest_cohort_canonical_audit.php'
+      - '.github/workflows/int-anex-latest-cohort-canonical-audit.yml'
+permissions:
+  contents: read
+concurrency:
+  group: direct-anex-latest-cohort-canonical-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/int-anex-latest-cohort-canonical-audit-20260918'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate diagnostic locally
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/direct_anex_latest_cohort_canonical_audit.php
+          ! grep -Eiq 'curl_|fsockopen|stream_socket_client|INSERT INTO|UPDATE |DELETE FROM|REPLACE INTO' scripts/diagnostics/direct_anex_latest_cohort_canonical_audit.php
+      - name: Run one read-only server audit
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]
+          [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          install -d -m 700 "$RUNNER_TEMP/audit"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/audit/key"; else printf '%s' "$SSH_KEY" | base64 -d > "$RUNNER_TEMP/audit/key"; fi
+          chmod 600 "$RUNNER_TEMP/audit/key"; ssh-keygen -y -f "$RUNNER_TEMP/audit/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/audit/known_hosts" 2>/dev/null
+          opts=(-T -i "$RUNNER_TEMP/audit/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/audit/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o LogLevel=ERROR)
+          ssh "${opts[@]}" "$REMOTE_USER@$HOST" php < scripts/diagnostics/direct_anex_latest_cohort_canonical_audit.php | tee "$RUNNER_TEMP/audit/result.json"
+          python3 - <<'PY'
+          import json,os
+          v=json.load(open(os.environ['RUNNER_TEMP']+'/audit/result.json'))
+          assert v['supplier_calls']==0 and v['db_writes']==0 and v['booking_calls']==0 and v['lead_calls']==0
+          assert v['cohort_unique_hotels']>0
+          print(json.dumps(v,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-anex-latest-cohort-canonical-audit-${{ github.run_id }}
+          path: ${{ runner.temp }}/audit/result.json
+          if-no-files-found: error
+          retention-days: 14
