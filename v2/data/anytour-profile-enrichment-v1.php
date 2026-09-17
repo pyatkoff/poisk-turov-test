@@ -273,7 +273,7 @@ final class AnyTourProfileEnrichmentV1
                        CAST(s.external_key AS CHAR) AS local_id,s.acquired_via AS alias_acquired_via,
                        s.source_json AS alias_source_json,s.source_sha256 AS alias_source_sha256,
                        COALESCE(d.user_search_count,0) AS user_search_count,
-                       COALESCE(d.observation_count,0) AS observation_count,d.last_seen_at
+                       COALESCE(d.observation_count,0) AS observation_count,d.last_seen_at AS demand_last_seen_at
                 FROM anytour_hotels h
                 JOIN anytour_hotel_sources s ON s.anytour_hotel_id=h.id AND s.namespace='anytour_local_id'
                 LEFT JOIN (
@@ -283,7 +283,7 @@ final class AnyTourProfileEnrichmentV1
                 ) d ON d.hotel_id=CAST(s.external_key AS UNSIGNED)
                 WHERE h.is_active=1
                 ORDER BY user_search_count DESC,observation_count DESC,
-                         (last_seen_at IS NULL) ASC,last_seen_at DESC,h.id ASC";
+                         (d.last_seen_at IS NULL) ASC,d.last_seen_at DESC,h.id ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['through'=>$through]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -340,7 +340,7 @@ final class AnyTourProfileEnrichmentV1
                     'demand'=>[
                         'userSearches'=>(int)$row['user_search_count'],
                         'observations'=>(int)$row['observation_count'],
-                        'lastSeenAt'=>$row['last_seen_at'] === null ? null : (string)$row['last_seen_at'],
+                        'lastSeenAt'=>$row['demand_last_seen_at'] === null ? null : (string)$row['demand_last_seen_at'],
                     ],
                 ];
                 if (count($selected) >= $limit) break;
