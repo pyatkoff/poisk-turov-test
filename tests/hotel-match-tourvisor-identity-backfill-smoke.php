@@ -20,6 +20,13 @@ $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' --self-tes
 exec($cmd, $output, $status);
 check_backfill($status === 0, 'backfill self-test failed: ' . implode("\n", $output));
 check_backfill(str_contains(implode("\n", $output), 'PASS'), 'backfill PASS marker');
+$backfillSource = (string)file_get_contents($script);
+$beginAt = strpos($backfillSource, "\$db->beginTransaction();");
+$expectedAt = strpos($backfillSource, 'match_tv_identity_backfill_expected_sql()', $beginAt === false ? 0 : $beginAt);
+$insertAt = strpos($backfillSource, 'match_tv_identity_backfill_sql()', $expectedAt === false ? 0 : $expectedAt);
+check_backfill($beginAt !== false && $expectedAt !== false && $insertAt !== false && $beginAt < $expectedAt && $expectedAt < $insertAt, 'expected pair count is sealed inside transaction before insert');
+check_backfill(str_contains($backfillSource, "INDEX_NAME='uq_operator_identity_hotel_operator'"), 'unique pair schema guard');
+check_backfill(str_contains($backfillSource, 'post_commit_duplicate_pairs'), 'duplicate post-commit guard');
 
 $observer = (string)file_get_contents($root . '/v2/data/operator-identity-observer-v1.php');
 check_backfill(str_contains($observer, "'tourvisor|' . \$hotelId . '|' . \$operatorId"), 'stable link-independent fingerprint');

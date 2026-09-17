@@ -44,6 +44,11 @@ ON DUPLICATE KEY UPDATE
 SQL;
 }
 
+function match_tv_identity_backfill_expected_sql(): string
+{
+    return "SELECT COUNT(*) FROM (SELECT p.hotel_id,p.operator_id FROM tour_price_observations p JOIN catalog_hotels c ON c.id=p.hotel_id WHERE p.operator_id IS NOT NULL AND p.operator_id>0 GROUP BY p.hotel_id,p.operator_id) x";
+}
+
 function match_tv_identity_backfill_self_test(): void
 {
     $a = match_tv_identity_backfill_fingerprint(21477, 25);
@@ -54,6 +59,7 @@ function match_tv_identity_backfill_self_test(): void
         if (!str_contains($sql, $needle)) throw new RuntimeException('sql_contract_' . $needle);
     }
     if (preg_match('/https?:\/\//i', $sql)) throw new RuntimeException('network_not_allowed');
+    if (!str_contains(match_tv_identity_backfill_expected_sql(), 'GROUP BY p.hotel_id,p.operator_id')) throw new RuntimeException('expected_pair_contract');
     echo "hotel_match_tourvisor_identity_backfill_v1 self-test: PASS\n";
 }
 
@@ -86,13 +92,15 @@ function match_tv_identity_backfill_main(): void
     $required = ['fingerprint','first_seen_at','last_seen_at','observation_count','hotel_id','operator_id','operator_link','native_id_type','native_id_value','native_id_conflict'];
     $columns = $db->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tour_operator_identity_observations'")->fetchAll(PDO::FETCH_COLUMN);
     foreach ($required as $column) if (!in_array($column, $columns, true)) throw new RuntimeException('schema_v2_missing_' . $column);
+    $uniqueIndex = (int)$db->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tour_operator_identity_observations' AND INDEX_NAME='uq_operator_identity_hotel_operator' AND NON_UNIQUE=0")->fetchColumn();
+    if ($uniqueIndex < 1) throw new RuntimeException('schema_v2_unique_pair_missing');
 
-    $expected = (int)$db->query("SELECT COUNT(*) FROM (SELECT p.hotel_id,p.operator_id FROM tour_price_observations p JOIN catalog_hotels c ON c.id=p.hotel_id WHERE p.operator_id IS NOT NULL AND p.operator_id>0 GROUP BY p.hotel_id,p.operator_id) x")->fetchColumn();
     $before = (int)$db->query("SELECT COUNT(*) FROM tour_operator_identity_observations")->fetchColumn();
-
     $db->exec('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
     $db->beginTransaction();
     try {
+        // Seal the expected pair set in the same snapshot used by INSERT...SELECT.
+        $expected = (int)$db->query(match_tv_identity_backfill_expected_sql())->fetchColumn();
         $affected = $db->exec(match_tv_identity_backfill_sql());
         $db->commit();
     } catch (Throwable $e) {
@@ -102,14 +110,17 @@ function match_tv_identity_backfill_main(): void
 
     $after = (int)$db->query("SELECT COUNT(*) FROM tour_operator_identity_observations")->fetchColumn();
     $covered = (int)$db->query("SELECT COUNT(*) FROM (SELECT p.hotel_id,p.operator_id FROM tour_price_observations p JOIN catalog_hotels c ON c.id=p.hotel_id JOIN tour_operator_identity_observations i ON i.fingerprint=SHA2(CONCAT('tourvisor|',p.hotel_id,'|',p.operator_id),256) WHERE p.operator_id IS NOT NULL AND p.operator_id>0 GROUP BY p.hotel_id,p.operator_id) x")->fetchColumn();
+    $duplicates = (int)$db->query("SELECT COUNT(*) FROM (SELECT hotel_id,operator_id FROM tour_operator_identity_observations GROUP BY hotel_id,operator_id HAVING COUNT(*)>1) x")->fetchColumn();
     $linkless = (int)$db->query("SELECT COUNT(*) FROM tour_operator_identity_observations WHERE operator_link IS NULL")->fetchColumn();
     $native = (int)$db->query("SELECT COUNT(*) FROM tour_operator_identity_observations WHERE native_id_value IS NOT NULL")->fetchColumn();
-    if ($covered !== $expected) throw new RuntimeException('post_commit_coverage_mismatch');
+    if ($covered < $expected) throw new RuntimeException('post_commit_coverage_mismatch');
+    if ($duplicates !== 0) throw new RuntimeException('post_commit_duplicate_pairs');
 
     $result = [
         'operation_id'=>MATCH_TV_IDENTITY_BACKFILL_OP,'source_sha'=>$sourceSha,'state'=>'completed',
         'expected_hotel_operator_pairs'=>$expected,'rows_before'=>$before,'rows_after'=>$after,
-        'sql_affected_rows'=>$affected,'covered_pairs_readback'=>$covered,'linkless_rows'=>$linkless,'native_enriched_rows'=>$native,
+        'sql_affected_rows'=>$affected,'covered_pairs_readback'=>$covered,'duplicate_pair_groups'=>$duplicates,
+        'linkless_rows'=>$linkless,'native_enriched_rows'=>$native,
         'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0,'mapping_writes'=>0,'read_at_utc'=>gmdate('c'),
     ];
     $hash = match_tv_identity_backfill_write_json($dir . '/result.json', $result);
