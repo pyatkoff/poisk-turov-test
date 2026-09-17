@@ -28,7 +28,7 @@ class V6Control(unittest.TestCase):
         t=WORKFLOW.read_text()
         self.assertIn(gate.COMMAND,t);self.assertIn(SOURCE,t);self.assertIn(FIX,t)
         for run in RUN_IDS:self.assertIn(run,t)
-        self.assertIn('pulls/2835',t);self.assertIn('full-pagination',t)
+        self.assertIn("FIX_PR: '2835'",t);self.assertIn("pr=get('/pulls/'+prn)",t);self.assertIn('full-pagination',t)
         self.assertIn('duplicate_or_stale_owner_command',t)
         self.assertNotIn('workflow_dispatch:',t)
         self.assertNotIn('/publish-anex-search3-preview-2530-v5',t)
