@@ -1,0 +1,279 @@
+name: INT direct ANEX DB population canary v2
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/direct_anex_population_canary_v2.php'
+      - '.github/workflows/int-anex-population-canary-v2.yml'
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: direct-anex-population-canary-2506-v2
+  cancel-in-progress: false
+
+env:
+  SOURCE_SHA: d8a11376535f6ea44ba0e83694a449fa54f84ab1
+  OPERATION_ID: direct-anex-population-canary-2506-20260918-v2
+
+jobs:
+  canary:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/int-anex-population-canary-20260918-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: control
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify control, owner claim and exact Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          php -l control/scripts/diagnostics/direct_anex_population_canary_v2.php
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5722685861 > claim.json
+          python3 - <<'PY'
+          import datetime,json,os,subprocess
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert 'direct-anex-population-canary-2506-20260918-v2' in c['body'] and os.environ['SOURCE_SHA'] in c['body']
+          age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+          assert 0<=age.total_seconds()<7200,'claim expired'
+          jobs=json.loads(subprocess.check_output(
+              ['gh','api','repos/pyatkoff/poisk-turov-test/actions/runs/35287088336/jobs'],text=True))['jobs']
+          pub=[j for j in jobs if j['name']=='publish']
+          assert len(pub)==1 and pub[0]['conclusion']=='success'
+          install=json.loads(subprocess.check_output(
+              ['gh','api','repos/pyatkoff/poisk-turov-test/actions/runs/35286794911'],text=True))
+          assert install['conclusion']=='success'
+          PY
+          ok=0
+          for i in $(seq 1 36); do
+            gh api repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs > checks.json
+            if python3 - <<'PY'
+          import json
+          rows=json.load(open('checks.json'))['check_runs']
+          raise SystemExit(0 if any(x['name']=='guard' and x['conclusion']=='success' for x in rows) else 1)
+          PY
+            then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = 1
+
+      - name: Prepare strict SSH transport
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]
+          install -d -m 700 "$RUNNER_TEMP/canary-ssh" "$RUNNER_TEMP/canary-artifact"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/canary-ssh/key"
+          else
+            printf '%s' "$SSH_KEY" | base64 -d > "$RUNNER_TEMP/canary-ssh/key"
+          fi
+          chmod 600 "$RUNNER_TEMP/canary-ssh/key"
+          ssh-keygen -y -f "$RUNNER_TEMP/canary-ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/canary-ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/canary-ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+
+      - name: Combined preflight, DB baseline and reservation in one SSH session
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          key="$RUNNER_TEMP/canary-ssh/key"; known="$RUNNER_TEMP/canary-ssh/known_hosts"; remote="$REMOTE_USER@$HOST"
+          opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o LogLevel=ERROR)
+          ssh "${opts[@]}" "$remote" "CANARY_PHASE=pre CONTROL_SHA='$HEAD_SHA' RUN_ID='$GITHUB_RUN_ID' php"             < control/scripts/diagnostics/direct_anex_population_canary_v2.php             > "$RUNNER_TEMP/canary-artifact/pre.json"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          p=os.environ['RUNNER_TEMP']+'/canary-artifact/pre.json'
+          v=json.load(open(p))
+          assert v['phase']=='pre' and v['reservation_created'] is True
+          assert v['operation']==os.environ['OPERATION_ID'] and v['source_sha']==os.environ['SOURCE_SHA']
+          expected={
+            'api-anex-search3-preview.php':hashlib.sha256((Path('source')/'v2/api-anex-search3-preview.php').read_bytes()).hexdigest(),
+            'app/integrations/anex-program-observation-runtime.php':hashlib.sha256((Path('source')/'app/integrations/anex-program-observation-runtime.php').read_bytes()).hexdigest(),
+            'app/integrations/anex-apd-cache-runtime.php':hashlib.sha256((Path('source')/'app/integrations/anex-apd-cache-runtime.php').read_bytes()).hexdigest(),
+            'app/integrations/anex-additional-prices-batch.php':hashlib.sha256((Path('source')/'app/integrations/anex-additional-prices-batch.php').read_bytes()).hexdigest(),
+          }
+          assert v['runtime_hashes']==expected,(v['runtime_hashes'],expected)
+          s=v['scope']; assert s['departure_id']>0 and s['country_id']>0
+          print(json.dumps({'scope':s,'before':v['before']},ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Execute the single bounded supplier scenario
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess
+          pre=json.load(open(os.environ['RUNNER_TEMP']+'/canary-artifact/pre.json'))
+          scope=pre['scope']
+          out=os.environ['RUNNER_TEMP']+'/canary-artifact/http-summary.json'
+          base='https://anytoour.ru/_preview/search3-anex-candidate/api-anex-search3-preview.php'
+          jar=os.environ['RUNNER_TEMP']+'/anex-canary-v2-cookie.txt'
+          generation=25061822
+          summary={
+            'status':'unknown','phase':'before_search','logical_supplier_reservations':0,
+            'search_hotels':0,'group_candidates':0,'expand_calls':0,'charter_candidates':0,
+            'batch_items':0,'apd_complete_offers':0,'final_price_ready_offers':0,
+            'retryable_offers':0,'booking_calls':0,'lead_calls':0
+          }
+          def post(payload,phase):
+              summary['phase']=phase
+              summary['logical_supplier_reservations']+=1
+              p=subprocess.run([
+                'curl','-sS','--max-time','90','-c',jar,'-b',jar,
+                '-H','Content-Type: application/json','-H','X-Requested-With: AnyTourSearch3',
+                '--data-binary',json.dumps(payload,separators=(',',':')),base
+              ],capture_output=True,text=True,timeout=100)
+              if p.returncode: raise RuntimeError('http_transport_failed')
+              try: value=json.loads(p.stdout)
+              except Exception: raise RuntimeError('http_json_invalid')
+              if value.get('ok') is not True: raise RuntimeError('api_'+str(value.get('error'))[:64])
+              return value['data']
+          try:
+              params={
+                'departureId':str(scope['departure_id']),'countryId':str(scope['country_id']),
+                'dateFrom':scope['date'],'dateTo':scope['date'],
+                'nightsFrom':scope['nights'],'nightsTo':scope['nights'],
+                'adults':scope['adults'],'childs':[],'meal':'7',
+                'hotelCategory':'','hotelRating':'','hotelTypes':[],'hotelIds':[],'hotelServices':[],
+                'arrivalId':'','regionIds':[],'subregionIds':[],'operatorIds':[],
+                'priceFrom':'','priceTo':'','currency':'RUB','onlyCharter':False,'onlyDirect':False,
+              }
+              search=post({'action':'search','generation':generation,'params':params},'search')
+              summary['search_hotels']=len(search.get('hotels') or [])
+              search_ref=search.get('search_ref')
+              if not isinstance(search_ref,str): raise RuntimeError('search_ref_missing')
+              groups=[]; candidates=[]
+              for hotel in search.get('hotels') or []:
+                  lid=hotel.get('local_id')
+                  for tour in hotel.get('tours') or []:
+                      ref=tour.get('offer_ref')
+                      if not isinstance(lid,int) or not isinstance(ref,str): continue
+                      if tour.get('kind')=='group_minimum':
+                          pair=(ref,lid)
+                          if pair not in groups: groups.append(pair)
+                      elif tour.get('kind')=='concrete' and tour.get('flight_type')=='charter':
+                          pair=(ref,lid)
+                          if pair not in candidates: candidates.append(pair)
+              summary['group_candidates']=len(groups)
+              for ref,lid in groups[:2]:
+                  if candidates: break
+                  expanded=post({
+                    'action':'expand','generation':generation,'search_ref':search_ref,
+                    'offer_ref':ref,'local_hotel_id':lid
+                  },'expand')
+                  summary['expand_calls']+=1
+                  for hotel in expanded.get('hotels') or []:
+                      hlid=hotel.get('local_id')
+                      for tour in hotel.get('tours') or []:
+                          offer_ref=tour.get('offer_ref')
+                          if isinstance(hlid,int) and isinstance(offer_ref,str) and tour.get('kind')=='concrete' and tour.get('flight_type')=='charter':
+                              pair=(offer_ref,hlid)
+                              if pair not in candidates:candidates.append(pair)
+              summary['charter_candidates']=len(candidates)
+              remaining=max(0,6-summary['logical_supplier_reservations'])
+              items=[{'offer_ref':ref,'local_hotel_id':lid} for ref,lid in candidates[:remaining]]
+              summary['batch_items']=len(items)
+              if items:
+                  summary['phase']='additional_prices_batch'
+                  summary['logical_supplier_reservations']+=len(items)
+                  if summary['logical_supplier_reservations']>6: raise RuntimeError('budget_exceeded')
+                  p=subprocess.run([
+                    'curl','-sS','--max-time','120','-c',jar,'-b',jar,
+                    '-H','Content-Type: application/json','-H','X-Requested-With: AnyTourSearch3',
+                    '--data-binary',json.dumps({
+                      'action':'additional_prices_batch','generation':generation,
+                      'search_ref':search_ref,'items':items
+                    },separators=(',',':')),base
+                  ],capture_output=True,text=True,timeout=130)
+                  if p.returncode: raise RuntimeError('apd_http_transport_failed')
+                  value=json.loads(p.stdout)
+                  if value.get('ok') is not True: raise RuntimeError('apd_api_'+str(value.get('error'))[:64])
+                  offers=value['data'].get('offers') or []
+                  summary['apd_complete_offers']=sum(x.get('status')=='additional_prices' for x in offers)
+                  summary['final_price_ready_offers']=sum(x.get('finalPriceReady') is True for x in offers)
+                  summary['retryable_offers']=sum(x.get('retryable') is True for x in offers)
+              summary['status']='complete'; summary['phase']='complete'
+          except Exception as error:
+              summary['status']='terminal_error'
+              summary['reason']=str(error)[:96]
+          with open(out,'w') as handle:
+              json.dump(summary,handle,sort_keys=True);handle.write('\n')
+          print(json.dumps(summary,sort_keys=True))
+          PY
+
+      - name: Combined DB after-state and terminal receipt in one SSH session
+        if: always()
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$RUNNER_TEMP/canary-artifact/http-summary.json"
+          key="$RUNNER_TEMP/canary-ssh/key"; known="$RUNNER_TEMP/canary-ssh/known_hosts"; remote="$REMOTE_USER@$HOST"
+          opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o LogLevel=ERROR)
+          http_b64="$(base64 -w0 "$RUNNER_TEMP/canary-artifact/http-summary.json")"
+          ssh "${opts[@]}" "$remote" "CANARY_PHASE=post HTTP_B64='$http_b64' php"             < control/scripts/diagnostics/direct_anex_population_canary_v2.php             > "$RUNNER_TEMP/canary-artifact/result.json"
+          python3 - <<'PY'
+          import json,os
+          p=os.environ['RUNNER_TEMP']+'/canary-artifact/result.json'
+          v=json.load(open(p))
+          assert v['operation']==os.environ['OPERATION_ID'] and v['source_sha']==os.environ['SOURCE_SHA']
+          assert v['supplier_budget_reservations']<=6
+          assert v['booking_calls']==0 and v['lead_calls']==0 and v['replay_allowed'] is False
+          print(json.dumps(v,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Require minimum population evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          v=json.load(open(os.environ['RUNNER_TEMP']+'/canary-artifact/result.json'))
+          assert v['status']=='complete',v
+          assert v['program_context_progressed'] is True
+          PY
+
+      - name: Upload sanitized terminal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: direct-anex-population-canary-v2-${{ github.run_id }}
+          path: ${{ runner.temp }}/canary-artifact/
+          if-no-files-found: error
+          retention-days: 30
