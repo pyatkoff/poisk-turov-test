@@ -1,15 +1,625 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/api-anex-search3-preview.php';
+$andromedaApp=is_file(__DIR__.'/app/integrations/andromeda-client.php')?__DIR__.'/app/integrations':__DIR__.'/../app/integrations';
+foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';
+$andromedaAutosave=$andromedaApp.'/andromeda-anytour-offer-autosave.php';
+if(is_file($andromedaAutosave)&&!is_link($andromedaAutosave))require_once $andromedaAutosave;
 
-// Keep the already-accepted provider/session/price implementation immutable here.
-// This public entry point only adds sequential orchestration for a normal grouped search.
-require_once __DIR__.'/api-andromeda-search3-preview-core.php';
-$andromedaPageOrchestrator=is_file(__DIR__.'/app/integrations/andromeda-search3-page-orchestrator.php')
-    ?__DIR__.'/app/integrations/andromeda-search3-page-orchestrator.php'
-    :__DIR__.'/../app/integrations/andromeda-search3-page-orchestrator.php';
-require_once $andromedaPageOrchestrator;
+/** Resolve one semantic supplier value from the saved provider dictionary. */
+function anytour_andromeda_search3_dictionary_id(array $rows,array $names,string $error): string {
+    try{return (string)anytour_anex_search3_dictionary_id($rows,$names);}
+    catch(InvalidArgumentException $ignored){throw new DomainException($error);}
+}
 
-function anytour_andromeda_search3_http_paginated(): void {
+/** Search3 meal identity -> exact Andromeda MEAL ids. food=7 keeps existing AI-family semantics (AI + UAI). */
+function anytour_andromeda_search3_meal(array $saved,$value): ?string {
+    $value=(string)$value;
+    if($value==='')return null;
+    $groups=[
+        '2'=>[['OB','RO','Без питания']],
+        '3'=>[['BB','Завтрак']],
+        '4'=>[['HB','Half Board','Полупансион','Завтрак и ужин']],
+        '5'=>[['FB','Full Board','Полный пансион','Трех разовое','Трехразовое']],
+        '7'=>[['AI','All Inclusive','Все включено'],['UAI','Ultra All Inclusive','Ультра все включено']],
+        '9'=>[['UAI','Ultra All Inclusive','Ультра все включено']],
+    ][$value]??null;
+    if($groups===null)throw new DomainException('meal_not_supported');
+    $rows=$saved['all']['payload']['MEAL']??null;
+    if(!is_array($rows))throw new DomainException('meal_dictionary_missing');
+    $ids=[];
+    foreach($groups as $names)$ids[]=anytour_andromeda_search3_dictionary_id($rows,$names,'meal_not_loaded');
+    $ids=array_values(array_unique($ids));sort($ids,SORT_NUMERIC);
+    return implode(',',$ids);
+}
+
+/** Search3 category is a minimum star threshold; translate it to all matching Andromeda STARS ids. */
+function anytour_andromeda_search3_stars(array $saved,$value): ?string {
+    $value=(string)$value;
+    if($value==='')return null;
+    if(!in_array($value,['2','3','4','5'],true))throw new DomainException('stars_not_supported');
+    $rows=$saved['all']['payload']['STARS']??null;
+    if(!is_array($rows))throw new DomainException('stars_dictionary_missing');
+    $ids=[];
+    for($star=(int)$value;$star<=5;++$star)$ids[]=anytour_andromeda_search3_dictionary_id($rows,[(string)$star,$star.'*',$star.'★'],'stars_not_loaded');
+    $ids=array_values(array_unique($ids));sort($ids,SORT_NUMERIC);
+    return implode(',',$ids);
+}
+
+/** Tourvisor operator names are provider-neutral handoff; numeric IDs never cross provider boundaries. */
+function anytour_andromeda_search3_operator_aliases(string $name): array {
+    $normalized=anytour_anex_search3_name($name);
+    $aliases=[$name,preg_replace('/\s*\([^)]*\)\s*$/u','',$name)];
+    if(str_contains($normalized,'anex')||str_contains($normalized,'анекс'))$aliases=array_merge($aliases,['ANEX','ANEX TOUR','Анекс Тур']);
+    if(str_contains($normalized,'fun sun')||str_contains($normalized,'фан сан'))$aliases=array_merge($aliases,['FUN&SUN','FUN SUN','Fun&Sun (RU)']);
+    if(str_contains($normalized,'библио глобус')||str_contains($normalized,'biblio globus'))$aliases=array_merge($aliases,['Библио-Глобус','Библио Глобус','Biblio Globus']);
+    if(str_contains($normalized,'интурист')||str_contains($normalized,'intourist'))$aliases=array_merge($aliases,['Интурист','Intourist']);
+    return array_values(array_unique(array_filter($aliases,static fn($v)=>is_string($v)&&trim($v)!=='')));
+}
+
+/** Resolve Search3/Tourvisor operator IDs through observed Tourvisor names, then saved Andromeda OPERATORS. */
+function anytour_andromeda_search3_operators(array $saved,array $values,PDO $pdo): ?string {
+    if(!$values)return null;
+    if(count($values)>30)throw new InvalidArgumentException();
+    $wanted=[];
+    foreach($values as $value){
+        if(is_bool($value)||!is_scalar($value)||!preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value))throw new InvalidArgumentException();
+        $wanted[(string)$value]=true;
+    }
+    try{
+        $query=$pdo->prepare('SELECT operator_id,operator_name FROM tour_operator_identity_observations WHERE operator_id IN ('.implode(',',array_fill(0,count($wanted),'?')).") AND operator_name IS NOT NULL AND operator_name<>'' ORDER BY last_seen_at DESC,id DESC");
+        $query->execute(array_keys($wanted));
+        $names=[];
+        foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row){$id=(string)$row['operator_id'];if(isset($wanted[$id])&&!isset($names[$id]))$names[$id]=(string)$row['operator_name'];}
+    }catch(Throwable $ignored){throw new DomainException('operator_dictionary_missing');}
+    $rows=$saved['all']['payload']['OPERATORS']??null;
+    if(!is_array($rows))throw new DomainException('operator_dictionary_missing');
+    $ids=[];
+    foreach(array_keys($wanted) as $id){
+        if(!isset($names[$id])||trim($names[$id])==='')throw new DomainException('operator_not_loaded');
+        $ids[]=anytour_andromeda_search3_dictionary_id($rows,anytour_andromeda_search3_operator_aliases($names[$id]),'operator_not_loaded');
+    }
+    $ids=array_values(array_unique($ids));sort($ids,SORT_NUMERIC);
+    return implode(',',$ids);
+}
+
+/** Translate current local resort identity to provider-native Andromeda TOWNTO IDs. More specific subregions win over parent regions. */
+function anytour_andromeda_search3_townto(array $saved,array $regions,array $subregions,PDO $pdo,int $country): ?string {
+    if(!$regions&&!$subregions)return null;
+    foreach([$regions,$subregions] as $values){
+        if(count($values)>30)throw new InvalidArgumentException();
+        foreach($values as $value)if(is_bool($value)||!is_scalar($value)||!preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value))throw new InvalidArgumentException();
+    }
+    $useSubregions=(bool)$subregions;$values=array_values(array_unique(array_map('strval',$useSubregions?$subregions:$regions)));
+    if($useSubregions){
+        $query=$pdo->prepare('SELECT s.id,s.name FROM catalog_subregions s JOIN catalog_regions r ON r.id=s.region_id WHERE s.id IN ('.implode(',',array_fill(0,count($values),'?')).') AND s.is_active=1 AND r.is_active=1 AND r.country_id=?');
+    }else{
+        $query=$pdo->prepare('SELECT id,name FROM catalog_regions WHERE id IN ('.implode(',',array_fill(0,count($values),'?')).') AND is_active=1 AND country_id=?');
+    }
+    try{$query->execute(array_merge($values,[$country]));$local=[];foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row)$local[(string)$row['id']]=(string)$row['name'];}
+    catch(Throwable $ignored){throw new DomainException('destination_dictionary_missing');}
+    $rows=$saved['all']['payload']['TOWNTO']??null;if(!is_array($rows))throw new DomainException('destination_dictionary_missing');
+    $ids=[];
+    foreach($values as $id){
+        if(!isset($local[$id])||trim($local[$id])==='')throw new DomainException('destination_not_loaded');
+        $ids[]=anytour_andromeda_search3_dictionary_id($rows,[$local[$id]],'destination_not_loaded');
+    }
+    $ids=array_values(array_unique($ids));sort($ids,SORT_NUMERIC);
+    return implode(',',$ids);
+}
+
+/** Restrict upstream only with complete accepted catalog coverage; otherwise retain local filtering. */
+function anytour_andromeda_search3_hotels(array $localIds, PDO $pdo, array $saved): ?string {
+    if(!$localIds)return null;
+    $country=(int)($saved['local_country_id']??1);
+    $wanted=array_values(array_unique(array_map('strval',$localIds)));
+    $query=$pdo->prepare("SELECT i.local_hotel_id,i.external_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace='andromeda_catalog' AND i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? AND h.id IN (".implode(',',array_fill(0,count($wanted),'?')).")");
+    $query->execute(array_merge([$country],$wanted));
+    $catalog=[];foreach($saved['all']['payload']['HOTELS']??[] as $hotel)$catalog[(string)$hotel['id']]=true;
+    $covered=[];$external=[];
+    foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row){
+        $id=(string)$row['external_hotel_id'];
+        if(!preg_match('/^[1-9][0-9]*$/D',$id)||!isset($catalog[$id]))return null;
+        $covered[(string)$row['local_hotel_id']]=true;$external[$id]=true;
+    }
+    foreach($wanted as $id)if(!isset($covered[$id]))return null;
+    $ids=array_map('strval',array_keys($external));sort($ids,SORT_STRING);
+    $value=implode(',',$ids);
+    return count($ids)<=30 && strlen($value)<=300 ? $value : null;
+}
+
+function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved): array {
+    if(!is_int($request['generation']??null) || $request['generation']<1 || $request['generation']>2147483647 || !is_array($request['params']??null)) throw new InvalidArgumentException();
+    $p=$request['params'];
+    if(is_bool($p['countryId']??null))throw new InvalidArgumentException();
+    $country=(int)($saved['local_country_id']??1);
+    if((string)($p['countryId']??'')!==(string)$country) throw new DomainException('country_not_loaded');
+    foreach(['arrivalId','hotelServices','hotelTypes'] as $key) if(!empty($p[$key]))throw new DomainException('filter_not_supported');
+    foreach(['onlyDirect','onlyCharter'] as $key) if(!in_array($p[$key]??false,[false,'false',0,'0',''],true))throw new DomainException('filter_not_supported');
+    if(($p['currency']??'RUB')!=='RUB')throw new DomainException('filter_not_supported');
+    $meal=anytour_andromeda_search3_meal($saved,$p['meal']??'');
+    $stars=anytour_andromeda_search3_stars($saved,$p['hotelCategory']??'');
+    $operatorValues=$p['operatorIds']??[];
+    if(!is_array($operatorValues))throw new InvalidArgumentException();
+    $operatorFilter=anytour_andromeda_search3_operators($saved,$operatorValues,$pdo);
+    foreach(['hotelIds','regionIds','subregionIds'] as $key){
+        if(isset($p[$key]) && (!is_array($p[$key]) || count($p[$key])>30))throw new InvalidArgumentException();
+        foreach($p[$key]??[] as $id)if(is_bool($id)||!is_scalar($id)||!ctype_digit((string)$id))throw new InvalidArgumentException();
+    }
+    $destinationFilter=anytour_andromeda_search3_townto($saved,$p['regionIds']??[],$p['subregionIds']??[],$pdo,$country);
+    if(is_bool($p['departureId']??null))throw new InvalidArgumentException();
+    $lookup=$pdo->prepare('SELECT name FROM catalog_departures WHERE id=? AND is_active=1');
+    $lookup->execute([(int)($p['departureId']??0)]);$name=$lookup->fetchColumn();
+    if(!$name)throw new DomainException('departure_not_loaded');
+    $departure=anytour_anex_search3_dictionary_id($saved['townfrom']['payload']['TOWNFROM'],[$name]);
+    $dates=[];
+    foreach(['dateFrom','dateTo'] as $key){
+        $value=$p[$key]??'';$date=is_string($value)?DateTimeImmutable::createFromFormat('!Y-m-d',$value):false;
+        if(!$date || $date->format('Y-m-d')!==$value || $value<gmdate('Y-m-d'))throw new InvalidArgumentException();
+        $dates[]=$date->format('Ymd');
+    }
+    // Validate before conversion: boolean/fractional/partial values must not price a different party or stay.
+    $adults=anytour_anex_normalizer_integer($p['adults']??null,1,6);
+    $nightsFrom=anytour_anex_normalizer_integer($p['nightsFrom']??null,1,28);
+    $nightsTo=anytour_anex_normalizer_integer($p['nightsTo']??null,1,28);
+    if($adults===null||$nightsFrom===null||$nightsTo===null)throw new InvalidArgumentException();
+    $ages=$p['childs']??[];
+    if(!is_array($ages)||count($ages)>3||($ages!==[]&&array_keys($ages)!==range(0,count($ages)-1)))throw new InvalidArgumentException();
+    foreach($ages as &$age){
+        $age=anytour_anex_normalizer_integer($age,0,17);
+        if($age===null)throw new InvalidArgumentException();
+    }
+    unset($age);
+    $params=['TOWNFROMINC'=>$departure,'STATEINC'=>(int)($saved['all']['params']['STATEINC']??3),'CHECKIN_BEG'=>$dates[0],'CHECKIN_END'=>$dates[1],
+        'NIGHTS_FROM'=>$nightsFrom,'NIGHTS_TILL'=>$nightsTo,
+        'ADULT'=>$adults,'CHILD'=>count($ages),'CURRENCYINC'=>643,'PACKETTYPE'=>0,'PAGE'=>$request['page']??1];
+    if($ages)$params['AGES']=implode(',',$ages);
+    if($meal!==null)$params['MEAL']=$meal;
+    if($stars!==null)$params['STARS']=$stars;
+    if($destinationFilter!==null)$params['TOWNTOINC']=$destinationFilter;
+    // Empty exclusions keep every operator enabled in the owner's SAMO account.
+    $excluded=$saved['excluded_operator_ids']??[];
+    if($excluded){
+        $operators=[];
+        foreach($saved['all']['payload']['OPERATORS'] as $operator)
+            if(!in_array((string)$operator['id'],array_map('strval',$excluded),true))$operators[]=(string)$operator['id'];
+        if(!$operators)throw new DomainException('no_operators');
+        $params['OPERATORS']=implode(',',$operators);
+    }
+    if($operatorFilter!==null){
+        $selected=explode(',',$operatorFilter);
+        if(array_intersect($selected,array_map('strval',$excluded)))throw new DomainException('operator_not_supported');
+        $params['OPERATORS']=$operatorFilter;
+    }
+    if (isset($request['andromeda_operator_ids'])) {
+        if ($request['andromeda_operator_ids'] !== ['5'] || in_array('5',array_map('strval',$excluded),true)
+            || ($operatorFilter!==null && $operatorFilter!=='5')) throw new DomainException('operator_not_supported');
+        $params['OPERATORS']='5';
+    }
+    $hotels=anytour_andromeda_search3_hotels($p['hotelIds']??[],$pdo,$saved);
+    if($hotels!==null)$params['HOTELS']=$hotels;
+    if(isset($request['hotel_scope'])) {
+        $scope=$request['hotel_scope'];
+        if(!is_array($scope)||!is_int($scope['local_id']??null)||$scope['local_id']<1||!is_array($scope['seed']??null)||isset($scope['seed']['hotel_scope']))throw new InvalidArgumentException();
+        $selected=$p['hotelIds']??[];
+        if($selected && !in_array((string)$scope['local_id'],array_map('strval',$selected),true))throw new InvalidArgumentException();
+        $ids=anytour_andromeda_search3_hotels([$scope['local_id']],$pdo,$saved);
+        if($ids===null)throw new DomainException('hotel_not_supported');
+        $params['HOTELS']=$ids;
+    } else $params['GROUP_BY']=32;
+    AnyTourAndromedaClient::validatePriceParams($params);
+    return $params;
+}
+
+function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page, array $saved=[], array $retained=[]): array {
+    // A retained local ID is evidence of an earlier mapping, not current authority.
+    // Revalidate the whole page once; do not mutate its saved snapshot/observations.
+    $current=anytour_andromeda_search3_current_mappings($pdo,(int)$request['params']['countryId'],$page['offers']);
+    $offers=array_values(array_filter($page['offers'],static function($offer)use($current){
+        $key=json_encode([$offer['supplier_namespace'],(string)$offer['external_hotel_id']]);
+        return is_int($offer['local_hotel_id']) && $offer['local_hotel_id']>0
+            && ($current[$key]??null)===$offer['local_hotel_id'];
+    }));
+    // Only the trusted saved-search owner supplies this private context. Never read
+    // paths from the HTTP request and never fetch missing surcharge facts here.
+    $readSurcharge=null;
+    if($retained && is_string($retained['directory']??null) && is_array($retained['store']??null)
+        && is_int($retained['created_at']??null)){
+        global $andromedaApp;
+        $reader=$andromedaApp.'/andromeda-saved-package-runtime.php';
+        if(is_file($reader) && !is_link($reader))require_once $reader;
+        if(function_exists('anytour_andromeda_read_saved_surcharge')){
+            $allows=static function(array $offer)use($current):bool{
+                $key=json_encode([$offer['supplier_namespace'],(string)$offer['external_hotel_id']]);
+                return ($current[$key]??null)===$offer['local_hotel_id'];
+            };
+            $readSurcharge=static function(array $offer)use($retained,$page,$allows):?array{
+                $context=['provider'=>'andromeda','search_ref'=>$page['search_ref'],
+                    'generation'=>$page['generation'],'page'=>$page['page'],'offer_ref'=>$offer['offer_ref']];
+                return anytour_andromeda_read_saved_surcharge($retained['directory'],$retained['store'],
+                    $retained['created_at'],$context,$allows,time());
+            };
+        }
+    }
+    $converted=[];$ids=[];
+    foreach($offers as $index=>$offer){
+        $id=$offer['local_hotel_id'];if(!$id || (isset($request['hotel_scope']) && $id!==$request['hotel_scope']['local_id']))continue;$ids[$id]=true;
+        $fact=$readSurcharge!==null?$readSurcharge($offer):null;
+        if($fact!==null && $fact['search_price']===['amount'=>(string)$offer['price']['amount'],'currency'=>$offer['price']['currency']]){
+            // Display copy only: the retained snapshot and selected DTO keep their
+            // original base price, so later calc comparison cannot add markup twice.
+            $offer['base_search_price']=$offer['price'];$offer['search_surcharge']=$fact;
+            $offer['price']=$fact['search_price_with_surcharge'];$offers[$index]=$offer;
+        }
+        $converted[]=['hotel'=>['local_id'=>$id,'mapping_status'=>'resolved'],'price'=>$offer['price'],
+            'checkin'=>$offer['check_in'],'nights'=>$offer['nights'],'adults'=>$offer['adults'],'children'=>$offer['children'],
+            'meal'=>$offer['meal']['label'],'room'=>$offer['room'],'kind'=>'offer'];
+    }
+    $metadata=[];
+    if($ids){
+        $query=$pdo->prepare('SELECT id,name,country_id,country_name,region_id,region_name,subregion_id,subregion_name,category,rating FROM catalog_hotels WHERE id IN ('.implode(',',array_fill(0,count($ids),'?')).') AND is_active=1');
+        $query->execute(array_keys($ids));foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row)$metadata[(int)$row['id']]=$row;
+        $metadata=anytour_anex_search3_catalog_hydrate($pdo,$metadata);
+    }
+    $hotels=anytour_anex_search3_project($converted,$metadata,$request['params']);
+    foreach($hotels as &$hotel)$hotel['mapping_status']='resolved';
+    unset($hotel);
+    $used=[];
+    foreach($hotels as &$hotel)foreach($hotel['tours'] as &$tour){
+        $matches=array_values(array_filter($offers,static function($o)use($hotel,$tour){
+            return $o['local_hotel_id']===$hotel['local_id'] && $o['check_in']===$tour['checkin'] && $o['room']===$tour['room']
+                && $o['nights']===$tour['nights'] && $o['meal']['label']===$tour['meal'] && $o['price']['amount']===$tour['price']['amount'];
+        }));
+        $tour['provider']='andromeda';
+        foreach($matches as $match)if(!isset($used[$match['offer_ref']])){
+            $tour['operator']=$match['operator'];$tour['offer_ref']=$match['offer_ref'];
+            if(isset($match['search_surcharge'])){$tour['base_search_price']=$match['base_search_price'];$tour['search_surcharge']=$match['search_surcharge'];}
+            $tour['offer_context']=['provider'=>'andromeda','search_ref'=>$page['search_ref'],'generation'=>$page['generation'],'page'=>$page['page'],'offer_ref'=>$match['offer_ref']];
+            if(isset($request['hotel_scope']))$tour['offer_context']['hotel_scope']=$request['hotel_scope'];
+            if(!isset($hotel['andromeda_content'])||empty($hotel['andromeda_content']['image_url']))$hotel['andromeda_content']=$match['hotel_content']??null;$used[$match['offer_ref']]=true;break;
+        }
+        $tour['selection_enabled']=false;
+    }
+    unset($hotel,$tour);
+    return ['provider'=>'andromeda','generation'=>$request['generation'],'hotels'=>$hotels,
+        'date_range'=>['from'=>$request['params']['dateFrom'],'to'=>$request['params']['dateTo']],
+        'grouped'=>!isset($request['hotel_scope']),'first_page_only'=>false,'page'=>$page['page'],'pages_count'=>$page['pages_count'],'external_search_pending'=>false,
+        'search_ref'=>$page['search_ref'],'status'=>$page['status'],
+        'received_offers'=>count($page['offers']),'mapped_offers'=>count($offers),'selection_enabled'=>false];
+}
+
+/** Atomic private checkpoint: never save supplier credentials or sid. */
+function anytour_andromeda_search3_save(string $path, array $value): bool {
+    $bytes=json_encode($value,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+    if(strlen($bytes)>3000000)throw new RuntimeException();
+    $temp=$path.'.'.bin2hex(random_bytes(8));
+    $file=fopen($temp,'x');if(!$file)throw new RuntimeException();
+    chmod($temp,0600);
+    try {
+        if(fwrite($file,$bytes)!==strlen($bytes)||!fflush($file))throw new RuntimeException();
+        if(function_exists('fsync')&&!fsync($file))throw new RuntimeException();
+    }finally{fclose($file);}
+    if(!rename($temp,$path))throw new RuntimeException();
+    return true;
+}
+
+/** Owner-confirmed allowance: 5,000,000 supplier requests per calendar month.
+ * This counter covers this integration from deployment, not unrelated account consumers.
+ */
+function anytour_andromeda_search3_budget(string $directory): void {
+    $path=$directory.'/monthly-requests.json';$lock=fopen($path.'.lock','c');
+    if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
+    try {
+        $month=gmdate('Y-m');$state=is_file($path)?json_decode(file_get_contents($path),true,8,JSON_THROW_ON_ERROR):[];
+        if(($state['month']??null)!==$month)$state=['month'=>$month,'reserved_requests'=>0,'monthly_limit'=>5000000,'scope'=>'this_integration'];
+        if(!is_int($state['reserved_requests'])||$state['reserved_requests']<0)throw new RuntimeException();
+        if($state['reserved_requests']>=5000000)throw new OverflowException('monthly_quota_exhausted');
+        ++$state['reserved_requests'];anytour_andromeda_search3_save($path,$state);
+    }finally{flock($lock,LOCK_UN);fclose($lock);}
+}
+
+/**
+ * Reuse a fully retained grouped search before spending another supplier request for one hotel.
+ * The cached path is accepted only when every page advertised by the latest retained response
+ * is already present and current. Partial broad searches fall back to the existing scoped search.
+ */
+function anytour_andromeda_search3_cached_hotel_offers(array $request,PDO $pdo,array $saved,array $config,string $session,array $seedRequest): ?array {
+    $scope=$request['hotel_scope']??null;$seed=$scope['seed']??null;
+    if(!is_array($scope)||!is_int($scope['local_id']??null)||$scope['local_id']<1||!is_array($seed))return null;
+    $criteria=anytour_andromeda_search3_params($seedRequest,$pdo,$saved);$base=$criteria;unset($base['PAGE']);
+    $ref=hash('sha256','paged-v1'.$session.json_encode($base));
+    if(($seed['search_ref']??null)!==$ref||($seed['generation']??null)!==($request['generation']??null))return null;
+    $directory=dirname($config['catalog_path']).'/searches';$firstPath=$directory.'/'.$ref.'-1.json';
+    if(!is_file($firstPath)||is_link($firstPath))return null;
+    $lock=fopen($directory.'/'.$ref.'.lock','c');if(!$lock||!flock($lock,LOCK_SH)){if($lock)fclose($lock);return null;}
+    try{
+        $first=json_decode(file_get_contents($firstPath),true,32,JSON_THROW_ON_ERROR);$now=time();
+        if(!in_array($first['status']??null,['complete','partial'],true)||($first['generation']??null)!==$seed['generation']
+            ||($first['search_ref']??null)!==$ref||$now>=($first['store']['expires_at']??0))return null;
+        $created=$first['store']['created_at']??null;if(!is_int($created)||$created<1)return null;
+        $states=[1=>$first];$target=(int)($first['store']['snapshot']['pages_count']??0);
+        if($target<1||$target>1000)return null;
+        for($number=2;$number<=$target;++$number){
+            $path=$directory.'/'.$ref.'-'.$created.'-'.$number.'.json';
+            if(!is_file($path)||is_link($path))return null;
+            $state=json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR);
+            if(!in_array($state['status']??null,['complete','partial'],true)||($state['generation']??null)!==$seed['generation']
+                ||($state['search_ref']??null)!==$ref||$now>=($state['store']['expires_at']??0)
+                ||($state['store']['snapshot']['page']??null)!==$number)return null;
+            $count=(int)($state['store']['snapshot']['pages_count']??0);if($count<1||$count>1000)return null;
+            $states[$number]=$state;$target=max($number,$count);
+        }
+        $hotel=null;$seen=[];$received=0;$mapped=0;
+        foreach($states as $state){
+            $copy=$state;$handler=new AnyTourAndromedaSearch($copy,static fn($next)=>false,true,true);
+            $page=$handler->resume($ref,$seed['generation'],$now);$projected=anytour_andromeda_search3_project($seedRequest,$pdo,$page,$saved,
+                ['directory'=>$directory,'store'=>$state['store'],'created_at'=>$created]);
+            $received+=(int)($projected['received_offers']??0);$mapped+=(int)($projected['mapped_offers']??0);
+            foreach($projected['hotels'] as $row)if(($row['local_id']??null)===$scope['local_id']){
+                if($hotel===null){$hotel=$row;$hotel['tours']=[];}
+                foreach($row['tours']??[] as $tour){$offerRef=$tour['offer_ref']??null;if(!is_string($offerRef)||isset($seen[$offerRef]))continue;
+                    $seen[$offerRef]=true;$hotel['tours'][]=$tour;}
+            }
+        }
+        if($hotel===null||!$hotel['tours'])return null;
+        usort($hotel['tours'],static fn($a,$b)=>(float)($a['price']['amount']??0)<=>(float)($b['price']['amount']??0));
+        return ['provider'=>'andromeda','generation'=>$request['generation'],'hotels'=>[$hotel],
+            'date_range'=>['from'=>$request['params']['dateFrom'],'to'=>$request['params']['dateTo']],
+            'grouped'=>false,'first_page_only'=>false,'page'=>1,'pages_count'=>1,'external_search_pending'=>false,
+            'search_ref'=>$ref,'status'=>'complete','received_offers'=>$received,'mapped_offers'=>$mapped,'selection_enabled'=>false];
+    }finally{flock($lock,LOCK_UN);fclose($lock);}
+}
+
+function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, array $config, string $session): array {
+    if(isset($request['hotel_scope'])) {
+        $seedRequest=$request;unset($seedRequest['hotel_scope']);
+        $seedRequest['offer_context']=$request['hotel_scope']['seed']??[];
+        $seedRequest['page']=$seedRequest['offer_context']['page']??null;
+        $seed=anytour_andromeda_search3_detail($seedRequest,$pdo,$saved,$config,$session);
+        if(($seed['local_id']??null)!==($request['hotel_scope']['local_id']??null))throw new DomainException('hotel_context_invalid');
+        $cached=anytour_andromeda_search3_cached_hotel_offers($request,$pdo,$saved,$config,$session,$seedRequest);
+        if($cached!==null)return $cached;
+    }
+    $criteria=anytour_andromeda_search3_params($request,$pdo,$saved);$number=$criteria['PAGE'];
+    $directory=dirname($config['catalog_path']).'/searches';
+    if(!is_dir($directory)&&!mkdir($directory,0700)&&!is_dir($directory))throw new RuntimeException();
+    $base=$criteria;unset($base['PAGE']);$ref=hash('sha256','paged-v1'.$session.json_encode($base));
+    $lock=fopen($directory.'/'.$ref.'.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
+    try {
+        $firstPath=$directory.'/'.$ref.'-1.json';
+        $first=is_file($firstPath)?json_decode(file_get_contents($firstPath),true,32,JSON_THROW_ON_ERROR):[];
+        if($number>1){
+            if(!$first || !in_array($first['status']??null,['complete','partial'],true) || time()>=($first['store']['expires_at']??0))throw new RuntimeException('page_context_missing');
+            $prefix=$directory.'/'.$ref.'-'.$first['store']['created_at'].'-';
+            $previousPath=$number===2?$firstPath:$prefix.($number-1).'.json';
+            $previous=is_file($previousPath)?json_decode(file_get_contents($previousPath),true,32,JSON_THROW_ON_ERROR):[];
+            if(!in_array($previous['status']??null,['complete','partial'],true))throw new RuntimeException('previous_page_missing');
+            if($number>($previous['store']['snapshot']['pages_count']??0))throw new RuntimeException('page_outside_latest_response');
+            $path=$prefix.$number.'.json';$generation=$first['generation'];
+        }else{$path=$firstPath;$generation=$request['generation'];}
+        $state=is_file($path)?json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR):[];
+        if($number===1 && $state && in_array($state['status']??null,['complete','partial'],true) && time()>=($state['store']['expires_at']??0))$state=[];
+        $handler=new AnyTourAndromedaSearch($state,static function($next)use($path,&$state){
+    $saved=anytour_andromeda_search3_save($path,$next);
+    if($saved)$state=$next;
+    return $saved;
+},true,true);
+        if($state){$page=$handler->resume($ref,$state['generation'],time());}
+        else{
+            $lookup=$pdo->prepare("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id AS catalog_hotel_id,h.id AS existing_catalog_hotel_id,i.decision_status FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? ORDER BY i.external_hotel_id");
+            $lookup->execute([(int)($saved['local_country_id']??1)]);$identities=$lookup->fetchAll(PDO::FETCH_ASSOC);
+            $resolver=AnyTourAndromedaHotelResolver::fromRows($identities,hash('sha256',json_encode($identities)));
+            $transport=new AnyTourAndromedaTransport(true);
+            $client=new AnyTourAndromedaClient(static function($url,$options)use($transport,$directory){
+                anytour_andromeda_search3_budget(dirname($directory));return $transport($url,$options);
+            },true);
+            $authPath=$directory.'/'.$ref.'-auth.json';
+            if($number>1){
+                $auth=is_file($authPath)?json_decode(file_get_contents($authPath),true,8,JSON_THROW_ON_ERROR):[];
+                if(($auth['created_at']??null)!==$first['store']['created_at'])throw new RuntimeException('page_session_expired');
+                $client->restorePrivateSession($auth['session']??[]);
+            }
+            $page=$handler->start($criteria,$ref,$generation,time(),$client,$config['username'],$config['password'],$resolver);
+            if($number===1 && $client->privateSession())anytour_andromeda_search3_save($authPath,['created_at'=>$state['store']['created_at'],'session'=>$client->privateSession()]);
+        }
+        if(in_array($page['status'],['pending','unavailable'],true))throw new RuntimeException('supplier_unavailable');
+        try {
+            $observationCountry=$saved;
+            $observationCountry['local_country_id']=(int)$request['params']['countryId'];
+            if(empty($observationCountry['local_country_name'])){
+                $countryName=$pdo->prepare('SELECT name FROM catalog_countries WHERE id=? AND is_active=1');
+                $countryName->execute([$observationCountry['local_country_id']]);
+                $observationCountry['local_country_name']=(string)$countryName->fetchColumn();
+            }
+            AnyTourAndromedaHotelObservations::record($pdo,$page,$observationCountry);
+        }
+        catch(Throwable $ignored) {}
+        if(function_exists('anytour_andromeda_anytour_offer_autosave_runtime')){
+            try {
+                anytour_andromeda_anytour_offer_autosave_runtime($request,$pdo,$saved,$directory,$ref,$generation);
+            }
+            catch(Throwable $ignored) {}
+        }
+        return anytour_andromeda_search3_project($request,$pdo,$page,$saved,
+            ['directory'=>$directory,'store'=>$state['store'],'created_at'=>$number===1?$state['store']['created_at']:$first['store']['created_at']]);
+    }finally{flock($lock,LOCK_UN);fclose($lock);}
+}
+
+/** Only explicitly installed country catalogs are eligible for live search. */
+function anytour_andromeda_search3_catalog(array $config, array $request): array {
+    $id=$request['params']['countryId']??null;
+    if(is_bool($id)||!is_scalar($id)||!preg_match('/^[1-9][0-9]{0,8}$/D',(string)$id))throw new InvalidArgumentException();
+    $path=(string)$id==='1'?$config['catalog_path']:dirname($config['catalog_path']).'/countries/'.(string)$id.'.json';
+    if(!is_file($path)||is_link($path))throw new DomainException('country_not_loaded');
+    $saved=json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR);
+    if((string)($saved['local_country_id']??1)!==(string)$id)throw new DomainException('country_not_loaded');
+    $saved['local_country_id']=(int)$id;
+    return $saved;
+}
+
+/** Read one retained offer; no supplier access and no booking authority. */
+function anytour_andromeda_search3_detail(array $request, PDO $pdo, array $saved, array $config, string $session): array {
+    $criteria=anytour_andromeda_search3_params($request,$pdo,$saved);$number=$criteria['PAGE'];
+    $base=$criteria;unset($base['PAGE']);$ref=hash('sha256','paged-v1'.$session.json_encode($base));
+    $context=$request['offer_context']??[];
+    if(($context['provider']??null)!=='andromeda'||($context['search_ref']??null)!==$ref
+        ||($context['page']??null)!==$number||!is_int($context['generation']??null)
+        ||!is_string($context['offer_ref']??null))throw new InvalidArgumentException();
+    $directory=dirname($config['catalog_path']).'/searches';
+    $firstPath=$directory.'/'.$ref.'-1.json';
+    if(!is_file($firstPath)||is_link($firstPath))throw new DomainException('offer_expired');
+    $lock=fopen($directory.'/'.$ref.'.lock','c');if(!$lock||!flock($lock,LOCK_SH))throw new RuntimeException();
+    try {
+        $first=json_decode(file_get_contents($firstPath),true,32,JSON_THROW_ON_ERROR);
+        $now=time();
+        if(!in_array($first['status']??null,['complete','partial'],true)
+            ||$now>=($first['store']['expires_at']??0))throw new DomainException('offer_expired');
+        $path=$number===1?$firstPath:$directory.'/'.$ref.'-'.$first['store']['created_at'].'-'.$number.'.json';
+        if(!is_file($path)||is_link($path))throw new DomainException('offer_expired');
+        $state=json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR);
+        return anytour_andromeda_search3_detail_selection($state,$context,$now,$pdo,(int)$request['params']['countryId']);
+    }finally{flock($lock,LOCK_UN);fclose($lock);}
+}
+/** One local batch read for retained listings, saved detail and private capture.
+ * Query by external ID, NOT saved local ID: a reassignment/duplicate outside the
+ * displayed hotel set must still invalidate the old mapping. Namespaces stay distinct.
+ */
+function anytour_andromeda_search3_current_mappings(PDO $pdo,int $country,array $offers): array {
+    $ids=[];
+    foreach($offers as $offer)if(is_int($offer['local_hotel_id']) && $offer['local_hotel_id']>0){
+        $ids[(string)$offer['external_hotel_id']]=true;
+    }
+    if(!$ids)return [];
+    $query=$pdo->prepare("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? AND i.external_hotel_id IN (".implode(',',array_fill(0,count($ids),'?')).')');
+    $query->execute(array_merge([$country],array_keys($ids)));
+    $current=[];
+    foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row){
+        $key=json_encode([$row['supplier_namespace'],(string)$row['external_hotel_id']]);
+        $current[$key]=array_key_exists($key,$current)?null:(int)$row['local_hotel_id'];
+    }
+    return $current;
+}
+function anytour_andromeda_search3_mapping_allows(PDO $pdo,int $country,array $offer): bool {
+    $current=anytour_andromeda_search3_current_mappings($pdo,$country,[$offer]);
+    $key=json_encode([$offer['supplier_namespace'],(string)$offer['external_hotel_id']]);
+    return is_int($offer['local_hotel_id']) && $offer['local_hotel_id']>0
+        && ($current[$key]??null)===$offer['local_hotel_id'];
+}
+function anytour_andromeda_search3_detail_selection(array $state,array $context,int $now,PDO $pdo,int $country): array {
+    global $andromedaApp;
+    require_once $andromedaApp.'/andromeda-selected-offer.php';
+    $store=$state['store'];
+    $allows=static fn(array $offer):bool => anytour_andromeda_search3_mapping_allows($pdo,$country,$offer);
+    $selection=AnyTourAndromedaSelectedOffer::publicSelection(new AnyTourAndromedaOfferStore($store,true),$context,$allows,$now);
+    $detail=anytour_andromeda_search3_detail_state($state,$context,$now);
+    $detail['selected_offer']=$selection;
+    return $detail;
+}
+function anytour_andromeda_search3_detail_state(array $state,array $context,int $now): array {
+    if(!in_array($state['status']??null,['complete','partial'],true)
+        ||($state['store']['snapshot']['page']??null)!==($context['page']??null))
+        throw new DomainException('offer_expired');
+    $store=$state['store'];
+    $lookup=(new AnyTourAndromedaOfferStore($store,true))->lookup($context['search_ref'],$context['generation'],$context['offer_ref'],$now);
+    $o=$lookup['offer'];
+    return ['provider'=>'andromeda','local_id'=>$o['local_hotel_id'],'offer_context'=>$context,'hotel'=>$o['hotel'],'operator'=>$o['operator'],
+        'checkin'=>$o['check_in'],'nights'=>$o['nights'],'adults'=>$o['adults'],'children'=>$o['children'],
+        'room'=>$o['room'],'placement'=>$o['placement'],'meal'=>$o['meal']['label'],'price'=>$o['price'],
+        'quote_required'=>true,'selection_enabled'=>false,'booking_enabled'=>false];
+}
+
+/** Retain the exact API response price in the existing search session, never browser money.
+ * A receipt proves an issued response, not that a human saw it. SEARCH must echo its ref.
+ * Recording failure leaves the original response intact and emits no usable reference.
+ */
+function anytour_andromeda_search3_record_response(array $data): array {
+    if(session_status()!==PHP_SESSION_NONE || session_id()==='' || ($data['provider']??null)!=='andromeda' || !is_array($data['hotels']??null))return $data;
+    try{
+        if(!session_start())return $data;
+        $now=time();$previous=$_SESSION['andromeda_listing_prices_v1']??[];$current=[];$recorded=$data;
+        $previous=is_array($previous)?array_filter($previous,static fn($row)=>is_array($row)
+            && is_int($row['issued_at']??null) && $row['issued_at']<=$now && $now-$row['issued_at']<900):[];
+        foreach($recorded['hotels'] as &$hotel)foreach($hotel['tours'] as &$tour){
+            unset($tour['listing_price_ref']);
+            if(count($current)>=2000 || !is_int($hotel['local_id']??null) || $hotel['local_id']<1)continue;
+            $input=$tour['offer_context']??[];
+            if(($input['provider']??null)!=='andromeda'
+                || !is_string($input['search_ref']??null) || !preg_match('/^[a-f0-9]{64}$/D',$input['search_ref'])
+                || !is_string($input['offer_ref']??null) || !preg_match('/^offer_[a-f0-9]{64}$/D',$input['offer_ref'])
+                || !is_int($input['generation']??null) || $input['generation']<1
+                || !is_int($input['page']??null) || $input['page']<1 || $input['page']>1000)continue;
+            $context=[];foreach(['provider','search_ref','generation','page','offer_ref'] as $key)$context[$key]=$input[$key];
+            $money=[];
+            foreach([$tour['base_search_price']??$tour['price']??null,$tour['price']??null] as $price){
+                if(!is_array($price) || !is_string($price['amount']??null)
+                    || !preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D',$price['amount'])
+                    || !preg_match('/[1-9]/',$price['amount']) || !is_string($price['currency']??null)
+                    || !preg_match('/^[A-Z0-9_]{2,8}$/D',$price['currency']))continue 2;
+                $money[]=['amount'=>$price['amount'],'currency'=>$price['currency']];
+            }
+            $row=['context'=>$context,'local_id'=>$hotel['local_id'],'base_price'=>$money[0],'served_price'=>$money[1],
+                'basis'=>isset($tour['search_surcharge'])?'transport_surcharge_estimate':'search_base','issued_at'=>$now];
+            $reference='listing_'.hash('sha256',json_encode($row,JSON_THROW_ON_ERROR));
+            $current[$reference]=$row;$tour['listing_price_ref']=$reference;
+        }
+        unset($hotel,$tour);
+        // Current refs stay present; old/evicted refs simply cannot produce an accuracy observation.
+        $_SESSION['andromeda_listing_prices_v1']=array_slice(array_diff_key($previous,$current)+$current,-2000,null,true);
+        if(!session_write_close())return $data;
+        return $recorded;
+    }catch(Throwable $ignored){
+        if(session_status()===PHP_SESSION_ACTIVE)session_abort();
+        return $data;
+    }
+}
+
+/** Normal grouped HTTP search must consume the complete advertised page cohort on one persisted supplier session. */
+function anytour_andromeda_search3_run_pages(array $request,callable $runner): array {
+    if((array_key_exists('page',$request) && $request['page']!==1) || ($request['action']??null)!==null || isset($request['hotel_scope']))return $runner($request);
+    $pages=[];$target=1;
+    for($number=1;$number<=$target;++$number){
+        if($number>1000)throw new RuntimeException('andromeda_pages_exceeded');
+        $next=$request;$next['page']=$number;$page=$runner($next);
+        anytour_andromeda_search3_validate_projected_page($page,$number,$pages[0]??null);
+        $advertised=(int)$page['pages_count'];
+        if($advertised<$number||$advertised>1000)throw new RuntimeException('andromeda_pages_invalid');
+        $pages[]=$page;$target=max($target,$advertised);
+    }
+    return anytour_andromeda_search3_merge_projected_pages($pages);
+}
+function anytour_andromeda_search3_validate_projected_page(array $page,int $number,?array $first): void {
+    if(($page['provider']??null)!=='andromeda'||($page['page']??null)!==$number||!is_int($page['pages_count']??null)
+        ||!is_array($page['hotels']??null)||!is_int($page['generation']??null)||!is_string($page['search_ref']??null))
+        throw new RuntimeException('andromeda_projection_invalid');
+    if($first!==null && (($page['generation']??null)!==($first['generation']??null)||($page['search_ref']??null)!==($first['search_ref']??null)))
+        throw new RuntimeException('andromeda_page_context_mismatch');
+}
+function anytour_andromeda_search3_merge_projected_pages(array $pages): array {
+    if(!$pages)throw new InvalidArgumentException('andromeda_pages_empty');
+    $first=$pages[0];$hotels=[];$order=[];$seen=[];$received=0;$mapped=0;$target=1;
+    foreach($pages as $index=>$page){
+        anytour_andromeda_search3_validate_projected_page($page,$index+1,$first);$target=max($target,(int)$page['pages_count']);
+        $received+=(int)($page['received_offers']??0);$mapped+=(int)($page['mapped_offers']??0);
+        foreach($page['hotels'] as $hotel){
+            $id=$hotel['local_id']??null;
+            if(!is_int($id)||$id<1||!is_array($hotel['tours']??null))throw new RuntimeException('andromeda_projection_invalid');
+            if(!isset($hotels[$id])){$hotels[$id]=$hotel;$hotels[$id]['tours']=[];$order[]=$id;}
+            elseif(empty($hotels[$id]['andromeda_content'])&&!empty($hotel['andromeda_content']))$hotels[$id]['andromeda_content']=$hotel['andromeda_content'];
+            foreach($hotel['tours'] as $tour){
+                $ref=$tour['offer_ref']??null;
+                if(!is_string($ref)||!preg_match('/^offer_[a-f0-9]{64}$/D',$ref))throw new RuntimeException('andromeda_offer_ref_invalid');
+                if(isset($seen[$ref]))continue;$seen[$ref]=true;$hotels[$id]['tours'][]=$tour;
+            }
+        }
+    }
+    $last=$pages[count($pages)-1];if((int)$last['page']!==$target)throw new RuntimeException('andromeda_pages_incomplete');
+    $result=$first;$result['hotels']=array_values(array_map(static fn(int $id):array=>$hotels[$id],$order));
+    $result['page']=$target;$result['pages_count']=$target;$result['status']=$last['status']??$first['status']??'complete';
+    $result['external_search_pending']=false;$result['received_offers']=$received;$result['mapped_offers']=$mapped;$result['selection_enabled']=false;
+    return $result;
+}
+
+function anytour_andromeda_search3_http(): void {
     header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
     if(!is_file(__DIR__.'/.andromeda-private.php'))anytour_anex_search3_out(['ok'=>false,'error'=>'not_found'],404);
     $config=require __DIR__.'/.andromeda-private.php';
@@ -33,11 +643,10 @@ function anytour_andromeda_search3_http_paginated(): void {
         $saved['excluded_operator_ids']=$config['excluded_operator_ids']??[];
         anytour_andromeda_search3_params($request,$pdo,$saved);
         if(isset($request['action'])&&!in_array($request['action'],['offer_detail','hotel_offers'],true))throw new InvalidArgumentException();
-        if(($request['action']??null)==='offer_detail'){
-            $data=anytour_andromeda_search3_detail($request,$pdo,$saved,$config,$session);
-        }else{
+        if(($request['action']??null)==='offer_detail')$data=anytour_andromeda_search3_detail($request,$pdo,$saved,$config,$session);
+        else{
             $runner=static fn(array $pageRequest):array=>anytour_andromeda_search3_run($pageRequest,$pdo,$saved,$config,$session);
-            $data=AnyTourAndromedaSearch3PageOrchestrator::run($request,$runner);
+            $data=anytour_andromeda_search3_run_pages($request,$runner);
             $data=anytour_andromeda_search3_record_response($data);
         }
         anytour_anex_search3_out(['ok'=>true,'data'=>$data],200);
@@ -46,5 +655,4 @@ function anytour_andromeda_search3_http_paginated(): void {
     }catch(InvalidArgumentException $e){anytour_anex_search3_out(['ok'=>false,'error'=>'invalid_request'],400);
     }catch(Throwable $e){anytour_anex_search3_out(['ok'=>false,'error'=>'supplier_unavailable'],502);}
 }
-
-if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__)anytour_andromeda_search3_http_paginated();
+if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__)anytour_andromeda_search3_http();
