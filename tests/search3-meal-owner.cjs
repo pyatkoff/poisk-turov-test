@@ -4,6 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { loadSearch3Renderer } = require('./helpers/search3-renderer-bootstrap');
 
+// SEARCH owns exact visible meal facts here; semantic equivalence belongs to LOCAL evidence.
 let apiCalls = 0;
 const select = { value: '', options: [] };
 Object.defineProperty(select, 'innerHTML', {
