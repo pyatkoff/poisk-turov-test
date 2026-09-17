@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/anytour-provider-identity-bridge-v1.php';
+
 /** Provider-neutral current-offer store for Search3. No supplier I/O or price arithmetic. */
 final class AnyTourOfferStoreV1
 {
@@ -49,7 +51,7 @@ final class AnyTourOfferStoreV1
             $state=self::scopeLock($db,(string)$r['provider'],(string)$r['scope_sha256']);
             if(($state['active_refresh_token']??null)!==$token) throw new DomainException('ANYTOUR_OFFER_REFRESH_NOT_ACTIVE');
             if($v['provider']!==$r['provider']) throw new InvalidArgumentException('ANYTOUR_OFFER_PROVIDER_SCOPE');
-            self::bridge($db,$v['legacy_hotel_id'],$ownHotelId);
+            self::bridge($db,$v['provider'],$dto['identity']['provider_hotel_ref_digest'],$v['legacy_hotel_id'],$ownHotelId);
 
             $payload=self::json(self::listingProjection($dto)); $operator=self::json($dto['operator']); $party=self::json($dto['tour']['party']);
             $meal=self::json($dto['tour']['meal']); $room=self::json($dto['tour']['room']); $placement=self::json($dto['tour']['placement']);
@@ -144,10 +146,11 @@ final class AnyTourOfferStoreV1
         if($p['child_ages']!==[]&&array_keys($p['child_ages'])!==range(0,count($p['child_ages'])-1)) throw new InvalidArgumentException('ANYTOUR_OFFER_PARTY'); foreach($p['child_ages'] as $age) if(!is_int($age)||$age<0||$age>17) throw new InvalidArgumentException('ANYTOUR_OFFER_PARTY');
     }
 
-    private static function bridge(PDO $db,int $legacy,int $own):void
+    private static function bridge(PDO $db,string $provider,string $providerHotelRefDigest,int $legacy,int $own):void
     {
-        $q=$db->prepare("SELECT 1 FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id WHERE s.namespace='legacy_catalog' AND s.external_key=:legacy AND s.anytour_hotel_id=:own AND h.is_active=1 LIMIT 1");
-        $q->execute(['legacy'=>(string)$legacy,'own'=>$own]); if($q->fetchColumn()===false) throw new DomainException('ANYTOUR_OFFER_HOTEL_BRIDGE');
+        if(!AnyTourProviderIdentityBridgeV1::allowsOffer($db,$provider,$providerHotelRefDigest,$legacy,$own)) {
+            throw new DomainException('ANYTOUR_OFFER_HOTEL_BRIDGE');
+        }
     }
     private static function scopeLock(PDO $db,string $p,string $s):array{ $q=$db->prepare('SELECT provider,scope_sha256,active_refresh_token,latest_complete_refresh_token FROM anytour_offer_scope_state WHERE provider=:p AND scope_sha256=:s FOR UPDATE');$q->execute(['p'=>$p,'s'=>$s]);$r=$q->fetch(PDO::FETCH_ASSOC);if(!is_array($r))throw new RuntimeException('ANYTOUR_OFFER_SCOPE_MISSING');return $r; }
     private static function refreshLock(PDO $db,string $t):array{ $q=$db->prepare('SELECT refresh_token,provider,scope_sha256,status,started_at,lease_expires_at,completed_at FROM anytour_offer_refreshes WHERE refresh_token=:t FOR UPDATE');$q->execute(['t'=>$t]);$r=$q->fetch(PDO::FETCH_ASSOC);if(!is_array($r))throw new DomainException('ANYTOUR_OFFER_REFRESH_UNKNOWN');return $r; }
