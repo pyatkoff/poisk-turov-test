@@ -34,8 +34,17 @@ module.exports=async function checkOperatorCards(page,width,output){
     const toggle=card.locator('.tour-more-toggle');
     assert.equal(await toggle.innerText(),'Показать варианты · 12');
     assert.ok((await toggle.boundingBox()).height>=44);
-    assert.ok((await toggle.boundingBox()).width<260,'collapsed disclosure is a compact secondary action');
-    assert.notEqual(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','collapsed disclosure does not pretend to be a concrete offer CTA');
+    if(width<=760){
+      assert.ok((await toggle.boundingBox()).width>=(await card.boundingBox()).width-40,'mobile disclosure follows the full-width reference');
+      await page.mouse.move(0,0);
+      assert.equal(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 81, 12)','mobile hotel disclosure uses the approved orange action');
+      await toggle.hover();
+      assert.equal(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','hover feedback keeps the approved darker orange');
+      await page.mouse.move(0,0);
+    }else{
+      assert.ok((await toggle.boundingBox()).width<260,'desktop disclosure remains a compact secondary action');
+      assert.notEqual(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','desktop disclosure retains its secondary styling');
+    }
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     const collapsedComposition=[];
     if(width===375||width===1440){
@@ -55,7 +64,10 @@ module.exports=async function checkOperatorCards(page,width,output){
         assert.ok(geometry.price.right<=geometry.card.right+1&&geometry.toggle.right<=geometry.card.right+1,`${inspectedWidth}: minimum and disclosure stay within the card`);
         assert.ok(geometry.price.height<=geometry.priceLineHeight+1,`${inspectedWidth}: minimum prefix, amount and currency remain one readable line`);
         assert.ok(geometry.priceFontSize>=22,`${inspectedWidth}: hotel minimum is readable at a glance`);
-        if(inspectedWidth<=350)assert.ok(geometry.toggle.y>=geometry.price.bottom,`${inspectedWidth}: narrow disclosure follows the complete minimum price`);
+        if(inspectedWidth<=760){
+          assert.ok(geometry.toggle.y>=geometry.price.bottom,`${inspectedWidth}: mobile disclosure follows the complete minimum price`);
+          assert.ok(geometry.toggle.width>=geometry.card.width-40&&geometry.toggle.height>=50,`${inspectedWidth}: mobile disclosure fills the card with a generous touch target`);
+        }
         if(inspectedWidth>=1200){
           assert.ok(geometry.summary.x>=geometry.main.right-1,`${inspectedWidth}: minimum and disclosure form a side block beside the hotel`);
           assert.ok(geometry.toggle.y>=geometry.price.bottom,`${inspectedWidth}: disclosure follows the minimum in the decision block`);

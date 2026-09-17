@@ -9,7 +9,7 @@ import os, json, sys, hashlib, base64, subprocess, mimetypes
 from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
 PAYLOAD=ROOT/'v2'
-CODE=(ROOT/'v2/search3-canonical-profiles-v1.js').read_text()+'\n'+(ROOT/'v2/results-renderer-v5.js').read_text()
+CODE='\n'.join((PAYLOAD/name).read_text() for name in ['search3-canonical-profiles-v1.js','results-renderer-v5.js','search3-hotel-details-presentation-v1.js'])
 ORIGINAL=Path(os.environ['SEARCH3_BASE_RENDERER']).read_text()
 SCOPED_CSS=json.loads(subprocess.check_output(['php','-r', 'require '+json.dumps(str(PAYLOAD/'bundle-manifest-v1.php'))+'; echo json_encode(v2_bundle_files("css","search3"));'],text=True))
 CSS_FILES=SCOPED_CSS+['search3-results-filters-v1.css','search3-entry-v1.css','search3-results-cards-v2.css','search3-selected-flow-v2.css']
@@ -106,11 +106,22 @@ with sync_playwright() as p:
         check(page.evaluate('V2Results.state.items[0].tours.every((t,i)=>t===__source[i].tours[0])'),f'{width}: exact offer objects retained')
         check(page.evaluate('V2Results.state.items[0].seaDistance===undefined'),f'{width}: no unconfirmed supplier sea distance')
         check(page.evaluate('__projected.at(-1)[0].name')=='Наш тестовый отель 1',f'{width}: filter contract receives own metadata')
+        if width<=760:
+            geometry=page.locator('.hotel-offers-summary').evaluate('''node=>{
+                const button=node.querySelector('.tour-more-toggle'),price=node.querySelector('.hotel-price'),b=button.getBoundingClientRect(),p=price.getBoundingClientRect(),card=node.closest('.hotel-card').getBoundingClientRect();
+                return {buttonWidth:b.width,buttonHeight:b.height,cardWidth:card.width,buttonTop:b.top,priceBottom:p.bottom,priceColor:getComputedStyle(price).color,buttonColor:getComputedStyle(button).backgroundColor};
+            }''')
+            check(geometry['buttonWidth']>=geometry['cardWidth']-40 and geometry['buttonHeight']>=50,f'{width}: mobile hotel disclosure is a full-width touch target')
+            check(geometry['buttonTop']>=geometry['priceBottom'] and geometry['priceColor']=='rgb(39, 67, 203)',f'{width}: blue group minimum precedes mobile action')
+            check(geometry['buttonColor']=='rgb(255, 81, 12)',f'{width}: mobile disclosure follows owner-approved orange reference')
+        page.screenshot(path=str(OUT/f'canonical-collapsed-{width}.png'),full_page=True)
         page.locator('.tour-more-toggle').click()
         check(page.locator('.tour-row').count()==3,f'{width}: all three exact offers expand')
         check(page.evaluate('Array.from(document.querySelectorAll(".direct-tour")).map(x=>x.dataset.tid)')==[items[0]['tours'][0]['id'],items[1]['tours'][0]['id']],f'{width}: native selection IDs unchanged; Andromeda not enabled by guess')
         page.locator('.hotel-details summary').click()
-        check('Описание из нашего каталога' in page.locator('.hotel-details-content').inner_text(),f'{width}: own description opens')
+        check(page.locator('.hotel-description-summary').is_visible(),f'{width}: unique canonical description stays visible when hotel details open')
+        check('Описание из нашего каталога' in page.locator('.hotel-description-summary').inner_text(),f'{width}: own description remains readable')
+        check(page.locator('.hotel-details-content .hotel-description').count()==0,f'{width}: open hotel details never duplicate the canonical description')
         old=page.locator('.hotel-gallery-main').get_attribute('src');page.locator('.hotel-gallery-thumb').first.click()
         check(page.locator('.hotel-gallery-main').get_attribute('src')!=old,f'{width}: thumbnail click changes main photo')
         check('supplier.svg' not in page.locator('#results').inner_html(),f'{width}: provider image never used')
