@@ -2,7 +2,6 @@
 /** Isolated DB-first Search3 listing reader. Current offers + first-party AnyTour profiles only. */
 declare(strict_types=1);
 require_once __DIR__.'/db-v1.php';
-require_once __DIR__.'/anytour-offer-store-v1.php';
 require_once __DIR__.'/anytour-offer-store-read-v2.php';
 require_once __DIR__.'/anytour-canonical-catalog-v1.php';
 require_once __DIR__.'/anytour-search-scope-v1.php';
@@ -17,10 +16,8 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
     $pdo->beginTransaction();
     try{
         $version=(int)$pdo->query('SELECT schema_version FROM anytour_offer_store_control WHERE singleton_id=1')->fetchColumn();
-        if(!in_array($version,[1,2],true))throw new RuntimeException('Unsupported AnyTour offer-store schema');
-        // Transitional compatibility: live v1 is empty before the checked v2 migration.
-        // Once v2 is installed, only each provider's latest completed refresh is visible.
-        $stored=$version===2?AnyTourOfferStoreReadV2::readScope($pdo,$scope['digest'],$now,$limit):AnyTourOfferStoreV1::readScope($pdo,$scope['digest'],$now,$limit);
+        if($version!==2)throw new RuntimeException('Unsupported AnyTour offer-store schema');
+        $stored=AnyTourOfferStoreReadV2::readScope($pdo,$scope['digest'],$now,$limit);
         if(!hash_equals($scope['digest'],(string)$stored['scopeDigest']))throw new RuntimeException('Offer-store scope mismatch');
         $ids=[];foreach($stored['items'] as $item)$ids[(int)$item['anytourHotelId']]=(int)$item['anytourHotelId'];
         sort($ids,SORT_NUMERIC);
