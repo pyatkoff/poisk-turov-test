@@ -54,13 +54,14 @@ $pdo->exec("INSERT INTO catalog_hotels(id,name,is_active) VALUES
  (10,'Ready 10',1),(11,'Already owned 11',1),(12,'Failed 12',1),(13,'Blank description 13',1),
  (14,'No images 14',1),(15,'Invalid images 15',1),(16,'Inactive 16',0),(17,'   ',1),
  (18,'Ready 18',1),(19,'Ready 19',1),(20,'Unsafe media 20',1)");
-$good='[\"https://fixture.test/one.jpg\"]';
+$good=json_encode(['https://fixture.test/one.jpg'], JSON_THROW_ON_ERROR);
+$unsafe=json_encode(['http://unsafe.test/one.jpg'], JSON_THROW_ON_ERROR);
 $details=$pdo->prepare('INSERT INTO catalog_hotel_details(hotel_id,status,description,images_json,fetched_at) VALUES (?,?,?,?,?)');
 foreach ([
  [10,'success','Desc 10',$good],[11,'success','Desc 11',$good],[12,'failure','Desc 12',$good],
  [13,'success','   ',$good],[14,'success','Desc 14','[]'],[15,'success','Desc 15','not-json'],
  [16,'success','Desc 16',$good],[17,'success','Desc 17',$good],[18,'success','Desc 18',$good],
- [19,'success','Desc 19',$good],[20,'success','Desc 20','[\"http://unsafe.test/one.jpg\"]'],
+ [19,'success','Desc 19',$good],[20,'success','Desc 20',$unsafe],
 ] as $row) $details->execute([$row[0],$row[1],$row[2],$row[3],'2026-09-17 01:00:00']);
 
 $catalog = new AnyTourCanonicalCatalog($pdo);
