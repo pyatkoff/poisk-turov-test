@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../v2/data/anytour-provider-identity-bridge-v1.php';
+require_once __DIR__ . '/../v2/data/anytour-offer-store-v1.php';
+require_once __DIR__ . '/../v2/data/anytour-offer-store-read-v2.php';
 
 function bridge_check(bool $value, string $label): void
 {
@@ -29,6 +31,38 @@ function bridge_sql(PDO $db, string $path): void
     }
 }
 
+function bridge_dto(int $legacyId, string $providerHotelDigest, int $issued): array
+{
+    return [
+        'schema_version'=>1,
+        'provider'=>'andromeda',
+        'operator'=>[
+            'raw'=>'FUN&SUN','canonical_name'=>null,'canonical_verified'=>false,
+            'identity_source'=>'raw_label_only','filter_status'=>'unsupported',
+            'cross_provider_equivalence_verified'=>false,'supplier_code_exposed'=>false,
+        ],
+        'local_hotel_id'=>$legacyId,
+        'identity'=>[
+            'search_ref_digest'=>hash('sha256','direct-search'),
+            'offer_ref_digest'=>hash('sha256','direct-offer'),
+            'provider_hotel_ref_digest'=>$providerHotelDigest,
+        ],
+        'tour'=>[
+            'checkin'=>'2026-10-05','nights'=>7,
+            'party'=>['adults'=>2,'children'=>0,'child_ages'=>[]],
+            'meal'=>['raw'=>'AI'],'room'=>['raw'=>'STANDARD'],'placement'=>['raw'=>'2AD'],
+            'availability'=>['hotel'=>['raw'=>'available']],
+            'flight_details'=>['state'=>'search_summary_only'],
+            'observed_at'=>gmdate('Y-m-d\\TH:i:s\\Z',$issued),
+        ],
+        'money'=>['search_price_with_surcharge'=>['amount'=>'199390','currency'=>'RUB']],
+        'quote_state'=>'unknown','final_price_verified'=>false,'quote_evidence_digest'=>null,
+        'context'=>['generation'=>1,'page'=>1,'issued_at'=>$issued,'expires_at'=>$issued+900,'current_context_verified'=>true],
+        'selection_state'=>'disabled','booking_enabled'=>false,
+        'finalPriceReady'=>true,'finalPrice'=>'199390','price'=>'199390','currency'=>'RUB',
+    ];
+}
+
 $dsn = trim((string)getenv('ANYTOUR_PROVIDER_BRIDGE_TEST_DSN'));
 if ($dsn === '') {
     bridge_check(
@@ -50,10 +84,12 @@ $db = new PDO($dsn, (string)getenv('ANYTOUR_PROVIDER_BRIDGE_TEST_USER'), (string
     PDO::ATTR_EMULATE_PREPARES => false,
     PDO::ATTR_STRINGIFY_FETCHES => false,
 ]);
-foreach (['andromeda_hotel_identities','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $table) {
+foreach (['anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','andromeda_hotel_identities','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $table) {
     $db->exec('DROP TABLE IF EXISTS ' . $table);
 }
 bridge_sql($db, __DIR__ . '/../v2/data/migrations/20260916-anytour-canonical-catalog.sql');
+bridge_sql($db, __DIR__ . '/../v2/data/migrations/20260916-anytour-offer-store.sql');
+bridge_sql($db, __DIR__ . '/../v2/data/migrations/20260917-anytour-offer-store-v2.sql');
 $db->exec("CREATE TABLE andromeda_hotel_identities (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     supplier_namespace VARCHAR(64) NOT NULL,
@@ -98,11 +134,23 @@ $directOffer = [[
 bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $directOffer)) === 1, 'direct-without-legacy');
 bridge_check(AnyTourProviderIdentityBridgeV1::allowsOffer($db, 'andromeda', $digest, 101, $owns[101]), 'direct-allows');
 
-// A current MATCH rejection/reassignment invalidates the materialized bridge and may not fall back.
+// Integration: store + v2 visibility both use the direct accepted identity after the legacy link is gone.
+$scope = hash('sha256','direct-provider-scope');
+$token = AnyTourOfferStoreV1::beginRefresh($db,'andromeda',$scope,$now);
+$dto = bridge_dto(101,$digest,$now->getTimestamp());
+AnyTourOfferStoreV1::upsertReadyOffer($db,$token,$owns[101],$dto,$now->modify('+30 minutes'),$now);
+AnyTourOfferStoreV1::completeRefresh($db,$token,$now);
+$visible = AnyTourOfferStoreReadV2::readScope($db,$scope,$now);
+bridge_check(count($visible['items']) === 1 && $visible['items'][0]['anytourHotelId'] === $owns[101], 'store-read-direct-without-legacy');
+bridge_check($visible['items'][0]['provider'] === 'andromeda' && $visible['items'][0]['price'] === '199390', 'store-read-exact-offer');
+
+// A current MATCH rejection/reassignment invalidates the materialized bridge and the already-saved offer may not fall back.
 $db->exec("UPDATE andromeda_hotel_identities SET decision_status='pending' WHERE external_hotel_id='7001'");
 bridge_check(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $directOffer) === [], 'pending-fail-closed');
+bridge_check(AnyTourOfferStoreReadV2::readScope($db,$scope,$now)['items'] === [], 'pending-hidden-from-store');
 $db->exec("UPDATE andromeda_hotel_identities SET decision_status='accepted',local_hotel_id=202 WHERE external_hotel_id='7001'");
 bridge_check(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $directOffer) === [], 'reassigned-fail-closed');
+bridge_check(AnyTourOfferStoreReadV2::readScope($db,$scope,$now)['items'] === [], 'reassigned-hidden-from-store');
 bridge_expect(
     fn() => AnyTourProviderIdentityBridgeV1::materializeAcceptedAndromeda($db, [
         ['supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>'7001'],
@@ -125,4 +173,4 @@ $missing = AnyTourProviderIdentityBridgeV1::materializeAcceptedAndromeda($db, [
 ], $now->modify('+2 minutes'));
 bridge_check($missing['materialized'] === 0 && $missing['unresolved'] === 1, 'unresolved-no-guess');
 
-echo "ANYTOUR_PROVIDER_IDENTITY_BRIDGE_OK direct_without_legacy=1 stale_fail_closed=1 unresolved=1\n";
+echo "ANYTOUR_PROVIDER_IDENTITY_BRIDGE_OK direct_without_legacy=1 store_read=1 stale_fail_closed=1 unresolved=1\n";
