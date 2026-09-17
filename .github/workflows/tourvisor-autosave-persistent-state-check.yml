@@ -1,0 +1,52 @@
+name: Tourvisor autosave persistent state
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/tourvisor-anytour-offer-autosave.php'
+      - 'tests/tourvisor-autosave-persistent-state-test.php'
+      - '.github/workflows/tourvisor-autosave-persistent-state-check.yml'
+  push:
+    branches:
+      - 'fix/int-tourvisor-state-under-catalog-cache-20260917'
+    paths:
+      - 'app/integrations/tourvisor-anytour-offer-autosave.php'
+      - 'tests/tourvisor-autosave-persistent-state-test.php'
+      - '.github/workflows/tourvisor-autosave-persistent-state-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tourvisor-autosave-persistent-state-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  state-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Lint persistent-state boundary
+        run: |
+          set -euo pipefail
+          php -l app/integrations/tourvisor-anytour-offer-autosave.php >/dev/null
+          php -l tests/tourvisor-autosave-persistent-state-test.php >/dev/null
+      - name: Exercise web-persistent and CLI-fallback state
+        run: |
+          set -euo pipefail
+          php tests/tourvisor-autosave-persistent-state-test.php
+      - name: Enforce private catalog cache and no provider behavior drift
+        run: |
+          set -euo pipefail
+          helper=app/integrations/tourvisor-anytour-offer-autosave.php
+          grep -Fq "'.cache'" "$helper"
+          grep -Fq "'catalogs'" "$helper"
+          grep -Fq "'tourvisor-offer-autosave'" "$helper"
+          grep -Fq 'Require all denied' "$helper"
+          grep -Fq 'sys_get_temp_dir()' "$helper"
+          grep -Fq 'AnyTourIntOfferSnapshotProducerV1::produce' "$helper"
+          ! grep -Eq 'curl_init\(|v2_data_tv_get\(|AdditionalPricesDaily|withSearchSurchargeEstimate|search_plus_additional' "$helper"
+          echo TOURVISOR_PERSISTENT_STATE_BOUNDARY_OK
