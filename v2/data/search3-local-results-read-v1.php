@@ -5,6 +5,7 @@ require_once __DIR__.'/db-v1.php';
 require_once __DIR__.'/anytour-offer-store-read-v2.php';
 require_once __DIR__.'/anytour-offer-scope-index-v1.php';
 require_once __DIR__.'/anytour-canonical-catalog-v1.php';
+require_once __DIR__.'/anytour-stay-catalog-v1.php';
 require_once __DIR__.'/anytour-search-scope-v1.php';
 
 const SEARCH3_LOCAL_RESULTS_MAX_OFFERS=15000;
@@ -77,6 +78,15 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             foreach(array_slice($hotels,SEARCH3_LOCAL_RESULTS_MAX_HOTELS) as $hotel)$omittedOfferCount+=count($hotel['offers']);
             $hotels=array_slice($hotels,0,SEARCH3_LOCAL_RESULTS_MAX_HOTELS);
         }
+        $stayCatalog=new AnyTourStayCatalog($pdo);$stayAvailable=$stayCatalog->readable();$roomsByHotel=[];$mealPlans=[];
+        if($stayAvailable){
+            $displayHotelIds=array_map(static fn($hotel)=>(int)$hotel['anytourHotelId'],$hotels);
+            foreach(array_chunk($displayHotelIds,AnyTourStayCatalog::HOTEL_BATCH_LIMIT) as $chunk){
+                foreach($stayCatalog->roomsForHotels($chunk) as $hotelId=>$rooms)$roomsByHotel[(int)$hotelId]=$rooms;
+            }
+            $mealPlans=$stayCatalog->meals();
+        }
+        foreach($hotels as &$hotel)$hotel['stay']=['rooms'=>$roomsByHotel[(int)$hotel['anytourHotelId']]??[]];unset($hotel);
         $providerCounts=[];
         foreach($hotels as $hotel)foreach($hotel['offers'] as $offer)$providerCounts[$offer['provider']]=($providerCounts[$offer['provider']]??0)+1;
         ksort($providerCounts);$pdo->commit();
@@ -86,7 +96,8 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             'generatedAt'=>$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
             'hotelCount'=>count($hotels),'eligibleHotelCount'=>$eligibleHotelCount,'offerCount'=>array_sum($providerCounts),'storedOfferCount'=>count($stored['items']),
             'withheldOfferCount'=>$withheld,'omittedHotelCount'=>$omittedHotelCount,'omittedOfferCount'=>$omittedOfferCount,
-            'providerOfferCounts'=>(object)$providerCounts,'selectionAuthority'=>false,'hotels'=>$hotels,
+            'providerOfferCounts'=>(object)$providerCounts,'selectionAuthority'=>false,
+            'stayCatalog'=>['source'=>'anytour-stay-catalog','available'=>$stayAvailable,'mealPlans'=>$mealPlans],'hotels'=>$hotels,
         ];
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw$e;}
 }

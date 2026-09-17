@@ -5,6 +5,7 @@ declare(strict_types=1);
 final class AnyTourStayCatalog
 {
     public const BATCH_LIMIT = 100;
+    public const HOTEL_BATCH_LIMIT = 1000;
     public function __construct(private PDO $pdo) {}
 
     private static function text(mixed $value, int $limit): string
@@ -69,6 +70,12 @@ final class AnyTourStayCatalog
         $stmt=$this->pdo->prepare($sql); $stmt->execute($params);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+    /** Transitional-safe read capability check; never installs or mutates schema. */
+    public function readable(): bool
+    {
+        $stmt=$this->pdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('anytour_meal_plans','anytour_hotel_rooms')");
+        return (int)$stmt->fetchColumn()===2;
+    }
     public function meals(): array
     {
         $rows=$this->pdo->query('SELECT id,code,name_ru,family_code,qualifiers_json FROM anytour_meal_plans WHERE is_active=1 ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
@@ -86,7 +93,7 @@ final class AnyTourStayCatalog
         $facts=json_decode($row['facts_json'],true,32,JSON_THROW_ON_ERROR);
         if (!is_array($facts)) throw new RuntimeException('Invalid room facts');
         return ['id'=>(int)$row['id'],'hotelId'=>(int)$row['anytour_hotel_id'],
-            'nameRu'=>$row['name_ru'],'categoryCode'=>$row['category_code'],
+            'localKey'=>$row['local_key'],'nameRu'=>$row['name_ru'],'categoryCode'=>$row['category_code'],
             'facts'=>self::roomFacts($facts),'revision'=>(int)$row['revision']];
     }
     public function rooms(int $hotelId): array
@@ -96,6 +103,24 @@ final class AnyTourStayCatalog
             WHERE r.anytour_hotel_id=? AND r.is_active=1 AND h.is_active=1 ORDER BY r.id');
         $stmt->execute([$hotelId]);
         return array_map(self::roomDto(...),$stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+    /** Read first-party room dictionaries for a bounded set of canonical hotels in one query. */
+    public function roomsForHotels(array $hotelIds): array
+    {
+        if (!array_is_list($hotelIds) || count($hotelIds)>self::HOTEL_BATCH_LIMIT) {
+            throw new InvalidArgumentException('Expected <=1000 canonical hotel IDs');
+        }
+        $ids=[];
+        foreach ($hotelIds as $hotelId) $ids[self::id($hotelId)]=true;
+        if (!$ids) return [];
+        $ids=array_keys($ids);$result=[];
+        foreach ($ids as $hotelId) $result[$hotelId]=[];
+        $slots=implode(',',array_fill(0,count($ids),'?'));
+        $stmt=$this->pdo->prepare('SELECT r.* FROM anytour_hotel_rooms r JOIN anytour_hotels h ON h.id=r.anytour_hotel_id
+            WHERE r.anytour_hotel_id IN ('.$slots.') AND r.is_active=1 AND h.is_active=1 ORDER BY r.anytour_hotel_id,r.id');
+        $stmt->execute($ids);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) $result[(int)$row['anytour_hotel_id']][]=self::roomDto($row);
+        return $result;
     }
     /** Insert only; no overwrite/upsert, allocation of supplier-shaped local IDs, or commit. */
     public function createRoom(int $hotelId, string $localKey, string $nameRu, ?string $categoryCode, array $facts): int
@@ -155,7 +180,7 @@ final class AnyTourStayCatalog
         array_push($params,$scope['namespace'],$scope['hotelKey']);
         $sql='SELECT s.anytour_hotel_id AS source_hotel,h.is_active AS hotel_active,
             m.id AS mapping_id,m.anytour_hotel_id AS mapped_hotel,m.kind,m.key_kind,m.external_key,m.state,
-            r.id AS room_id,r.name_ru AS room_name,r.category_code,r.facts_json,r.revision,r.is_active AS room_active,
+            r.id AS room_id,r.local_key AS room_local_key,r.name_ru AS room_name,r.category_code,r.facts_json,r.revision,r.is_active AS room_active,
             p.id AS meal_id,p.code,p.name_ru AS meal_name,p.family_code,p.qualifiers_json,p.is_active AS meal_active
             FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id
             LEFT JOIN anytour_stay_mappings m ON m.namespace=s.namespace AND m.external_hotel_key=s.external_key
@@ -179,7 +204,7 @@ final class AnyTourStayCatalog
             if ($hotelId!==null && $row && (int)$row['mapped_hotel']!==$hotelId) $status='source-drift';
             elseif ($status==='accepted') {
                 if ($ref['kind']==='room' && (int)$row['room_active']===1) {
-                    $canonical=self::roomDto(['id'=>$row['room_id'],'anytour_hotel_id'=>$hotelId,'name_ru'=>$row['room_name'],
+                    $canonical=self::roomDto(['id'=>$row['room_id'],'anytour_hotel_id'=>$hotelId,'local_key'=>$row['room_local_key'],'name_ru'=>$row['room_name'],
                         'category_code'=>$row['category_code'],'facts_json'=>$row['facts_json'],'revision'=>$row['revision']]);
                 } elseif ($ref['kind']==='meal' && (int)$row['meal_active']===1) {
                     $canonical=self::mealDto(['id'=>$row['meal_id'],'name_ru'=>$row['meal_name'],'code'=>$row['code'],

@@ -8,11 +8,14 @@ on:
       - 'v2/data/anytour-offer-snapshot-ingest-v1.php'
       - 'v2/data/search3-local-results-read-v1.php'
       - 'v2/data/anytour-offer-store-read-v2.php'
+      - 'v2/data/anytour-stay-catalog-v1.php'
       - 'v2/data/.htaccess'
       - 'tests/search3_local_db_results_test.php'
+      - 'tests/search3_local_stay_dictionaries_test.php'
       - 'tests/anytour-offer-store-v2-snapshot-test.php'
       - 'v2/data/anytour-offer-store-v1.php'
       - 'v2/data/anytour-canonical-catalog-v1.php'
+      - 'v2/data/migrations/20260916-anytour-stay-catalog.sql'
       - 'v2/data/migrations/20260916-anytour-offer-store.sql'
       - 'v2/data/migrations/20260917-anytour-offer-store-v2.sql'
       - 'v2/data/migrations/20260917-anytour-offer-scope-index.sql'
@@ -50,7 +53,9 @@ jobs:
           php -l v2/data/anytour-offer-snapshot-ingest-v1.php
           php -l v2/data/search3-local-results-read-v1.php
           php -l v2/data/anytour-offer-store-read-v2.php
+          php -l v2/data/anytour-stay-catalog-v1.php
           php -l tests/search3_local_db_results_test.php
+          php -l tests/search3_local_stay_dictionaries_test.php
           php -l tests/anytour-offer-store-v2-snapshot-test.php
           python3 - <<'PY'
           import pathlib,re
@@ -79,3 +84,8 @@ jobs:
           ANYTOUR_LOCAL_RESULTS_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_local_results_fixture;charset=utf8mb4'
           ANYTOUR_LOCAL_RESULTS_TEST_PASSWORD: fixture-only-password
         run: php tests/search3_local_db_results_test.php
+      - name: Own stay dictionaries remain separate from supplier offer facts
+        env:
+          ANYTOUR_LOCAL_STAY_RESULTS_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_local_results_fixture;charset=utf8mb4'
+          ANYTOUR_LOCAL_STAY_RESULTS_TEST_PASSWORD: fixture-only-password
+        run: php tests/search3_local_stay_dictionaries_test.php
