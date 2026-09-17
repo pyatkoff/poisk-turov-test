@@ -1,0 +1,26 @@
+name: INT ANEX autosave currency handoff
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'app/integrations/three-provider-anex-offer.php'
+      - 'app/integrations/anex-anytour-offer-autosave.php'
+      - 'tests/anex-anytour-offer-autosave-test.php'
+      - '.github/workflows/int-anex-autosave-currency.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate direct-ANEX converted search money handoff
+        run: |
+          set -euo pipefail
+          php -l app/integrations/three-provider-anex-offer.php
+          php -l app/integrations/anex-anytour-offer-autosave.php
+          php -l tests/anex-anytour-offer-autosave-test.php
+          php tests/anex-anytour-offer-autosave-test.php

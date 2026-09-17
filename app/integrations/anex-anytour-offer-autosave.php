@@ -131,9 +131,18 @@ final class AnyTourAnexOfferAutosaveV1
 
             $application = $applyAdditional($attempt['evidence'], $offer);
             $additionalFacts = self::additionalFacts($application, $offer);
-            if ($additionalFacts === null) {
+            $customerSearch = $application['search_price'] ?? null;
+            if ($additionalFacts === null
+                || !is_array($customerSearch)
+                || ($customerSearch['source'] ?? null) !== 'direct_anex_search'
+                || !is_string($customerSearch['amount'] ?? null)
+                || !is_string($customerSearch['currency'] ?? null)) {
                 return self::receipt(false, 'final_price_not_ready', 0, count($auto['offers']));
             }
+            $customerSearchPrice = [
+                'amount' => $customerSearch['amount'],
+                'currency' => $customerSearch['currency'],
+            ];
 
             $observed = $entry['observed_at'] ?? null;
             if (!is_int($observed) || $observed < $saved['created_at'] || $observed > $now->getTimestamp()) {
@@ -149,7 +158,7 @@ final class AnyTourAnexOfferAutosaveV1
                 'supplier_namespace' => 'anex_online',
                 'external_id' => $external,
                 'local_id' => $legacyId,
-            ], $searchRef, gmdate('Y-m-d\TH:i:s\Z', $observed), $additionalFacts);
+            ], $searchRef, gmdate('Y-m-d\TH:i:s\Z', $observed), $additionalFacts, $customerSearchPrice);
 
             $retained = AnyTourThreeProviderOfferContext::retain(
                 $offerContract,

@@ -30,7 +30,8 @@ final class AnyTourThreeProviderAnexOffer
         array $currentIdentity,
         string $searchRef,
         string $observedAt,
-        array $additionalPricesReported = []
+        array $additionalPricesReported = [],
+        ?array $customerSearchPrice = null
     ): array {
         if (($page['schema_version'] ?? null) !== 1 || ($page['provider'] ?? null) !== 'anex'
             || ($page['supplier_namespace'] ?? null) !== 'anex_online'
@@ -77,6 +78,24 @@ final class AnyTourThreeProviderAnexOffer
         $meal = AnyTourThreeProviderMealFamily::normalize($offer['meal'] ?? null);
         $labels = AnyTourThreeProviderRoomPlacement::normalize('anex', $offer['room'] ?? null, $offer['hotel_place']);
 
+        $searchPrice = $offer['price'] ?? null;
+        if ($customerSearchPrice !== null) {
+            if (!is_array($customerSearchPrice)
+                || count($customerSearchPrice) !== 2
+                || array_diff(['amount', 'currency'], array_keys($customerSearchPrice)) !== []
+                || array_diff(array_keys($customerSearchPrice), ['amount', 'currency']) !== []
+                || !is_string($customerSearchPrice['amount'] ?? null)
+                || !is_string($customerSearchPrice['currency'] ?? null)) {
+                throw new InvalidArgumentException('THREE_PROVIDER_ANEX_CUSTOMER_SEARCH_PRICE');
+            }
+            $native = $offer['price'] ?? null;
+            $converted = $offer['converted_price'] ?? null;
+            if ($customerSearchPrice !== $native && $customerSearchPrice !== $converted) {
+                throw new InvalidArgumentException('THREE_PROVIDER_ANEX_CUSTOMER_SEARCH_PRICE');
+            }
+            $searchPrice = $customerSearchPrice;
+        }
+
         return AnyTourThreeProviderOfferContract::fromSearch([
             'provider' => 'anex',
             // The source normalizer has no operator label; provider is not evidence.
@@ -95,8 +114,8 @@ final class AnyTourThreeProviderAnexOffer
             'placement' => $labels['placement'] === null ? null
                 : ['raw' => $labels['placement']['raw'], 'normalized' => $labels['placement']['normalized']],
             'availability' => $offer['availability'],
-            'search_price' => ['amount' => $offer['price']['amount'] ?? null,
-                'currency' => $offer['price']['currency'] ?? null, 'source' => 'anex_search'],
+            'search_price' => ['amount' => $searchPrice['amount'] ?? null,
+                'currency' => $searchPrice['currency'] ?? null, 'source' => 'anex_search'],
             'fuel_charge_reported' => null,
             'additional_prices_reported' => $additionalPricesReported,
             'observed_at' => $observedAt,
