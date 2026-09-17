@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - refactor/search3-drop-meal-normalization-20260917
+    paths:
+      - .github/workflows/search3-refactor-remove-dead-meal-presets-once.yml
 
 permissions:
   contents: write
@@ -55,7 +57,7 @@ jobs:
           ! grep -Fq "pick('meal:all-inclusive')" src/search3/behavior/results/local-hotel-filter.js
           ! grep -Fq 'Быстрый выбор питания' src/search3/behavior/results/local-hotel-filter.js
           grep -Fq 'bindPresets(categoryPresets,categorySelect)' src/search3/behavior/results/local-hotel-filter.js
-          grep -Fq "syncPresets(categoryPresets,categorySelect,quick,'0')" src/search3/behavior/results/local-hotel-filter.js
+          grep -Fq 'syncPresets(categoryPresets,categorySelect,Array.from(categorySelect.options)' src/search3/behavior/results/local-hotel-filter.js
 
       - name: Rebuild canonical Search3 assets and verify
         shell: bash
@@ -70,7 +72,7 @@ jobs:
           ! grep -Fq "pick('meal:all-inclusive')" v2/search3-results-filters-v1.js
           ! grep -Fq 'Быстрый выбор питания' v2/search3-results-filters-v1.js
           grep -Fq 'bindPresets(categoryPresets,categorySelect)' v2/search3-results-filters-v1.js
-          grep -Fq "syncPresets(categoryPresets,categorySelect,quick,'0')" v2/search3-results-filters-v1.js
+          grep -Fq 'syncPresets(categoryPresets,categorySelect,Array.from(categorySelect.options)' v2/search3-results-filters-v1.js
 
       - name: Verify bounded diff
         shell: bash
