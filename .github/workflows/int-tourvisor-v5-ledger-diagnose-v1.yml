@@ -1,0 +1,85 @@
+name: INT Tourvisor v5 ledger diagnostic
+
+on:
+  push:
+    branches:
+      - 'ops/int-tourvisor-v5-ledger-diagnose-20260917-v1'
+    paths:
+      - '.github/workflows/int-tourvisor-v5-ledger-diagnose-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-tourvisor-v5-ledger-diagnose
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: 2ceca9b4e03994efc67baafd251bafc8807f8fb7
+  SEALED_OPERATION: int-tourvisor-production-writer-20260917-v5
+
+jobs:
+  diagnose:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 3
+          persist-credentials: false
+      - name: Bind isolated read-only diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-tourvisor-v5-ledger-diagnose-v1.yml'
+          test "${changed[1]}" = 'scripts/diagnostics/int_tourvisor_v5_ledger_diagnose.php'
+          php -l scripts/diagnostics/int_tourvisor_v5_ledger_diagnose.php >/dev/null
+          diag=scripts/diagnostics/int_tourvisor_v5_ledger_diagnose.php
+          ! grep -Eq 'curl_|v2_data_tv_get\(|INSERT|UPDATE|DELETE' "$diag"
+          grep -Fq 'SET TRANSACTION READ ONLY' "$diag"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo V5_LEDGER_DIAG_SOURCE_BOUND
+      - name: Prepare SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Inspect sealed v5 ledger and current DB read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          remote_script="/tmp/int-tourvisor-v5-ledger-diag.${GITHUB_RUN_ID}.php"
+          scp "${scp_opts[@]}" scripts/diagnostics/int_tourvisor_v5_ledger_diagnose.php "$remote:$remote_script"
+          ssh "${opts[@]}" "$remote" bash -s -- "$remote_script" "$SEALED_OPERATION" <<'REMOTE' > "$RUNNER_TEMP/result.json"
+          set -euo pipefail
+          script="$1"; operation="$2"; trap 'rm -f "$script"' EXIT
+          php -l "$script" >/dev/null
+          php "$script" "$HOME/www/anytoour.ru" "$HOME/.anytour-ops" "$operation"
+          REMOTE
+          jq -e '.status == "completed_read_only" and .supplier_calls == 0 and .db_writes == 0 and .public_writes == 0' "$RUNNER_TEMP/result.json" >/dev/null
+          jq . "$RUNNER_TEMP/result.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: int-tourvisor-v5-ledger-diagnose-${{ github.run_id }}
+          path: ${{ runner.temp }}/result.json
+          if-no-files-found: error
+          retention-days: 30
