@@ -51,8 +51,8 @@ $offer = [
     'external_room_id' => '10',
     'hotel_place' => 'DBL',
     'external_hotel_place_id' => '2',
-    'price' => ['amount' => '100000', 'currency' => 'RUB'],
-    'converted_price' => null,
+    'price' => ['amount' => '1081', 'currency' => 'USD'],
+    'converted_price' => ['amount' => '100000', 'currency' => 'RUB'],
     'availability' => ['hotel' => 'Y', 'flight_outbound_economy' => 'Y', 'flight_return_economy' => 'Y'],
     'supplier_booking_flag' => true,
     'final_price_verified' => false,
@@ -112,6 +112,7 @@ $apply = static function (array $evidence, array $rawOffer): array {
     if (($evidence['marker'] ?? null) !== 'terminal-apd') throw new RuntimeException('BAD_EVIDENCE');
     return [
         'application_state' => 'applied',
+        'search_price' => ['amount' => '100000', 'currency' => 'RUB', 'source' => 'direct_anex_search'],
         'search_plus_additional' => ['amount' => '110000', 'currency' => 'RUB'],
         'rates' => ['adult' => ['amount' => '5000', 'currency' => 'RUB'], 'child' => null],
     ];
@@ -153,6 +154,7 @@ $mismatch = AnyTourAnexOfferAutosaveV1::consume($db, $plan, $mismatchState, $ter
     static function (): array {
         return [
             'application_state' => 'applied',
+            'search_price' => ['amount' => '100000', 'currency' => 'RUB', 'source' => 'direct_anex_search'],
             'search_plus_additional' => ['amount' => '109999', 'currency' => 'RUB'],
             'rates' => ['adult' => ['amount' => '5000', 'currency' => 'RUB'], 'child' => null],
         ];
