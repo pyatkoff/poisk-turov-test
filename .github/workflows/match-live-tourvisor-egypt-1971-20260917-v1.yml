@@ -1,0 +1,158 @@
+name: MATCH live Tourvisor Egypt 1971 20260917 v1
+
+on:
+  push:
+    branches:
+      - diag/match-live-tourvisor-egypt-1971-20260917-v1
+    paths:
+      - '.github/workflows/match-live-tourvisor-egypt-1971-20260917-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotel-match-live-tourvisor-egypt-1971-20260917-v1
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      OP_ID: hotel-match-live-tourvisor-egypt-1971-20260917-v1
+      DATE_FROM: '2026-10-26'
+      DATE_TO: '2026-10-26'
+      NIGHTS: '7'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reserve before provider access
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          python3 - <<'PY'
+          import json, os
+          d={
+            'operation_id':os.environ['OP_ID'],'run_id':os.environ['GITHUB_RUN_ID'],
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],
+            'country':'Egypt','country_id':1,'date_from':os.environ['DATE_FROM'],'date_to':os.environ['DATE_TO'],
+            'nights':int(os.environ['NIGHTS']),'adults':2,'max_user_searches':1,'retry_allowed':False,
+            'direct_tourvisor_client_calls':0,'db_writes':0,'mapping_writes':0,'lead_writes':0,'booking_writes':0,
+            'denied_collector_2663_reused':False}
+          open('evidence/reservation.json','w').write(json.dumps(d,sort_keys=True,indent=2))
+          PY
+          sha256sum evidence/reservation.json > evidence/reservation.sha256
+
+      - name: Publish reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-live-tv-egypt-reservation-${{ github.run_id }}
+          path: |
+            evidence/reservation.json
+            evidence/reservation.sha256
+          retention-days: 14
+
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: One new Egypt published Search3 search
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > evidence/capture.cjs <<'JS'
+          const fs=require('fs');
+          const crypto=require('crypto');
+          const {chromium}=require('playwright');
+          const scalar=v=>['string','number','boolean'].includes(typeof v)||v===null;
+          const allowed=new Set(['hotelid','hotel_id','hotelId','hotelcode','hotel_code','hotelCode','source_hotel_id','sourceHotelId','provider_hotel_id','providerHotelId','local_id','localId','operator_id','operatorId','operator','operator_name','operatorName','tourOperator','tour_operator','hotel','hotelname','hotel_name','hotelName','name','country','countryname','country_name','countryName','region','regionname','region_name','regionName','resort','resortname','resort_name','resortName','town','townname','town_name','townName','latitude','longitude','lat','lon','lng','provider','source']);
+          function safeRows(value,limit=1000){
+            const out=[],seen=new Set();
+            const walk=(v,d)=>{
+              if(out.length>=limit||d>8||v==null)return;
+              if(Array.isArray(v)){for(const x of v)walk(x,d+1);return;}
+              if(typeof v!=='object')return;
+              const row={}; for(const [k,x] of Object.entries(v)) if(allowed.has(k)&&scalar(x)) row[k]=x;
+              if(Object.keys(row).some(k=>/hotel|operator/i.test(k))){const s=JSON.stringify(row);if(!seen.has(s)){seen.add(s);out.push(row)}}
+              for(const x of Object.values(v))walk(x,d+1);
+            }; walk(value,0); return out;
+          }
+          (async()=>{
+            const result={operation_id:process.env.OP_ID,run_id:process.env.GITHUB_RUN_ID,run_attempt:Number(process.env.GITHUB_RUN_ATTEMPT),source_sha:process.env.GITHUB_SHA,search:{country:'Egypt',country_id:1,date_from:process.env.DATE_FROM,date_to:process.env.DATE_TO,nights:Number(process.env.NIGHTS),adults:2},network:[],events:[],page_errors:[],writes:{db:0,mappings:0,leads:0,bookings:0}};
+            let browser;
+            try{
+              browser=await chromium.launch({headless:true});
+              const context=await browser.newContext({viewport:{width:1440,height:1000},extraHTTPHeaders:{'X-AnyTour-CI':'1'}});
+              await context.route(/https?:\/\/(?:mc\.yandex\.(?:ru|com)|metrika\.yandex\.)\//,r=>r.abort());
+              const page=await context.newPage();
+              page.on('pageerror',e=>result.page_errors.push(String(e)));
+              await page.addInitScript(()=>{window.__matchEvents=[];window.addEventListener('v2:provider-status',e=>{const d=e&&e.detail&&typeof e.detail==='object'?e.detail:{};window.__matchEvents.push({at:Date.now(),provider:d.provider||null,status:d.status||null,hotels:d.hotels??null,readyOffers:d.readyOffers??null,errorCode:d.errorCode||null})})});
+              const pending=[];
+              page.on('response',response=>{
+                const p=(async()=>{try{
+                  const u=new URL(response.url());
+                  let provider=null;
+                  if(/api-anex-search3-preview\.php$/.test(u.pathname))provider='anex';
+                  else if(/api-andromeda-search3-preview\.php$/.test(u.pathname))provider='andromeda';
+                  else if(/\/v2\/api\//.test(u.pathname))provider='tourvisor';
+                  if(!provider)return;
+                  const text=await response.text().catch(()=> ''); let parsed=null;try{parsed=text?JSON.parse(text):null}catch(_){}
+                  result.network.push({provider,path:u.pathname,method:response.request().method(),http:response.status(),bytes:Buffer.byteLength(text),body_sha256:crypto.createHash('sha256').update(text).digest('hex'),identity_rows:parsed?safeRows(parsed):[]});
+                }catch(e){result.page_errors.push('capture:'+String(e))}})();pending.push(p);
+              });
+              const u=new URL('https://anytoour.ru/_preview/search3-local-candidate/poisk-turov/');
+              Object.entries({from:'1',country:'1',dateFrom:process.env.DATE_FROM,dateTo:process.env.DATE_TO,daysFrom:process.env.NIGHTS,daysTill:process.env.NIGHTS,count_people:'2',ci_test:'1'}).forEach(([k,v])=>u.searchParams.set(k,v));
+              const r=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000}); result.page_http=r?r.status():null;if(!r||r.status()!==200)throw new Error('page_http_'+(r&&r.status()));
+              const deadline=Date.now()+110000;
+              while(Date.now()<deadline){
+                result.events=await page.evaluate(()=>window.__matchEvents||[]);
+                const anexTerminal=result.events.some(x=>x.provider==='anex'&&['complete','error'].includes(x.status));
+                const anexSeen=result.network.some(x=>x.provider==='anex');
+                if(anexTerminal&&anexSeen)break;
+                await page.waitForTimeout(1000);
+              }
+              await Promise.allSettled(pending); result.events=await page.evaluate(()=>window.__matchEvents||[]);
+              const allRows=result.network.flatMap(x=>x.identity_rows||[]);
+              const tvRows=allRows.filter(x=>String(x.source||'').toLowerCase()==='tourvisor');
+              const tvIds=[...new Set(tvRows.map(x=>x.hotel_id??x.hotelId??x.hotelid).filter(x=>x!==undefined&&x!==null).map(String))];
+              result.summary={tourvisor_source_rows:tvRows.length,tourvisor_unique_hotel_ids:tvIds.length,tourvisor_hotel_ids:tvIds,andromeda_http:result.network.filter(x=>x.provider==='andromeda').map(x=>x.http),provider_http_429:result.network.some(x=>x.http===429)};
+              fs.writeFileSync('evidence/result.json',JSON.stringify(result,null,2));
+              if(tvIds.length===0)throw new Error('no_tourvisor_derived_hotel_ids');
+              if(result.summary.provider_http_429)throw new Error('provider_http_429');
+            }catch(e){result.terminal_error=String(e&&e.stack||e);fs.writeFileSync('evidence/result.json',JSON.stringify(result,null,2));throw e}finally{if(browser)await browser.close().catch(()=>{})}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node evidence/capture.cjs
+
+      - name: Terminal receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f evidence/result.json || printf '%s\n' '{"terminal_error":"result_missing"}' > evidence/result.json
+          sha256sum evidence/result.json > evidence/result.sha256
+          python3 - <<'PY'
+          import json,os,hashlib
+          b=open('evidence/result.json','rb').read()
+          d={'operation_id':os.environ['OP_ID'],'run_id':os.environ['GITHUB_RUN_ID'],'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(b).hexdigest(),'max_user_searches':1,'retry_allowed':False,'direct_tourvisor_client_calls':0,'db_writes':0,'mapping_writes':0,'lead_writes':0,'booking_writes':0,'denied_collector_2663_reused':False}
+          open('evidence/receipt.json','w').write(json.dumps(d,sort_keys=True,indent=2))
+          PY
+          sha256sum evidence/receipt.json > evidence/receipt.sha256
+
+      - name: Publish terminal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-live-tv-egypt-evidence-${{ github.run_id }}
+          path: |
+            evidence/result.json
+            evidence/result.sha256
+            evidence/receipt.json
+            evidence/receipt.sha256
+          retention-days: 14
