@@ -60,13 +60,15 @@ final class AnyTourStayCandidates
                 MIN(NULLIF(TRIM(h.meal_name),'')) AS sample_label,
                 COUNT(DISTINCT COALESCE(NULLIF(TRIM(h.meal_name),''),'__EMPTY__')) AS distinct_labels,
                 COUNT(*) AS observed_count,MAX(h.fetched_at) AS last_seen_at,MAX(m.state) AS decision_state
-            FROM hot_tours_current h
-            JOIN anytour_hotel_sources s ON s.namespace='legacy_catalog' AND s.external_key=CAST(h.hotel_id AS CHAR)
+            FROM anytour_hotel_sources s
             JOIN anytour_hotels a ON a.id=s.anytour_hotel_id AND a.is_active=1
+            JOIN hot_tours_current h ON h.hotel_id=CAST(s.external_key AS UNSIGNED)
+                AND s.external_key=CAST(h.hotel_id AS BINARY)
             LEFT JOIN anytour_stay_mappings m ON m.namespace='legacy_catalog' AND m.external_hotel_key=s.external_key
-                AND m.operator_key=CAST(h.operator_id AS CHAR) AND m.kind='meal' AND m.key_kind='code'
-                AND m.external_key=CAST(h.meal_id AS CHAR)
-            WHERE h.operator_id IS NOT NULL AND h.operator_id>0 AND h.meal_id IS NOT NULL AND h.meal_id>0
+                AND m.operator_key=CAST(h.operator_id AS BINARY) AND m.kind='meal' AND m.key_kind='code'
+                AND m.external_key=CAST(h.meal_id AS BINARY)
+            WHERE s.namespace='legacy_catalog'
+                AND h.operator_id IS NOT NULL AND h.operator_id>0 AND h.meal_id IS NOT NULL AND h.meal_id>0
             GROUP BY s.external_key,s.anytour_hotel_id,s.source_sha256,h.operator_id,h.meal_id
             ORDER BY observed_count DESC,last_seen_at DESC,s.anytour_hotel_id ASC,h.operator_id ASC,h.meal_id ASC
             LIMIT " . $limit;
@@ -77,7 +79,9 @@ final class AnyTourStayCandidates
     private function roomCandidates(int $limit): array
     {
         $keyKind = "CASE WHEN o.room_id IS NOT NULL AND o.room_id>0 THEN 'code' ELSE 'label' END";
-        $supplierKey = "CASE WHEN o.room_id IS NOT NULL AND o.room_id>0 THEN CAST(o.room_id AS CHAR) ELSE o.room_type END";
+        // Both CASE branches are binary so production utf8mb4 label collations cannot be
+        // coerced against exact VARBINARY mapping keys. Labels remain untouched evidence.
+        $supplierKey = "CASE WHEN o.room_id IS NOT NULL AND o.room_id>0 THEN CAST(o.room_id AS BINARY) ELSE CAST(o.room_type AS BINARY) END";
         $sql = "SELECT s.external_key AS hotel_key,s.anytour_hotel_id,s.source_sha256,
                 CAST(o.operator_id AS CHAR) AS operator_key,
                 {$keyKind} AS supplier_key_kind,
@@ -85,14 +89,16 @@ final class AnyTourStayCandidates
                 MIN(NULLIF(TRIM(o.room_type),'')) AS sample_label,
                 COUNT(DISTINCT COALESCE(NULLIF(TRIM(o.room_type),''),'__EMPTY__')) AS distinct_labels,
                 COUNT(*) AS observed_count,MAX(o.observed_at) AS last_seen_at,MAX(m.state) AS decision_state
-            FROM tour_price_observations o
-            JOIN anytour_hotel_sources s ON s.namespace='legacy_catalog' AND s.external_key=CAST(o.hotel_id AS CHAR)
+            FROM anytour_hotel_sources s
             JOIN anytour_hotels a ON a.id=s.anytour_hotel_id AND a.is_active=1
+            JOIN tour_price_observations o ON o.hotel_id=CAST(s.external_key AS UNSIGNED)
+                AND s.external_key=CAST(o.hotel_id AS BINARY)
             LEFT JOIN anytour_stay_mappings m ON m.namespace='legacy_catalog' AND m.external_hotel_key=s.external_key
-                AND m.operator_key=CAST(o.operator_id AS CHAR) AND m.kind='room'
-                AND m.key_kind={$keyKind}
-                AND m.external_key={$supplierKey}
-            WHERE o.operator_id IS NOT NULL AND o.operator_id>0
+                AND m.operator_key=CAST(o.operator_id AS BINARY) AND m.kind='room'
+                AND ((o.room_id IS NOT NULL AND o.room_id>0 AND m.key_kind='code' AND m.external_key=CAST(o.room_id AS BINARY))
+                  OR ((o.room_id IS NULL OR o.room_id=0) AND m.key_kind='label' AND m.external_key=CAST(o.room_type AS BINARY)))
+            WHERE s.namespace='legacy_catalog'
+                AND o.operator_id IS NOT NULL AND o.operator_id>0
                 AND ((o.room_id IS NOT NULL AND o.room_id>0) OR NULLIF(TRIM(o.room_type),'') IS NOT NULL)
             GROUP BY s.external_key,s.anytour_hotel_id,s.source_sha256,o.operator_id,{$keyKind},{$supplierKey}
             ORDER BY observed_count DESC,last_seen_at DESC,s.anytour_hotel_id ASC,o.operator_id ASC,supplier_key ASC
