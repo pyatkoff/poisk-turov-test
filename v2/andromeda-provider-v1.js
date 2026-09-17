@@ -94,7 +94,7 @@ async function openDetail(ref){
  try{
   const response=await root.fetch(target.href,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body),signal:request.controller.signal});
   const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!current(run)||detailRequest!==request)return;
-  const responseContext=data&&context(data.offer_context),latest=detailTours().get(ref),sameContext=responseContext&&contextKey(responseContext)===contextKey(body.offer_context)&&latest&&latest.localId===accepted.localId;
+  const responseContext=data&&context(data.offer_context),latest=detailTours().get(ref),sameContext=responseContext&&contextKey(responseContext)===contextKey(body.offer_context)&&latest&&latest.key===accepted.key&&latest.localId===accepted.localId;
   if(!response.ok||!payload||payload.ok!==true){state.retry=!!response&&response.status>=500;throw new Error('request_failed');}
   if(!data||data.provider!=='andromeda'||data.local_id!==accepted.localId||!sameContext||!amount(data.price)||String(data.price.currency||'')!=='RUB'){state.retry=false;throw new Error('context_failed');}
   const text=(value,max)=>String(value==null?'':value).slice(0,max),integer=value=>Number.isSafeInteger(Number(value))&&Number(value)>=0?Number(value):0;
