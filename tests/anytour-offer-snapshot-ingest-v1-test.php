@@ -113,8 +113,8 @@ $now = new DateTimeImmutable('2026-09-17T03:00:00Z');
 $issued=$now->getTimestamp();
 $params=search_params_snapshot();
 $scope=AnyTourSearchScopeV1::fromParams($params)['digest'];
-$rowA=['anytour_hotel_id'=>$owns[101],'dto'=>dto_snapshot('anex',101,'a','199390',$issued),'expires_at'=>'2026-09-17T03:30:00Z'];
-$rowB=['anytour_hotel_id'=>$owns[202],'dto'=>dto_snapshot('anex',202,'b','205000',$issued),'expires_at'=>'2026-09-17T03:30:00Z'];
+$rowA=['anytour_hotel_id'=>$owns[101],'dto'=>dto_snapshot('anex',101,'a','199390',$issued),'expires_at'=>'2026-09-17T03:15:00Z'];
+$rowB=['anytour_hotel_id'=>$owns[202],'dto'=>dto_snapshot('anex',202,'b','205000',$issued),'expires_at'=>'2026-09-17T03:15:00Z'];
 
 $first=AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'anex',$params,[$rowA,$rowB],$now);
 check_snapshot($first['scopeDigest']===$scope && $first['offerCount']===2 && $first['hotelCount']===2, 'first-summary');
@@ -123,14 +123,31 @@ $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now);
 check_snapshot(count($visible['items'])===2, 'first-visible');
 check_snapshot(array_column($visible['items'],'price')===['199390','205000'], 'first-prices');
 
-$updated=$rowA;$updated['dto']=dto_snapshot('anex',101,'a2','198000',$issued+60);$updated['expires_at']='2026-09-17T03:31:00Z';
+$stored=$db->query("SELECT source_context_expires_at,last_seen_at,expires_at FROM anytour_offers WHERE provider='anex' AND is_active=1 ORDER BY id ASC")->fetchAll();
+check_snapshot(count($stored)===2, 'stored-two');
+foreach ($stored as $item) {
+    check_snapshot($item['source_context_expires_at']==='2026-09-17 03:15:00', 'source-context-preserved');
+    check_snapshot($item['last_seen_at']==='2026-09-17 03:00:00', 'listing-seen-at');
+    check_snapshot($item['expires_at']==='2026-09-17 09:00:00', 'listing-six-hour-expiry');
+}
+$afterContext=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+20 minutes'));
+check_snapshot(count($afterContext['items'])===2, 'visible-after-provider-context-expiry');
+foreach ($afterContext['items'] as $item) {
+    check_snapshot(($item['offer']['selection_state']??null)==='refresh_required', 'cached-refresh-required');
+    check_snapshot(($item['offer']['booking_enabled']??null)===false, 'cached-booking-disabled');
+    check_snapshot($item['expiresAt']==='2026-09-17T09:00:00Z', 'cached-bounded-expiry');
+}
+$afterListing=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+6 hours'));
+check_snapshot(count($afterListing['items'])===0, 'hidden-at-local-listing-expiry');
+
+$updated=$rowA;$updated['dto']=dto_snapshot('anex',101,'a2','198000',$issued+60);$updated['expires_at']='2026-09-17T03:16:00Z';
 $second=AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'anex',$params,[$updated],$now->modify('+1 minute'));
 check_snapshot($second['offerCount']===1 && $second['expiredUnseen']===2, 'replace-summary');
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+1 minute'));
 check_snapshot(count($visible['items'])===1 && $visible['items'][0]['price']==='198000', 'replace-visible');
 
-$good=$updated;$good['dto']=dto_snapshot('anex',101,'partial-good','197000',$issued+120);$good['expires_at']='2026-09-17T03:32:00Z';
-$bad=$rowB;$bad['anytour_hotel_id']=$owns[101];$bad['dto']=dto_snapshot('anex',202,'partial-bad','190000',$issued+120);$bad['expires_at']='2026-09-17T03:32:00Z';
+$good=$updated;$good['dto']=dto_snapshot('anex',101,'partial-good','197000',$issued+120);$good['expires_at']='2026-09-17T03:17:00Z';
+$bad=$rowB;$bad['anytour_hotel_id']=$owns[101];$bad['dto']=dto_snapshot('anex',202,'partial-bad','190000',$issued+120);$bad['expires_at']='2026-09-17T03:17:00Z';
 expect_snapshot_error(
     fn()=>AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'anex',$params,[$good,$bad],$now->modify('+2 minutes')),
     'ANYTOUR_OFFER_HOTEL_BRIDGE','bridge-failclosed'
@@ -148,7 +165,14 @@ expect_snapshot_error(
 );
 check_snapshot((int)$db->query('SELECT COUNT(*) FROM anytour_offer_refreshes')->fetchColumn()===$before, 'duplicate-no-refresh');
 
-$and=['anytour_hotel_id'=>$owns[202],'dto'=>dto_snapshot('andromeda',202,'and','210000',$issued+180),'expires_at'=>'2026-09-17T03:33:00Z'];
+$tooLong=$good;$tooLong['expires_at']='2026-09-17T09:02:01Z';
+expect_snapshot_error(
+    fn()=>AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'anex',$params,[$tooLong],$now->modify('+2 minutes')),
+    'ANYTOUR_OFFER_SNAPSHOT_EXPIRY','producer-expiry-still-bounded'
+);
+check_snapshot((int)$db->query('SELECT COUNT(*) FROM anytour_offer_refreshes')->fetchColumn()===$before, 'bad-expiry-no-refresh');
+
+$and=['anytour_hotel_id'=>$owns[202],'dto'=>dto_snapshot('andromeda',202,'and','210000',$issued+180),'expires_at'=>'2026-09-17T03:18:00Z'];
 AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'andromeda',$params,[$and],$now->modify('+3 minutes'));
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+3 minutes'));
 $providers=array_count_values(array_column($visible['items'],'provider'));
@@ -169,4 +193,4 @@ check_snapshot(count($visible['items'])===1 && $visible['items'][0]['provider']=
 $source=file_get_contents(__DIR__.'/../v2/data/anytour-offer-snapshot-ingest-v1.php');
 check_snapshot(is_string($source) && !preg_match('/\b(?:curl_|file_get_contents\s*\(\s*[\'\"]https?:|fsockopen|stream_socket_client)\b/i',$source), 'no-supplier-transport');
 
-echo "ANYTOUR_OFFER_SNAPSHOT_INGEST_OK complete=2 aborted=1 providers=2 schema=2\n";
+echo "ANYTOUR_OFFER_SNAPSHOT_INGEST_OK complete=2 aborted=1 providers=2 schema=2 cached_listing_ttl=21600\n";
