@@ -25,6 +25,12 @@ jobs:
           ref: refactor/search3-drop-meal-normalization-20260917
           fetch-depth: 0
 
+      - name: Install pinned Search3 build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix scripts/build/search3-js --ignore-scripts
+
       - name: Patch unique retired meal preset markers
         shell: bash
         run: |
