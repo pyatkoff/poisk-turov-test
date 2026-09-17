@@ -10,6 +10,23 @@ require_once __DIR__.'/anytour-search-scope-v1.php';
 const SEARCH3_LOCAL_RESULTS_MAX_OFFERS=15000;
 const SEARCH3_LOCAL_RESULTS_MAX_HOTELS=5000;
 
+/** Re-prove facts carried by each cached concrete offer before cross-scope reuse. */
+function search3_local_cached_offer_matches_scope(array $item,array $scope): bool
+{
+    $listing=$item['offer']??null;$tour=is_array($listing)?($listing['tour']??null):null;
+    if(!is_array($tour))return false;
+    $checkin=$tour['checkin']??null;$nights=$tour['nights']??null;$party=$tour['party']??null;
+    if(!is_string($checkin)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$checkin)
+        ||$checkin<$scope['dateFrom']||$checkin>$scope['dateTo'])return false;
+    if(!is_int($nights)||$nights<$scope['nightsFrom']||$nights>$scope['nightsTo'])return false;
+    if(!is_array($party)||($party['adults']??null)!==$scope['adults'])return false;
+    $ages=$party['child_ages']??null;$children=$party['children']??null;
+    if(!is_array($ages)||!array_is_list($ages)||!is_int($children)||$children!==count($ages)||$children!==count($scope['childs']))return false;
+    foreach($ages as $age)if(!is_int($age))return false;
+    sort($ages,SORT_NUMERIC);
+    return $ages===$scope['childs'];
+}
+
 function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $now,int $limit=SEARCH3_LOCAL_RESULTS_MAX_OFFERS): array
 {
     if($limit<1||$limit>SEARCH3_LOCAL_RESULTS_MAX_OFFERS)throw new InvalidArgumentException('ANYTOUR_LOCAL_RESULTS_LIMIT');
@@ -26,8 +43,11 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
         $mode='exact';$sourceScopes=[$scope['digest']];$stored=$exact;
         if($exact['items']===[]){
             $sourceScopes=AnyTourOfferScopeIndexV1::compatibleDigests($pdo,$scope,$now);
-            if($sourceScopes!==[]){$stored=AnyTourOfferStoreReadV2::readScopes($pdo,$sourceScopes,$now,$limit);$mode=$stored['items']===[]?'none':'compatible';}
-            else{$stored=['source'=>'anytour-offer-store-v2','scopeDigests'=>[],'items'=>[]];$mode='none';}
+            if($sourceScopes!==[]){
+                $stored=AnyTourOfferStoreReadV2::readScopes($pdo,$sourceScopes,$now,$limit);
+                $stored['items']=array_values(array_filter($stored['items'],static fn($item)=>is_array($item)&&search3_local_cached_offer_matches_scope($item,$scope['params'])));
+                if($stored['items']===[]){$sourceScopes=[];$mode='none';}else $mode='compatible';
+            }else{$stored=['source'=>'anytour-offer-store-v2','scopeDigests'=>[],'items'=>[]];$mode='none';}
         }
         $ids=[];foreach($stored['items'] as $item)$ids[(int)$item['anytourHotelId']]=(int)$item['anytourHotelId'];
         sort($ids,SORT_NUMERIC);
