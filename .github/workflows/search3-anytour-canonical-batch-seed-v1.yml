@@ -1,0 +1,244 @@
+name: Search3 AnyTour canonical provider-only batch seed v1
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_provider_only_seed_manifest_v1_b*.json'
+permissions:
+  contents: read
+concurrency:
+  group: anytour-canonical-catalog-operations
+  cancel-in-progress: false
+jobs:
+  checked-seed:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      startsWith(github.event.pull_request.head.ref, 'ops/local-canonical-provider-only-seed-2690-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      artifact_id: ${{ steps.retained.outputs.artifact-id }}
+      head: ${{ github.event.pull_request.head.sha }}
+      operation: ${{ steps.meta.outputs.operation }}
+      expected: ${{ steps.meta.outputs.expected }}
+      claim: ${{ steps.meta.outputs.claim }}
+      manifest_sha: ${{ steps.meta.outputs.manifest_sha }}
+      manifest_path: ${{ steps.meta.outputs.manifest_path }}
+      base_release: ${{ steps.meta.outputs.base_release }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_catalog_fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - id: meta
+        name: Validate exact manifest-only operation
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          test "${#changed[@]}" = 1
+          manifest="${changed[0]}"
+          [[ "$manifest" =~ ^scripts/catalog/anytour_provider_only_seed_manifest_v1_b[0-9]{3}\.json$ ]]
+          python3 scripts/catalog/anytour_canonical_seed_batch_manifest_v1.py --manifest "$manifest" > validated.json
+          python3 - <<'PY'
+          import json,os
+          v=json.load(open('validated.json'))
+          assert v['base_release']==os.environ['BASE_SHA'],'manifest base is not PR base'
+          out=os.environ['GITHUB_OUTPUT']
+          with open(out,'a') as f:
+              f.write('operation='+v['operation_id']+'\n')
+              f.write('expected='+str(v['expected_count'])+'\n')
+              f.write('claim='+str(v['claim_comment_id'])+'\n')
+              f.write('manifest_sha='+v['manifest_sha256']+'\n')
+              f.write('base_release='+v['base_release']+'\n')
+              f.write('manifest_path='+os.environ['MANIFEST_PATH']+'\n')
+          PY
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MANIFEST_PATH: ${{ steps.meta.outputs.manifest_path }}
+      - name: Verify existing canonical seed contract on real MySQL
+        env:
+          ANYTOUR_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_catalog_fixture;charset=utf8mb4'
+          ANYTOUR_TEST_PASSWORD: fixture-only-password
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_catalog_seed.php
+          php -l v2/data/anytour-canonical-catalog-v1.php
+          php tests/anytour_canonical_catalog_test.php
+      - name: Pin dependencies and retain durable reservation
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE_RELEASE: ${{ steps.meta.outputs.base_release }}
+          OPERATION_ID: ${{ steps.meta.outputs.operation }}
+          EXPECTED_COUNT: ${{ steps.meta.outputs.expected }}
+          CLAIM_COMMENT_ID: ${{ steps.meta.outputs.claim }}
+          MANIFEST_SHA: ${{ steps.meta.outputs.manifest_sha }}
+          MANIFEST_PATH: ${{ steps.meta.outputs.manifest_path }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,subprocess,tarfile
+          base=os.environ['BASE_RELEASE']; manifest=os.environ['MANIFEST_PATH']
+          files=['v2/data/anytour-canonical-catalog-v1.php','v2/data/hotel-presentation-read-v1.php','v2/data/hotel-details-v1.php','v2/data/db-v1.php','scripts/catalog/anytour_catalog_seed.php',manifest]
+          for name in files[:-1]:
+              got=subprocess.check_output(['git','rev-parse','HEAD:'+name]).strip(); want=subprocess.check_output(['git','rev-parse',base+':'+name]).strip(); assert got==want, f'base dependency changed: {name}'
+          raw=pathlib.Path(manifest).read_bytes(); assert hashlib.sha256(raw).hexdigest()==os.environ['MANIFEST_SHA']
+          m=json.loads(raw); expected=int(os.environ['EXPECTED_COUNT']); assert m['expected_count']==expected
+          work=pathlib.Path('retained'); work.mkdir(); payload={n:hashlib.sha256(pathlib.Path(n).read_bytes()).hexdigest() for n in files}
+          with tarfile.open(work/'payload.tar.gz','w:gz') as t:
+              for n in files:
+                  data=pathlib.Path(n).read_bytes(); info=tarfile.TarInfo('payload/'+n); info.size=len(data); info.mode=0o600; info.mtime=0; t.addfile(info,io.BytesIO(data))
+          reservation={'operation':os.environ['OPERATION_ID'],'baseRelease':base,'executionSource':os.environ['EXACT_HEAD'],'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'files':payload,'manifestPath':manifest,'manifestSha256':os.environ['MANIFEST_SHA'],'claimCommentId':int(os.environ['CLAIM_COMMENT_ID']),'batchIndex':m['batch_index'],'batchTotal':m['batch_total'],'expectedIds':expected,'supplierCalls':0,'mappingWrites':0,'publicWrites':0,'noReplayAfterApply':True}
+          (work/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          (work/'transport.sha256').write_text(''.join(hashlib.sha256((work/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in ['payload.tar.gz','reservation.json']))
+          PY
+      - id: retained
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-canonical-batch-reservation-${{ github.run_id }}
+          path: retained/
+          if-no-files-found: error
+          retention-days: 90
+
+  on-host-seed:
+    needs: checked-seed
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.checked-seed.outputs.artifact_id }}
+          path: retained
+          merge-multiple: true
+      - name: Recheck owner claim and exact Security result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.checked-seed.outputs.head }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          OPERATION_ID: ${{ needs.checked-seed.outputs.operation }}
+          CLAIM_COMMENT_ID: ${{ needs.checked-seed.outputs.claim }}
+          MANIFEST_SHA: ${{ needs.checked-seed.outputs.manifest_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          for i in $(seq 1 30); do
+            gh api "repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs" > checks.json
+            if python3 - <<'PY'
+          import json,sys
+          runs=json.load(open('checks.json'))['check_runs']; sys.exit(0 if any(x['name']=='guard' and x['conclusion']=='success' for x in runs) else 1)
+          PY
+            then break; fi
+            sleep 5
+          done
+          python3 - <<'PY'
+          import datetime,json,os
+          c=json.load(open('claim.json')); checks=json.load(open('checks.json'))['check_runs']; body=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in body and os.environ['MANIFEST_SHA'] in body
+          age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00')); assert 0<=age.total_seconds()<7200,'claim expired'
+          assert any(x['name']=='guard' and x['conclusion']=='success' for x in checks),'exact Security not green'
+          PY
+          cd retained && sha256sum -c transport.sha256
+      - name: Seed exact CURRENT provider-only batch once
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          OPERATION_ID: ${{ needs.checked-seed.outputs.operation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$OPERATION_ID" =~ ^anytour-canonical-provider-only-seed-2690-[0-9]{8}-b[0-9]{3}-v[0-9]+$ ]]
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] && [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          mkdir -p evidence; key="$RUNNER_TEMP/catalog-key"; known="$RUNNER_TEMP/catalog-known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 -d > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15); remote="$REMOTE_USER@$HOST"; path=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -L \"\$HOME/.anytour-operations\"; mkdir -p \"\$HOME/.anytour-operations\"; mkdir \"\$HOME/$path\""
+          scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz} "$remote:$path/"
+          set +e
+          ssh "${opts[@]}" "$remote" "OPERATION_ID='$OPERATION_ID' bash -s" <<'REMOTE'
+          set -euo pipefail; umask 077; cd "$HOME/.anytour-operations/$OPERATION_ID"; printf 'state=reserved\n' > checkpoint.env; sha256sum -c transport.sha256
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          r=json.load(open('reservation.json')); assert r['operation']==__import__('os').environ['OPERATION_ID'] and r['attempt']==1 and 1<=r['expectedIds']<=1000
+          with tarfile.open('payload.tar.gz','r:gz') as t:
+              members=t.getmembers(); assert len(members)==len(r['files'])==6 and {m.name for m in members}=={'payload/'+n for n in r['files']}
+              for m in members:
+                  assert m.isfile() and 0<m.size<250000 and '..' not in pathlib.PurePosixPath(m.name).parts
+                  data=t.extractfile(m).read(); assert hashlib.sha256(data).hexdigest()==r['files'][m.name[8:]]
+                  p=pathlib.Path(m.name); p.parent.mkdir(parents=True,exist_ok=True,mode=0o700); p.write_bytes(data)
+          PY
+          manifest=$(python3 - <<'PY'
+          import json
+          print(json.load(open('reservation.json'))['manifestPath'])
+          PY
+          )
+          ids=$(python3 - "$manifest" <<'PY'
+          import json,sys
+          m=json.load(open('payload/'+sys.argv[1])); print(','.join(map(str,m['tourvisor_hotel_ids'])))
+          PY
+          )
+          php -d display_errors=0 -r '$_SERVER["DOCUMENT_ROOT"]=getenv("HOME")."/www/anytoour.ru"; require "payload/scripts/catalog/anytour_catalog_seed.php";' -- --ids="$ids" > plan-first.json
+          sleep 1
+          php -d display_errors=0 -r '$_SERVER["DOCUMENT_ROOT"]=getenv("HOME")."/www/anytoour.ru"; require "payload/scripts/catalog/anytour_catalog_seed.php";' -- --ids="$ids" > plan-second.json
+          python3 - <<'PY'
+          import json
+          rsv=json.load(open('reservation.json')); n=rsv['expectedIds']; a=json.load(open('plan-first.json')); b=json.load(open('plan-second.json'))
+          assert a==b,'CURRENT plan drifted before apply'; assert a['status']=='prepared_read_only'; assert len(a['requestedIds'])==n and a['source_profiles']==n and a['missingIds']==[] and a['existing_bridges']==0; open('source.sha','w').write(a['source_sha256']+'\n')
+          PY
+          printf 'state=planned\n' > checkpoint.env; source_sha=$(cat source.sha); printf 'state=apply_started\n' > checkpoint.env
+          php -d display_errors=0 -r '$_SERVER["DOCUMENT_ROOT"]=getenv("HOME")."/www/anytoour.ru"; require "payload/scripts/catalog/anytour_catalog_seed.php";' -- --ids="$ids" --apply-source-sha256="$source_sha" > result.json
+          printf 'state=apply_returned\n' > checkpoint.env
+          python3 - <<'PY'
+          import json
+          n=json.load(open('reservation.json'))['expectedIds']; r=json.load(open('result.json')); assert r['status']=='committed_verified' and r['source_sha256']==open('source.sha').read().strip(); assert r['created']==n and r['source_snapshots_refreshed']==0 and r['unchanged']==0 and r['missingIds']==[] and r['verified_bridges']==n and r['canonical_profiles_overwritten']==0 and r['legacy_writes']==0 and r['supplier_calls']==0
+          PY
+          printf 'state=verified\n' > checkpoint.env; sha256sum plan-first.json plan-second.json result.json checkpoint.env > result.sha256
+          REMOTE
+          rc=$?; set -e
+          for f in checkpoint.env plan-first.json plan-second.json result.json result.sha256; do scp "${opts[@]}" "$remote:$path/$f" "evidence/$f" || true; done
+          cp retained/reservation.json evidence/reservation.json; printf '{"ssh_exit":%s,"noReplay":true}\n' "$rc" > evidence/transport-result.json; test "$rc" = 0; (cd evidence && sha256sum -c result.sha256)
+          python3 - <<'PY'
+          import json
+          n=json.load(open('evidence/reservation.json'))['expectedIds']; r=json.load(open('evidence/result.json')); assert r['status']=='committed_verified' and r['created']==n and r['verified_bridges']==n
+          PY
+      - name: Retain terminal result / checkpoint
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-canonical-batch-result-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 90
