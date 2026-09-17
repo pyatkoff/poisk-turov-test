@@ -1,0 +1,220 @@
+name: Search3 AnyTour local-id alias seed v1
+
+on:
+  push:
+    branches:
+      - ops/local-2690-own-local-id-alias-seed-20260917-v1
+    paths:
+      - 'scripts/catalog/anytour_local_identity_alias_seed.php'
+      - 'tests/anytour_local_identity_alias_seed_test.php'
+      - '.github/workflows/search3-anytour-local-id-alias-seed-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-local-id-alias-seed-2690-20260917-v1
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BASE_RELEASE: 996a2ece8aef332c1a31ed6c7e2da790759bcc99
+  OPERATION_ID: anytour-own-local-id-alias-seed-2690-20260917-v1
+  EXPECTED_SOURCE_PROFILES: '15999'
+
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_alias_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Guard exact operation source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/local-2690-own-local-id-alias-seed-20260917-v1'
+          git fetch --no-tags origin release/search3-production-ready-v1
+          test "$(git merge-base HEAD origin/release/search3-production-ready-v1)" = "$EXPECTED_BASE_RELEASE"
+          php -l scripts/catalog/anytour_local_identity_alias_seed.php
+          php -l tests/anytour_local_identity_alias_seed_test.php
+          grep -Fq "ALIAS_NAMESPACE = 'anytour_local_id'" scripts/catalog/anytour_local_identity_alias_seed.php
+          grep -Fq "private const LEGACY_NAMESPACE = 'legacy_catalog'" scripts/catalog/anytour_local_identity_alias_seed.php
+          grep -Fq "'mapping_writes'=>0" scripts/catalog/anytour_local_identity_alias_seed.php
+          grep -Fq "'profile_writes'=>0" scripts/catalog/anytour_local_identity_alias_seed.php
+          grep -Fq "'legacy_writes'=>0" scripts/catalog/anytour_local_identity_alias_seed.php
+          grep -Fq "'supplier_calls'=>0" scripts/catalog/anytour_local_identity_alias_seed.php
+      - name: Run disposable MySQL regression
+        env:
+          ANYTOUR_ALIAS_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_alias_fixture;charset=utf8mb4'
+          ANYTOUR_ALIAS_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour_local_identity_alias_seed_test.php | tee fixture-result.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anytour-local-id-alias-fixture
+          path: fixture-result.txt
+          if-no-files-found: error
+
+  apply-once:
+    needs: fixture
+    if: >-
+      github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      REMOTE_TMP: /tmp/anytour-local-id-alias-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Recheck exact source and release ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/local-2690-own-local-id-alias-seed-20260917-v1'
+          git fetch --no-tags origin release/search3-production-ready-v1
+          test "$(git merge-base HEAD origin/release/search3-production-ready-v1)" = "$EXPECTED_BASE_RELEASE"
+          sha256sum scripts/catalog/anytour_local_identity_alias_seed.php | tee seed-source.sha256
+          python3 - <<'PY'
+          import json,os,time
+          r={
+            'operation':os.environ['OPERATION_ID'],
+            'base_release_sha':os.environ['EXPECTED_BASE_RELEASE'],
+            'head_sha':os.environ['GITHUB_SHA'],
+            'run_id':os.environ['GITHUB_RUN_ID'],
+            'run_attempt':os.environ['GITHUB_RUN_ATTEMPT'],
+            'state':'reserved_before_private_access',
+            'expected_source_profiles':int(os.environ['EXPECTED_SOURCE_PROFILES']),
+          }
+          open('reservation.json','w',encoding='utf-8').write(json.dumps(r,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+      - name: Persist durable reservation before SSH or DB access
+        uses: actions/upload-artifact@v4
+        with:
+          name: anytour-local-id-alias-reservation
+          path: |
+            reservation.json
+            seed-source.sha256
+          if-no-files-found: error
+      - name: Prepare ephemeral SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Stage exact seed script only
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir '$REMOTE_TMP'; test -s \"\$HOME/www/anytoour.ru/data/db-v1.php\""
+          scp "${opts[@]}" scripts/catalog/anytour_local_identity_alias_seed.php "$remote:$REMOTE_TMP/seed.php"
+      - name: Capture two identical CURRENT plans
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          for n in 1 2; do
+            ssh "${opts[@]}" "$remote" "ANYTOUR_SITE_ROOT=\"\$HOME/www/anytoour.ru\" php '$REMOTE_TMP/seed.php' --mode=plan --operation='$OPERATION_ID' --base-release-sha='$EXPECTED_BASE_RELEASE'" > "plan-$n.json"
+          done
+          cmp plan-1.json plan-2.json
+          python3 - <<'PY'
+          import json,os
+          p=json.load(open('plan-1.json',encoding='utf-8'))
+          a=p.get('analysis') or {}
+          expected=int(os.environ['EXPECTED_SOURCE_PROFILES'])
+          if p.get('status')!='prepared_read_only': raise SystemExit('plan not read-only')
+          if a != {'source_profiles':expected,'existing_aliases':0,'missing':expected,'unchanged':0,'conflicts':0}:
+              raise SystemExit('CURRENT alias plan drift: %r' % (a,))
+          for key in ('writes','mapping_writes','profile_writes','legacy_writes','supplier_calls'):
+              if p.get(key)!=0: raise SystemExit('plan ownership violation '+key)
+          digest=p.get('source_digest')
+          if not isinstance(digest,str) or len(digest)!=64: raise SystemExit('source digest missing')
+          open('source-digest.txt','w').write(digest+'\n')
+          print('CURRENT_PLAN_OK source_profiles=%d aliases=0 missing=%d' % (expected,expected))
+          PY
+      - name: Commit exact aliases once and verify post-COMMIT
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          digest="$(cat source-digest.txt)"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "ANYTOUR_SITE_ROOT=\"\$HOME/www/anytoour.ru\" php '$REMOTE_TMP/seed.php' --mode=apply --operation='$OPERATION_ID' --base-release-sha='$EXPECTED_BASE_RELEASE' --expected-source-digest='$digest'" > result.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('result.json',encoding='utf-8'))
+          expected=int(os.environ['EXPECTED_SOURCE_PROFILES'])
+          if r.get('status')!='committed_verified': raise SystemExit('not committed_verified')
+          if r.get('created')!=expected or r.get('verified_aliases')!=expected or r.get('source_profiles')!=expected:
+              raise SystemExit('unexpected commit counts %r' % r)
+          if r.get('missing')!=0 or r.get('conflicts')!=0: raise SystemExit('postcommit incomplete')
+          for key in ('mapping_writes','profile_writes','legacy_writes','supplier_calls'):
+              if r.get(key)!=0: raise SystemExit('ownership violation '+key)
+          print('LOCAL_ID_ALIAS_COMMITTED_VERIFIED created=%d verified=%d' % (expected,expected))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anytour-local-id-alias-terminal-result
+          path: |
+            reservation.json
+            seed-source.sha256
+            plan-1.json
+            plan-2.json
+            source-digest.txt
+            result.json
+          if-no-files-found: warn
+      - name: Remove temporary remote files
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ -s "$key" && -n "${HOST_VALUE:-}" && -n "${USER_VALUE:-}" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$REMOTE_TMP'" || true
+          fi
