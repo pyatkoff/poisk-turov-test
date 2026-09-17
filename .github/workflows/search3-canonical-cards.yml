@@ -14,6 +14,7 @@ on:
       - 'v2/bundle-manifest-v1.php'
       - 'v2/search3-shared-runtime.json'
       - 'tests/search3-canonical-profiles.cjs'
+      - 'tests/search3-canonical-andromeda-state.test.js'
       - 'tests/search3-canonical-cards-browser.py'
       - 'tests/search3-local-anex-canonical-browser.py'
       - 'tests/search3-local-andromeda-canonical-browser.py'
@@ -47,6 +48,7 @@ jobs:
           node --check v2/andromeda-provider-v1.js
           node --check v2/anex-final-price-provider-v1.js
           node tests/search3-canonical-profiles.cjs
+          node tests/search3-canonical-andromeda-state.test.js
           node tests/search3-owner-size-guard.test.js
           php -l v2/bundle-manifest-v1.php
           python -m py_compile tests/search3-canonical-cards-browser.py
