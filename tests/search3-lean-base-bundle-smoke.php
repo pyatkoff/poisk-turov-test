@@ -17,8 +17,8 @@ foreach ($excludedJs as $excluded) {
     if (!in_array($excluded, $fullJs, true)) lean_bundle_fail('legacy owner missing: ' . $excluded);
     if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
 }
-// Search3 has four explicitly scoped dependencies; compare ordered owners, not just counts.
-$search3OnlyJs = ['search3-canonical-profiles-v1.js', 'search3-local-db-provider-v1.js', 'andromeda-local-endpoint-v1.js', 'anex-final-price-provider-v1.js'];
+// Search3 has explicit scoped dependencies; compare ordered owners, not just counts.
+$search3OnlyJs = ['search3-canonical-profiles-v1.js', 'search3-results-continuity-v1.js', 'search3-local-db-provider-v1.js', 'andromeda-local-endpoint-v1.js', 'anex-final-price-provider-v1.js'];
 if (count(array_unique($fullJs)) !== count($fullJs) || count(array_unique($search3Js)) !== count($search3Js)) lean_bundle_fail('duplicate JavaScript owner');
 foreach ($search3OnlyJs as $scoped) {
     if (in_array($scoped, $fullJs, true)) lean_bundle_fail('Search3-only owner leaked into legacy: ' . $scoped);
@@ -28,7 +28,8 @@ if (array_values(array_diff($search3Js, $search3OnlyJs)) !== array_values(array_
 $roomIndex = array_search('search3-room-normalizer-v1.js', $search3Js, true);
 $profileIndex = array_search('search3-canonical-profiles-v1.js', $search3Js, true);
 $rendererIndex = array_search('results-renderer-v5.js', $search3Js, true);
-if ($roomIndex === false || $profileIndex === false || $rendererIndex === false || $roomIndex >= $profileIndex || $profileIndex + 1 !== $rendererIndex) lean_bundle_fail('Search3 renderer dependencies are out of order');
+$continuityIndex = array_search('search3-results-continuity-v1.js', $search3Js, true);
+if ($roomIndex === false || $profileIndex === false || $rendererIndex === false || $continuityIndex === false || $roomIndex >= $profileIndex || $profileIndex + 1 !== $rendererIndex || $rendererIndex + 1 !== $continuityIndex) lean_bundle_fail('Search3 renderer dependencies are out of order');
 $lifecycleIndex = array_search('search-lifecycle-v6.js', $search3Js, true);
 $dbIndex = array_search('search3-local-db-provider-v1.js', $search3Js, true);
 $andromedaShimIndex = array_search('andromeda-local-endpoint-v1.js', $search3Js, true);
