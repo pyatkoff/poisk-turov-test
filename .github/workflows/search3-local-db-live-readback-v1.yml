@@ -1,0 +1,45 @@
+name: Search3 local DB-first live readback v1
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - '.github/workflows/search3-local-db-live-readback-v1.yml'
+permissions:
+  contents: read
+jobs:
+  live-readback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read published local preview and DB-first endpoint
+        run: |
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.error
+          base='https://anytoour.ru/_preview/search3-local-candidate/'
+          page=urllib.request.urlopen(base+'poisk-turov/?from=1&country=4&dateFrom=2026-09-17&dateTo=2026-09-22&daysFrom=7&daysTill=10&count_people=2&child_count=0&stars=5',timeout=30)
+          html=page.read().decode('utf-8','replace')
+          assert page.status==200
+          assert re.search(r'<meta\s+name=["\']robots["\'][^>]*noindex',html,re.I), 'preview must be noindex'
+          scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',html,re.I)
+          bundle=next((x for x in scripts if 'bundle-v1.php' in x),None)
+          assert bundle, 'Search3 bundle URL missing'
+          bundle_url=urllib.parse.urljoin(base+'poisk-turov/',bundle)
+          js=urllib.request.urlopen(bundle_url,timeout=30).read().decode('utf-8','replace')
+          assert 'AnyTourLocalDbProviderV1' in js, 'published Search3 bundle missing DB-first adapter'
+          params={
+            'departureId':'1','countryId':'4','dateFrom':'2026-10-05','dateTo':'2026-10-07','nightsFrom':'7','nightsTo':'9','adults':'2','childs':[],
+            'meal':'','hotelCategory':'','hotelRating':'','hotelTypes':[],'hotelIds':[],'hotelServices':[],'arrivalId':'','regionIds':[],'subregionIds':[],'operatorIds':[],
+            'priceFrom':'','priceTo':'','currency':'RUB','onlyCharter':'false','onlyDirect':'false'
+          }
+          body=json.dumps({'params':params},separators=(',',':')).encode()
+          request=urllib.request.Request(base+'data/search3-local-results-read-v1.php',data=body,method='POST',headers={'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'AnyTourSearch3'})
+          response=urllib.request.urlopen(request,timeout=30)
+          data=json.loads(response.read())
+          assert response.status==200 and data.get('ok') is True
+          result=data['data']
+          assert result['source']=='anytour-db-first-results-v1' and result['scopeVersion']==1 and result['selectionAuthority'] is False
+          assert result['hotelCount']==0 and result['offerCount']==0 and result['storedOfferCount']==0, result
+          assert result['hotels']==[]
+          print(json.dumps({'status':'live_db_first_readback_ok','page_http':200,'noindex':True,'bundle_adapter':True,'db_http':200,'hotelCount':0,'offerCount':0,'supplierCalls':0,'leads':0},sort_keys=True))
+          PY
