@@ -3,7 +3,7 @@ name: INT ANEX program APD store
 on:
   push:
     branches:
-      - 'feat/int-anex-program-apd-cache-20260918'
+      - 'feat/int-anex-program-apd-cache-20260918-v2'
     paths:
       - 'app/integrations/anex-program-apd-store.php'
       - 'app/integrations/anex-apd-prewarm.php'
