@@ -22,25 +22,53 @@ try {
     $tables=one($db,"SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('anytour_hotels','anytour_hotel_sources','andromeda_hotel_identities') AND ENGINE='InnoDB'");
     if($tables!==3)fail_census('SCHEMA');
 
+    $active=[];
+    foreach($db->query('SELECT id,is_active FROM anytour_hotels')->fetchAll(PDO::FETCH_ASSOC) as $row){
+        $active[(int)$row['id']] = (int)$row['is_active'] === 1;
+    }
+    $legacy=[];$aliases=[];$direct=0;
+    $sources=$db->query("SELECT namespace,CAST(external_key AS CHAR) AS external_key,anytour_hotel_id FROM anytour_hotel_sources WHERE namespace IN ('legacy_catalog','local_hotel_id','provider_ref_digest:andromeda')")->fetchAll(PDO::FETCH_ASSOC);
+    foreach($sources as $row){
+        $namespace=(string)$row['namespace'];
+        if($namespace==='provider_ref_digest:andromeda'){++$direct;continue;}
+        $key=(string)$row['external_key'];$own=(int)$row['anytour_hotel_id'];
+        if(!preg_match('/\A[1-9][0-9]*\z/D',$key)||$own<1)continue;
+        if($namespace==='legacy_catalog')$legacy[(int)$key]=$own;
+        else $aliases[(int)$key]=$own;
+    }
+
+    $legacyWithout=0;$legacyExact=0;$legacyConflict=0;
+    foreach($legacy as $local=>$own){
+        if(!array_key_exists($local,$aliases)){++$legacyWithout;continue;}
+        if($aliases[$local]===$own)++$legacyExact;else ++$legacyConflict;
+    }
+
+    $accepted=$db->query("SELECT local_hotel_id FROM andromeda_hotel_identities WHERE decision_status='accepted' AND local_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN);
+    $acceptedAlias=0;$acceptedLegacyOnly=0;$acceptedMissing=0;
+    foreach($accepted as $value){
+        $local=(int)$value;if($local<1)continue;
+        if(isset($aliases[$local])&&($active[$aliases[$local]]??false)){++$acceptedAlias;continue;}
+        if(!array_key_exists($local,$aliases)&&isset($legacy[$local])&&($active[$legacy[$local]]??false)){++$acceptedLegacyOnly;continue;}
+        if(!array_key_exists($local,$aliases)&&!isset($legacy[$local]))++$acceptedMissing;
+    }
+
     $result=[
         'schema_version'=>1,
         'operation'=>'anytour-canonical-coverage-census',
         'mode'=>'read_only',
-        'active_profiles'=>one($db,'SELECT COUNT(*) FROM anytour_hotels WHERE is_active=1'),
-        'all_profiles'=>one($db,'SELECT COUNT(*) FROM anytour_hotels'),
-        'legacy_catalog_links'=>one($db,"SELECT COUNT(*) FROM anytour_hotel_sources WHERE namespace='legacy_catalog'"),
-        'local_alias_links'=>one($db,"SELECT COUNT(*) FROM anytour_hotel_sources WHERE namespace='local_hotel_id'"),
-        'direct_andromeda_links'=>one($db,"SELECT COUNT(*) FROM anytour_hotel_sources WHERE namespace='provider_ref_digest:andromeda'"),
-        'legacy_without_local_alias'=>one($db,"SELECT COUNT(*) FROM anytour_hotel_sources l LEFT JOIN anytour_hotel_sources a ON a.namespace='local_hotel_id' AND a.external_key=l.external_key WHERE l.namespace='legacy_catalog' AND a.id IS NULL"),
-        'legacy_with_exact_local_alias'=>one($db,"SELECT COUNT(*) FROM anytour_hotel_sources l JOIN anytour_hotel_sources a ON a.namespace='local_hotel_id' AND a.external_key=l.external_key AND a.anytour_hotel_id=l.anytour_hotel_id WHERE l.namespace='legacy_catalog'"),
-        'legacy_with_conflicting_local_alias'=>one($db,"SELECT COUNT(*) FROM anytour_hotel_sources l JOIN anytour_hotel_sources a ON a.namespace='local_hotel_id' AND a.external_key=l.external_key AND a.anytour_hotel_id<>l.anytour_hotel_id WHERE l.namespace='legacy_catalog'"),
-        'accepted_andromeda_refs'=>one($db,"SELECT COUNT(*) FROM andromeda_hotel_identities WHERE decision_status='accepted' AND local_hotel_id IS NOT NULL"),
-        'accepted_andromeda_with_local_alias'=>one($db,"SELECT COUNT(*) FROM andromeda_hotel_identities i JOIN anytour_hotel_sources a ON a.namespace='local_hotel_id' AND CAST(a.external_key AS CHAR)=CAST(i.local_hotel_id AS CHAR) JOIN anytour_hotels h ON h.id=a.anytour_hotel_id AND h.is_active=1 WHERE i.decision_status='accepted' AND i.local_hotel_id IS NOT NULL"),
-        'accepted_andromeda_legacy_only'=>one($db,"SELECT COUNT(*) FROM andromeda_hotel_identities i JOIN anytour_hotel_sources l ON l.namespace='legacy_catalog' AND CAST(l.external_key AS CHAR)=CAST(i.local_hotel_id AS CHAR) JOIN anytour_hotels h ON h.id=l.anytour_hotel_id AND h.is_active=1 LEFT JOIN anytour_hotel_sources a ON a.namespace='local_hotel_id' AND a.external_key=l.external_key WHERE i.decision_status='accepted' AND i.local_hotel_id IS NOT NULL AND a.id IS NULL"),
-        'accepted_andromeda_without_canonical'=>one($db,"SELECT COUNT(*) FROM andromeda_hotel_identities i LEFT JOIN anytour_hotel_sources l ON l.namespace='legacy_catalog' AND CAST(l.external_key AS CHAR)=CAST(i.local_hotel_id AS CHAR) LEFT JOIN anytour_hotel_sources a ON a.namespace='local_hotel_id' AND CAST(a.external_key AS CHAR)=CAST(i.local_hotel_id AS CHAR) WHERE i.decision_status='accepted' AND i.local_hotel_id IS NOT NULL AND l.id IS NULL AND a.id IS NULL"),
-        'writes'=>0,
-        'supplier_calls'=>0,
-        'mapping_writes'=>0,
+        'active_profiles'=>count(array_filter($active)),
+        'all_profiles'=>count($active),
+        'legacy_catalog_links'=>count($legacy),
+        'local_alias_links'=>count($aliases),
+        'direct_andromeda_links'=>$direct,
+        'legacy_without_local_alias'=>$legacyWithout,
+        'legacy_with_exact_local_alias'=>$legacyExact,
+        'legacy_with_conflicting_local_alias'=>$legacyConflict,
+        'accepted_andromeda_refs'=>count($accepted),
+        'accepted_andromeda_with_local_alias'=>$acceptedAlias,
+        'accepted_andromeda_legacy_only'=>$acceptedLegacyOnly,
+        'accepted_andromeda_without_canonical'=>$acceptedMissing,
+        'writes'=>0,'supplier_calls'=>0,'mapping_writes'=>0,
     ];
     $db->commit();
     echo json_encode($result,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)."\n";
