@@ -13,6 +13,12 @@ $additionalBatchFile = is_file(__DIR__ . '/app/integrations/anex-additional-pric
 require_once $additionalBatchFile;
 unset($additionalBatchFile);
 
+$programObservationFile = is_file(__DIR__ . '/app/integrations/anex-program-observation-runtime.php')
+    ? __DIR__ . '/app/integrations/anex-program-observation-runtime.php'
+    : __DIR__ . '/../app/integrations/anex-program-observation-runtime.php';
+require_once $programObservationFile;
+unset($programObservationFile);
+
 /** Preview Search3 supplier boundary. No booking or Tourvisor transport. */
 function anytour_anex_search3_name(string $name): string
 {
@@ -838,6 +844,9 @@ function anytour_anex_search3_http(): void
                 AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver(), $clientFactory,
                 static function (array $offers) use ($pdo): array { return anytour_anex_search3_metadata($pdo, $offers); },
                 null, 'anytour_anex_search3_checkpoint', $additionalFactory);
+        }
+        if (in_array($action, ['search', 'expand'], true)) {
+            anytour_anex_program_observation_runtime($pdo, $_SESSION['offer_context']);
         }
         session_write_close();
         anytour_anex_search3_out(['ok' => true, 'data' => $data], 200);
