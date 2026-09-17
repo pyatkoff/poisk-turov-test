@@ -20,16 +20,18 @@ foreach (['anytour_stay_mappings','anytour_hotel_rooms','anytour_room_categories
 }
 $db->exec(file_get_contents(__DIR__ . '/../v2/data/migrations/20260916-anytour-canonical-catalog.sql'));
 $db->exec(file_get_contents(__DIR__ . '/../v2/data/migrations/20260916-anytour-stay-catalog.sql'));
+// CURRENT saved evidence is presentation text (utf8mb4_unicode_ci), while source/mapping
+// identifiers from the canonical migrations are exact VARBINARY keys.
 $db->exec("CREATE TABLE hot_tours_current (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     hotel_id INT UNSIGNED NOT NULL, operator_id INT UNSIGNED NULL, meal_id INT UNSIGNED NULL,
-    meal_name VARCHAR(180) NULL, fetched_at DATETIME NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin");
+    meal_name VARCHAR(180) COLLATE utf8mb4_unicode_ci NULL, fetched_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 $db->exec("CREATE TABLE tour_price_observations (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     hotel_id INT UNSIGNED NOT NULL, operator_id INT UNSIGNED NULL, room_id INT UNSIGNED NULL,
-    room_type VARCHAR(255) NULL, observed_at DATETIME NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin");
+    room_type VARCHAR(255) COLLATE utf8mb4_unicode_ci NULL, observed_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 $profile = json_encode(['name' => 'Fixture Hotel'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 $profileSha = hash('sha256', $profile);
@@ -50,14 +52,17 @@ $hot->execute([102,null,8,'UAI','2026-09-17 00:50:00']);
 $obs = $db->prepare('INSERT INTO tour_price_observations(hotel_id,operator_id,room_id,room_type,observed_at) VALUES(?,?,?,?,?)');
 $obs->execute([102,5,11,'Deluxe Sea View','2026-09-17 00:11:00']);
 $obs->execute([102,5,11,'Deluxe Sea View','2026-09-17 00:12:00']);
-$obs->execute([102,5,null,'Promo Room','2026-09-17 00:13:00']);
+$obs->execute([102,5,null,'Промо номер','2026-09-17 00:13:00']);
+// unicode_ci considers these equal for ordinary text grouping; exact supplier keys must not.
+$obs->execute([102,5,null,'промо номер','2026-09-17 00:13:30']);
 $obs->execute([999,5,12,'Other','2026-09-17 00:14:00']);
 $obs->execute([102,null,13,'No operator','2026-09-17 00:15:00']);
 
-$db->prepare("INSERT INTO anytour_stay_mappings(namespace,external_hotel_key,operator_key,kind,key_kind,external_key,
+$mapping = $db->prepare("INSERT INTO anytour_stay_mappings(namespace,external_hotel_key,operator_key,kind,key_kind,external_key,
     anytour_hotel_id,room_id,meal_id,state,evidence_ref,evidence_sha256,reviewed_by,created_at)
-    VALUES('legacy_catalog','102','5','meal','code','7',1,NULL,NULL,'rejected','fixture-negative',?,'fixture','2026-09-17 00:00:00')")
-    ->execute([str_repeat('a', 64)]);
+    VALUES('legacy_catalog','102','5',?,?,?,?,1,NULL,NULL,'rejected',?,?,?,'2026-09-17 00:00:00')");
+$mapping->execute(['meal','code','7','fixture-negative-meal',str_repeat('a', 64),'fixture']);
+$mapping->execute(['room','label','Промо номер','fixture-negative-room',str_repeat('b', 64),'fixture']);
 
 $beforeSources = (int)$db->query('SELECT COUNT(*) FROM anytour_hotel_sources')->fetchColumn();
 $beforeMappings = (int)$db->query('SELECT COUNT(*) FROM anytour_stay_mappings')->fetchColumn();
@@ -70,7 +75,7 @@ $check($result['source'] === 'saved_db_only', 'saved evidence source only');
 $check($result['writes'] === 0 && $result['supplierCalls'] === 0 && $result['automaticAccepts'] === 0, 'no side effects claimed');
 $check(count($result['localMealPlans']) === 10, 'ten local meal definitions');
 $check($result['counts']['mealCandidates'] === 2, 'meal candidates scoped to bridged hotel/operator');
-$check($result['counts']['roomCandidates'] === 2, 'room candidates scoped to bridged hotel/operator');
+$check($result['counts']['roomCandidates'] === 3, 'binary exact room candidates do not collapse unicode-ci labels');
 $check($beforeSources === $afterSources && $beforeMappings === $afterMappings, 'inventory performs no source/mapping writes');
 
 $meal5 = array_values(array_filter($result['mealCandidates'], static fn($v) => $v['scope']['operatorKey'] === '5'))[0] ?? null;
@@ -80,14 +85,16 @@ $check($meal5['sourceSha256'] === $sourceSha, 'exact source digest retained');
 $check($meal5['reference'] === ['kind'=>'meal','keyKind'=>'code','externalKey'=>'7'], 'supplier meal id retained');
 $check($meal5['observedCount'] === 2 && $meal5['lastSeenAt'] === '2026-09-17 00:20:00', 'meal frequency/freshness retained');
 $check($meal5['labelConflict'] === true && $meal5['distinctLabels'] === 2, 'conflicting labels surfaced');
-$check($meal5['decisionState'] === 'rejected', 'existing negative decision surfaced');
+$check($meal5['decisionState'] === 'rejected', 'existing negative meal decision surfaced');
 
 $roomCode = array_values(array_filter($result['roomCandidates'], static fn($v) => $v['reference']['keyKind'] === 'code'))[0] ?? null;
-$roomLabel = array_values(array_filter($result['roomCandidates'], static fn($v) => $v['reference']['keyKind'] === 'label'))[0] ?? null;
+$roomUpper = array_values(array_filter($result['roomCandidates'], static fn($v) => $v['reference']['externalKey'] === 'Промо номер'))[0] ?? null;
+$roomLower = array_values(array_filter($result['roomCandidates'], static fn($v) => $v['reference']['externalKey'] === 'промо номер'))[0] ?? null;
 $check(is_array($roomCode) && $roomCode['reference']['externalKey'] === '11', 'room id retained as code key');
 $check($roomCode['sampleLabel'] === 'Deluxe Sea View' && $roomCode['observedCount'] === 2, 'room evidence count retained');
-$check(is_array($roomLabel) && $roomLabel['reference']['externalKey'] === 'Promo Room', 'room label only when supplier id absent');
-$check($roomLabel['decisionState'] === 'unmapped', 'unreviewed room remains unmapped');
+$check(is_array($roomUpper) && $roomUpper['sampleLabel'] === 'Промо номер', 'UTF-8 label retained byte-for-byte');
+$check($roomUpper['decisionState'] === 'rejected', 'exact UTF-8 negative decision matched');
+$check(is_array($roomLower) && $roomLower['decisionState'] === 'unmapped', 'case-distinct UTF-8 supplier key remains separate and unmapped');
 $check($result['counts']['unmappedMeals'] === 1 && $result['counts']['unmappedRooms'] === 2, 'unmapped queue counts explicit');
 
 try { (new AnyTourStayCandidates($db))->collect(0); $check(false, 'zero limit rejected'); }
@@ -95,4 +102,4 @@ catch (InvalidArgumentException) { $check(true, 'zero limit rejected'); }
 try { (new AnyTourStayCandidates($db))->collect(5001); $check(false, 'oversized limit rejected'); }
 catch (InvalidArgumentException) { $check(true, 'oversized limit rejected'); }
 
-echo 'ANYTOUR_STAY_CANDIDATES_OK checks=' . $checks . " sql=REAL_MYSQL writes=0 supplier_calls=0\n";
+echo 'ANYTOUR_STAY_CANDIDATES_OK checks=' . $checks . " sql=REAL_MYSQL binary_keys=exact writes=0 supplier_calls=0\n";
