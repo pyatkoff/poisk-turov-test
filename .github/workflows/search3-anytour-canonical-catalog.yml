@@ -3,14 +3,17 @@ on:
   pull_request:
     paths:
       - 'v2/data/anytour-canonical-catalog-v1.php'
+      - 'v2/data/anytour-catalog-backfill-v1.php'
       - 'v2/data/migrations/20260916-anytour-canonical-catalog.sql'
       - 'v2/data/hotel-presentation-read-v1.php'
       - 'v2/data/hotel-details-v1.php'
       - 'scripts/catalog/anytour_catalog_seed.php'
       - 'scripts/catalog/anytour_catalog_preflight.php'
+      - 'scripts/catalog/anytour_catalog_backfill_plan.php'
       - 'tests/anytour_canonical_catalog_test.php'
       - 'tests/anytour_catalog_preflight_test.php'
       - 'tests/anytour_catalog_preflight_mysql_test.php'
+      - 'tests/anytour_catalog_backfill_mysql_test.php'
       - '.github/workflows/search3-anytour-canonical-catalog.yml'
 permissions:
   contents: read
@@ -42,11 +45,14 @@ jobs:
       - name: Syntax and pure contracts
         run: |
           php -l v2/data/anytour-canonical-catalog-v1.php
+          php -l v2/data/anytour-catalog-backfill-v1.php
           php -l scripts/catalog/anytour_catalog_seed.php
-          php -l tests/anytour_canonical_catalog_test.php
-          php tests/anytour_canonical_catalog_test.php --unit-only
           php -l scripts/catalog/anytour_catalog_preflight.php
+          php -l scripts/catalog/anytour_catalog_backfill_plan.php
+          php -l tests/anytour_canonical_catalog_test.php
           php -l tests/anytour_catalog_preflight_mysql_test.php
+          php -l tests/anytour_catalog_backfill_mysql_test.php
+          php tests/anytour_canonical_catalog_test.php --unit-only
           php tests/anytour_catalog_preflight_test.php
       - name: Actual disposable MySQL migration, seed, rollback and independent reads
         env:
@@ -61,5 +67,13 @@ jobs:
         run: |
           mysql -h 127.0.0.1 -P 3306 -u root -e 'CREATE DATABASE anytour_preflight_fixture CHARACTER SET utf8mb4'
           php tests/anytour_catalog_preflight_mysql_test.php
+      - name: Actual next-missing content-ready cohort planning
+        env:
+          MYSQL_PWD: fixture-only-password
+          ANYTOUR_BACKFILL_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_backfill_fixture;charset=utf8mb4'
+          ANYTOUR_TEST_PASSWORD: fixture-only-password
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -e 'CREATE DATABASE anytour_backfill_fixture CHARACTER SET utf8mb4'
+          php tests/anytour_catalog_backfill_mysql_test.php
       - name: Preserve existing safe media normalization
         run: php tests/hotel-details-smoke.php
