@@ -389,10 +389,6 @@ async function run(browser, width, previous) {
         // not pretend their old pixel tree is the new design contract: retain
         // exact facts, prices, lead fields/required flags and stage transitions.
         const beforeContract=JSON.parse(JSON.stringify(a.contract)),afterContract=JSON.parse(JSON.stringify(b.contract));
-        const beforeRoom=beforeContract.facts.find(fact=>fact[0]==='Номер'),afterRoom=afterContract.facts.find(fact=>fact[0]==='Номер');
-        if(!beforeRoom||!afterRoom||beforeRoom[1]!=='STANDARD LAND VIEW'||afterRoom[1]!=='Стандарт · территория') {
-          evidence.differences.push({width,phase,error:'reviewed room display changed outside the exact alias contract',beforeRoom,afterRoom});
-        } else afterRoom[1]=beforeRoom[1];
         const beforeFuel=beforeContract.facts.find(fact=>fact[0]==='Топливный сбор'),afterFuel=afterContract.facts.find(fact=>fact[0]==='Топливный сбор');
         if(!beforeFuel||!afterFuel||beforeFuel[1]!=='Уточняется по рейсу'||afterFuel[1]!=='уточняется') {
           evidence.differences.push({width,phase,error:'reviewed unknown-fuel display changed outside its exact contract',beforeFuel,afterFuel});
