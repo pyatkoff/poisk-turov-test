@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/../v2/data/search3-local-results-read-v1.php';
+require_once __DIR__.'/../v2/data/anytour-offer-store-v1.php';
 function need(bool $ok,string $label):void{if(!$ok)throw new RuntimeException('CHECK_FAILED:'.$label);}
 function exec_sql(PDO $pdo,string $path):void{$sql=preg_replace('/^\s*--.*$/m','',(string)file_get_contents($path));foreach(preg_split('/;\s*(?:\r?\n|$)/',$sql)?:[] as $s){$s=trim($s);if($s!=='')$pdo->exec($s);}}
 function params_fixture():array{return[
@@ -26,7 +27,9 @@ $bad=$p;$bad['providerId']='tourvisor';$failed=false;try{AnyTourSearchScopeV1::f
 $dsn=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_DSN');$password=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_PASSWORD');if(!str_starts_with($dsn,'mysql:'))throw new RuntimeException('fixture DSN required');
 $pdo=new PDO($dsn,'root',$password,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
 $pdo->exec('SET FOREIGN_KEY_CHECKS=0');foreach(['anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $t)$pdo->exec("DROP TABLE IF EXISTS `$t`");$pdo->exec('SET FOREIGN_KEY_CHECKS=1');
-exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260916-anytour-canonical-catalog.sql');exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260916-anytour-offer-store.sql');exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260917-anytour-offer-store-v2.sql');
+exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260916-anytour-canonical-catalog.sql');exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260916-anytour-offer-store.sql');
+$schema1Rejected=false;try{search3_local_results_build($pdo,$p,new DateTimeImmutable('2026-10-06T10:00:00Z'));}catch(RuntimeException $e){$schema1Rejected=str_contains($e->getMessage(),'Unsupported AnyTour offer-store schema');}need($schema1Rejected,'schema v1 read path retired fail closed');
+exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260917-anytour-offer-store-v2.sql');
 $hotel=$pdo->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES(?,?,1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())');
 $bridge=$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',?,?,'fixture',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
 $owns=[];foreach([[101,'Первый AnyTour отель'],[202,'Второй AnyTour отель']] as[$legacy,$name]){$profile=json_encode(['name'=>$name,'description'=>'Собственное описание','images'=>['https://images.example.test/'.$legacy.'.jpg']],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$hotel->execute([$profile,hash('sha256',$profile)]);$own=(int)$pdo->lastInsertId();$owns[$legacy]=$own;$source=json_encode(['id'=>$legacy]);$bridge->execute([(string)$legacy,$own,$source,hash('sha256',$source)]);}
@@ -45,4 +48,4 @@ $source=json_encode(['id'=>101]);$bridge->execute(['101',$owns[101],$source,hash
 $restored=search3_local_results_build($pdo,$p,$at);need($restored['storedOfferCount']===3&&$restored['hotelCount']===1&&$restored['offerCount']===2,'restored accepted bridge restores cached visibility');
 $empty=$p;$empty['dateFrom']='2026-11-01';$empty['dateTo']='2026-11-02';$none=search3_local_results_build($pdo,$empty,$at);need($none['hotelCount']===0&&$none['offerCount']===0,'unknown scope returns truthful empty set');need(is_object($none['providerOfferCounts'])&&count((array)$none['providerOfferCounts'])===0,'empty provider counts remain keyed map');need(str_contains((string)json_encode($none,JSON_UNESCAPED_SLASHES),'"providerOfferCounts":{}'),'empty provider counts serialize as JSON object');
 $pdo->exec("UPDATE anytour_offers SET payload_json='{}' WHERE provider='tourvisor'");$integrityFailed=false;try{search3_local_results_build($pdo,$p,$at);}catch(RuntimeException $e){$integrityFailed=str_contains($e->getMessage(),'PAYLOAD_INTEGRITY');}need($integrityFailed,'corrupt stored payload fails closed');
-echo "SEARCH3_LOCAL_DB_RESULTS_OK scope_v1=1 store_v2=1 stored=3 rendered=2 hotels=1 withheld=1 revoked_identity_hidden=2 provider_map_object=1 writes=0\n";
+echo "SEARCH3_LOCAL_DB_RESULTS_OK scope_v1=1 store_v1_retired=1 store_v2=1 stored=3 rendered=2 hotels=1 withheld=1 revoked_identity_hidden=2 provider_map_object=1 writes=0\n";
