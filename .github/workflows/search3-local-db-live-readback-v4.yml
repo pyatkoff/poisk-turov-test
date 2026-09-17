@@ -1,0 +1,33 @@
+name: Search3 local DB-first live readback v4
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - '.github/workflows/search3-local-db-live-readback-v4.yml'
+permissions:
+  contents: read
+jobs:
+  live-readback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify dual-read source against live schema v1
+        run: |
+          python3 - <<'PY'
+          import html,json,re,urllib.parse,urllib.request
+          base='https://anytoour.ru/_preview/search3-local-candidate/'
+          owner_url=base+'poisk-turov/?from=1&country=4&dateFrom=2026-09-17&dateTo=2026-09-22&daysFrom=7&daysTill=10&count_people=2&child_count=0&stars=5'
+          page=urllib.request.urlopen(owner_url,timeout=30); body=page.read().decode('utf-8','replace')
+          assert page.status==200 and re.search(r'<meta\s+name=["\']robots["\'][^>]*noindex',body,re.I)
+          scripts=[html.unescape(x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',body,re.I)]
+          raw=next(x for x in scripts if 'bundle-v1.php' in x); bundle_url=urllib.parse.urljoin(owner_url,raw)
+          query=urllib.parse.parse_qs(urllib.parse.urlparse(bundle_url).query); assert query.get('scope')==['search3']
+          params={'departureId':'1','countryId':'4','dateFrom':'2026-09-17','dateTo':'2026-09-22','nightsFrom':'7','nightsTo':'10','adults':'2','childs':[],'meal':'','hotelCategory':'5','hotelRating':'','hotelTypes':[],'hotelIds':[],'hotelServices':[],'arrivalId':'','regionIds':[],'subregionIds':[],'operatorIds':[],'priceFrom':'','priceTo':'','currency':'RUB','onlyCharter':'false','onlyDirect':'false'}
+          req=urllib.request.Request(base+'data/search3-local-results-read-v1.php',data=json.dumps({'params':params},separators=(',',':')).encode(),method='POST',headers={'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'AnyTourSearch3'})
+          response=urllib.request.urlopen(req,timeout=30); payload=json.loads(response.read()); result=payload['data']
+          assert response.status==200 and payload.get('ok') is True
+          assert result['source']=='anytour-db-first-results-v1' and result['offerStoreSchemaVersion']==1
+          assert result['selectionAuthority'] is False and result['hotelCount']==0 and result['offerCount']==0 and result['storedOfferCount']==0 and result['hotels']==[]
+          print(json.dumps({'status':'live_dual_read_schema1_ok','http':200,'offerStoreSchemaVersion':1,'hotelCount':0,'offerCount':0,'supplierCalls':0,'dbWrites':0},sort_keys=True))
+          PY
