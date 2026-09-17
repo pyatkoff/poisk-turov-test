@@ -1,0 +1,54 @@
+name: INT ANEX GDS APD probe v1
+
+on:
+  push:
+    branches:
+      - 'ops/int-anex-gds-apd-probe-20260917-v1'
+    paths:
+      - '.github/workflows/int-anex-gds-apd-probe-v1.yml'
+      - 'scripts/ops/int_anex_gds_apd_probe_v1.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-anex-gds-apd-probe-20260917-v1
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: 7fb963e6685b25611e42713bb68035a78f097381
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+          persist-credentials: false
+      - name: Bind one-shot diagnostic-only diff
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-anex-gds-apd-probe-v1.yml'
+          test "${changed[1]}" = 'scripts/ops/int_anex_gds_apd_probe_v1.py'
+          python3 -m py_compile scripts/ops/int_anex_gds_apd_probe_v1.py
+      - name: Probe exact fresh GDS program in APD
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 -B scripts/ops/int_anex_gds_apd_probe_v1.py "$RUNNER_TEMP/anex-gds-apd.json"
+      - name: Preserve APD evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-anex-gds-apd-${{ github.run_id }}
+          path: ${{ runner.temp }}/anex-gds-apd.json
+          if-no-files-found: error
+          retention-days: 30
