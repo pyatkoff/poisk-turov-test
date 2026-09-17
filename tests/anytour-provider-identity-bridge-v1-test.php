@@ -103,13 +103,25 @@ $db->exec("CREATE TABLE andromeda_hotel_identities (
 $at = '2026-09-17 14:45:00';
 $insertHotel = $db->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES(:json,:sha,1,1,:created,:updated)');
 $insertLegacy = $db->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',:legacy,:own,'fixture',:json,:sha,:first_seen,:last_seen)");
+$insertAlias = $db->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('anytour_local_id',:legacy,:own,'canonical_local_alias_v1',:json,:sha,:first_seen,:last_seen)");
 $owns = [];
-foreach ([101=>'Direct Alpha',202=>'Legacy Beta'] as $legacy => $name) {
+foreach ([101=>'Direct Alpha',202=>'Local Beta'] as $legacy => $name) {
     $profile = json_encode(['name'=>$name], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     $insertHotel->execute(['json'=>$profile,'sha'=>hash('sha256',$profile),'created'=>$at,'updated'=>$at]);
     $own = (int)$db->lastInsertId(); $owns[$legacy] = $own;
     $source = json_encode(['fixture'=>true], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-    $insertLegacy->execute(['legacy'=>(string)$legacy,'own'=>$own,'json'=>$source,'sha'=>hash('sha256',$source),'first_seen'=>$at,'last_seen'=>$at]);
+    $sourceSha = hash('sha256',$source);
+    $insertLegacy->execute(['legacy'=>(string)$legacy,'own'=>$own,'json'=>$source,'sha'=>$sourceSha,'first_seen'=>$at,'last_seen'=>$at]);
+    $alias = [
+        'accepted_local_hotel_id'=>$legacy,
+        'canonical_hotel_id'=>$own,
+        'derived_from_namespace'=>'legacy_catalog',
+        'derived_from_source_sha256'=>$sourceSha,
+        'schema_version'=>1,
+    ];
+    ksort($alias,SORT_STRING);
+    $aliasJson = json_encode($alias, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    $insertAlias->execute(['legacy'=>(string)$legacy,'own'=>$own,'json'=>$aliasJson,'sha'=>hash('sha256',$aliasJson),'first_seen'=>$at,'last_seen'=>$at]);
 }
 $db->prepare("INSERT INTO andromeda_hotel_identities(supplier_namespace,external_hotel_id,local_hotel_id,decision_status) VALUES('andromeda_catalog','7001',101,'accepted')")->execute();
 
@@ -125,7 +137,7 @@ $sourceRow = $db->prepare("SELECT anytour_hotel_id,acquired_via FROM anytour_hot
 $sourceRow->execute([$digest]); $saved = $sourceRow->fetch(PDO::FETCH_ASSOC);
 bridge_check(is_array($saved) && (int)$saved['anytour_hotel_id'] === $owns[101] && $saved['acquired_via'] === 'match_accepted_bridge', 'direct-row');
 
-// Prove runtime no longer needs legacy_catalog once the accepted provider bridge exists.
+// Direct provider binding remains valid when legacy provenance is removed.
 $db->prepare("DELETE FROM anytour_hotel_sources WHERE namespace='legacy_catalog' AND external_key='101'")->execute();
 $directOffer = [[
     'provider'=>'andromeda','provider_hotel_ref_digest'=>$digest,
@@ -134,7 +146,7 @@ $directOffer = [[
 bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $directOffer)) === 1, 'direct-without-legacy');
 bridge_check(AnyTourProviderIdentityBridgeV1::allowsOffer($db, 'andromeda', $digest, 101, $owns[101]), 'direct-allows');
 
-// Integration: store + v2 visibility both use the direct accepted identity after the legacy link is gone.
+// Integration: store + v2 visibility both use the direct accepted identity after legacy provenance is gone.
 $scope = hash('sha256','direct-provider-scope');
 $token = AnyTourOfferStoreV1::beginRefresh($db,'andromeda',$scope,$now);
 $dto = bridge_dto(101,$digest,$now->getTimestamp());
@@ -159,17 +171,17 @@ bridge_expect(
     'reassignment-needs-explicit-reconcile'
 );
 
-// A not-yet-materialized provider identity may use the bounded compatibility path,
-// but only while that exact provider ref is CURRENT accepted to the claimed local ID.
+// Remove the second legacy provenance row too: progressive and non-Andromeda paths must use the own alias.
+$db->prepare("DELETE FROM anytour_hotel_sources WHERE namespace='legacy_catalog' AND external_key='202'")->execute();
 $db->prepare("INSERT INTO andromeda_hotel_identities(supplier_namespace,external_hotel_id,local_hotel_id,decision_status) VALUES('andromeda_catalog','7999',202,'accepted')")->execute();
 $legacyDigest = hash('sha256', 'andromeda_catalog:7999');
 $legacyOffer = [[
     'provider'=>'andromeda','provider_hotel_ref_digest'=>$legacyDigest,
     'legacy_hotel_id'=>202,'anytour_hotel_id'=>$owns[202],
 ]];
-bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $legacyOffer)) === 1, 'accepted-progressive-fallback');
+bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $legacyOffer)) === 1, 'accepted-progressive-own-alias');
 
-// A supplier hotel with the same legacy target but no exact accepted identity must fail closed.
+// A supplier hotel with the same local target but no exact accepted identity must fail closed.
 $unacceptedDigest = hash('sha256', 'andromeda_catalog:7888');
 $unacceptedOffer = [[
     'provider'=>'andromeda','provider_hotel_ref_digest'=>$unacceptedDigest,
@@ -178,12 +190,34 @@ $unacceptedOffer = [[
 bridge_check(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $unacceptedOffer) === [], 'unaccepted-fallback-blocked');
 bridge_check(!AnyTourProviderIdentityBridgeV1::allowsOffer($db, 'andromeda', $unacceptedDigest, 202, $owns[202]), 'unaccepted-admission-blocked');
 
-// Non-Andromeda providers keep their existing legacy compatibility behavior.
+// Tourvisor/ANEX retain the same target behavior, but through AnyTour's own alias.
 $anexOffer = [[
     'provider'=>'anex','provider_hotel_ref_digest'=>hash('sha256', 'anex:fixture'),
     'legacy_hotel_id'=>202,'anytour_hotel_id'=>$owns[202],
 ]];
-bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $anexOffer)) === 1, 'anex-legacy-unchanged');
+$tourvisorOffer = [[
+    'provider'=>'tourvisor','provider_hotel_ref_digest'=>hash('sha256', 'tourvisor:fixture'),
+    'legacy_hotel_id'=>202,'anytour_hotel_id'=>$owns[202],
+]];
+bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $anexOffer)) === 1, 'anex-own-alias');
+bridge_check(count(AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $tourvisorOffer)) === 1, 'tourvisor-own-alias');
+
+// A legacy provenance row by itself is no longer runtime identity authority.
+$profile3 = json_encode(['name'=>'Legacy Only'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+$insertHotel->execute(['json'=>$profile3,'sha'=>hash('sha256',$profile3),'created'=>$at,'updated'=>$at]);
+$own3 = (int)$db->lastInsertId();
+$source3 = json_encode(['fixture'=>true], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+$insertLegacy->execute(['legacy'=>'303','own'=>$own3,'json'=>$source3,'sha'=>hash('sha256',$source3),'first_seen'=>$at,'last_seen'=>$at]);
+$legacyOnlyOffer = [[
+    'provider'=>'anex','provider_hotel_ref_digest'=>hash('sha256','anex:legacy-only'),
+    'legacy_hotel_id'=>303,'anytour_hotel_id'=>$own3,
+]];
+bridge_check(AnyTourProviderIdentityBridgeV1::filterOfferRows($db,$legacyOnlyOffer) === [], 'legacy-provenance-not-runtime-authority');
+
+// Malformed own alias fails closed rather than falling back to retained legacy provenance.
+$db->prepare("UPDATE anytour_hotel_sources SET source_json='{}',source_sha256=? WHERE namespace='anytour_local_id' AND external_key='202'")
+    ->execute([hash('sha256','{}')]);
+bridge_check(AnyTourProviderIdentityBridgeV1::filterOfferRows($db,$anexOffer) === [], 'malformed-own-alias-fail-closed');
 
 // Unresolved accepted identity is never invented.
 $missing = AnyTourProviderIdentityBridgeV1::materializeAcceptedAndromeda($db, [
@@ -191,4 +225,4 @@ $missing = AnyTourProviderIdentityBridgeV1::materializeAcceptedAndromeda($db, [
 ], $now->modify('+2 minutes'));
 bridge_check($missing['materialized'] === 0 && $missing['unresolved'] === 1, 'unresolved-no-guess');
 
-echo "ANYTOUR_PROVIDER_IDENTITY_BRIDGE_OK direct_without_legacy=1 store_read=1 stale_fail_closed=1 fallback_acceptance=1 unresolved=1\n";
+echo "ANYTOUR_PROVIDER_IDENTITY_BRIDGE_OK own_alias=1 no_legacy_runtime=1 direct_without_legacy=1 store_read=1 stale_fail_closed=1 unresolved=1\n";
