@@ -29,7 +29,9 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             $read=$catalog->read($chunk);
             foreach($read['items'] as $profile)$profiles[(int)$profile['id']]=$profile;
         }
-        $groups=[];$providerCounts=[];$withheld=0;
+        // Keep a stable JSON object contract even when an exact scope has zero offers.
+        // Provider values are constrained by the offer-store admission boundary.
+        $groups=[];$providerCounts=['tourvisor'=>0,'anex'=>0,'andromeda'=>0];$withheld=0;
         foreach($stored['items'] as $item){
             $own=(int)$item['anytourHotelId'];$profile=$profiles[$own]??null;
             if(!$profile){$withheld++;continue;}
