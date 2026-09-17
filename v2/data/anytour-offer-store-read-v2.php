@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 final class AnyTourOfferStoreReadV2
 {
+    private const PROVIDERS=['tourvisor'=>true,'anex'=>true,'andromeda'=>true];
+
     private static function digest(mixed $value): string
     {
         if(!is_string($value)||!preg_match('/\A[a-f0-9]{64}\z/D',$value))throw new InvalidArgumentException('ANYTOUR_OFFER_SCOPE');
@@ -12,13 +14,31 @@ final class AnyTourOfferStoreReadV2
     private static function decimal(string $value): string
     {
         if(!preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D',$value))throw new RuntimeException('ANYTOUR_OFFER_PRICE_INTEGRITY');
-        $parts=explode('.',$value,2);$fraction=rtrim($parts[1]??'','0');return $parts[0].($fraction===''?'':'.'.$fraction);
+        $parts=explode('.',$value,2);$fraction=rtrim($parts[1]??'','0');
+        if($parts[0]==='0'&&$fraction==='')throw new RuntimeException('ANYTOUR_OFFER_PRICE_INTEGRITY');
+        return $parts[0].($fraction===''?'':'.'.$fraction);
     }
     private static function iso(string $value): string
     {
         $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$value,new DateTimeZone('UTC'));
         if(!$date)throw new RuntimeException('ANYTOUR_OFFER_TIME_INTEGRITY');
         return $date->format('Y-m-d\TH:i:s\Z');
+    }
+    private static function listing(array $payload,string $provider,string $price,string $currency): void
+    {
+        $payloadPrice=$payload['listingPrice']??null;
+        if(($payload['schema_version']??null)!==1
+            ||!isset(self::PROVIDERS[$provider])
+            ||($payload['provider']??null)!==$provider
+            ||($payload['listingPriceReady']??null)!==true
+            ||!is_string($payloadPrice)
+            ||self::decimal($payloadPrice)!==$price
+            ||$currency!=='RUB'
+            ||($payload['currency']??null)!=='RUB'
+            ||($payload['selection_state']??null)!=='refresh_required'
+            ||($payload['booking_enabled']??null)!==false){
+            throw new RuntimeException('ANYTOUR_OFFER_LISTING_INTEGRITY');
+        }
     }
     public static function readScope(PDO $db,string $scope,DateTimeImmutable $now,int $limit=1000): array
     {
@@ -32,9 +52,12 @@ final class AnyTourOfferStoreReadV2
         $stmt=$db->prepare($sql);$stmt->execute(['scope'=>$scope,'now'=>$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')]);$items=[];
         while($row=$stmt->fetch(PDO::FETCH_ASSOC)){
             $raw=(string)$row['payload_json'];if(!hash_equals((string)$row['payload_sha256'],hash('sha256',$raw)))throw new RuntimeException('ANYTOUR_OFFER_PAYLOAD_INTEGRITY');
-            $payload=json_decode($raw,true,512,JSON_THROW_ON_ERROR);if(!is_array($payload))throw new RuntimeException('ANYTOUR_OFFER_PAYLOAD_INTEGRITY');
-            $items[]=['anytourHotelId'=>(int)$row['anytour_hotel_id'],'legacyHotelId'=>(int)$row['legacy_hotel_id'],'provider'=>(string)$row['provider'],
-                'price'=>self::decimal((string)$row['display_price']),'currency'=>(string)$row['currency'],'observedAt'=>self::iso((string)$row['observed_at']),
+            try{$payload=json_decode($raw,true,512,JSON_THROW_ON_ERROR);}catch(Throwable $e){throw new RuntimeException('ANYTOUR_OFFER_PAYLOAD_INTEGRITY',0,$e);}
+            if(!is_array($payload))throw new RuntimeException('ANYTOUR_OFFER_PAYLOAD_INTEGRITY');
+            $provider=(string)$row['provider'];$price=self::decimal((string)$row['display_price']);$currency=(string)$row['currency'];
+            self::listing($payload,$provider,$price,$currency);
+            $items[]=['anytourHotelId'=>(int)$row['anytour_hotel_id'],'legacyHotelId'=>(int)$row['legacy_hotel_id'],'provider'=>$provider,
+                'price'=>$price,'currency'=>$currency,'observedAt'=>self::iso((string)$row['observed_at']),
                 'lastSeenAt'=>self::iso((string)$row['last_seen_at']),'expiresAt'=>self::iso((string)$row['expires_at']),'offer'=>$payload];
         }
         return['source'=>'anytour-offer-store-v2','scopeDigest'=>$scope,'items'=>$items];
