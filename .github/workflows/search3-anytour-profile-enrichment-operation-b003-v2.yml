@@ -61,7 +61,7 @@ jobs:
             test "$(git rev-parse "$HEAD_SHA:$path")" = "$(git rev-parse "$EXPECTED_BASE_RELEASE:$path")"
           done
           php -l v2/data/anytour-profile-enrichment-v1.php >/dev/null
-          grep -Fq "private const MAX_BATCH = 250" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "public const MAX_BATCH = 250;" v2/data/anytour-profile-enrichment-v1.php
           grep -Fq "PROVENANCE_NAMESPACE = 'profile_enrichment:legacy_saved_v1'" v2/data/anytour-profile-enrichment-v1.php
           grep -Fq "'roomMealFieldsExcluded'=>true" v2/data/anytour-profile-enrichment-v1.php
           grep -Fq "'supplierCalls'=>0" v2/data/anytour-profile-enrichment-v1.php
@@ -139,9 +139,9 @@ jobs:
 
       - name: Prepare SSH and stage exact component
         env:
-          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
-          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          KEY_VALUE: ${{ secrets.ANYTOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOUR_DEPLOY_USER }}
         shell: bash
         run: |
           set -euo pipefail
