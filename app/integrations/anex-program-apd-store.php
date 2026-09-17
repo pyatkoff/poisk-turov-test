@@ -29,7 +29,7 @@ final class AnyTourAnexProgramApdStoreV1
         if ($driver === 'mysql') {
             $sql = "INSERT INTO anytour_anex_programs
                 (supplier_program_id,departure_id,country_id,supplier_currency_id,flight_class,first_seen_at,last_seen_at,first_departure_date,last_departure_date,observation_count)
-                VALUES(:program,:departure,:country,:currency,:flight,:at,:at,:date,:date,1)
+                VALUES(:program,:departure,:country,:currency,:flight,:first_at,:last_at,:first_date,:last_date,1)
                 ON DUPLICATE KEY UPDATE
                   flight_class=CASE
                     WHEN flight_class='mixed' THEN 'mixed'
@@ -45,7 +45,7 @@ final class AnyTourAnexProgramApdStoreV1
         } elseif ($driver === 'sqlite') {
             $sql = "INSERT INTO anytour_anex_programs
                 (supplier_program_id,departure_id,country_id,supplier_currency_id,flight_class,first_seen_at,last_seen_at,first_departure_date,last_departure_date,observation_count)
-                VALUES(:program,:departure,:country,:currency,:flight,:at,:at,:date,:date,1)
+                VALUES(:program,:departure,:country,:currency,:flight,:first_at,:last_at,:first_date,:last_date,1)
                 ON CONFLICT(supplier_program_id,departure_id,country_id,supplier_currency_id) DO UPDATE SET
                   flight_class=CASE
                     WHEN flight_class='mixed' THEN 'mixed'
@@ -64,7 +64,9 @@ final class AnyTourAnexProgramApdStoreV1
         $q = $db->prepare($sql);
         $q->execute([
             'program' => $program, 'departure' => $departure, 'country' => $country, 'currency' => $currency,
-            'flight' => $flight, 'at' => $at, 'date' => $departureDate,
+            'flight' => $flight,
+            'first_at' => $at, 'last_at' => $at,
+            'first_date' => $departureDate, 'last_date' => $departureDate,
         ]);
         self::recordProgramContext($db, $driver, [
             'program'=>$program,'departure'=>$departure,'country'=>$country,'currency'=>$currency,
@@ -194,7 +196,7 @@ final class AnyTourAnexProgramApdStoreV1
         if($driver==='mysql'){
             $sql="INSERT INTO anytour_anex_program_contexts
               (supplier_program_id,departure_id,country_id,supplier_currency_id,date_beg,nights,flight_class,first_seen_at,last_seen_at,observation_count)
-              VALUES(:program,:departure,:country,:currency,:date,:nights,:flight,:at,:at,1)
+              VALUES(:program,:departure,:country,:currency,:date,:nights,:flight,:first_at,:last_at,1)
               ON DUPLICATE KEY UPDATE
                 flight_class=CASE
                   WHEN flight_class='mixed' THEN 'mixed'
@@ -208,7 +210,7 @@ final class AnyTourAnexProgramApdStoreV1
         }elseif($driver==='sqlite'){
             $sql="INSERT INTO anytour_anex_program_contexts
               (supplier_program_id,departure_id,country_id,supplier_currency_id,date_beg,nights,flight_class,first_seen_at,last_seen_at,observation_count)
-              VALUES(:program,:departure,:country,:currency,:date,:nights,:flight,:at,:at,1)
+              VALUES(:program,:departure,:country,:currency,:date,:nights,:flight,:first_at,:last_at,1)
               ON CONFLICT(supplier_program_id,departure_id,country_id,supplier_currency_id,date_beg,nights) DO UPDATE SET
                 flight_class=CASE
                   WHEN flight_class='mixed' THEN 'mixed'
@@ -222,7 +224,12 @@ final class AnyTourAnexProgramApdStoreV1
         }else{
             throw new RuntimeException('ANEX_PROGRAM_STORE_DRIVER');
         }
-        $q=$db->prepare($sql);$q->execute($p);
+        $q=$db->prepare($sql);
+        $q->execute([
+            'program'=>$p['program'],'departure'=>$p['departure'],'country'=>$p['country'],
+            'currency'=>$p['currency'],'date'=>$p['date'],'nights'=>$p['nights'],'flight'=>$p['flight'],
+            'first_at'=>$p['at'],'last_at'=>$p['at'],
+        ]);
     }
 
     private static function readProgram(PDO $db,int $program,int $departure,int $country,int $currency):array
