@@ -9,6 +9,11 @@ $db->exec("CREATE TABLE anytour_anex_programs (
   supplier_program_id INTEGER NOT NULL,departure_id INTEGER NOT NULL,country_id INTEGER NOT NULL,supplier_currency_id INTEGER NOT NULL,
   flight_class TEXT NOT NULL,first_seen_at TEXT NOT NULL,last_seen_at TEXT NOT NULL,first_departure_date TEXT NOT NULL,last_departure_date TEXT NOT NULL,
   observation_count INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(supplier_program_id,departure_id,country_id,supplier_currency_id))");
+$db->exec("CREATE TABLE anytour_anex_program_contexts (
+  supplier_program_id INTEGER NOT NULL,departure_id INTEGER NOT NULL,country_id INTEGER NOT NULL,supplier_currency_id INTEGER NOT NULL,
+  date_beg TEXT NOT NULL,nights INTEGER NOT NULL,flight_class TEXT NOT NULL,first_seen_at TEXT NOT NULL,last_seen_at TEXT NOT NULL,
+  observation_count INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY(supplier_program_id,departure_id,country_id,supplier_currency_id,date_beg,nights))");
 $db->exec("CREATE TABLE anytour_anex_apd_rates (
   supplier_program_id INTEGER NOT NULL,date_beg TEXT NOT NULL,nights INTEGER NOT NULL,supplier_currency_id INTEGER NOT NULL,context_sha256 TEXT NOT NULL UNIQUE,
   apd_state TEXT NOT NULL,total_count INTEGER NOT NULL,row_count INTEGER NOT NULL,price_adult TEXT NULL,price_child TEXT NULL,cashrate TEXT NULL,
@@ -16,7 +21,7 @@ $db->exec("CREATE TABLE anytour_anex_apd_rates (
   PRIMARY KEY(supplier_program_id,date_beg,nights,supplier_currency_id))");
 
 $t0=new DateTimeImmutable('2026-09-17T22:30:00Z');
-$program=['supplier_program_id'=>778,'departure_id'=>1,'country_id'=>4,'supplier_currency_id'=>3,'flight_class'=>'charter','departure_date'=>'2026-10-12'];
+$program=['supplier_program_id'=>778,'departure_id'=>1,'country_id'=>4,'supplier_currency_id'=>3,'flight_class'=>'charter','departure_date'=>'2026-10-12','nights'=>7];
 $p=AnyTourAnexProgramApdStoreV1::recordProgram($db,$program,$t0);
 if($p['flight_class']!=='charter'||(int)$p['observation_count']!==1)throw new RuntimeException('PROGRAM_FIRST');
 $p=AnyTourAnexProgramApdStoreV1::recordProgram($db,$program,$t0->modify('+1 minute'));
@@ -30,6 +35,10 @@ $program2=array_replace($program,['supplier_program_id'=>2637,'flight_class'=>'c
 AnyTourAnexProgramApdStoreV1::recordProgram($db,$program2,$t0);
 $prewarm=AnyTourAnexProgramApdStoreV1::prewarmPrograms($db,1,4,$t0->modify('-1 day'));
 if(count($prewarm)!==1||(int)$prewarm[0]['supplier_program_id']!==2637)throw new RuntimeException('PREWARM_ONLY_UNAMBIGUOUS_CHARTER');
+$contextQueue=AnyTourAnexProgramApdStoreV1::prewarmContexts(
+  $db,1,4,new DateTimeImmutable('2026-10-12'),new DateTimeImmutable('2026-10-14'),$t0->modify('-1 day'),$t0,100
+);
+if(count($contextQueue)!==1||(int)$contextQueue[0]['supplier_program_id']!==2637||(int)$contextQueue[0]['nights']!==7)throw new RuntimeException('PREWARM_EXACT_CONTEXT');
 
 $criteria=['supplier_program_id'=>778,'date_beg'=>'2026-10-12','nights'=>7,'supplier_currency_id'=>3];
 $ratePayload=['data'=>[[
@@ -39,6 +48,13 @@ $r=AnyTourAnexProgramApdStoreV1::recordApd($db,$criteria,$ratePayload,$t0,$t0->m
 if($r['state']!=='rate'||!$r['fresh']||$r['rates']['adult']!=='10384'||$r['rates']['child']!=='8307.2')throw new RuntimeException('APD_RATE');
 $party=(float)$r['rates']['adult']*2+(float)$r['rates']['child'];
 if(abs($party-29075.2)>0.001)throw new RuntimeException('PARTY_DERIVATION');
+
+$program2Criteria=['supplier_program_id'=>2637,'date_beg'=>'2026-10-13','nights'=>7,'supplier_currency_id'=>3];
+AnyTourAnexProgramApdStoreV1::recordApd($db,$program2Criteria,$ratePayload,$t0,$t0->modify('+6 hours'));
+$contextQueueFresh=AnyTourAnexProgramApdStoreV1::prewarmContexts(
+  $db,1,4,new DateTimeImmutable('2026-10-12'),new DateTimeImmutable('2026-10-14'),$t0->modify('-1 day'),$t0,100
+);
+if($contextQueueFresh!==[])throw new RuntimeException('PREWARM_MUST_SKIP_FRESH_APD');
 
 $emptyCriteria=['supplier_program_id'=>7385,'date_beg'=>'2026-10-12','nights'=>7,'supplier_currency_id'=>3];
 $e=AnyTourAnexProgramApdStoreV1::recordApd($db,$emptyCriteria,['data'=>[],'totalCount'=>0],$t0,$t0->modify('+2 hours'));
@@ -52,4 +68,4 @@ if($amb['state']!=='ambiguous'||$amb['rates']['adult']!==null)throw new RuntimeE
 $r2=AnyTourAnexProgramApdStoreV1::recordApd($db,$criteria,$ratePayload,$t0->modify('+10 minutes'),$t0->modify('+7 hours'));
 if($r2['refresh_count']!==2)throw new RuntimeException('APD_REFRESH_COUNT');
 
-echo "ANEX_PROGRAM_APD_STORE_OK programs=2 rate=1 empty=1 ambiguous=1 refresh=2\n";
+echo "ANEX_PROGRAM_APD_STORE_OK programs=2 contexts=2 prewarm=1 rate=2 empty=1 ambiguous=1 refresh=2\n";
