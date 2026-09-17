@@ -56,11 +56,15 @@ function op_db_files(): void
 /** @return array{receipt:array,resolvable:list<array{supplier_namespace:string,external_hotel_id:string}>} */
 function op_plan(PDO $db, string $releaseSha): array
 {
-    $query = $db->query("SELECT supplier_namespace,CAST(external_hotel_id AS CHAR) AS external_hotel_id,local_hotel_id
-        FROM andromeda_hotel_identities
-        WHERE decision_status='accepted' AND local_hotel_id IS NOT NULL
-        ORDER BY supplier_namespace,external_hotel_id,id");
-    $rows = $query->fetchAll(PDO::FETCH_ASSOC);
+    try {
+        $query = $db->query("SELECT supplier_namespace,CAST(external_hotel_id AS CHAR) AS external_hotel_id,local_hotel_id
+            FROM andromeda_hotel_identities
+            WHERE decision_status='accepted' AND local_hotel_id IS NOT NULL
+            ORDER BY supplier_namespace,external_hotel_id");
+        $rows = $query->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException) {
+        op_fail('PLAN_ACCEPTED_QUERY');
+    }
     if (count($rows) > 50000) op_fail('ACCEPTED_SET_TOO_LARGE');
 
     $tuples = [];
@@ -97,8 +101,13 @@ function op_plan(PDO $db, string $releaseSha): array
             FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id
             WHERE s.namespace='legacy_catalog' AND h.is_active=1 AND s.external_key IN ("
             . implode(',', array_fill(0, count($chunk), '?')) . ') ORDER BY s.external_key,s.anytour_hotel_id';
-        $stmt = $db->prepare($sql); $stmt->execute(array_map('strval', $chunk));
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        try {
+            $stmt = $db->prepare($sql); $stmt->execute(array_map('strval', $chunk));
+            $targetRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException) {
+            op_fail('PLAN_LEGACY_TARGET_QUERY');
+        }
+        foreach ($targetRows as $row) {
             $legacy = op_positive_int($row['legacy_id'] ?? null);
             $own = op_positive_int($row['anytour_hotel_id'] ?? null);
             $targets[$legacy] = array_key_exists($legacy, $targets) ? 0 : $own;
@@ -129,8 +138,13 @@ function op_plan(PDO $db, string $releaseSha): array
         $sql = "SELECT CAST(external_key AS CHAR) AS external_key,anytour_hotel_id,acquired_via
             FROM anytour_hotel_sources WHERE namespace='provider_ref_digest:andromeda' AND external_key IN ("
             . implode(',', array_fill(0, count($chunk), '?')) . ')';
-        $stmt = $db->prepare($sql); $stmt->execute($chunk);
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        try {
+            $stmt = $db->prepare($sql); $stmt->execute($chunk);
+            $directRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException) {
+            op_fail('PLAN_DIRECT_QUERY');
+        }
+        foreach ($directRows as $row) {
             $digest = (string)$row['external_key'];
             $expectedOwn = $digests[$digest] ?? 0;
             if ($expectedOwn > 0 && (int)$row['anytour_hotel_id'] === $expectedOwn
