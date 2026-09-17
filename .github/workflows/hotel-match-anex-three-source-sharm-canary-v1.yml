@@ -51,7 +51,7 @@ jobs:
           php -l scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php
           php scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php --self-test
       - name: Verify canonical owner claim
-        env: { GH_TOKEN: ${{ github.token }} }
+        env:\n          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
