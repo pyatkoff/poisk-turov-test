@@ -1,0 +1,106 @@
+name: INT Tourvisor production writer activation v4
+
+on:
+  push:
+    branches:
+      - 'ops/int-tourvisor-production-writer-20260917-v4'
+    paths:
+      - '.github/workflows/int-tourvisor-production-writer-activate-v4.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-anytoour-production
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: f61eb807193ba7eb7d692661f56f62c6f051ca7c
+  OPERATION_ID: int-tourvisor-production-writer-20260917-v4
+
+jobs:
+  activate:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Bind exact release and byte-pinned activator
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-tourvisor-production-writer-activate-v4.yml'
+          test "${changed[1]}" = 'scripts/ops/int-tourvisor-production-writer-activate-v4.sh'
+          test "$(git hash-object scripts/ops/int-tourvisor-production-writer-activate-v4.sh)" = '95d41c2156b3398f5302cbb7b719617630464ca6'
+          test "$(git ls-remote origin refs/heads/release/search3-production-ready-v1 | awk '{print $1}')" = "$BASE_SHA"
+          php -l v2/api-v2.php >/dev/null
+          grep -Fq 'tourvisor-anytour-offer-autosave.php' v2/api-v2.php
+          grep -Fq 'AnyTourTourvisorOfferAutosaveV1::autosaveSearchResults' v2/api-v2.php
+          grep -Fq 'AnyTourIntOfferSnapshotProducerV1::produce' app/integrations/tourvisor-anytour-offer-autosave.php
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "PRODUCTION_WRITER_V4_SOURCE_BOUND release=$BASE_SHA control=$(git rev-parse HEAD)"
+
+      - name: Prepare exact acceptance-only correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp scripts/ops/int-tourvisor-production-writer-activate-v4.sh "$RUNNER_TEMP/activate-v4.sh"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path(__import__('os').environ['RUNNER_TEMP'])/'activate-v4.sh'
+          s=p.read_text()
+          old=r'anytour_offer_refreshes WHERE provider=\"tourvisor\" AND status=\"complete\"'
+          new=r'anytour_offer_refreshes WHERE provider=\"tourvisor\" AND status=\"completed\"'
+          assert s.count(old)==2, s.count(old)
+          s=s.replace(old,new)
+          op_old='"operation"=>"int-tourvisor-production-writer-20260917-v3"'
+          op_new='"operation"=>"int-tourvisor-production-writer-20260917-v4"'
+          assert s.count(op_old)==1
+          s=s.replace(op_old,op_new)
+          p.write_text(s)
+          PY
+          bash -n "$RUNNER_TEMP/activate-v4.sh"
+          test "$(grep -F 'anytour_offer_refreshes WHERE provider=\"tourvisor\" AND status=\"completed\"' "$RUNNER_TEMP/activate-v4.sh" | wc -l)" -eq 2
+          grep -Fq '($d["status"]??"")==="complete"' "$RUNNER_TEMP/activate-v4.sh"
+          ! grep -Fq 'status=\"complete\"' "$RUNNER_TEMP/activate-v4.sh"
+          grep -Fq '"operation"=>"int-tourvisor-production-writer-20260917-v4"' "$RUNNER_TEMP/activate-v4.sh"
+          echo PRODUCTION_WRITER_V4_ACCEPTANCE_PATCH_OK
+
+      - name: Activate exact production gateway writer with rollback
+        id: activate
+        continue-on-error: true
+        shell: bash
+        run: bash "$RUNNER_TEMP/activate-v4.sh"
+
+      - name: Preserve sanitized activation receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$RUNNER_TEMP/receipt.json" || printf '{"status":"runner_no_receipt","operation":"%s"}\n' "$OPERATION_ID" > "$RUNNER_TEMP/receipt.json"
+          cat "$RUNNER_TEMP/receipt.json"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: int-tourvisor-production-writer-v4-${{ github.run_id }}
+          path: ${{ runner.temp }}/receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Fail after rollback/evidence preservation
+        if: steps.activate.outcome != 'success'
+        run: exit 1
