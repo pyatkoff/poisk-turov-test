@@ -8,36 +8,9 @@ function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;',
 function money(v){const n=Number(v||0);return n>0?moneyFormatter.format(n):'';}
 function formatTourDate(v){const value=String(v==null?'':v).trim();if(!value)return'';const iso=value.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T|\s)/);return iso?iso[3]+'.'+iso[2]+'.'+iso[1]:value;}
 function textValue(v){if(v===null||v===undefined)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(textValue).filter(Boolean).join(', ');if(typeof v==='object')return textValue(v.russianName||v.fullRussianName||v.name||v.title||v.value||v.description||'');return'';}
-function rawMealLabel(t){const meal=t&&t.meal,label=textValue(meal),full=textValue(meal&&meal.fullName);return full.trim()&&(!label.trim()||/^[A-Z]{1,5}\+?$/.test(label.trim()))?full:label;}
-function mealLabel(t){const identity=mealIdentity(t);return identity&&!identity.key.startsWith('meal:label:')?identity.label:rawMealLabel(t);}
-function mealIdentity(t){
-const label=rawMealLabel(t).replace(/\s+/g,' ').trim();if(!label)return null;
-const normalizeMeal=v=>String(v||'').toLocaleLowerCase('ru-RU').replace(/ё/g,'е').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
-const meal=t&&t.meal,name=textValue(meal&&meal.name).replace(/\s+/g,' ').trim(),normalized=normalizeMeal(label),normalizedName=normalizeMeal(name),supplierCode=normalizedName||normalized;
-if(/^(?:soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)\+$/.test(supplierCode))return{key:'meal:label:'+supplierCode,label:name||label};
-const pair=normalized.match(/^([a-z]{1,5}(?:\s+ai)?\+?)\s*-\s*(.+)$/);
-if(pair){const codeIdentity=mealIdentity({meal:pair[1]}),descriptionIdentity=mealIdentity({meal:pair[2]});if(codeIdentity&&descriptionIdentity&&!codeIdentity.key.startsWith('meal:label:')&&codeIdentity.key===descriptionIdentity.key)return codeIdentity;}
-const code=(supplierCode.match(/^(soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)$/)||[])[1]||'';
-let family='';
-if(/^(?:ai[ -]?without[ -]?alcohol|all[ -]?inclusive[ -]?without[ -]?alcohol|безалкогольное все включено|все включено без алкоголя)$/.test(normalized))family='alcohol-free-all-inclusive';
-else if(/^(?:soft[ -]?(?:ai|all[ -]?inclusive)|sai|мягкое все включено|софт все включено)$/.test(normalized))family='soft-all-inclusive';
-else if(/^(?:ultra[ -]?(?:ai|all[ -]?inclusive)|uai|ai ultra|ультра все включено)$/.test(normalized))family='ultra-all-inclusive';
-else if(/^(?:ai\+?|all[ -]?inclusive|все включено)$/.test(normalized))family='all-inclusive';
-else if(/^(?:bb\+?|bed\s*(?:&|and)\s*breakfast|breakfast|(?:только )?завтраки?)$/.test(normalized))family='breakfast';
-else if(/^(?:hb\+?|half[ -]?board|полупансион)$/.test(normalized))family='half-board';
-else if(/^(?:fb\+?|full[ -]?board|полный пансион)$/.test(normalized))family='full-board';
-else if(/^(?:ro\+?|room[ -]?only|no[ -]?meal|без питания)$/.test(normalized))family='room-only';
-else if(/^(?:sc\+?|self[ -]?catering|самообслуживание)$/.test(normalized))family='self-catering';
-else if(/^(?:on[ -]?request|по запросу)$/.test(normalized))family='on-request';
-else if(code&&(!normalizedName||normalized===normalizedName))family=({ai:'all-inclusive',uai:'ultra-all-inclusive','soft ai':'soft-all-inclusive',sai:'soft-all-inclusive',bb:'breakfast',hb:'half-board',fb:'full-board',ro:'room-only',sc:'self-catering'})[code]||'';
-const identities={
-'alcohol-free-all-inclusive':{key:'meal:alcohol-free-all-inclusive',label:'Всё включено без алкоголя'},
-'soft-all-inclusive':{key:'meal:soft-all-inclusive',label:'Мягкое всё включено'},'ultra-all-inclusive':{key:'meal:ultra-all-inclusive',label:'Ультра всё включено'},
-'all-inclusive':{key:'meal:all-inclusive',label:'Всё включено'},breakfast:{key:'meal:breakfast',label:'Завтрак'},'half-board':{key:'meal:half-board',label:'Полупансион'},
-'full-board':{key:'meal:full-board',label:'Полный пансион'},'room-only':{key:'meal:room-only',label:'Без питания'},'self-catering':{key:'meal:self-catering',label:'Самообслуживание'},
-'on-request':{key:'meal:on-request',label:'По запросу'}};
-return identities[family]||{key:'meal:label:'+normalized,label};
-}
+function rawMealLabel(t){const meal=t&&t.meal,label=textValue(meal),full=textValue(meal&&meal.fullName);return (full.trim()&&(!label.trim()||/^[A-Z]{1,5}\+?$/.test(label.trim()))?full:label).replace(/\s+/g,' ').trim();}
+function mealLabel(t){return rawMealLabel(t);}
+function mealIdentity(t){const label=rawMealLabel(t);return label?{key:'meal:label:'+label.toLocaleLowerCase('ru-RU'),label}:null;}
 function rawRoomLabel(t){return textValue(t&&(t.roomType!==undefined?t.roomType:t.room)).replace(/\s+/g,' ').trim();}
 function roomIdentity(t){const owner=window.Search3RoomNormalizerV1;return owner&&typeof owner.identity==='function'?owner.identity(rawRoomLabel(t)):null;}
 function roomLabel(t){const owner=window.Search3RoomNormalizerV1;return owner&&typeof owner.label==='function'?owner.label(rawRoomLabel(t)):rawRoomLabel(t);}
