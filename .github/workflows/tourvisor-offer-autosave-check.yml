@@ -1,0 +1,72 @@
+name: Tourvisor AnyTour offer autosave
+
+on:
+  pull_request:
+    paths:
+      - 'v2/api-v2.php'
+      - 'app/integrations/tourvisor-anytour-offer-autosave.php'
+      - 'app/integrations/anytour-offer-snapshot-producer.php'
+      - 'app/integrations/three-provider-*.php'
+      - 'tests/tourvisor-anytour-offer-autosave-test.php'
+      - '.github/workflows/tourvisor-offer-autosave-check.yml'
+  push:
+    branches:
+      - 'feat/int-tourvisor-anytour-offer-autosave-20260917'
+    paths:
+      - 'v2/api-v2.php'
+      - 'app/integrations/tourvisor-anytour-offer-autosave.php'
+      - 'app/integrations/anytour-offer-snapshot-producer.php'
+      - 'app/integrations/three-provider-*.php'
+      - 'tests/tourvisor-anytour-offer-autosave-test.php'
+      - '.github/workflows/tourvisor-offer-autosave-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tourvisor-anytour-offer-autosave-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Lint owned runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/api-v2.php >/dev/null
+          php -l app/integrations/tourvisor-anytour-offer-autosave.php >/dev/null
+          php -l app/integrations/anytour-offer-snapshot-producer.php >/dev/null
+          php -l app/integrations/three-provider-search-handoff.php >/dev/null
+          php -l tests/tourvisor-anytour-offer-autosave-test.php >/dev/null
+      - name: Verify exact green INT dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object app/integrations/three-provider-money-facts.php)" = '0f066d164516b318fc8a1086525bf2f44260d822'
+          test "$(git hash-object app/integrations/three-provider-search-handoff.php)" = '51432c0dd4c14cd6e0121551cb456f88de0a0623'
+          test "$(git hash-object app/integrations/anytour-offer-snapshot-producer.php)" = 'a99a5791300d7844b189d57d480ab253d4da83e4'
+          echo 'EXACT_GREEN_INT_DEPENDENCIES_OK'
+      - name: Run focused fail-closed autosave contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/tourvisor-anytour-offer-autosave-test.php
+      - name: Enforce no supplier replay or duplicate price arithmetic
+        shell: bash
+        run: |
+          set -euo pipefail
+          helper='app/integrations/tourvisor-anytour-offer-autosave.php'
+          ! grep -Eq 'v2_data_tv_get\(|curl_init\(|AdditionalPricesDaily|withSearchSurchargeEstimate|search_plus_additional' "$helper"
+          grep -Fq 'fuelCharge' "$helper"
+          grep -Fq 'AnyTourIntOfferSnapshotProducerV1::produce' "$helper"
+          grep -Fq "'authoritative_empty' => false" "$helper"
+          grep -Fq 'tourvisor_autosave_start($searchParams, $data);' v2/api-v2.php
+          grep -Fq 'tourvisor_autosave_status($id, $data);' v2/api-v2.php
+          grep -Fq 'tourvisor_autosave_results($id, $limit, $data);' v2/api-v2.php
+          echo 'TOURVISOR_AUTOSAVE_BOUNDARY_OK'
