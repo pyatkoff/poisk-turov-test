@@ -86,7 +86,7 @@ final class AnyTourStayCatalog
         $facts=json_decode($row['facts_json'],true,32,JSON_THROW_ON_ERROR);
         if (!is_array($facts)) throw new RuntimeException('Invalid room facts');
         return ['id'=>(int)$row['id'],'hotelId'=>(int)$row['anytour_hotel_id'],
-            'nameRu'=>$row['name_ru'],'categoryCode'=>$row['category_code'],
+            'localKey'=>$row['local_key'],'nameRu'=>$row['name_ru'],'categoryCode'=>$row['category_code'],
             'facts'=>self::roomFacts($facts),'revision'=>(int)$row['revision']];
     }
     public function rooms(int $hotelId): array
@@ -155,7 +155,7 @@ final class AnyTourStayCatalog
         array_push($params,$scope['namespace'],$scope['hotelKey']);
         $sql='SELECT s.anytour_hotel_id AS source_hotel,h.is_active AS hotel_active,
             m.id AS mapping_id,m.anytour_hotel_id AS mapped_hotel,m.kind,m.key_kind,m.external_key,m.state,
-            r.id AS room_id,r.name_ru AS room_name,r.category_code,r.facts_json,r.revision,r.is_active AS room_active,
+            r.id AS room_id,r.local_key AS room_local_key,r.name_ru AS room_name,r.category_code,r.facts_json,r.revision,r.is_active AS room_active,
             p.id AS meal_id,p.code,p.name_ru AS meal_name,p.family_code,p.qualifiers_json,p.is_active AS meal_active
             FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id
             LEFT JOIN anytour_stay_mappings m ON m.namespace=s.namespace AND m.external_hotel_key=s.external_key
@@ -179,7 +179,7 @@ final class AnyTourStayCatalog
             if ($hotelId!==null && $row && (int)$row['mapped_hotel']!==$hotelId) $status='source-drift';
             elseif ($status==='accepted') {
                 if ($ref['kind']==='room' && (int)$row['room_active']===1) {
-                    $canonical=self::roomDto(['id'=>$row['room_id'],'anytour_hotel_id'=>$hotelId,'name_ru'=>$row['room_name'],
+                    $canonical=self::roomDto(['id'=>$row['room_id'],'anytour_hotel_id'=>$hotelId,'local_key'=>$row['room_local_key'],'name_ru'=>$row['room_name'],
                         'category_code'=>$row['category_code'],'facts_json'=>$row['facts_json'],'revision'=>$row['revision']]);
                 } elseif ($ref['kind']==='meal' && (int)$row['meal_active']===1) {
                     $canonical=self::mealDto(['id'=>$row['meal_id'],'name_ru'=>$row['meal_name'],'code'=>$row['code'],
