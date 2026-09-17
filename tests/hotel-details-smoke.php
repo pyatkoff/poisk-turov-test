@@ -62,6 +62,17 @@ $limited = v2_hotel_detail_images(['images'=>array_map(
 if (count($limited) !== 100 || $limited[99] !== 'https://cdn.example.test/hotel-100.jpg') throw new RuntimeException('normalized hotel image limit failed');
 if (v2_hotel_detail_https_url('//cdn.example.test/' . str_repeat('a', 2026)) !== null) throw new RuntimeException('normalized image URL length limit failed');
 
+if (v2_hotel_detail_candidate_scope('demand') !== 'demand') throw new RuntimeException('demand candidate scope lost');
+if (v2_hotel_detail_candidate_scope(' CANONICAL ') !== 'canonical') throw new RuntimeException('canonical candidate scope lost');
+foreach (['all','provider','',null,123] as $invalidScope) {
+    try {
+        v2_hotel_detail_candidate_scope($invalidScope);
+        throw new RuntimeException('invalid hotel candidate scope accepted');
+    } catch (InvalidArgumentException $e) {
+        // expected
+    }
+}
+
 foreach (['Fortuna Kusadasi','FORTUNA MARMARIS','Roulette Phuket','Фортуна Кемер','Рулетка 5*'] as $genericName) {
     if (!v2_hotel_detail_is_generic_product_name($genericName)) throw new RuntimeException('generic accommodation product not classified');
 }
@@ -88,4 +99,4 @@ try {
 putenv('TOURVISOR_HTTP_MAX_ATTEMPTS');
 if (v2_data_tv_http_attempt_count() !== 0) throw new RuntimeException('Tourvisor HTTP attempt counter mutated without a request');
 
-echo "ANYTOUR_HOTEL_DETAILS_SMOKE_OK hotel=65108 images=2 description=1 fortuna_guard=1 quota_guard=1\n";
+echo "ANYTOUR_HOTEL_DETAILS_SMOKE_OK hotel=65108 images=2 description=1 fortuna_guard=1 quota_guard=1 scope_guard=1\n";

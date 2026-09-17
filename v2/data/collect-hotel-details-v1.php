@@ -1,5 +1,5 @@
 <?php
-/** Enrich hotels that appeared in AnyTour tour data using the Tourvisor hotel-description API. */
+/** Enrich saved AnyTour hotel cards using the Tourvisor hotel-description API. */
 declare(strict_types=1);
 
 if (PHP_SAPI !== 'cli') {
@@ -30,40 +30,101 @@ function hotel_details_normalize_name(string $value): string
     return mb_strtolower($value);
 }
 
-function hotel_details_source_total(PDO $pdo): int
+function hotel_details_source_total(PDO $pdo, string $scope): int
 {
-    $sql = "SELECT COUNT(*) FROM (
-        SELECT hotel_id FROM tour_price_observations WHERE hotel_id>0 GROUP BY hotel_id
-        UNION
-        SELECT hotel_id FROM hot_tours_current WHERE hotel_id>0 GROUP BY hotel_id
-    ) h";
+    if ($scope === 'demand') {
+        $sql = "SELECT COUNT(*) FROM (
+            SELECT hotel_id FROM tour_price_observations WHERE hotel_id>0 GROUP BY hotel_id
+            UNION
+            SELECT hotel_id FROM hot_tours_current WHERE hotel_id>0 GROUP BY hotel_id
+        ) h";
+        return (int)$pdo->query($sql)->fetchColumn();
+    }
+    $sql = "SELECT COUNT(*)
+            FROM anytour_hotel_sources s
+            JOIN anytour_hotels a ON a.id=s.anytour_hotel_id AND a.is_active=1
+            WHERE s.namespace='legacy_catalog'
+              AND CONVERT(s.external_key USING ascii) REGEXP '^[1-9][0-9]*$'";
     return (int)$pdo->query($sql)->fetchColumn();
 }
 
-/**
- * Demand-first selector. Generic Fortuna/Roulette products are deliberately
- * skipped: their concrete hotel is unknown and they are not hotel identities.
- */
-function hotel_details_pending_rows(PDO $pdo, string $cutoff, string $retryCutoff, int $limit): array
+function hotel_details_demand_source_sql(): string
 {
-    $scanLimit = min(50000, max($limit, $limit * 4));
-    $sql = "WITH source_rows AS (
-        SELECT hotel_id, MAX(seen_at) AS last_seen_at
+    return "WITH source_rows AS (
+        SELECT hotel_id,0 AS anytour_hotel_id,0 AS user_search_count,COUNT(*) AS observation_count,
+               MAX(seen_at) AS last_seen_at,NULL AS canonical_name,0 AS identity_only
         FROM (
-            SELECT hotel_id, observed_at AS seen_at FROM tour_price_observations WHERE hotel_id>0
+            SELECT hotel_id,observed_at AS seen_at FROM tour_price_observations WHERE hotel_id>0
             UNION ALL
-            SELECT hotel_id, fetched_at AS seen_at FROM hot_tours_current WHERE hotel_id>0
+            SELECT hotel_id,fetched_at AS seen_at FROM hot_tours_current WHERE hotel_id>0
         ) u
         GROUP BY hotel_id
-    )
-    SELECT s.hotel_id,s.last_seen_at,d.status,d.fetched_at,h.name AS catalog_name
+    )";
+}
+
+/**
+ * Canonical acquisition uses legacy_catalog solely as immutable Tourvisor source
+ * provenance. It is not a runtime identity resolver and does not alter MATCH.
+ */
+function hotel_details_canonical_source_sql(): string
+{
+    return "WITH demand AS (
+        SELECT hotel_id,SUM(source='user_search') AS user_search_count,COUNT(*) AS observation_count,
+               MAX(observed_at) AS last_seen_at
+        FROM tour_price_observations WHERE hotel_id>0 GROUP BY hotel_id
+    ), hot AS (
+        SELECT hotel_id,MAX(fetched_at) AS last_seen_at
+        FROM hot_tours_current WHERE hotel_id>0 GROUP BY hotel_id
+    ), source_rows AS (
+        SELECT CAST(CONVERT(s.external_key USING ascii) AS UNSIGNED) AS hotel_id,
+               a.id AS anytour_hotel_id,
+               COALESCE(d.user_search_count,0) AS user_search_count,
+               COALESCE(d.observation_count,0) AS observation_count,
+               CASE
+                   WHEN d.last_seen_at IS NULL THEN hot.last_seen_at
+                   WHEN hot.last_seen_at IS NULL THEN d.last_seen_at
+                   ELSE GREATEST(d.last_seen_at,hot.last_seen_at)
+               END AS last_seen_at,
+               JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.name')) AS canonical_name,
+               CASE WHEN
+                   COALESCE(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.description'))),'')='' AND
+                   COALESCE(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.profile_json,'$.primaryImage'))),'')='' AND
+                   COALESCE(JSON_LENGTH(JSON_EXTRACT(a.profile_json,'$.images')),0)=0 AND
+                   COALESCE(JSON_LENGTH(JSON_EXTRACT(a.profile_json,'$.hotelInformation.infrastructure')),0)=0 AND
+                   COALESCE(JSON_LENGTH(JSON_EXTRACT(a.profile_json,'$.hotelInformation.services')),0)=0 AND
+                   COALESCE(JSON_LENGTH(JSON_EXTRACT(a.profile_json,'$.traits')),0)=0
+               THEN 1 ELSE 0 END AS identity_only
+        FROM anytour_hotel_sources s
+        JOIN anytour_hotels a ON a.id=s.anytour_hotel_id AND a.is_active=1
+        LEFT JOIN demand d ON d.hotel_id=CAST(CONVERT(s.external_key USING ascii) AS UNSIGNED)
+        LEFT JOIN hot ON hot.hotel_id=CAST(CONVERT(s.external_key USING ascii) AS UNSIGNED)
+        WHERE s.namespace='legacy_catalog'
+          AND CONVERT(s.external_key USING ascii) REGEXP '^[1-9][0-9]*$'
+          AND JSON_VALID(a.profile_json)=1
+    )";
+}
+
+/**
+ * Demand remains first priority. Canonical scope then continues through all active
+ * own hotels via their exact historical Tourvisor source IDs, identity-only first.
+ * Generic Fortuna/Roulette products are deliberately excluded from hotel hydration.
+ */
+function hotel_details_pending_rows(PDO $pdo, string $cutoff, string $retryCutoff, int $limit, string $scope): array
+{
+    $scanLimit = min(50000, max($limit, $limit * 4));
+    $with = $scope === 'canonical' ? hotel_details_canonical_source_sql() : hotel_details_demand_source_sql();
+    $sql = $with . "
+    SELECT s.hotel_id,s.anytour_hotel_id,s.user_search_count,s.observation_count,
+           COALESCE(s.last_seen_at,h.last_seen_at) AS last_seen_at,
+           s.canonical_name,s.identity_only,d.status,d.fetched_at,h.name AS catalog_name
     FROM source_rows s
     LEFT JOIN catalog_hotel_details d ON d.hotel_id=s.hotel_id
     LEFT JOIN catalog_hotels h ON h.id=s.hotel_id
     WHERE d.hotel_id IS NULL
        OR (d.status='failure' AND d.fetched_at < :retry_cutoff)
        OR (d.status<>'failure' AND d.fetched_at < :cutoff)
-    ORDER BY s.last_seen_at DESC,s.hotel_id ASC
+    ORDER BY s.user_search_count DESC,s.observation_count DESC,s.identity_only DESC,
+             (s.last_seen_at IS NULL) ASC,s.last_seen_at DESC,s.hotel_id ASC
     LIMIT {$scanLimit}";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['retry_cutoff'=>$retryCutoff,'cutoff'=>$cutoff]);
@@ -71,7 +132,8 @@ function hotel_details_pending_rows(PDO $pdo, string $cutoff, string $retryCutof
     $selected = [];
     $genericSkipped = 0;
     foreach ($scanned as $row) {
-        if (v2_hotel_detail_is_generic_product_name($row['catalog_name'] ?? null)) {
+        if (v2_hotel_detail_is_generic_product_name($row['catalog_name'] ?? null)
+            || v2_hotel_detail_is_generic_product_name($row['canonical_name'] ?? null)) {
             $genericSkipped++;
             continue;
         }
@@ -79,6 +141,29 @@ function hotel_details_pending_rows(PDO $pdo, string $cutoff, string $retryCutof
         if (count($selected) >= $limit) break;
     }
     return ['rows'=>$selected,'scanned'=>count($scanned),'generic_skipped'=>$genericSkipped];
+}
+
+function hotel_details_fresh_success(PDO $pdo, string $scope, string $cutoff): int
+{
+    if ($scope === 'demand') {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM catalog_hotel_details d JOIN (
+            SELECT hotel_id FROM tour_price_observations WHERE hotel_id>0 GROUP BY hotel_id
+            UNION
+            SELECT hotel_id FROM hot_tours_current WHERE hotel_id>0 GROUP BY hotel_id
+        ) s ON s.hotel_id=d.hotel_id WHERE d.status='success' AND d.fetched_at >= :cutoff");
+        $stmt->execute(['cutoff'=>$cutoff]);
+        return (int)$stmt->fetchColumn();
+    }
+    $stmt = $pdo->prepare("SELECT COUNT(*)
+        FROM catalog_hotel_details d
+        JOIN anytour_hotel_sources s
+          ON s.namespace='legacy_catalog'
+         AND CONVERT(s.external_key USING ascii) REGEXP '^[1-9][0-9]*$'
+         AND CAST(CONVERT(s.external_key USING ascii) AS UNSIGNED)=d.hotel_id
+        JOIN anytour_hotels a ON a.id=s.anytour_hotel_id AND a.is_active=1
+        WHERE d.status='success' AND d.fetched_at >= :cutoff");
+    $stmt->execute(['cutoff'=>$cutoff]);
+    return (int)$stmt->fetchColumn();
 }
 
 function hotel_details_upsert_failure(PDO $pdo, int $hotelId, string $status, string $message, string $now): void
@@ -98,6 +183,7 @@ $freshDays = hotel_details_int($argv, 'fresh-days', 30, 1, 365);
 $minIntervalMs = hotel_details_int($argv, 'min-interval-ms', 600, 500, 5000);
 $maxAttempts = hotel_details_int($argv, 'max-attempts', 1, 1, 4);
 $httpBudget = hotel_details_int($argv, 'http-budget', 3000, 1, 3000);
+$scope = v2_hotel_detail_candidate_scope(hotel_details_arg($argv, 'candidate-scope', 'demand'));
 $worstCaseHttpAttempts = $limit * $maxAttempts;
 if ($worstCaseHttpAttempts > $httpBudget) {
     throw new RuntimeException('Hotel detail request plan exceeds explicit HTTP budget');
@@ -109,11 +195,16 @@ $cutoff = $now->modify('-' . $freshDays . ' days')->format('Y-m-d H:i:s');
 $retryCutoff = $now->modify('-1 day')->format('Y-m-d H:i:s');
 
 $pdo = v2_data_db();
-$sourceTotal = hotel_details_source_total($pdo);
-$pendingPlan = hotel_details_pending_rows($pdo, $cutoff, $retryCutoff, $limit);
+$sourceTotal = hotel_details_source_total($pdo, $scope);
+$pendingPlan = hotel_details_pending_rows($pdo, $cutoff, $retryCutoff, $limit, $scope);
 $pending = $pendingPlan['rows'];
-echo 'ANYTOUR_HOTEL_DETAILS_PLAN source_hotels=' . $sourceTotal
+$identityOnlySelected = count(array_filter($pending, static fn(array $row): bool => (int)($row['identity_only'] ?? 0) === 1));
+$demandSelected = count(array_filter($pending, static fn(array $row): bool => (int)($row['observation_count'] ?? 0) > 0));
+echo 'ANYTOUR_HOTEL_DETAILS_PLAN candidate_scope=' . $scope
+    . ' source_hotels=' . $sourceTotal
     . ' selected=' . count($pending)
+    . ' demand_selected=' . $demandSelected
+    . ' identity_only_selected=' . $identityOnlySelected
     . ' scanned=' . $pendingPlan['scanned']
     . ' generic_skipped=' . $pendingPlan['generic_skipped']
     . ' fresh_days=' . $freshDays
@@ -190,7 +281,6 @@ foreach ($pending as $sourceRow) {
         if ($hotel === null || (int)($hotel['id'] ?? 0) !== $hotelId) throw new RuntimeException('hotel detail payload identity mismatch');
         $detail = v2_hotel_detail_normalized($hotel);
         if (($detail['generic_product'] ?? false) === true) {
-            // Never persist a Fortuna/Roulette product as a concrete hotel.
             $genericRuntimeSkipped++;
             continue;
         }
@@ -255,18 +345,15 @@ foreach ($pending as $sourceRow) {
     }
 }
 
-$freshCountStmt = $pdo->prepare("SELECT COUNT(*) FROM catalog_hotel_details d JOIN (
-    SELECT hotel_id FROM tour_price_observations WHERE hotel_id>0 GROUP BY hotel_id
-    UNION
-    SELECT hotel_id FROM hot_tours_current WHERE hotel_id>0 GROUP BY hotel_id
-) s ON s.hotel_id=d.hotel_id WHERE d.status='success' AND d.fetched_at >= :cutoff");
-$freshCountStmt->execute(['cutoff'=>$cutoff]);
-$freshSuccess = (int)$freshCountStmt->fetchColumn();
+$freshSuccess = hotel_details_fresh_success($pdo, $scope, $cutoff);
 $imageCount = (int)$pdo->query("SELECT COUNT(*) FROM catalog_hotel_details WHERE status='success' AND primary_image_url IS NOT NULL AND TRIM(primary_image_url)<>''")->fetchColumn();
 $descriptionCount = (int)$pdo->query("SELECT COUNT(*) FROM catalog_hotel_details WHERE status='success' AND description IS NOT NULL AND TRIM(description)<>''")->fetchColumn();
 
-echo 'ANYTOUR_HOTEL_DETAILS_DONE source_hotels=' . $sourceTotal
+echo 'ANYTOUR_HOTEL_DETAILS_DONE candidate_scope=' . $scope
+    . ' source_hotels=' . $sourceTotal
     . ' selected=' . count($pending)
+    . ' demand_selected=' . $demandSelected
+    . ' identity_only_selected=' . $identityOnlySelected
     . ' attempted=' . $hotelsAttempted
     . ' http_attempts=' . v2_data_tv_http_attempt_count()
     . ' http_budget=' . $httpBudget

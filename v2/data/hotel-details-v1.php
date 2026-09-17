@@ -22,6 +22,17 @@ function v2_hotel_detail_text(mixed $value, int $max = 65535): ?string
     return mb_substr($value, 0, max(1, $max));
 }
 
+/** Explicit acquisition universe; never silently broaden a scheduled run. */
+function v2_hotel_detail_candidate_scope(mixed $value): string
+{
+    if (!is_string($value)) throw new InvalidArgumentException('Hotel detail candidate scope must be demand or canonical');
+    $scope = strtolower(trim($value));
+    if (!in_array($scope, ['demand','canonical'], true)) {
+        throw new InvalidArgumentException('Hotel detail candidate scope must be demand or canonical');
+    }
+    return $scope;
+}
+
 /**
  * Tourvisor may expose Fortuna/Roulette products in hotel-shaped rows even
  * though the concrete hotel is intentionally unknown until later. They are
@@ -55,7 +66,6 @@ function v2_hotel_detail_https_url(mixed $value): ?string
 {
     if (!is_string($value) || preg_match('/[\x00-\x1F\x7F]/', $value) || str_contains($value, '\\')) return null;
     $url = trim($value);
-    // Tourvisor stores hotel photos as scheme-relative CDN URLs.
     if (str_starts_with($url, '//') && !str_starts_with($url, '///')) $url = 'https:' . $url;
     if ($url === '' || strlen($url) > 2048) return null;
     $parts = parse_url($url);
