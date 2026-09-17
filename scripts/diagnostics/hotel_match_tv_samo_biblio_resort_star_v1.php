@@ -98,7 +98,12 @@ function hm_url(string $v): ?string {
     if(str_starts_with($v,'//'))$v='https:'.$v;
     $p=parse_url($v);
     if(!is_array($p)||!in_array(strtolower((string)($p['scheme']??'')),['https','http'],true)||empty($p['host'])||isset($p['user'])||isset($p['pass'])||strlen($v)>2048)return null;
-    foreach(array_keys($p) as $k) if(preg_match('/token|auth|pass|secret|session|cookie|signature|api[_-]?key/i',(string)$k))return null;
+    if (isset($p['query'])) {
+        parse_str((string)$p['query'],$q);
+        foreach(array_keys($q) as $k) {
+            if(preg_match('/token|auth|pass|secret|session|sid|cookie|signature|api[_-]?key/i',(string)$k))return null;
+        }
+    }
     return $v;
 }
 function hm_urls_walk(mixed $v, array &$out, string $key='', int $depth=0): void {
@@ -145,6 +150,25 @@ function hm_tv_signatures(array $rows): array {
     return ['hotels'=>count($hotels),'tours'=>count($tours),'hotel_ids'=>array_keys($hotels),'tour_keys'=>array_keys($tours)];
 }
 function hm_continue_stop(int $requestCount,int $added): bool { return $requestCount===0 || $added===0; }
+function hm_tv_merge_rows(array $acc,array $rows): array {
+    $by=[];
+    foreach($acc as $h) if(is_array($h) && ($id=hm_id($h['id']??null))) $by[$id]=$h;
+    foreach($rows as $h){
+        if(!is_array($h) || !($id=hm_id($h['id']??null))) continue;
+        if(!isset($by[$id])){$by[$id]=$h;continue;}
+        $base=$by[$id];
+        foreach($h as $k=>$v) if($k!=='tours' && (!array_key_exists($k,$base) || $base[$k]===null || $base[$k]==='')) $base[$k]=$v;
+        $seen=[];$merged=[];
+        foreach(array_merge((array)($base['tours']??[]),(array)($h['tours']??[])) as $t){
+            if(!is_array($t))continue;
+            $tid=hm_text($t['id']??$t['tourId']??'',220);
+            $key=$tid!=='' ? 'id:'.$tid : 'sha:'.hash('sha256',hm_json($t));
+            if(isset($seen[$key]))continue;$seen[$key]=true;$merged[]=$t;
+        }
+        $base['tours']=$merged;$by[$id]=$base;
+    }
+    ksort($by,SORT_NUMERIC);return array_values($by);
+}
 
 function hm_tv_call(string $path,array $params,array &$counter): array {
     if(++$counter['calls']>HM_MAX_TV_CALLS)throw new RuntimeException('tv_call_budget');
@@ -165,16 +189,16 @@ function hm_tv_fetch(int $sid,array &$counter): array {
 }
 function hm_tv_drain(array $params,array &$counter): array {
     $start=hm_tv_call('/tours/search',$params,$counter);$sid=hm_search_id($start);if(!$sid)throw new RuntimeException('tv_search_id');
-    hm_tv_wait($sid,$counter);$rows=hm_tv_fetch($sid,$counter);$sig=hm_tv_signatures($rows);
+    hm_tv_wait($sid,$counter);$union=hm_tv_merge_rows([],hm_tv_fetch($sid,$counter));$sig=hm_tv_signatures($union);
     $rounds=[['round'=>0,'request_count'=>null,'hotels'=>$sig['hotels'],'tours'=>$sig['tours'],'added_hotels'=>$sig['hotels'],'added_tours'=>$sig['tours']]];
     for($r=1;$r<=HM_MAX_CONTINUE;$r++){
         $before=$sig;
         $cont=hm_tv_call('/tours/search/'.$sid.'/continue',[],$counter);$requests=hm_request_count($cont);
         if($requests>0)hm_tv_wait($sid,$counter);
-        $rows=hm_tv_fetch($sid,$counter);$sig=hm_tv_signatures($rows);
-        $added=max(0,$sig['hotels']-$before['hotels'])+max(0,$sig['tours']-$before['tours']);
-        $rounds[]=['round'=>$r,'request_count'=>$requests,'hotels'=>$sig['hotels'],'tours'=>$sig['tours'],'added_hotels'=>max(0,$sig['hotels']-$before['hotels']),'added_tours'=>max(0,$sig['tours']-$before['tours'])];
-        if(hm_continue_stop($requests,$added))return['search_id'=>$sid,'rows'=>$rows,'rounds'=>$rounds,'fully_drained'=>true];
+        $union=hm_tv_merge_rows($union,hm_tv_fetch($sid,$counter));$sig=hm_tv_signatures($union);
+        $addedHotels=max(0,$sig['hotels']-$before['hotels']);$addedTours=max(0,$sig['tours']-$before['tours']);$added=$addedHotels+$addedTours;
+        $rounds[]=['round'=>$r,'request_count'=>$requests,'hotels'=>$sig['hotels'],'tours'=>$sig['tours'],'added_hotels'=>$addedHotels,'added_tours'=>$addedTours];
+        if(hm_continue_stop($requests,$added))return['search_id'=>$sid,'rows'=>$union,'rounds'=>$rounds,'fully_drained'=>true];
     }
     throw new RuntimeException('tv_continue_cap');
 }
@@ -264,7 +288,10 @@ function hm_execute(string $root,string $opDir,string $user,string $pass): array
             $pagesMeta[]=['page'=>$page,'pages_count'=>$pagesCount,'rows'=>count($reply['PRICES']),'unique_hotels'=>count($allSamo)];
             if($page>=$pagesCount)break;
         }
-        if($pagesCount===null||count($pagesMeta)!==$pagesCount)throw new RuntimeException('samo_not_fully_drained');
+        if($pagesCount===null)throw new RuntimeException('samo_not_fully_drained');
+        if($pagesCount===0){
+            if(count($pagesMeta)!==1 || ($pagesMeta[0]['rows']??-1)!==0)throw new RuntimeException('samo_zero_page_shape');
+        } elseif(count($pagesMeta)!==$pagesCount)throw new RuntimeException('samo_not_fully_drained');
         $matches=hm_match($tv,$allSamo);
         foreach($matches as&$m){
             if($detailBudget>=HM_MAX_DETAIL_CALLS||empty($m['tv_first_tour_id']))continue;
