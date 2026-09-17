@@ -1,0 +1,77 @@
+name: MATCH operator315 342 exact local CURRENT v1
+on:
+  push:
+    branches: [diag/match-operator315-342-exact-local-current-1971-20260917-v1]
+    paths: [.github/workflows/hotel-match-operator315-342-exact-local-current-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency:
+  group: hotel-match-operator315-342-exact-local-current-1971-20260917-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-operator315-342-exact-local-current-1971-20260917-v1
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+      - name: Reserve
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','queue_issue':1971,'claim_comment_id':5715159541,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,'public_http_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-operator315-342-exact-local-v1-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-operator315-342-exact-local-current-1971-20260917-v1/reservation.json
+          retention-days: 90
+      - name: CURRENT strict exact scan
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          cat > "$RUNNER_TEMP/audit.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const OP='hotel-match-operator315-342-exact-local-current-1971-20260917-v1';
+          function rq($v,$m){if(!$v)throw new RuntimeException($m);}
+          function norm(string $s):string{$s=mb_strtoupper(trim($s),'UTF-8');$s=preg_replace('/\b(?:EX|FORMERLY)\.?\s*/u',' ',$s);$s=preg_replace('/[^\pL\pN]+/u',' ',$s);$p=preg_split('/\s+/u',trim($s))?:[];return implode(' ',array_values(array_filter($p,fn($x)=>$x!==''&&$x!=='HOTEL')));}
+          function flags($v,string $path='',int $d=0):array{if($d>24||!is_array($v))return[];$o=[];foreach($v as$k=>$x){$p=$path===''?(string)$k:$path.'.'.$k;if(is_array($x)){$o+=flags($x,$p,$d+1);continue;}if(!preg_match('/manual|exclude|exclusion|conflict|reject|review|hold/i',$p))continue;if(is_bool($x)?$x:(is_numeric($x)?(float)$x!=0:(is_string($x)&&!in_array(mb_strtolower(trim($x),'UTF-8'),['','false','none','no','null','pending','unknown'],true))))$o[$p]=$x;}return$o;}
+          function freq($v,int $d=0):int{if($d>24||!is_array($v))return 0;$m=0;foreach($v as$k=>$x){if(in_array((string)$k,['search_count','live_frequency','combined_frequency','frequency'],true)&&is_numeric($x))$m=max($m,(int)$x);if(is_array($x))$m=max($m,freq($x,$d+1));}return$m;}
+          function all(PDO $db,string $sql,array $a=[]):array{$s=$db->prepare($sql);$s->execute($a);return$s->fetchAll(PDO::FETCH_ASSOC);}
+          $sha=(string)getenv('MATCH_SOURCE_SHA');rq(getenv('MATCH_OPERATION_ID')===OP&&preg_match('/^[a-f0-9]{40}$/D',$sha),'operation_guard');$dir=(string)getenv('HOME').'/.anytoour-match/operations/'.OP;$res=json_decode((string)file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);rq(($res['state']??'')==='reserved_before_db_access'&&($res['source_sha']??'')===$sha,'reservation');$db=null;$out=['operation_id'=>OP,'source_sha'=>$sha,'state'=>'failed_no_replay','database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0,'public_http_calls'=>0,'no_replay'=>true];
+          try{$root=realpath(getcwd());rq(is_string($root)&&basename($root)==='anytoour.ru','root');require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+          $pending=all($db,"SELECT supplier_namespace,external_hotel_id,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace IN ('operator_315','operator_342') AND decision_status='pending' AND local_hotel_id IS NULL ORDER BY supplier_namespace,CAST(external_hotel_id AS UNSIGNED),external_hotel_id");$countries=[];foreach($pending as$p){$e=json_decode((string)$p['evidence_json'],true,64,JSON_THROW_ON_ERROR);$b=$e['provider_bridges'][0]??[];$c=(int)(is_array($b)?($b['country_id']??($e['country_id']??0)):($e['country_id']??0));if($c>0)$countries[$c]=1;}$idx=[];$meta=[];foreach(array_keys($countries)as$c){foreach(all($db,"SELECT id,country_id,name,region_name,subregion_name,latitude,longitude,is_active FROM catalog_hotels WHERE country_id=? AND is_active=1",[$c])as$h){$id=(int)$h['id'];$meta[$id]=$h;$n=norm((string)$h['name']);if($n!=='')$idx[$c][$n][$id]=1;}foreach(all($db,"SELECT a.hotel_id,a.alias FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.country_id=? AND h.is_active=1",[$c])as$a){$id=(int)$a['hotel_id'];$n=norm((string)$a['alias']);if($n!=='')$idx[$c][$n][$id]=1;}}
+          $stats=['pending_total'=>count($pending),'operator_315'=>0,'operator_342'=>0,'unique_exact'=>0,'ambiguous_exact'=>0,'no_exact'=>0,'protected'=>0,'occupied'=>0,'prepared'=>0];$prepared=[];foreach($pending as$p){$ns=(string)$p['supplier_namespace'];$stats[$ns]++;$e=json_decode((string)$p['evidence_json'],true,64,JSON_THROW_ON_ERROR);$b=$e['provider_bridges'][0]??[];$country=(int)(is_array($b)?($b['country_id']??($e['country_id']??0)):($e['country_id']??0));$name=trim((string)(is_array($b)?($b['hotel_name']??$b['name']??''):''));$key=norm($name);$ids=($country>0&&$key!=='')?array_keys($idx[$country][$key]??[]):[];$fl=flags($e);if($fl!==[])$stats['protected']++;$cand=null;$occ=[];if(count($ids)===1){$stats['unique_exact']++;$cand=(int)$ids[0];$occ=all($db,"SELECT external_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace=? AND decision_status='accepted' AND local_hotel_id=?",[$ns,$cand]);if($occ!==[])$stats['occupied']++;}elseif(count($ids)>1)$stats['ambiguous_exact']++;else$stats['no_exact']++;$safe=$cand!==null&&$fl===[]&&$occ===[];if($safe){$prepared[]=['supplier_namespace'=>$ns,'external_hotel_id'=>(string)$p['external_hotel_id'],'evidence_sha256'=>(string)$p['evidence_sha256'],'frequency'=>freq($e),'country_id'=>$country,'source_name'=>$name,'candidate'=>$meta[$cand]??null,'operator_occupancy'=>$occ];$stats['prepared']++;}}
+          $db->exec('ROLLBACK');usort($prepared,fn($a,$b)=>($b['frequency']<=>$a['frequency'])?:strcmp($a['supplier_namespace'].$a['external_hotel_id'],$b['supplier_namespace'].$b['external_hotel_id']));$out['state']='completed_read_only';$out['stats']=$stats;$out['prepared']=$prepared;$out['read_at_utc']=gmdate('c');
+          }catch(Throwable $e){if($db instanceof PDO&&$db->inTransaction())$db->rollBack();$out['error_code']=preg_match('/^[a-z_]{2,100}$/D',$e->getMessage())?$e->getMessage():'sanitized_failure';}
+          $raw=json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";file_put_contents($dir.'/result.json',$raw,LOCK_EX);$h=hash('sha256',$raw);file_put_contents($dir.'/receipt.json',json_encode(['operation_id'=>OP,'source_sha'=>$sha,'state'=>$out['state'],'result_sha256'=>$h,'readback_verified'=>true,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0,'public_http_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT)."\n",LOCK_EX);echo json_encode(['state'=>$out['state'],'error_code'=>$out['error_code']??null,'stats'=>$out['stats']??null,'prepared'=>$out['prepared']??[],'result_sha256'=>$h],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";if($out['state']!=='completed_read_only')exit(2);
+          PHP
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < "$RUNNER_TEMP/audit.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > "$out/server-operation.tgz"
+          mkdir "$out/server";tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server';r=json.loads((s/'result.json').read_text());c=json.loads((s/'receipt.json').read_text());h=hashlib.sha256((s/'result.json').read_bytes()).hexdigest();ok=r.get('state')=='completed_read_only' and c.get('result_sha256')==h and c.get('readback_verified') is True and all(r.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_andromeda_calls','public_http_calls']);g={'verified':ok,'stats':r.get('stats'),'prepared':r.get('prepared'),'result_sha256':h,'no_replay':True};(p/'workflow-readback.json').write_text(json.dumps(g,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(g,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if ok else 2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-operator315-342-exact-local-v1-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-operator315-342-exact-local-current-1971-20260917-v1/
+          retention-days: 90
