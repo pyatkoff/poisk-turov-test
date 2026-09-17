@@ -1,0 +1,106 @@
+name: MATCH price observation CURRENT audit v1
+
+on:
+  push:
+    branches: [diag/match-price-observation-current-audit-1971-20260917-v1]
+    paths: [.github/workflows/hotel-match-price-observation-current-audit-v1.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: match-price-observation-current-audit-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-price-observation-current-audit-1971-20260917-v1
+
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Reserve before DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','coordination_issue':2530,'queue_issue':1971,'claim_comment_id':5714059216,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-price-observation-current-audit-v1-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-price-observation-current-audit-1971-20260917-v1/reservation.json
+          retention-days: 90
+
+      - name: Run CURRENT read-only audit
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          cat > "$RUNNER_TEMP/audit.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $op=(string)getenv('MATCH_OPERATION_ID'); $sha=(string)getenv('MATCH_SOURCE_SHA');
+          if($op!=='hotel-match-price-observation-current-audit-1971-20260917-v1'||!preg_match('/^[a-f0-9]{40}$/D',$sha))throw new RuntimeException('operation_guard');
+          $root=realpath(getcwd()); if(!is_string($root)||basename($root)!=='anytoour.ru')throw new RuntimeException('root');
+          require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+          $dir=(string)getenv('HOME').'/.anytoour-match/operations/'.$op;
+          $res=json_decode((string)file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);
+          if(($res['state']??'')!=='reserved_before_db_access'||($res['source_sha']??'')!==$sha)throw new RuntimeException('reservation');
+          $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+          $one=function(string $s)use($db):array{$q=$db->query($s);$r=$q->fetch(PDO::FETCH_ASSOC);return is_array($r)?$r:[];};
+          $all=function(string $s)use($db):array{$q=$db->query($s);$r=$q->fetchAll(PDO::FETCH_ASSOC);return is_array($r)?$r:[];};
+          $tbl=(int)$db->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tour_price_observations' AND ENGINE='InnoDB'")->fetchColumn(); if($tbl!==1)throw new RuntimeException('price_observation_table_contract');
+          $totals=$one("SELECT COUNT(*) rows_total,COUNT(DISTINCT search_id) distinct_searches,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT operator_id) distinct_operators,COUNT(DISTINCT country_id) distinct_countries,MIN(observed_at) first_observed_at,MAX(observed_at) last_observed_at FROM tour_price_observations");
+          $recent2=$one("SELECT COUNT(*) rows_total,COUNT(DISTINCT search_id) distinct_searches,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT operator_id) distinct_operators,MAX(observed_at) last_observed_at FROM tour_price_observations WHERE observed_at>=UTC_TIMESTAMP()-INTERVAL 2 HOUR");
+          $recent24=$one("SELECT COUNT(*) rows_total,COUNT(DISTINCT search_id) distinct_searches,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT operator_id) distinct_operators,MAX(observed_at) last_observed_at FROM tour_price_observations WHERE observed_at>=UTC_TIMESTAMP()-INTERVAL 24 HOUR");
+          $sources=$all("SELECT source,COUNT(*) rows_total,COUNT(DISTINCT search_id) distinct_searches,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT operator_id) distinct_operators,MIN(observed_at) first_observed_at,MAX(observed_at) last_observed_at FROM tour_price_observations GROUP BY source ORDER BY rows_total DESC");
+          $countries=$all("SELECT country_id,COUNT(*) rows_total,COUNT(DISTINCT search_id) distinct_searches,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT operator_id) distinct_operators,MAX(observed_at) last_observed_at FROM tour_price_observations GROUP BY country_id ORDER BY distinct_hotels DESC,country_id LIMIT 40");
+          $core=$all("SELECT country_id,COUNT(*) rows_total,COUNT(DISTINCT search_id) distinct_searches,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT operator_id) distinct_operators,MAX(observed_at) last_observed_at FROM tour_price_observations WHERE country_id IN (1,4,2,9,8,10,16,12) GROUP BY country_id ORDER BY country_id");
+          $ops=$all("SELECT operator_id,COUNT(*) rows_total,COUNT(DISTINCT search_id) distinct_searches,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT country_id) distinct_countries,MAX(observed_at) last_observed_at FROM tour_price_observations WHERE operator_id IS NOT NULL GROUP BY operator_id ORDER BY distinct_hotels DESC,operator_id LIMIT 80");
+          $priorityOps=$all("SELECT operator_id,country_id,COUNT(*) rows_total,COUNT(DISTINCT search_id) distinct_searches,COUNT(DISTINCT hotel_id) distinct_hotels,MAX(observed_at) last_observed_at FROM tour_price_observations WHERE operator_id IN (25,43,5,18,12,11,16) GROUP BY operator_id,country_id ORDER BY operator_id,country_id");
+          $recentCountries=$all("SELECT country_id,COUNT(*) rows_total,COUNT(DISTINCT search_id) distinct_searches,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT operator_id) distinct_operators,MAX(observed_at) last_observed_at FROM tour_price_observations WHERE observed_at>=UTC_TIMESTAMP()-INTERVAL 24 HOUR GROUP BY country_id ORDER BY distinct_hotels DESC,country_id");
+          $coverage=$all("SELECT a.supplier_namespace,COUNT(DISTINCT p.hotel_id) observed_accepted_local_hotels FROM tour_price_observations p JOIN andromeda_hotel_identities a ON a.local_hotel_id=p.hotel_id AND a.decision_status='accepted' WHERE a.supplier_namespace IN ('andromeda_catalog','operator_315','operator_342','operator_5') GROUP BY a.supplier_namespace ORDER BY a.supplier_namespace");
+          $unlinked=$one("SELECT COUNT(DISTINCT p.hotel_id) observed_hotels_without_any_accepted_identity FROM tour_price_observations p WHERE NOT EXISTS (SELECT 1 FROM andromeda_hotel_identities a WHERE a.local_hotel_id=p.hotel_id AND a.decision_status='accepted')");
+          $priorityUnlinked=$all("SELECT p.country_id,p.operator_id,COUNT(DISTINCT p.hotel_id) distinct_hotels,COUNT(DISTINCT p.search_id) distinct_searches,MAX(p.observed_at) last_observed_at FROM tour_price_observations p WHERE p.operator_id IN (25,43) AND p.country_id IN (1,4) AND NOT EXISTS (SELECT 1 FROM andromeda_hotel_identities a WHERE a.local_hotel_id=p.hotel_id AND a.decision_status='accepted') GROUP BY p.country_id,p.operator_id ORDER BY p.country_id,p.operator_id");
+          $pending=$all("SELECT supplier_namespace,COUNT(*) pending FROM andromeda_hotel_identities WHERE supplier_namespace IN ('andromeda_catalog','operator_315','operator_342','operator_5') AND decision_status='pending' AND local_hotel_id IS NULL GROUP BY supplier_namespace ORDER BY supplier_namespace");
+          $db->exec('ROLLBACK');
+          $r=['operation_id'=>$op,'source_sha'=>$sha,'state'=>'completed_read_only','read_at_utc'=>gmdate('c'),'transaction'=>'REPEATABLE READ / READ ONLY','totals'=>$totals,'recent_2h'=>$recent2,'recent_24h'=>$recent24,'sources'=>$sources,'countries'=>$countries,'core8'=>$core,'operators'=>$ops,'priority_operator_country'=>$priorityOps,'recent_countries_24h'=>$recentCountries,'accepted_identity_coverage'=>$coverage,'unlinked_observed'=>$unlinked,'priority_unlinked_fun_int'=>$priorityUnlinked,'current_pending'=>$pending,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0,'no_replay'=>true];
+          $j=json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";file_put_contents($dir.'/result.json',$j,LOCK_EX);$h=hash('sha256',$j);$c=['operation_id'=>$op,'source_sha'=>$sha,'state'=>'completed_read_only','result_sha256'=>$h,'readback_verified'=>true,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'samo_andromeda_calls'=>0,'no_replay'=>true];file_put_contents($dir.'/receipt.json',json_encode($c,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n",LOCK_EX);echo json_encode(['state'=>$r['state'],'totals'=>$totals,'recent_2h'=>$recent2,'recent_24h'=>$recent24,'sources'=>$sources,'core8'=>$core,'priority_operator_country'=>$priorityOps,'priority_unlinked_fun_int'=>$priorityUnlinked,'current_pending'=>$pending,'result_sha256'=>$h],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          PHP
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0 -d memory_limit=256M" < "$RUNNER_TEMP/audit.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > "$out/server-operation.tgz"
+          mkdir "$out/server";tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server';r=json.loads((s/'result.json').read_text());c=json.loads((s/'receipt.json').read_text());h=hashlib.sha256((s/'result.json').read_bytes()).hexdigest();ok=(r.get('state')=='completed_read_only' and c.get('result_sha256')==h and c.get('readback_verified') is True and all(r.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_andromeda_calls']));g={'verified':ok,'totals':r.get('totals'),'recent_2h':r.get('recent_2h'),'recent_24h':r.get('recent_24h'),'sources':r.get('sources'),'core8':r.get('core8'),'priority_operator_country':r.get('priority_operator_country'),'priority_unlinked_fun_int':r.get('priority_unlinked_fun_int'),'accepted_identity_coverage':r.get('accepted_identity_coverage'),'unlinked_observed':r.get('unlinked_observed'),'current_pending':r.get('current_pending'),'result_sha256':h,'no_replay':True};(p/'workflow-readback.json').write_text(json.dumps(g,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(g,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if ok else 2)
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-price-observation-current-audit-v1-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-price-observation-current-audit-1971-20260917-v1/
+          retention-days: 90
