@@ -22,7 +22,7 @@ $samo=[
  '9002'=>['identity_key'=>'duplicate','name'=>'Duplicate','price'=>92000.0,'native_operator_hotel_id'=>'5002','urls'=>[]],
 ];
 $m=hm_match($tv,$samo);
-need(count($m)===1 && $m[0]['tv_hotel_id']===101 && $m[0]['samo_hotel_id']==='9001','unique_match');
+need(count($m)===1 && $m[0]['tv_hotel_id']===101 && (string)$m[0]['samo_hotel_id']==='9001','unique_match');
 need(($m[0]['price_gap']['relative']??1)<0.02,'price_gap');
 need(hm_url('https://user:pass@example.test/x')===null,'url_credentials');
 
