@@ -328,11 +328,11 @@ function hmc_detail_evidence(array $detail): array {
             $key=strtolower((string)$k);
             if(!in_array($key,['hotel','hotels','hotellist','hotelid','hotel_id','hotelcode'],true))continue;
             foreach((array)$v as $part)foreach(preg_split('/[,;]+/',(string)$part)?:[] as $x){
-                $x=trim($x);if(preg_match('/^[1-9][0-9]{0,15}$/D',$x))$refs[$x]=true;
+                $x=trim($x);if(preg_match('/^[1-9][0-9]{0,15}$/D',$x))$refs['id:'.$x]=$x;
             }
         }
     }
-    return ['urls'=>$urls,'native_hotel_refs'=>array_keys($refs)];
+    return ['urls'=>$urls,'native_hotel_refs'=>array_values($refs)];
 }
 function hmc_enrich_tv_anex(array $tvOffers,array $initial,array &$counter,int &$detailCalls): array {
     $candidateHotels=[];
