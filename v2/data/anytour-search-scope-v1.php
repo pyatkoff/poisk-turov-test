@@ -10,9 +10,13 @@ final class AnyTourSearchScopeV1
         'meal','hotelCategory','hotelRating','hotelTypes','hotelIds','hotelServices','arrivalId',
         'regionIds','subregionIds','operatorIds','priceFrom','priceTo','currency','onlyCharter','onlyDirect',
     ];
-    /** Fields that must be identical before any cached-scope reuse is considered. */
+    /**
+     * Fields that must be identical before cached-scope reuse is considered.
+     * Date and nights ranges are deliberately excluded: compatibility for them is
+     * decided from each stored offer's concrete checkin/nights, not its source query.
+     */
     private const HARD_KEYS = [
-        'scopeVersion','departureId','countryId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs',
+        'scopeVersion','departureId','countryId','adults','childs',
         'arrivalId','regionIds','subregionIds','currency','onlyCharter','onlyDirect',
     ];
     private const SCALAR_FILTER_KEYS = ['meal','hotelCategory','hotelRating'];
@@ -124,7 +128,7 @@ final class AnyTourSearchScopeV1
     {
         return hash('sha256',self::json(self::familyParams($normalized)));
     }
-    /** True only when every result allowed by the saved filtered scope is also allowed by current. */
+    /** True only when every result allowed by the saved filtered scope is also allowed by current, apart from concrete trip dates/nights. */
     public static function savedSubsetOfCurrent(array $saved,array $current): bool
     {
         $saved=self::validateNormalized($saved);$current=self::validateNormalized($current);
@@ -139,6 +143,26 @@ final class AnyTourSearchScopeV1
         if($current['priceFrom']!==''&&($saved['priceFrom']===''||self::cents($saved['priceFrom'])<self::cents($current['priceFrom'])))return false;
         if($current['priceTo']!==''&&($saved['priceTo']===''||self::cents($saved['priceTo'])>self::cents($current['priceTo'])))return false;
         return true;
+    }
+    /** Stored supplier facts must satisfy the current concrete trip window before they can be reused. */
+    public static function offerMatchesTrip(array $offer,array $current): bool
+    {
+        $current=self::validateNormalized($current);$tour=$offer['tour']??null;
+        if(!is_array($tour))throw new RuntimeException('ANYTOUR_OFFER_TRIP_INTEGRITY');
+        try{
+            $checkin=self::date($tour['checkin']??null,'ANYTOUR_OFFER_TRIP_INTEGRITY');
+            $nights=self::integer($tour['nights']??null,1,28,'ANYTOUR_OFFER_TRIP_INTEGRITY');
+            $party=$tour['party']??null;
+            if(!is_array($party))throw new InvalidArgumentException('ANYTOUR_OFFER_TRIP_INTEGRITY');
+            $adults=self::integer($party['adults']??null,1,6,'ANYTOUR_OFFER_TRIP_INTEGRITY');
+            $children=self::integer($party['children']??null,0,3,'ANYTOUR_OFFER_TRIP_INTEGRITY');
+            $ages=$party['child_ages']??null;
+            if(!is_array($ages)||!array_is_list($ages)||count($ages)!==$children)throw new InvalidArgumentException('ANYTOUR_OFFER_TRIP_INTEGRITY');
+            $normalizedAges=[];foreach($ages as $age)$normalizedAges[]=self::integer($age,0,17,'ANYTOUR_OFFER_TRIP_INTEGRITY');sort($normalizedAges,SORT_NUMERIC);
+        }catch(InvalidArgumentException $e){throw new RuntimeException('ANYTOUR_OFFER_TRIP_INTEGRITY',0,$e);}
+        if($adults!==$current['adults']||$normalizedAges!==$current['childs'])return false;
+        if($checkin<$current['dateFrom']||$checkin>$current['dateTo'])return false;
+        return $nights>=$current['nightsFrom']&&$nights<=$current['nightsTo'];
     }
     public static function fromParams(array $params): array
     {
