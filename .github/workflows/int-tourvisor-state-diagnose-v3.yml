@@ -1,0 +1,96 @@
+name: INT Tourvisor autosave state diagnostic v3
+
+on:
+  push:
+    branches:
+      - 'ops/int-tourvisor-state-diagnose-20260917-v3'
+    paths:
+      - '.github/workflows/int-tourvisor-state-diagnose-v3.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-tourvisor-state-diagnose
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: e01760e2010eb06ef5934ad829996137cb6527fd
+  API_BLOB: cdb11e7dd7fb98c2799e0198ad11faeb6543f715
+  HELPER_BLOB: 2dd06b184aa43decd5d8cfe3760e324568205665
+
+jobs:
+  diagnose:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Bind writer blobs and isolated read-only diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-tourvisor-state-diagnose-v3.yml'
+          test "${changed[1]}" = 'scripts/diagnostics/int_tourvisor_state_diagnose_v3.php'
+          test "$(git hash-object v2/api-v2.php)" = "$API_BLOB"
+          test "$(git hash-object app/integrations/tourvisor-anytour-offer-autosave.php)" = "$HELPER_BLOB"
+          release_sha="$(git ls-remote origin refs/heads/release/search3-production-ready-v1 | awk '{print $1}')"
+          git fetch --no-tags --depth=1 origin "$release_sha"
+          test "$(git show "$release_sha:v2/api-v2.php" | git hash-object --stdin)" = "$API_BLOB"
+          test "$(git show "$release_sha:app/integrations/tourvisor-anytour-offer-autosave.php" | git hash-object --stdin)" = "$HELPER_BLOB"
+          php -l scripts/diagnostics/int_tourvisor_state_diagnose_v3.php >/dev/null
+          diag=scripts/diagnostics/int_tourvisor_state_diagnose_v3.php
+          ! grep -Eq 'curl_|v2_data_tv_get\(|PDO|INSERT|UPDATE|DELETE' "$diag"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "STATE_DIAG_V3_SOURCE_BOUND release=$release_sha"
+
+      - name: Prepare SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Inspect retained state and cache paths read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          remote_script="/tmp/int-tourvisor-state-diagnose-v3.${GITHUB_RUN_ID}.php"
+          scp "${scp_opts[@]}" scripts/diagnostics/int_tourvisor_state_diagnose_v3.php "$remote:$remote_script"
+          ssh "${opts[@]}" "$remote" bash -s -- "$remote_script" <<'REMOTE' > "$RUNNER_TEMP/result.json"
+          set -euo pipefail
+          script="$1"
+          trap 'rm -f "$script"' EXIT
+          php -l "$script" >/dev/null
+          php "$script" "$HOME/www/anytoour.ru" "$HOME/.anytour-ops"
+          REMOTE
+          jq -e '.status == "completed_read_only" and .supplier_calls == 0 and .db_calls == 0 and .writes == 0' "$RUNNER_TEMP/result.json" >/dev/null
+          jq . "$RUNNER_TEMP/result.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: int-tourvisor-state-diagnose-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/result.json
+          if-no-files-found: error
+          retention-days: 30
