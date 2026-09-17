@@ -1,6 +1,6 @@
 {
   "expected_count": 85,
-  "operation_id": "anytour-canonical-live24h-seed-2690-20260917-v1",
+  "operation_id": "anytour-canonical-live24h-seed-2690-20260917-v2",
   "schema_version": 1,
   "selection": "ready_rows where priority_tier=live_24h",
   "source_operation": "hotel-match-missing-canonical-priority-1971-20260917-v2",
