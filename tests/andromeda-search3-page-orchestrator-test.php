@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__.'/../v2/api-andromeda-search3-preview.php';
+$runtime=$argv[1]??dirname(__DIR__);$runtime=realpath($runtime);
+if(!$runtime||!is_file($runtime.'/v2/api-andromeda-search3-preview.php'))throw new RuntimeException('runtime_missing');
+require_once $runtime.'/v2/api-andromeda-search3-preview.php';
 
 $checks=0;
 function pagination_need($value,string $message): void { global $checks; ++$checks; if(!$value)throw new RuntimeException($message); }
