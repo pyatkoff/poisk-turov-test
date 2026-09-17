@@ -22,6 +22,7 @@ final class AnyTourAnexProgramApdStoreV1
             throw new InvalidArgumentException('ANEX_PROGRAM_FLIGHT_CLASS');
         }
         $departureDate = self::date($fact['departure_date'] ?? null, 'ANEX_PROGRAM_DATE');
+        $nights = self::positiveInt($fact['nights'] ?? null, 60, 'ANEX_PROGRAM_NIGHTS');
         $at = self::sqlTime($observedAt);
         $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
 
@@ -64,6 +65,10 @@ final class AnyTourAnexProgramApdStoreV1
         $q->execute([
             'program' => $program, 'departure' => $departure, 'country' => $country, 'currency' => $currency,
             'flight' => $flight, 'at' => $at, 'date' => $departureDate,
+        ]);
+        self::recordProgramContext($db, $driver, [
+            'program'=>$program,'departure'=>$departure,'country'=>$country,'currency'=>$currency,
+            'date'=>$departureDate,'nights'=>$nights,'flight'=>$flight,'at'=>$at,
         ]);
         return self::readProgram($db, $program, $departure, $country, $currency);
     }
@@ -148,6 +153,76 @@ final class AnyTourAnexProgramApdStoreV1
             ORDER BY last_seen_at DESC,observation_count DESC,supplier_program_id ASC LIMIT ".$limit);
         $q->execute(['departure'=>$departureId,'country'=>$countryId,'since'=>self::sqlTime($seenSince)]);
         return $q->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public static function prewarmContexts(
+        PDO $db,
+        int $departureId,
+        int $countryId,
+        DateTimeImmutable $dateFrom,
+        DateTimeImmutable $dateTo,
+        DateTimeImmutable $seenSince,
+        DateTimeImmutable $now,
+        int $limit=1000
+    ): array {
+        if($departureId<1||$countryId<1||$dateTo<$dateFrom||$limit<1||$limit>5000) {
+            throw new InvalidArgumentException('ANEX_CONTEXT_PREWARM');
+        }
+        $q=$db->prepare("SELECT c.supplier_program_id,c.departure_id,c.country_id,c.supplier_currency_id,c.date_beg,c.nights,
+                c.flight_class,c.last_seen_at,c.observation_count,r.apd_state,r.observed_at AS apd_observed_at,r.expires_at AS apd_expires_at
+            FROM anytour_anex_program_contexts c
+            LEFT JOIN anytour_anex_apd_rates r
+              ON r.supplier_program_id=c.supplier_program_id
+             AND r.date_beg=c.date_beg
+             AND r.nights=c.nights
+             AND r.supplier_currency_id=c.supplier_currency_id
+            WHERE c.departure_id=:departure AND c.country_id=:country AND c.flight_class='charter'
+              AND c.date_beg>=:date_from AND c.date_beg<=:date_to AND c.last_seen_at>=:seen_since
+              AND (r.expires_at IS NULL OR r.expires_at<=:now)
+            ORDER BY c.date_beg ASC,c.last_seen_at DESC,c.observation_count DESC,c.supplier_program_id ASC,c.nights ASC
+            LIMIT ".$limit);
+        $q->execute([
+            'departure'=>$departureId,'country'=>$countryId,
+            'date_from'=>$dateFrom->format('Y-m-d'),'date_to'=>$dateTo->format('Y-m-d'),
+            'seen_since'=>self::sqlTime($seenSince),'now'=>self::sqlTime($now),
+        ]);
+        return $q->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    private static function recordProgramContext(PDO $db,string $driver,array $p):void
+    {
+        if($driver==='mysql'){
+            $sql="INSERT INTO anytour_anex_program_contexts
+              (supplier_program_id,departure_id,country_id,supplier_currency_id,date_beg,nights,flight_class,first_seen_at,last_seen_at,observation_count)
+              VALUES(:program,:departure,:country,:currency,:date,:nights,:flight,:at,:at,1)
+              ON DUPLICATE KEY UPDATE
+                flight_class=CASE
+                  WHEN flight_class='mixed' THEN 'mixed'
+                  WHEN VALUES(flight_class)='unknown' THEN flight_class
+                  WHEN flight_class='unknown' THEN VALUES(flight_class)
+                  WHEN flight_class=VALUES(flight_class) THEN flight_class
+                  ELSE 'mixed' END,
+                first_seen_at=LEAST(first_seen_at,VALUES(first_seen_at)),
+                last_seen_at=GREATEST(last_seen_at,VALUES(last_seen_at)),
+                observation_count=observation_count+1";
+        }elseif($driver==='sqlite'){
+            $sql="INSERT INTO anytour_anex_program_contexts
+              (supplier_program_id,departure_id,country_id,supplier_currency_id,date_beg,nights,flight_class,first_seen_at,last_seen_at,observation_count)
+              VALUES(:program,:departure,:country,:currency,:date,:nights,:flight,:at,:at,1)
+              ON CONFLICT(supplier_program_id,departure_id,country_id,supplier_currency_id,date_beg,nights) DO UPDATE SET
+                flight_class=CASE
+                  WHEN flight_class='mixed' THEN 'mixed'
+                  WHEN excluded.flight_class='unknown' THEN flight_class
+                  WHEN flight_class='unknown' THEN excluded.flight_class
+                  WHEN flight_class=excluded.flight_class THEN flight_class
+                  ELSE 'mixed' END,
+                first_seen_at=MIN(first_seen_at,excluded.first_seen_at),
+                last_seen_at=MAX(last_seen_at,excluded.last_seen_at),
+                observation_count=observation_count+1";
+        }else{
+            throw new RuntimeException('ANEX_PROGRAM_STORE_DRIVER');
+        }
+        $q=$db->prepare($sql);$q->execute($p);
     }
 
     private static function readProgram(PDO $db,int $program,int $departure,int $country,int $currency):array
