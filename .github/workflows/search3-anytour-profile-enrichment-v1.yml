@@ -1,0 +1,66 @@
+name: Search3 AnyTour profile enrichment v1
+
+on:
+  pull_request:
+    branches:
+      - release/search3-production-ready-v1
+    paths:
+      - 'v2/data/anytour-profile-enrichment-v1.php'
+      - 'tests/anytour-profile-enrichment-v1-test.php'
+      - '.github/workflows/search3-anytour-profile-enrichment-v1.yml'
+  push:
+    branches:
+      - local/2690-profile-fill-missing-enrichment-v1
+    paths:
+      - 'v2/data/anytour-profile-enrichment-v1.php'
+      - 'tests/anytour-profile-enrichment-v1-test.php'
+      - '.github/workflows/search3-anytour-profile-enrichment-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: search3-anytour-profile-enrichment-v1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  profile-enrichment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_profile_enrich_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Lint and enforce LOCAL ownership boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/anytour-profile-enrichment-v1.php
+          php -l tests/anytour-profile-enrichment-v1-test.php
+          grep -Fq "PROVENANCE_NAMESPACE = 'profile_enrichment:legacy_saved_v1'" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'roomMealFieldsExcluded'=>true" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'traitsExcluded'=>true" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'legacyWrites'=>0" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'mappingWrites'=>0" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'supplierCalls'=>0" v2/data/anytour-profile-enrichment-v1.php
+      - name: Exercise demand-first fill-missing contract on disposable MySQL
+        env:
+          ANYTOUR_PROFILE_ENRICH_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_profile_enrich_fixture;charset=utf8mb4'
+          ANYTOUR_PROFILE_ENRICH_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour-profile-enrichment-v1-test.php
