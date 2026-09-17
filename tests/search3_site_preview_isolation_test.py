@@ -39,6 +39,47 @@ class IsolationTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.isolate(payload)
 
+    def test_provider_identity_bridge_is_packaged_but_not_public_php(self):
+        bridge = ROOT / "v2/data/anytour-provider-identity-bridge-v1.php"
+        store = (ROOT / "v2/data/anytour-offer-store-v1.php").read_text()
+        workflow = (ROOT / ".github/workflows/build-search3-whole-site-preview.yml").read_text()
+
+        self.assertTrue(bridge.is_file())
+        self.assertIn("require_once __DIR__ . '/anytour-provider-identity-bridge-v1.php';", store)
+
+        # The whole-site artifact copies v2/data because the DB-first offer store
+        # requires this bridge at runtime; it must not be accidentally excluded.
+        self.assertIn('v2/ "$payload/"', workflow)
+        self.assertNotIn("--exclude='data/'", workflow)
+        self.assertNotIn("--exclude='data/**'", workflow)
+        self.assertNotIn("--exclude='anytour-provider-identity-bridge-v1.php'", workflow)
+
+        # Internal PHP is deny-by-default in the preview package. Only the three
+        # explicit public entry points may override that default; the identity
+        # bridge must never become a directly callable HTTP endpoint.
+        self.assertIn('<FilesMatch "\\.php$">', workflow)
+        self.assertIn('Require all denied', workflow)
+        self.assertNotIn('<Files "anytour-provider-identity-bridge-v1.php">', workflow)
+        for public_entry in ("index.php", "bundle-v1.php", "preview-lead-disabled.php"):
+            self.assertIn(f'<Files "{public_entry}">', workflow)
+
+    def test_offer_first_date_night_contract_is_packaged(self):
+        scope = (ROOT / "v2/data/anytour-search-scope-v1.php").read_text()
+        index = (ROOT / "v2/data/anytour-offer-scope-index-v1.php").read_text()
+        reader = (ROOT / "v2/data/search3-local-results-read-v1.php").read_text()
+
+        # Exact scope remains provenance, while date/night reuse is nominated by
+        # overlapping saved scopes and then re-proved from each concrete offer.
+        self.assertIn("savedCanContributeToCurrent", scope)
+        self.assertIn("$saved['dateTo']<$current['dateFrom']", scope)
+        self.assertIn("$saved['nightsTo']<$current['nightsFrom']", scope)
+        self.assertIn("compatibleDigests", index)
+        self.assertIn("search3_local_cached_offer_matches_scope", reader)
+        self.assertIn("$checkin<$scope['dateFrom']||$checkin>$scope['dateTo']", reader)
+        self.assertIn("$nights<$scope['nightsFrom']||$nights>$scope['nightsTo']", reader)
+        self.assertIn("'partial'=>$mode==='compatible'", reader)
+        self.assertIn("'selectionAuthority'=>false", reader)
+
 
 if __name__ == "__main__":
     unittest.main()

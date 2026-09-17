@@ -1,0 +1,66 @@
+name: Validate MATCH AnyTour canonical bridge export v1
+on:
+  push:
+    branches: [feat/match-anytour-canonical-bridge-export-v1-1971-20260917]
+    paths:
+      - scripts/diagnostics/hotel_match_anytour_canonical_bridge_export_v1.php
+      - tests/hotel-match-anytour-canonical-bridge-export-v1-smoke.php
+      - .github/workflows/validate-match-anytour-canonical-bridge-export-v1.yml
+      - scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py
+      - scripts/diagnostics/hotel_match_provider_evidence_graph_v2.py
+  pull_request:
+    paths:
+      - scripts/diagnostics/hotel_match_anytour_canonical_bridge_export_v1.php
+      - tests/hotel-match-anytour-canonical-bridge-export-v1-smoke.php
+      - .github/workflows/validate-match-anytour-canonical-bridge-export-v1.yml
+      - scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py
+      - scripts/diagnostics/hotel_match_provider_evidence_graph_v2.py
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Lint and offline contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anytour_canonical_bridge_export_v1.php
+          php -l tests/hotel-match-anytour-canonical-bridge-export-v1-smoke.php
+          php scripts/diagnostics/hotel_match_anytour_canonical_bridge_export_v1.php --self-test
+          php tests/hotel-match-anytour-canonical-bridge-export-v1-smoke.php
+      - name: Prove graph v2 canonical resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+          php tests/hotel-match-anytour-canonical-bridge-export-v1-smoke.php --emit-jsonl > "$tmp/canonical.jsonl"
+          cat > "$tmp/provider.jsonl" <<'JSONL'
+          {"source":{"namespace":"operator_315","kind":"hotel","id":"900"},"target":{"namespace":"tourvisor","kind":"hotel","id":"102"},"evidence_type":"accepted_match_fixture","authority":"accepted","polarity":"support","provenance":{"operation_id":"fixture"},"attributes":{}}
+          JSONL
+          python3 scripts/diagnostics/hotel_match_provider_evidence_graph_v2.py \
+            --input "$tmp/provider.jsonl" --input "$tmp/canonical.jsonl" \
+            --output "$tmp/graph.json" --resolve-node operator_315:hotel:900
+          python3 - "$tmp/graph.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert d['schema']=='provider-evidence-graph-v2'
+          r=d['resolutions'][0]
+          assert r['classification']=='accepted',r
+          assert r['target_space']=='anytour',r
+          assert [x['target'] for x in r['targets']]==['anytour:hotel:1'],r
+          assert d['edge_count']==4,d['edge_count']
+          PY
+      - name: Fail-closed source guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=scripts/diagnostics/hotel_match_anytour_canonical_bridge_export_v1.php
+          grep -Fq 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' "$src"
+          grep -Fq "s.namespace='legacy_catalog'" "$src"
+          ! grep -Eiq '(curl|wget|gateway\.samo|api\.tourvisor|parser\.anextour|AdditionalPricesDaily)' "$src"

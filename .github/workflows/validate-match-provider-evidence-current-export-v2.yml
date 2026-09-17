@@ -1,0 +1,37 @@
+name: Validate MATCH provider evidence CURRENT export v2
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_provider_evidence_current_export_v1.php'
+      - 'scripts/diagnostics/hotel_match_provider_evidence_current_export_v2.php'
+      - 'tests/hotel-match-provider-evidence-current-export-v2-smoke.php'
+      - '.github/workflows/validate-match-provider-evidence-current-export-v2.yml'
+      - 'scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py'
+  push:
+    paths:
+      - 'scripts/diagnostics/hotel_match_provider_evidence_current_export_v1.php'
+      - 'scripts/diagnostics/hotel_match_provider_evidence_current_export_v2.php'
+      - 'tests/hotel-match-provider-evidence-current-export-v2-smoke.php'
+      - '.github/workflows/validate-match-provider-evidence-current-export-v2.yml'
+      - 'scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-export-v2-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint immutable v1 helpers and v2 successor
+        run: |
+          php -l scripts/diagnostics/hotel_match_provider_evidence_current_export_v1.php
+          php -l scripts/diagnostics/hotel_match_provider_evidence_current_export_v2.php
+          php -l tests/hotel-match-provider-evidence-current-export-v2-smoke.php
+          python3 -m py_compile scripts/diagnostics/hotel_match_provider_evidence_graph_v1.py
+      - name: Run v2 terminal-state regression
+        run: php scripts/diagnostics/hotel_match_provider_evidence_current_export_v2.php --self-test
+      - name: Run v2 exporter-to-graph smoke
+        run: php tests/hotel-match-provider-evidence-current-export-v2-smoke.php

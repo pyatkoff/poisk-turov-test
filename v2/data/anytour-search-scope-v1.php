@@ -10,6 +10,13 @@ final class AnyTourSearchScopeV1
         'meal','hotelCategory','hotelRating','hotelTypes','hotelIds','hotelServices','arrivalId',
         'regionIds','subregionIds','operatorIds','priceFrom','priceTo','currency','onlyCharter','onlyDirect',
     ];
+    /** Fields that cannot be re-proved from a cached concrete offer and must stay identical. */
+    private const HARD_KEYS = [
+        'scopeVersion','departureId','countryId','adults','childs',
+        'arrivalId','regionIds','subregionIds','currency','onlyCharter','onlyDirect',
+    ];
+    private const SCALAR_FILTER_KEYS = ['meal','hotelCategory','hotelRating'];
+    private const LIST_FILTER_KEYS = ['hotelTypes','hotelIds','hotelServices','operatorIds'];
 
     private static function exactKeys(array $value): void
     {
@@ -29,7 +36,7 @@ final class AnyTourSearchScopeV1
     private static function optionalToken(mixed $value,int $limit,string $error): string
     {
         if($value===null)return'';if(!is_string($value)&&!is_int($value))throw new InvalidArgumentException($error);
-        $value=trim((string)$value);if($value==='' )return'';
+        $value=trim((string)$value);if($value==='')return'';
         if(strlen($value)>$limit||!preg_match('//u',$value)||preg_match('/[\x00-\x1f\x7f]/',$value))throw new InvalidArgumentException($error);
         return $value;
     }
@@ -56,6 +63,11 @@ final class AnyTourSearchScopeV1
     {
         if(is_bool($value))return$value;if($value==='true'||$value==='1'||$value===1)return true;if($value==='false'||$value==='0'||$value===0)return false;throw new InvalidArgumentException($error);
     }
+    private static function cents(string $value): int
+    {
+        if($value==='')throw new InvalidArgumentException('ANYTOUR_SCOPE_PRICE_EMPTY');
+        $parts=explode('.',$value,2);return ((int)$parts[0])*100+(int)str_pad($parts[1]??'',2,'0');
+    }
     public static function normalize(array $params): array
     {
         self::exactKeys($params);
@@ -70,7 +82,7 @@ final class AnyTourSearchScopeV1
         if(!is_array($params['childs'])||!array_is_list($params['childs'])||count($params['childs'])>3)throw new InvalidArgumentException('ANYTOUR_SCOPE_CHILDREN');
         $children=[];foreach($params['childs'] as $age)$children[]=self::integer($age,0,17,'ANYTOUR_SCOPE_CHILD_AGE');sort($children,SORT_NUMERIC);
         $priceFrom=self::money($params['priceFrom'],'ANYTOUR_SCOPE_PRICE');$priceTo=self::money($params['priceTo'],'ANYTOUR_SCOPE_PRICE');
-        if($priceFrom!==''&&$priceTo!==''&&(float)$priceTo<(float)$priceFrom)throw new InvalidArgumentException('ANYTOUR_SCOPE_PRICE_RANGE');
+        if($priceFrom!==''&&$priceTo!==''&&self::cents($priceTo)<self::cents($priceFrom))throw new InvalidArgumentException('ANYTOUR_SCOPE_PRICE_RANGE');
         if($params['currency']!=='RUB')throw new InvalidArgumentException('ANYTOUR_SCOPE_CURRENCY');
         return [
             'scopeVersion'=>self::VERSION,
@@ -91,9 +103,49 @@ final class AnyTourSearchScopeV1
             'onlyDirect'=>self::flag($params['onlyDirect'],'ANYTOUR_SCOPE_DIRECT'),
         ];
     }
+    public static function validateNormalized(array $normalized): array
+    {
+        if(($normalized['scopeVersion']??null)!==self::VERSION)throw new InvalidArgumentException('ANYTOUR_SCOPE_VERSION');
+        $raw=$normalized;unset($raw['scopeVersion']);$checked=self::normalize($raw);
+        if(self::json($checked)!==self::json($normalized))throw new InvalidArgumentException('ANYTOUR_SCOPE_NORMALIZED');
+        return $checked;
+    }
     public static function json(array $normalized): string
     {
         return json_encode($normalized,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+    }
+    public static function familyParams(array $normalized): array
+    {
+        $normalized=self::validateNormalized($normalized);$family=[];
+        foreach(self::HARD_KEYS as $key)$family[$key]=$normalized[$key];
+        return $family;
+    }
+    public static function familyDigest(array $normalized): string
+    {
+        return hash('sha256',self::json(self::familyParams($normalized)));
+    }
+    /** Candidate scope may contribute only when hard facts match and its ranges overlap current. */
+    public static function savedCanContributeToCurrent(array $saved,array $current): bool
+    {
+        $saved=self::validateNormalized($saved);$current=self::validateNormalized($current);
+        if(self::json(self::familyParams($saved))!==self::json(self::familyParams($current)))return false;
+        if($saved['dateTo']<$current['dateFrom']||$current['dateTo']<$saved['dateFrom'])return false;
+        if($saved['nightsTo']<$current['nightsFrom']||$current['nightsTo']<$saved['nightsFrom'])return false;
+        foreach(self::SCALAR_FILTER_KEYS as $key){
+            if($current[$key]!==''&&$saved[$key]!==$current[$key])return false;
+        }
+        foreach(self::LIST_FILTER_KEYS as $key){
+            if($current[$key]===[])continue;
+            if($saved[$key]===[]||array_diff($saved[$key],$current[$key])!==[])return false;
+        }
+        if($current['priceFrom']!==''&&($saved['priceFrom']===''||self::cents($saved['priceFrom'])<self::cents($current['priceFrom'])))return false;
+        if($current['priceTo']!==''&&($saved['priceTo']===''||self::cents($saved['priceTo'])>self::cents($current['priceTo'])))return false;
+        return true;
+    }
+    /** Backward-compatible name retained for existing callers; concrete rows are filtered separately. */
+    public static function savedSubsetOfCurrent(array $saved,array $current): bool
+    {
+        return self::savedCanContributeToCurrent($saved,$current);
     }
     public static function fromParams(array $params): array
     {

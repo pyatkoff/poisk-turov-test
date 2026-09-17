@@ -79,6 +79,13 @@ class Search3SourceBuildTest(unittest.TestCase):
         """Keep css-string safety coverage independent of production injectors."""
         source = self.root / 'src/search3/behavior/summary-cta-styles.js'
         part = self.root / 'src/search3/styles/injected/summary-cta.css'
+        manifest = self.root / 'src/search3/manifest.json'
+        data = json.loads(manifest.read_text())
+        modules = data['assets']['search3-results-filters-v1.js']
+        fixture = 'behavior/summary-cta-styles.js'
+        if fixture not in modules:
+            modules.insert(modules.index('behavior/summary-cta.js'), fixture)
+            manifest.write_text(json.dumps(data, indent=2) + '\n')
         part.parent.mkdir(parents=True, exist_ok=True)
         part.write_text('.fixture { color: red; }\n')
         source.write_text('''(function () {

@@ -138,7 +138,7 @@ async function checkOfferFacets(page, width, previous) {
     for(const select of [nights,flight])assert.ok((await select.boundingBox()).height>=44,'new filters retain a native touch target');
     await nights.selectOption('7');await flight.selectOption('regular');
     assert.deepEqual(await visible(),['facet-b','facet-c'],'nights and flight must match the same tour, not different offers at the same hotel');
-    await meal.selectOption('meal:all-inclusive');
+    await meal.selectOption('meal:label:ai');
     assert.deepEqual(await visible(),['facet-b'],'meal joins the same exact seven-night regular-flight tour');
     assert.equal((await page.locator('#results [data-hotel-id=facet-b] .hotel-price').innerText()).replace(/\s/g,''),'130000₽');
     assert.equal(await page.locator('#resultSummary').innerText(),'Показано отелей: 1 из 3 · цены из текущего поиска');
@@ -361,7 +361,7 @@ async function checkExpandedDensity(page, width, previous) {
     assert.equal(await card.locator('.hotel-trip-summary,.hotel-summary-total').count(), 0, 'expanded comparison has no aggregate facts or total');
     assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(), '10 вариантов', 'one grammatically correct count belongs to the comparison header');
     assert.equal(await card.locator('.hotel-price').count(), 3, 'the first decision view shows three exact offers instead of the whole long list');
-    assert.equal(await card.locator('.tour-row').nth(1).locator('.tour-fact').filter({ hasText: 'Номер' }).locator('b').innerText(), 'Промо · Двухместное', 'the visible promotional room uses shared Russian room and placement labels');
+    assert.equal(await card.locator('.tour-row').nth(1).locator('.tour-fact').filter({ hasText: 'Номер' }).locator('b').innerText(), 'promo room · Двухместное', 'the visible promotional room preserves the exact supplier fact beside the reviewed placement label');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.slice(0, 3).map(value => value.id), 'the representative offer and first alternatives retain their identity and order');
     assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.slice(0, 3).map(value => value.price), 'the first displayed prices remain the original supplier amounts');
     assert.equal(await card.locator('.tour-list-more').innerText(), 'Показать ещё 3');
@@ -442,187 +442,121 @@ async function checkExpandedDensity(page, width, previous) {
 async function checkMealFacet(page, width, previous) {
   const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
-    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-bb', 140000, { name: 'BB', fullName: 'BB - Только завтрак' }, '2026-09-15'), sample('a-hb', 145000, { fullName: 'Полупансион' }, '2026-09-16'), sample('a-fb', 150000, { fullName: 'Full Board' }, '2026-09-17'), sample('a-sc', 155000, { fullName: 'Self Catering' }, '2026-09-18'), sample('a-request', 160000, { fullName: 'По запросу' }, '2026-09-19'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), sample('a-soft-ai', 138000, { name: 'Soft AI', fullName: 'Мягкое всё включено' }, '2026-09-14'), { ...sample('a-anex-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'anex', selectionEnabled: false }] },
-    { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11'), sample('b-bb', 142000, { fullName: 'Bed & Breakfast' }, '2026-09-15'), sample('b-hb', 147000, { fullName: 'Half Board' }, '2026-09-16'), sample('b-request', 162000, { fullName: 'On Request' }, '2026-09-19')] },
-    { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Room only' }, '2026-09-13'), sample('c-fb', 152000, { fullName: 'Полный пансион' }, '2026-09-17'), sample('c-sc', 157000, { fullName: 'Самообслуживание' }, '2026-09-18')] }
+    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [
+      sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'),
+      sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'),
+      sample('a-raw-ai', 130000, 'AI', '2026-09-14'),
+      sample('a-bb', 140000, { name: 'BB', fullName: 'BB - Только завтрак' }, '2026-09-15')
+    ] },
+    { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [
+      sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11'),
+      sample('b-hb', 147000, { fullName: 'Half Board' }, '2026-09-16')
+    ] },
+    { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [
+      sample('c-ro', 80000, { fullName: 'Room only' }, '2026-09-13'),
+      sample('c-hb', 152000, { fullName: 'Полупансион' }, '2026-09-17')
+    ] }
   ];
   const supplierRequests = [];
   const record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) supplierRequests.push(request.url()); };
+  const visible = () => page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId));
+  const panel = page.locator('.search3-mobile-filter-panel');
   page.on('request', record);
   try {
     await page.evaluate(items => {
       const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
       window.__mealOriginal = freeze(items);
-      window.__mealEvents = [];
-      window.addEventListener('v2:results-rendered', event => window.__mealEvents.push(event.detail.items));
       window.V2Results.render(items);
       window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 100, items } }));
     }, items);
     await page.locator('#sortResults').selectOption('price');
-    const field = page.locator('.search3-meal-filter'), select = field.locator('select');
-    const mealPreset = field.locator('.search3-filter-presets button', { hasText: 'Всё включено' });
-    const name = page.locator('.search3-hotel-filter input'), category = page.locator('.search3-category-filter select');
-    const visible = () => page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId));
-    if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
-    assert.equal(await field.isVisible(), true, 'complete loaded meals expose the local facet');
-    assert.deepEqual(await select.locator('option').evaluateAll(nodes => nodes.map(node => [node.value, node.textContent])), [
-      ['', 'Любое питание'], ['meal:room-only', 'Без питания'], ['meal:all-inclusive', 'Всё включено'],
-      ['meal:breakfast', 'Завтрак'], ['meal:soft-all-inclusive', 'Мягкое всё включено'], ['meal:on-request', 'По запросу'], ['meal:full-board', 'Полный пансион'],
-      ['meal:half-board', 'Полупансион'], ['meal:self-catering', 'Самообслуживание'],
-      ['meal:ultra-all-inclusive', 'Ультра всё включено']
-    ], 'supplier synonyms collapse while AI, UAI and Soft AI remain separate customer-facing choices');
-    assert.equal(await mealPreset.isVisible(), true, 'a truthful existing all-inclusive option exposes one quick choice');
-    assert.ok((await mealPreset.boundingBox()).height >= 44, 'meal quick choice keeps a full touch target');
-    assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
-    await select.selectOption('meal:breakfast');
-    assert.deepEqual(await visible(), ['meal-a', 'meal-b'], 'code-description and English breakfast share the existing local facet');
-    assert.deepEqual(await page.locator('#results .hotel-card:visible .tour-facts').allTextContents(), ['ПитаниеЗавтракНомерСтандарт · территория · Двухместное', 'ПитаниеЗавтракНомерСтандарт · территория · Двухместное'], 'filtered exact offers use the same Russian meal, room and placement labels');
-    assert.deepEqual((await page.locator('#results .hotel-card:visible .tour-row .hotel-price').allTextContents()).map(text => Number(text.replace(/[^\d]/g, ''))), [140000, 142000], 'display normalization preserves exact offer prices');
-    if (!previous) await page.locator('#results').screenshot({ path: path.join(output, `meal-labels-${width}.png`), animations: 'disabled' });
-    await select.selectOption('meal:ultra-all-inclusive');
-    assert.deepEqual(await visible(), ['meal-a'], 'UAI remains independently selectable instead of entering the AI bucket');
-    assert.equal(await page.locator('#results [data-hotel-id=meal-a] .direct-tour').getAttribute('data-tid'), 'a-uai');
-    await select.selectOption('meal:soft-all-inclusive');
-    assert.deepEqual(await visible(), ['meal-a'], 'Soft AI remains independently selectable instead of entering the AI bucket');
-    assert.equal(await page.locator('#results [data-hotel-id=meal-a] .direct-tour').getAttribute('data-tid'), 'a-soft-ai');
-    await select.selectOption('');
-    assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
+    if (width < 1025 && !await panel.evaluate(node => node.open)) await panel.locator('summary').click();
+    const field = page.locator('.search3-meal-filter'), select = field.locator('select'), presets = field.locator('.search3-filter-presets');
+    assert.equal(await field.isVisible(), true, 'complete loaded meal facts expose the local facet');
+    const options = Object.fromEntries(await select.locator('option').evaluateAll(nodes => nodes.map(node => [node.value, node.textContent])));
+    assert.equal(options['meal:label:всё включено'], 'Всё включено');
+    assert.equal(options['meal:label:ai'], 'AI', 'raw supplier AI remains a separate exact fact');
+    assert.equal(options['meal:label:bb - только завтрак'], 'BB - Только завтрак');
+    assert.equal(options['meal:label:half board'], 'Half Board');
+    assert.equal(options['meal:all-inclusive'], undefined, 'retired semantic family identity is absent');
+    assert.equal(options['meal:breakfast'], undefined, 'retired breakfast family identity is absent');
+    assert.equal(await presets.locator('button').count(), 0, 'SEARCH does not invent semantic meal quick presets from supplier text');
+
+    await select.selectOption('meal:label:всё включено');
+    assert.equal(await select.inputValue(), 'meal:label:всё включено');
+    assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'exact identical supplier labels form the selected projection');
     const calendar = page.locator('#currentPriceCalendar');
-    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'calendar starts from the lowest offer in the terminal result set');
-    const eventCount = await page.evaluate(() => window.__mealEvents.length);
-    await mealPreset.click();
-    assert.equal(await select.inputValue(), 'meal:all-inclusive', 'quick choice drives the canonical cross-provider meal value');
-    assert.equal(await mealPreset.getAttribute('aria-pressed'), 'true', 'quick choice exposes its selected state');
-    assert.equal(await mealPreset.evaluate(node => node === document.activeElement), true, 'quick choice keeps keyboard focus across the canonical rerender');
-    assert.equal(await page.evaluate(() => window.__mealEvents.length), eventCount + 1, 'one local projection, no render loop');
-    assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'sort uses matching offer prices, not excluded cheaper meals');
-    assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'meal facet removes excluded offers from the current price calendar');
-    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'calendar best date follows the cheapest matching meal');
-    const budget = page.locator('.search3-budget-filter .search3-budget-max');
-    assert.ok((await budget.boundingBox()).height >= 44, 'exact budget keeps a full touch target');
-    await budget.fill('110001');
-    await budget.press('Enter');
-    assert.deepEqual(await visible(), ['meal-b'], 'exact budget and meal match the same loaded offer without rounding');
-    await budget.fill('110000');
-    await budget.press('Enter');
-    assert.deepEqual(await visible(), ['meal-b'], 'budget and meal must match the same loaded offer');
-    assert.equal(await calendar.isVisible(), false, 'one matching departure hides a calendar that has no dates left to compare');
-    await budget.fill(await budget.getAttribute('max'));
-    await budget.press('Enter');
-    assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'restoring the budget keeps the active meal projection');
-    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'restoring the budget restores the matching meal calendar minimum');
-    await page.evaluate(() => {
-      const items = window.__mealOriginal;
-      window.V2Results.render(items);
-      window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { items } }));
-    });
-    assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'raw continuation event cannot overwrite the matching meal projection');
+    assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14']);
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'calendar follows the exact selected meal projection');
+
     const a = page.locator('#results [data-hotel-id=meal-a]');
-    assert.equal(await a.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'three matching meal offers stay hotel-level until disclosure');
-    assert.equal(await a.locator('.hotel-offers-summary').count(), 1, 'matching meal projection exposes one hotel-level summary');
-    assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от120000₽', 'selected meal sets the truthful minimum without making it a selectable offer');
-    assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /12\.09\.2026|14\.09\.2026|7 ноч\.|Завтраки|Всё включено|TEST OPERATOR|Tourvisor/, 'collapsed matching hotel excludes exact offer parameters');
-    assert.equal(await a.locator('.tour-more-toggle').innerText(), 'Показать варианты · 3', 'counts only matching AI aliases across providers');
-    assert.ok((await a.locator('.tour-more-toggle').boundingBox()).height >= 44, 'matching-offer disclosure keeps a full touch target');
-    await a.locator('.tour-more-toggle').focus();
-    await a.locator('.tour-more-toggle').press('Enter');
-    assert.equal(await a.locator('.hotel-offers-heading>strong').innerText(), '3 варианта', 'expanded count also describes only matching AI aliases');
-    assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal disclosure keeps keyboard focus after replacing its contents');
-    assert.equal(await a.locator('.direct-tour').first().getAttribute('data-tid'), 'a-ai', 'expanded representative choice keeps its original tour ID');
-    assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion keeps AI aliases without reintroducing UAI or Soft AI');
-    assert.equal(await a.locator('.tour-selection-note').count(), 1, 'equivalent direct-provider AI remains visible but cannot enter the Tourvisor selection controller');
-    assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /Без питания|90000/);
-    assert.equal(await a.locator('.hotel-price').first().innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'expanded meal offers start with the same matching price');
-    await a.locator('.tour-more-toggle').press('Space');
-    assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal collapse keeps focus on the replacement disclosure');
-    assert.equal(await a.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'meal collapse returns to the hotel-level choice');
-    assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от120000₽', 'meal collapse retains the same truthful minimum');
-    assert.equal(await page.evaluate(() => window.V2Results.state.items.length === 3 && window.V2Results.state.items.every((h, i) => h === window.__mealOriginal[i]) && window.__mealEvents.every(list => list.length === 3 && list.every((h, i) => h === window.__mealOriginal[i]))), true, 'original result state, event items and continuation count remain intact');
-    assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(items), 'frozen source tours and prices are unchanged');
-    await name.fill('Отель А');
-    await category.selectOption('4');
-    assert.deepEqual(await visible(), [], 'name/category/meal combine through one hidden-state owner');
-    assert.equal(await calendar.isVisible(), false, 'zero local matches hide the stale price calendar');
-    await page.evaluate(() => {
-      const items = window.__mealOriginal;
+    assert.equal(await a.locator('.tour-more-toggle').innerText(), 'Показать варианты · 2', 'raw AI is not merged into the localized all-inclusive label');
+    await a.locator('.tour-more-toggle').click();
+    assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra']);
+    assert.deepEqual(await a.locator('.tour-facts').evaluateAll(nodes => nodes.map(node => Array.from(node.querySelectorAll('.tour-fact')).find(fact => fact.querySelector('small')?.textContent === 'Питание')?.querySelector('b')?.textContent || '')), ['Всё включено', 'Всё включено']);
+    assert.deepEqual(await a.locator('.tour-facts').evaluateAll(nodes => nodes.map(node => Array.from(node.querySelectorAll('.tour-fact')).find(fact => fact.querySelector('small')?.textContent === 'Номер')?.querySelector('b')?.textContent || '')), ['STANDARD LAND VIEW · Двухместное', 'STANDARD LAND VIEW · Двухместное'], 'offer rows keep exact supplier room facts while placement remains readable');
+    assert.equal(await a.locator('[data-tid=a-raw-ai]').count(), 0, 'raw AI stays outside a localized exact-label selection');
+    await a.locator('.tour-more-toggle').click();
+
+    await page.evaluate(items => {
       window.V2Results.render(items);
       window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { items } }));
-    });
-    assert.equal(await calendar.isVisible(), false, 'empty local projection remains empty after raw continuation');
-    assert.match(await page.locator('#search3HotelFilterStatus').innerText(), /Показано 0 из 3/);
-    await page.locator('#sortResults').selectOption('rating');
-    assert.equal(await select.inputValue(), 'meal:all-inclusive');
-    assert.equal(await name.inputValue(), 'Отель А');
-    assert.equal(await category.inputValue(), '4');
-    assert.deepEqual(await visible(), [], 'sort preserves all local choices, including zero matches');
-    await name.fill(''); await category.selectOption('0');
-    assert.deepEqual(await visible(), ['meal-a', 'meal-b']);
-    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'clearing name and category restores the meal-filtered calendar');
-    await page.locator('#sortResults').selectOption('price');
-    assert.equal((await snapshot(page)).overflow, false, 'meal controls and projected cards fit the viewport');
-    assert.ok((await select.boundingBox()).height >= 44, 'meal selector keeps a usable touch target');
-    if (!previous) await page.screenshot({ path: path.join(output, `meal-filter-${width}.png`), fullPage: true });
+    }, items);
+    assert.equal(await select.inputValue(), 'meal:label:всё включено', 'progressive rerender preserves the exact selected identity');
+    assert.deepEqual(await visible(), ['meal-b', 'meal-a']);
+
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })));
-    assert.equal(await field.isVisible(), false, 'dirty edit hides stale controls');
-    assert.equal(await calendar.isVisible(), false, 'dirty edit hides the calendar until retained results are shown again');
-    assert.equal(await select.inputValue(), 'meal:all-inclusive', 'dirty edit preserves the retained result projection');
-    assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'dirty event does not reveal excluded stale offers');
+    assert.equal(await field.isVisible(), false, 'dirty edit hides stale result filters');
+    assert.equal(await select.inputValue(), 'meal:label:всё включено', 'dirty edit preserves the retained projection');
     await page.evaluate(() => window.V2Results.rerender());
-    if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
+    if (width < 1025 && !await panel.evaluate(node => node.open)) await panel.locator('summary').click();
     assert.equal(await field.isVisible(), true);
-    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'returning to completed results restores the meal-filtered calendar');
-    assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'returning to the retained results preserves meal selection');
-    await select.selectOption('');
-    assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'clear restores every loaded hotel and original ordering');
-    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'clearing all local filters restores the full calendar minimum');
-    await a.locator('.tour-more-toggle').click();
-    assert.equal(await a.locator('[data-tid=a-ro]').count(), 1, 'clear restores original tours, including earlier excluded meals, on explicit expansion');
-    await a.locator('.tour-more-toggle').click();
-    await select.selectOption('meal:all-inclusive');
+    assert.deepEqual(await visible(), ['meal-b', 'meal-a']);
+
     await page.evaluate(items => window.V2Results.render(items.concat([{ id: 'meal-incomplete', name: 'Неполные данные', price: 70000, tours: [{ id: 'unknown', price: 70000, meal: { id: 7 } }] }])), items);
-    assert.equal(await field.isVisible(), false, 'incomplete progressive set hides the facet');
-    assert.equal(await select.inputValue(), '', 'incomplete set resets selection before rendering prices');
-    assert.equal((await visible()).length, 4, 'no silent filtering remains on incomplete data');
-    await page.evaluate(items => window.V2Results.render(items), items);
-    await select.selectOption('meal:all-inclusive');
-    await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 101 } })));
-    assert.equal(await select.inputValue(), '', 'a real new search clears the local meal');
+    assert.equal(await field.isVisible(), false, 'unknown meal identity hides the facet instead of guessing');
+    assert.equal(await select.inputValue(), '', 'coverage loss clears the stale meal selection');
+    assert.equal((await visible()).length, 4, 'unknown meal facts fail open and keep loaded hotels visible');
+
+    await page.evaluate(items => { window.V2Results.render(items); window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 101, items } })); }, items);
+    if (width < 1025 && !await panel.evaluate(node => node.open)) await panel.locator('summary').click();
+    await select.selectOption('meal:label:всё включено');
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 102 } })));
+    assert.equal(await select.inputValue(), '', 'a real new search clears the local meal selection');
     assert.equal(await field.isVisible(), false);
-    await page.evaluate(items => window.V2Results.render(items), items);
-    if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
-    assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'new search starts without inherited local selection');
-    assert.equal(await calendar.isVisible(), false, 'new search cannot show a calendar before its terminal event');
-    await select.selectOption('meal:all-inclusive');
-    assert.equal(await calendar.isVisible(), false, 'a facet chosen during progressive results waits for completion');
-    await page.evaluate(items => window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } })), items);
-    assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'completion uses the facet chosen before the terminal event');
+
     const boundaryItems = [
       { id: 'meal-boundary-a', name: 'Границы питания А', price: 101000, tours: [sample('boundary-hb-plus', 101000, 'HB+', '2026-09-20'), sample('boundary-premium', 102000, 'Premium All Inclusive', '2026-09-21')] },
       { id: 'meal-boundary-b', name: 'Границы питания Б', price: 103000, tours: [sample('boundary-breakfast-dinner', 103000, 'Breakfast and dinner', '2026-09-22'), sample('boundary-not-ai', 104000, 'Not all inclusive', '2026-09-23')] }
     ];
-    await page.evaluate(items => { window.V2Results.render(items); window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 102, items } })); }, boundaryItems);
-    assert.deepEqual(Object.fromEntries(await select.locator('option').evaluateAll(nodes => nodes.map(node => [node.value, node.textContent]))), {
-      '': 'Любое питание',
-      'meal:label:hb+': 'HB+',
-      'meal:label:premium all inclusive': 'Premium All Inclusive',
-      'meal:label:breakfast and dinner': 'Breakfast and dinner',
-      'meal:label:not all inclusive': 'Not all inclusive'
-    }, 'the actual result facet preserves a plus supplier code and three ambiguous supplier labels as distinct');
-    await select.selectOption('meal:label:hb+');
-    assert.deepEqual(await visible(), ['meal-boundary-a']);
-    assert.equal(await page.locator('[data-hotel-id=meal-boundary-a] .direct-tour').getAttribute('data-tid'), 'boundary-hb-plus', 'a plus supplier code cannot enter the ordinary half-board bucket');
+    await page.evaluate(items => { window.V2Results.render(items); window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 103, items } })); }, boundaryItems);
+    if (width < 1025 && !await panel.evaluate(node => node.open)) await panel.locator('summary').click();
+    const boundaryOptions = Object.fromEntries(await select.locator('option').evaluateAll(nodes => nodes.map(node => [node.value, node.textContent])));
+    assert.equal(boundaryOptions['meal:label:hb+'], 'HB+');
+    assert.equal(boundaryOptions['meal:label:premium all inclusive'], 'Premium All Inclusive');
+    assert.equal(boundaryOptions['meal:label:breakfast and dinner'], 'Breakfast and dinner');
+    assert.equal(boundaryOptions['meal:label:not all inclusive'], 'Not all inclusive');
     await select.selectOption('meal:label:not all inclusive');
     assert.deepEqual(await visible(), ['meal-boundary-b']);
-    assert.equal(await page.locator('[data-hotel-id=meal-boundary-b] .direct-tour').getAttribute('data-tid'), 'boundary-not-ai', 'a negated label cannot enter the ordinary all-inclusive result bucket');
-    await select.selectOption('meal:label:breakfast and dinner');
-    assert.equal(await page.locator('[data-hotel-id=meal-boundary-b] .direct-tour').getAttribute('data-tid'), 'boundary-breakfast-dinner', 'an extended label cannot enter the reviewed breakfast result bucket');
-    await page.evaluate(items => { window.V2Results.render(items); window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 103, items } })); }, items);
+    assert.equal(await page.locator('[data-hotel-id=meal-boundary-b] .direct-tour').getAttribute('data-tid'), 'boundary-not-ai', 'negated supplier label remains its own identity');
+
     const longLabel = '<img src=x onerror=bad()> Очень длинное описание питания от поставщика без сокращений';
-    await page.evaluate(({ items, longLabel }) => { items[0].tours[0].meal = { fullName: longLabel }; window.V2Results.render(items); }, { items, longLabel });
+    await page.evaluate(({ items, longLabel }) => {
+      const unsafe = items.map((hotel, hi) => ({ ...hotel, tours: hotel.tours.map((offer, ti) => hi === 0 && ti === 0 ? { ...offer, meal: { fullName: longLabel } } : { ...offer }) }));
+      window.V2Results.render(unsafe);
+      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 104, items: unsafe } }));
+    }, { items, longLabel });
+    if (width < 1025 && !await panel.evaluate(node => node.open)) await panel.locator('summary').click();
     assert.equal(await select.locator('img').count(), 0, 'supplier labels are rendered as text, never HTML');
-    assert.equal((await snapshot(page)).overflow, false, 'long supplier label does not widen the toolbar');
-    assert.deepEqual(supplierRequests, [], 'local filtering issues no supplier or lead requests');
-  } finally { page.off('request', record); }
+    assert.equal(await select.locator('option').filter({ hasText: '<img src=x onerror=bad()>' }).count(), 1, 'untrusted supplier label remains literal text');
+    assert.equal((await snapshot(page)).overflow, false, 'long exact supplier label does not widen the toolbar');
+    assert.equal(await page.evaluate(() => JSON.stringify(window.__mealOriginal)), JSON.stringify(items), 'meal filtering never mutates the frozen source result set');
+    assert.deepEqual(supplierRequests, [], 'local meal filtering issues no supplier or lead requests');
+    if (!previous) await page.screenshot({ path: path.join(output, `meal-filter-${width}.png`), fullPage: true });
+  } finally {
+    page.off('request', record);
+    await page.evaluate(items => { window.Search3LocalHotelFilter.reset(); window.V2Results.render(items); }, hotels);
+  }
 }
 async function checkHydratedHotelFacets(page, width, previous, details) {
   const items = [
@@ -818,7 +752,8 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.equal((await snapshot(page)).overflow, false, width + ': completed hotel offers fit the viewport');
     if (!previous) await page.screenshot({ path: path.join(output, `andromeda-complete-${width}.png`), fullPage: true });
     assert.equal(await card.locator('.tour-row').count(), 3, 'one common disclosure replaces the grouped representative with exact provider variants and retains Tourvisor');
-    assert.ok((await card.locator('.tour-facts').allTextContents()).every(text => text.startsWith('ПитаниеВсё включено')), 'raw Andromeda AI and localized Tourvisor meal display the same existing Russian identity');
+    const expandedMeals = await card.locator('.tour-facts').evaluateAll(nodes => nodes.map(node => Array.from(node.querySelectorAll('.tour-fact')).find(fact => fact.querySelector('small')?.textContent === 'Питание')?.querySelector('b')?.textContent || ''));
+    assert.deepEqual([...expandedMeals].sort(), ['AI', 'AI', 'Всё включено'].sort(), 'provider offers preserve exact supplier meal facts instead of sharing an invented identity');
     assert.deepEqual((await card.locator('.tour-row .hotel-price').allTextContents()).map(text => Number(text.replace(/[^\d]/g, ''))).sort((a, b) => a - b), [155000, 156000, 165000], 'the unified presentation preserves each exact offer price');
     assert.equal(await card.locator('.direct-tour').count(), 1, 'only the existing Tourvisor offer remains selectable');
     assert.equal(await card.locator('.tour-row').filter({ hasText: 'Андромеда' }).count(), 0, 'expanded offers keep internal provider provenance out of customer copy');
@@ -846,7 +781,7 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     await card.locator('.provider-detail').filter({ hasText: 'Подтверждённый тестовый отель' }).waitFor();
     assert.equal(await detailToggle.getAttribute('aria-expanded'), 'true', 'provider detail disclosure exposes its open state');
     assert.equal(await detailToggle.evaluate(node => node === document.activeElement), true, 'provider detail keeps keyboard focus after rerender');
-    assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · Всё включено · <script>номер<\/script> · Двухместное/);
+    assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · AI · <script>номер<\/script> · Двухместное/);
     assert.equal(await card.locator('.provider-detail script').count(), 0, 'supplier detail strings are escaped instead of becoming markup');
     assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]000 ₽/, 'details retain the accepted inclusive listing amount instead of an endpoint base amount');
     assert.match(await card.locator('.provider-detail').innerText(), /Топливный сбор учтён/);
@@ -1411,7 +1346,7 @@ async function run(browser, width, previous) {
     assert.match(await primary.locator('.tour-facts').innerText(), /Всё включено/, 'supplier fullName expands the abbreviation in offer facts');
     assert.equal(await primary.locator('.tour-meta>small').innerText(), 'Дата вылета · 9 ноч.', 'departure context states the duration beside the date');
     assert.equal(await primary.locator('.tour-meta>strong').innerText(), '12.09.2026', 'compact facts format the actual departure date for display');
-    assert.deepEqual(await primary.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'Стандарт · территория · Двухместное']], 'primary comparison facts use shared Russian display labels without changing the offer');
+    assert.deepEqual(await primary.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'STANDARD LAND VIEW · Двухместное']], 'primary comparison facts preserve exact supplier meal/room facts and the reviewed placement display');
     assert.deepEqual(await primary.locator('.tour-secondary-facts .tour-fact:not(.tour-operator)').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [], 'provider provenance stays out of customer-facing offer facts');
     assert.equal(await primary.locator('.hotel-operator').innerText(), 'TEST OPERATOR', 'unknown operator keeps its visible name');
     assert.equal(await primary.locator('.hotel-operator').getAttribute('title'), 'Туроператор: TEST OPERATOR', 'tooltip explains the operator identity');
