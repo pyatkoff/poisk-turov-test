@@ -6,6 +6,7 @@ on:
       - 'scripts/catalog/anytour_stay_candidates.php'
       - 'tests/anytour_stay_import_test.php'
       - 'tests/anytour_stay_candidates_test.php'
+      - 'tests/anytour_stay_room_local_key_test.php'
       - 'v2/data/anytour-stay-catalog-v1.php'
       - 'v2/data/migrations/20260916-anytour-stay-catalog.sql'
       - 'v2/data/migrations/20260916-anytour-canonical-catalog.sql'
@@ -43,6 +44,7 @@ jobs:
           php -l scripts/catalog/anytour_stay_candidates.php
           php -l tests/anytour_stay_import_test.php
           php -l tests/anytour_stay_candidates_test.php
+          php -l tests/anytour_stay_room_local_key_test.php
       - name: Real isolated MySQL baseline importer and evidence inventory
         env:
           ANYTOUR_STAY_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_fixture;charset=utf8mb4'
@@ -51,8 +53,11 @@ jobs:
           ANYTOUR_STAY_IMPORT_TEST_PASSWORD: fixture-only-password
           ANYTOUR_STAY_CANDIDATES_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_candidates_fixture;charset=utf8mb4'
           ANYTOUR_STAY_CANDIDATES_TEST_PASSWORD: fixture-only-password
+          ANYTOUR_STAY_ROOM_KEY_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_room_key_fixture;charset=utf8mb4'
+          ANYTOUR_STAY_ROOM_KEY_TEST_PASSWORD: fixture-only-password
         run: |
-          php -r '$p=new PDO(getenv("ANYTOUR_STAY_IMPORT_TEST_DSN"),"root",getenv("ANYTOUR_STAY_IMPORT_TEST_PASSWORD")); $p->exec("CREATE DATABASE anytour_stay_fixture"); $p->exec("CREATE DATABASE anytour_stay_candidates_fixture");'
+          php -r '$p=new PDO(getenv("ANYTOUR_STAY_IMPORT_TEST_DSN"),"root",getenv("ANYTOUR_STAY_IMPORT_TEST_PASSWORD")); $p->exec("CREATE DATABASE anytour_stay_fixture"); $p->exec("CREATE DATABASE anytour_stay_candidates_fixture"); $p->exec("CREATE DATABASE anytour_stay_room_key_fixture");'
           php tests/anytour_stay_catalog_test.php
           php tests/anytour_stay_import_test.php
           php tests/anytour_stay_candidates_test.php
+          php tests/anytour_stay_room_local_key_test.php
