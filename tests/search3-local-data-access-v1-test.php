@@ -21,9 +21,9 @@ sort($expected);
 access_check($granted === $expected, 'exact_read_only_allowlist');
 access_check(substr_count(strtolower($access), 'require all granted') === 2, 'no_extra_grants');
 access_check(!preg_match('/<FilesMatch\b/i', $access), 'no_broad_pattern_grant');
-access_check(str_contains($endpoint, "str_ends_with($normalized,'/_preview/search3-local-candidate/data')"), 'local_candidate_filesystem_guard');
-access_check(str_contains($endpoint, "HTTP_X_REQUESTED_WITH"), 'search3_header_guard');
-access_check(str_contains($endpoint, "REQUEST_METHOD"), 'post_method_guard');
+access_check(str_contains($endpoint, 'str_ends_with($normalized,\'/_preview/search3-local-candidate/data\')'), 'local_candidate_filesystem_guard');
+access_check(str_contains($endpoint, 'HTTP_X_REQUESTED_WITH'), 'search3_header_guard');
+access_check(str_contains($endpoint, 'REQUEST_METHOD'), 'post_method_guard');
 access_check(!preg_match('/\b(?:INSERT|UPDATE|DELETE|REPLACE)\b/i', $endpoint), 'read_endpoint_has_no_write_sql');
 
 echo "SEARCH3_LOCAL_DATA_ACCESS_OK grants=2 local_guard=1 readonly=1\n";
