@@ -1,0 +1,294 @@
+name: Publish checked ANEX Search3 preview v3
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-anex-search3-preview-v3.yml'
+      - 'scripts/diagnostics/anex_search3_preview_owner_gate_v3.py'
+      - 'tests/anex_search3_preview_owner_control_v3_test.py'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.event_name == 'issue_comment' && github.event.issue.number == 2530 && 'publish-anex-search3-preview-2530-v3' || format('check-anex-search3-preview-v3-control-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+env:
+  SOURCE_SHA: ebc508e31e5294d0e0aa8733dbe271e68efa9502
+  SOURCE_BRANCH: feature/int-andromeda-offer-autosave-2506-20260917
+  SOURCE_TREE: 5b9caa940c7a49be4ad25c9b086431118de85a81
+  INT_SHA: 22a6fee1d2e6c4c6249322304524d8fcebd543e6
+  INT_BRANCH: feature/anex-search-adapter-20260907
+  REQUIRED_SOURCE_RUNS: '35238158503,35238158361,35238158481,35238158251,35238158241,35238158617'
+  OPERATION_ID: publish-anex-search3-preview-2530-v3
+  EXPECTED_ROUTE: /_preview/search3-anex-candidate/
+  OWNER_COMMAND: /publish-anex-search3-preview-2530-v3
+
+jobs:
+  control-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify bounded v3 owner-control contract
+        run: |
+          set -euo pipefail
+          python3 -B tests/anex_search3_preview_owner_control_v3_test.py
+          python3 -m py_compile scripts/diagnostics/anex_search3_preview_owner_gate_v3.py
+
+  authorize:
+    needs: control-contract
+    if: github.event_name == 'issue_comment'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    outputs:
+      allowed: ${{ steps.allow.outputs.allowed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Authorize exact fresh owner command
+        id: allow
+        run: |
+          set -euo pipefail
+          python3 -B scripts/diagnostics/anex_search3_preview_owner_gate_v3.py
+          echo 'allowed=true' >> "$GITHUB_OUTPUT"
+      - name: Verify current main, merged INT tree and exact green source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.parse, urllib.request
+          repo=os.environ['GITHUB_REPOSITORY']; token=os.environ['GH_TOKEN']
+          source=os.environ['SOURCE_SHA']; source_branch=os.environ['SOURCE_BRANCH']
+          source_tree_expected=os.environ['SOURCE_TREE']; int_sha=os.environ['INT_SHA']; int_branch=os.environ['INT_BRANCH']
+          required_runs=os.environ['REQUIRED_SOURCE_RUNS'].split(',')
+          def get(path):
+              req=urllib.request.Request('https://api.github.com/repos/'+repo+path,
+                  headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
+              with urllib.request.urlopen(req, timeout=20) as r: return json.load(r)
+          main=get('/branches/main')['commit']['sha']
+          if main != os.environ['GITHUB_SHA']: raise SystemExit('main_drift')
+          source_head=get('/branches/'+urllib.parse.quote(source_branch,safe=''))['commit']['sha']
+          if source_head != source: raise SystemExit('source_branch_drift')
+          int_head=get('/branches/'+urllib.parse.quote(int_branch,safe=''))['commit']['sha']
+          if int_head != int_sha: raise SystemExit('int_branch_drift')
+          source_commit=get('/git/commits/'+source)
+          int_commit=get('/git/commits/'+int_sha)
+          source_tree=source_commit['tree']['sha']; int_tree=int_commit['tree']['sha']
+          if source_tree != source_tree_expected: raise SystemExit('source_tree_drift')
+          if source_tree != int_tree: raise SystemExit('source_tree != int_tree')
+          parents=[p['sha'] for p in get('/commits/'+int_sha).get('parents',[])]
+          if source not in parents: raise SystemExit('source_not_merged_parent')
+          for run_id in required_runs:
+              run=get('/actions/runs/'+run_id)
+              if (run.get('head_sha') != source or run.get('status') != 'completed'
+                      or run.get('conclusion') != 'success' or run.get('run_attempt') != 1):
+                  raise SystemExit('source_run_not_green:'+run_id)
+          checks=get('/commits/'+source+'/check-runs?per_page=100').get('check_runs',[])
+          if len(checks) < 10 or any(x.get('status')!='completed' or x.get('conclusion')!='success' for x in checks):
+              raise SystemExit('source_check_set_not_green')
+          print('ANEX_PREVIEW_V3_SOURCE_AND_MERGE_PINS_OK')
+          PY
+
+  publish:
+    needs: authorize
+    if: github.event_name == 'issue_comment' && needs.authorize.outputs.allowed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: candidate
+          persist-credentials: false
+      - name: Recheck exact source and confined publisher contract
+        run: |
+          set -euo pipefail
+          test "$(git -C candidate rev-parse HEAD)" = "$SOURCE_SHA"
+          cd candidate
+          python3 -B tests/anex_search3_preview_deploy_test.py
+          python3 -B tests/anex_search3_preview_safe_deploy_test.py
+          php -l v2/api-anex-search3-preview.php
+          php -l v2/api-andromeda-search3-preview.php
+          php -l app/integrations/andromeda-anytour-offer-autosave.php
+          php -l app/integrations/three-provider-money-facts.php
+          php tests/andromeda-anytour-offer-autosave-test.php
+          php tests/three-provider-money-facts-test.php
+          php tests/three-provider-final-price-readiness-test.php
+          grep -F 'target="$project/_preview/search3-anex-candidate"' scripts/diagnostics/anex_search3_preview_deploy.py >/dev/null
+          ! grep -F 'target="$project/_preview/search3-site-candidate"' scripts/diagnostics/anex_search3_preview_deploy.py
+          grep -F 'production_entry_changes": False' scripts/diagnostics/anex_search3_preview_deploy.py >/dev/null
+          grep -F '.andromeda-private.php' scripts/diagnostics/anex_review_owner_preserve.php >/dev/null
+          grep -F 'andromeda-anytour-offer-autosave.php' v2/api-andromeda-search3-preview.php >/dev/null
+      - name: Require existing ANEX credentials without revealing them
+        env:
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_B2B_TOKEN: ${{ secrets.ANEX_B2B_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          api=os.environ.get('ANEX_API_TOKEN',''); b2b=os.environ.get('ANEX_B2B_TOKEN','')
+          if not api.strip() or len(api)>16384 or '\x00' in api: raise SystemExit('anex_api_secret_missing_or_invalid')
+          if not b2b or len(b2b)>16384 or b2b.lower().startswith('bearer ') or re.search(r'[\x00-\x20\x7f]',b2b):
+              raise SystemExit('anex_b2b_secret_missing_or_invalid')
+          print('ANEX_V3_SECRETS_READY')
+          PY
+      - name: Prepare private SSH transport
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/anex-preview-v3-control"
+          printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > "$RUNNER_TEMP/anex-preview-v3-control/key"
+          chmod 600 "$RUNNER_TEMP/anex-preview-v3-control/key"
+          ssh-keygen -y -f "$RUNNER_TEMP/anex-preview-v3-control/key" >/dev/null
+      - name: Reserve this v3 publication exactly once before server mutation
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re, shlex, subprocess
+          source=os.environ['SOURCE_SHA']; control=os.environ['GITHUB_SHA']; run=os.environ['GITHUB_RUN_ID']; op=os.environ['OPERATION_ID']
+          if not re.fullmatch(r'[0-9a-f]{40}',source) or not re.fullmatch(r'[0-9a-f]{40}',control) or not run.isdigit() or not re.fullmatch(r'[a-z0-9-]+',op):
+              raise SystemExit('invalid_reservation_input')
+          value=json.dumps({'state':'reserved','operation_id':op,'source_sha':source,'control_sha':control,'run_id':int(run),'replay_allowed':False},separators=(',',':'))+'\n'
+          remote='''set -eu
+          private="$HOME/.anytoour-anex"
+          test -d "$private" && test ! -L "$private"
+          op="$private/''' + op + '''"
+          mkdir "$op"
+          chmod 700 "$op"
+          cat > "$op/reservation.json"
+          chmod 600 "$op/reservation.json"
+          printf '%s\\n' ANEX_PREVIEW_V3_PUBLICATION_RESERVED
+          '''
+          root=os.environ['RUNNER_TEMP']+'/anex-preview-v3-control'
+          cmd=['ssh','-T','-i',root+'/key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+root+'/known_hosts','-o','ConnectTimeout=15','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'bash -c '+shlex.quote(remote)]
+          r=subprocess.run(cmd,input=value,text=True,capture_output=True,timeout=45)
+          if r.returncode or r.stdout != 'ANEX_PREVIEW_V3_PUBLICATION_RESERVED\n': raise SystemExit('publication_reservation_failed_or_replayed')
+          print(r.stdout.strip())
+          PY
+      - name: Publish exact checked INT source to isolated ANEX preview
+        env:
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_B2B_TOKEN: ${{ secrets.ANEX_B2B_TOKEN }}
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog-v3
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANEX_CATALOG_ARTIFACT_DIR"
+          python3 -B candidate/scripts/diagnostics/anex_search3_preview_deploy_safe.py | tee "$ANEX_CATALOG_ARTIFACT_DIR/publisher-stdout.jsonl"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])/'anex-search3-preview-deploy.json'
+          value=json.loads(p.read_text())
+          assert value['status']=='deployed'
+          assert value['source_sha']==os.environ['SOURCE_SHA']
+          assert value['route']==os.environ['EXPECTED_ROUTE']
+          assert value['production_entry_changes'] is False
+          print('ANEX_PREVIEW_V3_DEPLOY_RECEIPT_OK')
+          PY
+      - name: Read back exact autosave runtime hashes
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, os, shlex, subprocess
+          from pathlib import Path
+          files=[
+              ('app/integrations/andromeda-anytour-offer-autosave.php','app/integrations/andromeda-anytour-offer-autosave.php'),
+              ('app/integrations/three-provider-money-facts.php','app/integrations/three-provider-money-facts.php'),
+              ('v2/api-andromeda-search3-preview.php','api-andromeda-search3-preview.php'),
+          ]
+          expected=[]
+          for local, remote in files:
+              expected.append((remote,hashlib.sha256((Path('candidate')/local).read_bytes()).hexdigest()))
+          remote='''set -eu
+          target="$HOME/www/anytoour.ru/_preview/search3-anex-candidate"
+          test -d "$target" && test ! -L "$target"
+          for f in app/integrations/andromeda-anytour-offer-autosave.php app/integrations/three-provider-money-facts.php api-andromeda-search3-preview.php; do
+            test -f "$target/$f" && test ! -L "$target/$f"
+            sha256sum "$target/$f"
+          done
+          '''
+          root=os.environ['RUNNER_TEMP']+'/anex-preview-v3-control'
+          cmd=['ssh','-T','-i',root+'/key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+root+'/known_hosts','-o','ConnectTimeout=15','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'bash -c '+shlex.quote(remote)]
+          r=subprocess.run(cmd,text=True,capture_output=True,timeout=45)
+          if r.returncode: raise SystemExit('runtime_readback_failed')
+          got=[]
+          for line in r.stdout.splitlines():
+              digest, name=line.split(None,1); got.append((name.split('/')[-1] if '/' not in name else name.split('_preview/search3-anex-candidate/')[-1],digest))
+          by_name={name:digest for name,digest in expected}
+          for line in r.stdout.splitlines():
+              digest, path=line.split(None,1); rel=path.split('search3-anex-candidate/',1)[-1] if 'search3-anex-candidate/' in path else path.split('/')[-1]
+              if rel not in by_name or digest != by_name[rel]: raise SystemExit('runtime_hash_mismatch:'+rel)
+          if len(r.stdout.splitlines()) != 3: raise SystemExit('runtime_readback_count')
+          print('ANEX_PREVIEW_V3_RUNTIME_HASHES_OK')
+          PY
+      - name: Verify Andromeda endpoint loads without supplier call
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/andromeda-get.json"
+          code="$(curl -sS --max-time 20 -o "$body" -w '%{http_code}' 'https://anytoour.ru/_preview/search3-anex-candidate/api-andromeda-search3-preview.php')"
+          test "$code" = 405
+          python3 - "$body" <<'PY'
+          import json,sys
+          value=json.load(open(sys.argv[1],encoding='utf-8'))
+          if value != {'ok':False,'error':'method_not_allowed'}: raise SystemExit('andromeda_get_contract_mismatch')
+          print('ANDROMEDA_PREVIEW_GET_405_OK')
+          PY
+      - name: Mark v3 reservation completed after verified publication and readback
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, shlex, subprocess
+          source=os.environ['SOURCE_SHA']; control=os.environ['GITHUB_SHA']; run=os.environ['GITHUB_RUN_ID']; op=os.environ['OPERATION_ID']
+          value=json.dumps({'state':'completed','operation_id':op,'source_sha':source,'control_sha':control,'run_id':int(run),'replay_allowed':False},separators=(',',':'))+'\n'
+          remote='''set -eu
+          op="$HOME/.anytoour-anex/''' + op + '''"
+          test -d "$op" && test ! -L "$op"
+          test -f "$op/reservation.json" && test ! -e "$op/result.json"
+          cat > "$op/result.json"
+          chmod 600 "$op/result.json"
+          printf '%s\\n' ANEX_PREVIEW_V3_PUBLICATION_COMPLETED
+          '''
+          root=os.environ['RUNNER_TEMP']+'/anex-preview-v3-control'
+          cmd=['ssh','-T','-i',root+'/key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+root+'/known_hosts','-o','ConnectTimeout=15','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'bash -c '+shlex.quote(remote)]
+          r=subprocess.run(cmd,input=value,text=True,capture_output=True,timeout=45)
+          if r.returncode or r.stdout != 'ANEX_PREVIEW_V3_PUBLICATION_COMPLETED\n': raise SystemExit('publication_completion_receipt_failed')
+          print(r.stdout.strip())
+          PY
+      - name: Preserve sanitized v3 publication evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-search3-preview-v3-publication-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/anex-catalog-v3/
+            ${{ runner.temp }}/andromeda-get.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Remove runner SSH key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/anex-preview-v3-control/key"
