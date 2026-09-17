@@ -60,7 +60,7 @@ $obs->execute([102,null,13,'No operator','2026-09-17 00:15:00']);
 
 $mapping = $db->prepare("INSERT INTO anytour_stay_mappings(namespace,external_hotel_key,operator_key,kind,key_kind,external_key,
     anytour_hotel_id,room_id,meal_id,state,evidence_ref,evidence_sha256,reviewed_by,created_at)
-    VALUES('legacy_catalog','102','5',?,?,?,?,1,NULL,NULL,'rejected',?,?,?,'2026-09-17 00:00:00')");
+    VALUES('legacy_catalog','102','5',?,?,?,1,NULL,NULL,'rejected',?,?,?,'2026-09-17 00:00:00')");
 $mapping->execute(['meal','code','7','fixture-negative-meal',str_repeat('a', 64),'fixture']);
 $mapping->execute(['room','label','Промо номер','fixture-negative-room',str_repeat('b', 64),'fixture']);
 
