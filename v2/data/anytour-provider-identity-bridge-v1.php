@@ -40,7 +40,8 @@ final class AnyTourProviderIdentityBridgeV1
      * A present direct Andromeda binding is authoritative for that digest: if its
      * stored MATCH tuple is stale, malformed or no longer accepted, the row is
      * rejected and MUST NOT fall back to legacy_catalog. Rows not migrated yet keep
-     * the legacy compatibility path so the migration can be progressive.
+     * a bounded compatibility path only when the exact provider-ref digest is still a
+     * CURRENT accepted MATCH identity for the claimed legacy local ID.
      */
     public static function filterOfferRows(PDO $db, array $rows): array
     {
@@ -51,6 +52,7 @@ final class AnyTourProviderIdentityBridgeV1
 
         $normalized = [];
         $andromedaDigests = [];
+        $andromedaLegacyIds = [];
         $legacyIds = [];
         foreach ($rows as $index => $row) {
             if (!is_array($row)) throw new InvalidArgumentException('ANYTOUR_PROVIDER_BRIDGE_ROW');
@@ -66,11 +68,15 @@ final class AnyTourProviderIdentityBridgeV1
                 'provider' => $provider, 'digest' => $digest, 'legacy' => $legacy, 'own' => $own,
             ];
             $legacyIds[$legacy] = true;
-            if ($provider === self::DIRECT_PROVIDER) $andromedaDigests[$digest] = true;
+            if ($provider === self::DIRECT_PROVIDER) {
+                $andromedaDigests[$digest] = true;
+                $andromedaLegacyIds[$legacy] = true;
+            }
         }
 
         $direct = self::directSources($db, array_keys($andromedaDigests));
         $currentAccepted = self::currentAndromedaAccepted($db, $direct);
+        $fallbackAccepted = self::currentAndromedaAcceptedByDigest($db, array_keys($andromedaLegacyIds));
         $legacyTargets = self::legacyTargets($db, array_keys($legacyIds), false);
 
         $out = [];
@@ -86,6 +92,10 @@ final class AnyTourProviderIdentityBridgeV1
                 $key = self::tupleKey($source['supplier_namespace'], $source['external_hotel_id']);
                 if (($currentAccepted[$key] ?? null) !== $meta['legacy']) continue;
                 $out[] = $row;
+                continue;
+            }
+            if ($meta['provider'] === self::DIRECT_PROVIDER
+                && ($fallbackAccepted[$meta['digest']] ?? null) !== $meta['legacy']) {
                 continue;
             }
             if (($legacyTargets[$meta['legacy']] ?? null) === $meta['own']) $out[] = $row;
@@ -292,6 +302,29 @@ final class AnyTourProviderIdentityBridgeV1
                     $local = self::positiveInt($row['local_hotel_id'] ?? null);
                 } catch (Throwable) { continue; }
                 $result[$key] = array_key_exists($key, $result) ? null : $local;
+            }
+        }
+        return $result;
+    }
+
+    private static function currentAndromedaAcceptedByDigest(PDO $db, array $legacyIds): array
+    {
+        if ($legacyIds === []) return [];
+        $result = [];
+        foreach (array_chunk(array_map('strval', $legacyIds), 500) as $chunk) {
+            $sql = "SELECT supplier_namespace,CAST(external_hotel_id AS CHAR) AS external_hotel_id,local_hotel_id
+                FROM andromeda_hotel_identities WHERE decision_status='accepted' AND local_hotel_id IN ("
+                . implode(',', array_fill(0, count($chunk), '?')) . ')';
+            try { $query = $db->prepare($sql); $query->execute($chunk); }
+            catch (Throwable) { return []; }
+            foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                try {
+                    $namespace = self::supplierNamespace($row['supplier_namespace'] ?? null);
+                    $external = self::externalId($row['external_hotel_id'] ?? null);
+                    $local = self::positiveInt($row['local_hotel_id'] ?? null);
+                    $digest = self::providerRefDigest($namespace . ':' . $external);
+                } catch (Throwable) { continue; }
+                $result[$digest] = array_key_exists($digest, $result) ? null : $local;
             }
         }
         return $result;
