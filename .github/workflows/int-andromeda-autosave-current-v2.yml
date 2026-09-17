@@ -50,7 +50,7 @@ jobs:
           text=re.sub(r"const ANYTOUR_ANDROMEDA_AUTOSAVE_SOURCE_SHA = '[0-9a-f]{40}';",
                       "const ANYTOUR_ANDROMEDA_AUTOSAVE_SOURCE_SHA = '"+source+"';",text)
           for rel,digest in hashes.items():
-              pat=re.escape("'"+rel+"'") + r"s*=>s*'[0-9a-f]{64}'"
+              pat=re.escape("'"+rel+"'") + r"\s*=>\s*'[0-9a-f]{64}'"
               repl="'"+rel+"' => '"+digest+"'"
               text,n=re.subn(pat,repl,text)
               if n!=1: raise SystemExit('pin_replace_failed:'+rel+':'+str(n))
