@@ -1,0 +1,44 @@
+name: MATCH Tourvisor identity backfill MySQL8 v1
+
+on:
+  push:
+    branches: [test/match-tourvisor-identity-backfill-mysql8-1971-20260917-v1]
+    paths:
+      - tests/hotel-match-tourvisor-identity-backfill-mysql8.php
+      - .github/workflows/hotel-match-tourvisor-identity-backfill-mysql8-v1.yml
+
+permissions:
+  contents: read
+
+jobs:
+  mysql8:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      mysql:
+        image: mysql:8.0.46
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: matchtest
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: PHP syntax
+        run: php -l tests/hotel-match-tourvisor-identity-backfill-mysql8.php
+      - name: Exact MySQL8 regression
+        env:
+          MYSQL_DSN: mysql:host=127.0.0.1;port=3306;dbname=matchtest;charset=utf8mb4
+          MYSQL_USER: root
+          MYSQL_PASSWORD: root
+        run: php tests/hotel-match-tourvisor-identity-backfill-mysql8.php
