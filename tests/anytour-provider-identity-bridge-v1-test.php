@@ -53,7 +53,7 @@ function bridge_dto(int $legacyId, string $providerHotelDigest, int $issued): ar
             'meal'=>['raw'=>'AI'],'room'=>['raw'=>'STANDARD'],'placement'=>['raw'=>'2AD'],
             'availability'=>['hotel'=>['raw'=>'available']],
             'flight_details'=>['state'=>'search_summary_only'],
-            'observed_at'=>gmdate('Y-m-d\TH:i:s\Z',$issued),
+            'observed_at'=>gmdate('Y-m-d\\TH:i:s\\Z',$issued),
         ],
         'money'=>['search_price_with_surcharge'=>['amount'=>'199390','currency'=>'RUB']],
         'quote_state'=>'unknown','final_price_verified'=>false,'quote_evidence_digest'=>null,
