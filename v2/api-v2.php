@@ -6,6 +6,7 @@ header('Cache-Control: no-store');
 $privateConfig = __DIR__ . '/config.php';
 if (is_file($privateConfig)) require_once $privateConfig;
 require_once __DIR__ . '/catalog-cache-v1.php';
+require_once dirname(__DIR__) . '/app/integrations/tourvisor-anytour-offer-autosave.php';
 
 function out($data, int $status = 200)
 {
@@ -149,6 +150,44 @@ function date_param(string $key)
     return $d->format('Y-m-d');
 }
 
+function tourvisor_autosave_start(array $scope, array $response): void
+{
+    try {
+        AnyTourTourvisorOfferAutosaveV1::captureSearchStart(
+            $scope,
+            $response,
+            new DateTimeImmutable('now', new DateTimeZone('UTC'))
+        );
+    } catch (Throwable $ignored) {
+        // Persistence is best-effort and must never change a successful supplier response.
+    }
+}
+
+function tourvisor_autosave_status(int $searchId, array $response): void
+{
+    try {
+        AnyTourTourvisorOfferAutosaveV1::captureSearchStatus(
+            $searchId,
+            $response,
+            new DateTimeImmutable('now', new DateTimeZone('UTC'))
+        );
+    } catch (Throwable $ignored) {
+    }
+}
+
+function tourvisor_autosave_results(int $searchId, int $limit, array $response): void
+{
+    try {
+        AnyTourTourvisorOfferAutosaveV1::autosaveSearchResults(
+            $searchId,
+            $limit,
+            $response,
+            new DateTimeImmutable('now', new DateTimeZone('UTC'))
+        );
+    } catch (Throwable $ignored) {
+    }
+}
+
 $action = short_text($_GET['action'] ?? $_POST['action'] ?? 'health', 60);
 
 switch ($action) {
@@ -237,7 +276,7 @@ switch ($action) {
         if ($priceFrom !== null && $priceFrom < 0) out(['ok' => false, 'error' => 'priceFrom must be positive'], 400);
         if ($priceTo !== null && $priceTo < 0) out(['ok' => false, 'error' => 'priceTo must be positive'], 400);
         if ($priceFrom !== null && $priceTo !== null && $priceTo < $priceFrom) out(['ok' => false, 'error' => 'priceTo must not be less than priceFrom'], 400);
-        out(tv_get('/tours/search', [
+        $searchParams = [
             'departureId' => $departureId,
             'countryId' => $countryId,
             'dateFrom' => $dateFrom,
@@ -261,7 +300,10 @@ switch ($action) {
             'currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB',
             'onlyCharter' => bool_param('onlyCharter'),
             'onlyDirect' => bool_param('onlyDirect'),
-        ]));
+        ];
+        $data = tv_get('/tours/search', $searchParams);
+        tourvisor_autosave_start($searchParams, $data);
+        out($data);
 
     case 'search_continue':
         $id = search_id();
@@ -269,11 +311,16 @@ switch ($action) {
 
     case 'search_status':
         $id = search_id();
-        out(tv_get('/tours/search/' . $id . '/status', ['operatorStatus' => false]));
+        $data = tv_get('/tours/search/' . $id . '/status', ['operatorStatus' => false]);
+        tourvisor_autosave_status($id, $data);
+        out($data);
 
     case 'search_results':
         $id = search_id();
-        out(tv_get('/tours/search/' . $id, ['limit' => bounded_int($_GET['limit'] ?? 25, 1, 100, 25)]));
+        $limit = bounded_int($_GET['limit'] ?? 25, 1, 100, 25);
+        $data = tv_get('/tours/search/' . $id, ['limit' => $limit]);
+        tourvisor_autosave_results($id, $limit, $data);
+        out($data);
 
     case 'tour':
         $id = short_text($_GET['tourId'] ?? '', 200);
