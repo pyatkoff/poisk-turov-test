@@ -31,8 +31,8 @@ final class AnyTourOfferScopeIndexV1
         $params=AnyTourSearchScopeV1::validateNormalized($params);$json=AnyTourSearchScopeV1::json($params);
         if(!hash_equals($digest,hash('sha256',$json)))throw new InvalidArgumentException('ANYTOUR_SCOPE_INDEX_SCOPE_HASH');
         $family=AnyTourSearchScopeV1::familyDigest($params);$time=self::sqlTime($at);
-        $stmt=$db->prepare('INSERT INTO anytour_offer_scopes(scope_sha256,scope_version,family_sha256,params_json,params_sha256,first_seen_at,last_seen_at) VALUES(:scope,:version,:family,:json,:json_sha,:at,:at) ON DUPLICATE KEY UPDATE last_seen_at=VALUES(last_seen_at)');
-        $stmt->execute(['scope'=>$digest,'version'=>$version,'family'=>$family,'json'=>$json,'json_sha'=>hash('sha256',$json),'at'=>$time]);
+        $stmt=$db->prepare('INSERT INTO anytour_offer_scopes(scope_sha256,scope_version,family_sha256,params_json,params_sha256,first_seen_at,last_seen_at) VALUES(:scope,:version,:family,:json,:json_sha,:first_seen,:last_seen) ON DUPLICATE KEY UPDATE last_seen_at=VALUES(last_seen_at)');
+        $stmt->execute(['scope'=>$digest,'version'=>$version,'family'=>$family,'json'=>$json,'json_sha'=>hash('sha256',$json),'first_seen'=>$time,'last_seen'=>$time]);
         $check=$db->prepare('SELECT scope_version,family_sha256,params_json,params_sha256 FROM anytour_offer_scopes WHERE scope_sha256=:scope');
         $check->execute(['scope'=>$digest]);$row=$check->fetch(PDO::FETCH_ASSOC);
         if(!$row||(int)$row['scope_version']!==$version||!hash_equals($family,(string)$row['family_sha256'])||!hash_equals((string)$row['params_sha256'],hash('sha256',(string)$row['params_json']))||!hash_equals($digest,hash('sha256',(string)$row['params_json']))||!hash_equals($json,(string)$row['params_json']))throw new RuntimeException('ANYTOUR_SCOPE_INDEX_CONFLICT');
