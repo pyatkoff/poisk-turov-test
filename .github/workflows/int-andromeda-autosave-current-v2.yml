@@ -1,0 +1,130 @@
+name: INT read current Andromeda autosave state v2
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - '.github/workflows/int-andromeda-autosave-current-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event.pull_request.head.ref == 'diag/int-andromeda-autosave-current-20260918-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: control
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: d8a11376535f6ea44ba0e83694a449fa54f84ab1
+          path: runtime
+          persist-credentials: false
+
+      - name: Build fresh read-only audit from exact installed source pins
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/audit"
+          python3 - <<'PY'
+          import hashlib,pathlib,re,os
+          control=pathlib.Path('control/scripts/diagnostics/andromeda_autosave_state_readonly_v1.php')
+          text=control.read_text(encoding='utf-8')
+          source='d8a11376535f6ea44ba0e83694a449fa54f84ab1'
+          files={
+            'app/integrations/andromeda-anytour-offer-autosave.php':pathlib.Path('runtime/app/integrations/andromeda-anytour-offer-autosave.php'),
+            'app/integrations/three-provider-money-facts.php':pathlib.Path('runtime/app/integrations/three-provider-money-facts.php'),
+            'api-andromeda-search3-preview.php':pathlib.Path('runtime/v2/api-andromeda-search3-preview.php'),
+          }
+          hashes={k:hashlib.sha256(v.read_bytes()).hexdigest() for k,v in files.items()}
+          text=re.sub(r"const ANYTOUR_ANDROMEDA_AUTOSAVE_SOURCE_SHA = '[0-9a-f]{40}';",
+                      "const ANYTOUR_ANDROMEDA_AUTOSAVE_SOURCE_SHA = '"+source+"';",text)
+          for rel,digest in hashes.items():
+              pat=re.escape("'"+rel+"'") + r"s*=>s*'[0-9a-f]{64}'"
+              repl="'"+rel+"' => '"+digest+"'"
+              text,n=re.subn(pat,repl,text)
+              if n!=1: raise SystemExit('pin_replace_failed:'+rel+':'+str(n))
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'audit/current.php'
+          out.write_text(text,encoding='utf-8')
+          (pathlib.Path(os.environ['RUNNER_TEMP'])/'audit/pins.txt').write_text(
+              source+'\n'+'\n'.join(k+' '+v for k,v in sorted(hashes.items()))+'\n',encoding='utf-8')
+          print(hashes)
+          PY
+          php -l "$RUNNER_TEMP/audit/current.php"
+
+      - name: Run read-only audit against current installed provider runtime
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/ssh/key"; chmod 600 "$RUNNER_TEMP/ssh/key"
+          ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          ssh -T -i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes             -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null             -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2             "$REMOTE_USER@$HOST" 'php -d display_errors=0 -d log_errors=0'             < "$RUNNER_TEMP/audit/current.php" > "$RUNNER_TEMP/audit/result.json"
+          test -s "$RUNNER_TEMP/audit/result.json"
+
+      - name: Classify current state
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'audit/result.json'
+          d=json.loads(p.read_text())
+          assert d['published_source_sha']=='d8a11376535f6ea44ba0e83694a449fa54f84ab1'
+          assert d['runtime_hashes_verified'] is True
+          for key in ('filesystem_writes','supplier_calls','db_writes','booking_calls','lead_calls'):
+              assert d[key]==0,(key,d[key])
+          cp=d['checkpoints']; co=d['cohorts']; db=d['database']
+          if db['andromeda_current_ready_rows']>0:
+              assessment='current_andromeda_offers_present'
+          elif cp['post_publish_total']>0 and cp['post_publish_ready_offer_sum']>0 and db['andromeda_post_publish_completed_refreshes']>0:
+              assessment='andromeda_autosave_published_but_rows_expired'
+          elif co['post_publish_first_page_total']==0:
+              assessment='no_post_publish_search'
+          elif co['post_publish_complete_total']==0:
+              assessment='no_complete_cohort'
+          elif co['post_publish_owned_offer_total']==0:
+              assessment='only_other_provider_operators'
+          elif co['post_publish_owned_offer_with_complete_surcharge_total']==0:
+              assessment='missing_saved_party_surcharge'
+          elif cp['post_publish_total']==0:
+              assessment='ready_cohort_without_autosave_checkpoint'
+          elif db['andromeda_post_publish_completed_refreshes']==0:
+              assessment='autosave_checkpoint_without_db_refresh'
+          else:
+              assessment='narrower_diagnosis_needed'
+          d['assessment']=assessment
+          p.write_text(json.dumps(d,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print('assessment='+assessment)
+          print('checkpoint_total='+str(cp['post_publish_total']))
+          print('checkpoint_ready_sum='+str(cp['post_publish_ready_offer_sum']))
+          print('complete_cohorts='+str(co['post_publish_complete_total']))
+          print('owned_offers='+str(co['post_publish_owned_offer_total']))
+          print('owned_surcharge_ready='+str(co['post_publish_owned_offer_with_complete_surcharge_total']))
+          print('andromeda_rows_total='+str(db['andromeda_offer_rows_total']))
+          print('andromeda_current_ready='+str(db['andromeda_current_ready_rows']))
+          print('andromeda_completed_refreshes='+str(db['andromeda_completed_refreshes_total']))
+          PY
+
+      - name: Upload sanitized state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-autosave-current-v2-${{ github.run_id }}
+          path: ${{ runner.temp }}/audit/
+          if-no-files-found: warn
+          retention-days: 14
