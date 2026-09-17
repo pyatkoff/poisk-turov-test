@@ -1,0 +1,57 @@
+{
+  "database_writes": 0,
+  "execution_guards": [
+    "planner_performs_zero_supplier_calls_and_zero_database_writes",
+    "executor_must_create_new reservation before any supplier access",
+    "executor_must check durable request ledger and skip/fail closed on any prior completed request digest",
+    "second phase is conditional and must not run for hotel/operator identities resolved in first phase",
+    "page2 only when page1 did not resolve all requested hotel identities and supplier reports another page",
+    "provider identity observations are evidence only; never direct mapping authority by themselves",
+    "mapping acceptance requires separate CURRENT transaction-time guarded writer and post-COMMIT per-row readback",
+    "do not use ANEX photo /oNNN as hotel identity; only supported native hotelCode/original.hotelKey contracts"
+  ],
+  "hotel_batches": [
+    {"batch_no":1,"country_id":1,"country_name":"Египет","hotel_ids":["2000029738","2000050008","2000067444","2000083734","2000085161","2000092528","2000107313"],"stateinc":3},
+    {"batch_no":1,"country_id":4,"country_name":"Турция","hotel_ids":["5906","7660","8984","74875","198012","235275","299499","377852","2000021321","2000030402","2000039886","2000041631","2000057304","2000058686","2000058853","2000062557","2000072384","2000073063","2000073767","2000073894","2000077880","2000079690","2000086139","2000091328","2000091532","2000091664","2000091689","2000091871","2000098379","2000104596"],"stateinc":5},
+    {"batch_no":2,"country_id":4,"country_name":"Турция","hotel_ids":["2000117375"],"stateinc":5},
+    {"batch_no":1,"country_id":9,"country_name":"ОАЭ","hotel_ids":["3582","8694","199851","214398","412959","488400","2000030188","2000030196","2000032826","2000044269","2000055442","2000058056","2000059283","2000060711","2000067975","2000071924","2000096076","2000097286"],"stateinc":20},
+    {"batch_no":1,"country_id":2,"country_name":"Таиланд","hotel_ids":["9867","10206","13427","34673","83099","105102","136063","136066","137432","176923","205151","211843","242541","356234","529000","2000021684","2000021808","2000021821","2000023827","2000024852","2000034554","2000035527","2000037127","2000039829","2000039848","2000043581","2000048948","2000054074","2000054082","2000057221"],"stateinc":12},
+    {"batch_no":2,"country_id":2,"country_name":"Таиланд","hotel_ids":["2000072871","2000078500","2000084862","2000084874","2000084898","2000085244","2000090031","2000091231","2000091232","2000092635","2000094602","2000095146","2000101692","2000107028","2000108672","2000109972","2000112706"],"stateinc":12},
+    {"batch_no":1,"country_id":8,"country_name":"Мальдивы","hotel_ids":["160859","390872","2000040084","2000040781","2000050871","2000063760","2000065009","2000068166","2000083173","2000085593","2000087351","2000087353","2000091223","2000091250","2000091252","2000091254","2000091260","2000098744","2000106243","2000106593","2000112107","2000113633","2000113634","2000121433"],"stateinc":73},
+    {"batch_no":1,"country_id":10,"country_name":"Куба","hotel_ids":["39991","47605","214902","244089","408617","2000020605","2000021107","2000043139","2000048203","2000053823","2000065731","2000109391"],"stateinc":76},
+    {"batch_no":1,"country_id":16,"country_name":"Вьетнам","hotel_ids":["78911","309074","319335","442914","2000023350","2000029550","2000033930","2000034745","2000034933","2000036822","2000039584","2000039890","2000041223","2000043654","2000053592","2000054716","2000054745","2000055703","2000055705","2000055706","2000060493","2000073564","2000073578","2000073586","2000086058","2000087136","2000088365","2000088501","2000088716","2000088721"],"stateinc":126},
+    {"batch_no":2,"country_id":16,"country_name":"Вьетнам","hotel_ids":["2000088748","2000088800","2000088809","2000088831","2000089130","2000089142","2000089186","2000090144","2000091040","2000092170","2000093223","2000093820","2000098654","2000099675","2000103143","2000105024","2000105256","2000105259","2000106698","2000107302","2000107499","2000109869","2000109900","2000110359","2000112109","2000112321","2000118786","2000118788","2000119038"],"stateinc":126},
+    {"batch_no":1,"country_id":12,"country_name":"Шри-Ланка","hotel_ids":["121160","285769","2000035012","2000046066","2000046296","2000058702","2000070961","2000072955","2000074210","2000074455","2000076475","2000077358","2000079887","2000082986","2000086280","2000086282","2000086589","2000096106","2000109685","2000109690","2000110983","2000111093","2000111669","2000119506","2000119507"],"stateinc":116}
+  ],
+  "input_pins": {"current_reconcile_sha256":"c90f87dc1e3ec438501bbba5bcd475d7bc49e884611f76e051e627b59075cc2e","pair_audit_sha256":"d9ee55245c3bc442659d373ff280e773603da74c29e7301b0395abcfa457f1b6"},
+  "mapping_writes": 0,
+  "operation_id": "hotel-match-frontier-provider-acquisition-plan-1971-20260917-v1",
+  "provider_contract": {
+    "absolute_manifest_max_price_requests": 176,
+    "api": "SAMO/Andromeda PRICE",
+    "approved_price_allowance_ceiling": 1000,
+    "conditional_second_pass_logical_queries": 44,
+    "conditional_second_pass_max_price_requests": 88,
+    "core8_state_crosswalk": {"1":3,"10":76,"12":116,"16":126,"2":12,"4":5,"8":73,"9":20},
+    "first_pass_logical_queries": 44,
+    "first_pass_max_price_requests": 88,
+    "hotel_batch_limit": 30,
+    "max_pages_per_query": 2,
+    "operators": {"115":"Библио-Глобус","315":"FUN&SUN","342":"Интурист","5":"ANEX"},
+    "pace_requirement_seconds_min": 1.05,
+    "params_template": {"ADULT":2,"CHILD":0,"CURRENCYINC":643,"GROUP_BY":32,"NIGHTS_FROM":7,"NIGHTS_TILL":10,"PACKETTYPE":0,"TOWNFROMINC":1},
+    "phases": [{"checkin":"20261020","conditional":false,"name":"first_pass"},{"checkin":"20261124","conditional":true,"name":"conditional_second_pass"}],
+    "supplier_http_calls_including_one_login_if_fully_consumed": 177
+  },
+  "safe_to_write_now": false,
+  "schema": "match-frontier-provider-acquisition-plan-summary/1",
+  "scope": {
+    "country_counts": {"Вьетнам":59,"Египет":7,"Куба":12,"Мальдивы":24,"ОАЭ":18,"Таиланд":47,"Турция":31,"Шри-Ланка":25},
+    "current_unresolved_frontier_dossiers": 536,
+    "evidence_gap_counts": {"independent_name_and_geography_evidence_required":86,"independent_name_difference_proof_required":137},
+    "selected_provider_priority_dossiers": 223
+  },
+  "state": "offline_mass_supplier_manifest_only",
+  "supplier_calls": 0,
+  "tourvisor_calls": 0
+}
