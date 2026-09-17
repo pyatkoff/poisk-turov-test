@@ -1,0 +1,38 @@
+name: INT ANEX program APD store
+
+on:
+  push:
+    branches:
+      - 'feat/int-anex-program-apd-cache-20260918'
+    paths:
+      - 'app/integrations/anex-program-apd-store.php'
+      - 'v2/data/migrations/20260918-anex-program-apd-cache.sql'
+      - 'tests/anex-program-apd-store-test.php'
+      - 'docs/integrations/fuel-search-pricing-owner-rule-20260914.md'
+      - '.github/workflows/int-anex-program-apd-store.yml'
+  pull_request:
+    paths:
+      - 'app/integrations/anex-program-apd-store.php'
+      - 'v2/data/migrations/20260918-anex-program-apd-cache.sql'
+      - 'tests/anex-program-apd-store-test.php'
+      - 'docs/integrations/fuel-search-pricing-owner-rule-20260914.md'
+      - '.github/workflows/int-anex-program-apd-store.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate program/APD persistence contract
+        run: |
+          set -euo pipefail
+          php -l app/integrations/anex-program-apd-store.php
+          php -l tests/anex-program-apd-store-test.php
+          php tests/anex-program-apd-store-test.php
+          grep -Fq 'PRIMARY KEY (supplier_program_id, date_beg, nights, supplier_currency_id)' v2/data/migrations/20260918-anex-program-apd-cache.sql
+          grep -Fq 'flight_class' v2/data/migrations/20260918-anex-program-apd-cache.sql
+          grep -Fq 'apd_state' v2/data/migrations/20260918-anex-program-apd-cache.sql
+          grep -Fq 'regular/search-price state' docs/integrations/fuel-search-pricing-owner-rule-20260914.md
