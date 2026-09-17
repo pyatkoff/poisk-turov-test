@@ -36,6 +36,10 @@ function v2_bundle_files(string $type, string $scope = 'full'): array
         if ($index === false) throw new LogicException('Missing renderer dependency');
         array_splice($files, $index, 0, ['search3-canonical-profiles-v1.js']);
 
+        $lifecycle = array_search('search-lifecycle-v6.js', $files, true);
+        if ($lifecycle === false) throw new LogicException('Missing Search3 lifecycle dependency');
+        array_splice($files, $lifecycle + 1, 0, ['search3-local-db-provider-v1.js']);
+
         $andromeda = array_search('andromeda-provider-v1.js', $files, true);
         if ($andromeda === false) throw new LogicException('Missing Andromeda provider dependency');
         array_splice($files, $andromeda, 0, ['andromeda-local-endpoint-v1.js']);
