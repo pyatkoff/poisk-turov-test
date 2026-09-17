@@ -80,7 +80,7 @@ assert.equal(api.placementLabel('Villa with private pool'),'Villa with private p
 assert.doesNotMatch(compact,/<small>Оператор<\/small>/,'known operator does not repeat a caption beside its logo');
 assert.match(compact,/title="Туроператор: FUN&amp;SUN"/,'operator remains named in its tooltip');
 assert.match(compact,/alt="Туроператор: FUN&amp;SUN"/,'operator remains named for assistive technology');
-assert.match(compact,/<small>Перелёт<\/small><b>Чартер<\/b>/);
+assert.match(compact,/<small>Перелёт<\/small><b>Чартерный рейс<\/b>/);
 assert.match(compact,/16\.09\.2026/);
 assert.match(compact,/7 ноч\./);
 assert.match(compact,/<b>Завтраки<\/b>/);
