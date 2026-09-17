@@ -110,6 +110,8 @@ if((getenv('OPERATION_ID')?:'')!==OPERATION_ID)throw new RuntimeException('OPERA
 umask(0077);
 
 $home=(string)getenv('HOME'); $root=realpath($home.'/www/anytoour.ru'); if(!$root)throw new RuntimeException('ROOT');
+$preview=realpath($root.'/_preview/search3-anex-candidate');
+if(!$preview || $preview!==$root.'/_preview/search3-anex-candidate') throw new RuntimeException('ANEX_PREVIEW_RUNTIME');
 $res=['schema_version'=>1,'operation'=>OPERATION_ID,'status'=>'blocked','phase'=>'runtime_init','provider_accessed'=>false,
     'criteria'=>['country'=>'Egypt','resort'=>RESORT_LABEL,'date'=>SEARCH_DATE,'nights'=>NIGHTS,'adults'=>ADULTS,'children'=>0,'stars'=>STAR_BUCKETS,'operator'=>'ANEX'],
     'provider_calls'=>['tourvisor'=>0,'anex'=>0,'andromeda'=>0],'mapping_writes'=>0,'database_writes'=>0,'booking_calls'=>0];
@@ -118,9 +120,15 @@ try{
     putenv('TOURVISOR_HTTP_MAX_ATTEMPTS=1');
 
     require_once $home.'/.anytoour-anex/search3-preview.php';
-    require_once m3_find_file($root,'/app/integrations/anex-client.php');
-    require_once m3_find_file($root,'/app/integrations/anex-normalizer.php');
-    require_once m3_find_file($root,'/app/integrations/anex-search.php');
+    if(!defined('ANYTOUR_ANEX_PREVIEW_ENABLED') || ANYTOUR_ANEX_PREVIEW_ENABLED!==true
+        || !defined('ANEX_API_TOKEN') || !is_string(ANEX_API_TOKEN) || trim(ANEX_API_TOKEN)==='') {
+        throw new RuntimeException('ANEX_PREVIEW_CONFIGURATION');
+    }
+    require_once $preview.'/app/integrations/anex-search.php';
+    require_once $preview.'/app/integrations/anex-search-mapping-registry.php';
+    require_once $preview.'/app/integrations/anex-search-observations.php';
+    $_SERVER['SCRIPT_FILENAME']='';
+    require_once $preview.'/api-anex-search3-preview.php';
 
     require_once m3_find_file($root,'/app/integrations/andromeda-client.php');
     require_once m3_find_file($root,'/app/integrations/andromeda-transport.php');
