@@ -1,0 +1,98 @@
+name: MATCH public operator CURRENT receiver v1
+on:
+  push:
+    branches: [match/frontier-retained-join-1971-20260916-v1]
+    paths: [.github/workflows/hotel-match-public-operator-current-receiver-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-public-operator-current-receiver-1971-v1, cancel-in-progress: false}
+env: {OPERATION_ID: hotel-match-public-operator-current-receiver-1971-20260917-v1}
+jobs:
+  receive:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+      - name: Verify receiver and reserve before SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=scripts/diagnostics/hotel_match_public_operator_current_receiver_v1.php
+          test "$(git hash-object "$src")" = 9ee91a32a433abbe41e1a1f957a0367b31270a52
+          php -l "$src"
+          php "$src" --self-test
+          python3 - <<'PY'
+          import json,os,pathlib,re
+          s=pathlib.Path('scripts/diagnostics/hotel_match_public_operator_current_receiver_v1.php').read_text()
+          assert 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' in s
+          assert not re.search(r'\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\s',s,re.I)
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          p.mkdir(mode=0o700)
+          (p/'reservation.json').write_text(json.dumps({
+            'operation_id':os.environ['OPERATION_ID'],
+            'source_sha':os.environ['GITHUB_SHA'],
+            'state':'reserved_before_db_access',
+            'run_id':os.environ['GITHUB_RUN_ID'],
+            'claim_comment_id':5712349378,
+            'source_blob':'9ee91a32a433abbe41e1a1f957a0367b31270a52',
+            'evidence_rows':22,
+            'unique_andromeda_ids':20,
+            'no_replay':True,
+            'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0
+          },sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-public-operator-current-receiver-v1-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-public-operator-current-receiver-1971-20260917-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Server CURRENT receiver
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=scripts/diagnostics/hotel_match_public_operator_current_receiver_v1.php
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < "$src" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"
+          trc=$?
+          set -e; export REMOTE_RC="$rc" TAR_RC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; s=p/'server'; s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            assert sorted(t.getnames())==['receipt.json','reservation.json','result.json']
+            for m in t.getmembers():
+              assert m.isfile() and m.size<5_000_000
+              (s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.loads((s/'result.json').read_bytes()); z=json.loads((s/'receipt.json').read_bytes())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          assert z['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert r['state']=='completed_read_only' and z['readback_verified'] is True
+          assert r['database_writes']==r['mapping_writes']==r['supplier_calls']==r['tourvisor_calls']==0
+          assert r['checked_rows']==22 and r['sealed_public_evidence_rows']==22 and r['unique_andromeda_ids']==20
+          assert os.environ['REMOTE_RC']==os.environ['TAR_RC']=='0'
+          x={k:r[k] for k in ['operation_id','source_sha','state','checked_rows','route_counts','writer_candidate_count','current_pending_counts','current_pending_total','read_at_utc']}
+          x['result_sha256']=z['result_sha256']
+          (p/'summary.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(x,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-public-operator-current-receiver-v1-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-public-operator-current-receiver-1971-20260917-v1/
+          if-no-files-found: warn
+          retention-days: 90
