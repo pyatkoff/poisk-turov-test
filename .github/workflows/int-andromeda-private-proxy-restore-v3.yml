@@ -1,0 +1,137 @@
+name: Restore Andromeda private preview proxy v3
+
+on:
+  pull_request:
+    paths: ['.github/workflows/int-andromeda-private-proxy-restore-v3.yml']
+  issue_comment:
+    types: [created]
+
+permissions: {contents: read, issues: read}
+concurrency: {group: anytoour-int-andromeda-private-proxy-restore-v3, cancel-in-progress: false}
+
+jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - name: Verify proxy-only repair contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          t=Path('.github/workflows/int-andromeda-private-proxy-restore-v3.yml').read_text()
+          for x in [
+            '/restore-andromeda-private-proxy-2530-v3',
+            'andromeda-private-proxy-restore-2530-20260917-v3',
+            '7d21538b56a463ced185dd893361469e92911c77',
+            'fc338f37496290871793c6b1fe0f5614b4aea4db2a2f0503277117a676a912e4',
+            "return require dirname(__DIR__,4).'/.anytoour-andromeda/search3-preview.php';",
+            "'supplier_calls'=>0", "'database_writes'=>0", "'booking_calls'=>0",
+            'chmod($tmp,0600)', 'maximum_bytes=65536', 'method_not_allowed']:
+              if x not in t: raise SystemExit('missing proxy-v3 pin: '+x)
+          live=t.rsplit("php=r'''",1)[1].split("'''",1)[0]
+          subprocess.run(['php','-l'],input='<?php\n'+live,text=True,check=True)
+          for x in ['bron_ticket','INSERT INTO','UPDATE catalog_','DELETE FROM','AnyTourAndromedaTransport(','->login(','->price(']:
+              if x in live: raise SystemExit('forbidden proxy-v3 behavior: '+x)
+          print('proxy-v3 contract PASS')
+          PY
+
+  restore:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 2530 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/restore-andromeda-private-proxy-2530-v3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Bind exact owner command and current main
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=226193297, command='/restore-andromeda-private-proxy-2530-v3';
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1'||context.actor!=='pyatkoff'||context.payload.sender?.id!==owner||process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('owner/attempt mismatch');
+            if(context.repo.owner!=='pyatkoff'||context.repo.repo!=='poisk-turov-test'||context.ref!=='refs/heads/main'||context.payload.issue?.number!==2530||context.payload.issue?.pull_request||context.payload.comment?.body!==command) throw new Error('command scope mismatch');
+            const cs=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:2530,per_page:100});
+            const ms=cs.filter(c=>c.body===command&&c.user?.id===owner&&c.author_association==='OWNER');
+            if(ms.length!==1||ms[0].id!==context.payload.comment.id) throw new Error('duplicate/edited command');
+            const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+            if(main.object.sha!==context.sha) throw new Error('main advanced');
+
+      - uses: actions/checkout@v4
+        with: {ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa, path: helper, persist-credentials: false}
+
+      - name: Restore historical proxy only
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          ANYTOOUR_DEPLOY_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          ANYTOOUR_DEPLOY_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          from anex_search3_owner_decisions import ssh_php
+          php=r'''
+          declare(strict_types=1);
+          error_reporting(0);ini_set('display_errors','0');ini_set('log_errors','0');
+          $operation='andromeda-private-proxy-restore-2530-20260917-v3';
+          $out=['status'=>'blocked','operation'=>$operation,'supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,'booking_calls'=>0,'production_entry_changes'=>false,'production_fingerprints_unchanged'=>false];
+          $lock=null;$reserved=false;$mutated=false;$dir=null;$tmp=null;
+          function save_v3(string $p,array $v):void{$b=json_encode($v,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);if(strlen($b)>32768)throw new RuntimeException('checkpoint_too_large');$f=fopen($p,'x+b');if(!$f)throw new RuntimeException('checkpoint_exists');try{if(!chmod($p,0600)||fwrite($f,$b)!==strlen($b)||!fflush($f)||(function_exists('fsync')&&!fsync($f)))throw new RuntimeException('checkpoint_write');}finally{fclose($f);}if(hash_file('sha256',$p)!==hash('sha256',$b))throw new RuntimeException('checkpoint_readback');}
+          function prod_v3(string $root):array{$r=[];foreach(['/index.php','/v2/index.php','/v2/api-v2.php','/v2/lead-adapter-v2.php'] as $x){$p=$root.$x;if(!file_exists($p)){$r[$x]=null;continue;}if(!is_file($p)||is_link($p))throw new RuntimeException('production_path_invalid');$r[$x]=hash_file('sha256',$p);}return $r;}
+          function why_v3(Throwable $e):string{$ok=['project_invalid','path_invalid','publication_lock_missing','publication_busy','current_manifest_invalid','current_runtime_drift','private_config_missing','private_config_mode','private_config_bound','private_config_invalid','private_catalog_invalid','target_proxy_invalid','target_proxy_mode','target_proxy_drift','target_proxy_config_invalid','operation_exists_no_replay','reservation_failed','checkpoint_too_large','checkpoint_exists','checkpoint_write','checkpoint_readback','proxy_temp_exists','proxy_temp_write','target_changed','proxy_rename','proxy_readback','production_path_invalid','production_drift'];return in_array($e->getMessage(),$ok,true)?$e->getMessage():'proxy_restore_failed';}
+          try{
+            $root=realpath(getcwd());if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('project_invalid');
+            $home=dirname($root,2);$target=$root.'/_preview/search3-anex-candidate';$private=$home.'/.anytoour-andromeda';
+            foreach([$target,$private] as $p)if(realpath($p)!==$p||!is_dir($p)||is_link($p))throw new RuntimeException('path_invalid');
+            $lp=$private.'/grouped-search-update.lock';if(!is_file($lp)||is_link($lp))throw new RuntimeException('publication_lock_missing');$lock=fopen($lp,'r+b');if(!$lock||!flock($lock,LOCK_EX|LOCK_NB))throw new RuntimeException('publication_busy');
+            $mp=$target.'/anex-preview-manifest.json';if(!is_file($mp)||is_link($mp)||filesize($mp)>1048576)throw new RuntimeException('current_manifest_invalid');$m=json_decode((string)file_get_contents($mp),true,64,JSON_THROW_ON_ERROR);if(($m['source_sha']??null)!=='7d21538b56a463ced185dd893361469e92911c77')throw new RuntimeException('current_manifest_invalid');
+            $ep=$target.'/api-andromeda-search3-preview.php';if(!is_file($ep)||is_link($ep)||hash_file('sha256',$ep)!=='fc338f37496290871793c6b1fe0f5614b4aea4db2a2f0503277117a676a912e4')throw new RuntimeException('current_runtime_drift');
+            $cp=$private.'/search3-preview.php';if(!is_file($cp)||is_link($cp))throw new RuntimeException('private_config_missing');if((fileperms($cp)&0002)!==0)throw new RuntimeException('private_config_mode');$n=filesize($cp);if(!is_int($n)||$n<1||$n>65536)throw new RuntimeException('private_config_bound');$cfg=require $cp;if(!is_array($cfg)||($cfg['enabled']??null)!==true||($cfg['catalog_path']??null)!==$private.'/catalog.json')throw new RuntimeException('private_config_invalid');
+            $cat=$private.'/catalog.json';if(!is_file($cat)||is_link($cat)||filesize($cat)<2||filesize($cat)>4000000)throw new RuntimeException('private_catalog_invalid');
+            $proxy="<?php\nreturn require dirname(__DIR__,4).'/.anytoour-andromeda/search3-preview.php';\n";$before=prod_v3($root);$dst=$target.'/.andromeda-private.php';
+            if(file_exists($dst)||is_link($dst)){
+              if(!is_file($dst)||is_link($dst))throw new RuntimeException('target_proxy_invalid');if((fileperms($dst)&0777)!==0600)throw new RuntimeException('target_proxy_mode');if(file_get_contents($dst)!==$proxy)throw new RuntimeException('target_proxy_drift');$loaded=require $dst;if(!is_array($loaded)||($loaded['enabled']??null)!==true||($loaded['catalog_path']??null)!==$private.'/catalog.json')throw new RuntimeException('target_proxy_config_invalid');$out['status']='already_present';$out['proxy_mode']='0600';
+            }else{
+              $dir=$private.'/'.$operation;if(file_exists($dir)||is_link($dir))throw new RuntimeException('operation_exists_no_replay');if(!mkdir($dir,0700))throw new RuntimeException('reservation_failed');save_v3($dir.'/reservation.json',['operation'=>$operation,'target_source'=>'7d21538b56a463ced185dd893361469e92911c77','proxy_contract'=>'historical-installer-v1','created_at'=>time()]);$reserved=true;
+              $tmp=$target.'/.andromeda-private.php.restore-v3';if(file_exists($tmp)||is_link($tmp))throw new RuntimeException('proxy_temp_exists');$f=fopen($tmp,'x+b');if(!$f)throw new RuntimeException('proxy_temp_write');try{if(!chmod($tmp,0600)||fwrite($f,$proxy)!==strlen($proxy)||!fflush($f)||(function_exists('fsync')&&!fsync($f)))throw new RuntimeException('proxy_temp_write');}finally{fclose($f);}if(file_exists($dst)||is_link($dst))throw new RuntimeException('target_changed');if(file_get_contents($tmp)!==$proxy||(fileperms($tmp)&0777)!==0600)throw new RuntimeException('proxy_readback');if(!rename($tmp,$dst))throw new RuntimeException('proxy_rename');$tmp=null;$mutated=true;if(!is_file($dst)||is_link($dst)||(fileperms($dst)&0777)!==0600||file_get_contents($dst)!==$proxy)throw new RuntimeException('proxy_readback');$loaded=require $dst;if(!is_array($loaded)||($loaded['enabled']??null)!==true||($loaded['catalog_path']??null)!==$private.'/catalog.json')throw new RuntimeException('target_proxy_config_invalid');$out['status']='restored';$out['proxy_mode']='0600';
+            }
+            if($before!==prod_v3($root))throw new RuntimeException('production_drift');$out['private_config_present']=true;$out['catalog_present']=true;$out['production_fingerprints_unchanged']=true;if($reserved&&is_string($dir))save_v3($dir.'/result.json',$out);
+          }catch(Throwable $e){$out['status']=$reserved?($mutated?'unknown':'stopped_no_retry'):'blocked';$out['reason']=why_v3($e);if($reserved&&is_string($dir)&&is_dir($dir)&&!file_exists($dir.'/result.json'))try{save_v3($dir.'/result.json',$out);}catch(Throwable $ignored){}
+          }finally{if(is_string($tmp)&&$tmp!==''&&is_file($tmp)&&!is_link($tmp))@unlink($tmp);if(is_resource($lock)){flock($lock,LOCK_UN);fclose($lock);}}
+          echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          '''
+          r=ssh_php(php,{},maximum_bytes=65536);d=Path(os.environ['RUNNER_TEMP'])/'andromeda-private-proxy-restore-v3';d.mkdir(mode=0o700);(d/'result.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          if r.get('status') not in ('restored','already_present') or r.get('proxy_mode')!='0600' or r.get('private_config_present') is not True or r.get('catalog_present') is not True or r.get('production_fingerprints_unchanged') is not True: raise SystemExit('proxy restore not confirmed')
+          for k in ('supplier_calls','database_reads','database_writes','booking_calls'):
+              if r.get(k)!=0: raise SystemExit('unexpected side effect')
+          if r.get('production_entry_changes') is not False: raise SystemExit('production boundary changed')
+          print(json.dumps({'status':r['status'],'proxy_mode':'0600','private_config_present':True,'catalog_present':True,'production_fingerprints_unchanged':True,'supplier_calls':0,'database_reads':0,'database_writes':0,'booking_calls':0},sort_keys=True))
+          PY
+
+      - name: Verify endpoint loads config without supplier request
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/andromeda-private-proxy-restore-v3/http.json"
+          code="$(curl --silent --show-error --location --max-time 20 --output "$body" --write-out '%{http_code}' 'https://anytoour.ru/_preview/search3-anex-candidate/api-andromeda-search3-preview.php')"
+          test "$code" = 405
+          python3 - "$body" <<'PY'
+          import json,sys
+          v=json.load(open(sys.argv[1]));assert v=={'ok':False,'error':'method_not_allowed'},v
+          print('Andromeda private proxy PASS: HTTP 405 method_not_allowed')
+          PY
+
+      - name: Preserve sanitized receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-private-proxy-restore-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-private-proxy-restore-v3/result.json
+          if-no-files-found: warn
+          retention-days: 14
