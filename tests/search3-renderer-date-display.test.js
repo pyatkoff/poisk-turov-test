@@ -2,6 +2,7 @@
 const assert=require('assert');
 
 global.window={
+  location:{pathname:'/_preview/search3-local-candidate/poisk-turov/'},
   addEventListener(){},
   dispatchEvent(){},
   requestAnimationFrame(fn){if(typeof fn==='function')fn();}
