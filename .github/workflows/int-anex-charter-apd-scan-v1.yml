@@ -1,0 +1,54 @@
+name: INT ANEX charter APD scan v1
+
+on:
+  push:
+    branches:
+      - 'ops/int-anex-charter-apd-scan-20260917-v1'
+    paths:
+      - '.github/workflows/int-anex-charter-apd-scan-v1.yml'
+      - 'scripts/ops/int_anex_charter_apd_scan_v1.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-anex-charter-apd-scan-20260917-v1
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: 7fb963e6685b25611e42713bb68035a78f097381
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+          persist-credentials: false
+      - name: Bind charter diagnostic-only diff
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-anex-charter-apd-scan-v1.yml'
+          test "${changed[1]}" = 'scripts/ops/int_anex_charter_apd_scan_v1.py'
+          python3 -m py_compile scripts/ops/int_anex_charter_apd_scan_v1.py
+      - name: Scan live ANEX charter candidates and APD
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 -B scripts/ops/int_anex_charter_apd_scan_v1.py "$RUNNER_TEMP/anex-charter-apd.json"
+      - name: Preserve charter evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-anex-charter-apd-${{ github.run_id }}
+          path: ${{ runner.temp }}/anex-charter-apd.json
+          if-no-files-found: error
+          retention-days: 30
