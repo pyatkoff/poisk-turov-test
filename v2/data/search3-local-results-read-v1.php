@@ -6,9 +6,12 @@ require_once __DIR__.'/anytour-offer-store-read-v2.php';
 require_once __DIR__.'/anytour-canonical-catalog-v1.php';
 require_once __DIR__.'/anytour-search-scope-v1.php';
 
-function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $now,int $limit=5000): array
+const SEARCH3_LOCAL_RESULTS_MAX_OFFERS=15000;
+const SEARCH3_LOCAL_RESULTS_MAX_HOTELS=5000;
+
+function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $now,int $limit=SEARCH3_LOCAL_RESULTS_MAX_OFFERS): array
 {
-    if($limit<1||$limit>5000)throw new InvalidArgumentException('ANYTOUR_LOCAL_RESULTS_LIMIT');
+    if($limit<1||$limit>SEARCH3_LOCAL_RESULTS_MAX_OFFERS)throw new InvalidArgumentException('ANYTOUR_LOCAL_RESULTS_LIMIT');
     if($pdo->inTransaction()||$pdo->getAttribute(PDO::ATTR_DRIVER_NAME)!=='mysql')throw new RuntimeException('Dedicated MySQL connection required');
     $scope=AnyTourSearchScopeV1::fromParams($params);
     $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
@@ -26,7 +29,7 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             $read=$catalog->read($chunk);
             foreach($read['items'] as $profile)$profiles[(int)$profile['id']]=$profile;
         }
-        $groups=[];$providerCounts=[];$withheld=0;
+        $groups=[];$withheld=0;
         foreach($stored['items'] as $item){
             $own=(int)$item['anytourHotelId'];$profile=$profiles[$own]??null;
             if(!$profile){$withheld++;continue;}
@@ -38,16 +41,23 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             if(($offer['listing']['selection_state']??null)!=='refresh_required'||($offer['listing']['booking_enabled']??null)!==false)throw new RuntimeException('Stored listing gained selection authority');
             $groups[$own]['offers'][]=$offer;$groups[$own]['providers'][$item['provider']]=true;
             $price=(float)$item['price'];if($groups[$own]['minPrice']===null||$price<(float)$groups[$own]['minPrice'])$groups[$own]['minPrice']=$item['price'];
-            $providerCounts[$item['provider']]=($providerCounts[$item['provider']]??0)+1;
         }
         foreach($groups as &$group){$group['providers']=array_keys($group['providers']);sort($group['providers'],SORT_STRING);usort($group['offers'],static fn($a,$b)=>(float)$a['price']<=>(float)$b['price']?:strcmp($a['provider'],$b['provider']));}unset($group);
         $hotels=array_values($groups);usort($hotels,static fn($a,$b)=>(float)$a['minPrice']<=>(float)$b['minPrice']?:$a['anytourHotelId']<=>$b['anytourHotelId']);
+        $eligibleHotelCount=count($hotels);$omittedHotelCount=max(0,$eligibleHotelCount-SEARCH3_LOCAL_RESULTS_MAX_HOTELS);$omittedOfferCount=0;
+        if($omittedHotelCount>0){
+            foreach(array_slice($hotels,SEARCH3_LOCAL_RESULTS_MAX_HOTELS) as $hotel)$omittedOfferCount+=count($hotel['offers']);
+            $hotels=array_slice($hotels,0,SEARCH3_LOCAL_RESULTS_MAX_HOTELS);
+        }
+        $providerCounts=[];
+        foreach($hotels as $hotel)foreach($hotel['offers'] as $offer)$providerCounts[$offer['provider']]=($providerCounts[$offer['provider']]??0)+1;
         ksort($providerCounts);$pdo->commit();
         return[
             'source'=>'anytour-db-first-results-v1','offerStoreSchemaVersion'=>$version,'scopeVersion'=>$scope['version'],'scopeDigest'=>$scope['digest'],'scope'=>$scope['params'],
             'generatedAt'=>$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
-            'hotelCount'=>count($hotels),'offerCount'=>array_sum($providerCounts),'storedOfferCount'=>count($stored['items']),
-            'withheldOfferCount'=>$withheld,'providerOfferCounts'=>(object)$providerCounts,'selectionAuthority'=>false,'hotels'=>$hotels,
+            'hotelCount'=>count($hotels),'eligibleHotelCount'=>$eligibleHotelCount,'offerCount'=>array_sum($providerCounts),'storedOfferCount'=>count($stored['items']),
+            'withheldOfferCount'=>$withheld,'omittedHotelCount'=>$omittedHotelCount,'omittedOfferCount'=>$omittedOfferCount,
+            'providerOfferCounts'=>(object)$providerCounts,'selectionAuthority'=>false,'hotels'=>$hotels,
         ];
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw$e;}
 }

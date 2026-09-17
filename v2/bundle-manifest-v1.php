@@ -37,7 +37,7 @@ function v2_bundle_files(string $type, string $scope = 'full'): array
         array_splice($files, $index, 0, ['search3-canonical-profiles-v1.js']);
         $renderer = array_search('results-renderer-v5.js', $files, true);
         if ($renderer === false) throw new LogicException('Missing renderer dependency');
-        array_splice($files, $renderer + 1, 0, ['search3-results-continuity-v1.js']);
+        array_splice($files, $renderer + 1, 0, ['search3-results-continuity-v1.js', 'search3-hotel-details-presentation-v1.js']);
 
         $lifecycle = array_search('search-lifecycle-v6.js', $files, true);
         if ($lifecycle === false) throw new LogicException('Missing Search3 lifecycle dependency');
