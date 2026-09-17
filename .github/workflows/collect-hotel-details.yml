@@ -23,6 +23,12 @@ on:
     - cron: '35 3 * * *'
   workflow_dispatch:
     inputs:
+      candidate_scope:
+        description: 'Hotel acquisition universe: demand (default) or canonical'
+        required: true
+        default: 'demand'
+        type: choice
+        options: [demand, canonical]
       limit:
         description: 'Maximum unique hotel IDs to enrich in this run (1-3000)'
         required: true
@@ -72,6 +78,8 @@ jobs:
           grep -Fq "v2_data_tv_get('/hotels/' . \$hotelId)" v2/data/collect-hotel-details-v1.php
           grep -Fq 'tour_price_observations' v2/data/collect-hotel-details-v1.php
           grep -Fq 'hot_tours_current' v2/data/collect-hotel-details-v1.php
+          grep -Fq "namespace='legacy_catalog'" v2/data/collect-hotel-details-v1.php
+          grep -Fq "v2_hotel_detail_candidate_scope(hotel_details_arg(\$argv, 'candidate-scope', 'demand'))" v2/data/collect-hotel-details-v1.php
           grep -Fq "hotel_details_int(\$argv, 'http-budget', 3000, 1, 3000)" v2/data/collect-hotel-details-v1.php
           grep -Fq "hotel_details_int(\$argv, 'max-attempts', 1, 1, 4)" v2/data/collect-hotel-details-v1.php
           grep -Fq 'v2_hotel_detail_is_generic_product_name' v2/data/collect-hotel-details-v1.php
@@ -101,10 +109,11 @@ jobs:
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
 
-      - name: Enrich demand-bearing hotels within explicit request budget
+      - name: Enrich selected hotel acquisition universe within explicit request budget
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SCOPE_VALUE: ${{ inputs.candidate_scope || 'demand' }}
           LIMIT_VALUE: ${{ inputs.limit || '3000' }}
           FRESH_DAYS_VALUE: ${{ inputs.fresh_days || '30' }}
           INTERVAL_VALUE: ${{ inputs.min_interval_ms || '550' }}
@@ -114,6 +123,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          test "$SCOPE_VALUE" = demand || test "$SCOPE_VALUE" = canonical
           [[ "$LIMIT_VALUE" =~ ^[0-9]+$ ]] && [[ "$FRESH_DAYS_VALUE" =~ ^[0-9]+$ ]] && [[ "$INTERVAL_VALUE" =~ ^[0-9]+$ ]]
           [[ "$MAX_ATTEMPTS_VALUE" =~ ^[0-9]+$ ]] && [[ "$HTTP_BUDGET_VALUE" =~ ^[0-9]+$ ]]
           test "$LIMIT_VALUE" -ge 1 && test "$LIMIT_VALUE" -le 3000
@@ -138,6 +148,6 @@ jobs:
             root=\"\$HOME/www/anytoour.ru/data\"
             php -l \"\$root/collect-hotel-details-v1.php\" >/dev/null
             php \"\$root/migrate-hotel-details-v1.php\"
-            php \"\$root/collect-hotel-details-v1.php\" --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE' --max-attempts='$MAX_ATTEMPTS_VALUE' --http-budget='$HTTP_BUDGET_VALUE'
+            php \"\$root/collect-hotel-details-v1.php\" --candidate-scope='$SCOPE_VALUE' --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE' --max-attempts='$MAX_ATTEMPTS_VALUE' --http-budget='$HTTP_BUDGET_VALUE'
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
           "
