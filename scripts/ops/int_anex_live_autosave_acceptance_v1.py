@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import http.cookiejar
+import json
+import os
+from pathlib import Path
+import re
+import urllib.error
+import urllib.request
+
+ENDPOINT = 'https://anytoour.ru/_preview/search3-anex-candidate/api-anex-search3-preview.php'
+PAGE = 'https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/'
+OUT = Path(os.environ['RUNNER_TEMP']) / 'anex-live-acceptance-http.json'
+
+
+def post(opener: urllib.request.OpenerDirector, payload: dict) -> tuple[int, dict]:
+    raw = json.dumps(payload, ensure_ascii=False, separators=(',', ':')).encode()
+    req = urllib.request.Request(ENDPOINT, data=raw, method='POST', headers={
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Origin': 'https://anytoour.ru',
+        'Referer': PAGE,
+        'Sec-Fetch-Site': 'same-origin',
+        'User-Agent': 'AnyTour-INT-ANEX-live-acceptance/1',
+    })
+    try:
+        with opener.open(req, timeout=90) as response:
+            code = response.status
+            body = response.read(2 * 1024 * 1024)
+    except urllib.error.HTTPError as error:
+        code = error.code
+        body = error.read(2 * 1024 * 1024)
+    data = json.loads(body.decode('utf-8'))
+    if not isinstance(data, dict):
+        raise RuntimeError('ANEX_ACCEPTANCE_RESPONSE_NOT_OBJECT')
+    return code, data
+
+
+def main() -> int:
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    generation = 1789647000
+    params = {
+        'departureId': '1', 'countryId': '4',
+        'dateFrom': '2026-10-12', 'dateTo': '2026-10-12',
+        'nightsFrom': 7, 'nightsTo': 7, 'adults': 2, 'childs': [],
+        'meal': '', 'hotelCategory': '', 'hotelRating': '',
+        'hotelTypes': [], 'hotelIds': [], 'hotelServices': [],
+        'arrivalId': '', 'regionIds': [], 'subregionIds': [], 'operatorIds': [],
+        'priceFrom': '', 'priceTo': '', 'currency': 'RUB',
+        'onlyCharter': False, 'onlyDirect': False,
+    }
+    code, search = post(opener, {'generation': generation, 'params': params, 'labels': {'from': 'Москва', 'country': 'Египет'}})
+    if code != 200 or search.get('ok') is not True:
+        raise RuntimeError('ANEX_ACCEPTANCE_SEARCH_FAILED:' + str(code) + ':' + str(search.get('error')))
+    data = search.get('data')
+    if not isinstance(data, dict) or data.get('provider') != 'anex' or data.get('generation') != generation:
+        raise RuntimeError('ANEX_ACCEPTANCE_SEARCH_CONTRACT')
+    search_ref = data.get('search_ref')
+    if not isinstance(search_ref, str) or not re.fullmatch(r'[a-f0-9]{32}', search_ref):
+        raise RuntimeError('ANEX_ACCEPTANCE_SEARCH_REF')
+    hotels = data.get('hotels')
+    if not isinstance(hotels, list) or not hotels:
+        raise RuntimeError('ANEX_ACCEPTANCE_NO_MAPPED_HOTELS')
+
+    chosen = None
+    total_tours = 0
+    for hotel in hotels:
+        if not isinstance(hotel, dict) or not isinstance(hotel.get('local_id'), int) or hotel['local_id'] < 1:
+            continue
+        tours = hotel.get('tours')
+        if not isinstance(tours, list):
+            continue
+        total_tours += len(tours)
+        for tour in tours:
+            if not isinstance(tour, dict):
+                continue
+            ref = tour.get('offer_ref')
+            if isinstance(ref, str) and re.fullmatch(r'anex_online:[a-f0-9]{64}', ref):
+                chosen = {'offer_ref': ref, 'local_hotel_id': hotel['local_id']}
+                break
+        if chosen:
+            break
+    if chosen is None:
+        raise RuntimeError('ANEX_ACCEPTANCE_NO_CONCRETE_OFFER')
+
+    code, batch = post(opener, {
+        'action': 'additional_prices_batch',
+        'generation': generation,
+        'search_ref': search_ref,
+        'items': [chosen],
+    })
+    if code != 200 or batch.get('ok') is not True:
+        raise RuntimeError('ANEX_ACCEPTANCE_BATCH_FAILED:' + str(code) + ':' + str(batch.get('error')))
+    bdata = batch.get('data')
+    offers = bdata.get('offers') if isinstance(bdata, dict) else None
+    if not isinstance(bdata, dict) or bdata.get('provider') != 'anex' or bdata.get('status') != 'additional_prices_batch' or not isinstance(offers, list) or len(offers) != 1:
+        raise RuntimeError('ANEX_ACCEPTANCE_BATCH_CONTRACT')
+    row = offers[0]
+    if not isinstance(row, dict) or row.get('finalPriceReady') is not True:
+        reason = row.get('retry_reason') if isinstance(row, dict) else None
+        raise RuntimeError('ANEX_ACCEPTANCE_PRICE_NOT_READY:' + str(reason))
+    price = row.get('finalPrice')
+    if not isinstance(price, str) or not re.fullmatch(r'(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?', price) or not any(c != '0' and c != '.' for c in price):
+        raise RuntimeError('ANEX_ACCEPTANCE_PRICE_INVALID')
+
+    summary = {
+        'status': 'http_acceptance_complete',
+        'generation': generation,
+        'mapped_hotels': len(hotels),
+        'projected_tours': total_tours,
+        'batch_offers': 1,
+        'final_price_ready': 1,
+        'final_price_currency': 'RUB',
+        'supplier_search_requests_via_endpoint': True,
+        'lead_calls': 0,
+        'booking_calls': 0,
+        'metrika_writes': 0,
+        'mapping_writes': 0,
+    }
+    OUT.write_text(json.dumps(summary, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
+    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
