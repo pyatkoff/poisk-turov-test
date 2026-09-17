@@ -43,7 +43,7 @@ jobs:
           node --check tests/search3-shortlist-browser.cjs
           git diff --check
           git rm .github/workflows/search3-shortlist-selector-fix-once.yml
-          mapfile -t changed < <(git diff --name-only | LC_ALL=C sort)
+          mapfile -t changed < <(git diff --name-only HEAD | LC_ALL=C sort)
           expected=(.github/workflows/search3-shortlist-selector-fix-once.yml tests/search3-shortlist-browser.cjs)
           test "${#changed[@]}" -eq 2
           test "${changed[0]}" = "${expected[0]}"
