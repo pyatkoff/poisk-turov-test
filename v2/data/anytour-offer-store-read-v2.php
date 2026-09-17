@@ -2,7 +2,7 @@
 /** Read-only v2 visibility owner: latest completed snapshots with a current accepted AnyTour identity only. */
 declare(strict_types=1);
 
-require_once __DIR__ . '/anytour-provider-identity-bridge-v1.php';
+require_once __DIR__ . '/anytour-provider-identity-bridge-v2.php';
 
 final class AnyTourOfferStoreReadV2
 {
@@ -72,7 +72,7 @@ final class AnyTourOfferStoreReadV2
             .'WHERE o.scope_sha256 IN ('.implode(',',$slots).') AND o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now '
             .'ORDER BY o.last_seen_at DESC,o.id DESC LIMIT '.self::MAX_SCOPE_OFFERS;
         $stmt=$db->prepare($sql);$stmt->execute($params);$rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
-        $rows=AnyTourProviderIdentityBridgeV1::filterOfferRows($db,$rows);
+        $rows=AnyTourProviderIdentityBridgeV2::filterOfferRows($db,$rows);
         $items=[];$seen=[];
         foreach($rows as $row){
             $provider=(string)$row['provider'];$offerRef=self::digest((string)$row['offer_ref_digest']);$identity=$provider.':'.$offerRef;
