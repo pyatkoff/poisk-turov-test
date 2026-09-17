@@ -4,9 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
-const executable = value => value.replace(/\/\*[\s\S]*?\*\//g, '').trim();
 
-assert.equal(executable(read('src/search3/behavior/booking-summary.js')), '', 'booking summary is provenance only');
+assert.ok(!fs.existsSync(path.join(root, 'src/search3/behavior/booking-summary.js')), 'booking summary provenance stub remains retired');
 const bundle = read('v2/search3-results-filters-v1.js');
 for (const marker of ['Search3BookingSummary', 'search3-booking-summary', 'Перед оплатой менеджер подтвердит']) {
   assert.ok(!bundle.includes(marker), 'duplicate summary marker stays absent: ' + marker);
