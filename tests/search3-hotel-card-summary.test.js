@@ -49,7 +49,7 @@ for(const tours of [multi.tours,[...multi.tours].reverse()]){
   assert.match(html,/Показать варианты · 3/);
   assert.doesNotMatch(html,/class="tour-row"|data-tid=|direct-tour|data-operator-brand=|16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|9 ноч\.|10 ноч\.|Завтрак|Всё включено|FUN&SUN|ANEX|Чартер|Регулярный рейс/);
 }
-assert.equal(api.priceContext(multi),'16.09.2026 · 7 ноч. · Завтрак');
+assert.equal(api.priceContext(multi),'16.09.2026 · 7 ноч. · Завтраки');
 // The collapsed aggregate reads the canonical hotel-level minimum and never invents tour conditions around it.
 for(const [price,label] of [[61000,'61'],[999999,'999'],[undefined,'62'],[null,'62'],[0,'62'],[-1,'62'],['unknown','62']]){
   const html=api.toursHtml({...multi,price});
@@ -101,14 +101,16 @@ assert.match(compact,/alt="Туроператор: FUN&amp;SUN"/,'operator remai
 assert.match(compact,/<small>Перелёт<\/small><b>Чартер<\/b>/);
 assert.match(compact,/16\.09\.2026/);
 assert.match(compact,/7 ноч\./);
-assert.match(compact,/<b>Завтрак<\/b>/);
+assert.match(compact,/<b>Завтраки<\/b>/);
 assert.match(compact,/62(?:\s| )?400/);
 const incomplete={...multi.tours[0],date:'',nights:undefined,meal:'',operator:'',isCharter:undefined};
 const incompleteCollapsed=api.toursHtml({...multi,tours:[incomplete,multi.tours[1]]});
 assert.doesNotMatch(incompleteCollapsed,/17\.09\.2026|10 ноч|Всё включено|ANEX|Регулярный рейс|Уточняется/,'collapsed hotel does not fill or expose exact-offer gaps');
 assert.match(api.tourRow(incomplete),/>Уточняется</);
 // Meal facet identities remain tested independently of the removed aggregate UI.
-for(const meal of [{name:'AI',fullName:'Всё включено'},{fullName:'All Inclusive'},'Всё включено'])assert.equal(api.mealIdentity({meal}).key,'meal:all-inclusive');
+assert.equal(api.mealIdentity({meal:{name:'AI',fullName:'Всё включено'}}).key,'meal:label:всё включено');
+assert.equal(api.mealIdentity({meal:{fullName:'All Inclusive'}}).key,'meal:label:all inclusive');
+assert.equal(api.mealIdentity({meal:'Всё включено'}).key,'meal:label:всё включено');
 const identity=meal=>api.mealIdentity({meal}).key;
 assert.notEqual(identity('UAI'),identity('AI'));
 assert.notEqual(identity('Soft AI'),identity('AI'));
@@ -121,7 +123,7 @@ for(const [plus,base] of [['AI+','AI'],['BB+','BB'],['HB+','HB'],['FB+','FB'],['
   assert.equal(plusIdentity.label,plus);
   assert.notEqual(plusIdentity.key,identity(base));
 }
-assert.deepEqual(api.mealIdentity({meal:{name:'HB+',fullName:'Полупансион'}}),{key:'meal:label:hb+',label:'HB+'});
+assert.deepEqual(api.mealIdentity({meal:{name:'HB+',fullName:'Полупансион'}}),{key:'meal:label:полупансион',label:'Полупансион'});
 assert.equal(identity('Premium All Inclusive'),identity('premium all inclusive'));
 assert.equal(JSON.stringify(multi),original,'renderer preserves all original offers, values and ordering');
 assert.match(api.toursHtml({...multi,tours:[]}),/Нет доступных вариантов/);
