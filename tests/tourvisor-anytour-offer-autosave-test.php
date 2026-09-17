@@ -142,7 +142,11 @@ $unknownDto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
     $unknownEntry['offer'], $unknownEntry['retained'], $unknownEntry['current'], $now->getTimestamp(), $unknownEntry['priced_money']
 );
 tv_autosave_check(($unknownDto['finalPriceReady'] ?? null) === false, 'missing_fuel_not_ready');
-tv_autosave_check(($unknownDto['price'] ?? 'sentinel') === null && ($unknownDto['finalPrice'] ?? 'sentinel') === null, 'missing_fuel_no_base_fallback');
+tv_autosave_check(
+    array_key_exists('price', $unknownDto) && $unknownDto['price'] === null
+    && array_key_exists('finalPrice', $unknownDto) && $unknownDto['finalPrice'] === null,
+    'missing_fuel_no_base_fallback'
+);
 
 $helperSource = (string)file_get_contents(__DIR__ . '/../app/integrations/tourvisor-anytour-offer-autosave.php');
 $apiSource = (string)file_get_contents(__DIR__ . '/../v2/api-v2.php');
