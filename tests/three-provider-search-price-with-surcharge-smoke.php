@@ -19,12 +19,15 @@ check_money($anex['arithmetic_applied']===true,'arithmetic flag');
 
 $andromeda=AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate(
     AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',['amount'=>'124864','currency'=>'RUB','source'=>'andromeda_search'],null,[
-        ['kind'=>'fuel_adult','amount'=>'5389.50','currency'=>'RUB','source'=>'andromeda_additional'],
+        ['kind'=>'party_transport_surcharge','amount'=>'10779','currency'=>'RUB','source'=>'andromeda_get_flights_transport'],
     ]),
     2,
     0
 );
-check_money($andromeda['search_price_with_surcharge']['amount']==='135643.00','andromeda total');
+check_money($andromeda['search_price_with_surcharge']['amount']==='135643','andromeda total');
+check_money($andromeda['additional_prices_reported'][0]['source']==='andromeda_additional','andromeda source canonicalized');
+$andromedaLargerParty=AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromeda,5,3);
+check_money($andromedaLargerParty['search_price_with_surcharge']['amount']==='135643','andromeda party markup added once');
 
 $unknown=AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'100000','currency'=>'RUB','source'=>'anex_search']);
 $thrown=false;
