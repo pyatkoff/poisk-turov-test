@@ -399,7 +399,11 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
         }else{$path=$firstPath;$generation=$request['generation'];}
         $state=is_file($path)?json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR):[];
         if($number===1 && $state && in_array($state['status']??null,['complete','partial'],true) && time()>=($state['store']['expires_at']??0))$state=[];
-        $handler=new AnyTourAndromedaSearch($state,static function($next)use($path){return anytour_andromeda_search3_save($path,$next);},true,true);
+        $handler=new AnyTourAndromedaSearch($state,static function($next)use($path,&$state){
+    $saved=anytour_andromeda_search3_save($path,$next);
+    if($saved)$state=$next;
+    return $saved;
+},true,true);
         if($state){$page=$handler->resume($ref,$state['generation'],time());}
         else{
             $lookup=$pdo->prepare("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id AS catalog_hotel_id,h.id AS existing_catalog_hotel_id,i.decision_status FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? ORDER BY i.external_hotel_id");
