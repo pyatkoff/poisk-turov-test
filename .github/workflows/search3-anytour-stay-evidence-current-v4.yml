@@ -1,0 +1,189 @@
+name: LOCAL one-shot CURRENT stay evidence v4
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_stay_candidates_current_v4.php'
+      - '.github/workflows/search3-anytour-stay-evidence-current-v4.yml'
+permissions:
+  contents: read
+concurrency:
+  group: anytour-stay-evidence-operations
+  cancel-in-progress: false
+
+jobs:
+  checked-evidence:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/local-2690-stay-evidence-current-20260917-v4'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      artifact_id: ${{ steps.retained.outputs.artifact-id }}
+      head: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Verify fixed runner and merged stay source
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_stay_candidates_current_v4.php
+          php -l scripts/catalog/anytour_stay_candidates.php
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,subprocess,tarfile
+          source='26e2de291f20bfca6aff365d3e9c77b48a12f3cf'; op='local-stay-evidence-current-2690-20260917-v4'
+          merged=['scripts/catalog/anytour_stay_candidates.php','v2/data/anytour-stay-catalog-v1.php','v2/data/db-v1.php']
+          runner='scripts/catalog/anytour_stay_candidates_current_v4.php'; files=merged+[runner]
+          for name in merged:
+              assert subprocess.check_output(['git','rev-parse','HEAD:'+name]).strip()==subprocess.check_output(['git','rev-parse',source+':'+name]).strip(), 'merged stay source changed: '+name
+          work=pathlib.Path('retained'); work.mkdir(); payload={name:hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() for name in files}
+          with tarfile.open(work/'payload.tar.gz','w:gz') as t:
+              for name in files:
+                  data=pathlib.Path(name).read_bytes(); info=tarfile.TarInfo('payload/'+name); info.size=len(data); info.mode=0o600; info.mtime=0; t.addfile(info,io.BytesIO(data))
+          r={'operation':op,'dataSource':source,'executionSource':os.environ['EXACT_HEAD'],'run':int(os.environ['GITHUB_RUN_ID']),
+             'attempt':1,'readOnly':True,'files':payload,'limitPerKind':1000,'supplierCalls':0,'dbWrites':0,'noReplay':True}
+          (work/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          (work/'transport.sha256').write_text(''.join(hashlib.sha256((work/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in ['payload.tar.gz','reservation.json']))
+          PY
+      - id: retained
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-stay-evidence-v4-reservation-${{ github.run_id }}
+          path: retained/
+          if-no-files-found: error
+          retention-days: 30
+
+  current-read:
+    needs: checked-evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.checked-evidence.outputs.artifact_id }}
+          path: retained
+          merge-multiple: true
+      - name: Recheck exact head, fresh LOCAL claim, release ancestry and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.checked-evidence.outputs.head }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5710928408 > claim.json
+          python3 - <<'PY'
+          import datetime,json,os,subprocess,time
+          c=json.load(open('claim.json')); assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert 'local-stay-evidence-current-2690-20260917-v4' in c['body'] and 'ops/local-2690-stay-evidence-current-20260917-v4' in c['body']
+          age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00')); assert 0<=age.total_seconds()<7200
+          head=os.environ['HEAD_SHA']; release=json.loads(subprocess.check_output(['gh','api','repos/pyatkoff/poisk-turov-test/branches/release%2Fsearch3-production-ready-v1']))['commit']['sha']
+          cmp=json.loads(subprocess.check_output(['gh','api',f'repos/pyatkoff/poisk-turov-test/compare/{release}...{head}']))
+          assert cmp['status'] in ('ahead','identical') and cmp['behind_by']==0
+          ok=False
+          for _ in range(36):
+              checks=json.loads(subprocess.check_output(['gh','api',f'repos/pyatkoff/poisk-turov-test/commits/{head}/check-runs']))['check_runs']
+              if any(x['name']=='guard' and x['conclusion']=='success' for x in checks): ok=True; break
+              if any(x['name']=='guard' and x['status']=='completed' and x['conclusion'] not in (None,'success') for x in checks): break
+              time.sleep(5)
+          assert ok,'exact-head Security guard not green'
+          PY
+          (cd retained && sha256sum -c transport.sha256)
+      - name: Capture CURRENT stay evidence once
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] && [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          mkdir -p evidence; key="$RUNNER_TEMP/stay-v4-key"; known="$RUNNER_TEMP/stay-v4-known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 -d > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$REMOTE_USER@$HOST"; path='.anytour-operations/local-stay-evidence-current-2690-20260917-v4'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/local-stay-evidence-current-2690-20260917-v4"'
+          scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz} "$remote:$path/"
+          set +e
+          ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
+          set -euo pipefail; umask 077; cd "$HOME/.anytour-operations/local-stay-evidence-current-2690-20260917-v4"; sha256sum -c transport.sha256
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          r=json.load(open('reservation.json')); assert r['operation']=='local-stay-evidence-current-2690-20260917-v4' and r['attempt']==1 and r['readOnly'] is True and r['dbWrites']==r['supplierCalls']==0 and r['noReplay'] is True
+          assert r['dataSource']=='26e2de291f20bfca6aff365d3e9c77b48a12f3cf' and r['limitPerKind']==1000
+          with tarfile.open('payload.tar.gz','r:gz') as t:
+              members=t.getmembers(); assert len(members)==len(r['files'])==4 and {m.name for m in members}=={'payload/'+n for n in r['files']}
+              for m in members:
+                  assert m.isfile() and 0<m.size<200000 and '..' not in pathlib.PurePosixPath(m.name).parts
+                  data=t.extractfile(m).read(); assert hashlib.sha256(data).hexdigest()==r['files'][m.name[8:]]
+                  p=pathlib.Path(m.name); p.parent.mkdir(parents=True,exist_ok=True,mode=0o700); p.write_bytes(data)
+          PY
+          set +e; php -d display_errors=0 payload/scripts/catalog/anytour_stay_candidates_current_v4.php; status=$?; set -e
+          test -s result.json; sha256sum result.json > result.sha256; exit "$status"
+          REMOTE
+          rc=$?; set -e
+          for name in result.json result.sha256 started.json; do scp "${opts[@]}" "$remote:$path/$name" "evidence/$name" >/dev/null 2>&1 || true; done
+          cp retained/reservation.json evidence/reservation.json; printf '{"ssh_exit":%s,"noReplay":true}\n' "$rc" > evidence/transport-result.json
+          test "$rc" = 0 && test -s evidence/result.json && test -s evidence/result.sha256; (cd evidence && sha256sum -c result.sha256)
+      - name: Diff immutable v3 reviewed meals against CURRENT v4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10485327353/zip > evidence/v3.zip
+          echo '6484053cfec09c8592c517a18e3344659b2744da1219338ce555018dc0c00331  evidence/v3.zip' | sha256sum -c -
+          unzip -p evidence/v3.zip result.json > evidence/v3-result.json
+          echo '766f6e7843af19730c1d8515898f072a46b797c33275af91755a70e2b3d2d5ae  evidence/v3-result.json' | sha256sum -c -
+          python3 - <<'PY'
+          import collections,json,pathlib
+          old=json.load(open('evidence/v3-result.json'))['inventory']; new=json.load(open('evidence/result.json'))['inventory']
+          ids={'3','4','7','9'}
+          def key(x):
+              s=x['scope']; r=x['reference']; return (s['namespace'],s['hotelKey'],s['operatorKey'],r['kind'],r['keyKind'],r['externalKey'])
+          old_rows={key(x):x for x in old['mealCandidates'] if x['decisionState']=='unmapped' and x['reference']['externalKey'] in ids}
+          assert len(old_rows)==251
+          new_rows={key(x):x for x in new['mealCandidates']}
+          diff={'stable':[],'missing':[],'identityDrift':[],'decisionChanged':[]}
+          for k,o in sorted(old_rows.items()):
+              n=new_rows.get(k); ref={'scope':o['scope'],'reference':o['reference'],'oldHotelId':o['hotelId'],'oldSourceSha256':o['sourceSha256']}
+              if n is None: diff['missing'].append(ref); continue
+              if n['hotelId']!=o['hotelId'] or n['sourceSha256']!=o['sourceSha256']:
+                  ref.update({'newHotelId':n['hotelId'],'newSourceSha256':n['sourceSha256'],'newDecisionState':n['decisionState']}); diff['identityDrift'].append(ref); continue
+              if n['decisionState']!='unmapped':
+                  ref['newDecisionState']=n['decisionState']; diff['decisionChanged'].append(ref); continue
+              diff['stable'].append(ref)
+          out={'status':'v3_reviewed_meal_current_diff','v3ReviewedRows':251,'v4Counts':new['counts'],
+               'stable':len(diff['stable']),'missing':len(diff['missing']),'identityDrift':len(diff['identityDrift']),'decisionChanged':len(diff['decisionChanged']),
+               'missingRows':diff['missing'],'identityDriftRows':diff['identityDrift'],'decisionChangedRows':diff['decisionChanged']}
+          pathlib.Path('evidence/diff-v3.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({k:out[k] for k in ['stable','missing','identityDrift','decisionChanged','v4Counts']},ensure_ascii=False))
+          PY
+      - name: Retain terminal CURRENT evidence and v3 diff
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-stay-evidence-v4-result-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 30
