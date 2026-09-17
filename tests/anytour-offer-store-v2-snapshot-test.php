@@ -5,7 +5,7 @@ require_once __DIR__.'/../v2/data/anytour-offer-store-v1.php';
 
 function need_v2(bool $ok,string $label):void{if(!$ok)throw new RuntimeException('CHECK_FAILED:'.$label);}
 function error_v2(callable $call,string $expected,string $label):void{
- try{$call();}catch(RuntimeException $e){need_v2($e->getMessage()===$expected,$label.'-error');return;}
+ try{$call();}catch(Throwable $e){need_v2($e->getMessage()===$expected,$label.'-error');return;}
  throw new RuntimeException('CHECK_FAILED:'.$label.'-did-not-fail');
 }
 function sql_file_v2(PDO $pdo,string $path):void{$sql=preg_replace('/^\s*--.*$/m','',(string)file_get_contents($path));foreach(preg_split('/;\s*(?:\r?\n|$)/',$sql)?:[] as $statement){$statement=trim($statement);if($statement!=='')$pdo->exec($statement);}}
