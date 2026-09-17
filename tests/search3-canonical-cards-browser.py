@@ -11,7 +11,6 @@ ROOT=Path(__file__).resolve().parents[1]
 PAYLOAD=ROOT/'v2'
 CODE=(ROOT/'v2/search3-canonical-profiles-v1.js').read_text()+'\n'+(ROOT/'v2/results-renderer-v5.js').read_text()
 ORIGINAL=Path(os.environ['SEARCH3_BASE_RENDERER']).read_text()
-ROOM=(PAYLOAD/'search3-room-normalizer-v1.js').read_text()
 SCOPED_CSS=json.loads(subprocess.check_output(['php','-r', 'require '+json.dumps(str(PAYLOAD/'bundle-manifest-v1.php'))+'; echo json_encode(v2_bundle_files("css","search3"));'],text=True))
 CSS_FILES=SCOPED_CSS+['search3-results-filters-v1.css','search3-entry-v1.css','search3-results-cards-v2.css','search3-selected-flow-v2.css']
 CSS='\n'.join((PAYLOAD/f).read_text() for f in CSS_FILES)
@@ -67,7 +66,7 @@ def boot(browser,path='/_preview/search3-local-candidate/poisk-turov/',width=144
     # No navigation: Chromium policy denies every network destination in this runtime.
     # Render local HTML in about:blank; only the location dependency is an explicit fixture.
     page.set_content(HTML)
-    page.add_script_tag(content=SETUP);page.add_script_tag(content=ROOM)
+    page.add_script_tag(content=SETUP)
     page.evaluate("""({code,path})=>{
       const fixtureLocation=new URL(path,'https://fixture.invalid/');
       const fixtureWindow=new Proxy(window,{
