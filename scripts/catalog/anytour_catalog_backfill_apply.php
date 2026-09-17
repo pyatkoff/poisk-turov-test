@@ -3,7 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../v2/data/anytour-catalog-backfill-v1.php';
 
-const ANYTOUR_BACKFILL_OPERATION = 'local-catalog-backfill-onhost-20260917-v3';
+const ANYTOUR_BACKFILL_OPERATION = 'local-catalog-backfill-onhost-20260917-v4';
 const ANYTOUR_BACKFILL_SOURCE = '7e52b07e872479cc853661854ff5d082d5f3a67d';
 const ANYTOUR_BACKFILL_LIMIT = 1000;
 
