@@ -10,9 +10,9 @@ final class AnyTourSearchScopeV1
         'meal','hotelCategory','hotelRating','hotelTypes','hotelIds','hotelServices','arrivalId',
         'regionIds','subregionIds','operatorIds','priceFrom','priceTo','currency','onlyCharter','onlyDirect',
     ];
-    /** Fields that must be identical before any cached-scope reuse is considered. */
+    /** Fields that cannot be re-proved from a cached concrete offer and must stay identical. */
     private const HARD_KEYS = [
-        'scopeVersion','departureId','countryId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs',
+        'scopeVersion','departureId','countryId','adults','childs',
         'arrivalId','regionIds','subregionIds','currency','onlyCharter','onlyDirect',
     ];
     private const SCALAR_FILTER_KEYS = ['meal','hotelCategory','hotelRating'];
@@ -124,11 +124,13 @@ final class AnyTourSearchScopeV1
     {
         return hash('sha256',self::json(self::familyParams($normalized)));
     }
-    /** True only when every result allowed by the saved filtered scope is also allowed by current. */
-    public static function savedSubsetOfCurrent(array $saved,array $current): bool
+    /** Candidate scope may contribute only when hard facts match and its ranges overlap current. */
+    public static function savedCanContributeToCurrent(array $saved,array $current): bool
     {
         $saved=self::validateNormalized($saved);$current=self::validateNormalized($current);
         if(self::json(self::familyParams($saved))!==self::json(self::familyParams($current)))return false;
+        if($saved['dateTo']<$current['dateFrom']||$current['dateTo']<$saved['dateFrom'])return false;
+        if($saved['nightsTo']<$current['nightsFrom']||$current['nightsTo']<$saved['nightsFrom'])return false;
         foreach(self::SCALAR_FILTER_KEYS as $key){
             if($current[$key]!==''&&$saved[$key]!==$current[$key])return false;
         }
@@ -139,6 +141,11 @@ final class AnyTourSearchScopeV1
         if($current['priceFrom']!==''&&($saved['priceFrom']===''||self::cents($saved['priceFrom'])<self::cents($current['priceFrom'])))return false;
         if($current['priceTo']!==''&&($saved['priceTo']===''||self::cents($saved['priceTo'])>self::cents($current['priceTo'])))return false;
         return true;
+    }
+    /** Backward-compatible name retained for existing callers; concrete rows are filtered separately. */
+    public static function savedSubsetOfCurrent(array $saved,array $current): bool
+    {
+        return self::savedCanContributeToCurrent($saved,$current);
     }
     public static function fromParams(array $params): array
     {
