@@ -1,4 +1,4 @@
-name: LOCAL one-shot AnyTour stay evidence inventory
+name: LOCAL one-shot AnyTour stay schema probe
 on:
   pull_request:
     types: [opened, synchronize]
@@ -13,27 +13,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  checked-inventory:
+  checked-probe:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
       github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
       github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
       github.event.pull_request.head.ref == 'ops/local-2690-stay-inventory-onhost-20260917-v1'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     outputs:
       artifact_id: ${{ steps.retained.outputs.artifact-id }}
       head: ${{ github.event.pull_request.head.sha }}
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: fixture-only-password
-          MYSQL_DATABASE: anytour_stay_import_fixture
-        ports: ['3306:3306']
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
-          --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -45,21 +35,11 @@ jobs:
           php-version: '8.3'
           extensions: pdo_mysql
           coverage: none
-      - name: Verify existing stay evidence collector on disposable MySQL
-        env:
-          ANYTOUR_STAY_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_fixture;charset=utf8mb4'
-          ANYTOUR_STAY_TEST_PASSWORD: fixture-only-password
-          ANYTOUR_STAY_CANDIDATES_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_candidates_fixture;charset=utf8mb4'
-          ANYTOUR_STAY_CANDIDATES_TEST_PASSWORD: fixture-only-password
-          MYSQL_PWD: fixture-only-password
+      - name: Syntax and preserve merged DB helper
         run: |
           set -euo pipefail
           php -l scripts/catalog/anytour_stay_inventory_onhost.php
-          php -l scripts/catalog/anytour_stay_candidates.php
-          php -l tests/anytour_stay_candidates_test.php
-          mysql -h 127.0.0.1 -P 3306 -u root -e 'CREATE DATABASE anytour_stay_fixture CHARACTER SET utf8mb4; CREATE DATABASE anytour_stay_candidates_fixture CHARACTER SET utf8mb4'
-          php tests/anytour_stay_catalog_test.php
-          php tests/anytour_stay_candidates_test.php
+          test "$(git rev-parse HEAD:v2/data/db-v1.php)" = "$(git rev-parse 7e52b07e872479cc853661854ff5d082d5f3a67d:v2/data/db-v1.php)"
       - name: Retain exact source and reservation before private access
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
@@ -67,43 +47,35 @@ jobs:
           python3 - <<'PY'
           import hashlib,io,json,os,pathlib,subprocess,tarfile
           source='7e52b07e872479cc853661854ff5d082d5f3a67d'
-          op='local-stay-inventory-onhost-20260917-v1'
-          merged=[
-            'scripts/catalog/anytour_stay_candidates.php',
-            'v2/data/anytour-stay-catalog-v1.php',
-            'v2/data/db-v1.php',
-          ]
+          op='local-stay-schema-probe-onhost-20260917-v2'
+          merged=['v2/data/db-v1.php']
           files=merged+['scripts/catalog/anytour_stay_inventory_onhost.php']
           for name in merged:
-              assert subprocess.check_output(['git','rev-parse','HEAD:'+name]).strip()==subprocess.check_output(['git','rev-parse',source+':'+name]).strip(), 'merged LOCAL stay source changed'
+              assert subprocess.check_output(['git','rev-parse','HEAD:'+name]).strip()==subprocess.check_output(['git','rev-parse',source+':'+name]).strip()
           work=pathlib.Path('retained'); work.mkdir()
           payload={name:hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() for name in files}
           with tarfile.open(work/'payload.tar.gz','w:gz') as t:
               for name in files:
                   data=pathlib.Path(name).read_bytes(); info=tarfile.TarInfo('payload/'+name)
-                  info.size=len(data); info.mode=0o600; info.mtime=0
-                  t.addfile(info,io.BytesIO(data))
-          reservation={
-            'operation':op,'dataSource':source,'executionSource':os.environ['EXACT_HEAD'],
-            'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'files':payload,
-            'limitPerKind':5000,'supplierCalls':0,'dbWrites':0,'automaticAccepts':0,
-            'publicFileWrites':0,'noReplay':True,
-          }
+                  info.size=len(data); info.mode=0o600; info.mtime=0; t.addfile(info,io.BytesIO(data))
+          reservation={'operation':op,'dataSource':source,'executionSource':os.environ['EXACT_HEAD'],
+              'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'files':payload,
+              'dbWrites':0,'supplierCalls':0,'automaticAccepts':0,'publicFileWrites':0,'noReplay':True}
           (work/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
           (work/'transport.sha256').write_text(''.join(hashlib.sha256((work/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in ['payload.tar.gz','reservation.json']))
           PY
       - id: retained
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: anytour-stay-inventory-reservation-${{ github.run_id }}
+          name: anytour-stay-schema-probe-reservation-${{ github.run_id }}
           path: retained/
           if-no-files-found: error
           retention-days: 30
 
-  on-host-inventory:
-    needs: checked-inventory
+  on-host-probe:
+    needs: checked-probe
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     permissions:
       contents: read
       actions: read
@@ -113,38 +85,36 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          artifact-ids: ${{ needs.checked-inventory.outputs.artifact_id }}
+          artifact-ids: ${{ needs.checked-probe.outputs.artifact_id }}
           path: retained
           merge-multiple: true
       - name: Recheck exact head, fresh LOCAL claim and Security
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ needs.checked-inventory.outputs.head }}
+          HEAD_SHA: ${{ needs.checked-probe.outputs.head }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$(gh api repos/pyatkoff/poisk-turov-test/pulls/$PR_NUMBER --jq '.head.sha')" = "$HEAD_SHA"
-          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5710508984 > claim.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5710550721 > claim.json
           python3 - <<'PY'
           import datetime,json,os,subprocess,time
           c=json.load(open('claim.json'))
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          assert 'local-stay-inventory-onhost-20260917-v1' in c['body']
-          assert 'ops/local-2690-stay-inventory-onhost-20260917-v1' in c['body']
+          assert 'local-stay-schema-probe-onhost-20260917-v2' in c['body']
           age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
-          assert 0<=age.total_seconds()<7200,'LOCAL live claim expired'
+          assert 0<=age.total_seconds()<7200,'LOCAL schema probe claim expired'
           head=os.environ['HEAD_SHA']; ok=False
           for _ in range(48):
-              raw=subprocess.check_output(['gh','api',f'repos/pyatkoff/poisk-turov-test/commits/{head}/check-runs'])
-              checks=json.loads(raw)['check_runs']
+              checks=json.loads(subprocess.check_output(['gh','api',f'repos/pyatkoff/poisk-turov-test/commits/{head}/check-runs']))['check_runs']
               if any(x['name']=='guard' and x['conclusion']=='success' for x in checks): ok=True; break
               if any(x['name']=='guard' and x['status']=='completed' and x['conclusion']!='success' for x in checks): break
               time.sleep(5)
           assert ok,'exact-head Security guard not green'
           PY
           cd retained && sha256sum -c transport.sha256
-      - name: Read current saved room and meal evidence without writes
+      - name: Probe current stay evidence schema without writes
         env:
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -154,30 +124,27 @@ jobs:
           set -euo pipefail
           [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] && [[ "$REMOTE_USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
           mkdir -p evidence
-          key="$RUNNER_TEMP/stay-key"; known="$RUNNER_TEMP/stay-known"
-          trap 'rm -f "$key" "$known"' EXIT
+          key="$RUNNER_TEMP/stay-key"; known="$RUNNER_TEMP/stay-known"; trap 'rm -f "$key" "$known"' EXIT
           if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 -d > "$key"; fi
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
           ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
           test "$(ssh-keygen -lf "$known" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
           opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
-          remote="$REMOTE_USER@$HOST"; path='.anytour-operations/local-stay-inventory-onhost-20260917-v1'
-          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/local-stay-inventory-onhost-20260917-v1"'
+          remote="$REMOTE_USER@$HOST"; path='.anytour-operations/local-stay-schema-probe-onhost-20260917-v2'
+          ssh "${opts[@]}" "$remote" 'umask 077; test ! -L "$HOME/.anytour-operations"; mkdir -p "$HOME/.anytour-operations"; mkdir "$HOME/.anytour-operations/local-stay-schema-probe-onhost-20260917-v2"'
           scp "${opts[@]}" retained/{reservation.json,transport.sha256,payload.tar.gz} "$remote:$path/"
           ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
           set -euo pipefail
           umask 077
-          cd "$HOME/.anytour-operations/local-stay-inventory-onhost-20260917-v1"
+          cd "$HOME/.anytour-operations/local-stay-schema-probe-onhost-20260917-v2"
           sha256sum -c transport.sha256
           python3 - <<'PY'
           import hashlib,json,pathlib,tarfile
           r=json.load(open('reservation.json'))
-          assert r['operation']=='local-stay-inventory-onhost-20260917-v1' and r['attempt']==1 and r['noReplay'] is True
-          assert r['dataSource']=='7e52b07e872479cc853661854ff5d082d5f3a67d' and r['limitPerKind']==5000
-          assert r['dbWrites']==0 and r['supplierCalls']==0 and r['automaticAccepts']==0
+          assert r['operation']=='local-stay-schema-probe-onhost-20260917-v2' and r['attempt']==1 and r['noReplay'] is True
+          assert r['dataSource']=='7e52b07e872479cc853661854ff5d082d5f3a67d' and r['dbWrites']==0 and r['supplierCalls']==0
           with tarfile.open('payload.tar.gz','r:gz') as t:
-              members=t.getmembers(); assert len(members)==len(r['files'])==4
-              assert {m.name for m in members}=={'payload/'+n for n in r['files']}
+              members=t.getmembers(); assert len(members)==len(r['files'])==2
               for m in members:
                   assert m.isfile() and 0<m.size<200000 and '..' not in pathlib.PurePosixPath(m.name).parts
                   data=t.extractfile(m).read(); assert hashlib.sha256(data).hexdigest()==r['files'][m.name[8:]]
@@ -194,18 +161,17 @@ jobs:
           python3 - <<'PY'
           import json
           r=json.load(open('evidence/result.json'))
-          assert r['status']=='read_only_evidence_inventory' and r['source']=='saved_db_only' and r['namespace']=='legacy_catalog'
-          assert r['operation']=='local-stay-inventory-onhost-20260917-v1' and r['noReplay'] is True
-          assert r['writes']==0 and r['supplierCalls']==0 and r['automaticAccepts']==0 and r['publicFileWrites']==0
-          assert r['before']==r['after'] and r['projectConfigurationUnchanged'] is True
-          assert len(r['mealCandidates'])<=5000 and len(r['roomCandidates'])<=5000
-          print(json.dumps({'status':r['status'],'counts':r['counts'],'tableCounts':r['after'],'evidenceSha256':r['evidenceSha256']},ensure_ascii=False))
+          assert r['status']=='read_only_schema_probe' and r['operation']=='local-stay-schema-probe-onhost-20260917-v2'
+          assert r['dbWrites']==0 and r['supplierCalls']==0 and r['automaticAccepts']==0 and r['publicFileWrites']==0 and r['noReplay'] is True
+          print(json.dumps({'status':r['status'],'tableCount':r['tableCount'],'missingTables':r['missingTables'],
+              'rowCounts':{k:v['rowCount'] for k,v in r['tables'].items()},
+              'columns':{k:[c['name'] for c in v['columns']] for k,v in r['tables'].items()}},ensure_ascii=False))
           PY
-      - name: Retain terminal read-only evidence
+      - name: Retain terminal schema evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: anytour-stay-inventory-result-${{ github.run_id }}
+          name: anytour-stay-schema-probe-result-${{ github.run_id }}
           path: evidence/
           if-no-files-found: warn
           retention-days: 30
