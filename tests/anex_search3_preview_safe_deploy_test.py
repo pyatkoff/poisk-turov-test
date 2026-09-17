@@ -54,11 +54,19 @@ class SafePreviewDeploymentTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "ANEX B2B token"):
                     safe.private_config("fixture-api-token", SHA, token)
 
+    def test_base_publisher_fails_closed_before_build_without_safe_wrapper(self):
+        self.assertFalse(safe.base._SAFE_WRAPPER_ACTIVE)
+        with mock.patch.object(safe.base, "build_payload") as build_payload:
+            self.assertEqual(safe.base.main(), 1)
+            build_payload.assert_not_called()
+        self.assertFalse(safe.base._SAFE_WRAPPER_ACTIVE)
+
     def test_main_requires_and_removes_b2b_secret_before_base_publisher_runs(self):
         seen = {}
 
         def fake_main():
             seen["env_has_b2b"] = "ANEX_B2B_TOKEN" in os.environ
+            seen["safe_wrapper_active"] = safe.base._SAFE_WRAPPER_ACTIVE
             seen["config"] = safe.base.private_config("fixture-api-token", SHA)
             return 0
 
@@ -67,9 +75,12 @@ class SafePreviewDeploymentTest(unittest.TestCase):
                 self.assertEqual(safe.main(), 0)
                 self.assertNotIn("ANEX_B2B_TOKEN", os.environ)
         self.assertFalse(seen["env_has_b2b"])
+        self.assertTrue(seen["safe_wrapper_active"])
         self.assertIn("ANEX_B2B_TOKEN", seen["config"])
         self.assertIsNone(safe._B2B_TOKEN)
         self.assertIs(safe.base.private_config, safe._BASE_PRIVATE_CONFIG)
+        self.assertEqual(safe.base._SAFE_WRAPPER_ACTIVE, safe._BASE_SAFE_WRAPPER_ACTIVE)
+        self.assertFalse(safe.base._SAFE_WRAPPER_ACTIVE)
 
     def test_main_fails_before_base_publisher_when_b2b_secret_missing(self):
         with mock.patch.dict(os.environ, {}, clear=False):
@@ -78,6 +89,7 @@ class SafePreviewDeploymentTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "ANEX B2B token"):
                     safe.main()
                 base_main.assert_not_called()
+        self.assertFalse(safe.base._SAFE_WRAPPER_ACTIVE)
 
     def test_remote_script_keeps_isolated_target_and_rollback_without_server_token_copy_into_new_config(self):
         script = safe.remote_script(RELEASE)
