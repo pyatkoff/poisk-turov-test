@@ -1,0 +1,38 @@
+{
+  "evidence_type": "public_operator_catalog_identity",
+  "retrieved_date": "2026-09-17",
+  "supplier": "ANEX",
+  "native_hotel_id": "18819",
+  "hotel_name": "Grand Uysal Beach & Spa",
+  "country": "Turkey",
+  "city": "Alanya",
+  "giata_id": "26743",
+  "source_coordinates": {"latitude": 36.528713, "longitude": 32.04812},
+  "candidate_local": {
+    "local_hotel_id": 56551,
+    "name": "GRAND UYSAL BEACH & SPA HOTEL",
+    "country_id": 4,
+    "region": "Аланья",
+    "subregion": "Обакой",
+    "latitude": 36.5288585,
+    "longitude": 32.0479114,
+    "coordinate_distance_m": 25
+  },
+  "source_url": "https://www.planb-reisen.com/csb?csbclose=&csbid=0&csbnav=0&csbnavigation=hotel&csbtype=hotel&ddate=08.11.2026&giataid=26743&host=hotel&hotelmenu=Hotelbeschreibung&latitude=36.528713&longitude=32.04812&mapmenu=Lage%2FKarte&presetoperator=ANEX&presetoperatorslist=ANEX%2CFOR%2CXDER%2CXLMX%2CXOGE%2CXNEC%2COGE%2CTUID%2CNEC%2CLMXF%2CVTO%2CXALL%2CSLR%2CBYE%2CALL%2CSLRD&rdate=14.11.2026&regionid=643&singlepage=1&views=hotel%2Cmap%2Cweather&weathermenu=Klima+%26+Wetter",
+  "required_source_markers": [
+    "\"Veranstaltercode\":\"ANEX\"",
+    "\"Objectcode\":\"18819\"",
+    "\"Hotelname\":\"Grand Uysal Beach & Spa\"",
+    "\"GiataID\":{\"value\":\"26743\"",
+    "\"Stadtname\":\"Alanya\"",
+    "\"Landcode\":\"TR\""
+  ],
+  "current_conflict_context": {
+    "operator_5_external_hotel_id": "18819",
+    "stored_andromeda_bridge": "118706",
+    "stored_andromeda_bridge_name": "Grand Uysal Family Suite",
+    "accepted_same_local_andromeda_id": "2000086116",
+    "accepted_same_local_andromeda_name": "Grand Uysal Beach Hotel",
+    "policy": "resolve operator-native identity only; do not accept or overwrite Andromeda 118706"
+  }
+}
