@@ -1,5 +1,5 @@
 <?php
-/** Read-only v2 visibility owner: only the latest completed provider snapshot is customer-visible. */
+/** Read-only v2 visibility owner: latest completed snapshots with a current accepted AnyTour identity only. */
 declare(strict_types=1);
 
 final class AnyTourOfferStoreReadV2
@@ -27,6 +27,7 @@ final class AnyTourOfferStoreReadV2
             .'FROM anytour_offers o JOIN anytour_offer_scope_state s ON s.provider=o.provider AND s.scope_sha256=o.scope_sha256 '
             .'AND s.latest_complete_refresh_token IS NOT NULL AND s.latest_complete_refresh_token=o.last_refresh_token '
             .'WHERE o.scope_sha256=:scope AND o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now '
+            ."AND EXISTS (SELECT 1 FROM anytour_hotel_sources hs WHERE hs.namespace='legacy_catalog' AND hs.external_key=CAST(o.legacy_hotel_id AS CHAR) AND hs.anytour_hotel_id=o.anytour_hotel_id) "
             .'ORDER BY o.display_price ASC,o.id ASC LIMIT '.$limit;
         $stmt=$db->prepare($sql);$stmt->execute(['scope'=>$scope,'now'=>$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')]);$items=[];
         while($row=$stmt->fetch(PDO::FETCH_ASSOC)){
