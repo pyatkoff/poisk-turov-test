@@ -1,32 +1,35 @@
 name: MATCH ANEX three-source Sharm canary v1
+
 on:
   pull_request:
-    types: [opened, synchronize]
-    branches: [feature/anex-search-adapter-20260907]
+    types:
+      - opened
+      - synchronize
+    branches:
+      - feature/anex-search-adapter-20260907
     paths:
-      - 'scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php'
-      - '.github/workflows/hotel-match-anex-three-source-sharm-canary-v1.yml'
+      - scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php
+      - .github/workflows/hotel-match-anex-three-source-sharm-canary-v1.yml
+
 permissions:
   contents: read
   actions: read
   checks: read
   issues: read
   pull-requests: read
+
 concurrency:
   group: match-anex-three-source-sharm-1971
   cancel-in-progress: false
+
 env:
   EXPECTED_BASE: ed1cb35ec613c00a51d6a0e00fa683a40fdcb886
   OPERATION_ID: hotel-match-anex-three-source-sharm-1971-20260918-v1
   CLAIM_COMMENT_ID: '5722098332'
+
 jobs:
   canary:
-    if: >-
-      github.repository == 'pyatkoff/poisk-turov-test' &&
-      github.actor == 'pyatkoff' &&
-      github.triggering_actor == 'pyatkoff' &&
-      github.run_attempt == 1 &&
-      github.event.pull_request.head.ref == 'ops/match-anex-three-source-sharm-1971-20260918-v1'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 && github.event.pull_request.head.ref == 'ops/match-anex-three-source-sharm-1971-20260918-v1'
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
@@ -35,118 +38,128 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Pin exact canary and resolver
+
+      - name: Pin exact source and run offline self-test
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
         run: |
           set -euo pipefail
           test "$BASE_SHA" = "$EXPECTED_BASE"
           test "$(git merge-base "$HEAD_SHA" "$BASE_SHA")" = "$EXPECTED_BASE"
           mapfile -t changed < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
           test "${#changed[@]}" = 2
-          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php'
-          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-anex-three-source-sharm-canary-v1.yml'
+          printf '%s\n' "${changed[@]}" | grep -Fx scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php
+          printf '%s\n' "${changed[@]}" | grep -Fx .github/workflows/hotel-match-anex-three-source-sharm-canary-v1.yml
           test "$(git rev-parse "$HEAD_SHA:scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php")" = "$(git rev-parse "$EXPECTED_BASE:scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php")"
           php -l scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php
           php scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php --self-test
+
       - name: Verify canonical owner claim
-        env:\n          GH_TOKEN: ${{ github.token }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           set -euo pipefail
-          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
-          python3 - <<'PY'
-          import json,os
-          c=json.load(open('claim.json')); b=c['body']
-          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          assert 'three-source ANEX hotel identity lane' in b and '3★,4★,5★' in b
-          PY
-      - name: Retain reservation before provider access
+          body="$(gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" --jq '.body')"
+          author="$(gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" --jq '.user.id|tostring')"
+          assoc="$(gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" --jq '.author_association')"
+          test "$author" = 226193297
+          test "$assoc" = OWNER
+          grep -Fq 'three-source ANEX hotel identity lane' <<<"$body"
+          grep -Fq '3★,4★,5★' <<<"$body"
+
+      - name: Retain immutable reservation before provider access
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir reservation
-          python3 - <<'PY'
-          import hashlib,json,os,pathlib
-          r={'operation':os.environ['OPERATION_ID'],'source':os.environ['HEAD_SHA'],'base':os.environ['EXPECTED_BASE'],
-             'run':int(os.environ['GITHUB_RUN_ID']),'attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
-             'criteria':{'country':'Egypt','resort':'Sharm El Sheikh','date':'2026-10-26','nights':7,'adults':2,'stars':[3,4,5],'operator':'ANEX'},
-             'max_calls':{'tourvisor':32,'anex':10,'andromeda':12},'mapping_writes':0,'database_writes':0,'booking_calls':0,'no_replay_after_provider_access':True}
-          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
-          pathlib.Path('reservation/reservation.json').write_bytes(raw)
-          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
-          PY
+          mkdir -p reservation
+          php -r '$r=["operation"=>getenv("OPERATION_ID"),"source"=>getenv("HEAD_SHA"),"base"=>getenv("EXPECTED_BASE"),"run"=>(int)getenv("GITHUB_RUN_ID"),"attempt"=>(int)getenv("GITHUB_RUN_ATTEMPT"),"criteria"=>["country"=>"Egypt","resort"=>"Sharm El Sheikh","date"=>"2026-10-26","nights"=>7,"adults"=>2,"stars"=>[3,4,5],"operator"=>"ANEX"],"max_calls"=>["tourvisor"=>32,"anex"=>10,"andromeda"=>12],"mapping_writes"=>0,"database_writes"=>0,"booking_calls"=>0,"no_replay_after_provider_access"=>true];$raw=json_encode($r,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";file_put_contents("reservation/reservation.json",$raw);file_put_contents("reservation/reservation.sha256",hash("sha256",$raw)."  reservation.json\n");'
       - uses: actions/upload-artifact@v4
         with:
           name: match-three-source-sharm-reservation-${{ github.run_id }}
           path: reservation/
           if-no-files-found: error
           retention-days: 90
+
       - name: Require exact-head Security green
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
         run: |
           set -euo pipefail
           for i in $(seq 1 30); do
-            gh api "repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs" > checks.json
-            python3 - <<'PY' && exit 0 || true
-          import json
-          runs=json.load(open('checks.json'))['check_runs']
-          assert any(x['name']=='guard' and x['conclusion']=='success' for x in runs)
-          PY
+            if gh api "repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs" --jq '.check_runs[] | select(.name=="guard" and .conclusion=="success") | .id' | grep -Eq '^[0-9]+$'; then
+              exit 0
+            fi
             sleep 5
           done
           exit 1
-      - name: Prepare SSH
+
+      - name: Prepare SSH identity
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+        shell: bash
         run: |
           set -euo pipefail
-          key="$RUNNER_TEMP/key"; if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
-          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          key="$RUNNER_TEMP/key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
           ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$RUNNER_TEMP/known" 2>/dev/null
           test -s "$RUNNER_TEMP/known"
+
       - name: Stage isolated canary
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
         run: |
           set -euo pipefail
           opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15)
-          remote="$USER_VALUE@$HOST_VALUE"; op=".anytour-match/$OPERATION_ID"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/$OPERATION_ID"
           ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytoour-match\"; mkdir \"\$HOME/$op\""
           scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php "$remote:$op/"
-      - name: Run live three-source canary once
+
+      - name: Run live canary once
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
         run: |
           set -uo pipefail
           mkdir -p terminal
           opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15)
-          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/$OPERATION_ID"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/$OPERATION_ID"
           set +e
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' php \"\$HOME/$op/hotel_match_anex_three_source_sharm_canary_v1.php\" --execute \"\$HOME/$op\"" > terminal/stdout.log 2>terminal/stderr.log
-          rc=$?; set -e; printf '%s\n' "$rc" > terminal/ssh-exit.txt
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' php \"\$HOME/$op/hotel_match_anex_three_source_sharm_canary_v1.php\" --execute \"\$HOME/$op\"" > terminal/stdout.log 2> terminal/stderr.log
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/ssh-exit.txt
           scp "${opts[@]}" "$remote:$op/result.json" terminal/result.json || true
           scp "${opts[@]}" "$remote:$op/receipt.json" terminal/receipt.json || true
+
       - name: Validate terminal evidence
         if: always()
+        shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json,pathlib
-          r=json.loads(pathlib.Path('terminal/receipt.json').read_text())
-          assert r['operation']=='hotel-match-anex-three-source-sharm-1971-20260918-v1'
-          assert r['mapping_writes']==0 and r['database_writes']==0 and r['booking_calls']==0
-          for k,m in {'tourvisor':32,'anex':10,'andromeda':12}.items(): assert 0 <= r['provider_calls'][k] <= m
-          result=json.loads(pathlib.Path('terminal/result.json').read_text())
-          assert result['status'] in ['completed','terminal_failed_no_retry']
-          print(json.dumps({'status':result['status'],'provider_calls':r['provider_calls'],'rows':result.get('rows'),'post_detail_counts':result.get('post_detail_counts')},sort_keys=True))
-          PY
+          test -s terminal/result.json
+          test -s terminal/receipt.json
+          php -r '$r=json_decode(file_get_contents("terminal/receipt.json"),true,64,JSON_THROW_ON_ERROR);if(($r["operation"]??"")!=="hotel-match-anex-three-source-sharm-1971-20260918-v1"||($r["mapping_writes"]??-1)!==0||($r["database_writes"]??-1)!==0||($r["booking_calls"]??-1)!==0)exit(1);foreach(["tourvisor"=>32,"anex"=>10,"andromeda"=>12] as $k=>$m){$v=$r["provider_calls"][$k]??999;if($v<0||$v>$m)exit(1);}'
+          php -r '$r=json_decode(file_get_contents("terminal/result.json"),true,64,JSON_THROW_ON_ERROR);if(!in_array($r["status"]??"",["completed","terminal_failed_no_retry"],true))exit(1);echo json_encode(["status"=>$r["status"],"provider_calls"=>$r["provider_calls"]??null,"rows"=>$r["rows"]??null,"post_detail_counts"=>$r["post_detail_counts"]??null],JSON_UNESCAPED_SLASHES),"\n";'
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -154,23 +167,23 @@ jobs:
           path: terminal/
           if-no-files-found: error
           retention-days: 90
+
       - name: Cleanup isolated canary
         if: always()
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
         run: |
           set -u
           if [[ -s "$RUNNER_TEMP/key" && -s "$RUNNER_TEMP/known" ]]; then
             opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15)
             ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf \"\$HOME/.anytoour-match/$OPERATION_ID\"" || true
           fi
+
       - name: Require completed canary
         if: always()
+        shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json
-          r=json.load(open('terminal/result.json'))
-          assert r['status']=='completed',r
-          PY
+          php -r '$r=json_decode(file_get_contents("terminal/result.json"),true,64,JSON_THROW_ON_ERROR);if(($r["status"]??"")!=="completed")exit(1);'
