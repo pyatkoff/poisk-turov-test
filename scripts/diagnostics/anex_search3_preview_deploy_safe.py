@@ -24,6 +24,7 @@ SPEC.loader.exec_module(base)
 
 _BASE_PRIVATE_CONFIG = base.private_config
 _BASE_REMOTE_SCRIPT = base.remote_script
+_BASE_SAFE_WRAPPER_ACTIVE = base._SAFE_WRAPPER_ACTIVE
 _B2B_ENV = "ANEX_B2B_TOKEN"
 _B2B_TOKEN: str | None = None
 
@@ -67,12 +68,14 @@ def main() -> int:
     _B2B_TOKEN = _validated_b2b_token(os.environ.pop(_B2B_ENV, ""))
     base.private_config = _private_config_from_memory
     base.remote_script = remote_script
+    base._SAFE_WRAPPER_ACTIVE = True
     try:
         return base.main()
     finally:
         _B2B_TOKEN = None
         base.private_config = _BASE_PRIVATE_CONFIG
         base.remote_script = _BASE_REMOTE_SCRIPT
+        base._SAFE_WRAPPER_ACTIVE = _BASE_SAFE_WRAPPER_ACTIVE
 
 
 if __name__ == "__main__":
