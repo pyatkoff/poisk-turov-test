@@ -61,7 +61,7 @@ jobs:
           manifest="${changed[0]}"
           [[ "$manifest" =~ ^scripts/catalog/anytour_provider_only_seed_manifest_v1_b[0-9]{3}\.json$ ]]
           python3 scripts/catalog/anytour_canonical_seed_batch_manifest_v1.py --manifest "$manifest" > validated.json
-          python3 - <<'PY'
+          MANIFEST_PATH="$manifest" python3 - <<'PY'
           import json,os
           v=json.load(open('validated.json'))
           assert v['base_release']==os.environ['BASE_SHA'],'manifest base is not PR base'
@@ -74,10 +74,6 @@ jobs:
               f.write('base_release='+v['base_release']+'\n')
               f.write('manifest_path='+os.environ['MANIFEST_PATH']+'\n')
           PY
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          MANIFEST_PATH: ${{ steps.meta.outputs.manifest_path }}
       - name: Verify existing canonical seed contract on real MySQL
         env:
           ANYTOUR_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_catalog_fixture;charset=utf8mb4'
@@ -191,8 +187,8 @@ jobs:
           ssh "${opts[@]}" "$remote" "OPERATION_ID='$OPERATION_ID' bash -s" <<'REMOTE'
           set -euo pipefail; umask 077; cd "$HOME/.anytour-operations/$OPERATION_ID"; printf 'state=reserved\n' > checkpoint.env; sha256sum -c transport.sha256
           python3 - <<'PY'
-          import hashlib,json,pathlib,tarfile
-          r=json.load(open('reservation.json')); assert r['operation']==__import__('os').environ['OPERATION_ID'] and r['attempt']==1 and 1<=r['expectedIds']<=1000
+          import hashlib,json,pathlib,tarfile,os
+          r=json.load(open('reservation.json')); assert r['operation']==os.environ['OPERATION_ID'] and r['attempt']==1 and 1<=r['expectedIds']<=1000
           with tarfile.open('payload.tar.gz','r:gz') as t:
               members=t.getmembers(); assert len(members)==len(r['files'])==6 and {m.name for m in members}=={'payload/'+n for n in r['files']}
               for m in members:
