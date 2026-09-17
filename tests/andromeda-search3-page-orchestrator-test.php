@@ -7,17 +7,17 @@ function need($value,string $message): void { global $checks; ++$checks; if(!$va
 function offer(string $hex,int $price): array {
     return ['offer_ref'=>'offer_'.str_repeat($hex,64),'price'=>['amount'=>(string)$price,'currency'=>'RUB'],'offer_context'=>['page'=>1]];
 }
-function page(int $number,int $count,array $hotels,string $ref='search-ref',int $generation=7): array {
+function page(int $number,int $count,array $hotels,string $ref='search-ref',int $generation=7,string $status='complete'): array {
     return ['provider'=>'andromeda','generation'=>$generation,'hotels'=>$hotels,'date_range'=>['from'=>'2026-10-01','to'=>'2026-10-03'],
         'grouped'=>true,'first_page_only'=>false,'page'=>$number,'pages_count'=>$count,'external_search_pending'=>false,
-        'search_ref'=>$ref,'status'=>'complete','received_offers'=>count($hotels),'mapped_offers'=>count($hotels),'selection_enabled'=>false];
+        'search_ref'=>$ref,'status'=>$status,'received_offers'=>count($hotels),'mapped_offers'=>count($hotels),'selection_enabled'=>false];
 }
 
 $calls=[];
 $runner=static function(array $request)use(&$calls):array{
     $calls[]=$request;
     return match($request['page']){
-        1=>page(1,3,[['local_id'=>10,'name'=>'A','tours'=>[offer('a',100)]]]),
+        1=>page(1,3,[['local_id'=>10,'name'=>'A','tours'=>[offer('a',100)]]],'search-ref',7,'partial'),
         2=>page(2,3,[['local_id'=>10,'name'=>'A','andromeda_content'=>['image_url'=>'x'],'tours'=>[offer('b',110),offer('a',100)]]]),
         3=>page(3,3,[['local_id'=>11,'name'=>'B','tours'=>[offer('c',120)]]]),
     };
@@ -28,6 +28,7 @@ need(count($result['hotels'])===2,'hotel_merge');
 need(count($result['hotels'][0]['tours'])===2,'tour_merge_and_dedupe');
 need(($result['hotels'][0]['andromeda_content']['image_url']??null)==='x','content_hydration');
 need($result['page']===3&&$result['pages_count']===3,'complete_page_range');
+need($result['status']==='complete','aggregate_uses_last_page_status');
 need($result['received_offers']===3&&$result['mapped_offers']===3,'counts_sum');
 need($result['external_search_pending']===false,'not_pending_after_complete_drain');
 need($result['selection_enabled']===false,'selection_unchanged');
