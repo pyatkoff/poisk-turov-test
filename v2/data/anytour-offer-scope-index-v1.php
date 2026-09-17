@@ -51,14 +51,13 @@ final class AnyTourOfferScopeIndexV1
         $params=AnyTourSearchScopeV1::validateNormalized($params);$family=AnyTourSearchScopeV1::familyDigest($params);
         // Fetch a bounded recent family cohort which has at least one currently visible row
         // in a latest completed provider snapshot. Compatibility itself is checked in PHP.
-        $sql='SELECT x.scope_sha256,x.scope_version,x.family_sha256,x.params_json,x.params_sha256,MAX(o.last_seen_at) AS newest '
-            .'FROM anytour_offer_scopes x '
-            .'JOIN anytour_offer_scope_state s ON s.scope_sha256=x.scope_sha256 AND s.latest_complete_refresh_token IS NOT NULL '
-            .'JOIN anytour_offers o ON o.scope_sha256=x.scope_sha256 AND o.provider=s.provider AND o.last_refresh_token=s.latest_complete_refresh_token '
-            .'AND o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now '
-            .'WHERE x.family_sha256=:family AND x.scope_sha256<>:current '
-            .'GROUP BY x.scope_sha256,x.scope_version,x.family_sha256,x.params_json,x.params_sha256 '
-            .'ORDER BY newest DESC,x.last_seen_at DESC LIMIT '.self::MAX_CANDIDATE_SCOPES;
+        $sql='SELECT x.scope_sha256,x.scope_version,x.family_sha256,x.params_json,x.params_sha256 '
+            .'FROM anytour_offer_scopes x WHERE x.family_sha256=:family AND x.scope_sha256<>:current '
+            .'AND EXISTS (SELECT 1 FROM anytour_offer_scope_state s JOIN anytour_offers o '
+            .'ON o.scope_sha256=s.scope_sha256 AND o.provider=s.provider AND o.last_refresh_token=s.latest_complete_refresh_token '
+            .'WHERE s.scope_sha256=x.scope_sha256 AND s.latest_complete_refresh_token IS NOT NULL '
+            .'AND o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now LIMIT 1) '
+            .'ORDER BY x.last_seen_at DESC LIMIT '.self::MAX_CANDIDATE_SCOPES;
         $stmt=$db->prepare($sql);$stmt->execute(['now'=>self::sqlTime($now),'family'=>$family,'current'=>$digest]);
         $out=[];
         foreach($stmt->fetchAll(PDO::FETCH_ASSOC) as $row){
