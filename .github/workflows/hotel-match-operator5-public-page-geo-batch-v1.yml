@@ -1,0 +1,137 @@
+name: MATCH operator5 public page geo batch v1
+
+on:
+  push:
+    branches: [diag/match-operator5-public-page-geo-batch-1971-20260917-v1]
+    paths: [.github/workflows/hotel-match-operator5-public-page-geo-batch-v1.yml]
+
+permissions: {contents: read, actions: read}
+
+concurrency:
+  group: hotel-match-operator5-public-page-geo-batch-1971-20260917-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-operator5-public-page-geo-batch-1971-20260917-v1
+
+jobs:
+  evidence:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+
+      - name: Reserve before public access
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({
+            'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],
+            'state':'reserved_before_public_access','coordination_issue':2530,'queue_issue':1971,
+            'claim_comment_id':5715081675,
+            'targets':['14812','23894','28882','29036'],'max_public_http_calls':4,'retry_allowed':False,
+            'database_writes':0,'mapping_writes':0,'supplier_api_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,
+            'no_replay':True
+          },sort_keys=True)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-operator5-public-page-geo-batch-v1-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-operator5-public-page-geo-batch-1971-20260917-v1/reservation.json
+          retention-days: 90
+
+      - name: Fetch four exact sealed ANEX pages once
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"
+          cat > "$out/targets.json" <<'JSON'
+          [
+            {"id":"14812","url":"https://www.anextour.ru/tours/turkey/innvista-hotel-belek","expected_name":"Innvista Hotel Belek","country_id":4,"candidate_local_id":5535},
+            {"id":"23894","url":"https://www.anextour.ru/tours/turkey/greenport-hotel","expected_name":"Greenport Hotel","country_id":4,"candidate_local_id":1600},
+            {"id":"28882","url":"https://www.anextour.ru/tours/turkey/malkoc-hotel","expected_name":"Malkoc Hotel","country_id":4,"candidate_local_id":43528},
+            {"id":"29036","url":"https://www.anextour.ru/tours/turkey/delta-hotel-istanbul","expected_name":"Delta Hotel Istanbul","country_id":4,"candidate_local_id":null}
+          ]
+          JSON
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          targets=json.loads((root/'targets.json').read_text())
+          statuses=[]
+          for i,t in enumerate(targets):
+              p=root/f'page-{t["id"]}.html'
+              cmd=['curl','--compressed','--silent','--show-error','--location','--max-redirs','3','--connect-timeout','15','--max-time','40','--output',str(p),'--write-out','%{http_code}',t['url']]
+              cp=subprocess.run(cmd,text=True,capture_output=True)
+              status=int(cp.stdout.strip() or 0) if cp.returncode==0 else 0
+              statuses.append({'id':t['id'],'http_status':status,'curl_exit':cp.returncode,'stderr':(cp.stderr or '')[:240]})
+          (root/'http-statuses.json').write_text(json.dumps(statuses,sort_keys=True,indent=2)+'\n')
+          PY
+
+      - name: Sanitize and classify current public evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PY'
+          import hashlib,html,json,os,pathlib,re
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          targets={x['id']:x for x in json.loads((root/'targets.json').read_text())}
+          statuses={x['id']:x for x in json.loads((root/'http-statuses.json').read_text())}
+          rows=[]; http_calls=0
+          for hid,t in targets.items():
+              s=statuses[hid]; http_calls+=1
+              p=root/f'page-{hid}.html'; raw=p.read_bytes() if p.exists() else b''
+              text=html.unescape(raw.decode('utf-8','replace'))
+              for _ in range(4):
+                  text=text.replace('\\"','"').replace("\\'","'").replace('\\/','/')
+                  text=re.sub(r'\\u0022','"',text,flags=re.I); text=re.sub(r'\\u0026','&',text,flags=re.I)
+                  text=html.unescape(text)
+              native_patterns=[
+                  rf'(?i)hotelcode(?:=|%3D|["\'\s:]+){re.escape(hid)}(?:\D|$)',
+                  rf'(?i)["\']Objectcode["\']\s*:\s*["\']{re.escape(hid)}["\']',
+                  rf'(?i)["\']hotelCode["\']\s*:\s*["\']?{re.escape(hid)}["\']?'
+              ]
+              native_proof=any(re.search(q,text) for q in native_patterns)
+              def first(patterns):
+                  for q in patterns:
+                      m=re.search(q,text,re.I|re.S)
+                      if m:
+                          v=html.unescape(m.group(1)).strip()
+                          return re.sub(r'\s+',' ',v)[:240]
+                  return None
+              name=first([r'["\']Hotelname["\']\s*:\s*["\']([^"\']+)',r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)'])
+              city=first([r'["\']Stadtname["\']\s*:\s*["\']([^"\']+)',r'["\']city["\']\s*:\s*["\']([^"\']+)'])
+              country=first([r'["\']Landcode["\']\s*:\s*["\']([^"\']+)',r'["\']countryCode["\']\s*:\s*["\']([^"\']+)'])
+              giata=first([r'["\']GiataID["\']\s*:\s*\{?\s*["\']?value["\']?\s*:\s*["\']?([0-9]+)',r'(?i)giata(?:id)?[^0-9]{0,20}([0-9]{3,10})'])
+              lat=first([r'["\']latitude["\']\s*:\s*["\']?(-?[0-9]{1,3}(?:\.[0-9]+)?)',r'(?i)latitude=([-0-9.]+)'])
+              lon=first([r'["\']longitude["\']\s*:\s*["\']?(-?[0-9]{1,3}(?:\.[0-9]+)?)',r'(?i)longitude=([-0-9.]+)'])
+              expected_tokens=[z for z in re.sub(r'[^a-z0-9]+',' ',t['expected_name'].lower()).split() if len(z)>=3]
+              token_hits=sum(1 for z in expected_tokens if z in text.lower())
+              rows.append({'native_hotel_id':hid,'url':t['url'],'http_status':s['http_status'],'curl_exit':s['curl_exit'],'bytes':len(raw),'page_sha256':hashlib.sha256(raw).hexdigest() if raw else None,'native_marker_proved':native_proof,'expected_name':t['expected_name'],'expected_name_token_hits':token_hits,'expected_name_token_total':len(expected_tokens),'extracted_name':name,'city':city,'country_code':country,'giata_id':giata,'latitude':float(lat) if lat else None,'longitude':float(lon) if lon else None,'candidate_local_id':t['candidate_local_id']})
+              if p.exists(): p.unlink()
+          proven=sum(1 for r in rows if r['http_status']==200 and r['native_marker_proved'])
+          result={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'completed_public_evidence','rows':rows,'targets':len(rows),'http_calls':http_calls,'http_200':sum(r['http_status']==200 for r in rows),'native_proved':proven,'database_writes':0,'mapping_writes':0,'supplier_api_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,'no_replay':True}
+          raw=(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); (root/'result.json').write_bytes(raw); h=hashlib.sha256(raw).hexdigest()
+          receipt={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'completed_public_evidence','result_sha256':h,'readback_verified':True,'http_calls':http_calls,'database_writes':0,'mapping_writes':0,'supplier_api_calls':0,'tourvisor_calls':0,'samo_andromeda_calls':0,'no_replay':True}
+          (root/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'state':result['state'],'http_200':result['http_200'],'native_proved':result['native_proved'],'rows':rows,'result_sha256':h},ensure_ascii=False,sort_keys=True))
+          if any(r['http_status']!=200 for r in rows): raise SystemExit(2)
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-operator5-public-page-geo-batch-v1-result-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/hotel-match-operator5-public-page-geo-batch-1971-20260917-v1/reservation.json
+            ${{ runner.temp }}/hotel-match-operator5-public-page-geo-batch-1971-20260917-v1/http-statuses.json
+            ${{ runner.temp }}/hotel-match-operator5-public-page-geo-batch-1971-20260917-v1/result.json
+            ${{ runner.temp }}/hotel-match-operator5-public-page-geo-batch-1971-20260917-v1/receipt.json
+          retention-days: 90
