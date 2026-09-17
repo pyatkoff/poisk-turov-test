@@ -161,7 +161,7 @@ final class AnyTourAnexOfferAutosaveV1
             $current = array_intersect_key($retained, array_flip([
                 'provider', 'operator', 'local_hotel_id', 'identity', 'generation', 'page',
             ]));
-            $party = $offerContract['tour']['party'] ?? null;
+            $party = $offerContract['party'] ?? null;
             if (!is_array($party)) return self::receipt(false, 'offer_party_invalid', 0, count($auto['offers']));
             $priced = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate(
                 $offerContract['money'],
