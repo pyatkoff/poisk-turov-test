@@ -1,4 +1,4 @@
-name: Search3 AnyTour profile enrichment B003 v1
+name: Search3 AnyTour profile enrichment B003 v2
 
 on:
   pull_request:
@@ -20,9 +20,9 @@ concurrency:
 
 env:
   EXPECTED_BASE_RELEASE: 5b21e7f554da8da4f49f92e4fe67842fd1fbeff0
-  OPERATION_ID: anytour-profile-enrichment-2690-20260917-b003-v1
-  CLAIM_COMMENT_ID: '5721957583'
-  LIMIT_VALUE: '500'
+  OPERATION_ID: anytour-profile-enrichment-2690-20260917-b003-v2
+  CLAIM_COMMENT_ID: '5721984041'
+  LIMIT_VALUE: '250'
   DEMAND_THROUGH: '2026-09-17T22:14:34Z'
   SOURCE_CONTENT_RUN: '35280797031'
   SOURCE_CONTENT_ARTIFACT: '10522407667'
@@ -61,6 +61,7 @@ jobs:
             test "$(git rev-parse "$HEAD_SHA:$path")" = "$(git rev-parse "$EXPECTED_BASE_RELEASE:$path")"
           done
           php -l v2/data/anytour-profile-enrichment-v1.php >/dev/null
+          grep -Fq 'public const MAX_BATCH = 250;' v2/data/anytour-profile-enrichment-v1.php
           grep -Fq "PROVENANCE_NAMESPACE = 'profile_enrichment:legacy_saved_v1'" v2/data/anytour-profile-enrichment-v1.php
           grep -Fq "'roomMealFieldsExcluded'=>true" v2/data/anytour-profile-enrichment-v1.php
           grep -Fq "'supplierCalls'=>0" v2/data/anytour-profile-enrichment-v1.php
@@ -107,7 +108,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: anytour-profile-enrichment-b003-reservation-${{ github.run_id }}
+          name: anytour-profile-enrichment-b003-v2-reservation-${{ github.run_id }}
           path: reservation/
           if-no-files-found: error
           retention-days: 90
@@ -162,10 +163,10 @@ jobs:
           python3 - <<'PY'
           import json,os
           a=json.load(open('plan-first.json')); assert a['status']=='prepared_read_only' and a['writes']==0 and a['supplierCalls']==0
-          assert a['limit']==int(os.environ['LIMIT_VALUE'])==500 and len(a['selected'])<=500 and a['activeProfiles']==15999
+          assert a['limit']==int(os.environ['LIMIT_VALUE'])==250 and len(a['selected'])<=250 and a['activeProfiles']==15999
           assert a['roomMealFieldsExcluded'] is True and a['traitsExcluded'] is True
           open('plan-sha.txt','w').write(a['planSha256']+'\n')
-          print('ANYTOUR_PROFILE_ENRICH_B003_PLAN selected=%d scanned=%d plan=%s' % (len(a['selected']),a['scannedProfiles'],a['planSha256']))
+          print('ANYTOUR_PROFILE_ENRICH_B003_V2_PLAN selected=%d scanned=%d plan=%s' % (len(a['selected']),a['scannedProfiles'],a['planSha256']))
           PY
           export PLAN_SHA="$(cat plan-sha.txt)"
           php -d display_errors=0 -r '$_SERVER["DOCUMENT_ROOT"]=getenv("HOME")."/www/anytoour.ru"; require $_SERVER["DOCUMENT_ROOT"]."/data/db-v1.php"; require "payload/anytour-profile-enrichment-v1.php"; $c=new AnyTourProfileEnrichmentV1(v2_data_db()); echo AnyTourProfileEnrichmentV1::json($c->apply(getenv("OPERATION_ID"),(int)getenv("LIMIT_VALUE"),getenv("DEMAND_THROUGH"),getenv("PLAN_SHA")))."\n";' > result.json
@@ -194,12 +195,12 @@ jobs:
           receipt={'operation':os.environ['OPERATION_ID'],'baseRelease':os.environ['EXPECTED_BASE_RELEASE'],'run':int(os.environ['GITHUB_RUN_ID']),'sshExit':rc,
                    'planSelected':len(plan.get('selected',[])) if isinstance(plan,dict) else None,'result':result,'committed':committed,
                    'noReplay':committed or rc!=0,'status':'terminal_committed_verified' if rc==0 and committed else 'terminal_inspect_before_any_next_operation'}
-          pathlib.Path('terminal/receipt.json').write_text(json.dumps(receipt,sort_keys=True,ensure_ascii=False)+'\n'); print('PROFILE_ENRICH_B003_TERMINAL '+json.dumps(receipt,sort_keys=True,ensure_ascii=False))
+          pathlib.Path('terminal/receipt.json').write_text(json.dumps(receipt,sort_keys=True,ensure_ascii=False)+'\n'); print('PROFILE_ENRICH_B003_V2_TERMINAL '+json.dumps(receipt,sort_keys=True,ensure_ascii=False))
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: anytour-profile-enrichment-b003-terminal-${{ github.run_id }}
+          name: anytour-profile-enrichment-b003-v2-terminal-${{ github.run_id }}
           path: terminal/
           if-no-files-found: error
           retention-days: 90
