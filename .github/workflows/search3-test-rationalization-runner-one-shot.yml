@@ -1,0 +1,53 @@
+name: Search3 test rationalization runner one-shot
+
+on:
+  push:
+    branches:
+      - refactor/search3-drop-meal-normalization-20260917
+    paths:
+      - '.github/workflows/search3-test-rationalization-runner-one-shot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  run-prepared-rationalization:
+    if: github.ref_name == 'refactor/search3-drop-meal-normalization-20260917'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/search3-drop-meal-normalization-20260917
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Apply prepared bounded test cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/search3-test-rationalization-one-shot.yml').read_text(encoding='utf-8')
+          marker = "          python3 - <<'PY'\n"
+          start = source.index(marker) + len(marker)
+          end = source.index("\n          PY", start)
+          block = source[start:end]
+          lines = [line[10:] if line.startswith('          ') else line for line in block.splitlines()]
+          Path('/tmp/search3-test-rationalization.py').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+          python3 /tmp/search3-test-rationalization.py
+          node --check tests/search3-current-results-browser.cjs
+          node --check tests/search3-hotel-operator-card-browser.cjs
+          node --check tests/search3-hotel-card-summary.test.js
+          node --check tests/search3-hotel-operator-card.test.js
+          node tests/search3-room-runtime-contract.cjs
+          node tests/search3-meal-owner.cjs
+          node tests/search3-hotel-card-summary.test.js
+          node tests/search3-hotel-operator-card.test.js
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tests/search3-current-results-browser.cjs tests/search3-hotel-card-summary.test.js tests/search3-hotel-operator-card.test.js tests/search3-hotel-operator-card-browser.cjs
+          git commit -m 'test(search3): retire semantic meal and room contracts'
+          git push origin HEAD:refactor/search3-drop-meal-normalization-20260917
