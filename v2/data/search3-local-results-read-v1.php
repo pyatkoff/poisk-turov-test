@@ -29,6 +29,16 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             if($sourceScopes!==[]){$stored=AnyTourOfferStoreReadV2::readScopes($pdo,$sourceScopes,$now,$limit);$mode=$stored['items']===[]?'none':'compatible';}
             else{$stored=['source'=>'anytour-offer-store-v2','scopeDigests'=>[],'items'=>[]];$mode='none';}
         }
+        // Source query windows are provenance, not customer eligibility. Even an
+        // approved compatible scope contributes only offers whose concrete supplier
+        // facts match the current date/night/party request.
+        $tripRejected=0;$tripItems=[];
+        foreach($stored['items'] as $item){
+            if(AnyTourSearchScopeV1::offerMatchesTrip($item['offer'],$scope['params']))$tripItems[]=$item;
+            else$tripRejected++;
+        }
+        $stored['items']=$tripItems;
+        if($mode==='compatible'&&$stored['items']===[]){$mode='none';$sourceScopes=[];}
         $ids=[];foreach($stored['items'] as $item)$ids[(int)$item['anytourHotelId']]=(int)$item['anytourHotelId'];
         sort($ids,SORT_NUMERIC);
         $profiles=[];$catalog=new AnyTourCanonicalCatalog($pdo);
@@ -65,7 +75,7 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             'matchMode'=>$mode,'partial'=>$mode==='compatible','sourceScopeDigests'=>$sourceScopes,
             'generatedAt'=>$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
             'hotelCount'=>count($hotels),'eligibleHotelCount'=>$eligibleHotelCount,'offerCount'=>array_sum($providerCounts),'storedOfferCount'=>count($stored['items']),
-            'withheldOfferCount'=>$withheld,'omittedHotelCount'=>$omittedHotelCount,'omittedOfferCount'=>$omittedOfferCount,
+            'tripRejectedOfferCount'=>$tripRejected,'withheldOfferCount'=>$withheld,'omittedHotelCount'=>$omittedHotelCount,'omittedOfferCount'=>$omittedOfferCount,
             'providerOfferCounts'=>(object)$providerCounts,'selectionAuthority'=>false,'hotels'=>$hotels,
         ];
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw$e;}
