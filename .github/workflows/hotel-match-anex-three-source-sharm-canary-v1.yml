@@ -127,7 +127,7 @@ jobs:
           set -euo pipefail
           opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
-          op=".anytour-match/$OPERATION_ID"
+          op=".anytour-operations/$OPERATION_ID"
           ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytoour-match\"; mkdir \"\$HOME/$op\""
           scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_three_source_resort_star_v1.php scripts/diagnostics/hotel_match_anex_three_source_sharm_canary_v1.php "$remote:$op/"
 
@@ -141,7 +141,7 @@ jobs:
           mkdir -p terminal
           opts=(-i "$RUNNER_TEMP/key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known" -o BatchMode=yes -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
-          op=".anytour-match/$OPERATION_ID"
+          op=".anytour-operations/$OPERATION_ID"
           set +e
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' php \"\$HOME/$op/hotel_match_anex_three_source_sharm_canary_v1.php\" --execute \"\$HOME/$op\"" > terminal/stdout.log 2> terminal/stderr.log
           rc=$?
