@@ -1,9 +1,6 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__.'/andromeda-client.php';
-require_once __DIR__.'/andromeda-transport.php';
-
 const HMCA_OPERATION='hotel-match-user-seen-common4-samo-catalog-acquire-1971-20260918-v2';
 const HMCA_ROW_LIMIT=100000;
 const HMCA_MAX_CATALOG_CALLS=400;
@@ -38,6 +35,9 @@ if(in_array('--self-test',$argv??[],true)){
     echo "MATCH_COMMON4_SAMO_CATALOG_ACQUIRE_SELFTEST_OK\n";exit(0);
 }
 if(PHP_SAPI!=='cli')exit(2);
+
+require_once __DIR__.'/andromeda-client.php';
+require_once __DIR__.'/andromeda-transport.php';
 
 $opDir=(string)getenv('MATCH_OPERATION_DIR');$sourceSha=(string)getenv('MATCH_SOURCE_SHA');$root=realpath((string)getenv('ANYTOUR_ROOT'));$registryPath=realpath((string)getenv('MATCH_MAPPING_REGISTRY_PATH'));
 if(!$root||$opDir===''||!preg_match('/^[a-f0-9]{40}$/D',$sourceSha)||!is_string($registryPath)||!is_file($registryPath)||!is_dir($opDir)||!is_file($opDir.'/reservation.json'))throw new RuntimeException('runtime_guard');
