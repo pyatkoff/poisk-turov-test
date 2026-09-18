@@ -71,6 +71,59 @@ final class AnyTourAndromedaSearchSurcharge
         return $result;
     }
 
+    public static function diagnostic(array $claim): array
+    {
+        $doc = self::document($claim);
+        $ttAvia = 0;
+        $details = 0;
+        $markupKeys = 0;
+        $currencies = [];
+        foreach (($claim['variants'] ?? []) as $variant) {
+            if (!is_array($variant)) continue;
+            foreach (($variant['transports'] ?? []) as $block) {
+                if (!is_array($block) || !is_array($block['transport'] ?? null)) continue;
+                foreach ($block['transport'] as $transport) {
+                    if (!is_array($transport) || ($transport['type'] ?? null) !== 'ttAvia') continue;
+                    ++$ttAvia;
+                    foreach (($transport['details'] ?? []) as $detailBlock) {
+                        if (!is_array($detailBlock) || !is_array($detailBlock['detail'] ?? null)) continue;
+                        foreach ($detailBlock['detail'] as $detail) {
+                            if (!is_array($detail)) continue;
+                            ++$details;
+                            if (array_key_exists('markup', $detail)) ++$markupKeys;
+                            $currency = $detail['currency'] ?? null;
+                            if (is_string($currency) && preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) === 1) {
+                                $currencies[$currency] = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        $facts = self::markupFacts($claim);
+        $rates = self::rates($doc);
+        $factCurrencies = [];
+        foreach ($facts as $fact) $factCurrencies[$fact['currency']] = true;
+        $rateCurrencies = [];
+        foreach ($rates as $currency => $unused) $rateCurrencies[$currency] = true;
+        $sort = static function(array $set): array {
+            $keys = array_keys($set);
+            sort($keys, SORT_STRING);
+            return $keys;
+        };
+        return [
+            'schema_version' => 1,
+            'ttavia_option_count' => $ttAvia,
+            'transport_detail_count' => $details,
+            'markup_key_count' => $markupKeys,
+            'valid_markup_fact_count' => count($facts),
+            'distinct_markup_count' => count($facts),
+            'detail_currencies' => $sort($currencies),
+            'markup_currencies' => $sort($factCurrencies),
+            'operator_rate_currencies' => $sort($rateCurrencies),
+        ];
+    }
+
     private static function document(array $claim): array
     {
         if (!is_array($claim['claimDocument'] ?? null)
