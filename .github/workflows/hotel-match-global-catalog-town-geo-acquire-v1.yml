@@ -1,0 +1,242 @@
+name: MATCH global catalog town geo acquire v1
+
+on:
+  push:
+    branches:
+      - ops/match-global-catalog-town-geo-acquire-1971-20260918-v1
+    paths:
+      - scripts/diagnostics/hotel_match_global_catalog_town_geo_acquire_v1.php
+      - .github/workflows/hotel-match-global-catalog-town-geo-acquire-v1.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: match-global-catalog-town-geo-acquire-1971-20260918-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-global-catalog-town-geo-acquire-1971-20260918-v1
+  EXPECTED_BASE: 325ea3d8fc4752c95ddcc6bccf715dae24f7836a
+  CLAIM_COMMENT_ID: '5728338038'
+  SOURCE_RESULT_SHA: 7516046dd2a0d052ea806ca07b337400d7d3769e2ff3fd7832e3479eecde1324
+  CURRENT_RESULT_SHA: 43ff52996b418c519f984910e77f83929cbef9fda8525a66a4e0dca0d042f65f
+
+jobs:
+  acquire:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/match-global-catalog-town-geo-acquire-1971-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact provider evidence delta and claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_global_catalog_town_geo_acquire_v1.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-global-catalog-town-geo-acquire-v1.yml'
+          php -l scripts/diagnostics/hotel_match_global_catalog_town_geo_acquire_v1.php
+          php scripts/diagnostics/hotel_match_global_catalog_town_geo_acquire_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json'))
+          assert c.get('user',{}).get('id')==226193297
+          assert c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          assert os.environ['OPERATION_ID'] in c.get('body','')
+          PY
+
+      - name: Download immutable provider result
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 35331022650
+          artifact-ids: 10541335669
+          path: ${{ runner.temp }}/source
+
+      - name: Download immutable CURRENT reconcile
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 35331756014
+          artifact-ids: 10540744980
+          path: ${{ runner.temp }}/current
+
+      - name: Verify immutable inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/source/match-global-catalog-v2-result-35331022650/server/result.json"
+          cur="$RUNNER_TEMP/current/match-global-catalog-current-reconcile-35331756014/server/result.json"
+          test -f "$src" && test -f "$cur"
+          test "$(sha256sum "$src" | awk '{print $1}')" = "$SOURCE_RESULT_SHA"
+          test "$(sha256sum "$cur" | awk '{print $1}')" = "$CURRENT_RESULT_SHA"
+          python3 - <<'PY'
+          import json,os
+          root=os.environ['RUNNER_TEMP']
+          s=json.load(open(os.path.join(root,'source','match-global-catalog-v2-result-35331022650','server','result.json')))
+          c=json.load(open(os.path.join(root,'current','match-global-catalog-current-reconcile-35331756014','server','result.json')))
+          assert s['state']=='completed_read_only' and s['strict_catalog_candidate_count']==102
+          assert c['status']=='read_only_complete' and c['candidate_count']==102
+          assert c['current_clean_needs_geo_count']==102 and c['held_count']==0
+          PY
+
+      - name: Create durable reservation before provider access
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          deps=[
+            'scripts/diagnostics/hotel_match_global_catalog_town_geo_acquire_v1.php',
+            'app/integrations/andromeda-client.php',
+            'app/integrations/andromeda-transport.php',
+            'app/integrations/andromeda-network-transport-failure.php',
+          ]
+          r={
+            'operation':os.environ['OPERATION_ID'],
+            'state':'reserved_before_provider_access',
+            'source_sha':os.environ['HEAD_SHA'],
+            'source_result_sha256':os.environ['SOURCE_RESULT_SHA'],
+            'current_result_sha256':os.environ['CURRENT_RESULT_SHA'],
+            'candidate_count':102,'context_pair_count':13,
+            'catalog_call_cap':20,'price_call_cap':0,'tourvisor_calls':0,
+            'database_writes':0,'mapping_writes':0,
+            'dependencies':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in deps},
+            'no_replay_after_provider_access':True,
+          }
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-global-town-geo-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Require existing provider credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANDROMEDA_USERNAME_VALUE: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD_VALUE: ${{ secrets.ANDROMEDA_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          test -n "$ANDROMEDA_USERNAME_VALUE" && test -n "$ANDROMEDA_PASSWORD_VALUE"
+
+      - name: Stage exact private payload
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytour-match/operations/$OPERATION_ID"; stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op\" \"\$HOME/$stage\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_global_catalog_town_geo_acquire_v1.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php "$remote:$stage/"
+          scp "${opts[@]}" "$RUNNER_TEMP/source/match-global-catalog-v2-result-35331022650/server/result.json" "$remote:$stage/source-result.json"
+          scp "${opts[@]}" "$RUNNER_TEMP/current/match-global-catalog-current-reconcile-35331756014/server/result.json" "$remote:$stage/current-result.json"
+          ssh "${opts[@]}" "$remote" "chmod 600 \"\$HOME/$op/reservation.json\" \"\$HOME/$stage/\"*"
+
+      - name: Run global town geography acquisition
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANDROMEDA_USERNAME_VALUE: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD_VALUE: ${{ secrets.ANDROMEDA_PASSWORD }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/operations/$OPERATION_ID"; stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          printf '%s\n%s\n' "$ANDROMEDA_USERNAME_VALUE" "$ANDROMEDA_PASSWORD_VALUE" | ssh "${opts[@]}" "$remote" "MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$stage/hotel_match_global_catalog_town_geo_acquire_v1.php\" \"\$HOME/$stage/source-result.json\" \"\$HOME/$stage/current-result.json\"" > terminal/stdout.json 2> terminal/stderr.txt
+          rc=$?
+          ssh "${opts[@]}" "$remote" "p=\"\$HOME/$op\"; test -f \"\$p/reservation.json\"; test -f \"\$p/result.json\"; test -f \"\$p/receipt.json\"; tar -C \"\$p\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz 2>>terminal/stderr.txt
+          trc=$?
+          ssh "${opts[@]}" "$remote" "rm -rf \"\$HOME/$stage\"" || true
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt; printf '%s\n' "$trc" > terminal/tar-exit.txt
+
+      - name: Verify terminal geo receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('terminal');s=p/'server';s.mkdir(exist_ok=True)
+          a=p/'server-operation.tgz'
+          if not a.exists() or a.stat().st_size==0: raise SystemExit('missing terminal archive')
+          with tarfile.open(a,'r:gz') as t:
+              names=sorted(t.getnames());assert names==['receipt.json','reservation.json','result.json'],names
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<25_000_000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          assert pathlib.Path('reservation/reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          result=json.loads((s/'result.json').read_text());receipt=json.loads((s/'receipt.json').read_text())
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['no_replay'] is True
+          assert result['database_writes']==0 and result['mapping_writes']==0 and result['price_calls']==0 and result['tourvisor_calls']==0
+          assert result['provider_calls']<=21
+          summary={'state':result['state'],'reason':result.get('reason'),'candidate_count':result.get('candidate_count'),
+            'context_pair_count':result.get('context_pair_count'),'route_counts':result.get('route_counts',{}),
+            'provider_calls':result.get('provider_calls'),'catalog_calls':result.get('catalog_calls'),
+            'geo_clean_sample':[x for x in result.get('rows',[]) if x.get('route')=='geo_clean'][:40],
+            'needs_geo_sample':[x for x in result.get('rows',[]) if x.get('route')=='needs_geo'][:30],
+            'geo_conflict_sample':[x for x in result.get('rows',[]) if x.get('route')=='geo_conflict'][:30],
+            'result_sha256':digest}
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          if result['state']!='completed_read_only': raise SystemExit(2)
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0
+          test "$(cat terminal/tar-exit.txt)" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-global-town-geo-result-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
