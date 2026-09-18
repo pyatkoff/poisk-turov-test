@@ -4,10 +4,10 @@ const vm = require('node:vm');
 
 const listeners = new Map();
 global.window = {
-  location: { pathname: '/_preview/search3-local-candidate/poisk-turov/' },
+  location: { pathname: '/_preview/search3-local-candidate/poisk-turov/', search: '' },
   addEventListener(type, fn) { listeners.set(type, fn); },
 };
-global.document = { getElementById() { return null; } };
+global.document = { title: 'Поиск туров онлайн — AnyTour', getElementById() { return null; } };
 
 vm.runInThisContext(fs.readFileSync(require.resolve('../v2/search3-hotel-details-presentation-v1.js'), 'utf8'), { filename: 'search3-hotel-details-presentation-v1.js' });
 const api = window.Search3HotelDetailsPresentationV1;
@@ -82,7 +82,28 @@ const nonCanonicalRating = ratingFixture('Рейтинг 4,8', false);
 assert.equal(api.normalizeCard(nonCanonicalRating.card), false, 'presentation correction requires accepted AnyTour identity');
 assert.equal(nonCanonicalRating.rating.textContent, 'Рейтинг 4,8');
 
+function titleCard(anytourId, name, canonical = true) {
+  return {
+    dataset: canonical ? { anytourHotelId: String(anytourId) } : {},
+    querySelector(selector) { return selector === '.hotel-title' ? { textContent: name } : null; },
+  };
+}
+function titleRoot(cards) {
+  return { querySelectorAll(selector) { return selector === '.hotel-card[data-anytour-hotel-id]' ? cards : []; } };
+}
+window.location.search = '?from=1&country=4&search3_hotel=3217&search3_search=13656954932';
+assert.equal(api.syncHotelPageTitle(titleRoot([titleCard(3217, 'CARUS CAPPADOCIA')])), true, 'exact hotel URL receives a useful tab title');
+assert.equal(document.title, 'CARUS CAPPADOCIA — туры AnyTour');
+assert.equal(api.syncHotelPageTitle(titleRoot([titleCard(3217, 'CARUS CAPPADOCIA'), titleCard(9999, 'Другой отель')])), false, 'mixed result cards cannot name an exact hotel tab');
+assert.equal(document.title, 'Поиск туров онлайн — AnyTour', 'mixed result cards restore the base title');
+assert.equal(api.syncHotelPageTitle(titleRoot([titleCard(9999, 'Другой отель')])), false, 'foreign card cannot name the exact hotel tab');
+assert.equal(document.title, 'Поиск туров онлайн — AnyTour', 'missing exact identity restores the base title');
+window.location.search = '';
+assert.equal(api.syncHotelPageTitle(titleRoot([titleCard(3217, 'CARUS CAPPADOCIA')])), false, 'normal result pages keep the generic search title');
+assert.equal(document.title, 'Поиск туров онлайн — AnyTour');
+
 window.location.pathname = '/_preview/search3-site-candidate/poisk-turov/';
+window.location.search = '?search3_hotel=3217';
 const otherPreview = fixture({ extras: 0 });
 assert.equal(api.normalizeCard(otherPreview.card), false, 'owner is isolated to local-candidate');
 assert.equal(otherPreview.duplicateRemoved(), false);
@@ -91,4 +112,7 @@ const otherPreviewRating = ratingFixture('Рейтинг 4,8');
 assert.equal(api.normalizeCard(otherPreviewRating.card), false, 'rating correction is isolated to local-candidate');
 assert.equal(otherPreviewRating.rating.textContent, 'Рейтинг 4,8');
 
-console.log('SEARCH3_CANONICAL_DESCRIPTION_DEDUPE_OK rich=1 description_only=1 rating_unscaled=1 structured_preserved=1 route_isolated=1');
+assert.equal(api.syncHotelPageTitle(titleRoot([titleCard(3217, 'CARUS CAPPADOCIA')])), false, 'hotel title correction is isolated to local-candidate');
+assert.equal(document.title, 'Поиск туров онлайн — AnyTour');
+
+console.log('SEARCH3_CANONICAL_DESCRIPTION_DEDUPE_OK rich=1 description_only=1 rating_unscaled=1 hotel_tab_title=1 route_isolated=1');

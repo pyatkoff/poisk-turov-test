@@ -57,7 +57,7 @@ CONTROLLER=(PAYLOAD/'tour-controller-v4.js').read_text()
 LIFECYCLE=(PAYLOAD/'search-lifecycle-v6.js').read_text()
 PROVIDER=(PAYLOAD/'andromeda-provider-v1.js').read_text()
 OUT=Path(os.environ.get('SEARCH3_EVIDENCE_DIR',str(ROOT/'canonical-card-evidence')));OUT.mkdir(parents=True,exist_ok=True)
-HTML='''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'''+CSS+'''</style></head><body class="search3-candidate"><main class="v2-shell"><p>Компонентный тест · вымышленные отели и предложения</p><form id="tourSearch" hidden></form><section id="status" class="status" hidden></section><section id="resultsTools" class="results-tools results-tools--ds2"><div><span id="resultSummary">Актуальные варианты</span><p id="resultsTripContext" class="search3-trip-context" aria-label="Параметры поиска" hidden><strong data-search3-trip-route></strong><span data-search3-trip-details></span></p></div><div class="results-tools__actions"><button type="button" id="resultsSearchEdit">Изменить поиск</button><label>Сортировка <select id="sortResults"><option value="price">По цене</option><option value="rating">По рейтингу</option></select></label></div></section><div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results" aria-busy="false"></section></div><section id="selectedTour" class="selected-tour" hidden tabindex="-1"></section></main></body></html>'''
+HTML='''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Поиск туров онлайн — AnyTour</title><style>'''+CSS+'''</style></head><body class="search3-candidate"><main class="v2-shell"><p>Компонентный тест · вымышленные отели и предложения</p><form id="tourSearch" hidden></form><section id="status" class="status" hidden></section><section id="resultsTools" class="results-tools results-tools--ds2"><div><span id="resultSummary">Актуальные варианты</span><p id="resultsTripContext" class="search3-trip-context" aria-label="Параметры поиска" hidden><strong data-search3-trip-route></strong><span data-search3-trip-details></span></p></div><div class="results-tools__actions"><button type="button" id="resultsSearchEdit">Изменить поиск</button><label>Сортировка <select id="sortResults"><option value="price">По цене</option><option value="rating">По рейтингу</option></select></label></div></section><div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results" aria-busy="false"></section></div><section id="selectedTour" class="selected-tour" hidden tabindex="-1"></section></main></body></html>'''
 
 def boot(browser,path='/_preview/search3-local-candidate/poisk-turov/',width=1440,original=False):
     context=browser.new_context(viewport={'width':width,'height':980},device_scale_factor=1)
@@ -92,7 +92,7 @@ def resolve(page,index,links,missing=(),profiles=None,status=200,override=None):
 with sync_playwright() as p:
     browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or None,headless=True,args=['--no-sandbox'])
     for width in [375,768,1440]:
-        c,page,errors=boot(browser,width=width)
+        c,page,errors=boot(browser,path='/_preview/search3-local-candidate/poisk-turov/?from=1&country=4&search3_hotel=1&search3_search=731',width=width)
         items=[hotel(102),hotel(106,'anex'),hotel(108,'andromeda')];render(page,items)
         check(page.locator('.hotel-card').count()==0,f'{width}: no supplier first paint')
         check('НЕЛЬЗЯ' not in page.locator('#results').inner_text(),f'{width}: no supplier text while loading')
@@ -101,6 +101,7 @@ with sync_playwright() as p:
         check(page.locator('.hotel-card').count()==1,f'{width}: one AnyTour card from three sources')
         check(page.locator('.hotel-card').get_attribute('data-anytour-hotel-id')=='1',f'{width}: explicit own card identity')
         check(page.locator('.hotel-title').inner_text()=='Наш тестовый отель 1',f'{width}: own hotel title')
+        check(page.title()=='Наш тестовый отель 1 — туры AnyTour',f'{width}: exact hotel URL has a distinguishable canonical tab title')
         check('НЕЛЬЗЯ' not in page.locator('#results').inner_text(),f'{width}: no supplier metadata after hydration')
         rating=page.locator('.hotel-decision-rating-unscaled')
         check(rating.count()==1 and rating.inner_text()=='Каталожная оценка 4,8 · шкала не указана',f'{width}: numeric catalog rating is visibly honest about missing scale')
@@ -147,6 +148,12 @@ with sync_playwright() as p:
         check(page.evaluate('V2Results.state.items[0].tours.length')==3,f'{width}: sort retains source offers')
         check(page.evaluate('__requests.length')==1,f'{width}: sort/expand/gallery do not refetch or call supplier')
         c.close()
+
+    c,page,errors=boot(browser,width=1440)
+    render(page,[hotel(102)]);resolve(page,0,{102:1})
+    check(page.title()=='Поиск туров онлайн — AnyTour','normal results keep the generic search tab title')
+    check(not errors,'normal result title isolation has no browser JavaScript errors')
+    c.close()
 
     for width in [375,430,768,1440]:
         c,page,errors=boot(browser,width=width)
