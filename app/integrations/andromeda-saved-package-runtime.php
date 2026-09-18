@@ -18,6 +18,7 @@ function anytour_andromeda_capture_saved_package(string $directory, array $conte
     if ($withSurcharge) {
         require_once __DIR__ . '/andromeda-claim-actions.php';
         require_once __DIR__ . '/andromeda-search-surcharge.php';
+        require_once __DIR__ . '/andromeda-selected-quote.php';
     }
     if (!function_exists('anytour_andromeda_search3_save') || !function_exists('anytour_andromeda_search3_budget')) {
         throw new RuntimeException('ANDROMEDA_PACKAGE_RUNTIME_MISSING');
@@ -225,7 +226,15 @@ function anytour_andromeda_saved_package_surcharge(string $directory, string $pa
     if (file_exists($path)) {
         // Every existing outcome, including malformed/reserved/unknown, forbids another call.
         $fact = anytour_andromeda_saved_surcharge_public($disk, $resolved, $storeState, $created, $now);
-        return ['status' => $fact === null ? 'unavailable' : 'complete', 'reused' => true, 'fact' => $fact];
+        $verified = anytour_andromeda_saved_verified_quote_private(
+            $disk, $resolved, $storeState, $created, $now
+        );
+        return [
+            'status' => ($fact !== null || $verified !== null) ? 'complete' : 'unavailable',
+            'reused' => true,
+            'fact' => $fact,
+            'final_price_verified' => $verified !== null,
+        ];
     }
     $auth = $read($directory . '/' . $context['search_ref'] . '-auth.json');
     if (($auth['created_at'] ?? null) !== $created) throw new RuntimeException('ANDROMEDA_PACKAGE_CONTEXT_MISMATCH');
@@ -249,13 +258,17 @@ function anytour_andromeda_saved_package_surcharge(string $directory, string $pa
         if ($read($path) !== $next) throw new RuntimeException('ANDROMEDA_SURCHARGE_CHECKPOINT_FAILED');
     };
     $save($reserved, []);
-    $attempted = false;
+    $actionCount = 0;
     $received = false;
+    $next = $reserved;
     try {
         $actions = new AnyTourAndromedaClaimActions($auth['session']['sid'],
-            static function() use (&$attempted, $directory): void {
-                if ($attempted) throw new RuntimeException('ANDROMEDA_SURCHARGE_REPLAY_REFUSED');
-                $attempted = true;
+            static function(string $action) use (&$actionCount, $directory): void {
+                $expected = ['get_flights', 'changeservice', 'changeservice', 'calc'];
+                if (($expected[$actionCount] ?? null) !== $action) {
+                    throw new RuntimeException('ANDROMEDA_SURCHARGE_ACTION_SEQUENCE');
+                }
+                ++$actionCount;
                 anytour_andromeda_search3_budget(dirname($directory));
             }, $flightRequest);
         $flights = $actions->getFlights($package['private_package']);
@@ -264,20 +277,118 @@ function anytour_andromeda_saved_package_surcharge(string $directory, string $pa
         if ($again['context'] !== $resolved['context'] || $clock() >= $reserved['expires_at']) {
             throw new RuntimeException('ANDROMEDA_SURCHARGE_CONTEXT_STALE');
         }
-        $next = $reserved;
         $next['status'] = 'complete';
         $next['fact'] = AnyTourAndromedaSearchSurcharge::estimate($flights, $resolved['offer']['price']);
         $next['transport_money_diagnostic'] = AnyTourAndromedaSearchSurcharge::diagnostic($flights);
+
+        if (($next['fact']['state'] ?? null) === 'unknown') {
+            $selection = AnyTourAndromedaSearchSurcharge::cheapestRequiredFlightSelection(
+                $flights, $resolved['offer']['price']
+            );
+            if ($selection !== null) {
+                $next['actualization'] = [
+                    'state' => 'attempting',
+                    'strategy' => 'lowest_supplier_reported_transport_markup_then_calc',
+                    'candidate_counts' => $selection['candidate_counts'],
+                    'target_currency' => $selection['target_currency'],
+                    'actions_used' => $actionCount,
+                ];
+                try {
+                    $quote = AnyTourAndromedaSelectedQuote::continueWithFlights(
+                        $resolved, $flights, $selection['selected'], $actions
+                    );
+                    $current = AnyTourAndromedaSelectedOffer::resolve(
+                        $store, $context, $mappingAllows, $clock()
+                    );
+                    if ($current['context'] !== $resolved['context']
+                        || $clock() >= $reserved['expires_at']) {
+                        throw new RuntimeException('ANDROMEDA_SURCHARGE_CONTEXT_STALE');
+                    }
+                    $next['verified_quote'] = $quote;
+                    $next['actualization']['state'] = 'verified';
+                    $next['actualization']['actions_used'] = $actionCount;
+                } catch (Throwable $actualizationError) {
+                    $message = $actualizationError->getMessage();
+                    $next['actualization']['state'] = 'failed';
+                    $next['actualization']['actions_used'] = $actionCount;
+                    $next['actualization']['failure_class'] =
+                        is_string($message) && preg_match('/^[A-Z0-9_:-]{1,96}$/D', $message)
+                            ? $message : get_class($actualizationError);
+                }
+            }
+        }
         if (strlen(json_encode($next, JSON_THROW_ON_ERROR)) > 16384) {
             throw new RuntimeException('ANDROMEDA_SURCHARGE_CHECKPOINT_INVALID');
         }
-    } catch (Throwable $ignored) {
-        $next = $reserved;
+    } catch (Throwable $error) {
+        $message = $error->getMessage();
+        $next = $received && isset($next['transport_money_diagnostic']) ? $next : $reserved;
         $next['status'] = $received ? 'stale' : 'unknown';
+        $next['failure_class'] =
+            is_string($message) && preg_match('/^[A-Z0-9_:-]{1,96}$/D', $message)
+                ? $message : get_class($error);
     }
     $save($next, $reserved);
     $fact = anytour_andromeda_saved_surcharge_public($next, $resolved, $storeState, $created, $clock());
-    return ['status' => $fact === null ? 'unavailable' : 'complete', 'reused' => false, 'fact' => $fact];
+    $verified = anytour_andromeda_saved_verified_quote_private(
+        $next, $resolved, $storeState, $created, $clock()
+    );
+    return [
+        'status' => ($fact !== null || $verified !== null) ? 'complete' : 'unavailable',
+        'reused' => false,
+        'fact' => $fact,
+        'final_price_verified' => $verified !== null,
+    ];
+}
+
+/**
+ * Private verified quote reader for autosave only. This never grants selection or
+ * booking authority; the provider-neutral quote envelope validates full binding later.
+ */
+function anytour_andromeda_saved_verified_quote_private(
+    array $record,
+    array $resolved,
+    array $storeState,
+    int $created,
+    int $now
+): ?array {
+    static $implementation = null;
+    $implementation ??= hash_file('sha256', __FILE__);
+    if (($record['version'] ?? null) !== 1 || ($record['status'] ?? null) !== 'complete'
+        || ($record['implementation_sha256'] ?? null) !== $implementation
+        || !is_string($record['source'] ?? null) || !preg_match('/^[a-f0-9]{40}$/D', $record['source'])
+        || ($record['context'] ?? null) !== $resolved['context']
+        || ($record['criteria_sha256'] ?? null) !== $resolved['criteria_sha256']
+        || ($record['supplier_offer_sha256'] ?? null) !== $resolved['supplier_offer_sha256']
+        || !is_string($record['package_sha256'] ?? null) || !preg_match('/^[a-f0-9]{64}$/D', $record['package_sha256'])
+        || ($record['snapshot_created_at'] ?? null) !== $created
+        || !is_int($record['observed_at'] ?? null) || !is_int($record['expires_at'] ?? null)
+        || $record['observed_at'] < $storeState['created_at'] || $now < $record['observed_at']
+        || $now >= $record['expires_at'] || $record['expires_at'] > $record['observed_at'] + 300
+        || $record['expires_at'] > $storeState['expires_at']) return null;
+
+    $quote = $record['verified_quote'] ?? null;
+    if (!is_array($quote)
+        || ($quote['schema_version'] ?? null) !== 1
+        || ($quote['provider'] ?? null) !== 'andromeda'
+        || ($quote['state'] ?? null) !== 'quote_verified'
+        || ($quote['quote_state'] ?? null) !== 'verified'
+        || ($quote['final_price_verified'] ?? null) !== true
+        || ($quote['flight_selection_required'] ?? null) !== false
+        || ($quote['booking_enabled'] ?? null) !== false
+        || ($quote['local_id'] ?? null) !== ($resolved['offer']['local_hotel_id'] ?? null)
+        || ($quote['operator'] ?? null) !== ($resolved['offer']['operator'] ?? null)
+        || ($quote['search_price'] ?? null) !== ($resolved['offer']['price'] ?? null)
+        || !is_array($quote['final_price'] ?? null)
+        || !is_string($quote['final_price']['amount'] ?? null)
+        || !preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $quote['final_price']['amount'])
+        || !preg_match('/[1-9]/', $quote['final_price']['amount'])
+        || !is_string($quote['final_price']['currency'] ?? null)
+        || !preg_match('/^[A-Z0-9_]{2,8}$/D', $quote['final_price']['currency'])
+        || str_contains(json_encode($quote, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), '"uid"')) {
+        return null;
+    }
+    return $quote;
 }
 
 /** Strict browser projection of a retained fact; no raw claim, rate rows or private identity. */
@@ -323,6 +434,51 @@ function anytour_andromeda_saved_surcharge_public(array $record, array $resolved
         'party_surcharge' => ['amount' => $surcharge['amount'], 'currency' => $base['currency'], 'source' => $surcharge['source']],
         'search_price_with_surcharge' => ['amount' => $total['amount'], 'currency' => $base['currency'], 'source' => 'derived_search_estimate'],
         'surcharge_scope' => 'party', 'arithmetic_applied' => true, 'final_price_verified' => false];
+}
+
+/**
+ * Server-only pricing consumer for AnyTour autosave. Estimated listing money and
+ * supplier-verified quote money are separate states; neither enables booking.
+ */
+function anytour_andromeda_read_saved_pricing(
+    string $directory,
+    array $storeState,
+    int $created,
+    array $context,
+    callable $mappingAllows,
+    int $now
+): ?array {
+    try {
+        $ref = $context['search_ref'] ?? null;
+        if (!is_string($ref) || !preg_match('/^[a-f0-9]{64}$/D', $ref)
+            || !is_dir($directory) || is_link($directory) || basename($directory) !== 'searches'
+            || $created < 1) return null;
+        require_once __DIR__ . '/andromeda-selected-offer.php';
+        $store = new AnyTourAndromedaOfferStore($storeState, true);
+        $resolved = AnyTourAndromedaSelectedOffer::resolve(
+            $store, $context, $mappingAllows, $now
+        );
+        $path = $directory . '/' . $ref . '-' . $created . '-' . $context['page']
+            . '-' . $context['offer_ref'] . '-surcharge-v1.json';
+        if (is_link($path) || !is_file($path) || filesize($path) > 16384) return null;
+        $record = json_decode(file_get_contents($path), true, 20, JSON_THROW_ON_ERROR);
+        if (!is_array($record)) return null;
+
+        $quote = anytour_andromeda_saved_verified_quote_private(
+            $record, $resolved, $storeState, $created, $now
+        );
+        if ($quote !== null) {
+            return ['state' => 'verified', 'fact' => null, 'verified_quote' => $quote];
+        }
+        $fact = anytour_andromeda_saved_surcharge_public(
+            $record, $resolved, $storeState, $created, $now
+        );
+        return $fact === null
+            ? null
+            : ['state' => 'estimated', 'fact' => $fact, 'verified_quote' => null];
+    } catch (Throwable $ignored) {
+        return null;
+    }
 }
 
 /** Read-only listing consumer. Caller holds the existing search lock and validates current mappings. */
