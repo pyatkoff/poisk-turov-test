@@ -7,6 +7,12 @@ const HMC5_MAX_ANEX_DATE_PROBES = 30;
 const HMC5_MAX_ANEX_CALLS = 120;
 const HMC5_MAX_ANEX_CHECKIN_CALLS = 20;
 const HMC5_MAX_SAMO_CALLS = 1000;
+function hmc5_samo_pace(): void {
+    static $lastStarted=0.0;
+    $wait=1.05-(microtime(true)-$lastStarted);
+    if($wait>0)usleep((int)ceil($wait*1000000));
+    $lastStarted=microtime(true);
+}
 
 final class Hmc4AnexReadClient {
     private string $token;
@@ -181,7 +187,7 @@ function hmc4_samo_anex_full(
         if($andromedaHotelIds)$params['HOTELS']=implode(',',array_slice(array_values(array_unique(array_map('strval',$andromedaHotelIds))),0,30));
         $tr=new AnyTourAndromedaTransport(true);
         $cl=new AnyTourAndromedaClient(function(string $url,array $options)use($tr,&$samoCalls){
-            if(++$samoCalls>HMC5_MAX_SAMO_CALLS)throw new RuntimeException('samo_call_budget');return $tr($url,$options);
+            if(++$samoCalls>HMC5_MAX_SAMO_CALLS)throw new RuntimeException('samo_call_budget');hmc5_samo_pace();return $tr($url,$options);
         },true);
         $cl->restorePrivateSession($session);$reply=$cl->price($params);
         $pc=(int)$reply['PAGES_COUNT'];if($pc>HMC_MAX_SAMO_PAGES)throw new RuntimeException('samo_probe_page_cap');
@@ -301,7 +307,7 @@ function hmc2_execute(string $root,string $opDir,string $user,string $pass,strin
     $transport=new AnyTourAndromedaTransport(false);
     $catalog=new AnyTourAndromedaClient(function(string $url,array $options)use($transport,&$samoCalls){
         if(++$samoCalls>HMC5_MAX_SAMO_CALLS)throw new RuntimeException('samo_call_budget');
-        return $transport($url,$options);
+        hmc5_samo_pace();return $transport($url,$options);
     },true);
     $catalog->login($user,$pass);
     $all=$catalog->catalog('all',['TOWNFROMINC'=>HMC_DEPARTURE,'STATEINC'=>HMC_SAMO_STATE]);
