@@ -118,10 +118,25 @@ stay_results_need(count($legacyMeals)===10,'legacy meals remain only until v2 in
 stay_results_sql($pdo,$root.'/v2/data/migrations/20260918-anytour-hotel-stay-v2.sql');
 $stayV2=new AnyTourHotelStayCatalogV2($pdo);
 $pdo->beginTransaction();
-$stayV2->createConcept('room',$hotelId,'own-v2:standard-sea','Стандарт · вид на море',['view'=>'Море']);
-$stayV2->createConcept('meal',$hotelId,'own-v2:ai','Всё включено · концепция отеля',[
+$roomV2=$stayV2->createConcept('room',$hotelId,'own-v2:standard-sea','Стандарт · вид на море',['view'=>'Море']);
+$mealV2=$stayV2->createConcept('meal',$hotelId,'own-v2:ai','Всё включено · концепция отеля',[
     'concept'=>'hotel-specific-ai','alcohol'=>'local-only'
 ]);
+$pdo->commit();
+
+$offerScope=AnyTourHotelStayCatalogV2::offerScope(
+    'tourvisor',$legacyId,hash('sha256','hotel:stay-dictionary'),'Pegas Touristik'
+);
+$evidence=['ref'=>'review://stay-result-fixture','sha256'=>hash('sha256','stay-result-fixture'),'reviewedBy'=>'fixture'];
+$pdo->beginTransaction();
+$stayV2->recordDecision(
+    $offerScope,['kind'=>'room','keyKind'=>'label','externalKey'=>'STANDARD ROOM'],
+    $hotelId,'accepted',$roomV2,$evidence
+);
+$stayV2->recordDecision(
+    $offerScope,['kind'=>'meal','keyKind'=>'label','externalKey'=>'AI'],
+    $hotelId,'accepted',$mealV2,$evidence
+);
 $pdo->commit();
 
 $beforeV2=[
@@ -150,10 +165,27 @@ stay_results_need(count($rooms)===1&&$rooms[0]['localKey']==='own-v2:standard-se
 stay_results_need(count($meals)===1&&$meals[0]['localKey']==='own-v2:ai','hotel-local meal exposed');
 stay_results_need($meals[0]['nameRu']==='Всё включено · концепция отеля','hotel-specific Russian meal label');
 stay_results_need(($meals[0]['facts']['concept']??null)==='hotel-specific-ai','hotel-specific meal facts');
-$listing=$result['hotels'][0]['offers'][0]['listing'];
+$offer=$result['hotels'][0]['offers'][0];
+$listing=$offer['listing'];
 stay_results_need(($listing['tour']['meal']['raw']??null)==='AI','supplier meal raw preserved');
 stay_results_need(($listing['tour']['room']['raw']??null)==='STANDARD ROOM','supplier room raw preserved');
-stay_results_need(!array_key_exists('canonical',$listing['tour']['meal'])&&!array_key_exists('canonical',$listing['tour']['room']),'no guessed offer-to-canonical stay mapping');
-stay_results_need($afterV2[3]===0,'dictionary exposure creates no stay decisions');
+stay_results_need(!array_key_exists('canonical',$listing['tour']['meal'])&&!array_key_exists('canonical',$listing['tour']['room']),'no mutation of supplier stay facts');
+$match=$offer['stayMatch']??null;
+stay_results_need(is_array($match)&&($match['source']??null)==='anytour-hotel-stay-v2','offer stay match source');
+stay_results_need(($match['exactScope']??null)===true&&($match['reason']??'not-null')===null,'offer exact scope');
+stay_results_need(($match['room']['status']??null)==='accepted','offer room mapping accepted');
+stay_results_need(($match['room']['canonical']['localKey']??null)==='own-v2:standard-sea','offer room canonical local key');
+stay_results_need(($match['meal']['status']??null)==='accepted','offer meal mapping accepted');
+stay_results_need(($match['meal']['canonical']['localKey']??null)==='own-v2:ai','offer meal canonical local key');
+stay_results_need(($match['meal']['canonical']['nameRu']??null)==='Всё включено · концепция отеля','offer meal hotel-specific label');
+stay_results_need($beforeV2===$afterV2,'dictionary and mapping exposure creates no writes');
+stay_results_need($afterV2[3]===2,'two reviewed mappings remain unchanged');
 
-echo "SEARCH3_LOCAL_STAY_DICTIONARIES_V2_OK hotels=1 hotel_scoped_rooms=1 hotel_scoped_meals=1 raw_offer_preserved=1 mappings=0 writes=0\n";
+$caseMismatch=$stayV2->resolveOfferFactsBatch([[
+    'anytourHotelId'=>$hotelId,'legacyHotelId'=>$legacyId,'provider'=>'tourvisor',
+    'providerHotelRefDigest'=>hash('sha256','hotel:stay-dictionary'),
+    'operatorRaw'=>'PEGAS TOURISTIK','roomRaw'=>'STANDARD ROOM','mealRaw'=>'AI',
+]])[0];
+stay_results_need($caseMismatch['room']['status']==='unmapped'&&$caseMismatch['meal']['status']==='unmapped','operator label case does not borrow mapping');
+
+echo "SEARCH3_LOCAL_STAY_DICTIONARIES_V2_OK hotels=1 hotel_scoped_rooms=1 hotel_scoped_meals=1 exact_offer_mapping=1 raw_offer_preserved=1 mappings=2 writes=0\n";
