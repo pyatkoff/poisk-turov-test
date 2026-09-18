@@ -172,7 +172,7 @@ stay_results_need(($listing['tour']['room']['raw']??null)==='STANDARD ROOM','sup
 stay_results_need(!array_key_exists('canonical',$listing['tour']['meal'])&&!array_key_exists('canonical',$listing['tour']['room']),'no mutation of supplier stay facts');
 $match=$offer['stayMatch']??null;
 stay_results_need(is_array($match)&&($match['source']??null)==='anytour-hotel-stay-v2','offer stay match source');
-stay_results_need(($match['exactScope']??null)===true&&($match['reason']??'not-null')===null,'offer exact scope');
+stay_results_need(($match['exactScope']??null)===true&&array_key_exists('reason',$match)&&$match['reason']===null,'offer exact scope');
 stay_results_need(($match['room']['status']??null)==='accepted','offer room mapping accepted');
 stay_results_need(($match['room']['canonical']['localKey']??null)==='own-v2:standard-sea','offer room canonical local key');
 stay_results_need(($match['meal']['status']??null)==='accepted','offer meal mapping accepted');
