@@ -45,8 +45,12 @@ function producer_sql_raw(string $provider,int $legacy,int $adults,array $additi
         'additional_prices_reported'=>$additional,'observed_at'=>'2026-09-17T06:00:00Z'];
 }
 function producer_sql_entry(string $provider,int $legacy,int $own,int $adults,string $base,string $fuel,string $salt,int $issued):array{
-    $offer=AnyTourThreeProviderOfferContract::fromSearch(producer_sql_raw($provider,$legacy,$adults,[
-        ['kind'=>'fuel_adult','amount'=>$fuel,'currency'=>'RUB','source'=>$provider.'_additional']],$base,$salt));
+    $additional = $provider === 'andromeda'
+        ? [['kind'=>'party_transport_surcharge','amount'=>$fuel,'currency'=>'RUB','source'=>'andromeda_additional']]
+        : [['kind'=>'fuel_adult','amount'=>$fuel,'currency'=>'RUB','source'=>$provider.'_additional']];
+    $offer=AnyTourThreeProviderOfferContract::fromSearch(
+        producer_sql_raw($provider,$legacy,$adults,$additional,$base,$salt)
+    );
     $retained=AnyTourThreeProviderOfferContext::retain($offer,51,1,$issued,900);
     $current=['provider'=>$retained['provider'],'operator'=>$retained['operator'],'local_hotel_id'=>$retained['local_hotel_id'],
         'identity'=>$retained['identity'],'generation'=>51,'page'=>1];
@@ -103,7 +107,7 @@ AnyTourIntOfferSnapshotProducerV1::produce('andromeda',$params,['complete'=>true
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+1 minute'));
 $providers=array_count_values(array_column($visible['items'],'provider'));
 producer_sql_check(count($visible['items'])===2&&($providers['anex']??0)===1&&($providers['andromeda']??0)===1,'providers-isolated');
-producer_sql_check(in_array('166346.8',array_column($visible['items'],'price'),true),'andromeda-final-price');
+producer_sql_check(in_array('151975.6',array_column($visible['items'],'price'),true),'andromeda-final-price');
 producer_sql_check((int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='completed'")->fetchColumn()===2,'two-complete-refreshes');
 
 echo "ANYTOUR_INT_SNAPSHOT_MYSQL_OK providers=2 offers=2 preserved_not_ready=1\n";
