@@ -14,7 +14,22 @@ function hmpb_tokens(string $v): array {return preg_split('/\s+/u',hmpb_norm($v)
 function hmpb_qualifiers(string $v): array {$o=[];foreach(hmpb_tokens($v) as $t)if(isset(HMPB_QUALIFIERS[$t]))$o[$t]=true;$x=array_keys($o);sort($x,SORT_STRING);return $x;}
 function hmpb_numbers(string $v): array {$o=[];foreach(hmpb_tokens($v) as $t)if(preg_match('/^[0-9]+$/D',$t))$o[$t]=true;$x=array_keys($o);sort($x,SORT_STRING);return $x;}
 function hmpb_product(string $n): bool {return (bool)preg_match('/^(?:fortuna|фортуна|roulette|рулетка|рулет)(?:\s|$)/u',hmpb_norm($n));}
-function hmpb_first_array(array $v,string $key): ?array {if(isset($v[$key])&&is_array($v[$key]))return $v[$key];foreach($v as $x)if(is_array($x)){if(array_is_list($x)){foreach($x as $y)if(is_array($y)){if(isset($y[$key])&&is_array($y[$key]))return $y[$key];}}}else{$r=hmpb_first_array($x,$key);if($r!==null)return $r;}}return null;}
+function hmpb_first_array(array $v,string $key): ?array {
+    if(isset($v[$key])&&is_array($v[$key]))return $v[$key];
+    foreach($v as $x){
+        if(!is_array($x))continue;
+        if(array_is_list($x)){
+            foreach($x as $y){
+                if(!is_array($y))continue;
+                if(isset($y[$key])&&is_array($y[$key]))return $y[$key];
+                $r=hmpb_first_array($y,$key);if($r!==null)return $r;
+            }
+        }else{
+            $r=hmpb_first_array($x,$key);if($r!==null)return $r;
+        }
+    }
+    return null;
+}
 function hmpb_scalar(array $a,array $keys): ?string {foreach($keys as $k)if(isset($a[$k])&&(is_string($a[$k])||is_int($a[$k]))){$s=trim((string)$a[$k]);if($s!=='')return $s;}return null;}
 function hmpb_source(array $e): array {$s=hmpb_first_array($e,'source');if($s!==null)return $s;$s=hmpb_first_array($e,'source_candidate');return $s??[];}
 function hmpb_durable(string $path,array $v): string {$raw=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";$f=@fopen($path,'x+b');if(!$f)throw new RuntimeException('durable_exists');try{if(fwrite($f,$raw)!==strlen($raw)||!fflush($f))throw new RuntimeException('durable_write');if(function_exists('fsync')&&!fsync($f))throw new RuntimeException('durable_sync');rewind($f);if(stream_get_contents($f)!==$raw)throw new RuntimeException('durable_readback');}finally{fclose($f);}return hash('sha256',$raw);}
