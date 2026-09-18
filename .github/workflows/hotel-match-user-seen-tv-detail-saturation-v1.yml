@@ -60,23 +60,21 @@ jobs:
           assert 'stops immediately on HTTP429' in b['body']
           PY
 
-      - name: Require dedicated Tourvisor token and SSH
+      - name: Require SSH for server-side Tourvisor token
         env:
           SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          TV_TOKEN: ${{ secrets.TOURVISOR_ANEX_JWT }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"; test -n "$TV_TOKEN"
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"
 
       - name: Reserve and consume saved Tourvisor details once
         env:
           SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          TV_TOKEN: ${{ secrets.TOURVISOR_ANEX_JWT }}
           HEAD_SHA: ${{ github.sha }}
         shell: bash
         run: |
