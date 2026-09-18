@@ -52,7 +52,8 @@ final class AnyTourAnexLocalOfferCollectorV1
             ++$expanded;
             $recordPrograms($state);
             if (!is_array($reply) || ($reply['status'] ?? null) !== 'expanded') continue;
-            self::collectOffers($reply['hotels'] ?? [], $ignored = [], $charters, $regular);
+            $ignoredGrouped = [];
+            self::collectOffers($reply['hotels'] ?? [], $ignoredGrouped, $charters, $regular);
         }
 
         $items = array_slice(array_values($charters), 0, $maxBatchItems);
