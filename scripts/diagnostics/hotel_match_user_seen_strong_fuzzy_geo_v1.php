@@ -48,11 +48,15 @@ function hmfg_walk(mixed $v,array &$names,array &$places,array &$states,array &$
 }
 function hmfg_source(string $provider,string $external,array $names,array $places,array $countries,array $coords=[]): array {
     $countries=array_values(array_unique(array_filter(array_map('intval',$countries),fn($x)=>$x>0)));sort($countries,SORT_NUMERIC);
-    return ['provider'=>$provider,'external_id'=>$external,'names'=>array_values(array_map('strval',array_keys($names))),
-      'places'=>array_values(array_map('strval',array_keys($places))),'countries'=>$countries,
+    $nameList=array_values(array_filter(array_map('strval',array_keys($names)),fn($x)=>preg_match('/\\p{L}/u',$x)===1));
+    $placeList=array_values(array_filter(array_map('strval',array_keys($places)),fn($x)=>preg_match('/\\p{L}/u',$x)===1));
+    return ['provider'=>$provider,'external_id'=>$external,'names'=>$nameList,
+      'places'=>$placeList,'countries'=>$countries,
       'latitude'=>$coords['latitude']??null,'longitude'=>$coords['longitude']??null];
 }
 function hmfg_merge_target(array &$tokenIndex,array &$targetNames,int $country,int $local,array $names,array $wanted): bool {
+    $names=array_values(array_filter(array_map('strval',$names),fn($x)=>preg_match('/\\p{L}/u',$x)===1));
+    if(!$names)return false;
     $sets=hmsbf_sets($names);$kept=[];$hit=false;
     foreach($sets as $key=>$tokens){
         $use=false;foreach($tokens as $token)if(isset($wanted[$country][$token])){$use=true;break;}
