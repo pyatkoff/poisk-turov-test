@@ -75,6 +75,29 @@ class Search3SourceBuildTest(unittest.TestCase):
         for name in self.outputs:
             shutil.copy(ROOT / 'v2' / name, self.root / 'v2')
 
+    def manifest_source(self, asset):
+        """Return a current live source owner instead of pinning tests to retired filenames."""
+        manifest = json.loads((self.root / 'src/search3/manifest.json').read_text())
+        parts = manifest['assets'][asset]
+        self.assertTrue(parts, f'{asset} needs a live source owner for this fixture')
+        return self.root / 'src/search3' / parts[0]
+
+    def install_private_js_fixture(self):
+        """Keep positive @include coverage independent of production private parts."""
+        source = self.root / 'src/search3/behavior/private-include-host-fixture.js'
+        part = self.root / 'src/search3/behavior/private/private-include-fixture.js'
+        manifest = self.root / 'src/search3/manifest.json'
+        data = json.loads(manifest.read_text())
+        modules = data['assets']['search3-results-filters-v1.js']
+        fixture = 'behavior/private-include-host-fixture.js'
+        if fixture not in modules:
+            modules.append(fixture)
+            manifest.write_text(json.dumps(data, indent=2) + '\n')
+        part.parent.mkdir(parents=True, exist_ok=True)
+        part.write_text('window.__search3PrivateIncludeFixture = "base";\n')
+        source.write_text('/* @include behavior/private/private-include-fixture.js */\n')
+        return source, part
+
     def install_private_css_fixture(self):
         """Keep css-string safety coverage independent of production injectors."""
         source = self.root / 'src/search3/behavior/summary-cta-styles.js'
@@ -99,8 +122,10 @@ class Search3SourceBuildTest(unittest.TestCase):
     def test_current_outputs_match_and_build_is_idempotent(self):
         self.assertEqual(builder.build(self.root), 8)
         assets = json.loads((self.root / 'src/search3/manifest.json').read_text())['assets']
+        self.assertEqual(assets['search3-entry-v1.js'], [])
         self.assertEqual(assets['search3-selected-flow-v2.js'], [])
         self.assertEqual(assets['search3-results-cards-v2.js'], ['behavior/results-cards-v2.js'])
+        self.assertEqual(len((self.root / 'v2/search3-entry-v1.js').read_bytes()), 0)
         self.assertEqual(len((self.root / 'v2/search3-selected-flow-v2.js').read_bytes()), 0)
         self.assertGreater(len((self.root / 'v2/search3-results-cards-v2.js').read_bytes()), 0)
         before = (self.root / 'docs/project/search3-production-import.json').read_bytes()
@@ -109,7 +134,7 @@ class Search3SourceBuildTest(unittest.TestCase):
         self.assertEqual(before, (self.root / 'docs/project/search3-production-import.json').read_bytes())
 
     def test_changed_source_requires_rebuild_and_preserves_other_assets(self):
-        source = self.root / 'src/search3/behavior/search-form/primary-controls.js'
+        source = self.manifest_source('search3-results-filters-v1.js')
         source.write_bytes(source.read_bytes() + b'\nwindow.__search3SourceDriftFixture = "controlled test edit";\n')
         with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
             builder.build(self.root)
@@ -122,14 +147,14 @@ class Search3SourceBuildTest(unittest.TestCase):
         self.assertEqual(reviewed['protectedSha256'], self.reviewed['protectedSha256'])
 
     def test_missing_source_does_not_partially_write_outputs(self):
-        (self.root / 'src/search3/behavior/entry-v1.js').unlink()
+        self.manifest_source('search3-results-cards-v2.js').unlink()
         with self.assertRaises(OSError):
             builder.build(self.root, write=True)
         for name, original in self.outputs.items():
             self.assertEqual((self.root / 'v2' / name).read_bytes(), original)
 
     def test_invalid_javascript_does_not_partially_write_outputs(self):
-        source = self.root / 'src/search3/behavior/search-form/primary-controls.js'
+        source = self.manifest_source('search3-results-filters-v1.js')
         source.write_bytes(source.read_bytes() + b'\nconst =;\n')
         with self.assertRaises(ValueError):
             builder.build(self.root, write=True)
@@ -142,13 +167,15 @@ class Search3SourceBuildTest(unittest.TestCase):
             builder.build(self.root)
 
     def test_private_part_drift_rebuilds_only_its_enclosing_asset(self):
-        part = self.root / 'src/search3/behavior/search-form/primary-controls.js'
+        _, part = self.install_private_js_fixture()
+        builder.build(self.root, write=True)
+        before = {name: (self.root / 'v2' / name).read_bytes() for name in self.outputs}
         part.write_bytes(part.read_bytes() + b'\nwindow.__search3PrivateDriftFixture = "controlled private-part edit";\n')
         with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
             builder.build(self.root)
         builder.build(self.root, write=True)
         self.assertEqual(builder.build(self.root), 8)
-        for name, original in self.outputs.items():
+        for name, original in before.items():
             content = (self.root / 'v2' / name).read_bytes()
             if name == 'search3-results-filters-v1.js':
                 self.assertIn(b'controlled private-part edit', content)
@@ -198,7 +225,7 @@ class Search3SourceBuildTest(unittest.TestCase):
             builder.build(self.root)
 
     def test_invalid_private_include_fails_before_writing_any_output(self):
-        source = self.root / 'src/search3/behavior/results-cards-v2.js'
+        source = self.manifest_source('search3-results-cards-v2.js')
         source.write_text('/* @include ../outside.js */\n')
         with self.assertRaises(ValueError):
             builder.build(self.root, write=True)
