@@ -64,6 +64,7 @@ $pdo=new PDO($dsn,'root',$password,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
 $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
 foreach([
+    'anytour_hotel_stay_mappings_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_room_concepts_v2',
     'anytour_stay_mappings','anytour_hotel_rooms','anytour_room_categories','anytour_meal_plans',
     'anytour_offer_scopes','anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control',
     'anytour_hotel_sources','anytour_hotels','anytour_catalog_control'
@@ -98,26 +99,52 @@ $before=[
     (int)$pdo->query('SELECT COUNT(*) FROM anytour_hotel_rooms')->fetchColumn(),
     (int)$pdo->query('SELECT COUNT(*) FROM anytour_stay_mappings')->fetchColumn(),
 ];
-$result=search3_local_results_build($pdo,$params,$now);
-$after=[
+$fallback=search3_local_results_build($pdo,$params,$now);
+stay_results_need(($fallback['stayCatalog']['source']??null)==='anytour-stay-catalog-v1-compat','v1 explicitly compatibility only');
+stay_results_need(($fallback['stayCatalog']['compatibilityFallback']??null)===true,'v1 fallback marked');
+stay_results_need(($fallback['stayCatalog']['hotelScoped']??null)===false,'v1 not claimed hotel scoped');
+$legacyMeals=$fallback['stayCatalog']['mealPlans']??[];
+stay_results_need(count($legacyMeals)===10,'legacy meals remain only until v2 install');
+
+stay_results_sql($pdo,$root.'/v2/data/migrations/20260918-anytour-hotel-stay-v2.sql');
+$stayV2=new AnyTourHotelStayCatalogV2($pdo);
+$pdo->beginTransaction();
+$stayV2->createConcept('room',$hotelId,'own-v2:standard-sea','Стандарт · вид на море',['view'=>'Море']);
+$stayV2->createConcept('meal',$hotelId,'own-v2:ai','Всё включено · концепция отеля',[
+    'concept'=>'hotel-specific-ai','alcohol'=>'local-only'
+]);
+$pdo->commit();
+
+$beforeV2=[
     (int)$pdo->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn(),
-    (int)$pdo->query('SELECT COUNT(*) FROM anytour_hotel_rooms')->fetchColumn(),
-    (int)$pdo->query('SELECT COUNT(*) FROM anytour_stay_mappings')->fetchColumn(),
+    (int)$pdo->query('SELECT COUNT(*) FROM anytour_hotel_room_concepts_v2')->fetchColumn(),
+    (int)$pdo->query('SELECT COUNT(*) FROM anytour_hotel_meal_concepts_v2')->fetchColumn(),
+    (int)$pdo->query('SELECT COUNT(*) FROM anytour_hotel_stay_mappings_v2')->fetchColumn(),
 ];
-stay_results_need($before===$after,'reader is read-only across offers/stay catalog/mappings');
+$result=search3_local_results_build($pdo,$params,$now);
+$afterV2=[
+    (int)$pdo->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn(),
+    (int)$pdo->query('SELECT COUNT(*) FROM anytour_hotel_room_concepts_v2')->fetchColumn(),
+    (int)$pdo->query('SELECT COUNT(*) FROM anytour_hotel_meal_concepts_v2')->fetchColumn(),
+    (int)$pdo->query('SELECT COUNT(*) FROM anytour_hotel_stay_mappings_v2')->fetchColumn(),
+];
+stay_results_need($beforeV2===$afterV2,'v2 reader is read-only');
 stay_results_need($result['hotelCount']===1&&$result['offerCount']===1,'one canonical hotel and offer');
-stay_results_need(($result['stayCatalog']['source']??null)==='anytour-stay-catalog','own stay dictionary source');
-$meals=$result['stayCatalog']['mealPlans']??[];
-$allInclusive=null;foreach($meals as $meal)if(($meal['code']??null)==='all-inclusive')$allInclusive=$meal;
-stay_results_need(is_array($allInclusive)&&$allInclusive['nameRu']==='Всё включено','canonical Russian meal label exposed');
+stay_results_need(($result['stayCatalog']['source']??null)==='anytour-hotel-stay-v2','v2 preferred');
+stay_results_need(($result['stayCatalog']['hotelScoped']??null)===true,'v2 declares hotel scope');
+stay_results_need(($result['stayCatalog']['compatibilityFallback']??null)===false,'v2 no compatibility fallback');
+stay_results_need(!array_key_exists('mealPlans',$result['stayCatalog']),'no global meal dictionary in v2');
 $rooms=$result['hotels'][0]['stay']['rooms']??[];
-stay_results_need(count($rooms)===1,'only active own room exposed');
-stay_results_need($rooms[0]['localKey']==='own:standard-sea'&&$rooms[0]['nameRu']==='Стандарт · вид на море','stable own room key and Russian label exposed');
-stay_results_need(($rooms[0]['facts']['view']??null)==='Море','own room facts exposed');
+$meals=$result['hotels'][0]['stay']['meals']??[];
+stay_results_need(($result['hotels'][0]['stay']['source']??null)==='anytour-hotel-stay-v2','hotel stay v2 source');
+stay_results_need(count($rooms)===1&&$rooms[0]['localKey']==='own-v2:standard-sea','hotel-local room exposed');
+stay_results_need(count($meals)===1&&$meals[0]['localKey']==='own-v2:ai','hotel-local meal exposed');
+stay_results_need($meals[0]['nameRu']==='Всё включено · концепция отеля','hotel-specific Russian meal label');
+stay_results_need(($meals[0]['facts']['concept']??null)==='hotel-specific-ai','hotel-specific meal facts');
 $listing=$result['hotels'][0]['offers'][0]['listing'];
 stay_results_need(($listing['tour']['meal']['raw']??null)==='AI','supplier meal raw preserved');
 stay_results_need(($listing['tour']['room']['raw']??null)==='STANDARD ROOM','supplier room raw preserved');
 stay_results_need(!array_key_exists('canonical',$listing['tour']['meal'])&&!array_key_exists('canonical',$listing['tour']['room']),'no guessed offer-to-canonical stay mapping');
-stay_results_need($before[2]===0&&$after[2]===0,'dictionary exposure creates no stay decisions');
+stay_results_need($afterV2[3]===0,'dictionary exposure creates no stay decisions');
 
-echo "SEARCH3_LOCAL_STAY_DICTIONARIES_OK hotels=1 rooms=1 meal_dictionary=10 raw_offer_preserved=1 mappings=0 writes=0\n";
+echo "SEARCH3_LOCAL_STAY_DICTIONARIES_V2_OK hotels=1 hotel_scoped_rooms=1 hotel_scoped_meals=1 raw_offer_preserved=1 mappings=0 writes=0\n";
