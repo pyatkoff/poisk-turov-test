@@ -47,7 +47,9 @@ function fixture_dto(string $provider, int $legacyHotelId, string $salt, string 
         'identity' => [
             'search_ref_digest' => hash('sha256', 'search:' . $provider . ':' . $salt),
             'offer_ref_digest' => hash('sha256', 'offer:' . $provider . ':' . $salt),
-            'provider_hotel_ref_digest' => hash('sha256', 'hotel:' . $provider . ':' . $salt),
+            'provider_hotel_ref_digest' => $provider === 'andromeda'
+                ? hash('sha256', 'andromeda_catalog:7001')
+                : hash('sha256', 'hotel:' . $provider . ':' . $salt),
         ],
         'tour' => [
             'checkin' => '2026-10-05',
@@ -144,11 +146,20 @@ function exec_sql_file(PDO $pdo, string $path): void
     }
 }
 
-foreach (['anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $table) {
+foreach (['anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','andromeda_hotel_identities','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $table) {
     $pdo->exec('DROP TABLE IF EXISTS ' . $table);
 }
 exec_sql_file($pdo, __DIR__ . '/../v2/data/migrations/20260916-anytour-canonical-catalog.sql');
 exec_sql_file($pdo, __DIR__ . '/../v2/data/migrations/20260916-anytour-offer-store.sql');
+$pdo->exec("CREATE TABLE andromeda_hotel_identities (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    supplier_namespace VARCHAR(64) NOT NULL,
+    external_hotel_id VARCHAR(120) NOT NULL,
+    local_hotel_id BIGINT UNSIGNED NULL,
+    decision_status VARCHAR(32) NOT NULL,
+    KEY ix_external (external_hotel_id),
+    KEY ix_tuple (supplier_namespace,external_hotel_id,decision_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
 $nowSql = '2026-09-16 18:00:00';
 $profile = json_encode(['name' => 'Fixture Hotel'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
@@ -182,6 +193,12 @@ foreach ([101=>$own1,202=>$own2] as $legacy=>$own) {
 check(AnyTourProviderIdentityBridgeV1::allowsOffer(
     $pdo,'tourvisor',hash('sha256','hotel:tourvisor:tv-1'),101,$own1
 ),'fixture-own-alias-allows-tourvisor');
+$pdo->prepare("INSERT INTO andromeda_hotel_identities
+    (supplier_namespace,external_hotel_id,local_hotel_id,decision_status)
+    VALUES('andromeda_catalog','7001',101,'accepted')")->execute();
+check(AnyTourProviderIdentityBridgeV1::allowsOffer(
+    $pdo,'andromeda',hash('sha256','andromeda_catalog:7001'),101,$own1
+),'fixture-current-andromeda-accepted');
 
 $at = new DateTimeImmutable('2026-09-16T18:00:00Z');
 $expires = $at->modify('+30 minutes');
