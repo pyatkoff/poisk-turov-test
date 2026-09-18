@@ -1312,7 +1312,10 @@ async function run(browser, width, previous) {
     assert.ok((await card.locator('.tour-more-toggle').boundingBox()).height >= 44, 'real disclosure action retains a full touch target');
     assert.equal(await card.locator('.tour-more-toggle').innerText(), 'Показать варианты · 3', 'disclosure states the total loaded offer count');
     assert.equal(await card.locator('.tour-meta').count(), 0, 'exact offer owner stays absent before disclosure');
-    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /12\.09\.2026|9 ноч\.|Всё включено|STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL|Двухместное/, 'collapsed hotel excludes concrete offer parameters');
+    assert.match(await card.locator('.hotel-trip-summary').innerText(), /12\.09\.2026/,'collapsed conditions belong to the offer matching the shown minimum');
+    assert.match(await card.locator('.hotel-trip-summary').innerText(), /Ночей\s+9/);
+    assert.match(await card.locator('.hotel-trip-summary').innerText(), /Всё включено/);
+    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL|Двухместное/, 'collapsed minimum facts exclude unrelated room, placement and operator details');
     assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от148500,6₽', 'collapsed hotel exposes only its precise minimum with a truthful prefix');
     const single = page.locator('#results [data-hotel-id=cheap].hotel-card');
     assert.equal(await single.locator('.hotel-trip-summary,.tour-more-toggle').count(), 0, 'single-offer hotel needs no redundant aggregate or disclosure');
@@ -1364,7 +1367,10 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'keyboard collapse retains focus on the replacement disclosure');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'false');
     assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'collapse restores exactly one hotel-level summary');
-    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /12\.09\.2026|9 ноч\.|Всё включено|STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL|Двухместное/, 'collapse cannot reintroduce concrete offer conditions');
+    assert.match(await card.locator('.hotel-trip-summary').innerText(), /12\.09\.2026/,'keyboard collapse restores conditions of the same minimum offer');
+    assert.match(await card.locator('.hotel-trip-summary').innerText(), /Ночей\s+9/);
+    assert.match(await card.locator('.hotel-trip-summary').innerText(), /Всё включено/);
+    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL|Двухместное/, 'collapse never adds room, placement or operator from an arbitrary offer');
     assert.equal(await page.evaluate(() => window.V2Results.state.items.every((hotel, i) => hotel === window.__decisionOriginal[i]) && window.V2Results.representativeTour(window.__decisionOriginal[0]) === window.__decisionOriginal[0].tours[1]), true, 'render and disclosure preserve original hotel and representative tour objects');
     assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(hotels), 'disclosure leaves frozen source prices, tour order and contents unchanged');
     await page.locator('#sortResults').selectOption('rating');

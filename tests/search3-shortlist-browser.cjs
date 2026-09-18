@@ -99,7 +99,11 @@ async function discloseMatchingOffers(page) {
   assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'matching multi-offer hotel starts at hotel level without Select or Compare');
   assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'matching multi-offer hotel exposes one hotel-level minimum');
   assert.equal((await card.locator('.hotel-price').innerText()).replace(/\s/g, ''), 'от120000₽', 'RO90k is excluded and matching AI offers contribute only the truthful hotel minimum');
-  assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /offer-standard|Biblioglobus|Tourvisor|Всё включено|12\.09\.2026/, 'collapsed shortlist entry does not borrow one exact offer');
+  const minimumFacts = await card.locator('.hotel-trip-summary').innerText();
+  assert.match(minimumFacts, /12\.09\.2026/, 'collapsed shortlist entry identifies the matching minimum departure');
+  assert.match(minimumFacts, /Ночей\s+9/, 'minimum nights remain exact');
+  assert.match(minimumFacts, /Всё включено/, 'minimum meal follows the matching AI offer');
+  assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /offer-standard|Biblioglobus|Tourvisor|STANDARD|FAMILY|DBL/, 'collapsed shortlist entry does not expose an offer ID, room, placement or provider');
   const disclosure = card.locator('.tour-more-toggle');
   assert.ok((await disclosure.boundingBox()).height >= 44, 'offer disclosure retains a 44px target');
   await disclosure.focus();

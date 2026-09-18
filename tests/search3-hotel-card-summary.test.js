@@ -36,7 +36,7 @@ const multi = {
   ],
 };
 
-// A HOTEL aggregate must not borrow one concrete tour's conditions before disclosure.
+// Collapsed conditions belong only to the exact offer matching the displayed minimum.
 const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};
 freeze(multi);
 const original=JSON.stringify(multi);
@@ -47,15 +47,32 @@ for(const tours of [multi.tours,[...multi.tours].reverse()]){
   assert.match(html,/hotel-offers-summary/);
   assert.match(html,/от 62(?:\s| )?400/);
   assert.match(html,/Показать варианты · 3/);
-  assert.doesNotMatch(html,/class="tour-row"|data-tid=|direct-tour|data-operator-brand=|16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|9 ноч\.|10 ноч\.|Завтрак|Всё включено|FUN&SUN|ANEX|Чартер|Регулярный рейс/);
+  assert.match(html,/Тур по минимальной цене/);
+  assert.match(html,/Вылет <b>16\.09\.2026<\/b>/);
+  assert.match(html,/Ночей <b>7<\/b>/);
+  assert.match(html,/Питание <b>Завтраки<\/b>/);
+  assert.doesNotMatch(html,/class="tour-row"|data-tid=|direct-tour|data-operator-brand=|17\.09\.2026|18\.09\.2026|Ночей <b>(?:9|10)<|Всё включено|FUN&SUN|ANEX|Чартер|Регулярный рейс/);
 }
 assert.equal(api.priceContext(multi),'16.09.2026 · 7 ноч. · Завтраки');
 // The collapsed aggregate reads the canonical hotel-level minimum and never invents tour conditions around it.
 for(const [price,label] of [[61000,'61'],[999999,'999'],[undefined,'62'],[null,'62'],[0,'62'],[-1,'62'],['unknown','62']]){
   const html=api.toursHtml({...multi,price});
   assert.match(html,new RegExp('от '+label));
-  assert.doesNotMatch(html,/data-tid=|16\.09\.2026|Завтрак|FUN&SUN|Чартер/);
+  assert.doesNotMatch(html,/data-tid=|FUN&SUN|Чартер/);
+  if(price===61000||price===999999)assert.doesNotMatch(html,/hotel-trip-summary|16\.09\.2026|Завтрак/,'unmatched aggregate minimum never borrows another offer conditions');
+  else assert.match(html,/Вылет <b>16\.09\.2026<\/b>/,'fallback minimum uses the matching cheapest offer');
 }
+for(const nights of ['7–9','7-9',0,-1,7.5,null,true,[7]]){
+  const html=api.toursHtml({...multi,tours:[{...multi.tours[0],nights},multi.tours[1]]});
+  assert.doesNotMatch(html,/Ночей <b>/,'ranges and absent/invalid nights never become exact facts');
+}
+const unknownDate=api.toursHtml({...multi,tours:[{...multi.tours[0],date:'16–19 сентября'},multi.tours[1]]});
+assert.doesNotMatch(unknownDate,/Вылет <b>|16–19/,'a date range is not an exact minimum-offer departure');
+const filtered=api.toursHtml({...multi,price:70100,tours:[multi.tours[1],multi.tours[2]]});
+assert.match(filtered,/Вылет <b>17\.09\.2026<\/b>/);
+assert.match(filtered,/Ночей <b>10<\/b>/);
+assert.match(filtered,/Питание <b>Всё включено<\/b>/);
+assert.doesNotMatch(filtered,/16\.09\.2026|Завтраки/,'filtered minimum never keeps stale cheapest-offer conditions');
 // Readiness remains per concrete offer and is not projected onto the hotel aggregate.
 for(const flags of [{selectionEnabled:false},{selection_enabled:false},{provider:'andromeda'},{provider:'ANDROMEDA',selectionEnabled:true}]){
   const blocked={...multi.tours[0],...flags},other={...multi.tours[1],price:62400};

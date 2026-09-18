@@ -15,7 +15,10 @@ const hotel=freeze({id:'hotel',name:'Проверочный отель',price:62
 const original=JSON.stringify(hotel);
 const summary=api.toursHtml(hotel);
 assert.match(summary,/hotel-offers-summary/);
-assert.doesNotMatch(summary,/class="tour-row"|data-tid=|data-operator-brand=|Итого за тур|16\.09\.2026|7 ноч\.|Завтрак|Чартер/,'collapsed multi-offer hotel must not borrow one tour conditions or actions');
+assert.doesNotMatch(summary,/class="tour-row"|data-tid=|data-operator-brand=|Итого за тур|Чартер/,'collapsed minimum-offer facts never borrow selection, operator or flight actions');
+assert.match(summary,/Вылет <b>16\.09\.2026<\/b>/);
+assert.match(summary,/Ночей <b>7<\/b>/);
+assert.match(summary,/Питание <b>Завтраки<\/b>/);
 assert.equal((summary.match(/class="hotel-price"/g)||[]).length,1);
 assert.match(summary,/от 62(?:\s| )?400/);
 assert.match(summary,/Показать варианты · 2/);
