@@ -404,6 +404,7 @@ final class AnyTourHotelStayReviewedImportV2
     {
         $this->outsideTransaction();
         self::digest($expectedPlanSha,'HOTEL_STAY_REVIEWED_IMPORT_PLAN_SHA');
+        $originalManifest=$manifest;
         $manifest=self::normalizeManifest($manifest);
 
         $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
@@ -442,7 +443,7 @@ final class AnyTourHotelStayReviewedImportV2
         }
 
         try {
-            $verified=$this->plan($manifest,$now);
+            $verified=$this->plan($originalManifest,$now);
             if ($verified['insertCount']!==0
                 || $verified['existingIdenticalCount']!==count($manifest['decisions'])) {
                 return [
