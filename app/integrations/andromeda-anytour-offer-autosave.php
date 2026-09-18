@@ -34,7 +34,7 @@ final class AnyTourAndromedaOfferAutosaveV1
     /**
      * @param callable(array):array $mappingReader current [namespace,external] -> legacy local map
      * @param callable(array):array $canonicalResolver legacy local -> AnyTour own id/null map
-     * @param callable(array,int,array,array):?array $surchargeReader retained local pricing reader
+     * @param callable(array,int,array,array):?array $surchargeReader retained local pricing reader; null may be reread once after the cohort is primed
      * @param callable(string,array):bool $save atomic private checkpoint writer
      * @param callable(string,array,array,DateTimeImmutable):array $ingest LOCAL snapshot ingestor
      */
@@ -202,12 +202,23 @@ final class AnyTourAndromedaOfferAutosaveV1
         $canonical = $canonicalResolver(array_values($legacyIds));
         if (!is_array($canonical)) throw new RuntimeException('ANDROMEDA_ANYTOUR_CANONICAL_RECEIPT');
         $childAges = self::childAges($request['params']['childs'] ?? null);
+        // Reading an exact retained estimate may seed the strict group cache. Finish
+        // this bounded supplier-free pass before resolving earlier cache misses, even
+        // when the specimen is on a later PRICE page. Non-null pricing is immutable
+        // here: exact/verified/invalid envelopes must never be replaced by fallback.
+        $pricing = [];
+        foreach ($mapped as $index => $row) {
+            $pricing[$index] = $surchargeReader($row['state'], $firstCreated, $row['offer'], $current);
+        }
         $entries = [];
-        foreach ($mapped as $row) {
+        foreach ($mapped as $index => $row) {
             $page = $row['page'];
             $state = $row['state'];
             $raw = $row['offer'];
             $local = $raw['local_hotel_id'];
+            if ($pricing[$index] === null) {
+                $pricing[$index] = $surchargeReader($state, $firstCreated, $raw, $current);
+            }
             $entry = self::entryFromOffer(
                 $raw,
                 $searchRef,
@@ -216,7 +227,7 @@ final class AnyTourAndromedaOfferAutosaveV1
                 $state['store']['created_at'],
                 $childAges,
                 $canonical[$local] ?? null,
-                $surchargeReader($state, $firstCreated, $raw, $current)
+                $pricing[$index]
             );
             if ($entry === null) {
                 return self::receipt(false, 'offer_contract_incomplete', 0, count($owned), count($offers));
