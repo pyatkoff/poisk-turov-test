@@ -42,6 +42,7 @@ final class AnyTourAndromedaNormalizer {
         foreach ($payload['PRICES'] as $index=>$row) {
             try {
                 if (!is_array($row)) throw new InvalidArgumentException('INVALID_ROW');
+                $row=self::withCriteriaPartyFallback($row,$criteria);
                 $missing=self::firstMissingRequiredField($row);
                 if ($missing!==null) {
                     $rejected[]=[
@@ -63,6 +64,11 @@ final class AnyTourAndromedaNormalizer {
             // A standalone page does not prove earlier pages were received.
             'status'=>($payload['PAGES_COUNT']<=1 && !$rejected)?'complete':'partial',
             'offers'=>$offers,'rejected'=>$rejected,'selection_enabled'=>false];
+    }
+    private static function withCriteriaPartyFallback(array $row,array $criteria): array {
+        if (!array_key_exists('adult',$row)) $row['adult']=$criteria['ADULT'];
+        if (!array_key_exists('child',$row)) $row['child']=$criteria['CHILD'];
+        return $row;
     }
     private static function firstMissingRequiredField(array $row): ?string {
         foreach (self::REQUIRED_FIELDS as $key) {
