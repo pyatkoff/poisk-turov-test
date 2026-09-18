@@ -6,7 +6,8 @@ require_once __DIR__.'/andromeda-transport.php';
 
 const HMCA_OPERATION='hotel-match-user-seen-common4-samo-catalog-acquire-1971-20260918-v2';
 const HMCA_ROW_LIMIT=100000;
-const HMCA_MAX_CATALOG_CALLS=120;
+const HMCA_MAX_CATALOG_CALLS=400;
+const HMCA_EXCLUDED_COUNTRIES=[46=>true,47=>true];
 const HMCA_V3_RESULT='79812e2b71e8d0c201a7e5ff3132d1b68f3d6d00961c1dc26d7bca438e8d3d10';
 const HMCA_V3_ARTIFACT=10525638655;
 
@@ -24,7 +25,7 @@ function hmca_name_variants(string $name): array {
     $flat=[];foreach($out as $key=>$reasons){$rs=array_keys($reasons);sort($rs,SORT_STRING);$flat[$key]=$rs;}return $flat;
 }
 function hmca_aliases(string $value,array $map): array {$n=hmca_norm($value);$out=[$n=>true];foreach($map as $group)if(in_array($n,array_map('hmca_norm',$group),true))foreach($group as $v)$out[hmca_norm($v)]=true;return array_keys($out);}
-function hmca_country_aliases(string $v): array {return hmca_aliases($v,[['Турция','Turkey','Turkiye','Türkiye'],['Египет','Egypt'],['ОАЭ','UAE','United Arab Emirates','Объединенные Арабские Эмираты'],['Мальдивы','Maldives'],['Вьетнам','Vietnam'],['Таиланд','Thailand'],['Куба','Cuba'],['Шри-Ланка','Sri Lanka'],['Катар','Qatar'],['Китай','China'],['Маврикий','Mauritius'],['Индонезия','Indonesia'],['Тунис','Tunisia'],['Индия','India']]);}
+function hmca_country_aliases(string $v): array {return hmca_aliases($v,[['Турция','Turkey','Turkiye','Türkiye'],['Египет','Egypt'],['ОАЭ','UAE','United Arab Emirates','Объединенные Арабские Эмираты'],['Мальдивы','Maldives'],['Вьетнам','Vietnam'],['Таиланд','Thailand'],['Куба','Cuba'],['Шри-Ланка','Sri Lanka'],['Катар','Qatar'],['Китай','China'],['Маврикий','Mauritius'],['Индонезия','Indonesia'],['Тунис','Tunisia'],['Индия','India'],['Танзания','Tanzania'],['Узбекистан','Uzbekistan'],['Марокко','Morocco'],['Сейшелы','Seychelles']]);}
 function hmca_departure_aliases(string $v): array {return hmca_aliases($v,[['Москва','Moscow'],['Санкт-Петербург','Санкт Петербург','Saint Petersburg','St Petersburg'],['Екатеринбург','Yekaterinburg','Ekaterinburg'],['Казань','Kazan'],['Новосибирск','Novosibirsk'],['Самара','Samara'],['Уфа','Ufa'],['Челябинск','Chelyabinsk'],['Нижний Новгород','Nizhny Novgorod'],['Минеральные Воды','Mineralnye Vody'],['Пермь','Perm'],['Тюмень','Tyumen'],['Омск','Omsk'],['Красноярск','Krasnoyarsk'],['Иркутск','Irkutsk']]);}
 function hmca_unique_dict_id(array $rows,array $aliases): ?int {$want=array_fill_keys($aliases,true);$hits=[];foreach($rows as $r){if(!is_array($r))continue;$id=(int)($r['id']??0);$name=hmca_norm(hmca_scalar($r['name']??'',180));if($id>0&&isset($want[$name]))$hits[$id]=true;}return count($hits)===1?(int)array_key_first($hits):null;}
 function hmca_catalog_call(array $session,string $action,array $params,int &$calls,float &$last): array {if(++$calls>HMCA_MAX_CATALOG_CALLS)throw new RuntimeException('catalog_call_budget');$wait=1.05-(microtime(true)-$last);if($wait>0)usleep((int)ceil($wait*1000000));$last=microtime(true);$tr=new AnyTourAndromedaTransport(false,false);$cl=new AnyTourAndromedaClient($tr,true);$cl->restorePrivateSession($session);return $cl->catalog($action,$params);}
@@ -32,7 +33,8 @@ function hmca_catalog_call(array $session,string $action,array $params,int &$cal
 if(in_array('--self-test',$argv??[],true)){
     if(hmca_product_hold('FORTUNA MARMARIS')===null||hmca_product_hold('FORTUNA HOTEL PHU QUOC')!==null)throw new RuntimeException('product_filter');
     $v=hmca_name_variants('SUN BAY (EX. SUN MARIS PARK)');if(!isset($v['sun bay'],$v['sun maris park']))throw new RuntimeException('name_variants');
-    if(!in_array('turkey',hmca_country_aliases('Турция'),true)||!in_array('moscow',hmca_departure_aliases('Москва'),true))throw new RuntimeException('aliases');
+    if(!in_array('turkey',hmca_country_aliases('Турция'),true)||!in_array('tanzania',hmca_country_aliases('Танзания'),true)||!in_array('uzbekistan',hmca_country_aliases('Узбекистан'),true)||!in_array('moscow',hmca_departure_aliases('Москва'),true))throw new RuntimeException('aliases');
+    if(HMCA_MAX_CATALOG_CALLS!==400||!isset(HMCA_EXCLUDED_COUNTRIES[46],HMCA_EXCLUDED_COUNTRIES[47]))throw new RuntimeException('global_limits');
     echo "MATCH_COMMON4_SAMO_CATALOG_ACQUIRE_SELFTEST_OK\n";exit(0);
 }
 if(PHP_SAPI!=='cli')exit(2);
@@ -50,7 +52,7 @@ try{
     $andTargets=[];foreach($identityRows as $r)if(($r['decision_status']??'')==='accepted'&&$r['local_hotel_id']!==null)$andTargets[(int)$r['local_hotel_id']]=true;
     $seen=[];foreach(hmca_rows($pdo,"SELECT hotel_id,MAX(observed_at) last_observed_at,COUNT(*) observation_rows FROM tour_price_observations WHERE source='user_search' GROUP BY hotel_id") as $r){$id=(int)$r['hotel_id'];if($id>0)$seen[$id]=['last'=>(string)$r['last_observed_at'],'rows'=>(int)$r['observation_rows']];}
     $ids=array_keys($seen);if(!$ids)throw new RuntimeException('no_seen');$ph=implode(',',array_fill(0,count($ids),'?'));
-    $frontier=[];foreach(hmca_rows($pdo,"SELECT id,country_id,country_name,region_id,region_name,subregion_id,subregion_name,name,is_active FROM catalog_hotels WHERE id IN ($ph)",$ids) as $r){$id=(int)$r['id'];if((int)$r['is_active']!==1||isset($anexTargets[$id])||isset($andTargets[$id])||hmca_product_hold((string)$r['name'])!==null)continue;$frontier[$id]=['hotel_id'=>$id,'hotel_name'=>(string)$r['name'],'country_id'=>(int)$r['country_id'],'country_name'=>(string)$r['country_name'],'region_name'=>(string)($r['region_name']??''),'subregion_name'=>(string)($r['subregion_name']??''),'user_observation_rows'=>$seen[$id]['rows'],'last_user_observed_at'=>$seen[$id]['last']];}
+    $frontier=[];foreach(hmca_rows($pdo,"SELECT id,country_id,country_name,region_id,region_name,subregion_id,subregion_name,name,is_active FROM catalog_hotels WHERE id IN ($ph)",$ids) as $r){$id=(int)$r['id'];if((int)$r['is_active']!==1||isset(HMCA_EXCLUDED_COUNTRIES[(int)$r['country_id']])||isset($anexTargets[$id])||isset($andTargets[$id])||hmca_product_hold((string)$r['name'])!==null)continue;$frontier[$id]=['hotel_id'=>$id,'hotel_name'=>(string)$r['name'],'country_id'=>(int)$r['country_id'],'country_name'=>(string)$r['country_name'],'region_name'=>(string)($r['region_name']??''),'subregion_name'=>(string)($r['subregion_name']??''),'user_observation_rows'=>$seen[$id]['rows'],'last_user_observed_at'=>$seen[$id]['last']];}
     $fids=array_keys($frontier);if(!$fids)throw new RuntimeException('frontier_empty');$fh=implode(',',array_fill(0,count($fids),'?'));
     $priceRows=hmca_rows($pdo,"SELECT hotel_id,operator_id,departure_id,country_id,departure_date,nights,adults,children_count,child_ages_signature,room_type,observed_at,COUNT(*) OVER(PARTITION BY hotel_id,operator_id) hotel_operator_rows FROM tour_price_observations WHERE source='user_search' AND hotel_id IN ($fh) AND departure_date>=CURRENT_DATE AND operator_id IN(13,18,25,43) ORDER BY observed_at DESC",$fids);
     $departures=[];foreach(hmca_rows($pdo,'SELECT id,name FROM catalog_departures WHERE is_active=1') as $r)$departures[(int)$r['id']]=(string)$r['name'];
