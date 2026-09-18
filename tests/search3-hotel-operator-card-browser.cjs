@@ -28,7 +28,12 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await card.locator('[data-operator-brand],.hotel-operator-logo').count(),0,'collapsed multi-offer hotel does not borrow one concrete operator');
     assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(),0,'collapsed multi-offer hotel has no concrete offer row, Select, or Compare');
     const collapsedText=await card.innerText();
-    assert.doesNotMatch(collapsedText,/16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|8 ноч\.|9 ноч\.|10 ноч\.|Завтраки|Полупансион|Всё включено|STANDARD|DBL|Двухместное|Tourvisor|FUN&SUN|ANEX|Интурист|Библио|Coral|Sunmar|Санмар|Чартер|Регулярный рейс/,'collapsed hotel-level surface excludes concrete offer parameters');
+    const minimumFacts=await card.locator('.hotel-trip-summary').innerText();
+    assert.match(minimumFacts,/Тур по минимальной цене/);
+    assert.match(minimumFacts,/Вылет\s+16\.09\.2026/);
+    assert.match(minimumFacts,/Ночей\s+7/);
+    assert.match(minimumFacts,/Питание\s+Завтраки/);
+    assert.doesNotMatch(collapsedText,/17\.09\.2026|18\.09\.2026|Ночей\s+(?:8|9|10)|Полупансион|Всё включено|STANDARD|DBL|Двухместное|Tourvisor|FUN&SUN|ANEX|Интурист|Библио|Coral|Sunmar|Санмар|Чартер|Регулярный рейс/,'collapsed minimum-offer facts exclude other offers and unrelated details');
     assert.equal(await card.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от62400₽','collapsed multi-offer hotel exposes only the truthful group minimum');
     assert.equal(await card.locator('.tour-more-toggle').count(),1);
     const toggle=card.locator('.tour-more-toggle');
@@ -253,6 +258,6 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await operatorField.isVisible(),false,'two spellings of one operator do not invent a second facet choice');
     assert.deepEqual(sent,[],'local disclosure sends no supplier, lead, or other mutation requests');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:null,collapsed_exact_offer:null,hotel_level_only:true,compact_exact_offer_rows:true,known_logo_coverage:['funsun','anex','intourist','biblio-globus','coral','sunmar','pegas'],loadedLogos,exact_nights:[7,10,8,9,7,8,9,10,7,8,7,9],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:12,operatorChoices,aliasMatches:[2,2,0,0],providerFacet:false,sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
+    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:null,collapsed_exact_offer:null,collapsed_minimum_facts:{date:'16.09.2026',nights:7,meal:'Завтраки'},compact_exact_offer_rows:true,known_logo_coverage:['funsun','anex','intourist','biblio-globus','coral','sunmar','pegas'],loadedLogos,exact_nights:[7,10,8,9,7,8,9,10,7,8,7,9],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:12,operatorChoices,aliasMatches:[2,2,0,0],providerFacet:false,sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
   }finally{page.off('request',listener);}
 };
