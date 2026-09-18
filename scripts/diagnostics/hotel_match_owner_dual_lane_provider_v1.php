@@ -50,23 +50,23 @@ function hmd_offer_date(mixed $v):?string{
 function hmd_anex_search($cl,array $ctx,array $depNames,array $countryNames):array{
   $townfrom=$cl->request('SearchTour_TOWNFROMS',[]);$dep=hmd_dict_id(is_array($townfrom)?$townfrom:[],$depNames);if(!$dep)throw new RuntimeException('anex_departure_bind');
   $states=$cl->request('SearchTour_STATES',['TOWNFROMINC'=>$dep]);$state=hmd_dict_id(is_array($states)?$states:[],$countryNames);if(!$state)throw new RuntimeException('anex_country_bind');
-  $towns=$cl->request('SearchTour_TOWNS',['TOWNFROMINC'=>$dep,'STATEINC'=>$state]);$town=hmd_dict_id(is_array($towns)?$towns:[],hmd_resort_aliases($ctx['region_name'],$ctx['subregion_name']));if(!$town)throw new RuntimeException('anex_town_bind');
-  $stars=$cl->request('SearchTour_STARS',['TOWNFROMINC'=>$dep,'STATEINC'=>$state]);$star=hmd_star_id(is_array($stars)?$stars:[],$ctx['star']);if(!$star)throw new RuntimeException('anex_star_bind');
   $beg=str_replace('-','',$ctx['date_from']);$end=str_replace('-','',$ctx['date_to']);
-  $curr=$cl->request('SearchTour_CURRENCIES',['TOWNFROMINC'=>$dep,'STATEINC'=>$state,'CHECKIN_BEG'=>$beg,'CHECKIN_END'=>$end,'ADULT'=>2,'CHILD'=>0]);$rub=hmd_dict_id(is_array($curr)?$curr:[],['RUB','RUR','Рубль','Рубли','Руб']);if(!$rub)throw new RuntimeException('anex_rub_bind');
-  $base=['TOWNFROMINC'=>$dep,'STATEINC'=>$state,'TOWNTOINC'=>$town,'STARS'=>$star,'CHECKIN_BEG'=>$beg,'CHECKIN_END'=>$end,'NIGHTS_FROM'=>$ctx['nights'],'NIGHTS_TILL'=>$ctx['nights'],'ADULT'=>2,'CHILD'=>0,'CURRENCY'=>$rub,'FREIGHT'=>1,'FILTER'=>1,'PARTITION_PRICE'=>32,'SORT'=>'ASC','DYN_SEPARATE'=>1];
-  $out=[];$pages=[];$seenRows=[];
+  $dated=['TOWNFROMINC'=>$dep,'STATEINC'=>$state,'CHECKIN_BEG'=>$beg,'CHECKIN_END'=>$end,'ADULT'=>2,'CHILD'=>0];
+  $curr=$cl->request('SearchTour_CURRENCIES',$dated);$rub=hmd_dict_id(is_array($curr)?$curr:[],['RUB','RUR','Рубль','Рубли','Руб']);if(!$rub)throw new RuntimeException('anex_rub_bind');
+  $base=$dated+['CURRENCY'=>$rub,'NIGHTS_FROM'=>$ctx['nights'],'NIGHTS_TILL'=>$ctx['nights'],'FREIGHT'=>1,'FILTER'=>1,'PARTITION_PRICE'=>32,'SORT'=>'ASC','DYN_SEPARATE'=>1];
+  $aliases=hmd_resort_aliases($ctx['region_name'],$ctx['subregion_name']);$out=[];$pages=[];$seenRows=[];
   for($p=1;$p<=HMD_ANEX_MAX_PAGES;$p++){
-    $raw=$cl->request('SearchTour_PRICES',$base+['PRICEPAGE'=>$p]);$rows=hmd_anex_rows($raw);$newRows=0;
+    $raw=$cl->request('SearchTour_PRICES',$base+['PRICEPAGE'=>$p]);$rows=hmd_anex_rows($raw);$newRows=0;$matchedRows=0;
     foreach($rows as$r){
       if(!is_array($r))continue;$rs=hash('sha256',hmd_json($r));if(!isset($seenRows[$rs])){$seenRows[$rs]=true;$newRows++;}
-      $id=hmd_id($r['hotelKey']??null);$date=hmd_offer_date($r['checkIn']??null);if(!$id||$date===null||$date<$ctx['date_from']||$date>$ctx['date_to'])continue;
-      $key=$id.'|'.$date;$room=hmd_text($r['room']??$r['roomName']??$r['roomType']??'',300);
-      if(!isset($out[$key]))$out[$key]=['native_anex_id'=>$id,'check_in'=>$date,'name'=>hmd_text($r['hotel']??'',300),'town'=>hmd_text($r['town']??'',200),'star'=>hmd_star_value($r['star']??null),'rooms'=>[]];
+      $id=hmd_id($r['hotelKey']??null);$date=hmd_offer_date($r['checkIn']??null);$town=hmd_text($r['town']??'',200);$star=hmd_star_value($r['star']??null);
+      if(!$id||$date===null||$date<$ctx['date_from']||$date>$ctx['date_to']||$star!==$ctx['star']||!hmd_resort_match($town,$aliases))continue;
+      $matchedRows++;$key=$id.'|'.$date;$room=hmd_text($r['room']??$r['roomName']??$r['roomType']??'',300);
+      if(!isset($out[$key]))$out[$key]=['native_anex_id'=>$id,'check_in'=>$date,'name'=>hmd_text($r['hotel']??'',300),'town'=>$town,'star'=>$star,'rooms'=>[]];
       if($room!=='')$out[$key]['rooms'][hmd_room_key($room)]=['raw'=>$room,'key'=>hmd_room_key($room)];
     }
-    $pages[]=['page'=>$p,'rows'=>count($rows),'new_rows'=>$newRows,'unique_hotel_dates'=>count($out)];
-    if(count($rows)===0||$newRows===0){foreach($out as&$x)$x['rooms']=array_values($x['rooms']);unset($x);return['hotels'=>$out,'pages'=>$pages,'fully_drained'=>true,'bindings'=>['townfrom'=>$dep,'state'=>$state,'town'=>$town,'star'=>$star]];}
+    $pages[]=['page'=>$p,'rows'=>count($rows),'new_rows'=>$newRows,'matched_resort_star_rows'=>$matchedRows,'unique_hotel_dates'=>count($out)];
+    if(count($rows)===0||$newRows===0){foreach($out as&$x)$x['rooms']=array_values($x['rooms']);unset($x);return['hotels'=>$out,'pages'=>$pages,'fully_drained'=>true,'bindings'=>['townfrom'=>$dep,'state'=>$state,'resort_evidence'=>'returned_town','star_evidence'=>'returned_star']];}
   }
   throw new RuntimeException('anex_page_cap');
 }
