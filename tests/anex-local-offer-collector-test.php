@@ -39,10 +39,11 @@ $expand=static function(array $request,array &$state)use(&$expandCalls):array{
 $record=static function(array &$state)use(&$programCalls):array{++$programCalls;return ['status'=>'complete'];};
 $batch=static function(array $request,array &$state)use(&$batchCalls):array{
     ++$batchCalls;
-    ck(count($request['items'])===1,'batch-dedup');
-    return ['status'=>'additional_prices_batch','offers'=>[[
-        'status'=>'additional_prices','finalPriceReady'=>true,'retryable'=>false,
-    ]]];
+    ck(count($request['items'])===2,'batch-identity');
+    return ['status'=>'additional_prices_batch','offers'=>[
+        ['status'=>'additional_prices','finalPriceReady'=>true,'retryable'=>false],
+        ['status'=>'additional_prices','finalPriceReady'=>true,'retryable'=>false],
+    ]];
 };
 $request=['action'=>'search','generation'=>42,'params'=>['departureId'=>'1','countryId'=>'4']];
 $result=AnyTourAnexLocalOfferCollectorV1::collect($request,$state,$search,$expand,$record,$batch,2,6);
@@ -50,9 +51,9 @@ ck($searchCalls===1,'search-once');
 ck($expandCalls===2,'expand-bounded-actual');
 ck($programCalls===3,'program-after-search-and-expands');
 ck($batchCalls===1,'batch-once');
-ck($result['charter_concrete_candidates']===1,'charter-dedup');
-ck($result['regular_concrete_candidates']===2,'regular-observed');
-ck($result['final_price_ready_offers']===1,'ready-count');
+ck($result['charter_concrete_candidates']===2,'charter-per-hotel-identity');
+ck($result['regular_concrete_candidates']===3,'regular-observed');
+ck($result['final_price_ready_offers']===2,'ready-count');
 
 $state=[];
 $expandCalls=0;
