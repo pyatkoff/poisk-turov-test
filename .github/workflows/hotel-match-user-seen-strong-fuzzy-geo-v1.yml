@@ -1,0 +1,141 @@
+name: MATCH user-seen strong fuzzy geo v1
+
+on:
+  push:
+    branches:
+      - match/user-seen-strong-fuzzy-geo-1971-20260918-v1
+    paths:
+      - .github/workflows/hotel-match-user-seen-strong-fuzzy-geo-v1.yml
+      - scripts/diagnostics/hotel_match_user_seen_strong_fuzzy_geo_v1.php
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+env:
+  OPERATION_ID: hotel-match-user-seen-strong-fuzzy-geo-1971-20260918-v1
+  EXPECTED_BASE: 1859c232285e70f558e70270c4f72eb8be8b8d33
+  CLAIM_COMMENT_ID: '5723454310'
+
+jobs:
+  scan:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.ref == 'refs/heads/match/user-seen-strong-fuzzy-geo-1971-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact read-only fuzzy delta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_user_seen_strong_fuzzy_geo_v1.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-user-seen-strong-fuzzy-geo-v1.yml'
+
+          php -l scripts/diagnostics/hotel_match_user_seen_strong_fuzzy_geo_v1.php
+          php scripts/diagnostics/hotel_match_user_seen_strong_fuzzy_geo_v1.php --self-test
+          php -l scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php
+          php -l scripts/diagnostics/hotel_match_current_supplier_bridge.php
+          php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
+          php -l app/integrations/anex-search-mapping-registry.php
+
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json, os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          b=c['body']
+          assert os.environ['OPERATION_ID'] in b
+          assert 'score>=82' in b
+          assert 'margin>=12' in b
+          assert 'direct-geo' in b
+          assert 'DB/mapping writes0' in b
+          PY
+
+      - name: Require SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          test -n "$HOST_VALUE"
+          test -n "$USER_VALUE"
+
+      - name: Run current DB strong fuzzy geo scan
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p result
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+
+          ssh "${opts[@]}" "$remote" "umask 077; rm -rf \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}"             scripts/diagnostics/hotel_match_user_seen_strong_fuzzy_geo_v1.php             scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php             scripts/diagnostics/hotel_match_current_supplier_bridge.php             scripts/diagnostics/hotel_full_catalog_reconcile.php             app/integrations/anex-search-mapping-registry.php             "$remote:$op/payload/"
+
+          ssh "${opts[@]}" "$remote"             "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php \"\$HOME/$op/payload/hotel_match_user_seen_strong_fuzzy_geo_v1.php\""             > result/result.json
+
+          python3 - <<'PY'
+          import json, pathlib
+          d=json.load(open('result/result.json'))
+          assert d['status']=='read_only_complete'
+          assert d['database_writes']==0 and d['mapping_writes']==0 and d['supplier_calls']==0 and d['tourvisor_calls']==0
+          assert d['prepared_identity_count']==len(d['prepared_rows'])
+          assert d['prepared_unique_local_hotels']==len(d['candidate_targets'])
+          t=d['thresholds']
+          assert t['min_score']==82 and t['min_margin']==12 and t['min_symmetric']==0.75 and t['min_common_tokens']==2
+          assert t['direct_geo_required'] is True
+          summary={
+            'frontier':d['frontier_count'],
+            'source_rows_considered':d['source_rows_considered'],
+            'prepared_identity_count':d['prepared_identity_count'],
+            'prepared_unique_local_hotels':d['prepared_unique_local_hotels'],
+            'prepared_both_provider_local_hotels':d['prepared_both_provider_local_hotels'],
+            'status_counts':d['status_counts'],
+            'provider_status_counts':d['provider_status_counts'],
+            'rank_status_counts':d['rank_status_counts'],
+            'top_targets':d['candidate_targets'][:40],
+          }
+          pathlib.Path('result/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-user-seen-strong-fuzzy-geo-${{ github.run_id }}
+          path: result/
+          if-no-files-found: error
+          retention-days: 90
