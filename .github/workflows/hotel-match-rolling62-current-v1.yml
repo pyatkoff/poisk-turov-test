@@ -1,0 +1,123 @@
+name: MATCH rolling62 CURRENT read-only audit v1
+on:
+  push:
+    branches: [ops/match-rolling62-current-1971-20260919-v1]
+    paths: [.github/workflows/hotel-match-rolling62-current-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-rolling62-current-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-rolling62-current-1971-20260919-v1
+jobs:
+  audit:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10572174161'
+          run-id: 35405828748
+          github-token: ${{ github.token }}
+          path: retained
+          merge-multiple: true
+      - name: Verify captured62 and reserve immutable read
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          cp scripts/diagnostics/hotel_match_rolling62_current_v1.php app/integrations/anex-search-mapping-registry.php payload/
+          test "$(git hash-object payload/hotel_match_rolling62_current_v1.php)" = 0df098b935aa935c88c665eec98fcb34368cf1fd
+          test "$(git hash-object payload/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          php -l payload/hotel_match_rolling62_current_v1.php
+          php payload/hotel_match_rolling62_current_v1.php --self-test
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,urllib.parse
+          p=pathlib.Path('retained/remote');raw=(p/'result.json').read_bytes();sha=hashlib.sha256(raw).hexdigest()
+          assert sha=='d8373742943c465dede9cbbe0a8dbab2b8b5bdf12d3c32980da73d99be0ef1f9'
+          d=json.loads(raw);r=json.loads((p/'receipt.json').read_bytes())
+          assert r['result_sha256']==sha and r['state']==d['state']=='completed_read_only'
+          assert d['mapping_writes']==0 and len(d['anchors'])==62
+          responses={hashlib.sha256(x.read_bytes()).hexdigest():json.loads(x.read_bytes()) for x in p.glob('response-*.json')}
+          pairs=[]
+          for e in d['anchors']:
+              rr=responses[e['results_response_sha256']];dd=responses[e['detail_response_sha256']]
+              for b in [rr,dd]:
+                  assert hashlib.sha256(b['raw_body_utf8'].encode()).hexdigest()==b['raw_sha256']
+                  assert json.loads(b['raw_body_utf8'])==b['data'] and b['http_status']==200
+              hotels=[h for h in rr['data'] if h['id']==e['hotel_id']];assert len(hotels)==1;h=hotels[0];t=dd['data']
+              assert h['country']['id']==e['country_id'] and t['hotel']['id']==e['hotel_id'] and t['operator']['id']==13 and str(t['id'])==e['tour_id']
+              assert any(str(x['id'])==e['tour_id'] and x['operator']['id']==13 for x in h['tours'])
+              purl=urllib.parse.urlsplit(t['operatorLink']);assert purl.hostname=='agent.anextour.ru' and purl.scheme=='https'
+              assert urllib.parse.parse_qs(purl.query)['HOTELLIST']==[str(e['native_anex_id'])]==e['raw_signed_tokens']
+              pairs.append(dict(e,tv_hotel={k:h.get(k) for k in ['id','name','country','region','subRegion','latitude','longitude','category']}))
+          assert len({e['hotel_id'] for e in pairs})==len({e['native_anex_id'] for e in pairs})==62
+          out=pathlib.Path('payload/input.json');out.write_text(json.dumps({'source_result_sha256':sha,'pairs':pairs},ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          res={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db','source_sha':os.environ['GITHUB_SHA'],'input_sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'source_result_sha256':sha,'read_only':True,'supplier_calls':0,'database_writes':0,'no_replay':True}
+          with pathlib.Path('result/reservation.json').open('x') as f:
+              json.dump(res,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security before SSH
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for n in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:r=json.load(f)['workflow_runs']
+              r=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+              if r:
+                  x=max(r,key=lambda x:x['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success';print('SECURITY_OK',x['id']);break
+              time.sleep(5)
+          else:raise SystemExit('exact_security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-rolling62-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute once supplier-free CURRENT and read back
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/r62-key"; known="$RUNNER_TEMP/r62-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null; test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "set -e; umask 077; mkdir -p \"\$HOME/.anytour-operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${opts[@]}" result/reservation.json "$remote:$op/" >result/reserve.stdout 2>result/reserve.stderr
+          scp "${opts[@]}" payload/* "$remote:$op/payload/" >result/copy.stdout 2>result/copy.stderr
+          set +e
+          ssh "${opts[@]}" "$remote" "umask 077; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$op/payload/hotel_match_rolling62_current_v1.php\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          scp -r "${opts[@]}" "$remote:$op/." result/remote/ >result/readback.stdout 2>result/readback.stderr
+          trc=$?
+          set -e
+          printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc" >result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('result/remote');d=json.loads((p/'result.json').read_bytes());r=json.loads((p/'receipt.json').read_bytes())
+          digest=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert r['result_sha256']==digest and r['readback_verified'] is True and r['no_replay'] is True
+          assert d['supplier_calls']==d['database_writes']==d['mapping_writes']==0
+          summary={k:d.get(k) for k in ['state','counts','hold_reasons','reason','sqlstate','driver_code','captured_at']};summary['result_sha256']=digest
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          assert d['state']=='completed_read_only' and len(d['dossiers'])==62 and sum(d['counts'].values())==62
+          assert all(x['safe_to_write_now'] is False for x in d['dossiers'])
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-rolling62-current-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
