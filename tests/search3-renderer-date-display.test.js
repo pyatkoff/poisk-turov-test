@@ -2,6 +2,7 @@
 const assert=require('assert');
 
 global.window={
+  location:{pathname:'/_preview/search3-local-candidate/poisk-turov/'},
   addEventListener(){},
   dispatchEvent(){},
   requestAnimationFrame(fn){if(typeof fn==='function')fn();}
@@ -54,5 +55,19 @@ assert.strictEqual(tour.date,'2026-10-05','price context must not mutate provide
 const unknown={id:'unknown-date',date:'supplier-date',price:100000};
 assert(renderer.tourRow(unknown).includes('<strong>supplier-date</strong>'),'unknown formats must pass through unchanged');
 assert(renderer.tourRow({id:'blank-date',date:'',price:100000}).includes('<strong>Уточняется</strong>'),'blank row date must keep the existing fallback');
+
+const charter=renderer.flightBadge({isCharter:true});
+assert(charter.includes('Чартерный рейс'),'charter flight must use the charter badge label');
+assert(!charter.includes('Возможна доплата'),'charter badge must not show regular-flight surcharge disclosure');
+const regular=renderer.flightBadge({isCharter:false});
+assert(regular.includes('Регулярный рейс'),'regular flight must use the regular badge label');
+assert(regular.includes('Возможна доплата за регулярный рейс. Точную стоимость необходимо уточнить.'),'regular badge must disclose possible surcharge');
+assert(regular.includes('tabindex="0"'),'regular disclosure must be keyboard-focusable');
+assert.strictEqual(renderer.flightBadge({}),'','unknown flight type must remain unlabeled');
+const regularRow=renderer.tourRow({...tour,isCharter:false,priceNeedsConfirmation:true});
+assert(regularRow.includes('Регулярный рейс'),'tour row must render regular flight badge');
+assert(regularRow.includes('Возможна доплата за регулярный рейс. Точную стоимость необходимо уточнить.'),'tour row must retain regular-flight disclosure');
+assert(regularRow.includes('Цена из поиска'),'regular flight with possible surcharge must not be labelled as final total');
+assert(!regularRow.includes('Итого за тур'),'regular flight with possible surcharge must not claim final total');
 
 console.log('SEARCH3_RENDERER_DATE_DISPLAY_OK');

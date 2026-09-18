@@ -12,7 +12,7 @@ assert(api);
 assert.equal(api.endpoint('').pathname,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
 r.location.pathname='/poisk-turov/';assert.equal(api.endpoint(''),null);r.location.pathname='/_preview/search3-local-candidate/poisk-turov/';
 const search='a'.repeat(32), offer=n=>'anex_online:'+String(n).padStart(64,'b').slice(-64);
-function hotel(id,price,kind='concrete',off=offer(id)){return{local_id:id,name:'H'+id,category:5,rating:4.8,country:'Turkey',region:'Side',catalog:{image_url:'https://img.example/h.jpg'},tours:[{price:{amount:String(price),currency:'RUB'},checkin:'2026-10-05',nights:7,meal:'AI',room:'STANDARD',kind,search_ref:search,offer_ref:off}]};}
+function hotel(id,price,kind='concrete',off=offer(id),flightType=''){const tour={price:{amount:String(price),currency:'RUB'},checkin:'2026-10-05',nights:7,meal:'AI',room:'STANDARD',kind,search_ref:search,offer_ref:off};if(flightType)tour.flight_type=flightType;return{local_id:id,name:'H'+id,category:5,rating:4.8,country:'Turkey',region:'Side',catalog:{image_url:'https://img.example/h.jpg'},tours:[tour]};}
 const planned=api.plan([hotel(1,200000),hotel(2,190000),hotel(3,180000),hotel(4,170000),hotel(5,160000),hotel(6,150000)],search);
 assert.deepEqual(Array.from(planned,x=>x.row.hotelId),[6,5,4,3,2]);
 const item={offer_ref:planned[0].row.offerRef,local_hotel_id:6,status:'additional_prices',finalPriceReady:true,finalPrice:'165000',price:'165000',additional_prices:{application_state:'applied',search_plus_additional:{amount:'165000',currency:'RUB'}}};
@@ -20,15 +20,21 @@ assert.equal(api.readyPrice(item,planned[0]),'165000');
 assert.equal(api.readyPrice({...item,finalPriceReady:false},planned[0]),null);
 assert.equal(api.readyPrice({...item,price:'164999'},planned[0]),null);
 const normalized=api.normalize(planned[0],'165000');assert.equal(normalized.tours[0].price,165000);assert.equal(normalized.tours[0].fuelIncluded,true);assert.equal(normalized.tours[0].selectionEnabled,false);
+const regularPlanned=api.plan([hotel(7,120000,'concrete',offer(7),'regular')],search)[0];
+const regularItem={offer_ref:regularPlanned.row.offerRef,local_hotel_id:7,status:'additional_prices',finalPriceReady:false,finalPrice:null,price:null,additional_prices:{application_state:'unknown',total_count:0,rows:[]}};
+assert.equal(api.regularSearchPrice(regularItem,regularPlanned),'120000');
+assert.equal(api.regularSearchPrice({...regularItem,additional_prices:{application_state:'unknown',total_count:1,rows:[]}},regularPlanned),null);
+const regularNormalized=api.normalize(regularPlanned,'120000','regular');assert.equal(regularNormalized.tours[0].isCharter,false);assert.equal(regularNormalized.tours[0].priceNeedsConfirmation,true);assert.equal(regularNormalized.tours[0].finalPriceReady,false);assert.equal(regularNormalized.tours[0].fuelIncluded,null);
 const merged=api.merge([{id:'6',provider:'tourvisor',price:170000,tours:[{id:'tv1',provider:'tourvisor',price:170000}]}],[normalized]);
 assert.equal(merged.length,1);assert.equal(merged[0].tours.length,2);assert.equal(merged[0].price,165000);assert(merged[0].providers.includes('anex'));
-async function runtime(finalReady){
+async function runtime(mode){
   const listeners={},renders=[],events=[],bodies=[];let resolveDone;const done=new Promise(resolve=>resolveDone=resolve);
   class CE{constructor(type,options){this.type=type;this.detail=options.detail;}}
-  const searchHotel=hotel(101,185125,'concrete','anex_online:'+'c'.repeat(64));
+  const finalReady=mode==='final',regular=mode==='regular';
+  const searchHotel=hotel(101,185125,'concrete','anex_online:'+'c'.repeat(64),regular?'regular':'');
   const responses=[
     {ok:true,data:{provider:'anex',generation:1,search_ref:search,hotels:[searchHotel]}},
-    {ok:true,data:{provider:'anex',generation:1,search_ref:search,status:'additional_prices_batch',offers:[{offer_ref:searchHotel.tours[0].offer_ref,local_hotel_id:101,status:finalReady?'additional_prices':'additional_prices_unknown',finalPriceReady:finalReady,finalPrice:finalReady?'199390':null,price:finalReady?'199390':null,additional_prices:finalReady?{application_state:'applied',search_plus_additional:{amount:'199390',currency:'RUB'}}:null}]}}
+    {ok:true,data:{provider:'anex',generation:1,search_ref:search,status:'additional_prices_batch',offers:[{offer_ref:searchHotel.tours[0].offer_ref,local_hotel_id:101,status:finalReady||regular?'additional_prices':'additional_prices_unknown',finalPriceReady:finalReady,finalPrice:finalReady?'199390':null,price:finalReady?'199390':null,additional_prices:finalReady?{application_state:'applied',search_plus_additional:{amount:'199390',currency:'RUB'}}:regular?{application_state:'unknown',total_count:0,rows:[]}:null}]}}
   ];
   const root=load({document:{},V2_CONFIG:{},V2Results:{render(list){renders.push(JSON.parse(JSON.stringify(list||[])));return list;}},V2SearchLifecycle:{generation:1,dirty:false,snapshot:{departureId:1,countryId:4,dateFrom:'2026-10-05',dateTo:'2026-10-05',nightsFrom:7,nightsTo:7,adults:2,childs:[],currency:'RUB'}},addEventListener(type,fn){listeners[type]=fn;},dispatchEvent(event){events.push(event);if(event.type==='v2:provider-status'&&event.detail.provider==='anex'&&['complete','error'].includes(event.detail.status))resolveDone(event.detail);return true;},CustomEvent:CE,async fetch(url,options){bodies.push(JSON.parse(options.body));const body=responses.shift();return{ok:true,async json(){return body;}};}});
   root.V2Results.render([{id:'101',provider:'tourvisor',price:210000,tours:[{id:'tv',provider:'tourvisor',price:210000}]}],{});
@@ -37,10 +43,12 @@ async function runtime(finalReady){
   return{root,renders,events,bodies,status};
 }
 (async()=>{
-  const good=await runtime(true);assert.equal(good.bodies.length,2);assert.equal(good.bodies[1].action,'additional_prices_batch');assert.equal(good.bodies[1].items.length,1);
+  const good=await runtime('final');assert.equal(good.bodies.length,2);assert.equal(good.bodies[1].action,'additional_prices_batch');assert.equal(good.bodies[1].items.length,1);
   const anexPrices=good.renders.flatMap(list=>list.flatMap(h=>(h.tours||[]).filter(t=>t.provider==='anex').map(t=>t.price)));
-  assert.deepEqual(anexPrices,[199390]);assert(!anexPrices.includes(185125));assert.equal(good.status.hotels,1);
-  const bad=await runtime(false);const badAnex=bad.renders.flatMap(list=>list.flatMap(h=>(h.tours||[]).filter(t=>t.provider==='anex')));
+  assert.deepEqual(anexPrices,[199390]);assert(!anexPrices.includes(185125));assert.equal(good.status.hotels,1);assert.equal(good.status.readyOffers,1);
+  const bad=await runtime('unknown');const badAnex=bad.renders.flatMap(list=>list.flatMap(h=>(h.tours||[]).filter(t=>t.provider==='anex')));
   assert.equal(badAnex.length,0);assert.equal(bad.status.hotels,0);
-  console.log('ANEX_FINAL_PRICE_PROVIDER_OK pure=15 runtime=2 final=199390 base_not_rendered=185125 max_ready=5');
+  const regular=await runtime('regular');const regularTours=regular.renders.flatMap(list=>list.flatMap(h=>(h.tours||[]).filter(t=>t.provider==='anex')));
+  assert.equal(regularTours.length,1);assert.equal(regularTours[0].price,185125);assert.equal(regularTours[0].isCharter,false);assert.equal(regularTours[0].priceNeedsConfirmation,true);assert.equal(regularTours[0].finalPriceReady,false);assert.equal(regular.status.hotels,1);assert.equal(regular.status.readyOffers,0);
+  console.log('ANEX_FINAL_PRICE_PROVIDER_OK pure=19 runtime=3 final=199390 regular_search=185125 max_ready=5');
 })().catch(error=>{console.error(error);process.exit(1);});
