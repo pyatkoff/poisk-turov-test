@@ -10,7 +10,7 @@
   "assets": {
     "search3-entry-v1.css": {
       "candidateSha256": "7032ac69f1bc6277860353592b8b545a6eb65174cbe1a077ee473be7dace2581",
-      "productionSha256": "fa9c1fc42e8ad3731a0c453d61ccee60f284f1b1b718c3f104bf9e19f4dc2aa8"
+      "productionSha256": "b7ac51f3f2a8e161222da0d6fd1600e7ca0197c9eda561b8e35cc34848d83f91"
     },
     "search3-entry-v1.js": {
       "candidateSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e",
@@ -30,7 +30,7 @@
     },
     "search3-results-filters-v1.js": {
       "candidateSha256": "59902609494edbecb014a1ebd3049b12071c799b88f939ff92fc7ca76883202f",
-      "productionSha256": "ba095fc52bf1231917adba1fdcb39d598c9e2d19666bf86e9f115e962bdcee74"
+      "productionSha256": "cf2af0eca0b3566d39abc6b25999066c10f5c30faf9e4fe1b344449a14a4aec3"
     },
     "search3-selected-flow-v2.css": {
       "candidateSha256": "26d7c6661ff29957309d8356ab47c430e37b718053d062d241e202d660bd6871",

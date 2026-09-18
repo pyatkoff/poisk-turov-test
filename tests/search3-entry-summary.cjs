@@ -65,17 +65,18 @@ assert.match(lifecycle, /hydrateUrlState\(\)/, 'canonical URL hydration remains'
 const listeners = new Map(), clicks = new Map();
 const route = { textContent: '' }, details = { textContent: '' };
 const trip = { hidden: true, querySelector: selector => selector === '[data-search3-trip-route]' ? route : details };
-let hotelsPresent = false, snapshot = null, focused = false;
+let hotelsPresent = false, snapshot = null, focused = false, editFocused = false;
 const field = options => ({ value: options[0][0], options: options.map(([value, textContent]) => ({ value, textContent })) });
+const collapse = { hidden: true };
 const form = {
   dataset: {}, elements: {
     from: field([['1', 'Москва'], ['2', 'Санкт-Петербург']]),
     country: field([['4', 'Турция'], ['1', 'Египет']])
-  }, querySelectorAll: () => [], scrollIntoView() {}
+  }, querySelector: selector => selector === '.search-editor-collapse' ? collapse : null, querySelectorAll: () => [], scrollIntoView() {}
 };
 form.elements.from.focus = () => { focused = true; };
 const results = { querySelector: () => hotelsPresent ? {} : null, setAttribute() {} };
-const edit = { setAttribute() {} };
+const edit = { setAttribute() {}, focus() { editFocused = true; } };
 const nodes = { tourSearch: form, results, resultsSearchEdit: edit, resultsTripContext: trip };
 const context = {
   document: { getElementById: id => nodes[id] || null, addEventListener: (name, handler) => clicks.set(name, handler) },
@@ -100,9 +101,14 @@ const accepted = details.textContent;
 snapshot = { ...first, dateFrom: '2026-11-01', adults: '4' };
 emit('v2:results-rendered');
 assert.equal(details.textContent, accepted, 'rerender and selected-tour return retain the started query, never an unsent edit');
-clicks.get('click')({ target: { closest: () => edit } });
+clicks.get('click')({ target: { closest: selector => selector === '#resultsSearchEdit' ? edit : null } });
 assert.equal(focused, true, 'the existing edit action keeps canonical departure focus');
 assert.equal(trip.hidden, true, 'editing does not duplicate the visible full form');
+assert.equal(collapse.hidden, false, 'populated editor exposes its close action at the start of the form');
+clicks.get('click')({ target: { closest: selector => selector === '.search-editor-collapse' ? collapse : null } });
+assert.equal(form.dataset.search3View, 'summary', 'the in-form action returns directly to the compact result context');
+assert.equal(collapse.hidden, true);
+assert.equal(editFocused, true, 'closing the form restores focus to the results edit action');
 snapshot = null; emit('v2:search-reset', { dirty: true }); emit('v2:results-rendered');
 assert.equal(form.dataset.search3View, 'editor', 'dirty retained results do not collapse the draft editor');
 assert.equal(details.textContent, accepted, 'dirty reset does not overwrite the accepted query');
