@@ -54,7 +54,10 @@ if(PHP_SAPI!=='cli')exit(2);
 $root=realpath((string)getenv('ANYTOUR_ROOT'));$opDir=(string)getenv('MATCH_OPERATION_DIR');$sourceSha=(string)getenv('MATCH_SOURCE_SHA');
 if(!$root||$opDir===''||!preg_match('/^[a-f0-9]{40}$/D',$sourceSha))throw new RuntimeException('runtime_guard');
 if(is_dir($opDir)||!mkdir($opDir,0700,true))throw new RuntimeException('operation_exists');
-hmop_durable($opDir.'/reservation.json',['operation'=>HMOP_OPERATION,'source_sha'=>$sourceSha,'state'=>'reserved_before_db_read','provider_access'=>false,'no_replay'=>true]);
+$registryPath=$opDir.'/payload/anex-search-mapping-registry.php';
+if(!is_file($registryPath))throw new RuntimeException('missing_staged_mapping_registry');
+$registrySha=hash_file('sha256',$registryPath);if(!is_string($registrySha)||!preg_match('/^[a-f0-9]{64}$/D',$registrySha))throw new RuntimeException('mapping_registry_hash');
+hmop_durable($opDir.'/reservation.json',['operation'=>HMOP_OPERATION,'source_sha'=>$sourceSha,'state'=>'reserved_before_db_read','provider_access'=>false,'mapping_registry_sha256'=>$registrySha,'no_replay'=>true]);
 
 require_once $opDir.'/payload/anex-search-mapping-registry.php';
 $dbf=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';require_once $dbf;
