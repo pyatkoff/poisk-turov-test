@@ -10,7 +10,7 @@ declare(strict_types=1);
  */
 final class AnyTourAnexOfferAutosaveV1
 {
-    private const MAX_ACCUMULATED_OFFERS = 60;
+    private const MAX_ACCUMULATED_OFFERS = 4800;
 
     public static function applicable(array $state): bool
     {
