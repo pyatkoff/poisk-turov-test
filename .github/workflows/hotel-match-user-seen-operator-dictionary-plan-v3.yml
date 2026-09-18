@@ -98,7 +98,9 @@ jobs:
           op=".anytour-match/operations/$OPERATION_ID"
           opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
           ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; rm -rf \"\$HOME/$stage\"; mkdir -p \"\$HOME/$stage\""
-          scp "${opts[@]}" scripts/diagnostics/hotel_match_user_seen_operator_dictionary_plan_v3.php "$remote:$stage/scan.php"\n          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$stage/anex-search-mapping-registry.php"\n          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/$op/payload\"; cp \"\$HOME/$stage/anex-search-mapping-registry.php\" \"\$HOME/$op/payload/anex-search-mapping-registry.php\"; chmod 600 \"\$HOME/$op/payload/anex-search-mapping-registry.php\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_user_seen_operator_dictionary_plan_v3.php "$remote:$stage/scan.php"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$stage/anex-search-mapping-registry.php"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/$op/payload\"; cp \"\$HOME/$stage/anex-search-mapping-registry.php\" \"\$HOME/$op/payload/anex-search-mapping-registry.php\"; chmod 600 \"\$HOME/$op/payload/anex-search-mapping-registry.php\""
           set +e
           ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php \"\$HOME/$stage/scan.php\"" > terminal/stdout.json 2> terminal/stderr.txt
           rc=$?
