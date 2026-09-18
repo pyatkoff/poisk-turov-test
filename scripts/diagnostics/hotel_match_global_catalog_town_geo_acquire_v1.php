@@ -84,6 +84,10 @@ if(in_array('--self-test',$argv??[],true)){
 }
 if(PHP_SAPI!=='cli')exit(2);
 
+require_once __DIR__.'/andromeda-network-transport-failure.php';
+require_once __DIR__.'/andromeda-client.php';
+require_once __DIR__.'/andromeda-transport.php';
+
 $sourcePath=(string)($argv[1]??'');$currentPath=(string)($argv[2]??'');
 $opDir=(string)getenv('MATCH_OPERATION_DIR');$sourceSha=(string)getenv('MATCH_SOURCE_SHA');
 if($opDir===''||!preg_match('/^[a-f0-9]{40}$/D',$sourceSha)||!is_dir($opDir)||!is_file($opDir.'/reservation.json')||!is_file($sourcePath)||!is_file($currentPath))throw new RuntimeException('runtime_guard');
