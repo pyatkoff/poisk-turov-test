@@ -27,7 +27,7 @@ async function openHotelDetail(query){
  if(!id||!hotel||query.getAll('search3_hotel').length!==1||query.getAll('search3_search').length!==1||issue){show('Ссылка на отель устарела или содержит неверные параметры. Проверьте условия и нажмите «Найти туры».');return true;}
  const run=++generation;searchId=Number(id);searchSnapshot=cloneSnapshot(params());searchRestoreQuery=captureRestoreQuery();rt.setSearchId(searchId);
  show('Открываем отель из выбранного поиска…');
- try{await loadResults(searchId,run,100,true);if(isCurrent(run,id))show('Цены из выбранного поиска. Перед выбором проверим тур.');}
+ try{await loadResults(searchId,run,100,true);if(isCurrent(run,id)&&renderer.hideSearchStatus)renderer.hideSearchStatus();}
  catch(error){if(isCurrent(run,id))show('Этот поиск больше недоступен. Проверьте параметры и нажмите «Найти туры», чтобы обновить предложения.');}
  return true;
 }

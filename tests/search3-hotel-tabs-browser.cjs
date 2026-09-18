@@ -40,6 +40,12 @@ async function run(engine, width, height) {
       return json({ ok: true, source: 'anytour-canonical-catalog', catalog: 'anytour', requestedLegacyIds: ids, items: ids.map(id => profiles[Number(id) - 101]), links: ids.map(id => ({ legacyHotelId: id, anytourHotelId: Number(id) + 800 })), missingLegacyIds: [] });
     }
     if (url.pathname.endsWith('/data/departures-v1.php')) return json({ ok: true, items: [{ id: 1, russianName: 'Москва' }] });
+    if (url.pathname === '/data/observe-search-v1.php' && request.method() === 'POST') {
+      // Existing passive price observation is not a lead. Keep it fully mocked
+      // and prove that opening hotel tabs does not duplicate it.
+      calls.push({ page: request.frame().page(), action: 'price-observation' });
+      return json({ ok: true });
+    }
     if (url.pathname.endsWith('/data/search3-local-results-read-v1.php')) {
       calls.push({ page: request.frame().page(), action: 'local-db' });
       return json({ ok: true, data: { source: 'anytour-db-first-results-v1', scopeVersion: 1, scopeDigest: 'a'.repeat(64), selectionAuthority: false, hotels: [], hotelCount: 0, offerCount: 0 } });
@@ -113,7 +119,10 @@ async function run(engine, width, height) {
       assert.ok(Math.abs(after.scroll - before.scroll) <= 2, 'opening hotel does not move original results');
       delete before.scroll; delete after.scroll;
       assert.deepEqual(after, before, 'URL/filter/sort/photo/expanded detail remain in original tab');
-      assert.equal(calls.filter(c => c.page === child && ['search_start', 'local-db', 'andromeda'].includes(c.action)).length, 0, 'detail never starts a parallel search cohort');
+      assert.equal(calls.filter(c => c.page === child && ['search_start', 'local-db', 'andromeda', 'price-observation'].includes(c.action)).length, 0, 'detail never starts a parallel search cohort or observation');
+      const trip = await child.locator('#results > .results-state').innerText();
+      assert.match(trip, /7–10 ноч\. · 2 взр\./, 'trip context remains visible in the hotel tab');
+      if (width === 390) assert.match(trip, /Возраст детей: 0, 7, 17/);
       assert.equal(await child.locator('#results a[target="_blank"]').count(), 0, 'internal hotel actions do not spawn more tabs');
     }
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1, 'three tabs reuse the original search');
@@ -162,7 +171,7 @@ async function run(engine, width, height) {
       await current.screenshot({ path: path.join(output, `${engine}-${width}-failure-${index}.png`), fullPage: true }).catch(() => {});
       fs.writeFileSync(path.join(output, `${engine}-${width}-failure-${index}.html`), await current.content().catch(() => ''));
     }
-    fs.writeFileSync(path.join(output, `${engine}-${width}-failure.json`), JSON.stringify({ error: String(error), errors, calls: calls.map(({ page: _, ...call }) => call) }, null, 2));
+    fs.writeFileSync(path.join(output, `${engine}-${width}-failure.json`), JSON.stringify({ error: String(error), errors, failures, calls: calls.map(({ page: _, ...call }) => call) }, null, 2));
     throw error;
   } finally { await browser.close(); }
 }
