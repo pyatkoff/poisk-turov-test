@@ -197,7 +197,10 @@ module.exports = async function calendarReadability(page, width, output) {
     const geometry = await calendar.evaluate(node => {
       const box = item => { const r = item.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
       const days = node.querySelector('.current-price-calendar__days');
+      const summary = node.querySelector('summary');
       return {
+        heading: box(summary), headingBorder: getComputedStyle(summary).borderTopWidth,
+        eyebrowDisplay: getComputedStyle(node.querySelector('.current-price-calendar__heading>span')).display,
         list: box(days), listScrollWidth: days.scrollWidth, listClientWidth: days.clientWidth,
         pageOverflow: document.documentElement.scrollWidth > innerWidth + 2,
         tiles: [...days.children].map(item => ({ ...box(item), date: item.dataset.calendarDate,
@@ -207,6 +210,14 @@ module.exports = async function calendarReadability(page, width, output) {
       };
     });
     assert.equal(geometry.pageOverflow, false, 'calendar never widens the document');
+    assert.ok(geometry.heading.height >= 44, 'calendar disclosure retains a full touch target');
+    if (width <= 640) {
+      assert.ok(geometry.heading.height <= 70, 'mobile calendar heading leaves room for results');
+      assert.equal(geometry.headingBorder, '0px', 'mobile calendar avoids a nested frame');
+      assert.equal(geometry.eyebrowDisplay, 'none', 'mobile keeps one calendar heading');
+    } else {
+      assert.notEqual(geometry.eyebrowDisplay, 'none', 'desktop calendar heading is unchanged');
+    }
     assert.equal(geometry.tiles.length, count, 'every existing date stays available');
     assert.deepEqual(geometry.tiles.map(item => item.date), tours.slice(0, count).map(item => item.date));
     assert.deepEqual(geometry.tiles.map(item => item.price), tours.slice(0, count).map(item => new Intl.NumberFormat('ru-RU').format(item.price) + ' ₽'));
