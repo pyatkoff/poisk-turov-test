@@ -6,6 +6,12 @@ require_once __DIR__.'/three-provider-room-placement.php';
 
 /** Pure internal projection. No I/O, registry writes, booking or UI activation. */
 final class AnyTourAndromedaNormalizer {
+    private const REQUIRED_FIELDS = [
+        'id','hotelKey','operatorKey','isOperatorHotelKey','price','currency','currencyKey','checkIn','nights',
+        'hotel','operator','meal','mealKey','room','htplace','adult','child',
+    ];
+    private const OWNED_ELSEWHERE = ['anex','анекс','pegas','пегас','coral','корал','sunmar','санмар'];
+
     private static function id($v): string {
         if ((!is_int($v) && !is_string($v)) || !preg_match('/^[A-Za-z0-9_-]{1,128}$/D',(string)$v)) throw new InvalidArgumentException('INVALID_ID');
         return (string)$v;
@@ -36,6 +42,16 @@ final class AnyTourAndromedaNormalizer {
         foreach ($payload['PRICES'] as $index=>$row) {
             try {
                 if (!is_array($row)) throw new InvalidArgumentException('INVALID_ROW');
+                $missing=self::firstMissingRequiredField($row);
+                if ($missing!==null) {
+                    $rejected[]=[
+                        'index'=>$index,
+                        'reason'=>'MISSING_FIELD',
+                        'missing_field'=>$missing,
+                        'ownership_class'=>self::rejectionOwnershipClass($row),
+                    ];
+                    continue;
+                }
                 $offer=self::offer($row,$criteria,$searchRef,$generation);
                 $key=$offer['offer_ref'];
                 if (isset($seen[$key])) throw new InvalidArgumentException('DUPLICATE_OFFER');
@@ -48,8 +64,27 @@ final class AnyTourAndromedaNormalizer {
             'status'=>($payload['PAGES_COUNT']<=1 && !$rejected)?'complete':'partial',
             'offers'=>$offers,'rejected'=>$rejected,'selection_enabled'=>false];
     }
+    private static function firstMissingRequiredField(array $row): ?string {
+        foreach (self::REQUIRED_FIELDS as $key) {
+            if (!array_key_exists($key,$row)) return $key;
+        }
+        return null;
+    }
+    private static function rejectionOwnershipClass(array $row): string {
+        if (!array_key_exists('operator',$row) || !is_string($row['operator']) || trim($row['operator'])===''
+            || strlen($row['operator'])>4096 || !preg_match('//u',$row['operator'])
+            || preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f]/',$row['operator'])) return 'unknown';
+        $value=str_replace(['Ё','ё'],'е',trim($row['operator']));
+        $value=function_exists('mb_strtolower')?mb_strtolower($value,'UTF-8'):strtolower($value);
+        $compact=preg_replace('/[^\p{L}\p{N}]+/u','',$value)??'';
+        if ($compact==='') return 'unknown';
+        foreach (self::OWNED_ELSEWHERE as $operator) {
+            if (str_contains($compact,$operator)) return 'excluded_direct_or_tv';
+        }
+        return 'andromeda_owned';
+    }
     private static function offer(array $r,array $c,string $search,int $generation): array {
-        foreach (['id','hotelKey','operatorKey','isOperatorHotelKey','price','currency','currencyKey','checkIn','nights','hotel','operator','meal','mealKey','room','htplace','adult','child'] as $k) {
+        foreach (self::REQUIRED_FIELDS as $k) {
             if (!array_key_exists($k,$r)) throw new InvalidArgumentException('MISSING_FIELD');
         }
         $raw=self::text($r['id']);
