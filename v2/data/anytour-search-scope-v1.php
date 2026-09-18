@@ -15,7 +15,8 @@ final class AnyTourSearchScopeV1
         'scopeVersion','departureId','countryId','adults','childs',
         'arrivalId','regionIds','subregionIds','currency','onlyCharter','onlyDirect',
     ];
-    private const SCALAR_FILTER_KEYS = ['meal','hotelCategory','hotelRating'];
+    // hotelCategory is re-proved from the accepted AnyTour canonical profile after hydration.
+    private const SCALAR_FILTER_KEYS = ['meal','hotelRating'];
     private const LIST_FILTER_KEYS = ['hotelTypes','hotelIds','hotelServices','operatorIds'];
 
     private static function exactKeys(array $value): void
