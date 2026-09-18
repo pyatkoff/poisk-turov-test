@@ -102,10 +102,28 @@ final class AnyTourAndromedaClient
     private $priceAttempted = false;
     private $packageEnabled;
     private $packageAttempted = false;
+    private ?string $operatorLogin = null;
+    private ?string $operatorPassword = null;
 
     /** Transport accepts a secret-bearing URL and must never log it. */
-    public function __construct(callable $transport, bool $enabled = false, bool $packageEnabled = false)
-    {
+    public function __construct(
+        callable $transport,
+        bool $enabled = false,
+        bool $packageEnabled = false,
+        ?string $operatorLogin = null,
+        ?string $operatorPassword = null
+    ) {
+        if (($operatorLogin === null) !== ($operatorPassword === null)) {
+            throw new RuntimeException('ANDROMEDA_OPERATOR_CREDENTIALS_PAIR_REQUIRED');
+        }
+        if ($operatorLogin !== null) {
+            if ($operatorLogin === '' || strlen($operatorLogin) > 256
+                || $operatorPassword === '' || strlen($operatorPassword) > 4096) {
+                throw new RuntimeException('ANDROMEDA_OPERATOR_CREDENTIALS_INVALID');
+            }
+            $this->operatorLogin = $operatorLogin;
+            $this->operatorPassword = $operatorPassword;
+        }
         $this->transport = $transport;
         $this->enabled = $enabled;
         $this->packageEnabled = $packageEnabled;
@@ -225,6 +243,7 @@ final class AnyTourAndromedaClient
     /**
      * Load one retained supplier package without creating a booking/application.
      * claiminc is the opaque PRICES[].id established by the confirmed Andromeda contract.
+     * Optional tour-operator credentials are forwarded only to broninit when both are configured.
      * The caller owns durable operation reservation; this instance additionally prevents replay.
      */
     public function package(string $claiminc): array
@@ -237,7 +256,12 @@ final class AnyTourAndromedaClient
         if ($this->sid === null || time() >= $this->expires) throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
         $this->packageAttempted = true;
         $sid = $this->sid;
-        $reply = $this->send('broninit', ['sid' => $sid, 'claiminc' => $claiminc]);
+        $params = ['sid' => $sid, 'claiminc' => $claiminc];
+        if ($this->operatorLogin !== null && $this->operatorPassword !== null) {
+            $params['OPERATOR_LOGIN'] = $this->operatorLogin;
+            $params['OPERATOR_PASSWORD'] = $this->operatorPassword;
+        }
+        $reply = $this->send('broninit', $params);
         $this->rejectSessionEcho($reply, $sid);
         if (!isset($reply['claimDocument']) || !is_array($reply['claimDocument'])
             || array_keys($reply['claimDocument']) !== [0]
