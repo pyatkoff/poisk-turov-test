@@ -93,7 +93,19 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         foreach ($captureQueue as $key => $selection) {
             if ($attempted >= $maxCaptures) break;
             ++$attempted;
-            $receipt = $captureSurcharge($selection);
+            try {
+                $receipt = $captureSurcharge($selection);
+            } catch (RuntimeException $error) {
+                // The package runtime durably seals an attempted supplier call before it
+                // reports this outcome. It is terminal for this one offer, not for the
+                // disjoint candidates still inside the caller's bounded capture budget.
+                // Do not broaden this allowlist: invariant/checkpoint/programming failures
+                // must still abort the cohort so we never turn an unknown write state into
+                // permission to continue.
+                if ($error->getMessage() !== 'ANDROMEDA_PACKAGE_OUTCOME_UNKNOWN') throw $error;
+                $captured[$key] = 'failed_terminal_no_replay';
+                continue;
+            }
             if (!is_array($receipt) || ($receipt['status'] ?? null) !== 'captured') {
                 $captured[$key] = 'failed';
                 continue;
