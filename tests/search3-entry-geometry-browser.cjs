@@ -82,6 +82,7 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
           return {
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             hero: box(document.querySelector('.v2-product-hero')), form: box(form),
+            spacing: { padding: parseFloat(getComputedStyle(form).paddingTop), gap: parseFloat(getComputedStyle(form).rowGap), mainGap: parseFloat(getComputedStyle(form.querySelector('.main-fields')).rowGap) },
             mainColumns: columns(form.querySelector('.main-fields')), preferenceColumns: columns(preferences), preferenceWidth: box(preferences).width,
             groupColumns: [...form.querySelectorAll('.search-group')].map(columns),
             groupTops: [...form.querySelectorAll('.search-group')].map(node => Math.round(box(node).top)),
@@ -112,6 +113,10 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
         assert.equal(state.operatorSecondary, true, 'operator is not a primary search field');
         assert.equal(state.childAgesInsideParty, true, 'child ages stay in the canonical tourist group');
         assert.ok(state.childAgesBox.left >= state.partyBox.left - 1 && state.childAgesBox.right <= state.partyBox.right + 1, `${width}: child ages stay within the tourist group`);
+        if (width <= 700) {
+          assert.deepEqual(state.spacing, { padding: 12, gap: 12, mainGap: 12 }, 'mobile density comes from spacing, not smaller or hidden primary controls');
+          assert.ok(state.labels.every(item => item.fontSize >= 14), 'compact phone labels retain their readable size');
+        }
         if (width <= 350) {
           assert.equal(state.mainColumns, 1); assert.equal(state.preferenceColumns, 1);
           assert.deepEqual(state.groupColumns, [1, 1, 1, 1]);
@@ -192,6 +197,9 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
           const fields = await page.evaluate(() => { const form = document.forms.tourSearch, data = new FormData(form); return { adults: data.get('count_people'), count: data.get('child_count'), ages: data.getAll('child_age[]'), nights: [data.get('daysFrom'), data.get('daysTill')], visible: !form.querySelector('#childAges').hidden, insideParty: !!form.querySelector('.search-group--party > #childAges') }; });
           assert.deepEqual(fields, { adults: '3', count: String(count), ages, nights: ['7', '10'], visible: count > 0, insideParty: true });
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+          if (count === 0 && [375, 430].includes(width)) {
+            await page.locator('#tourSearch').screenshot({ path:path.join(output, `entry-no-children-${width}.png`), animations:'disabled' });
+          }
           if (count === 0 && width >= 1100) {
             const geometry = await page.evaluate(() => {
               const group = document.querySelector('.search-group--party'), adults = group.querySelector('[name=count_people]'), children = group.querySelector('[name=child_count]');
@@ -229,7 +237,7 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
               assert.ok(geometry.childAges.width <= 249, `${width}: child-age group stays bounded`);
             }
           }
-          if (count === 3 && ([320, 350, 375].includes(width) || width >= 1100)) {
+          if (count === 3 && ([320, 350, 375, 430].includes(width) || width >= 1100)) {
             const geometry = await page.evaluate(() => {
               const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }; };
               const ages = [...document.querySelectorAll('#childAges .child-age')].map(box), childAges = box(document.querySelector('#childAges'));
@@ -242,7 +250,7 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
             if (width <= 350) {
               assert.equal(geometry.rows, 3, `${width}: very narrow phones keep three child ages in safe single-column rows`);
               assert.ok(Math.max(...geometry.ages.map(item => item.width)) - Math.min(...geometry.ages.map(item => item.width)) <= 1, `${width}: stacked child ages keep equal widths`);
-            } else if (width === 375) {
+            } else if (width === 375 || width === 430) {
               assert.equal(geometry.rows, 2, `${width}: the odd third child age wraps to its own row`);
               assert.ok(Math.abs(geometry.ages[0].top - geometry.ages[1].top) <= 3 && geometry.ages[2].top > geometry.ages[0].top, `${width}: two ages share the first row and the third follows`);
               assert.ok(geometry.ages[2].width >= geometry.childAges.width - 26, `${width}: the odd third child age spans the mobile grid`);
