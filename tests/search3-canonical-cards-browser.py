@@ -108,8 +108,10 @@ with sync_playwright() as p:
         check(page.evaluate('__projected.at(-1)[0].name')=='Наш тестовый отель 1',f'{width}: filter contract receives own metadata')
         if width<=760:
             check(not page.locator('.hotel-description-summary').is_visible(),f'{width}: collapsed mobile card keeps the canonical description behind hotel details')
+            check(not page.locator('.hotel-gallery-thumbs').is_visible(),f'{width}: collapsed mobile hero keeps gallery thumbnails behind hotel details')
         else:
             check(page.locator('.hotel-description-summary').is_visible(),f'{width}: desktop card retains its canonical description summary')
+            check(page.locator('.hotel-gallery-thumbs').is_visible(),f'{width}: desktop card retains direct gallery thumbnails')
         if width<=760:
             geometry=page.locator('.hotel-offers-summary').evaluate('''node=>{
                 const button=node.querySelector('.tour-more-toggle'),price=node.querySelector('.hotel-price'),b=button.getBoundingClientRect(),p=price.getBoundingClientRect(),card=node.closest('.hotel-card').getBoundingClientRect();
@@ -124,6 +126,7 @@ with sync_playwright() as p:
         check(page.evaluate('Array.from(document.querySelectorAll(".direct-tour")).map(x=>x.dataset.tid)')==[items[0]['tours'][0]['id'],items[1]['tours'][0]['id']],f'{width}: native selection IDs unchanged; Andromeda not enabled by guess')
         page.locator('.hotel-details summary').click()
         check(page.locator('.hotel-description-summary').is_visible(),f'{width}: unique canonical description stays visible when hotel details open')
+        check(page.locator('.hotel-gallery-thumbs').is_visible(),f'{width}: opening hotel details makes the canonical gallery controls available')
         check('Описание из нашего каталога' in page.locator('.hotel-description-summary').inner_text(),f'{width}: own description remains readable')
         check(page.locator('.hotel-details-content .hotel-description').count()==0,f'{width}: open hotel details never duplicate the canonical description')
         old=page.locator('.hotel-gallery-main').get_attribute('src');page.locator('.hotel-gallery-thumb').first.click()
