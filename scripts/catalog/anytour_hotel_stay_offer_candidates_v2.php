@@ -287,5 +287,8 @@ if (realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? ''))===__FILE__) {
         PDO::ATTR_EMULATE_PREPARES=>false,
         PDO::ATTR_STRINGIFY_FETCHES=>false,
     ]);
-    echo self::json((new AnyTourHotelStayOfferCandidatesV2($pdo))->collect($limit));
+    echo json_encode(
+        (new AnyTourHotelStayOfferCandidatesV2($pdo))->collect($limit),
+        JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR
+    ) . PHP_EOL;
 }
