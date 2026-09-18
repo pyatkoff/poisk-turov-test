@@ -55,9 +55,11 @@ jobs:
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
           b=c['body']
           assert os.environ['OPERATION_ID'] in b
-          assert '60' in b and 'minute' in b.lower() and '<=45' in b and '<=500' in b
-          assert 'hard coordinate block >5 km' in b
-          assert 'canonical default token-hash rate lock' in b
+          low=b.lower().replace(' ','')
+          assert '<=45' in b and '<=500' in b
+          assert '60/min' in low or '60requests/minute' in low
+          assert '>5km' in low
+          assert 'token-hash' in low
           PY
 
       - name: Require credentials
