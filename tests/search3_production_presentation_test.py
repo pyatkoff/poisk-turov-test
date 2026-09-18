@@ -196,11 +196,14 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertEqual(self.bundle.count("'site-header-v2.css'"), 1)
         for name in (
             'ds2-search-intro-v1.css', 'ds2-search.css',
-            'hotel-actions-v3.js', 'room-details-v3.js', 'hotel-autocomplete-v1.js',
+            'hotel-actions-v3.js', 'room-details-v3.js',
             'search-filters-ux-v1.js',
             'mobile-results-filters-v1.js', 'ds2-results-filters.js',
         ):
             self.assertGreaterEqual(self.bundle.count("'" + name + "'"), 2, name)
+
+        self.assertEqual(self.bundle.count("'hotel-autocomplete-v1.js'"), 1)
+        self.assertEqual(self.bundle.count("'hotel-autocomplete-v1.css'"), 1)
 
     def test_one_local_hotel_filter_owns_loaded_card_filtering(self):
         parts = self.source['assets']['search3-results-filters-v1.js']
