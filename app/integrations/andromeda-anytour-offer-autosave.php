@@ -34,7 +34,7 @@ final class AnyTourAndromedaOfferAutosaveV1
     /**
      * @param callable(array):array $mappingReader current [namespace,external] -> legacy local map
      * @param callable(array):array $canonicalResolver legacy local -> AnyTour own id/null map
-     * @param callable(array,int,array,array):?array $surchargeReader retained local surcharge reader
+     * @param callable(array,int,array,array):?array $surchargeReader retained local pricing reader
      * @param callable(string,array):bool $save atomic private checkpoint writer
      * @param callable(string,array,array,DateTimeImmutable):array $ingest LOCAL snapshot ingestor
      */
@@ -231,6 +231,7 @@ final class AnyTourAndromedaOfferAutosaveV1
                 'identity' => $entry['current']['identity'],
                 'page' => $entry['current']['page'],
                 'priced' => $entry['priced_money']['search_price_with_surcharge'] ?? null,
+                'verified_final' => $entry['verified_quote']['final_price'] ?? null,
             ];
         }
         $digest = hash('sha256', json_encode([
@@ -261,7 +262,7 @@ final class AnyTourAndromedaOfferAutosaveV1
         int $issuedAt,
         array $childAges,
         mixed $anytourHotelId,
-        ?array $surcharge
+        ?array $pricing
     ): ?array {
         try {
             if ($anytourHotelId !== null && (!is_int($anytourHotelId) || $anytourHotelId < 1)) return null;
@@ -292,6 +293,26 @@ final class AnyTourAndromedaOfferAutosaveV1
             $roomPlacement = AnyTourThreeProviderRoomPlacement::normalize(
                 'andromeda', $roomRaw, trim($placementRaw) === '' ? null : $placementRaw
             );
+            $surcharge = null;
+            $verifiedQuote = null;
+            if ($pricing !== null) {
+                if (($pricing['state'] ?? null) === 'verified'
+                    && array_key_exists('verified_quote', $pricing)
+                    && is_array($pricing['verified_quote'])
+                    && ($pricing['fact'] ?? null) === null) {
+                    $verifiedQuote = $pricing['verified_quote'];
+                } elseif (($pricing['state'] ?? null) === 'estimated'
+                    && is_array($pricing['fact'] ?? null)
+                    && ($pricing['verified_quote'] ?? null) === null) {
+                    $surcharge = $pricing['fact'];
+                } elseif (($pricing['provider'] ?? null) === 'andromeda'
+                    && ($pricing['state'] ?? null) === 'estimated') {
+                    // Backward-compatible source-only fixture path.
+                    $surcharge = $pricing;
+                } else {
+                    return null;
+                }
+            }
             $additional = [];
             if ($surcharge !== null) {
                 $additional = self::additionalFromSurcharge($surcharge, $price);
@@ -345,13 +366,15 @@ final class AnyTourAndromedaOfferAutosaveV1
                     throw new DomainException('ANDROMEDA_ANYTOUR_PROTECTED_PRICE_MISMATCH');
                 }
             }
-            return [
+            $entry = [
                 'anytour_hotel_id' => $anytourHotelId,
                 'offer' => $offer,
                 'retained' => $retained,
                 'current' => $current,
                 'priced_money' => $priced,
             ];
+            if ($verifiedQuote !== null) $entry['verified_quote'] = $verifiedQuote;
+            return $entry;
         } catch (DomainException $error) {
             if ($error->getMessage() === 'ANDROMEDA_ANYTOUR_PROTECTED_PRICE_MISMATCH') throw $error;
             return null;
@@ -590,7 +613,7 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
         }
         $reader = __DIR__ . '/andromeda-saved-package-runtime.php';
         if (is_file($reader) && !is_link($reader)) require_once $reader;
-        if (!function_exists('anytour_andromeda_read_saved_surcharge')
+        if (!function_exists('anytour_andromeda_read_saved_pricing')
             || !function_exists('anytour_andromeda_search3_current_mappings')
             || !function_exists('anytour_andromeda_search3_save')) {
             return ['published' => false, 'reason' => 'runtime_dependency_unavailable'];
@@ -617,7 +640,7 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
                     'provider' => 'andromeda', 'search_ref' => $searchRef, 'generation' => $generation,
                     'page' => $state['store']['snapshot']['page'], 'offer_ref' => $offer['offer_ref'],
                 ];
-                return anytour_andromeda_read_saved_surcharge(
+                return anytour_andromeda_read_saved_pricing(
                     $directory, $state['store'], $created, $context, $allows, $nowTs
                 );
             },
