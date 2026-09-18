@@ -1,0 +1,98 @@
+name: INT read failed Andromeda local DB seed v2
+
+on:
+  push:
+    branches:
+      - 'ops/int-andromeda-local-db-seed-20260918-v2'
+    paths:
+      - '.github/workflows/int-andromeda-local-db-seed-v2-readback.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - name: Read sealed v2 state without supplier access
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          mkdir -p evidence
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15 "$remote" 'bash -s' > evidence/readback.json <<'REMOTE'
+          set -euo pipefail
+          op="$HOME/.anytour-ops/int-andromeda-local-db-seed-1717-20260918-v2"
+          site="$HOME/www/anytoour.ru"
+          test -d "$op" && test -s "$op/state" && test -f "$op/error.log"
+          state="$(cat "$op/state")"
+          signature="$(python3 - "$op/error.log" <<'PY'
+          import pathlib,re,sys,json
+          s=pathlib.Path(sys.argv[1]).read_text(errors='ignore')
+          codes=re.findall(r'ANDROMEDA_[A-Z0-9_]+|ANYTOUR_[A-Z0-9_]+',s)
+          fatal=re.search(r'(?:Uncaught\s+)?([A-Za-z0-9_\\]+):\s*(.*?)\s+in\s+\S+',s,re.S)
+          if fatal:
+              cls=fatal.group(1).split('\\')[-1]
+              msg=re.sub(r'\s+',' ',fatal.group(2))[:240]
+          else:
+              cls='NO_CLASS'
+              lines=[x.strip() for x in s.splitlines() if x.strip()]
+              msg=(lines[-1] if lines else 'NO_MESSAGE')[:240]
+          msg=re.sub(r'https?://\S+','<url>',msg)
+          msg=re.sub(r'/(?:[^\s:]+/)*[^\s:]+','<path>',msg)
+          msg=re.sub(r'[A-Fa-f0-9]{32,}','<digest>',msg)
+          msg=re.sub(r'(?i)(token|password|sid|uid)=\S+',r'\1=<redacted>',msg)
+          print(json.dumps({'code':codes[-1] if codes else 'NO_TYPED_CODE','class':cls,'message':msg},sort_keys=True))
+          PY
+          )"
+          cd "$site"
+          php -d display_errors=0 <<'PHP' > /tmp/andromeda-v2-db.json
+          <?php
+          declare(strict_types=1);
+          require 'config.php';
+          $f=is_file('data/db-v1.php')?'data/db-v1.php':'v2/data/db-v1.php';
+          require $f;
+          $db=v2_data_db();
+          $q=$db->prepare('SELECT COUNT(*) FROM anytour_offers WHERE provider=?');
+          $q->execute(['andromeda']);$offers=(int)$q->fetchColumn();
+          $q=$db->prepare('SELECT COUNT(*) FROM anytour_offers WHERE provider=? AND is_active=1');
+          $q->execute(['andromeda']);$active=(int)$q->fetchColumn();
+          $q=$db->prepare('SELECT COUNT(*) FROM anytour_offers WHERE provider=? AND final_price_ready=1');
+          $q->execute(['andromeda']);$ready=(int)$q->fetchColumn();
+          echo json_encode(['andromeda_offers'=>$offers,'andromeda_active'=>$active,'andromeda_ready'=>$ready,
+            'all_offers'=>(int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()],JSON_THROW_ON_ERROR);
+          PHP
+          python3 - "$state" "$signature" /tmp/andromeda-v2-db.json <<'PY'
+          import json,sys
+          state,signature,path=sys.argv[1:]
+          print(json.dumps({
+            'operation_state':state,
+            'error':json.loads(signature),
+            'db':json.load(open(path)),
+            'supplier_calls':0,
+            'db_writes_in_readback':0,
+            'replay':False
+          },sort_keys=True))
+          PY
+          rm -f /tmp/andromeda-v2-db.json
+          REMOTE
+          cat evidence/readback.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-local-seed-v2-readback-${{ github.run_id }}
+          path: evidence/
+          retention-days: 14
