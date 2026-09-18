@@ -11,6 +11,7 @@ on:
       - 'tests/search3-andromeda-provider.cjs'
       - 'tests/search3-andromeda-provider-config.php'
       - 'tests/search3-css-printing.cjs'
+      - 'tests/search3-presentation-scope.test.cjs'
       - 'tests/search3_source_build_test.py'
       - 'v2/**'
       - 'tests/site-preview-path-smoke.php'
@@ -83,6 +84,7 @@ jobs:
           node tests/search3-andromeda-provider.cjs
           php tests/search3-andromeda-provider-config.php
           node tests/search3-css-printing.cjs
+          node tests/search3-presentation-scope.test.cjs
           node tests/search3-honest-results-controls.cjs
           python3 -B tests/search3_source_build_test.py
           python3 -B tests/search3_production_presentation_test.py
@@ -260,6 +262,14 @@ jobs:
           trap - EXIT
           echo SEARCH3_SITE_LOCAL_PREVIEW_SMOKE_OK
 
+      - name: Detect proven card-only presentation scope
+        id: presentation-scope
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/build/search3-js/presentation-scope.cjs "$BASE_SHA" "$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
       - name: Detect owner-authorized half-size reset
         id: half-size-reset
         shell: bash
@@ -428,8 +438,8 @@ jobs:
         run: |
           set -euo pipefail
           export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
-          # Each behavior owner pays for its primary browser journey. Renderer/CSS
-          # geometry changes still run both journeys plus the entry geometry sweep.
+          # Proven card-only CSS keeps the real results/operator-card journey and
+          # screenshots. Shared/structural/mixed changes keep every existing tier.
           cat > "$RUNNER_TEMP/search3-current-results-router.php" <<'PHP'
           <?php
           $entry = '/_preview/search3-site-candidate/poisk-turov/';
@@ -445,10 +455,10 @@ jobs:
           if [ "${{ steps.results-current.outputs.required }}" = "true" ] || [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
             node tests/search3-current-results-browser.cjs
           fi
-          if [ "${{ steps.results-shortlist.outputs.required }}" = "true" ] || [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
+          if [ "${{ steps.results-shortlist.outputs.required }}" = "true" ] || { [ "${{ steps.results-geometry.outputs.required }}" = "true" ] && [ "${{ steps.presentation-scope.outputs.card-only }}" != "true" ]; }; then
             node tests/search3-shortlist-browser.cjs
           fi
-          if [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
+          if [ "${{ steps.results-geometry.outputs.required }}" = "true" ] && [ "${{ steps.presentation-scope.outputs.card-only }}" != "true" ]; then
             node tests/search3-entry-owner-browser.cjs
             node tests/search3-entry-geometry-browser.cjs
             if [ "${{ steps.results-geometry.outputs.native-date }}" = "true" ]; then
