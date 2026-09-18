@@ -57,8 +57,8 @@ if(in_array('--self-test',$argv??[],true)){
     $v=hmca_name_variants('SUN BAY (EX. SUN MARIS PARK)');if(!isset($v['sun bay'],$v['sun maris park']))throw new RuntimeException('name_variants');
     if(!in_array('turkey',hmca_country_aliases('Турция'),true)||!in_array('tanzania',hmca_country_aliases('Танзания'),true)||!in_array('uzbekistan',hmca_country_aliases('Узбекистан'),true)||!in_array('moscow',hmca_departure_aliases('Москва'),true))throw new RuntimeException('aliases');
     if(HMCA_MAX_CATALOG_CALLS!==400||!isset(HMCA_EXCLUDED_COUNTRIES[46],HMCA_EXCLUDED_COUNTRIES[47]))throw new RuntimeException('global_limits');
-    $ti=[];$tn=[];hmsbf_add_target($ti,$tn,4,1,['Grand Sunrise Beach Hotel']);hmsbf_add_target($ti,$tn,4,2,['Grand Sunrise City Hotel']);
-    $rr=hmsbf_rank(['Sunrise Grand Beach'],$ti?4:4,$ti,$tn);if(($rr['status']??'')!=='ranked'||(int)($rr['best']['local_id']??0)!==1)throw new RuntimeException('strong_rank');
+    $ti=[];$tn=[];hmsbf_add_target($ti,$tn,4,1,['Grand Sunrise Beach Palace']);hmsbf_add_target($ti,$tn,4,2,['Grand Sunrise City Hotel']);
+    $rr=hmsbf_rank(['Sunrise Grand Beach'],4,$ti,$tn);if(($rr['status']??'')!=='ranked'||(int)($rr['best']['local_id']??0)!==1)throw new RuntimeException('strong_rank');
     if(hmca_number_sig('royal 2 sea')!==['2']||hmca_qualifier_sig('family sea view deluxe')!==['deluxe','family','sea','view'])throw new RuntimeException('strong_guards');
     echo "MATCH_COMMON4_SAMO_CATALOG_STRONG_ACQUIRE_SELFTEST_OK\n";exit(0);
 }
