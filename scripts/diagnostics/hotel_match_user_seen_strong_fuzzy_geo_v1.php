@@ -69,7 +69,7 @@ function hmfg_merge_target(array &$tokenIndex,array &$targetNames,int $country,i
 if(in_array('--self-test',$argv??[],true)){
     define('FC_LIBRARY_ONLY',true);
     require_once __DIR__.'/hotel_match_current_supplier_fuzzy_bridge.php';
-    $r=hmsbf_rank(['Grand Bagoz Hotel'],4,[4=>['grand'=>[1=>true],'bagoz'=>[1=>true]]],[4=>[1=>hmsbf_sets(['Grand Bagoz Otel'])]]);
+    $r=hmsbf_rank(['Grand Bagoz Hotel'],4,[4=>['grand'=>[1=>true],'bagoz'=>[1=>true]]],[4=>[1=>hmsbf_sets(['Grand Bagoz'])]]);
     if(($r['status']??'')!=='exact_key_skipped')throw new RuntimeException('exact_skip');
     $m=hmsbf_metric(['alpha','beach','palace'],['alpha','beach','palace','antalya']);
     if($m['common']!==3||$m['symmetric']<0.74)throw new RuntimeException('metric');
