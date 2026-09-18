@@ -176,7 +176,7 @@ try{
     $anexCandidates=[];$anexBlocked=[];
     foreach($anexNames as $id=>$names){
         if(isset($manualAnex[$id])||$registry->resolve('anex_online',$id,'preview')!==null)continue;
-        $r=hms_source_candidate('anex',$id,$names,array_keys($anexCountries[$id]??[]),$nameIndex,$aliasIndex,$frontier,$pairExclusions);
+        $r=hms_source_candidate('anex',(string)$id,$names,array_keys($anexCountries[$id]??[]),$nameIndex,$aliasIndex,$frontier,$pairExclusions);
         if($r['status']==='candidate')$anexCandidates[]=$r;else$anexBlocked[$r['reason']]=($anexBlocked[$r['reason']]??0)+1;
     }
 
@@ -221,7 +221,7 @@ try{
             foreach(array_keys($states) as $state)if(isset($stateCountryUnique[$state]))$countries[$stateCountryUnique[$state]]=true;
             if($countries)$stateDerived++;
         }
-        $rr=hms_source_candidate('andromeda',$id,$names,array_keys($countries),$nameIndex,$aliasIndex,$frontier);
+        $rr=hms_source_candidate('andromeda',(string)$id,$names,array_keys($countries),$nameIndex,$aliasIndex,$frontier);
         if($rr['status']==='candidate'){$rr['country_authority']=isset($andObsCountries[$id])?'observation':(($r['country_id']??null)?'identity':'accepted_stateKey_consensus');$andCandidates[]=$rr;}
         else$andBlocked[$rr['reason']]=($andBlocked[$rr['reason']]??0)+1;
     }
