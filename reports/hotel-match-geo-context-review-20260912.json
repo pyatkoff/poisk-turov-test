@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "lane": "MATCH",
+  "issue": 1971,
+  "pull_request": 2164,
+  "claim_comment_id": 5645699457,
+  "code_source_sha": "fe0127cea732b3bccb3f4ad98899d92cac1afcad",
+  "status": "prepared_offline_evidence_not_accepted_mappings",
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "supplier_calls": 0,
+  "tourvisor_calls": 0,
+  "live_operation_started": false,
+  "blocked_write_workflow_retried": false,
+  "snapshot_is_not_write_authority": true,
+  "current_transaction_and_per_row_readback_required_before_acceptance": true,
+  "inputs": {
+    "census": {
+      "operation_id": "hotel-match-core8-identity-census-1971-20260912-v2",
+      "run_id": 34691514459,
+      "artifact_id": 10297193994,
+      "artifact_zip_sha256": "2340e60392536ec12c97b3789afb618ba4aecc3ca69d807483c9c2804a4d65a9",
+      "json_sha256": "128ad70487476e6cf7f014d4d892b54988ee0d46d424cc8f348a4f161d0ddb28",
+      "generated_at_utc": "2026-09-12T11:37:18+00:00",
+      "extraction": "Read the existing stdout MATCH_CENSUS: JSON and retain one trailing newline. Original wrapper expected another marker and failed after a completed read. No producer replay.",
+      "position": "After the independent +391 mapping transaction, before the later independent +148 exact-match transaction.",
+      "no_replay": true
+    },
+    "xml": {
+      "run_id": 34150890531,
+      "artifact_id": 10029330453,
+      "artifact_zip_sha256": "35b3120ea01bc5609535859b049973b9a0a4c70b95c381fb8e7dc0d3098b1afd",
+      "json_sha256": "1a450d8fb5f39af147fea500f8f965c83f84f3188de04b6f7aa9845a0350e445",
+      "file": "anex-hotel-catalog-match.json",
+      "usage": "Saved supplier names, aliases, country and town only; old candidate local IDs are not authority.",
+      "reexecuted": false
+    }
+  },
+  "independent_completed_operations_observed_not_executed_here": [
+    {"operation_id":"hotel-match-mass-bridge-auto-accept-1971-20260912-v2","run_id":34691447089,"artifact_id":10296469124,"artifact_zip_sha256":"5da30cacdd73db8ccbf0833d667ddd1183f5702cffd03763606615fec8a07707","reported_written":391,"reported_post_commit_readback":true,"independent_before_after_census_delta_verified":391,"previous_13884_mapping_rows_unchanged":true,"no_replay":true},
+    {"operation_id":"hotel-match-mass-direct-exact-accept-1971-20260912-v1","run_id":34691621327,"artifact_id":10297139394,"artifact_zip_sha256":"277177703f5a196d3f894f6ab96d0e1cb3fe1c9dc728727172c4ce045070ba04","reported_written":148,"reported_post_commit_readback":true,"per_row_db_read_repeated_here":false,"no_replay":true}
+  ],
+  "algorithm": {
+    "uses_existing_census_queue": true,
+    "union_includes_observed_ids_absent_from_staging": true,
+    "geographic_affixes_only_at_name_edges": true,
+    "geography_from_own_row_fields_required": true,
+    "removed_geography_must_also_be_supported_by_other_side": true,
+    "parent_candidates_derived_from_actual_local_region_subregion_pairs": true,
+    "countrywide_unique_local_target_required": true,
+    "full_fuzzy_candidate_enumeration_no_top_k_alias_truncation": true,
+    "minimum_name_margin": 8,
+    "current_name_significant_qualifiers_preserved_even_with_former_aliases": true,
+    "country_only_is_not_geography": true,
+    "coordinates_over_5km_block": true,
+    "star_key_is_not_star_rating": true,
+    "native_exact_lane_excluded": true,
+    "accepted_counterpart_presence_alone_is_not_evidence": true,
+    "suspect_accepted_bridge_targets_withheld_not_changed": true,
+    "manual_review_not_automatic_fallback": true
+  },
+  "results": {
+    "examined": 7591,
+    "prepared_count": 244,
+    "prepared_by_provider": {"anex":209,"andromeda":35},
+    "prepared_by_country": {"turkey":91,"vietnam":42,"uae":40,"thailand":37,"egypt":23,"srilanka":8,"cuba":3,"maldives":0},
+    "prepared_with_independent_accepted_bridge": 116,
+    "live_anex_examined": 106,
+    "live_anex_prepared": 23,
+    "live_unique_local_targets": 20,
+    "sum_of_saved_live_observation_weights": 800,
+    "observation_weight_is_not_unique_search_count": true,
+    "counts": {
+      "accepted_bridge_conflict":1,
+      "ambiguous_countrywide_identity":134,
+      "category_needs_independent_evidence":2,
+      "existing_exact_lane_not_repeated":1308,
+      "low_information_name":142,
+      "no_geographic_name_proof":5193,
+      "non_specific_accommodation":195,
+      "prepared_geography_evidence":244,
+      "region_conflict":57,
+      "significant_qualifier_difference":17,
+      "small_name_margin":6,
+      "unconfirmed_removed_geography":126,
+      "unknown":166
+    },
+    "full_reproducible_result_sha256": "f9b508ed91213f773f9e3f9253ba47bc4f8e01cf70496f3cf17e758bfa9ee35d"
+  },
+  "validation": {
+    "local_synthetic_tests_passed":22,
+    "python_compile_passed":true,
+    "rapidfuzz_version":"3.14.3",
+    "same_full_result_bytes_for_pythonhashseed_1_and_2":true,
+    "review_source_sha256":"a1c1d411acc727965a3f0f043ab5e68089edab46147814ec1163314af6e91fb1",
+    "test_source_sha256":"a80ff9bb8b0f37865ab4cd08ec88e4d57f8ffcb36fd174c2703776627b36c28c",
+    "unchanged_dependency_git_blob":"73f7d79702b804460bdb34f825a93dc462265080",
+    "ci_pending_at_report_creation":true,
+    "local_tests_are_not_db_acceptance":true,
+    "false_proposal_prevented":"Social Hotels Tecom / former Byblos Dubai must not become MARINA BYBLOS using only broad Dubai geography.",
+    "legitimate_fortune_name_preserved":"Grand Mercure Fortune is a hotel name, not a Fortuna star-class roulette placeholder. This accounts for final244 versus preliminary243."
+  },
+  "reproduction": {
+    "entrypoint":"scripts/diagnostics/hotel_match_geo_context_review.py",
+    "test":"python3 tests/hotel_match_geo_context_review_test.py -v",
+    "command":"PYTHONHASHSEED=1 python3 scripts/diagnostics/hotel_match_geo_context_review.py post391-census.json anex-hotel-catalog-match.json result.json --census-sha256 128ad70487476e6cf7f014d4d892b54988ee0d46d424cc8f348a4f161d0ddb28 --baseline-sha256 1a450d8fb5f39af147fea500f8f965c83f84f3188de04b6f7aa9845a0350e445",
+    "missing_input_or_digest_mismatch":"Stop. Read existing completed artifact; do not rerun its producer."
+  },
+  "prepared_pair_columns":["external_hotel_id","proposed_local_id"],
+  "prepared_pairs_are_not_an_apply_manifest":true,
+  "anex_prepared_pairs":[[8803,17461],[28990,17680],[29860,17346],[30720,17656],[32616,17527],[32769,17656],[32826,17461],[34078,37383],[44411,131384],[29426,17612],[30538,17527],[41114,59144],[44413,101819],[4293,109],[1639,150],[14902,55574],[780,464],[32734,17456],[44596,28760],[29618,17317],[32575,17692],[32577,17689],[35869,17366],[489,408],[495,506],[522,290],[542,211],[760,351],[772,111232],[784,390],[843,108383],[1056,12119],[1307,323],[1327,127],[1660,303],[3195,599],[3273,640],[3322,4203],[3325,7829],[3457,492],[3914,4414],[4260,468],[4320,617],[4453,741],[4496,663],[4500,4225],[4770,7829],[4771,7952],[5027,7858],[5132,12117],[5786,13933],[5999,32362],[6556,24935],[6707,4960],[7508,8848],[7522,8937],[7549,2680],[7627,4533],[7666,2498],[7667,4452],[7743,2587],[7745,2635],[7765,2695],[7873,2676],[7922,8916],[8156,7874],[8532,5535],[8791,66122],[8792,17297],[8795,17292],[8797,17435],[8800,17616],[8802,17405],[9057,37406],[9373,17503],[10481,28589],[10685,17538],[10719,33214],[10811,8910],[10865,2560],[10956,2655],[10960,2657],[11005,2935],[11012,27506],[11282,2727],[11385,45641],[12899,48853],[13488,49747],[13555,49508],[13820,50626],[14525,52267],[14693,4462],[14955,52873],[15003,2263],[16011,44485],[16014,55945],[16274,65020],[16603,17692],[16604,17689],[16919,2622],[19072,2553],[19187,2968],[19579,28508],[19778,58629],[20123,52918],[20154,24943],[20203,32372],[20532,63122],[20796,64190],[21003,63673],[21070,60163],[21213,8932],[21283,3036],[21357,64315],[21986,65876],[22547,63878],[23050,63892],[23116,40879],[23654,8177],[24871,45658],[25051,17457],[25628,68973],[26123,49211],[26520,63684],[26791,69440],[26838,126102],[26863,4947],[26865,47461],[27167,70573],[27485,17401],[28033,73190],[28078,70033],[28891,17359],[29621,17476],[29995,17401],[29999,17435],[30002,17689],[30011,17538],[30590,2510],[30723,11399],[30801,17290],[31362,77793],[31800,76242],[32263,78683],[32361,17442],[32544,17690],[32593,17457],[32698,17435],[32700,17317],[32706,17503],[32716,17616],[32729,17680],[32730,17481],[32737,17684],[32748,17290],[32766,17401],[32779,17405],[32788,17543],[32794,17492],[32822,76242],[32859,28589],[32870,17450],[32975,80068],[32983,75857],[32985,17440],[33675,55570],[33687,17492],[33924,17476],[34287,17440],[34382,17535],[34576,4405],[34702,17346],[34852,17389],[35471,77614],[35685,17612],[35875,17415],[35891,17318],[36058,17541],[36065,17451],[36158,45277],[36357,103067],[36366,37534],[37163,108172],[37182,17535],[37193,17415],[37321,1186],[37645,111052],[37713,59603],[38822,107965],[40243,126257],[40316,80048],[40331,126582],[40974,1695],[41795,72444],[43221,127945],[43226,111420],[43320,9405],[43385,103091],[43389,115574],[44133,82736],[44169,64763],[44181,70985],[44491,58474],[44500,128938],[44501,63686],[44524,66490],[44591,108236],[44594,51023],[45121,80341]],
+  "andromeda_prepared_pairs":[[13491,781],[34673,4203],[135247,3028],[331924,42493],[402863,2832],[526528,28234],[2000024852,47216],[2000030188,43712],[2000030999,45243],[2000031008,43068],[2000034546,50999],[2000034761,52255],[2000035429,50643],[2000039620,45516],[2000039890,61622],[2000041631,59144],[2000043208,59333],[2000044249,60163],[2000050194,45277],[2000051329,63892],[2000056375,6317],[2000060461,4947],[2000063007,2510],[2000073262,13835],[2000073586,80863],[2000084617,64653],[2000086586,110286],[2000088374,103281],[2000090031,37199],[2000095456,126048],[2000101328,126582],[2000103148,127042],[2000110026,118475],[2000119475,17573],[2000121047,134]],
+  "live_columns":["anex_id","proposed_local_id","saved_search_count","source_name","source_geography","target_name","target_region","target_subregion"],
+  "live_rows":[[8803,17461,50,"Hali Hotel",["Султанахмет-Фатих"],"HALI HOTEL SULTANAHMET","Стамбул","Султанахмет"],[28990,17680,50,"Tilia Hotel",["Лалели-Фатих"],"TILIA HOTEL LALELI","Стамбул","Лалели"],[29860,17346,50,"Birbey Hotel",["Лалели-Фатих"],"BIRBEY HOTEL LALELI","Стамбул","Лалели"],[30720,17656,50,"Sureyya Hotel",["Лалели-Фатих"],"SUREYYA HOTEL LALELI","Стамбул","Лалели"],[32616,17527,50,"Martinenz Hotel.",["Лалели-Фатих"],"MARTINENZ HOTEL LALELI","Стамбул","Лалели"],[32769,17656,50,"Sureyya Hotel.",["Лалели-Фатих"],"SUREYYA HOTEL LALELI","Стамбул","Лалели"],[32826,17461,50,"Hali Hotel.",["Султанахмет-Фатих"],"HALI HOTEL SULTANAHMET","Стамбул","Султанахмет"],[34078,37383,50,"Hotel Darkmen.",["Лалели-Фатих"],"DARKMEN LALELI","Стамбул","Лалели"],[44411,131384,50,"Nova City Hotel Istanbul",["Стамбул"],"NOVA CITY HOTEL (EX. GRAND INOVA, AMBER SUITES)","Стамбул","Фатих"],[29426,17612,49,"Hotel Sahinler",["Лалели-Фатих"],"SAHINLER HOTEL LALELI","Стамбул","Лалели"],[30538,17527,49,"Martinenz Otel",["Лалели-Фатих"],"MARTINENZ HOTEL LALELI","Стамбул","Лалели"],[41114,59144,49,"Adelmar Hotel.",["Шишли"],"ADELMAR SISLI","Стамбул","Шишли"],[44413,101819,48,"The Barbarossa Hotel Istanbul",["Стамбул"],"BARBAROSSA HOTEL","Стамбул","Фатих"],[4293,109,37,"Pickalbatros Aqua Vista Resort Hurghada",["Хургада"],"PICKALBATROS AQUA VISTA RESORT","Хургада","Хургада"],[1639,150,27,"Pickalbatros Citadel Resort Sahl Hasheesh",["Сахль-Хашиш"],"PICKALBATROS CITADEL RESORT (EX. CITADEL AZUR RESORT)","Хургада","Сахль-Хашиш"],[14902,55574,27,"Pickalbatros White Beach Resort Hurghada",["Хургада"],"PICKALBATROS WHITE BEACH RESORT","Хургада","Хургада"],[780,464,26,"Steigenberger Golf Resort El Gouna",["Эль Гуна"],"STEIGENBERGER GOLF RESORT","Эль Гуна",null],[32734,17456,18,"Grand Washington Hotel.",["Лалели-Фатих"],"GRAND WASHINGTON LALELI","Стамбул","Лалели"],[44596,28760,16,"Metropark Hotel",["Таксим-Бейоглу"],"TAKSIM METROPARK","Стамбул","Таксим"],[29618,17317,1,"Avicenna Hotel",["Султанахмет-Фатих","Стамбул","Султанахмет-Фатих"],"AVICENNA HOTEL SULTANAHMET","Стамбул","Султанахмет"],[32575,17692,1,"Vicenza Hotel.",["Лалели-Фатих"],"VICENZA HOTEL LALELI","Стамбул","Лалели"],[32577,17689,1,"Venera Hotel.",["Лалели-Фатих","Стамбул","Лалели-Фатих"],"VENERA HOTEL LALELI","Стамбул","Лалели"],[35869,17366,1,"Cartoon Hotel.",["Таксим-Бейоглу"],"CARTOON HOTEL TAKSIM","Стамбул","Таксим"]],
+  "accepted_bridge_geography_audit": {
+    "disagreement_rows":82,
+    "local_targets_withheld":81,
+    "not_a_count_of_confirmed_wrong_mappings":true,
+    "explanation":"Saved supplier sales regions and local resort taxonomies can differ. Disagreement blocks propagation in this review; it does not revoke or rewrite accepted identities.",
+    "priority_dossiers":[
+      {"external_id":"2000090573","local_id":465,"source_name":"Stella Di Mare Beach Resort & SPA Makadi Bay","source_geography":"Макади Бэй","target_name":"STELLA DI MARE BEACH HOTEL & SPA","target_region":"Шарм-эль-Шейх","target_subregion":"Наама Бей","evidence_sha256":"f5d85396c13a00e7fce451c422eae9162cd68cf26be47e9c89b5fa9002168967"},
+      {"external_id":"2000062991","local_id":108,"source_name":"Pickalbatros Aqua Blu Resort","source_geography":"Шарм Эль Шейх","target_name":"PICKALBATROS AQUA BLU RESORT (EX. PICKALBATROS SEA WORLD)","target_region":"Хургада","evidence_sha256":"bebc3a8aaee832109bfaf9e20bdbd9cedbdaccdd74dc4e7810da26c72cda688b"},
+      {"external_id":"2000025326","local_id":57083,"source_name":"Lavender","source_geography":"Нячанг","target_name":"LAVENDER HOTEL","target_region":"Хошимин","evidence_sha256":"db03f941236caf0394976256cf06b915cf8608a794bb38e601ebbcb20585d6a1"},
+      {"external_id":"10302","local_id":138087,"source_name":"Ixir","source_geography":"Кемер","target_name":"IXIR HOTEL","target_region":"Стамбул","evidence_sha256":"2a6a703f8486add0f85f42968ddfc2a667a9d0eebf29fded379bcfc4bd0a2422"}
+    ],
+    "action":"Independent CURRENT and operator/hotel-link evidence required. Existing accepted/manual/conflict/exclusion records unchanged."
+  },
+  "handoff": {
+    "active_independent_live106_review_claim":5645737289,
+    "do_not_duplicate_other_writer":true,
+    "new_auto_accept_authority":false,
+    "remaining_evidence_ladder":"Saved Tourvisor ANEX-only operator links and ANEX card/media hotelCode; then new bounded real searches only through an authorized non-replayed evidence operation. Manual is last.",
+    "main_production_platform_int_transport_price_search_site_seo_leads_analytics_changed":false
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "issue": 1971,
+  "pull_request": 2164,
+  "operation_id": "hotel-match-core8-bridge-accept-1971-20260912-v1",
+  "status": "prepared_unrun_tool_safety_blocked",
+  "code_source_sha": "c8d3631f0fbdcc62b8600569553e5fe8b63727f8",
+  "plan_sha256": "102d744bd2d1f3d9e94449a92a9ecbd1b202d613e0d7119ea2f9b24af5ac4f9c",
+  "proposal_count": 352,
+  "proposal_provider_counts": {"anex": 349, "andromeda": 3},
+  "proposal_country_counts": {"turkey": 165, "srilanka": 41, "vietnam": 35, "uae": 32, "maldives": 27, "thailand": 25, "cuba": 21, "egypt": 6},
+  "selected_observed_live_anex": 0,
+  "actual_new_mapping_writes": 0,
+  "database_write_operation_dispatched": false,
+  "supplier_calls": 0,
+  "tourvisor_calls": 0,
+  "readback_verified": false,
+  "readback_not_applicable_reason": "The write operation has not been executed. Offline proofs and prepared counts are not DB acceptance.",
+  "validation": {
+    "security_run_id": 34691264040,
+    "security_source_sha": "c8d3631f0fbdcc62b8600569553e5fe8b63727f8",
+    "security_conclusion": "success",
+    "local_python_tests_passed": 13,
+    "local_php_lint_and_proof_fixtures_passed": true,
+    "local_selected_php_proofs_passed": 352,
+    "plan_byte_identical_for_pythonhashseed_1_and_2": true
+  },
+  "blocker": {
+    "type": "tool_safety_rejection",
+    "action": "GitHub.create_file",
+    "path": ".github/workflows/hotel-match-core8-bridge-accept.yml",
+    "workflow_created": false,
+    "head_after_rejection": "c8d3631f0fbdcc62b8600569553e5fe8b63727f8",
+    "read_only_path_verification_http_status": 404,
+    "alternative_execution_or_retry_attempted": false
+  },
+  "completed_read_only_census": {
+    "run_id": 34690398084,
+    "artifact_id": 10296837992,
+    "database_writes": 0,
+    "no_replay": true
+  },
+  "live_priority": {
+    "unresolved_unprotected_anex": 107,
+    "absent_from_anex_staging": 102,
+    "release_blocker_resolved": false,
+    "manual_not_default": true
+  },
+  "protected_scope_changed": false,
+  "main_or_production_changed": false
+}
