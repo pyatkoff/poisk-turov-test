@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      BASE_SHA: 2c712e70e9eb2df99270fc46e46c58f08dd10a11
+      BASE_SHA: 049f2f650b443a8dc404e518a32ef6b3d0242591
       RELEASE_DATA_SHA: a4c1568e38723c1b4c22809b0ebe5568e57f24b1
       OPERATION_ID: int-anex-owner-scope-2506-20260918-v1
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -44,7 +44,7 @@ jobs:
           set -euo pipefail
           test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
           mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
-          test "${#changed[@]}" -eq 2
+          test "${#changed[@]}" -eq 2 || { printf 'changed=%s\n' "${changed[*]}"; exit 1; }
           test "${changed[0]}" = '.github/workflows/int-anex-owner-scope-v1.yml'
           test "${changed[1]}" = 'scripts/ops/int_anex_owner_scope_v1.php'
           php -l scripts/ops/int_anex_owner_scope_v1.php
