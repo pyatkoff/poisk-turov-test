@@ -1,0 +1,264 @@
+name: Search3 AnyTour profile enrichment B004 v7
+
+on:
+  push:
+    branches:
+      - 'ops/local-profile-enrichment-2690-20260918-b004-v7'
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: anytour-profile-enrichment-operations
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BASE_RELEASE: 66e15f7a47894062d764b6b15147b5c78859c35e
+  OPERATION_ID: anytour-profile-enrichment-2690-20260918-b004-v7
+  CLAIM_COMMENT_ID: '5730264603'
+  LIMIT_VALUE: '250'
+  DEMAND_THROUGH: '2026-09-17T22:30:00Z'
+  SOURCE_CONTENT_RUN: '35282469577'
+  SOURCE_CONTENT_ARTIFACT: '10522149976'
+  SOURCE_CONTENT_DIGEST: 'sha256:fe512ea4c18607edc0fc94acf85caf7b73d8d4ef72fc0faf4845f96023c481eb'
+
+jobs:
+  apply-current:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.event_name == 'push' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/local-profile-enrichment-2690-20260918-b004-v7'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Pin exact operation and LOCAL dependencies
+        env:
+          BASE_SHA: 66e15f7a47894062d764b6b15147b5c78859c35e
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$BASE_SHA" = "$EXPECTED_BASE_RELEASE"
+          test "$(git merge-base "$HEAD_SHA" "$BASE_SHA")" = "$EXPECTED_BASE_RELEASE"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          test "${#changed[@]}" = 1
+          test "${changed[0]}" = '.github/workflows/search3-anytour-profile-enrichment-operation-b004-v7.yml'
+          for path in v2/data/anytour-profile-enrichment-v1.php v2/data/hotel-presentation-read-v1.php v2/data/hotel-details-v1.php; do
+            test "$(git rev-parse "$HEAD_SHA:$path")" = "$(git rev-parse "$EXPECTED_BASE_RELEASE:$path")"
+          done
+          php -l v2/data/anytour-profile-enrichment-v1.php >/dev/null
+          grep -Fq 'public const MAX_BATCH = 250;' v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "PROVENANCE_NAMESPACE = 'profile_enrichment:legacy_saved_v1'" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'roomMealFieldsExcluded'=>true" v2/data/anytour-profile-enrichment-v1.php
+          grep -Fq "'supplierCalls'=>0" v2/data/anytour-profile-enrichment-v1.php
+
+      - name: Verify owner claim and source artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          gh api "repos/pyatkoff/poisk-turov-test/actions/runs/$SOURCE_CONTENT_RUN/artifacts" > artifacts.json
+          python3 - <<'PY'
+          import datetime,json,os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in c['body']
+          assert os.environ['SOURCE_CONTENT_RUN'] in c['body']
+          assert os.environ['SOURCE_CONTENT_ARTIFACT'] in c['body']
+          created=datetime.datetime.fromisoformat(c['created_at'].replace('Z','+00:00'))
+          assert 0 <= (datetime.datetime.now(datetime.timezone.utc)-created).total_seconds() < 7200
+          a=next(x for x in json.load(open('artifacts.json'))['artifacts'] if x['id']==int(os.environ['SOURCE_CONTENT_ARTIFACT']))
+          assert not a['expired'] and a['workflow_run']['id']==int(os.environ['SOURCE_CONTENT_RUN'])
+          assert a['digest']==os.environ['SOURCE_CONTENT_DIGEST']
+          PY
+
+      - name: Retain immutable reservation before SSH or DB
+        env:
+          HEAD_SHA: ${{ github.sha }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          files=['v2/data/anytour-profile-enrichment-v1.php','v2/data/hotel-presentation-read-v1.php','v2/data/hotel-details-v1.php']
+          r={'operation':os.environ['OPERATION_ID'],'baseRelease':os.environ['EXPECTED_BASE_RELEASE'],'executionSource':os.environ['HEAD_SHA'],
+             'branch':os.environ['BRANCH_NAME'],'run':int(os.environ['GITHUB_RUN_ID']),'attempt':1,'claimCommentId':int(os.environ['CLAIM_COMMENT_ID']),
+             'limit':int(os.environ['LIMIT_VALUE']),'demandThrough':os.environ['DEMAND_THROUGH'],'sourceContentRun':int(os.environ['SOURCE_CONTENT_RUN']),
+             'sourceContentArtifact':int(os.environ['SOURCE_CONTENT_ARTIFACT']),'sourceContentDigest':os.environ['SOURCE_CONTENT_DIGEST'],
+             'dependencies':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in files},
+             'fillMissingOnly':True,'roomMealExcluded':True,'traitsExcluded':True,'supplierCalls':0,'mappingWrites':0,'legacyWrites':0,
+             'previousAttempts':'b004-v1-v2-v3-v4-v5-v6-pre-plan-no-commit','transport':'push-secret-context+ssh-stream-only','noReplayAfterCommitOrAmbiguousState':True}
+          raw=(json.dumps(r,sort_keys=True,ensure_ascii=False)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-profile-enrichment-b004-v7-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Require exact-head Security green
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            gh api "repos/pyatkoff/poisk-turov-test/commits/$HEAD_SHA/check-runs" > checks.json
+            python3 - <<'PY' && exit 0 || true
+          import json,sys
+          r=json.load(open('checks.json'))['check_runs']
+          sys.exit(0 if any(x['name']=='guard' and x['conclusion']=='success' for x in r) else 1)
+          PY
+            sleep 5
+          done
+          exit 1
+
+      - name: Prepare SSH and stream exact payload without SFTP
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 -d > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          remote_home="$(ssh "${opts[@]}" "$remote" 'printf %s "$HOME"')"
+          [[ "$remote_home" =~ ^/[A-Za-z0-9._/-]+$ ]]
+          site_root="$(ssh "${opts[@]}" "$remote" 'if test -f "$HOME/data/db-v1.php"; then printf %s "$HOME"; elif test -f "$HOME/www/anytoour.ru/data/db-v1.php"; then printf %s "$HOME/www/anytoour.ru"; else exit 44; fi')"
+          [[ "$site_root" =~ ^/[A-Za-z0-9._/-]+$ ]]
+          remote_op="$remote_home/.anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e '$remote_op'; mkdir -p '$remote_op/payload'"
+          for path in v2/data/anytour-profile-enrichment-v1.php v2/data/hotel-presentation-read-v1.php v2/data/hotel-details-v1.php reservation/reservation.json; do
+            base="$(basename "$path")"
+            local_sha="$(sha256sum "$path" | awk '{print $1}')"
+            ssh "${opts[@]}" "$remote" "umask 077; cat > '$remote_op/payload/$base'" < "$path"
+            remote_sha="$(ssh "${opts[@]}" "$remote" "sha256sum '$remote_op/payload/$base' | awk '{print \\$1}'")"
+            test "$local_sha" = "$remote_sha"
+          done
+          printf '%s\n' "$remote_op" > "$RUNNER_TEMP/anytour-remote-op"
+          printf '%s\n' "$site_root" > "$RUNNER_TEMP/anytour-site-root"
+
+      - name: Plan twice and apply exact fill-missing batch
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"
+          opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"; remote_op="$(cat "$RUNNER_TEMP/anytour-remote-op")"; site_root="$(cat "$RUNNER_TEMP/anytour-site-root")"
+          set +e
+          ssh "${opts[@]}" "$remote" "OPERATION_ID='$OPERATION_ID' LIMIT_VALUE='$LIMIT_VALUE' DEMAND_THROUGH='$DEMAND_THROUGH' REMOTE_OP='$remote_op' SITE_ROOT='$site_root' bash -s" <<'REMOTE' > terminal/server.log 2>&1
+          set -euo pipefail
+          cd "$REMOTE_OP"
+          plan() { php -d display_errors=0 -r '$root=getenv("SITE_ROOT"); $_SERVER["DOCUMENT_ROOT"]=$root; require $root."/data/db-v1.php"; require "payload/anytour-profile-enrichment-v1.php"; $c=new AnyTourProfileEnrichmentV1(v2_data_db()); echo AnyTourProfileEnrichmentV1::json($c->plan((int)getenv("LIMIT_VALUE"),getenv("DEMAND_THROUGH")))."\n";'; }
+          plan > plan-first.json
+          sleep 1
+          plan > plan-second.json
+          cmp -s plan-first.json plan-second.json
+          python3 - <<'PY'
+          import json,os
+          a=json.load(open('plan-first.json'))
+          assert a['status']=='prepared_read_only' and a['writes']==0 and a['supplierCalls']==0
+          assert a['limit']==int(os.environ['LIMIT_VALUE'])==250 and len(a['selected'])<=250 and a['activeProfiles']>=15999
+          assert a['roomMealFieldsExcluded'] is True and a['traitsExcluded'] is True
+          open('plan-sha.txt','w').write(a['planSha256']+'\n')
+          print('ANYTOUR_PROFILE_ENRICH_B004_V6_PLAN selected=%d scanned=%d plan=%s' % (len(a['selected']),a['scannedProfiles'],a['planSha256']))
+          PY
+          export PLAN_SHA="$(cat plan-sha.txt)"
+          php -d display_errors=0 -r '$root=getenv("SITE_ROOT"); $_SERVER["DOCUMENT_ROOT"]=$root; require $root."/data/db-v1.php"; require "payload/anytour-profile-enrichment-v1.php"; $c=new AnyTourProfileEnrichmentV1(v2_data_db()); echo AnyTourProfileEnrichmentV1::json($c->apply(getenv("OPERATION_ID"),(int)getenv("LIMIT_VALUE"),getenv("DEMAND_THROUGH"),getenv("PLAN_SHA")))."\n";' > result.json
+          cat result.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('result.json'))
+          assert r['status'] in ('committed_verified','committed_verified_noop')
+          assert r['operation']==os.environ['OPERATION_ID'] and r['planSha256']==open('plan-sha.txt').read().strip()
+          assert r['supplierCalls']==0 and r['mappingWrites']==0 and r['legacyWrites']==0
+          assert r['profileWrites']==r['profilesUpdated'] and r['provenanceWrites']==r['profilesUpdated']
+          PY
+          sha256sum plan-first.json plan-second.json result.json > result.sha256
+          REMOTE
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/ssh-exit.txt
+          for f in plan-first.json plan-second.json result.json result.sha256; do
+            if ssh "${opts[@]}" "$remote" "test -f '$remote_op/$f'"; then ssh "${opts[@]}" "$remote" "cat '$remote_op/$f'" > "terminal/$f"; fi
+          done
+
+      - name: Seal terminal receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p terminal
+          python3 - <<'PY'
+          import json,os,pathlib
+          rc=int(pathlib.Path('terminal/ssh-exit.txt').read_text().strip()) if pathlib.Path('terminal/ssh-exit.txt').exists() else 999
+          result=json.load(open('terminal/result.json')) if pathlib.Path('terminal/result.json').exists() else {}
+          plan=json.load(open('terminal/plan-first.json')) if pathlib.Path('terminal/plan-first.json').exists() else {}
+          committed=result.get('status') in ('committed_verified','committed_verified_noop')
+          receipt={'operation':os.environ['OPERATION_ID'],'baseRelease':os.environ['EXPECTED_BASE_RELEASE'],'run':int(os.environ['GITHUB_RUN_ID']),
+                   'sshExit':rc,'planSelected':len(plan.get('selected',[])) if isinstance(plan,dict) else None,'result':result,'committed':committed,
+                   'noReplay':committed or rc!=0,'status':'terminal_committed_verified' if rc==0 and committed else 'terminal_inspect_before_any_next_operation'}
+          pathlib.Path('terminal/receipt.json').write_text(json.dumps(receipt,sort_keys=True,ensure_ascii=False)+'\n')
+          print('PROFILE_ENRICH_B004_V6_TERMINAL '+json.dumps(receipt,sort_keys=True,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: anytour-profile-enrichment-b004-v7-terminal-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Cleanup remote operation
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; remote_op="$(cat "$RUNNER_TEMP/anytour-remote-op" 2>/dev/null || true)"
+          if [[ -s "$key" && -s "$known" && "$remote_op" == /*/.anytour-operations/* ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote_op'" || true
+          fi
+
+      - name: Require terminal verified state
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('terminal/receipt.json'))
+          assert r['status']=='terminal_committed_verified',r
+          PY
