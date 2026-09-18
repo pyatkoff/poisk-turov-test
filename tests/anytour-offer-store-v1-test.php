@@ -105,6 +105,30 @@ foreach ([$tv, $anex, $andromeda] as $dto) {
     check(!array_key_exists('context', $listing) && !array_key_exists('local_hotel_id', $listing), 'pure-context-stripped-' . $dto['provider']);
 }
 
+$regular = fixture_dto('anex', 101, 'anex-regular', '185125');
+$regular['finalPriceReady'] = false;
+$regular['finalPrice'] = null;
+$regular['price'] = '185125';
+$regular['money']['search_price'] = ['amount' => '185125', 'currency' => 'RUB'];
+$validated = private_call('validateDto', $regular);
+check($validated['listing_price_state'] === 'search_price_confirmation_required' && $validated['final_price_ready'] === false, 'pure-regular-state');
+$listing = private_call('listingProjection', $regular);
+check($listing['listingPriceState'] === 'search_price_confirmation_required'
+    && $listing['listingPriceReady'] === false
+    && $listing['priceConfirmationRequired'] === true
+    && $listing['listingPrice'] === '185125', 'pure-regular-listing');
+
+$verified = fixture_dto('andromeda', 101, 'andromeda-verified', '199900');
+$verified['quote_state'] = 'verified';
+$verified['final_price_verified'] = true;
+$verified['quote_evidence_digest'] = hash('sha256', 'verified-quote-fixture');
+$validated = private_call('validateDto', $verified);
+check($validated['listing_price_state'] === 'final_verified' && $validated['final_price_verified'] === true, 'pure-verified-state');
+$listing = private_call('listingProjection', $verified);
+check($listing['listingPriceState'] === 'final_verified'
+    && $listing['finalPriceVerified'] === true
+    && $listing['quoteEvidenceDigest'] === $verified['quote_evidence_digest'], 'pure-verified-listing');
+
 $bad = $tv; $bad['finalPriceReady'] = false;
 expect_error(fn() => private_call('validateDto', $bad), 'ANYTOUR_OFFER_READINESS', 'pure-ready-failclosed');
 $bad = $tv; $bad['identity']['offer_ref_digest'] = 'abc';
@@ -116,7 +140,7 @@ expect_error(fn() => private_call('validateDto', $bad), 'ANYTOUR_OFFER_PROVIDER'
 $bad = $tv; $bad['operator']['supplier_code_exposed'] = true;
 expect_error(fn() => private_call('validateDto', $bad), 'ANYTOUR_OFFER_OPERATOR', 'pure-private-operator-code');
 
-echo "ANYTOUR_OFFER_STORE_PURE_OK checks=20 providers=3\n";
+echo "ANYTOUR_OFFER_STORE_PURE_OK states=3 providers=3 regular=1 verified=1\n";
 
 $requireSql = in_array('--require-sql', $argv, true);
 $dsn = trim((string)getenv('ANYTOUR_OFFER_TEST_DSN'));
