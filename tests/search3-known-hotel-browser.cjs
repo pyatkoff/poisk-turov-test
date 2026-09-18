@@ -78,10 +78,12 @@ const viewports = [
         const input = document.querySelector('[data-v2-hotel-query]');
         const options = [...document.querySelectorAll('.hotel-autocomplete__option')];
         const rect = node => { const r = node.getBoundingClientRect(), s = getComputedStyle(node); return { x: r.x, y: r.y, width: r.width, height: r.height, fontSize: parseFloat(s.fontSize) }; };
-        return { input: rect(input), options: options.map(rect), overflow: document.documentElement.scrollWidth > innerWidth + 1 };
+        return { input: rect(input), options: options.map(rect), viewportHeight: innerHeight, overflow: document.documentElement.scrollWidth > innerWidth + 1 };
       });
       assert.ok(geometry.input.height >= 44 && geometry.input.fontSize >= 16, 'known-hotel query remains touch and zoom safe');
       assert.ok(geometry.options.every(item => item.height >= 44), 'every hotel result is a full touch target');
+      assert.ok(geometry.input.y >= 0 && geometry.input.y + geometry.input.height <= geometry.viewportHeight + 1, 'focused hotel query stays visible while suggestions are open');
+      assert.ok(geometry.options.every(item => item.y >= 0 && item.y + item.height <= geometry.viewportHeight + 1), 'suggestions stay inside the short viewport');
       assert.equal(geometry.overflow, false, 'lookup has no horizontal overflow');
 
       await input.press('Enter');
