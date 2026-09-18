@@ -74,7 +74,7 @@ jobs:
           for token in required:
               if token not in autosave and token not in money:
                   raise SystemExit('missing autosave contract token: '+token)
-          for token in ['AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied', 'AnyTourAndromedaSurchargeEvidenceV1::capture', "'final_price_verified' => false"]:
+          for token in ['AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied', 'AnyTourAndromedaSurchargeEvidenceV1::capture', "'state' => 'estimated'", 'verified_quote']:
               if token not in cache and token not in store:
                   raise SystemExit('missing cache bridge contract token: '+token)
           if "andromeda-anytour-offer-autosave.php" not in endpoint:
