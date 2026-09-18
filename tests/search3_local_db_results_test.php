@@ -31,6 +31,31 @@ need(AnyTourSearchScopeV1::familyDigest($scope['params'])===AnyTourSearchScopeV1
 need(AnyTourSearchScopeV1::savedCanContributeToCurrent($scope['params'],$narrowScope['params']),'overlapping saved date/night window can nominate concrete offers');
 $far=$narrow;$far['dateFrom']='2026-11-01';$far['dateTo']='2026-11-01';$farScope=AnyTourSearchScopeV1::fromParams($far);need(!AnyTourSearchScopeV1::savedCanContributeToCurrent($scope['params'],$farScope['params']),'non-overlapping dates cannot contribute');
 
+// The union never uses display price, hotel name or cross-provider numeric IDs as identity.
+$exactItem=['provider'=>'tourvisor','sourceScopeDigest'=>$scope['digest'],'price'=>'120000','offer'=>dto_fixture('tourvisor',101,'tv','120000')];
+$duplicate=$exactItem;$duplicate['price']='140000';$duplicate['sourceScopeDigest']=$broadScope['digest'];
+$otherProvider=$exactItem;$otherProvider['provider']='anex';$otherProvider['offer']['provider']='anex';$otherProvider['sourceScopeDigest']=$broadScope['digest'];
+$invalid=[];
+foreach(['date','nights','adults','ages'] as $fault){
+    $item=$otherProvider;$item['offer']['identity']['offer_ref_digest']=hash('sha256',$fault);
+    if($fault==='date')$item['offer']['tour']['checkin']='2026-10-08';
+    if($fault==='nights')$item['offer']['tour']['nights']=10;
+    if($fault==='adults')$item['offer']['tour']['party']['adults']=3;
+    if($fault==='ages')$item['offer']['tour']['party']['child_ages']=[8];
+    $invalid[]=$item;
+}
+$inputs=serialize([$exactItem,$duplicate,$otherProvider,$invalid]);
+$merged=search3_local_results_union([$exactItem],array_merge([$duplicate],$invalid,[$otherProvider]),$scope['params'],10);
+need($merged===[$exactItem,$otherProvider],'same provider/offer dedupes; same digest in another provider remains separate');
+need($inputs===serialize([$exactItem,$duplicate,$otherProvider,$invalid]),'union keeps source records immutable');
+need(search3_local_results_union([$exactItem],[$otherProvider],$scope['params'],1)===[$exactItem],'one overall bound retains exact records');
+need(search3_local_results_union([],$invalid,$scope['params'],10)===[],'non-exact concrete date/nights/party proof remains mandatory');
+need(search3_local_results_union([],[$otherProvider],$scope['params'],10)===[$otherProvider],'empty exact still accepts a compatible record');
+$broken=$otherProvider;unset($broken['offer']['identity']['offer_ref_digest']);
+$badIdentity=false;try{search3_local_results_union([],[$broken],$scope['params'],10);}catch(RuntimeException $e){$badIdentity=str_contains($e->getMessage(),'IDENTITY_INTEGRITY');}
+need($badIdentity,'missing immutable identity cannot be silently merged');
+echo "SEARCH3_LOCAL_SCOPE_UNION_PURE_OK exact_copy=1 provider_identity=1 concrete_scope=1 bounded=1 immutable=1\n";
+
 $dsn=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_DSN');$password=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_PASSWORD');if(!str_starts_with($dsn,'mysql:'))throw new RuntimeException('fixture DSN required');
 $pdo=new PDO($dsn,'root',$password,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
 $pdo->exec('SET FOREIGN_KEY_CHECKS=0');foreach(['anytour_offer_scopes','anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','andromeda_hotel_identities','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $t)$pdo->exec("DROP TABLE IF EXISTS `$t`");$pdo->exec('SET FOREIGN_KEY_CHECKS=1');
@@ -94,7 +119,14 @@ $otherDate=$broad;$otherDate['dateFrom']='2026-11-01';$otherDate['dateTo']='2026
 
 need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$broadScope,$at->modify('+1 minute')),'broad exact scope indexed');
 $token=AnyTourOfferStoreV1::beginRefresh($pdo,'tourvisor',$broadScope['digest'],$at->modify('+1 minute'));AnyTourOfferStoreV1::upsertReadyOffer($pdo,$token,$owns[101],dto_fixture('tourvisor',101,'tv-broad','130000'),$expires,$at->modify('+1 minute'));AnyTourOfferStoreV1::completeRefresh($pdo,$token,$at->modify('+1 minute'));
-$exactBroad=search3_local_results_build($pdo,$broad,$at->modify('+1 minute'));need($exactBroad['matchMode']==='exact'&&$exactBroad['partial']===false&&$exactBroad['storedOfferCount']===1&&$exactBroad['offerCount']===1,'visible exact cohort beats compatible fallback');need($exactBroad['hotels'][0]['offers'][0]['price']==='130000','exact broad price rendered without narrower merge');
+$exactBroad=search3_local_results_build($pdo,$broad,$at->modify('+1 minute'));
+need($exactBroad['matchMode']==='compatible'&&$exactBroad['partial']===true,'mixed exact and compatible results disclose partial saved coverage');
+need($exactBroad['storedOfferCount']===4&&$exactBroad['withheldOfferCount']===1&&$exactBroad['offerCount']===3,'exact Tourvisor must not suppress compatible ANEX or another distinct Tourvisor offer');
+need((array)$exactBroad['providerOfferCounts']===['anex'=>1,'tourvisor'=>2],'provider counts describe the deduplicated union');
+need($exactBroad['scopeDigest']===$broadScope['digest']&&$exactBroad['sourceScopeDigests']===[$broadScope['digest'],$scope['digest']],'current query identity and both contributing scopes are retained');
+need(array_column($exactBroad['hotels'][0]['offers'],'price')===['120000','125000','130000'],'whole concrete offers retain their original prices and final price sort');
+$limited=search3_local_results_build($pdo,$broad,$at->modify('+1 minute'),1);
+need($limited['storedOfferCount']===1&&$limited['offerCount']===1&&$limited['hotels'][0]['offers'][0]['price']==='130000','overall bound does not replace an exact record with a compatible one');
 
 $deleteBridge=$pdo->prepare("DELETE FROM anytour_hotel_sources WHERE namespace='anytour_local_id' AND external_key=? AND anytour_hotel_id=?");$deleteBridge->execute(['101',$owns[101]]);need($deleteBridge->rowCount()===1,'accepted bridge revoked');
 $revoked=search3_local_results_build($pdo,$p,$at);need($revoked['storedOfferCount']===1&&$revoked['withheldOfferCount']===1,'revoked identity offers fail closed before canonical grouping');need($revoked['hotelCount']===0&&$revoked['offerCount']===0,'revoked identity cannot render cached canonical card');
@@ -107,7 +139,66 @@ $aliasData=[
 ksort($aliasData,SORT_STRING);
 $aliasSource=json_encode($aliasData,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
 $aliasBridge->execute(['101',$owns[101],$aliasSource,hash('sha256',$aliasSource)]);
-$restored=search3_local_results_build($pdo,$p,$at);need($restored['storedOfferCount']===3&&$restored['hotelCount']===1&&$restored['offerCount']===2,'restored accepted bridge restores cached visibility');
+$restored=search3_local_results_build($pdo,$p,$at);need($restored['storedOfferCount']===4&&$restored['categoryFilteredOfferCount']===1&&$restored['hotelCount']===1&&$restored['offerCount']===2,'restored bridge restores exact visibility while unproved compatible category stays excluded');
 need(is_object($none['providerOfferCounts'])&&count((array)$none['providerOfferCounts'])===0,'empty provider counts remain keyed map');need(str_contains((string)json_encode($none,JSON_UNESCAPED_SLASHES),'"providerOfferCounts":{}'),'empty provider counts serialize as JSON object');
+// One exact provider coexists with both other providers; only test DB fixture data changes.
+$pdo->prepare('UPDATE anytour_hotels SET is_active=1 WHERE id=?')->execute([$owns[202]]);
+$all=search3_local_results_build($pdo,$broad,$at->modify('+1 minute'));
+need($all['hotelCount']===2&&(array)$all['providerOfferCounts']===['andromeda'=>1,'anex'=>1,'tourvisor'=>2],'exact Tourvisor coexists with compatible ANEX and Andromeda');
+$at2=$at->modify('+2 minutes');
+$token=AnyTourOfferStoreV1::beginRefresh($pdo,'tourvisor',$broadScope['digest'],$at2);
+foreach([['tv-broad','130000'],['tv','140000']] as [$salt,$price])AnyTourOfferStoreV1::upsertReadyOffer($pdo,$token,$owns[101],dto_fixture('tourvisor',101,$salt,$price),$expires,$at2);
+AnyTourOfferStoreV1::completeRefresh($pdo,$token,$at2);
+$again=search3_local_results_build($pdo,$broad,$at2);
+need($again['offerCount']===4&&$again['storedOfferCount']===4,'same immutable offer across scopes is counted only once');
+$prices=array_column($again['hotels'][1]['offers'],'price');
+need(in_array('140000',$prices,true)&&!in_array('120000',$prices,true),'exact duplicate retains the exact record rather than the cheaper cached copy');
+$reverse=search3_local_results_build($pdo,$p,$at2);
+$tv=array_values(array_filter($reverse['hotels'],static fn($h)=>$h['anytourHotelId']===$owns[101]))[0];
+need(array_column($tv['offers'],'price')===['120000','125000'],'exact narrower copies remain authoritative in a mixed result even without canonical category');
+
+// Use another provider with the SAME digest; provider qualification must keep both.
+$cross=dto_fixture('anex',101,'cross','127000','2026-10-06',8);
+$cross['identity']['offer_ref_digest']=hash('sha256','offer:tourvisor:tv');
+$token=AnyTourOfferStoreV1::beginRefresh($pdo,'anex',$broadScope['digest'],$at2);
+AnyTourOfferStoreV1::upsertReadyOffer($pdo,$token,$owns[101],$cross,$expires,$at2);
+AnyTourOfferStoreV1::completeRefresh($pdo,$token,$at2);
+$crossResult=search3_local_results_build($pdo,$broad,$at2);
+need((array)$crossResult['providerOfferCounts']===['andromeda'=>1,'anex'=>2,'tourvisor'=>2],'same offer digest in different providers never collides');
+foreach($crossResult['hotels'] as $h)foreach($h['offers'] as $o){
+    need($o['listing']['selection_state']==='refresh_required'&&$o['listing']['booking_enabled']===false,'union cannot reconstruct selection or booking authority');
+    need(!isset($o['listing']['context']),'union never exposes provider context');
+}
+need($crossResult['selectionAuthority']===false,'response remains display-only');
+
+$at3=$at->modify('+3 minutes');
+$token=AnyTourOfferStoreV1::beginRefresh($pdo,'anex',$broadScope['digest'],$at3);
+AnyTourOfferStoreV1::upsertReadyOffer($pdo,$token,$owns[101],$cross,$expires,$at3);
+$categoryDto=dto_fixture('anex',202,'category','129000','2026-10-06',8);
+AnyTourOfferStoreV1::upsertReadyOffer($pdo,$token,$owns[202],$categoryDto,$expires,$at3);
+foreach(['date','nights','party'] as $fault){
+    $badDto=dto_fixture('anex',202,'bad-'.$fault,'100000','2026-10-06',8);
+    if($fault==='date')$badDto['tour']['checkin']='2026-10-08';
+    if($fault==='nights')$badDto['tour']['nights']=10;
+    if($fault==='party')$badDto['tour']['party']['child_ages']=[8];
+    AnyTourOfferStoreV1::upsertReadyOffer($pdo,$token,$owns[202],$badDto,$expires,$at3);
+}
+AnyTourOfferStoreV1::completeRefresh($pdo,$token,$at3);
+$profileQuery=$pdo->prepare('SELECT profile_json FROM anytour_hotels WHERE id=?');$profileQuery->execute([$owns[202]]);
+$profile202=json_decode((string)$profileQuery->fetchColumn(),true,512,JSON_THROW_ON_ERROR);
+$setProfile=$pdo->prepare('UPDATE anytour_hotels SET profile_json=?,profile_sha256=? WHERE id=?');
+foreach([3,5] as $category){
+    $profile202['category']=$category;$rawProfile=json_encode($profile202,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+    $setProfile->execute([$rawProfile,hash('sha256',$rawProfile),$owns[202]]);
+    $rowsBefore=$pdo->query('SELECT * FROM anytour_offers ORDER BY id')->fetchAll();
+    $proved=search3_local_results_build($pdo,$p,$at3);
+    need($rowsBefore===$pdo->query('SELECT * FROM anytour_offers ORDER BY id')->fetchAll(),'union does not mutate stored offer bytes');
+    need($proved['storedOfferCount']===6,'wrong date/nights/child age rejected before canonical grouping despite an exact cohort');
+    need($proved['categoryFilteredOfferCount']===($category===3?3:2),'canonical category proof applies to every compatible row but never drops exact records');
+    need($proved['offerCount']===($category===3?3:4),'only a matching canonical minimum-star profile admits the extra compatible offer');
+}
+$expired=search3_local_results_build($pdo,$broad,$at->modify('+3 hours'));
+need($expired['offerCount']===0&&$expired['matchMode']==='none','expired exact and compatible snapshots never regain visibility');
+
 $pdo->exec("UPDATE anytour_offers SET payload_json='{}' WHERE provider='tourvisor'");$integrityFailed=false;try{search3_local_results_build($pdo,$p,$at);}catch(RuntimeException $e){$integrityFailed=str_contains($e->getMessage(),'PAYLOAD_INTEGRITY');}need($integrityFailed,'corrupt stored payload fails closed');
-echo "SEARCH3_LOCAL_DB_RESULTS_OK scope_v1=1 compatible_filters=1 offer_date_nights=1 departure_hard=1 exact_wins=1 store_v2=1 rendered=2 revoked_identity_hidden=2 writes=0\n";
+echo "SEARCH3_LOCAL_DB_RESULTS_OK scope_v1=1 compatible_filters=1 offer_date_nights=1 departure_hard=1 scope_union=1 exact_duplicate_wins=1 store_v2=1 rendered=2 revoked_identity_hidden=2 writes=0\n";

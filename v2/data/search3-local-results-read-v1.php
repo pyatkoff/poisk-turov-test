@@ -39,6 +39,27 @@ function search3_local_profile_matches_scope(array $profile,array $scope): bool
     return is_int($category)&&$category>=1&&$category<=5&&$category>=(int)$required;
 }
 
+/** Merge bounded stored cohorts; exact records win only for the same provider/offer. */
+function search3_local_results_union(array $exact,array $compatible,array $params,int $limit): array
+{
+    if($limit<1||$limit>SEARCH3_LOCAL_RESULTS_MAX_OFFERS)throw new InvalidArgumentException('ANYTOUR_LOCAL_RESULTS_LIMIT');
+    $items=[];$seen=[];
+    foreach([$exact,$compatible] as $tier=>$cohort){
+        foreach($cohort as $item){
+            if(!is_array($item))throw new RuntimeException('ANYTOUR_OFFER_IDENTITY_INTEGRITY');
+            if($tier===1&&!search3_local_cached_offer_matches_scope($item,$params))continue;
+            $provider=$item['provider']??null;$digest=$item['offer']['identity']['offer_ref_digest']??null;
+            if(!in_array($provider,['tourvisor','anex','andromeda'],true)
+                ||!is_string($digest)||preg_match('/^[0-9a-f]{64}$/D',$digest)!==1)throw new RuntimeException('ANYTOUR_OFFER_IDENTITY_INTEGRITY');
+            $key=$provider.':'.$digest;
+            if(isset($seen[$key]))continue;
+            $seen[$key]=true;$items[]=$item;
+            if(count($items)>=$limit)return $items;
+        }
+    }
+    return $items;
+}
+
 function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $now,int $limit=SEARCH3_LOCAL_RESULTS_MAX_OFFERS): array
 {
     if($limit<1||$limit>SEARCH3_LOCAL_RESULTS_MAX_OFFERS)throw new InvalidArgumentException('ANYTOUR_LOCAL_RESULTS_LIMIT');
@@ -52,15 +73,21 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
         if($version!==2)throw new RuntimeException('Unsupported AnyTour offer-store schema');
         $exact=AnyTourOfferStoreReadV2::readScope($pdo,$scope['digest'],$now,$limit);
         if(!hash_equals($scope['digest'],(string)$exact['scopeDigest']))throw new RuntimeException('Offer-store scope mismatch');
-        $mode='exact';$sourceScopes=[$scope['digest']];$stored=$exact;
-        if($exact['items']===[]){
-            $sourceScopes=AnyTourOfferScopeIndexV1::compatibleDigests($pdo,$scope,$now);
-            if($sourceScopes!==[]){
-                $stored=AnyTourOfferStoreReadV2::readScopes($pdo,$sourceScopes,$now,$limit);
-                $stored['items']=array_values(array_filter($stored['items'],static fn($item)=>is_array($item)&&search3_local_cached_offer_matches_scope($item,$scope['params'])));
-                if($stored['items']===[]){$sourceScopes=[];$mode='none';}else $mode='compatible';
-            }else{$stored=['source'=>'anytour-offer-store-v2','scopeDigests'=>[],'items'=>[]];$mode='none';}
+        $compatible=[];
+        // A nonempty exact provider must not hide other eligible saved offers.
+        // Keep each existing store read bounded and cap the final union once.
+        if(count($exact['items'])<$limit){
+            $digests=AnyTourOfferScopeIndexV1::compatibleDigests($pdo,$scope,$now);
+            if($digests!==[])$compatible=AnyTourOfferStoreReadV2::readScopes($pdo,$digests,$now,SEARCH3_LOCAL_RESULTS_MAX_OFFERS)['items'];
         }
+        $stored=$exact;
+        $stored['items']=search3_local_results_union($exact['items'],$compatible,$scope['params'],$limit);
+        $mode=$stored['items']===[]?'none':'exact';$sourceScopes=[];
+        foreach($stored['items'] as $item){
+            $source=(string)$item['sourceScopeDigest'];$sourceScopes[$source]=true;
+            if(!hash_equals($scope['digest'],$source))$mode='compatible';
+        }
+        $sourceScopes=array_keys($sourceScopes);
         $ids=[];foreach($stored['items'] as $item)$ids[(int)$item['anytourHotelId']]=(int)$item['anytourHotelId'];
         sort($ids,SORT_NUMERIC);
         $profiles=[];$catalog=new AnyTourCanonicalCatalog($pdo);
@@ -72,7 +99,7 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
         foreach($stored['items'] as $item){
             $own=(int)$item['anytourHotelId'];$profile=$profiles[$own]??null;
             if(!$profile){$withheld++;continue;}
-            if($mode==='compatible'&&!search3_local_profile_matches_scope($profile,$scope['params'])){$categoryFiltered++;continue;}
+            if(!hash_equals($scope['digest'],(string)$item['sourceScopeDigest'])&&!search3_local_profile_matches_scope($profile,$scope['params'])){$categoryFiltered++;continue;}
             if(!isset($groups[$own]))$groups[$own]=['anytourHotelId'=>$own,'hotel'=>$profile,'offers'=>[],'providers'=>[],'minPrice'=>null];
             $offer=[
                 'provider'=>$item['provider'],'legacyHotelId'=>$item['legacyHotelId'],'price'=>$item['price'],'currency'=>$item['currency'],
