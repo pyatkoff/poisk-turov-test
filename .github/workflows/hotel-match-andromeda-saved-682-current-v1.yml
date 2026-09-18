@@ -1,0 +1,95 @@
+name: MATCH analyze saved Andromeda 682 cohort
+
+on:
+  push:
+    branches:
+      - match/andromeda-saved-682-current-1971-20260918-v1
+    paths:
+      - .github/workflows/hotel-match-andromeda-saved-682-current-v1.yml
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_BASE: 1f7fa9d1f51625b6d4ec95139c0fc5de36530364
+
+jobs:
+  analyze:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact read-only delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_andromeda_saved_682_current_v1.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-andromeda-saved-682-current-v1.yml'
+          php -l scripts/diagnostics/hotel_match_andromeda_saved_682_current_v1.php
+          php scripts/diagnostics/hotel_match_andromeda_saved_682_current_v1.php --self-test
+          php -l app/integrations/anex-search-mapping-registry.php
+
+      - name: Require SSH only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"
+
+      - name: Analyze saved private snapshots without provider access
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p result
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
+          test -s "$known"
+          remote="$SSH_USER@$SSH_HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ConnectionAttempts=3 -o ServerAliveInterval=20 -o ServerAliveCountMax=3)
+          stage=".anytour-match/stages/andromeda-saved-682-current-1971-20260918-v1"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytour-match/stages\"; rm -rf \"\$HOME/$stage\"; mkdir -m 700 \"\$HOME/$stage\""
+          scp "${opts[@]}"             scripts/diagnostics/hotel_match_andromeda_saved_682_current_v1.php             app/integrations/anex-search-mapping-registry.php             "$remote:$stage/"
+          ssh "${opts[@]}" "$remote"             "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" ANDROMEDA_PRIVATE_CONFIG=\"\$HOME/.anytour-andromeda/search3-preview.php\" MATCH_OPERATION_DIR=\"\$HOME/$stage\" php -d display_errors=1 -d log_errors=0 \"\$HOME/$stage/hotel_match_andromeda_saved_682_current_v1.php\""             > result/result.json
+          python3 - <<'PY'
+          import json,pathlib
+          d=json.load(open('result/result.json'))
+          assert d['state']=='read_only_complete'
+          assert d['database_writes']==d['mapping_writes']==d['supplier_calls']==d['tourvisor_calls']==0
+          assert d['generation']==17171836
+          assert d['snapshot_offer_rows']>0 and d['unique_offer_refs']>0
+          summary={k:d.get(k) for k in [
+            'generation','snapshot_offer_rows','unique_offer_refs','date_counts','namespace_counts',
+            'operator_family_counts','andromeda_catalog_unique_hotels','current_user_seen_frontier',
+            'exact_candidate_identities','exact_candidate_unique_local_hotels',
+            'candidate_targets_with_multiple_external_ids','already_accepted_source_identities',
+            'current_other_target_conflicts','blocked_counts'
+          ]}
+          summary['top_candidates']=d['candidates'][:30]
+          pathlib.Path('result/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-andromeda-saved-682-current-${{ github.run_id }}
+          path: result/
+          if-no-files-found: error
+          retention-days: 90
