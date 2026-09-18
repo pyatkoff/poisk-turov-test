@@ -79,7 +79,7 @@ final class AnyTourHotelStayOfferCandidatesV2
               AND s.latest_complete_refresh_token IS NOT NULL
               AND s.latest_complete_refresh_token=o.last_refresh_token
              JOIN anytour_hotels h ON h.id=o.anytour_hotel_id AND h.is_active=1
-             WHERE o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now
+             WHERE o.is_active=1 AND o.expires_at>:now
              ORDER BY o.last_seen_at DESC,o.id DESC
              LIMIT '.self::READ_ROW_CAP
         );
