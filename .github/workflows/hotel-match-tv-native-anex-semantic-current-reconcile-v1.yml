@@ -1,0 +1,178 @@
+name: MATCH semantic CURRENT reconcile native ANEX v1
+
+on:
+  push:
+    branches:
+      - match/tv-native-anex-semantic-current-reconcile-1971-20260918-v1
+    paths:
+      - scripts/diagnostics/hotel_match_tv_native_anex_semantic_current_reconcile_v1.php
+      - .github/workflows/hotel-match-tv-native-anex-semantic-current-reconcile-v1.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+env:
+  OPERATION_ID: hotel-match-tv-native-anex-semantic-current-reconcile-1971-20260918-v1
+  EXPECTED_BASE: 049f2f650b443a8dc404e518a32ef6b3d0242591
+  CLAIM_COMMENT_ID: '5733998278'
+  SOURCE_ARTIFACT_ID: '10559674434'
+  SOURCE_RESULT_SHA: 'e53a2c3857d1421ea0a819c07455a8057c1e90cbd49cf8999d59eb3b558129ff'
+
+concurrency:
+  group: match-tv-native-anex-semantic-current-reconcile-20260918
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact delta, claim, source artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_tv_native_anex_semantic_current_reconcile_v1.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-tv-native-anex-semantic-current-reconcile-v1.yml'
+          php -l scripts/diagnostics/hotel_match_tv_native_anex_semantic_current_reconcile_v1.php
+          php scripts/diagnostics/hotel_match_tv_native_anex_semantic_current_reconcile_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json')); b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert os.environ['OPERATION_ID'] in b
+          assert 'zero provider calls' in b.lower()
+          assert 'Sea Gull' in b and 'Aquapark' in b
+          assert '1.5km' in b and '>5km' in b
+          PY
+          mkdir -p source
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID/zip" > source/source.zip
+          unzip -q source/source.zip -d source/unzipped
+          test -s source/unzipped/server/result.json
+          test "$(sha256sum source/unzipped/server/result.json | awk '{print $1}')" = "$SOURCE_RESULT_SHA"
+          cp source/unzipped/server/result.json source/source-result.json
+
+      - name: Require SSH and reserve before private DB read
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"
+          umask 077; mkdir -p terminal reservation
+          python3 - <<'PY' > reservation/reservation.json
+          import json,os
+          print(json.dumps({
+            "operation":os.environ["OPERATION_ID"],"state":"reserved_before_private_db_read",
+            "source_sha":os.environ["HEAD_SHA"],"source_artifact_id":int(os.environ["SOURCE_ARTIFACT_ID"]),
+            "source_result_sha256":os.environ["SOURCE_RESULT_SHA"],
+            "tourvisor_calls":0,"direct_anex_calls":0,"andromeda_calls":0,
+            "database_writes":0,"mapping_writes":0,"no_replay":True
+          },sort_keys=True))
+          PY
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null; test -s "$known"
+          remote="$SSH_USER@$SSH_HOST"; op=".anytour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -m 700 -p \"\$HOME/$op\" \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_tv_native_anex_semantic_current_reconcile_v1.php source/source-result.json "$remote:$op/payload/"
+
+      - name: Execute one CURRENT read-only reconcile
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$SSH_USER@$SSH_HOST"; op=".anytour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          set +e
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_SOURCE_RESULT=\"\$HOME/$op/payload/source-result.json\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$op/payload/hotel_match_tv_native_anex_semantic_current_reconcile_v1.php\" > \"\$HOME/$op/result.json\""
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$rc" <<'REMOTE'
+          set -euo pipefail
+          op="$1"; rc="$2"; p="$HOME/.anytour-match/operations/$op"; result="$p/result.json"
+          if [ ! -s "$result" ]; then
+            printf '{"operation":"%s","status":"terminal_failed_no_replay","reason":"runtime_failure","tourvisor_calls":0,"direct_anex_calls":0,"andromeda_calls":0,"database_writes":0,"mapping_writes":0}\n' "$op" > "$result"
+          fi
+          OP="$op" RC="$rc" RESULT="$result" RECEIPT="$p/receipt.json" php -r '
+            $raw=file_get_contents(getenv("RESULT"));$j=json_decode($raw,true);$sha=hash("sha256",$raw);
+            file_put_contents(getenv("RECEIPT"),json_encode([
+              "operation"=>getenv("OP"),"status"=>is_array($j)?($j["status"]??"terminal_failed_no_replay"):"terminal_failed_no_replay",
+              "remote_exit"=>(int)getenv("RC"),"result_sha256"=>$sha,"provider_access"=>false,
+              "tourvisor_calls"=>0,"direct_anex_calls"=>0,"andromeda_calls"=>0,
+              "database_writes"=>0,"mapping_writes"=>0,"no_replay"=>true
+            ],JSON_UNESCAPED_SLASHES).PHP_EOL);
+          '
+          REMOTE
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+
+      - name: Verify and summarize
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,json,hashlib,pathlib
+          p=pathlib.Path('terminal');d=p/'server';d.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            for m in t.getmembers():
+              assert m.isfile() and m.size<100_000_000
+              (d/pathlib.Path(m.name).name).write_bytes(t.extractfile(m).read())
+          r=json.loads((d/'result.json').read_text()); rec=json.loads((d/'receipt.json').read_text())
+          sha=hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+          assert rec['result_sha256']==sha
+          assert rec['tourvisor_calls']==0 and rec['direct_anex_calls']==0 and rec['andromeda_calls']==0
+          assert rec['database_writes']==0 and rec['mapping_writes']==0
+          assert r.get('status')=='completed_read_only'
+          assert r['input_count']==40 and r['supplier_calls']==0 and r['mapping_writes']==0
+          summary={k:r.get(k) for k in ['status','input_count','bucket_counts','current_safe_native_count']}
+          summary['top_safe']=(r.get('current_safe_native') or [])[:30]; summary['result_sha256']=sha
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          msg=(f"MATCH #1971 semantic native-ANEX CURRENT reconcile COMPLETE / READ ONLY. "
+               f"Input {r['input_count']}, CURRENT-safe {r['current_safe_native_count']}, buckets {r['bucket_counts']}. "
+               f"Provider calls0, DB/mapping writes0. Result SHA256 {sha}.")
+          (p/'summary.md').write_text(msg+'\n'); print(msg)
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-native-anex-semantic-current-reconcile-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file terminal/summary.md
+          gh issue comment 2530 --repo "$GITHUB_REPOSITORY" --body-file terminal/summary.md
