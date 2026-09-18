@@ -263,10 +263,9 @@ function anytour_andromeda_saved_package_surcharge(string $directory, string $pa
     $next = $reserved;
     try {
         $actions = new AnyTourAndromedaClaimActions($auth['session']['sid'],
-            static function(string $action) use (&$actionCount, $directory): void {
-                $expected = ['get_flights', 'changeservice', 'changeservice', 'calc'];
-                if (($expected[$actionCount] ?? null) !== $action) {
-                    throw new RuntimeException('ANDROMEDA_SURCHARGE_ACTION_SEQUENCE');
+            static function() use (&$actionCount, $directory): void {
+                if ($actionCount >= 4) {
+                    throw new RuntimeException('ANDROMEDA_SURCHARGE_REQUEST_BUDGET');
                 }
                 ++$actionCount;
                 anytour_andromeda_search3_budget(dirname($directory));
