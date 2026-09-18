@@ -1,0 +1,217 @@
+name: MATCH one TV operatorLink proof v1
+
+on:
+  push:
+    branches: [ops/match-owner-one-tv-operatorlink-1971-20260919-v1]
+    paths: [.github/workflows/hotel-match-owner-one-tv-operatorlink-1971-20260919-v1.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: match-owner-one-tv-operatorlink-1971-20260919-v1
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-owner-one-tv-operatorlink-1971-20260919-v1
+  RES: .github/ops/match-owner-one-tv-operatorlink-1971-20260919-v1.json
+  API: https://anytoour.ru/api-v2.php
+
+jobs:
+  live:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {fetch-depth: 0, persist-credentials: false}
+
+      - name: Validate reservation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open(os.environ['RES']))
+          assert r['operation']==os.environ['OP']
+          assert r['state']=='reserved_before_provider_access'
+          assert r['target']['hotel_id']==1063
+          assert r['rules']['operator_filter'] is False
+          assert r['rules']['hotel_ids_array'] is True
+          PY
+
+      - name: Fresh search and operatorLink detail
+        id: acquire
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p terminal
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess,time,urllib.parse,re,hashlib
+          R=json.load(open(os.environ['RES'])); API=os.environ['API']; calls=0; CAP=20
+          ledger=pathlib.Path('terminal/ledger.ndjson')
+
+          def req(action,p=None,allow404=False):
+              global calls
+              if calls>=CAP: raise RuntimeError('operation_cap')
+              p=p or {}; q=[('action',action)]
+              for k,v in p.items():
+                  if isinstance(v,list):
+                      q.extend((k,str(x)) for x in v)
+                  elif v is not None and v!='':
+                      q.append((k,str(v).lower() if isinstance(v,bool) else str(v)))
+              qs=urllib.parse.urlencode(q)
+              url=API+'?'+qs
+              calls+=1
+              with ledger.open('a') as f:
+                  f.write(json.dumps({'call':calls,'action':action,'url':url,'at':int(time.time())},ensure_ascii=False)+'\n');f.flush();os.fsync(f.fileno())
+              cp=subprocess.run(['curl','--silent','--show-error','--http1.1','--compressed','--max-time','55',
+                                 '-A','Mozilla/5.0','-H','Accept: application/json','-w','\n%{http_code}',url],
+                                 text=True,capture_output=True)
+              if '\n' not in cp.stdout: raise RuntimeError('curl_no_status')
+              body,code=cp.stdout.rsplit('\n',1); code=int(code)
+              if code==404 and allow404:return {'_404':True}
+              if code<200 or code>=300:
+                  pathlib.Path('terminal/last-http.txt').write_text(str(code)+'\n'+body[:4000])
+                  raise RuntimeError('gateway_'+str(code))
+              try:return json.loads(body)
+              except Exception: raise RuntimeError('bad_json')
+
+          def sid(x):
+              if isinstance(x,dict):
+                  for k in ('searchId','id'):
+                      v=x.get(k)
+                      if str(v).isdigit() and int(v)>0:return int(v)
+                  for v in x.values():
+                      z=sid(v)
+                      if z:return z
+              elif isinstance(x,list):
+                  for v in x:
+                      z=sid(v)
+                      if z:return z
+
+          def complete(x):
+              if isinstance(x,dict):
+                  if isinstance(x.get('progress'),(int,float)) and x['progress']>=100:return True
+                  if str(x.get('status','')).lower() in ('complete','completed','done','ready'):return True
+                  return any(complete(v) for v in x.values() if isinstance(v,(dict,list)))
+              if isinstance(x,list):return any(complete(v) for v in x)
+              return False
+
+          def rows(x):
+              if isinstance(x,list):return x
+              if isinstance(x,dict):
+                  for k in ('hotels','results','items'):
+                      if isinstance(x.get(k),list):return x[k]
+              return []
+
+          def merge(a,b):
+              d={}
+              for h in a+b:
+                  if not isinstance(h,dict) or not str(h.get('id','')).isdigit():continue
+                  i=int(h['id'])
+                  if i not in d:d[i]=dict(h)
+                  else:
+                      bt=list(d[i].get('tours') or []);seen={str(t.get('id') or t.get('tourId')) for t in bt if isinstance(t,dict)}
+                      for t in h.get('tours') or []:
+                          if not isinstance(t,dict):continue
+                          k=str(t.get('id') or t.get('tourId') or '')
+                          if k and k not in seen:seen.add(k);bt.append(t)
+                      d[i]['tours']=bt
+              return list(d.values())
+
+          def rcount(x):
+              if isinstance(x,dict):
+                  for k in ('requestCount','requestsCount','request_count'):
+                      if str(x.get(k,'')).isdigit():return int(x[k])
+                  for v in x.values():
+                      if isinstance(v,(dict,list)):
+                          n=rcount(v)
+                          if n:return n
+              elif isinstance(x,list):
+                  for v in x:
+                      n=rcount(v)
+                      if n:return n
+              return 0
+
+          def extract_links(x):
+              links=[]
+              def walk(v,k=''):
+                  if isinstance(v,dict):
+                      for a,b in v.items():walk(b,str(a))
+                  elif isinstance(v,list):
+                      for b in v:walk(b,k)
+                  elif isinstance(v,str) and ('link' in k.lower() or 'url' in k.lower()) and '://' in v:
+                      links.append({'key':k,'url':v})
+              walk(x)
+              native=[]
+              for item in links:
+                  try:q=urllib.parse.parse_qs(urllib.parse.urlparse(item['url']).query)
+                  except:continue
+                  for k,vals in q.items():
+                      if k.lower() in ('hotellist','hotelcode','hotel_code','hotelid','hotel_id','hotelinc','hotel'):
+                          for val in vals:
+                              for z in re.split('[,;]',val):
+                                  if z.strip().isdigit() and int(z)>0:native.append(int(z))
+              return links,sorted(set(native))
+
+          result={'operation':os.environ['OP'],'state':'running','tv_calls':0,'database_writes':0,'mapping_writes':0}
+          try:
+              c=R['search']; hid=R['target']['hotel_id']
+              p={'departureId':1,'countryId':4,'dateFrom':c['date_from'],'dateTo':c['date_to'],
+                 'nightsFrom':c['nights_from'],'nightsTo':c['nights_to'],'adults':c['adults'],
+                 'currency':'RUB','onlyCharter':False,'hotelIds[]':[hid]}
+              start=req('search_start',p); search_id=sid(start)
+              if not search_id:raise RuntimeError('search_id_missing')
+              for _ in range(4):
+                  time.sleep(3)
+                  st=req('search_status',{'searchId':search_id})
+                  if complete(st):break
+              hs=rows(req('search_results',{'searchId':search_id,'limit':100}))
+              pathlib.Path('terminal/partial-initial.json').write_text(json.dumps(hs,ensure_ascii=False,indent=2))
+              co=req('search_continue',{'searchId':search_id}); rc=rcount(co)
+              if rc>0:
+                  for _ in range(4):
+                      time.sleep(3)
+                      st=req('search_status',{'searchId':search_id})
+                      if complete(st):break
+                  hs=merge(hs,rows(req('search_results',{'searchId':search_id,'limit':100})))
+              pathlib.Path('terminal/partial-final.json').write_text(json.dumps(hs,ensure_ascii=False,indent=2))
+              target=[h for h in hs if isinstance(h,dict) and int(h.get('id') or 0)==hid]
+              tours=[]
+              if target:
+                  tours=[t for t in target[0].get('tours') or [] if isinstance(t,dict) and (t.get('id') or t.get('tourId'))]
+              if not tours:
+                  result.update(state='completed_no_fresh_tour',search_id=search_id,fresh_hotel_found=bool(target),fresh_tours=0,tv_calls=calls)
+              else:
+                  tid=str(tours[0].get('id') or tours[0].get('tourId'))
+                  detail=req('tour',{'tourId':tid,'currency':'RUB'},True)
+                  pathlib.Path('terminal/tour-detail.json').write_text(json.dumps(detail,ensure_ascii=False,indent=2))
+                  links,native=extract_links(detail)
+                  result.update(state='completed_read_only',search_id=search_id,fresh_hotel_found=True,fresh_tours=len(tours),
+                                fresh_tour_id=tid,link_fields=links,native_ids=native,tv_calls=calls)
+          except Exception as e:
+              result.update(state='terminal_failed_no_replay',reason=str(e)[:180],tv_calls=calls)
+          pathlib.Path('terminal/result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(result,ensure_ascii=False))
+          PY
+
+      - name: Seal receipt
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          p=pathlib.Path('terminal');r=p/'result.json'
+          if not r.exists():r.write_text(json.dumps({'operation':os.environ['OP'],'state':'terminal_failed_no_replay','reason':'missing_result'})+'\n')
+          raw=r.read_bytes();j=json.loads(raw);L=p/'ledger.ndjson';n=sum(1 for _ in L.open()) if L.exists() else int(j.get('tv_calls',0))
+          (p/'receipt.json').write_text(json.dumps({'operation':os.environ['OP'],'state':j.get('state'),'tv_calls':n,'provider_accessed':n>0,'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':n>0},indent=2)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-one-tv-operatorlink-v1
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
