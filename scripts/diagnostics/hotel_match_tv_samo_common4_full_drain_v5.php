@@ -97,7 +97,7 @@ function hmc4_resort_inventory(Hmc4AnexReadClient $anex,int $departure,int $stat
     if(!$tourIds)throw new RuntimeException('anex_antalya_tour_binding');
     $tourIds=array_slice($tourIds,0,4,true);
 
-    $byTour=[];$allHotels=[];$allTowns=[];
+    $byTour=[];$allHotels=[];$allTowns=[];$hotelGeo=[];
     foreach($tourIds as $tourId=>$tourMeta){
         $townRows=hmc4_rows($anex->request('SearchTour_TOWNS',['TOWNFROMINC'=>$departure,'STATEINC'=>$state,'TOURS'=>$tourId]));
         $towns=[];
@@ -116,12 +116,12 @@ function hmc4_resort_inventory(Hmc4AnexReadClient $anex,int $departure,int $stat
             if(!is_array($row))continue;$id=hmc_id($row['id']??null);$townKey=hmc_id($row['townKey']??null);
             if(!$id||!$townKey||!isset($towns[$townKey]))continue;
             $hotels[$id]=['id'=>$id,'name'=>hmc_text($row['name']??$row['nameAlt']??'',220),'town_key'=>$townKey];
-            $allHotels[$id]=true;
+            $allHotels[$id]=true;$hotelGeo[(string)$id]=['town_name'=>$towns[$townKey]['name']??'','town_region'=>$towns[$townKey]['region']??'','town_key'=>$townKey];
         }
         if($hotels)$byTour[$tourId]=['tour'=>$tourMeta,'towns'=>array_values($towns),'hotel_ids'=>array_keys($hotels)];
     }
     if(!$byTour||!$allHotels||!$allTowns)throw new RuntimeException('anex_antalya_hotel_binding');
-    return ['by_tour'=>$byTour,'hotel_ids'=>array_keys($allHotels),'town_ids'=>array_keys($allTowns)];
+    return ['by_tour'=>$byTour,'hotel_ids'=>array_keys($allHotels),'town_ids'=>array_keys($allTowns),'hotel_geo'=>$hotelGeo];
 }
 function hmc4_candidate_dates(Hmc4AnexReadClient $anex,int $departure,int $state,array $inventory): array {
     $dates=[];$calls=0;
@@ -170,7 +170,7 @@ function hmc4_anex_price_probe(
 function hmc4_samo_anex_full(
     string $date,array $session,int $townId,int $samoAnexOperatorId,int &$samoCalls,?array $andromedaHotelIds=null
 ): array {
-    $ymd=str_replace('-','',$date);$native=[];$andromeda=[];$sample=[];$pages=[];$advertised=0;
+    $ymd=str_replace('-','',$date);$native=[];$andromeda=[];$geo=[];$sample=[];$pages=[];$advertised=0;
     for($page=1;$page<=HMC_MAX_SAMO_PAGES;$page++){
         $params=[
             'TOWNFROMINC'=>HMC_DEPARTURE,'STATEINC'=>HMC_SAMO_STATE,'CHECKIN_BEG'=>$ymd,'CHECKIN_END'=>$ymd,
@@ -195,7 +195,7 @@ function hmc4_samo_anex_full(
             $aid=hmc_text($row['hotelKey']??'',40);
             $orig=is_array($row['original']??null)?hmc_text($row['original']['hotelKey']??'',40):'';
             if(!preg_match('/^[1-9][0-9]{0,15}$/D',$orig)||!preg_match('/^[1-9][0-9]{0,18}$/D',$aid))continue;
-            $native[$orig]=true;$andromeda[$aid]=$orig;
+            $native[$orig]=true;$andromeda[$aid]=$orig;$geo[$aid]=['native_anex_hotel_id'=>$orig,'town'=>hmc_text($row['town']??'',120)?:null];
             if(count($sample)<8)$sample[]=['andromeda_hotel_id'=>$aid,'native_anex_hotel_id'=>$orig,
                 'hotel_name'=>hmc_text($row['hotel']??'',180)?:null,'town'=>hmc_text($row['town']??'',120)?:null,
                 'date'=>hmc_date($row['checkIn']??$date,$date)];
@@ -203,8 +203,22 @@ function hmc4_samo_anex_full(
         $pages[]=['page'=>$page,'pages_count'=>$pc,'rows'=>count($reply['PRICES'])];
         if($page>=$advertised)break;
     }
-    return ['pages'=>$pages,'native_anex_hotel_ids'=>array_keys($native),'andromeda_to_native'=>$andromeda,'sample'=>$sample];
+    return ['pages'=>$pages,'native_anex_hotel_ids'=>array_keys($native),'andromeda_to_native'=>$andromeda,'andromeda_geo'=>$geo,'sample'=>$sample];
 }
+function hmc5_geo_compatible(string $nativeId,array $geo,array $inventory): bool {
+    $meta=$inventory['hotel_geo'][(string)$nativeId]??null;
+    if(!is_array($meta))return false;
+    $town=hmc_norm(hmc_text($geo['town']??'',120));
+    if($town==='')return true;
+    $allowed=[];
+    foreach([$meta['town_name']??'',$meta['town_region']??'','Antalya','Анталья','Анталия'] as $v){
+        $n=hmc_norm(hmc_text($v,120));if($n!=='')$allowed[$n]=true;
+    }
+    if(isset($allowed[$town]))return true;
+    foreach(array_keys($allowed) as $n)if($n!==''&&(str_contains($town,$n)||str_contains($n,$town)))return true;
+    return false;
+}
+
 function hmc2_find_anex_samo_date(
     Hmc4AnexReadClient $anex,array $session,array $all,int $townId,int $samoAnexOperatorId,int &$samoCalls
 ): array {
@@ -231,12 +245,21 @@ function hmc2_find_anex_samo_date(
         $directSet=array_fill_keys(array_map('strval',$direct['matched_hotel_ids']),true);
         $candidateAndromeda=[];$candidateNative=[];
         foreach($broad['andromeda_to_native'] as $aid=>$native)
-            if(isset($resortSet[(string)$native],$directSet[(string)$native])){$candidateAndromeda[$aid]=true;$candidateNative[(string)$native]=true;}
+            if(isset($resortSet[(string)$native],$directSet[(string)$native])&&hmc5_geo_compatible((string)$native,$broad['andromeda_geo'][$aid]??[],$inventory)){$candidateAndromeda[$aid]=true;$candidateNative[(string)$native]=true;}
         $entry['samo_intersection_count']=count($candidateNative);
         $entry['samo_candidate_andromeda_count']=count($candidateAndromeda);
         if(!$candidateAndromeda){$attempts[]=$entry;$GLOBALS['HMC5_FAILURE_FACTS']['probe_attempts']=$attempts;continue;}
 
-        $strict=hmc4_samo_anex_full($date,$session,$townId,$samoAnexOperatorId,$samoCalls,array_keys($candidateAndromeda));
+        $strict=['pages'=>[],'native_anex_hotel_ids'=>[],'andromeda_to_native'=>[],'andromeda_geo'=>[],'sample'=>[]];
+        foreach(array_chunk(array_keys($candidateAndromeda),30) as $chunkIndex=>$strictChunk){
+            $part=hmc4_samo_anex_full($date,$session,$townId,$samoAnexOperatorId,$samoCalls,$strictChunk);
+            foreach($part['pages'] as $pm)$strict['pages'][]=['chunk'=>$chunkIndex+1]+$pm;
+            foreach($part['native_anex_hotel_ids'] as $nid)$strict['native_anex_hotel_ids'][(string)$nid]=true;
+            foreach($part['andromeda_to_native'] as $aid=>$nid)$strict['andromeda_to_native'][(string)$aid]=(string)$nid;
+            foreach($part['andromeda_geo'] as $aid=>$g)$strict['andromeda_geo'][(string)$aid]=$g;
+            foreach($part['sample'] as $sr)if(count($strict['sample'])<8)$strict['sample'][]=$sr;
+        }
+        $strict['native_anex_hotel_ids']=array_keys($strict['native_anex_hotel_ids']);
         $strictNative=array_fill_keys(array_map('strval',$strict['native_anex_hotel_ids']),true);
         $finalNative=array_values(array_filter(array_keys($candidateNative),fn($id)=>isset($strictNative[(string)$id])));
         $entry['strict_samo_hotel_count']=count($finalNative);$attempts[]=$entry;$GLOBALS['HMC5_FAILURE_FACTS']['probe_attempts']=$attempts;
