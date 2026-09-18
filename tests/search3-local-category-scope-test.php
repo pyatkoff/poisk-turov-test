@@ -20,15 +20,19 @@ $broad=AnyTourSearchScopeV1::fromParams($params);
 $currentParams=$params;$currentParams['hotelCategory']='4';
 $current=AnyTourSearchScopeV1::fromParams($currentParams);
 category_need(
-    AnyTourSearchScopeV1::savedCanContributeToCurrent($broad['params'],$current['params']),
+    !AnyTourSearchScopeV1::savedCanContributeToCurrent($broad['params'],$current['params']),
+    'strict saved-scope contract stays unchanged'
+);
+category_need(
+    AnyTourSearchScopeV1::savedCanContributeWithCanonicalCategoryProof($broad['params'],$current['params']),
     'broad saved scope is nominated for canonical category proof'
 );
 
 $fiveParams=$params;$fiveParams['hotelCategory']='5';
 $five=AnyTourSearchScopeV1::fromParams($fiveParams);
 category_need(
-    AnyTourSearchScopeV1::savedCanContributeToCurrent($five['params'],$current['params']),
-    'five-star saved scope may contribute to four-star-minimum request'
+    !AnyTourSearchScopeV1::savedCanContributeWithCanonicalCategoryProof($five['params'],$current['params']),
+    'category-bearing saved scope remains strict'
 );
 
 category_need(search3_local_profile_matches_scope(['category'=>4],$current['params']),'4-star accepted');
@@ -42,4 +46,4 @@ category_need(search3_local_profile_matches_scope(['category'=>null],$broad['par
 $malformed=$current['params'];$malformed['hotelCategory']='4+';
 category_need(!search3_local_profile_matches_scope(['category'=>5],$malformed),'malformed request fails closed');
 
-echo "SEARCH3_LOCAL_CATEGORY_SCOPE_OK nomination=2 accepted=2 rejected=5\n";
+echo "SEARCH3_LOCAL_CATEGORY_SCOPE_OK nomination=1 accepted=2 rejected=5 strict=2\n";
