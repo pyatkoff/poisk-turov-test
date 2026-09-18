@@ -270,49 +270,94 @@ function anytour_andromeda_saved_package_surcharge(string $directory, string $pa
                 ++$actionCount;
                 anytour_andromeda_search3_budget(dirname($directory));
             }, $flightRequest);
-        $flights = $actions->getFlights($package['private_package']);
-        $received = true;
-        $again = AnyTourAndromedaSelectedOffer::resolve($store, $context, $mappingAllows, $clock());
-        if ($again['context'] !== $resolved['context'] || $clock() >= $reserved['expires_at']) {
-            throw new RuntimeException('ANDROMEDA_SURCHARGE_CONTEXT_STALE');
+        $privatePackage = $package['private_package'];
+        $packageDoc = is_array($privatePackage['claimDocument'] ?? null)
+            && array_keys($privatePackage['claimDocument']) === [0]
+            && is_array($privatePackage['claimDocument'][0])
+                ? $privatePackage['claimDocument'][0] : null;
+        if (!is_array($packageDoc)) throw new RuntimeException('ANDROMEDA_CLAIM_SHAPE_INVALID');
+        $freightExternal = $packageDoc['freightExternal'] ?? null;
+        if (is_string($freightExternal) && preg_match('/^0$/D', $freightExternal) === 1) {
+            $freightExternal = 0;
         }
-        $next['status'] = 'complete';
-        $next['fact'] = AnyTourAndromedaSearchSurcharge::estimate($flights, $resolved['offer']['price']);
-        $next['transport_money_diagnostic'] = AnyTourAndromedaSearchSurcharge::diagnostic($flights);
 
-        if (($next['fact']['state'] ?? null) === 'unknown') {
-            $selection = AnyTourAndromedaSearchSurcharge::cheapestRequiredFlightSelection(
-                $flights, $resolved['offer']['price']
-            );
-            if ($selection !== null) {
-                $next['actualization'] = [
-                    'state' => 'attempting',
-                    'strategy' => 'lowest_supplier_reported_transport_markup_then_calc',
-                    'candidate_counts' => $selection['candidate_counts'],
-                    'target_currency' => $selection['target_currency'],
-                    'actions_used' => $actionCount,
-                ];
-                try {
-                    $quote = AnyTourAndromedaSelectedQuote::continueWithFlights(
-                        $resolved, $flights, $selection['selected'], $actions
-                    );
-                    $current = AnyTourAndromedaSelectedOffer::resolve(
-                        $store, $context, $mappingAllows, $clock()
-                    );
-                    if ($current['context'] !== $resolved['context']
-                        || $clock() >= $reserved['expires_at']) {
-                        throw new RuntimeException('ANDROMEDA_SURCHARGE_CONTEXT_STALE');
+        if ($freightExternal === 0) {
+            // Supplier package itself proves this is not external/GDS. Do not call
+            // get_flights and do not infer zero surcharge; calc owns the verified total.
+            $next['status'] = 'complete';
+            $next['actualization'] = [
+                'state' => 'attempting',
+                'strategy' => 'non_external_package_supplier_calc',
+                'actions_used' => $actionCount,
+            ];
+            try {
+                $quote = AnyTourAndromedaSelectedQuote::continueWithoutExternalFlights(
+                    $resolved, $privatePackage, $actions
+                );
+                $received = true;
+                $current = AnyTourAndromedaSelectedOffer::resolve(
+                    $store, $context, $mappingAllows, $clock()
+                );
+                if ($current['context'] !== $resolved['context']
+                    || $clock() >= $reserved['expires_at']) {
+                    throw new RuntimeException('ANDROMEDA_SURCHARGE_CONTEXT_STALE');
+                }
+                $next['verified_quote'] = $quote;
+                $next['actualization']['state'] = 'verified';
+                $next['actualization']['actions_used'] = $actionCount;
+            } catch (Throwable $actualizationError) {
+                $message = $actualizationError->getMessage();
+                $next['actualization']['state'] = 'failed';
+                $next['actualization']['actions_used'] = $actionCount;
+                $next['actualization']['failure_class'] =
+                    is_string($message) && preg_match('/^[A-Z0-9_:-]{1,96}$/D', $message)
+                        ? $message : get_class($actualizationError);
+            }
+        } else {
+            $flights = $actions->getFlights($privatePackage);
+            $received = true;
+            $again = AnyTourAndromedaSelectedOffer::resolve($store, $context, $mappingAllows, $clock());
+            if ($again['context'] !== $resolved['context'] || $clock() >= $reserved['expires_at']) {
+                throw new RuntimeException('ANDROMEDA_SURCHARGE_CONTEXT_STALE');
+            }
+            $next['status'] = 'complete';
+            $next['fact'] = AnyTourAndromedaSearchSurcharge::estimate($flights, $resolved['offer']['price']);
+            $next['transport_money_diagnostic'] = AnyTourAndromedaSearchSurcharge::diagnostic($flights);
+
+            if (($next['fact']['state'] ?? null) === 'unknown') {
+                $selection = AnyTourAndromedaSearchSurcharge::cheapestRequiredFlightSelection(
+                    $flights, $resolved['offer']['price']
+                );
+                if ($selection !== null) {
+                    $next['actualization'] = [
+                        'state' => 'attempting',
+                        'strategy' => 'lowest_supplier_reported_transport_markup_then_calc',
+                        'candidate_counts' => $selection['candidate_counts'],
+                        'target_currency' => $selection['target_currency'],
+                        'actions_used' => $actionCount,
+                    ];
+                    try {
+                        $quote = AnyTourAndromedaSelectedQuote::continueWithFlights(
+                            $resolved, $flights, $selection['selected'], $actions
+                        );
+                        $current = AnyTourAndromedaSelectedOffer::resolve(
+                            $store, $context, $mappingAllows, $clock()
+                        );
+                        if ($current['context'] !== $resolved['context']
+                            || $clock() >= $reserved['expires_at']) {
+                            throw new RuntimeException('ANDROMEDA_SURCHARGE_CONTEXT_STALE');
+                        }
+                        $next['verified_quote'] = $quote;
+                        $next['actualization']['state'] = 'verified';
+                        $next['actualization']['actions_used'] = $actionCount;
+                    } catch (Throwable $actualizationError) {
+                        $message = $actualizationError->getMessage();
+                        $next['actualization']['state'] = 'failed';
+                        $next['actualization']['actions_used'] = $actionCount;
+                        $next['actualization']['failure_class'] =
+                            is_string($message) && preg_match('/^[A-Z0-9_:-]{1,96}$/D', $message)
+                                ? $message : get_class($actualizationError);
                     }
-                    $next['verified_quote'] = $quote;
-                    $next['actualization']['state'] = 'verified';
-                    $next['actualization']['actions_used'] = $actionCount;
-                } catch (Throwable $actualizationError) {
-                    $message = $actualizationError->getMessage();
-                    $next['actualization']['state'] = 'failed';
-                    $next['actualization']['actions_used'] = $actionCount;
-                    $next['actualization']['failure_class'] =
-                        is_string($message) && preg_match('/^[A-Z0-9_:-]{1,96}$/D', $message)
-                            ? $message : get_class($actualizationError);
                 }
             }
         }

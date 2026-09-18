@@ -194,6 +194,67 @@ $actualBudget = json_decode(file_get_contents(dirname($actualDir) . '/monthly-re
 surcharge_check(($actualBudget['reserved_requests'] ?? null) === 5,
     'broninit plus four actualization actions counted');
 
+// Explicit non-external package: no get_flights, no guessed surcharge.
+// Supplier calc is the only verified total authority.
+$internalDir = $root . '/nonexternal/searches'; mkdir($internalDir, 0700, true);
+anytour_andromeda_search3_save($internalDir . '/' . $ref . '-1.json', ['status'=>'complete','store'=>$state]);
+anytour_andromeda_search3_save($internalDir . '/' . $ref . '-auth.json', [
+    'created_at'=>$created,'session'=>['sid'=>'nonexternal-fixture-session','expires'=>time()+1800]]);
+$internalPath = $internalDir . '/' . $ref . '-' . $created . '-1-' . $context['offer_ref'] . '-surcharge-v1.json';
+$internalRaw = [
+    'version'=>'1.01',
+    'claimDocument'=>[[
+        'catalogKey'=>'internal-package-key',
+        'condition'=>'ccOffer',
+        'freightExternal'=>0,
+        'buyerMoneys'=>[['buyerClaimMoney'=>[['net'=>'83080','currency'=>'RUB']]]],
+        'moneys'=>[['money'=>[['currency'=>'RUB','rate'=>'1','isClaimCurrency'=>'true','price'=>'83080','net'=>'83080']]]],
+    ]],
+];
+$internalBootstrapCalls=0;$internalActions=[];
+$internalBootstrap=static function(string $url) use (&$internalBootstrapCalls,$internalRaw):array{
+    ++$internalBootstrapCalls;
+    return ['status'=>200,'body'=>json_encode($internalRaw)];
+};
+$internalRequest=static function(string $url,string $post) use (&$internalActions):array{
+    parse_str((string)parse_url($url,PHP_URL_QUERY),$query);
+    parse_str($post,$params);
+    $action=$query['action']??'';
+    $internalActions[]=$action;
+    surcharge_check($action==='calc','nonexternal must call calc only');
+    $claim=json_decode($params['claim']??'',true);
+    surcharge_check(is_array($claim),'nonexternal calc claim');
+    $claim['claimDocument'][0]['buyerMoneys']=[['buyerClaimMoney'=>[['net'=>'84500','currency'=>'RUB']]]];
+    $claim['claimDocument'][0]['moneys']=[['money'=>[[
+        'currency'=>'RUB','rate'=>'1','isClaimCurrency'=>'true',
+        'price'=>'84500','net'=>'84500','priceForCommiss'=>'84500','sumCommission'=>'0'
+    ]]]];
+    return ['status'=>200,'body'=>json_encode($claim)];
+};
+anytour_andromeda_capture_saved_package(
+    $internalDir,$context,$source,$actualAllows,$internalBootstrap,true,$clock
+);
+$internalReceipt=anytour_andromeda_capture_saved_package(
+    $internalDir,$context,$source,$actualAllows,$internalBootstrap,true,$clock,true,$internalRequest
+);
+surcharge_check($internalBootstrapCalls===1,'nonexternal reuses one captured package');
+surcharge_check($internalActions===['calc'],'nonexternal skips get_flights and selection');
+surcharge_check(($internalReceipt['surcharge']['final_price_verified']??null)===true,'nonexternal calc verified');
+$internalPricing=anytour_andromeda_read_saved_pricing(
+    $internalDir,$state,$created,$context,$actualAllows,$now
+);
+surcharge_check(is_array($internalPricing)&&$internalPricing['state']==='verified','nonexternal pricing readable');
+surcharge_check(($internalPricing['verified_quote']['final_price']??null)===['amount'=>'84500','currency'=>'RUB'],
+    'nonexternal supplier calc final retained');
+surcharge_check(($internalPricing['verified_quote']['booking_enabled']??null)===false,'nonexternal never enables booking');
+$internalDisk=json_decode(file_get_contents($internalPath),true);
+surcharge_check(($internalDisk['actualization']['strategy']??null)==='non_external_package_supplier_calc'
+    &&($internalDisk['actualization']['state']??null)==='verified'
+    &&($internalDisk['actualization']['actions_used']??null)===1,
+    'nonexternal one-action actualization retained');
+$internalBudget=json_decode(file_get_contents(dirname($internalDir).'/monthly-requests.json'),true);
+surcharge_check(($internalBudget['reserved_requests']??null)===2,'nonexternal broninit plus calc budget');
+
 // Real consumer regression: ordinary Search3 listing reads the already-completed
 // sidecar locally, uses base+surcharge only for list display, and leaves the retained
 // offer/selected DTO at the original base price for later authoritative actualization.
