@@ -82,7 +82,11 @@ $transport = static function(string $url, array $options) use (&$requests): arra
 $client = new AnyTourAndromedaClient($transport, true, true, $operatorLogin, $operatorPassword);
 $client->login('gateway-user', 'gateway-password');
 $client->package('opaque-claim-operator-config');
-operator_config_check(!isset($requests[0]['OPERATOR_LOGIN'], $requests[0]['OPERATOR_PASSWORD']), 'pair_leaked_to_login');
+operator_config_check(
+    !array_key_exists('OPERATOR_LOGIN', $requests[0])
+        && !array_key_exists('OPERATOR_PASSWORD', $requests[0]),
+    'pair_leaked_to_login'
+);
 operator_config_check(($requests[1]['OPERATOR_LOGIN'] ?? null) === $login, 'login_not_forwarded_to_broninit');
 operator_config_check(($requests[1]['OPERATOR_PASSWORD'] ?? null) === $password, 'password_not_forwarded_to_broninit');
 
