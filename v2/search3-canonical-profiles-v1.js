@@ -80,7 +80,7 @@ function create(refresh){
   const loading=ids.some(key=>!links.has(key)&&!missing.has(key)&&!failed.has(key)),error=ids.some(key=>failed.has(key)),excluded=raw.some(h=>!legacyId(h)||missing.has(legacyId(h)))||ids.some(key=>missing.has(key));
   if(!loading&&!error&&!excluded)return;
   const node=document.createElement('div');node.className='canonical-catalog-status search-progress-error';node.setAttribute('role',error?'alert':'status');
-  const text=document.createElement('span');text.textContent=error?'Не удалось загрузить описания некоторых отелей.':loading?'Загружаем описания и фотографии отелей…':'Показываем доступные предложения. Некоторые туры пока недоступны.';node.appendChild(text);
+  const text=document.createElement('span');text.textContent=error?'Не удалось загрузить описания некоторых отелей.':loading?'Загружаем описания и фотографии отелей…':'Часть предложений пока недоступна.';node.appendChild(text);
   if(error){const button=document.createElement('button');button.type='button';button.className='secondary canonical-profile-retry';button.textContent='Повторить загрузку';button.addEventListener('click',()=>{failed.clear();refresh();});node.appendChild(button);}
   results.prepend(node);
  }
