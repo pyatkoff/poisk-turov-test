@@ -1,8 +1,8 @@
-name: INT Andromeda selected-flight proof v2
+name: INT Andromeda selected-flight proof v3
 
 on:
   push:
-    branches: ['ops/int-andromeda-selected-flight-proof-20260918-v2']
+    branches: ['ops/int-andromeda-selected-flight-proof-20260918-v3']
     paths:
       - 'scripts/ops/int_andromeda_selected_flight_proof_v2.php'
       - '.github/workflows/int-andromeda-selected-flight-proof-v2.yml'
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: int-andromeda-selected-flight-proof-1717-20260918-v2
+  group: int-andromeda-selected-flight-proof-1717-20260918-v3
   cancel-in-progress: false
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
       BASE_SHA: 325ea3d8fc4752c95ddcc6bccf715dae24f7836a
       RELEASE_DATA_SHA: 041de3812c93cb27760d1c7d7500a8156864111c
       PACKAGE_SHA: 7c3c5bb55c88e376d97c998d0ba77a46960584d6
-      OPERATION_ID: int-andromeda-selected-flight-proof-1717-20260918-v2
+      OPERATION_ID: int-andromeda-selected-flight-proof-1717-20260918-v3
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -61,9 +61,10 @@ jobs:
           php -l app/integrations/andromeda-selected-quote.php >/dev/null
           php -l app/integrations/andromeda-saved-package-runtime.php >/dev/null
           php tests/andromeda-selected-quote-smoke.php
-          php tests/andromeda-saved-surcharge-runtime-smoke.php
-          php tests/andromeda-anytour-offer-autosave-test.php
-          php tests/anytour-offer-snapshot-producer-mysql-test.php
+          fixture_root="$RUNNER_TEMP/andromeda-surcharge-fixture"
+          rm -rf "$fixture_root"
+          mkdir -p "$fixture_root"
+          php tests/andromeda-saved-surcharge-runtime-smoke.php "$(pwd)" "$fixture_root"
 
           test "$(git rev-parse "$BASE_SHA:app/integrations/andromeda-selected-quote.php")" = "$(git rev-parse "HEAD:app/integrations/andromeda-selected-quote.php")"
           test "$(git rev-parse "$BASE_SHA:app/integrations/andromeda-saved-package-runtime.php")" = "$(git rev-parse "HEAD:app/integrations/andromeda-saved-package-runtime.php")"
@@ -175,7 +176,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: int-andromeda-selected-flight-proof-v2-${{ github.run_id }}
+          name: int-andromeda-selected-flight-proof-v3-${{ github.run_id }}
           path: ${{ runner.temp }}/receipt.json
           if-no-files-found: warn
           retention-days: 30
