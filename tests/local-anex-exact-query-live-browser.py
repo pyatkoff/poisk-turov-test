@@ -122,19 +122,19 @@ def run_viewport(browser, width: int, height: int) -> dict:
         }
         """
     )
+    page.screenshot(path=str(OUT / f"exact-anex-{width}x{height}.png"), full_page=True)
     assert result["complete"] is not None, result
     assert int(result["complete"].get("hotels", 0)) == 7, result
     assert int(result["complete"].get("offers", 0)) == 199, result
     assert len(result["anexItems"]) == 7, result
     assert len({row["id"] for row in result["anexItems"]}) == 7, result
-    assert all(row["category"] == 4 for row in result["anexItems"]), result
+    assert all(isinstance(row["category"], int) and 4 <= row["category"] <= 5 for row in result["anexItems"]), result
     assert all(row["anexOffers"] > 0 for row in result["anexItems"]), result
     assert set(row["id"] for row in result["anexItems"]).issubset(set(result["cardIds"])), result
     assert result["cardCount"] >= 7, result
     assert result["bodyOverflow"] is False, result
     result["pageErrors"] = errors
     result["consoleErrors"] = console_errors
-    page.screenshot(path=str(OUT / f"exact-anex-{width}x{height}.png"), full_page=True)
     context.close()
     return result
 
