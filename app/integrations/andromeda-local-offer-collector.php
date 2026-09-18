@@ -92,19 +92,30 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             $eligible[$key] = [
                 'selection' => $selection,
                 'freight_external' => self::freightExternal($offer),
+                'transport_group' => self::transportGroup($offer, (string)$operatorRef, $key),
             ];
         }
 
         // get_flights is only meaningful when the supplier reports external freight.
         // The search row is not authority to skip any mapped candidate, but it is useful
         // for spending the deliberately small capture budget: true first, then unknown,
-        // then explicit false. Stable insertion order is preserved inside each bucket.
+        // then explicit false. Within each bucket, first sample distinct transport
+        // program/tour groups; only then spend budget on another offer from a group that
+        // was already attempted. This prevents a cheap hotel-order cluster from consuming
+        // the whole bounded supplier budget for one flight program.
         $captureQueue = [];
         foreach ([true, null, false] as $priority) {
+            $groups = [];
             foreach ($eligible as $key => $candidate) {
-                if ($candidate['freight_external'] === $priority) {
-                    $captureQueue[$key] = $candidate['selection'];
-                }
+                if ($candidate['freight_external'] !== $priority) continue;
+                $group = $candidate['transport_group'];
+                if (isset($groups[$group])) continue;
+                $groups[$group] = true;
+                $captureQueue[$key] = $candidate['selection'];
+            }
+            foreach ($eligible as $key => $candidate) {
+                if ($candidate['freight_external'] !== $priority || isset($captureQueue[$key])) continue;
+                $captureQueue[$key] = $candidate['selection'];
             }
         }
 
@@ -177,5 +188,16 @@ final class AnyTourAndromedaLocalOfferCollectorV1
     {
         $value = $offer['transport_context']['freight_external'] ?? null;
         return is_bool($value) ? $value : null;
+    }
+
+    private static function transportGroup(array $offer, string $operatorRef, string $fallback): string
+    {
+        $context = is_array($offer['transport_context'] ?? null) ? $offer['transport_context'] : [];
+        $program = $context['program_ref'] ?? null;
+        $tour = $context['tour_ref'] ?? null;
+        $program = (is_string($program) || is_int($program)) && (string)$program !== '' ? (string)$program : '';
+        $tour = (is_string($tour) || is_int($tour)) && (string)$tour !== '' ? (string)$tour : '';
+        if ($program === '' && $tour === '') return 'offer:' . $fallback;
+        return hash('sha256', json_encode([$operatorRef, $program, $tour], JSON_THROW_ON_ERROR));
     }
 }
