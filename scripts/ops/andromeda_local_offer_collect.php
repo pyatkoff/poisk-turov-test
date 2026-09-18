@@ -32,6 +32,7 @@ $runtime=dirname(__DIR__,2);
 require_once $runtime.'/app/integrations/andromeda-local-offer-collector.php';
 require_once $runtime.'/v2/api-andromeda-search3-preview.php';
 require_once $runtime.'/app/integrations/andromeda-saved-package-runtime.php';
+require_once $runtime.'/app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php';
 
 $config=require $privateConfig;
 if(!is_array($config)||($config['enabled']??null)!==true)throw new RuntimeException('ANDROMEDA_COLLECTOR_CONFIG');
@@ -124,7 +125,9 @@ $capture=static function(array $selection)use($config,$saved,$pdo,$source):array
 };
 
 $autosave=static function(array $req,string $ref,int $generation)use($pdo,$saved,$directory):array{
-    return anytour_andromeda_anytour_offer_autosave_runtime($req,$pdo,$saved,$directory,$ref,$generation);
+    return anytour_andromeda_anytour_offer_autosave_cache_runtime(
+        $req,$pdo,$saved,$directory,$ref,$generation
+    );
 };
 
 $result=AnyTourAndromedaLocalOfferCollectorV1::collect(

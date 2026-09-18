@@ -1,0 +1,63 @@
+name: INT Andromeda surcharge cache runtime
+
+on:
+  push:
+    branches: ['feat/int-andromeda-surcharge-cache-runtime-v1-20260918']
+    paths:
+      - 'app/integrations/andromeda-saved-pricing-evidence.php'
+      - 'app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
+      - 'tests/andromeda-saved-pricing-evidence-test.php'
+      - 'tests/andromeda-surcharge-cache-autosave-test.php'
+      - '.github/workflows/andromeda-surcharge-cache-runtime-check.yml'
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-saved-pricing-evidence.php'
+      - 'app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
+      - 'tests/andromeda-saved-pricing-evidence-test.php'
+      - 'tests/andromeda-surcharge-cache-autosave-test.php'
+      - '.github/workflows/andromeda-surcharge-cache-runtime-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Syntax, contracts and supplier-free boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/integrations/andromeda-saved-pricing-evidence.php
+          php -l app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php
+          php -l scripts/ops/andromeda_local_offer_collect.php
+          php -l tests/andromeda-saved-pricing-evidence-test.php
+          php -l tests/andromeda-surcharge-cache-autosave-test.php
+          tmp="$RUNNER_TEMP/saved-pricing-evidence"
+          php -d zend.assertions=1 -d assert.exception=1 \
+            tests/andromeda-saved-pricing-evidence-test.php "$GITHUB_WORKSPACE" "$tmp"
+          php -d zend.assertions=1 -d assert.exception=1 \
+            tests/andromeda-surcharge-cache-autosave-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          runtime=Path('app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php').read_text()
+          cache=Path('app/integrations/andromeda-surcharge-cache-autosave.php').read_text()
+          cli=Path('scripts/ops/andromeda_local_offer_collect.php').read_text()
+          required=[
+              'anytour_andromeda_read_saved_pricing_with_evidence',
+              'AnyTourAndromedaSurchargeCacheAutosaveV1::resolve',
+              "'final_price_verified' => false",
+              "anytour_andromeda_anytour_offer_autosave_cache_runtime",
+          ]
+          combined=runtime+'\n'+cache+'\n'+cli
+          for token in required:
+              assert token in combined, token
+          for token in ['action=calc','changeservice','booking_enabled=true','curl_init','curl_exec']:
+              assert token not in runtime, token
+          assert 'anytour_andromeda_anytour_offer_autosave_runtime(' not in cli
+          print('ANDROMEDA_SURCHARGE_CACHE_RUNTIME_STATIC_OK')
+          PY
