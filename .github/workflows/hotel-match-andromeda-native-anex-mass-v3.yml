@@ -1,0 +1,171 @@
+name: MATCH Andromeda native ANEX mass bridge v1
+
+on:
+  push:
+    branches:
+      - ops/match-andromeda-native-anex-mass-1971-20260918-v3
+    paths:
+      - scripts/diagnostics/hotel_match_andromeda_native_anex_mass_v3.php
+      - .github/workflows/hotel-match-andromeda-native-anex-mass-v3.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: match-andromeda-native-anex-mass-20260918
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-andromeda-native-anex-mass-1971-20260918-v3
+  EXPECTED_BASE: 1f7fa9d1f51625b6d4ec95139c0fc5de36530364
+  CLAIM_COMMENT_ID: '5731714726'
+
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact native bridge delta and claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_andromeda_native_anex_mass_v3.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-andromeda-native-anex-mass-v3.yml'
+          php -l scripts/diagnostics/hotel_match_andromeda_native_anex_mass_v3.php
+          php scripts/diagnostics/hotel_match_andromeda_native_anex_mass_v3.php --self-test
+          php -l app/integrations/andromeda-client.php
+          php -l app/integrations/andromeda-transport.php
+          php -l app/integrations/anex-search-mapping-registry.php
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json')); b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert os.environ['OPERATION_ID'] in b
+          assert 'original.hotelKey' in b and 'isOperatorHotelKey=0' in b
+          assert 'skips the first **two** deterministic selected PRICE contexts' in b and 'writes0' in b
+          PY
+
+      - name: Require credentials and create reservation
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          AND_USER: ${{ secrets.ANDROMEDA_USERNAME }}
+          AND_PASS: ${{ secrets.ANDROMEDA_PASSWORD }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"; test -n "$AND_USER"; test -n "$AND_PASS"
+          umask 077; mkdir -p terminal reservation
+          python3 - <<'PY' > reservation/reservation.json
+          import json,os
+          print(json.dumps({
+            "operation":os.environ["OPERATION_ID"],"state":"reserved_before_provider_access",
+            "source_sha":os.environ["HEAD_SHA"],"provider":"andromeda",
+            "max_contexts":20,"max_provider_calls":250,"max_pages_per_context":40,
+            "tourvisor_calls":0,"direct_anex_calls":0,"database_writes":0,"mapping_writes":0,
+            "no_replay":True
+          },sort_keys=True))
+          PY
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null; test -s "$known"
+          remote="$SSH_USER@$SSH_HOST"; op=".anytour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -m 700 -p \"\$HOME/$op\" \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_andromeda_native_anex_mass_v3.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-andromeda-native-anex-v1-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute CURRENT native bridge once
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          AND_USER: ${{ secrets.ANDROMEDA_USERNAME }}
+          AND_PASS: ${{ secrets.ANDROMEDA_PASSWORD }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$SSH_USER@$SSH_HOST"; op=".anytour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          set +e
+          printf '%s\n%s\n' "$AND_USER" "$AND_PASS" | ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_MAPPING_REGISTRY_PATH=\"\$HOME/$op/payload/anex-search-mapping-registry.php\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M \"\$HOME/$op/payload/hotel_match_andromeda_native_anex_mass_v3.php\" > \"\$HOME/$op/stdout.json\""
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "test -s \"\$HOME/$op/result.json\"; test -s \"\$HOME/$op/receipt.json\"; tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+
+      - name: Verify result and summarize
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,json,hashlib,pathlib
+          p=pathlib.Path('terminal'); d=p/'server'; d.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            for m in t.getmembers():
+              assert m.isfile() and m.size<100_000_000
+              (d/pathlib.Path(m.name).name).write_bytes(t.extractfile(m).read())
+          r=json.loads((d/'result.json').read_text()); rec=json.loads((d/'receipt.json').read_text())
+          sha=hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+          assert rec['result_sha256']==sha and rec['database_writes']==0 and rec['mapping_writes']==0
+          assert rec['tourvisor_calls']==0 and rec['direct_anex_calls']==0
+          if r.get('state')!='completed_read_only':
+            print(json.dumps({'state':r.get('state'),'reason':r.get('reason'),'andromeda_calls':r.get('andromeda_calls'),'result_sha256':sha},sort_keys=True))
+            raise SystemExit(2)
+          assert r['andromeda_calls']<=250 and r['selected_context_count']<=20
+          summary={k:r.get(k) for k in ['state','andromeda_calls','price_rows_seen','current_anex_accepted_unique_local','target_user_seen_anex_accepted_andromeda_missing','selected_context_count','context_status_counts','raw_direct_bridge_rows','safe_candidate_count','hold_count']}
+          summary['top_safe']=r.get('safe_candidates',[])[:50]; summary['result_sha256']=sha
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          msg=(f"MATCH #1971 Andromeda native-ANEX bridge COMPLETE / READ ONLY / NO-REPLAY. "
+               f"Targets ANEX-accepted/Andromeda-missing {r['target_user_seen_anex_accepted_andromeda_missing']}, "
+               f"contexts {r['selected_context_count']}, PRICE rows {r['price_rows_seen']}, "
+               f"direct raw bridges {r['raw_direct_bridge_rows']}, CURRENT-safe {r['safe_candidate_count']}, holds {r['hold_count']}. "
+               f"Andromeda calls {r['andromeda_calls']}, Tourvisor/direct-ANEX calls0, DB/mapping writes0. Result SHA256 {sha}.")
+          (p/'summary.md').write_text(msg+'\n'); print(msg)
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-andromeda-native-anex-v1-result-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record MATCH result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file terminal/summary.md
+          gh issue comment 2530 --repo "$GITHUB_REPOSITORY" --body-file terminal/summary.md
