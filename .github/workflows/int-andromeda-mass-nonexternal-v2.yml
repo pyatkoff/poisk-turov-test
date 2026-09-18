@@ -1,0 +1,179 @@
+name: INT Andromeda mass non-external local DB fill v2
+
+on:
+  push:
+    branches: ['ops/int-andromeda-mass-nonexternal-20260918-v2']
+    paths:
+      - '.github/workflows/int-andromeda-mass-nonexternal-v2.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-andromeda-mass-nonexternal-1717-20260918-v2
+  cancel-in-progress: false
+
+jobs:
+  fill:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE_SHA: 1f7fa9d1f51625b6d4ec95139c0fc5de36530364
+      RELEASE_DATA_SHA: 66e15f7a47894062d764b6b15147b5c78859c35e
+      OPERATION_ID: int-andromeda-mass-nonexternal-1717-20260918-v2
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_SHA }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_DATA_SHA }}
+          path: release-data
+          persist-credentials: false
+
+      - name: Bind exact mass-fill source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$BASE_SHA"
+          test "$(git -C release-data rev-parse HEAD)" = "$RELEASE_DATA_SHA"
+          cd source
+          php -l scripts/ops/andromeda_local_offer_collect.php >/dev/null
+          php -l app/integrations/andromeda-local-offer-collector.php >/dev/null
+          php -l app/integrations/andromeda-selected-quote.php >/dev/null
+          php -l app/integrations/andromeda-saved-package-runtime.php >/dev/null
+          php tests/andromeda-local-offer-collector-test.php
+          php tests/andromeda-saved-surcharge-runtime-smoke.php "$(pwd)" "$RUNNER_TEMP/andromeda-surcharge-smoke"
+
+      - name: Prepare private exact runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          stage="$RUNNER_TEMP/runtime"
+          mkdir -p "$stage/app" "$stage/v2" "$stage/scripts/ops"
+          cp -a source/app/integrations "$stage/app/"
+          cp source/v2/api-anex-search3-preview.php source/v2/api-andromeda-search3-preview.php "$stage/v2/"
+          cp -a release-data/v2/data "$stage/v2/"
+          cp source/scripts/ops/andromeda_local_offer_collect.php "$stage/scripts/ops/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/runtime.tar.gz" .
+
+      - name: Execute one non-external mass-fill
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/result"
+          opts=(-T -i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          archive="/tmp/int-andromeda-mass-nonexternal-1717-20260918-v2.${GITHUB_RUN_ID}.tar.gz"
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$remote:$archive"
+          set +e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$archive" "$BASE_SHA" <<'REMOTE'
+          set -euo pipefail
+          operation="$1"; archive="$2"; source="$3"
+          site="$HOME/www/anytoour.ru"
+          private="$HOME/.anytoour-andromeda"
+          ledger="$HOME/.anytour-ops/$operation"
+          test -d "$site"; test -s "$site/config.php"; test -s "$private/search3-preview.php"; test -d "$private/searches"
+          test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"
+          printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d "/tmp/${operation}.XXXXXX")"
+          trap 'rm -rf "$work"; rm -f "$archive"' EXIT
+          tar -C "$work" -xzf "$archive"
+
+          php -d display_errors=0 > "$ledger/before.json" <<'PHP'
+          <?php
+          declare(strict_types=1); error_reporting(0);
+          $root=rtrim((string)getenv('HOME'),'/').'/www/anytoour.ru';
+          require_once $root.'/config.php';
+          require_once (is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php');
+          $db=v2_data_db();$db->exec('START TRANSACTION READ ONLY');
+          $c=static function(string $sql)use($db):int{return (int)$db->query($sql)->fetchColumn();};
+          echo json_encode([
+            'rows'=>$c("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda'"),
+            'active'=>$c("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND is_active=1"),
+            'ready'=>$c("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND final_price_ready=1"),
+            'all_offers'=>$c("SELECT COUNT(*) FROM anytour_offers")
+          ],JSON_THROW_ON_ERROR);
+          $db->rollBack();
+          PHP
+
+          set +e
+          php "$work/scripts/ops/andromeda_local_offer_collect.php"             --site-root="$site"             --private-config="$private/search3-preview.php"             --source-sha="$source"             --departure=1 --country=4 --date-from=2026-10-24 --date-to=2026-10-24             --nights=7 --adults=2 --meal=7 --generation=17171836             --max-captures=60 --capture-mode=non_external_only             > "$ledger/collector.json" 2> "$ledger/error.log"
+          rc=$?
+          set -e
+
+          php -d display_errors=0 > "$ledger/after.json" <<'PHP'
+          <?php
+          declare(strict_types=1); error_reporting(0);
+          $root=rtrim((string)getenv('HOME'),'/').'/www/anytoour.ru';
+          require_once $root.'/config.php';
+          require_once (is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php');
+          $db=v2_data_db();$db->exec('START TRANSACTION READ ONLY');
+          $c=static function(string $sql)use($db):int{return (int)$db->query($sql)->fetchColumn();};
+          echo json_encode([
+            'rows'=>$c("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda'"),
+            'active'=>$c("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND is_active=1"),
+            'ready'=>$c("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND final_price_ready=1"),
+            'all_offers'=>$c("SELECT COUNT(*) FROM anytour_offers")
+          ],JSON_THROW_ON_ERROR);
+          $db->rollBack();
+          PHP
+
+          RC="$rc" php -r '
+            $before=json_decode(file_get_contents($argv[1]),true,32,JSON_THROW_ON_ERROR);
+            $after=json_decode(file_get_contents($argv[2]),true,32,JSON_THROW_ON_ERROR);
+            $collector=null;try{$collector=json_decode(file_get_contents($argv[3]),true,64,JSON_THROW_ON_ERROR);}catch(Throwable $e){}
+            $out=[
+              "status"=>(int)getenv("RC")===0?"completed":"failed_terminal_no_replay",
+              "provider"=>"andromeda",
+              "scope"=>["departure_id"=>1,"country_id"=>4,"date"=>"2026-10-24","nights"=>7,"adults"=>2,"meal"=>"7","capture_mode"=>"non_external_only","max_captures"=>60],
+              "before"=>$before,"after"=>$after,
+              "delta"=>["rows"=>$after["rows"]-$before["rows"],"active"=>$after["active"]-$before["active"],"ready"=>$after["ready"]-$before["ready"],"all_offers"=>$after["all_offers"]-$before["all_offers"]],
+              "collector"=>$collector,
+              "booking_calls"=>0,"lead_calls"=>0,"mapping_writes"=>0,"search3_publication"=>0,"replay_allowed"=>false
+            ];
+            file_put_contents($argv[4],json_encode($out,JSON_UNESCAPED_SLASHES).PHP_EOL);
+          ' "$ledger/before.json" "$ledger/after.json" "$ledger/collector.json" "$ledger/receipt.json"
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed || echo failed_terminal_no_replay)" > "$ledger/state"
+          exit "$rc"
+          REMOTE
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/receipt.json" || true
+          test -s "$RUNNER_TEMP/result/receipt.json"
+          cat "$RUNNER_TEMP/result/receipt.json"
+          test "$rc" = 0
+          python3 - <<'PY'
+          import json,os
+          p=os.environ['RUNNER_TEMP']+'/result/receipt.json'
+          d=json.load(open(p))
+          assert d['status']=='completed' and d['provider']=='andromeda'
+          assert d['replay_allowed'] is False and d['search3_publication']==0
+          assert d['delta']['rows']>0 and d['delta']['active']>0 and d['delta']['ready']>0, d
+          PY
+
+      - name: Preserve sanitized receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-andromeda-mass-nonexternal-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
