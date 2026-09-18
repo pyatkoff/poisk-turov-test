@@ -1,0 +1,118 @@
+name: MATCH direct ANEX-only Mauritius27 v2
+on:
+  push:
+    branches: [ops/match-anex-user-seen-mauritius27-direct-1971-20260919-v2]
+    paths:
+      - .github/ops/match-anex-user-seen-mauritius27-direct-1971-20260919-v2.json
+      - scripts/diagnostics/hotel_match_anex_user_seen_mauritius27_direct_v2.py
+      - scripts/diagnostics/hotel_match_anex_user_seen_mauritius27_direct_runner_v2.py
+      - .github/workflows/hotel-match-anex-user-seen-mauritius27-direct-v2.yml
+permissions:
+  contents: read
+concurrency:
+  group: match-anex-user-seen-mauritius27-direct-1971-20260919-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-user-seen-mauritius27-direct-1971-20260919-v2
+jobs:
+  live:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: eaa00b6d81f529a636963ff09a46060a4beaafc3
+          path: pinned-uae12
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate exact corrected source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object pinned-uae12/scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_v1.py)" = fc005a518bcccb19e775526a8123927807fe5b5b
+          python3 -m py_compile scripts/diagnostics/hotel_match_anex_user_seen_mauritius27_direct_v2.py scripts/diagnostics/hotel_match_anex_user_seen_mauritius27_direct_runner_v2.py pinned-uae12/scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_v1.py
+          cp pinned-uae12/scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_v1.py scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_v1.py
+          python3 scripts/diagnostics/hotel_match_anex_user_seen_mauritius27_direct_runner_v2.py --self-test
+          python3 - <<'PY'
+          import json
+          r=json.load(open('.github/ops/match-anex-user-seen-mauritius27-direct-1971-20260919-v2.json'))
+          assert r['operation']=='hotel-match-anex-user-seen-mauritius27-direct-1971-20260919-v2'
+          assert r['state']=='reserved_before_provider_access'
+          assert r['authority']['planner_result_sha256']=='ace4bfe1314a8d46d38cbe28b00cac25d7f6659840b185e3154e9bca5c55ca7c'
+          assert r['authority']['predecessor_provider_calls']==0
+          assert r['daily_accounting']=={'provider_timezone':'Europe/Moscow','provider_day':'2026-09-19','known_prior_attempt_floor':184,'daily_limit':3000,'operation_cap':280}
+          assert r['source_account']['operator_id']==13 and r['source_account']['endpoint']=='https://api.tourvisor.ru/search/api/v1'
+          assert r['target']['country_id']==27 and len(r['target']['hotel_ids'])==27 and len(set(r['target']['hotel_ids']))==27
+          assert r['rules']['operator_filter']==[13] and r['rules']['no_dates_endpoint'] is True and r['rules']['full_drain'] is True
+          PY
+      - name: Require SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+      - name: Execute fresh direct ANEX-only acquisition
+        id: execute
+        continue-on-error: true
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          umask 077
+          mkdir -p result
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key" || exit 10
+          ssh-keygen -y -f "$key" >/dev/null || exit 11
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null || exit 12
+          test -s "$known" || exit 13
+          remote="$USER_VALUE@$HOST_VALUE"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr || exit 14
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_v1.py scripts/diagnostics/hotel_match_anex_user_seen_mauritius27_direct_v2.py scripts/diagnostics/hotel_match_anex_user_seen_mauritius27_direct_runner_v2.py .github/ops/match-anex-user-seen-mauritius27-direct-1971-20260919-v2.json "$remote:$op/payload/" >result/scp.stdout 2>result/scp.stderr || exit 15
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/match-anex-user-seen-mauritius27-direct-1971-20260919-v2.json\" \"\$HOME/$op/payload/reservation.json\"" || exit 16
+          set +e
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" python3 \"\$HOME/$op/payload/hotel_match_anex_user_seen_mauritius27_direct_runner_v2.py\" --execute" >result/runner.stdout 2>result/runner.stderr
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > result/remote-exitcode.txt
+          scp -r "${opts[@]}" "$remote:$op/." result/remote/ >result/fetch.stdout 2>result/fetch.stderr || true
+          rm -f "$key" "$known"
+          exit "$rc"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-anex-user-seen-mauritius27-direct-v2
+          path: result/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Enforce completed read-only full drain
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,hashlib
+          p=pathlib.Path('result/remote/result.json'); c=pathlib.Path('result/remote/receipt.json')
+          assert p.exists() and c.exists(), 'missing result/receipt'
+          d=json.load(open(p)); r=json.load(open(c)); rh=hashlib.sha256(p.read_bytes()).hexdigest()
+          assert d['operation']=='hotel-match-anex-user-seen-mauritius27-direct-1971-20260919-v2'
+          assert d['state']=='completed_read_only' and d['full_drain'] is True
+          assert d['operator_filter']==[13] and d['provider_source']=='direct_tourvisor'
+          assert d['database_writes']==0 and d['mapping_writes']==0
+          assert d['provider_calls']<=280 and r['provider_calls']==d['provider_calls'] and r['result_sha256']==rh
+          assert d['returned_target_hotels']<=27
+          print(json.dumps({'state':d['state'],'calls':d['provider_calls'],'anchors':len(d.get('anchors',[])),'holds':len(d.get('holds',[])),'returned':d.get('returned_target_hotels'),'drain_reason':d.get('drain_reason'),'result_sha256':rh},ensure_ascii=False))
+          PY
