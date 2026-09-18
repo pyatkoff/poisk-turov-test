@@ -25,9 +25,14 @@ def row(state,i):
         'identity':{'search_ref_digest':'a'*64,'offer_ref_digest':['b','c','d'][i]*64,'provider_hotel_ref_digest':'e'*64},
         'tour':{'checkin':'2026-10-13','nights':7,'party':{'adults':2,'children':0},'room':{'raw':['STANDARD','DELUXE','FAMILY ROOM SEA VIEW'][i]},'meal':{'raw':'AI'},'placement':{'raw':'DBL'}}}}
 payload={'source':'anytour-db-first-results-v1','scopeVersion':1,'scopeDigest':'f'*64,'selectionAuthority':False,'hotels':[{'anytourHotelId':77,'hotel':{'id':77,'catalog':'anytour','revision':1,'name':'Тестовый отель с длинным названием у моря','category':5,'country':{'name':'Тестовая страна'},'region':{'name':'Тестовый курорт'},'description':'Только вымышленные данные для проверки отображения.'},'offers':[row(s,i) for i,s in enumerate(states)]}]}
+# Supported sibling offers survive an identity-less row, even when it is cheaper.
+legacy=row('final_ready_estimate',0);del legacy['listing']['identity']
+legacy['price']=100000;legacy['listing']['listingPrice']['amount']='100000'
+payload['hotels'][0]['offers'].insert(0,legacy)
+payload['hotels'].append({'anytourHotelId':88,'hotel':{'id':88,'catalog':'anytour','revision':1,'name':'Unsupported legacy hotel'},'offers':[legacy]})
 evidence=[]
 with sync_playwright() as p:
-    browser=p.chromium.launch(headless=True)
+    browser=p.chromium.launch(headless=True,executable_path=os.environ.get('CHROMIUM_PATH') or None)
     for width,height in [(375,812),(390,500),(430,932),(1440,980)]:
         context=browser.new_context(viewport={'width':width,'height':height})
         context.route('**/*',lambda route:route.abort())
@@ -38,9 +43,17 @@ with sync_playwright() as p:
           const view=new Proxy(window,{get(t,k){if(k==='location')return loc;const v=Reflect.get(t,k,t);return typeof v==='function'?v.bind(t):v;},set(t,k,v){t[k]=v;return true;}});
           new Function('window',code)(view);
         }""",code)
-        result=page.evaluate('(data)=>AnyTourLocalDbProviderV1.apply(Search3CanonicalProfilesV1.current(),data)',payload)
+        result=page.evaluate("""data=>{const before=JSON.stringify(data);
+          const result=AnyTourLocalDbProviderV1.apply(Search3CanonicalProfilesV1.current(),data);
+          if(JSON.stringify(data)!==before)throw new Error('Input payload mutated');return result;
+        }""",payload)
         assert result and result['offerCount']==3,'all three states must render atomically'
+        assert result['withheldOfferCount']==2,'two unsupported rows withheld without dropping valid providers'
+        assert len(result['hotels'])==1,'legacy-only hotel cannot create an empty card'
+        assert {offer['tour']['provider'] for offer in result['hotels'][0]['offers']}=={'tourvisor','anex','andromeda'}
         assert page.locator('.hotel-card').count()==1,'one canonical hotel for all providers'
+        assert 'Unsupported legacy hotel' not in page.locator('#results').inner_text()
+        assert '100 000' not in page.locator('#results').inner_text().replace('\xa0',' '),'withheld price cannot become hotel minimum'
         toggle=page.get_by_role('button',name='Показать варианты · 3',exact=True)
         assert toggle.bounding_box()['height']>=44,'touch target'
         toggle.click()
@@ -58,7 +71,7 @@ with sync_playwright() as p:
         page.get_by_role('button',name='Скрыть варианты',exact=False).click()
         assert page.locator('.tour-row').count()==0
         assert not errors,errors
-        evidence.append({'viewport':[width,height],'offers':3,'confirmationPriceLabel':True,'cachedSelectionEnabled':False,'overflow':False})
+        evidence.append({'viewport':[width,height],'offers':3,'withheldLegacyOffers':2,'providers':['tourvisor','anex','andromeda'],'confirmationPriceLabel':True,'cachedSelectionEnabled':False,'overflow':False})
         context.close()
     browser.close()
 (OUT/'receipt.json').write_text(json.dumps({'kind':'CI Chromium component fixtures','cases':evidence},ensure_ascii=False,indent=2))
