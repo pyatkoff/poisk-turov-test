@@ -120,5 +120,9 @@ try {
         'site_file_writes' => 0,
     ]) . PHP_EOL;
 } catch (Throwable $error) {
+    $message = strtoupper((string)$error->getMessage());
+    if ($error instanceof RuntimeException && preg_match('/^[A-Z][A-Z0-9_]{0,95}$/D', $message)) {
+        stay_frontier_fail($message);
+    }
     stay_frontier_fail('UNEXPECTED_' . preg_replace('/[^A-Z0-9_]/', '_', strtoupper(get_class($error))));
 }
