@@ -53,14 +53,23 @@ jobs:
           PY
           )"
           cd "$site"
-          php -d display_errors=0 -r '
-          require "config.php";$f=is_file("data/db-v1.php")?"data/db-v1.php":"v2/data/db-v1.php";require $f;$db=v2_data_db();
-          $one=fn($q)=>(int)$db->query($q)->fetchColumn();
+          php -d display_errors=0 <<'PHP' > /tmp/andromeda-db-readback.json
+          <?php
+          declare(strict_types=1);
+          require 'config.php';
+          $f=is_file('data/db-v1.php')?'data/db-v1.php':'v2/data/db-v1.php';
+          require $f;
+          $db=v2_data_db();
+          $q=$db->prepare('SELECT COUNT(*) FROM anytour_offers WHERE provider=?');
+          $q->execute(['andromeda']);$offers=(int)$q->fetchColumn();
+          $q=$db->prepare('SELECT COUNT(*) FROM anytour_offers WHERE provider=? AND is_active=1');
+          $q->execute(['andromeda']);$active=(int)$q->fetchColumn();
           echo json_encode([
-            "andromeda_offers"=>$one("SELECT COUNT(*) FROM anytour_offers WHERE provider='''andromeda'''"),
-            "andromeda_active"=>$one("SELECT COUNT(*) FROM anytour_offers WHERE provider='''andromeda''' AND is_active=1"),
-            "all_offers"=>$one("SELECT COUNT(*) FROM anytour_offers")
-          ],JSON_THROW_ON_ERROR);' > /tmp/andromeda-db-readback.json
+            'andromeda_offers'=>$offers,
+            'andromeda_active'=>$active,
+            'all_offers'=>(int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn(),
+          ],JSON_THROW_ON_ERROR);
+          PHP
           python3 - "$state" "$code" /tmp/andromeda-db-readback.json <<'PY'
           import json,sys
           state,code,path=sys.argv[1:]
