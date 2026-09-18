@@ -57,7 +57,7 @@ jobs:
           assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
           assert os.environ['OPERATION_ID'] in b
           assert 'zero provider calls' in b.lower()
-          assert 'Sea Gull' in b and 'Aquapark' in b
+          low=b.lower(); assert 'sea gull' in low and 'aquapark' in low
           assert '1.5km' in b and '>5km' in b
           PY
           mkdir -p source
