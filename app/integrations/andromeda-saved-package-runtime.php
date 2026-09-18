@@ -377,7 +377,9 @@ function anytour_andromeda_saved_verified_quote_private(
         || ($quote['booking_enabled'] ?? null) !== false
         || ($quote['local_id'] ?? null) !== ($resolved['offer']['local_hotel_id'] ?? null)
         || ($quote['operator'] ?? null) !== ($resolved['offer']['operator'] ?? null)
-        || ($quote['search_price'] ?? null) !== ($resolved['offer']['price'] ?? null)
+        || !is_array($resolved['offer']['price'] ?? null)
+        || ($quote['search_price']['amount'] ?? null) !== ($resolved['offer']['price']['amount'] ?? null)
+        || ($quote['search_price']['currency'] ?? null) !== ($resolved['offer']['price']['currency'] ?? null)
         || !is_array($quote['final_price'] ?? null)
         || !is_string($quote['final_price']['amount'] ?? null)
         || !preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $quote['final_price']['amount'])
