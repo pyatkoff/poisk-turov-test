@@ -72,7 +72,7 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
         foreach($stored['items'] as $item){
             $own=(int)$item['anytourHotelId'];$profile=$profiles[$own]??null;
             if(!$profile){$withheld++;continue;}
-            if(!search3_local_profile_matches_scope($profile,$scope['params'])){$categoryFiltered++;continue;}
+            if($mode==='compatible'&&!search3_local_profile_matches_scope($profile,$scope['params'])){$categoryFiltered++;continue;}
             if(!isset($groups[$own]))$groups[$own]=['anytourHotelId'=>$own,'hotel'=>$profile,'offers'=>[],'providers'=>[],'minPrice'=>null];
             $offer=[
                 'provider'=>$item['provider'],'legacyHotelId'=>$item['legacyHotelId'],'price'=>$item['price'],'currency'=>$item['currency'],
