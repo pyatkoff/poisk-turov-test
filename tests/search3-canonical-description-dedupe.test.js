@@ -21,7 +21,7 @@ function fixture({ summary = 'Проверенное описание', duplicat
   const content = {
     textContent: duplicate,
     get children() { return duplicateRemoved ? extraNodes : [duplicateNode, ...extraNodes]; },
-    querySelector(selector) { return selector === '.hotel-description' ? duplicateNode : null; },
+    querySelector(selector) { return selector === '.hotel-description' && !duplicateRemoved ? duplicateNode : null; },
   };
   const details = {
     querySelector(selector) { return selector === '.hotel-details-content' ? content : null; },
@@ -42,11 +42,13 @@ const rich = fixture({ extras: 2 });
 assert.equal(api.normalizeCard(rich.card), true, 'identical description is deduplicated');
 assert.equal(rich.duplicateRemoved(), true, 'duplicate paragraph is removed from disclosure');
 assert.equal(rich.detailsRemoved(), false, 'disclosure remains when structured hotel facts remain');
+assert.equal(api.normalizeCard(rich.card), false, 'rich description normalization is idempotent');
 
 const descriptionOnly = fixture({ extras: 0 });
-assert.equal(api.normalizeCard(descriptionOnly.card), true, 'description-only card is normalized');
-assert.equal(descriptionOnly.duplicateRemoved(), true, 'description remains only in the visible summary');
-assert.equal(descriptionOnly.detailsRemoved(), true, 'empty Подробнее disclosure is removed');
+assert.equal(api.normalizeCard(descriptionOnly.card), false, 'description-only disclosure keeps the native full-text owner');
+assert.equal(descriptionOnly.duplicateRemoved(), false, 'full text is retained inside the disclosure instead of a permanently clamped teaser');
+assert.equal(descriptionOnly.detailsRemoved(), false, 'native disclosure also remains available for mobile gallery controls');
+assert.equal(api.normalizeCard(descriptionOnly.card), false, 'description-only repeated normalization is idempotent');
 
 const mismatched = fixture({ duplicate: 'Другое содержимое', extras: 0 });
 assert.equal(api.normalizeCard(mismatched.card), false, 'non-identical detail text is never discarded');
