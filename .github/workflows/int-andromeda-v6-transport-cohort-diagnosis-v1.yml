@@ -3,8 +3,7 @@ name: INT Andromeda v6 transport cohort diagnosis v1
 on:
   push:
     branches: ['ops/int-andromeda-v6-transport-cohort-diagnosis-20260918-v1']
-    paths:
-      - '.github/workflows/int-andromeda-v6-transport-cohort-diagnosis-v1.yml'
+    paths: ['.github/workflows/int-andromeda-v6-transport-cohort-diagnosis-v1.yml']
 
 permissions:
   contents: read
@@ -24,12 +23,11 @@ jobs:
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 4
+          fetch-depth: 5
           persist-credentials: false
 
       - name: Bind exact supplier-free diagnostic source
@@ -43,7 +41,6 @@ jobs:
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY"
           test -n "$ANYTOOUR_DEPLOY_HOST"
           test -n "$ANYTOOUR_DEPLOY_USER"
-          ! grep -Eq 'broninit|get_flights|search_tour|autosave|INSERT|UPDATE|DELETE|REPLACE' .github/workflows/int-andromeda-v6-transport-cohort-diagnosis-v1.yml
 
       - name: Read retained v6 cohort only
         shell: bash
@@ -63,113 +60,43 @@ jobs:
           ssh "${opts[@]}" "$remote" php -- "$GENERATION" <<'PHP' > "$RUNNER_TEMP/receipt.json"
           <?php
           declare(strict_types=1);
-          if ($argc !== 2 || !preg_match('/^[1-9][0-9]{0,9}$/D', (string)$argv[1])) exit(2);
+          if($argc!==2||!preg_match('/^[1-9][0-9]{0,9}$/D',(string)$argv[1]))exit(2);
           $generation=(int)$argv[1];
           $site=realpath(getenv('HOME').'/www/anytoour.ru');
-          if ($site===false || basename($site)!=='anytoour.ru') exit(3);
+          if($site===false||basename($site)!=='anytoour.ru')exit(3);
           $private=dirname($site,2).'/.anytoour-andromeda/search3-preview.php';
-          if (!is_file($private) || is_link($private)) exit(4);
+          if(!is_file($private)||is_link($private))exit(4);
           $cfg=require $private;
-          if (!is_array($cfg) || !is_string($cfg['catalog_path']??null) || $cfg['catalog_path']==='') exit(5);
+          if(!is_array($cfg)||!is_string($cfg['catalog_path']??null)||$cfg['catalog_path']==='')exit(5);
           $dir=dirname($cfg['catalog_path']).'/searches';
-          if (!is_dir($dir) || is_link($dir) || basename($dir)!=='searches') exit(6);
-
-          $read=static function(string $path,int $max=3000000): ?array {
-              if(is_link($path)||!is_file($path)) return null;
-              $size=filesize($path); if(!is_int($size)||$size<2||$size>$max) return null;
-              try{$x=json_decode((string)file_get_contents($path),true,64,JSON_THROW_ON_ERROR);return is_array($x)?$x:null;}catch(Throwable){return null;}
-          };
-
+          if(!is_dir($dir)||is_link($dir)||basename($dir)!=='searches')exit(6);
+          $read=static function(string $p,int $max=3000000):?array{if(is_link($p)||!is_file($p))return null;$z=filesize($p);if(!is_int($z)||$z<2||$z>$max)return null;try{$x=json_decode((string)file_get_contents($p),true,64,JSON_THROW_ON_ERROR);return is_array($x)?$x:null;}catch(Throwable){return null;}};
           $refs=[];
-          foreach(glob($dir.'/*-1.json')?:[] as $path){
-              $x=$read($path); $s=is_array($x)?($x['store']['snapshot']??null):null;
-              if(!is_array($s)||($s['provider']??null)!=='andromeda'||($s['generation']??null)!==$generation) continue;
-              $ref=$s['search_ref']??null;
-              if(is_string($ref)&&preg_match('/^[a-f0-9]{64}$/D',$ref)) $refs[$ref]=true;
-          }
-          if(count($refs)!==1) exit(7);
-          $ref=(string)array_key_first($refs);
-
-          $offers=[]; $packageCount=0;
-          foreach(glob($dir.'/'.$ref.'*.json')?:[] as $path){
-              if(str_ends_with($path,'-package.json')){++$packageCount;continue;}
-              $x=$read($path); $s=is_array($x)?($x['store']['snapshot']??null):null;
-              if(!is_array($s)||($s['provider']??null)!=='andromeda'||($s['generation']??null)!==$generation||($s['search_ref']??null)!==$ref) continue;
-              foreach($s['offers']??[] as $offer){
-                  if(!is_array($offer)) continue;
-                  $k=$offer['offer_ref']??null;
-                  if(is_string($k)&&preg_match('/^offer_[a-f0-9]{64}$/D',$k)) $offers[$k]=$offer;
-              }
-          }
-
-          $owned=static function(string $raw): bool {
-              $v=str_replace(['Ё','ё'],'е',trim($raw));
-              $v=function_exists('mb_strtolower')?mb_strtolower($v,'UTF-8'):strtolower($v);
-              $c=preg_replace('/[^\p{L}\p{N}]+/u','',$v)??'';
-              if($c==='') return false;
-              foreach(['anex','анекс','pegas','пегас','coral','корал','sunmar','санмар'] as $other) if(str_contains($c,$other)) return false;
-              return true;
-          };
-
-          $candidates=[]; $ids=[];
-          foreach($offers as $offer){
-              if(!$owned((string)($offer['operator']??''))) continue;
-              $local=$offer['local_hotel_id']??null; $ext=$offer['external_hotel_id']??null; $ns=$offer['supplier_namespace']??null;
-              if(!is_int($local)||$local<1||(!is_string($ext)&&!is_int($ext))||(string)$ext===''||!is_string($ns)||$ns==='') continue;
-              $candidates[]=$offer; $ids[(string)$ext]=true;
-          }
-
-          $dbFile=is_file($site.'/data/db-v1.php')?$site.'/data/db-v1.php':$site.'/v2/data/db-v1.php';
-          require_once $dbFile;
-          $dbc=v2_data_db_config();
-          if(!is_array($dbc)||($dbc['dsn']??'')===''||($dbc['user']??'')==='') exit(8);
-          $pdo=new PDO($dbc['dsn'],$dbc['user'],$dbc['password'],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_EMULATE_PREPARES=>false]);
-          try{$pdo->exec('SET SESSION TRANSACTION READ ONLY');}catch(Throwable){}
-
-          $current=[];
-          if($ids){
-              $q=$pdo->prepare("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? AND i.external_hotel_id IN (".implode(',',array_fill(0,count($ids),'?')).')');
-              $q->execute(array_merge([4],array_keys($ids)));
-              foreach($q->fetchAll() as $r){$k=json_encode([$r['supplier_namespace'],(string)$r['external_hotel_id']]);$current[$k]=array_key_exists($k,$current)?null:(int)$r['local_hotel_id'];}
-          }
+          foreach(glob($dir.'/*-1.json')?:[] as $p){$x=$read($p);$s=is_array($x)?($x['store']['snapshot']??null):null;if(!is_array($s)||($s['provider']??null)!=='andromeda'||($s['generation']??null)!==$generation)continue;$r=$s['search_ref']??null;if(is_string($r)&&preg_match('/^[a-f0-9]{64}$/D',$r))$refs[$r]=true;}
+          if(count($refs)!==1)exit(7);$ref=(string)array_key_first($refs);
+          $offers=[];$packageCount=0;
+          foreach(glob($dir.'/'.$ref.'*.json')?:[] as $p){if(str_ends_with($p,'-package.json')){++$packageCount;continue;}$x=$read($p);$s=is_array($x)?($x['store']['snapshot']??null):null;if(!is_array($s)||($s['provider']??null)!=='andromeda'||($s['generation']??null)!==$generation||($s['search_ref']??null)!==$ref)continue;foreach($s['offers']??[] as $o){if(!is_array($o))continue;$k=$o['offer_ref']??null;if(is_string($k)&&preg_match('/^offer_[a-f0-9]{64}$/D',$k))$offers[$k]=$o;}}
+          $owned=static function(string $raw):bool{$v=str_replace(['Ё','ё'],'е',trim($raw));$v=function_exists('mb_strtolower')?mb_strtolower($v,'UTF-8'):strtolower($v);$c=preg_replace('/[^\p{L}\p{N}]+/u','',$v)??'';if($c==='')return false;foreach(['anex','анекс','pegas','пегас','coral','корал','sunmar','санмар']as$q)if(str_contains($c,$q))return false;return true;};
+          $candidates=[];$ids=[];
+          foreach($offers as $o){if(!$owned((string)($o['operator']??'')))continue;$local=$o['local_hotel_id']??null;$ext=$o['external_hotel_id']??null;$ns=$o['supplier_namespace']??null;if(!is_int($local)||$local<1||(!is_string($ext)&&!is_int($ext))||(string)$ext===''||!is_string($ns)||$ns==='')continue;$candidates[]=$o;$ids[(string)$ext]=true;}
+          $dbFile=is_file($site.'/data/db-v1.php')?$site.'/data/db-v1.php':$site.'/v2/data/db-v1.php';require_once$dbFile;$dbc=v2_data_db_config();if(!is_array($dbc)||($dbc['dsn']??'')===''||($dbc['user']??'')==='')exit(8);
+          $pdo=new PDO($dbc['dsn'],$dbc['user'],$dbc['password'],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_EMULATE_PREPARES=>false]);try{$pdo->exec('SET SESSION TRANSACTION READ ONLY');}catch(Throwable){}
+          $current=[];if($ids){$q=$pdo->prepare("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? AND i.external_hotel_id IN (".implode(',',array_fill(0,count($ids),'?')).')');$q->execute(array_merge([4],array_keys($ids)));foreach($q->fetchAll()as$r){$k=json_encode([$r['supplier_namespace'],(string)$r['external_hotel_id']]);$current[$k]=array_key_exists($k,$current)?null:(int)$r['local_hotel_id'];}}
           $legacy=$pdo->prepare("SELECT COUNT(*) FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id WHERE s.namespace='legacy_catalog' AND s.external_key=? AND h.is_active=1");
-
-          $stats=[];
-          foreach(['true','false','unknown'] as $b)$stats[$b]=['offers'=>0,'operators'=>[],'programs'=>[],'tours'=>[],'groups'=>[]];
-          foreach($candidates as $o){
-              $key=json_encode([$o['supplier_namespace'],(string)$o['external_hotel_id']]);
-              if(($current[$key]??null)!==$o['local_hotel_id']) continue;
-              $legacy->execute([(string)$o['local_hotel_id']]); if((int)$legacy->fetchColumn()!==1) continue;
-              $f=$o['transport_context']['freight_external']??null; $bucket=$f===true?'true':($f===false?'false':'unknown');
-              ++$stats[$bucket]['offers'];
-              $op=(string)($o['operator_ref']??''); $ctx=is_array($o['transport_context']??null)?$o['transport_context']:[];
-              $program=(string)($ctx['program_ref']??''); $tour=(string)($ctx['tour_ref']??'');
-              if($op!=='')$stats[$bucket]['operators'][hash('sha256',$op)]=true;
-              if($program!=='')$stats[$bucket]['programs'][hash('sha256',$program)]=true;
-              if($tour!=='')$stats[$bucket]['tours'][hash('sha256',$tour)]=true;
-              $stats[$bucket]['groups'][hash('sha256',json_encode([$op,$program,$tour]))]=true;
-          }
-          foreach($stats as &$s){foreach(['operators','programs','tours','groups'] as $k)$s[$k]=count($s[$k]);} unset($s);
-          $mapped=array_sum(array_column($stats,'offers'));
-          echo json_encode([
-              'status'=>'complete','provider'=>'andromeda','generation'=>$generation,
-              'retained_offer_count'=>count($offers),'mapped_owned_offer_count'=>$mapped,
-              'freight_external'=>$stats,'package_sidecar_exists'=>$packageCount>0,'package_sidecar_count'=>$packageCount,
-              'supplier_calls'=>0,'db_writes'=>0,'server_filesystem_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'search3_publication'=>0,
-              'v6_replay_allowed'=>false
-          ],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          $stats=[];foreach(['true','false','unknown']as$b)$stats[$b]=['offers'=>0,'operators'=>[],'programs'=>[],'tours'=>[],'groups'=>[]];
+          foreach($candidates as$o){$k=json_encode([$o['supplier_namespace'],(string)$o['external_hotel_id']]);if(($current[$k]??null)!==$o['local_hotel_id'])continue;$legacy->execute([(string)$o['local_hotel_id']]);if((int)$legacy->fetchColumn()!==1)continue;$f=$o['transport_context']['freight_external']??null;$b=$f===true?'true':($f===false?'false':'unknown');++$stats[$b]['offers'];$op=(string)($o['operator_ref']??'');$ctx=is_array($o['transport_context']??null)?$o['transport_context']:[];$program=(string)($ctx['program_ref']??'');$tour=(string)($ctx['tour_ref']??'');if($op!=='')$stats[$b]['operators'][hash('sha256',$op)]=true;if($program!=='')$stats[$b]['programs'][hash('sha256',$program)]=true;if($tour!=='')$stats[$b]['tours'][hash('sha256',$tour)]=true;$stats[$b]['groups'][hash('sha256',json_encode([$op,$program,$tour]))]=true;}
+          foreach($stats as&$s){foreach(['operators','programs','tours','groups']as$k)$s[$k]=count($s[$k]);}unset($s);
+          echo json_encode(['status'=>'complete','provider'=>'andromeda','generation'=>$generation,'retained_offer_count'=>count($offers),'mapped_owned_offer_count'=>array_sum(array_column($stats,'offers')),'freight_external'=>$stats,'package_sidecar_exists'=>$packageCount>0,'package_sidecar_count'=>$packageCount,'supplier_calls'=>0,'db_writes'=>0,'server_filesystem_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'search3_publication'=>0,'v6_replay_allowed'=>false],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
           PHP
 
           python3 - "$RUNNER_TEMP/receipt.json" <<'PY'
           import json,sys
           r=json.load(open(sys.argv[1],encoding='utf-8'))
           assert r['status']=='complete' and r['provider']=='andromeda' and r['generation']==17171835
-          assert r['supplier_calls']==r['db_writes']==r['server_filesystem_writes']==0
-          assert r['v6_replay_allowed'] is False
+          assert r['supplier_calls']==r['db_writes']==r['server_filesystem_writes']==0 and r['v6_replay_allowed'] is False
           for b in ('true','false','unknown'):
-              s=r['freight_external'][b]
               for k in ('offers','operators','programs','tours','groups'):
-                  assert isinstance(s[k],int) and s[k]>=0
+                  assert isinstance(r['freight_external'][b][k],int) and r['freight_external'][b][k]>=0
           print(json.dumps(r,separators=(',',':')))
           PY
 
