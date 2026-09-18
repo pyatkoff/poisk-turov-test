@@ -39,6 +39,19 @@ function anytour_andromeda_read_saved_pricing_with_evidence(
             || $created < 1 || $now < 1) {
             return ['pricing' => $pricing, 'evidence_meta' => null];
         }
+
+        // The durable surcharge sidecar stores the resolver's canonical context,
+        // which deliberately includes hotel_scope/operator_ref/local_id in addition
+        // to the caller's minimal immutable selection tuple. Re-resolve it with the
+        // same retained store and CURRENT mapping predicate instead of comparing the
+        // sidecar to the smaller caller context.
+        $store = new AnyTourAndromedaOfferStore($storeState, true);
+        $resolved = AnyTourAndromedaSelectedOffer::resolve($store, $context, $mappingAllows, $now);
+        $canonicalContext = $resolved['context'] ?? null;
+        if (!is_array($canonicalContext)) {
+            return ['pricing' => $pricing, 'evidence_meta' => null];
+        }
+
         $path = $directory . '/' . $ref . '-' . $created . '-' . $page
             . '-' . $offerRef . '-surcharge-v1.json';
         if (is_link($path) || !is_file($path)) {
@@ -51,7 +64,7 @@ function anytour_andromeda_read_saved_pricing_with_evidence(
         $record = json_decode((string)file_get_contents($path), true, 20, JSON_THROW_ON_ERROR);
         if (!is_array($record)
             || ($record['status'] ?? null) !== 'complete'
-            || ($record['context'] ?? null) !== $context
+            || ($record['context'] ?? null) !== $canonicalContext
             || ($record['snapshot_created_at'] ?? null) !== $created
             || ($record['fact'] ?? null) !== ($pricing['fact'] ?? null)
             || !is_string($record['source'] ?? null)
