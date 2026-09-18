@@ -18,7 +18,7 @@ function hmu_cols(PDO $pdo,string $table): array {
     $s->execute([$table]);$out=[];foreach($s->fetchAll(PDO::FETCH_COLUMN) as $c)$out[(string)$c]=true;return $out;
 }
 function hmu_norm(string $v): string {
-    $v=mb_strtolower(trim($v),'UTF-8');$v=str_replace(['ё'=>'е','&'=>' ','+'=>' '],$v);
+    $v=mb_strtolower(trim($v),'UTF-8');$v=strtr($v,['ё'=>'е','&'=>' ','+'=>' ']);
     $v=preg_replace('/[^\\p{L}\\p{N}]+/u',' ',$v)??$v;
     return trim(preg_replace('/\\s+/u',' ',$v)??$v);
 }
