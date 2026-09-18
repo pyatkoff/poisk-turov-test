@@ -1,0 +1,146 @@
+name: INT ANEX charter+regular local DB fill v1
+
+on:
+  push:
+    branches: ['ops/int-anex-charter-regular-fill-20260918-v1']
+    paths:
+      - 'scripts/ops/int_anex_charter_regular_fill.php'
+      - '.github/workflows/int-anex-charter-regular-fill-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-anex-charter-regular-fill-2506-20260918-v1
+  cancel-in-progress: false
+
+jobs:
+  fill:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BASE_SHA: 8e76b472951dbea1386206e6b46634888021810e
+      RELEASE_DATA_SHA: a4c1568e38723c1b4c22809b0ebe5568e57f24b1
+      OPERATION_ID: int-anex-charter-regular-fill-2506-20260918-v1
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 8
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_DATA_SHA }}
+          path: release-data
+          persist-credentials: false
+
+      - name: Bind exact combined source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-anex-charter-regular-fill-v1.yml'
+          test "${changed[1]}" = 'scripts/ops/int_anex_charter_regular_fill.php'
+          php -l scripts/ops/int_anex_charter_regular_fill.php
+          php -l scripts/ops/anex_local_offer_collect.php
+          php -l app/integrations/anex-anytour-offer-autosave.php
+          php -l app/integrations/anytour-offer-snapshot-producer.php
+          php -l app/integrations/three-provider-search-handoff.php
+          php tests/anex-local-offer-collector-test.php
+          php tests/anex-anytour-offer-autosave-test.php
+          php tests/anytour-offer-snapshot-producer-test.php
+          php tests/three-provider-search-handoff-test.php
+          test "$(git -C release-data rev-parse HEAD)" = "$RELEASE_DATA_SHA"
+          test "$(git -C release-data hash-object v2/data/anytour-offer-snapshot-ingest-v1.php)" = '4b6b73c11a8de0401c05187982ba977e61a14354'
+          test "$(git -C release-data hash-object v2/data/anytour-offer-store-v1.php)" = '75924744ff06124fcd2a62313ccad927a38e2f06'
+          test "$(git -C release-data hash-object v2/data/anytour-offer-store-read-v2.php)" = 'f0df8ee685216a599e5b5680a4d78546b92e63cd'
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY"
+          test -n "$ANYTOOUR_DEPLOY_HOST"
+          test -n "$ANYTOOUR_DEPLOY_USER"
+
+      - name: Prepare exact private runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          stage="$RUNNER_TEMP/runtime"; mkdir -p "$stage/app" "$stage/v2" "$stage/scripts/ops"
+          cp -a app/integrations "$stage/app/"
+          cp v2/api-anex-search3-preview.php "$stage/v2/"
+          cp -a release-data/v2/data "$stage/v2/"
+          cp scripts/ops/anex_local_offer_collect.php "$stage/scripts/ops/"
+          cp scripts/ops/int_anex_charter_regular_fill.php "$stage/scripts/ops/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/runtime.tar.gz" .
+          ssh-keyscan -T 15 -t ed25519 "$ANYTOOUR_DEPLOY_HOST" > "$RUNNER_TEMP/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+
+      - name: Execute one combined charter+regular fill
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=40)
+          scp_opts=(-i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          archive="/tmp/${OPERATION_ID}.${GITHUB_RUN_ID}.tar.gz"
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$remote:$archive"
+          set +e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$archive" <<'REMOTE'
+          set -euo pipefail
+          op="$1"; archive="$2"; site="$HOME/www/anytoour.ru"; ledger="$HOME/.anytour-ops/$op"
+          test -d "$site"; test -s "$site/config.php"; test -s "$HOME/.anytoour-anex/search3-preview.php"; test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d "/tmp/${op}.XXXXXX")"; trap 'rm -rf "$work"; rm -f "$archive"' EXIT
+          tar -C "$work" -xzf "$archive"
+          set +e
+          php "$work/scripts/ops/int_anex_charter_regular_fill.php" "$site" > "$ledger/receipt.json" 2> "$ledger/error.log"
+          rc=$?
+          set -e
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed || echo failed_terminal_no_replay)" > "$ledger/state"
+          exit "$rc"
+          REMOTE
+          rc=$?
+          set -e
+          mkdir -p "$RUNNER_TEMP/result"
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/receipt.json" || true
+          test -s "$RUNNER_TEMP/result/receipt.json"
+          cat "$RUNNER_TEMP/result/receipt.json"
+          test "$rc" = 0
+          python3 - <<'PY'
+          import json,os
+          p=os.environ['RUNNER_TEMP']+'/result/receipt.json'
+          d=json.load(open(p))
+          assert d['status']=='completed' and d['provider']=='anex'
+          assert d['replay_allowed'] is False and d['search3_publication']==0
+          c=d['collector']
+          if c.get('regular_concrete_candidates',0)>0:
+              assert d['delta']['anex_confirmation']>0, d
+              assert d['after']['anex_active_confirmation']==d['after']['anex_active_confirmation_state'], d
+          print(json.dumps({
+            'charter_ready':c.get('final_price_ready_offers',0),
+            'regular_seen':c.get('regular_concrete_candidates',0),
+            'confirmation_delta':d['delta']['anex_confirmation'],
+            'active_confirmation':d['after']['anex_active_confirmation'],
+            'active_ready':d['after']['anex_active_ready'],
+            'active_total':d['after']['anex_active'],
+          },sort_keys=True))
+          PY
+
+      - name: Preserve combined fill receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-anex-charter-regular-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
