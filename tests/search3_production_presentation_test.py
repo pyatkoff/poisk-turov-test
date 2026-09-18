@@ -35,7 +35,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         # Budget range + native mobile return: 89925B -> 92323B (+2398B), no added asset/owner.
         # Approved mobile reference + unique open description: 94481B -> 95218B (+737B CSS).
         # In-form mobile return action: 96000B -> 96455B (+455B CSS/behavior).
-        self.assertLessEqual(total, 96500, 'eight presentation assets stay within the 96.5KB envelope including mobile card hierarchy and form return action')
+        # Sticky mobile form return: 96498B -> 96582B (+84B entry CSS).
+        self.assertLessEqual(total, 96750, 'eight presentation assets stay within the 96.75KB envelope including mobile card hierarchy and persistent form return')
 
     def test_reset_css_owners_and_native_selected_bound(self):
         assets = self.source['assets']
@@ -163,7 +164,9 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertNotIn('@media(min-width:1200px){& .main-fields{', native)
         self.assertIn('& .search-preferences{grid-template-columns:minmax(150px,1.15fr) minmax(230px,1.7fr)', native)
         self.assertNotIn('Legacy source-contract marker', native)
-        self.assertIn('@media(max-width:700px){grid-template-columns:minmax(0,1fr);& .main-fields{grid-template-columns:1fr}', native)
+        self.assertIn('@media(max-width:700px){grid-template-columns:minmax(0,1fr);', native)
+        self.assertIn('&>.search-section-title:first-child{position:sticky;top:0;z-index:2;background:#fff}', native)
+        self.assertIn('& .main-fields{grid-template-columns:1fr}', native)
         self.assertIn('& .child-ages{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}', native)
         self.assertIn('& .child-age:last-child:nth-child(odd){grid-column:1/-1}', native)
         self.assertIn('& .search-submit{grid-column:1;width:100%;margin-left:0}', native)
