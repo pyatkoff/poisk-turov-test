@@ -49,7 +49,10 @@ jobs:
           for a,b in classes:
               v=a or b
               if v and v not in flat: flat.append(v)
-          print((ids[-1] if ids else 'NO_TYPED_CODE')+'|'+(','.join(flat[-3:]) if flat else 'NO_CLASS'))
+          fatal=re.search(r'Uncaught\\s+[A-Za-z0-9_\\\\]+:\\s*(.*?)\\s+in\\s+',s,re.S)
+          msg=fatal.group(1).replace('\\n',' ')[:220] if fatal else 'NO_FATAL_MESSAGE'
+          msg=re.sub(r'[^A-Za-z0-9_:\\-\\>\\(\\)\\. ]+','_',msg)
+          print((ids[-1] if ids else 'NO_TYPED_CODE')+'|'+(','.join(flat[-3:]) if flat else 'NO_CLASS')+'|'+msg)
           PY
           )"
           cd "$site"
