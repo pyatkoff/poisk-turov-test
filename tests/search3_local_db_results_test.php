@@ -41,10 +41,13 @@ $hotel=$pdo->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,rev
 $bridge=$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',?,?,'fixture',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
 $aliasBridge=$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('anytour_local_id',?,?,'canonical_local_alias_v1',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
 $owns=[];foreach([[101,'Первый AnyTour отель'],[202,'Второй AnyTour отель']] as[$legacy,$name]){$profile=json_encode(['name'=>$name,'description'=>'Собственное описание','images'=>['https://images.example.test/'.$legacy.'.jpg']],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$hotel->execute([$profile,hash('sha256',$profile)]);$own=(int)$pdo->lastInsertId();$owns[$legacy]=$own;$source=json_encode(['id'=>$legacy]);$bridge->execute([(string)$legacy,$own,$source,hash('sha256',$source)]);
-$aliasSource=json_encode([
-    'schema_version'=>1,'accepted_local_hotel_id'=>$legacy,'canonical_hotel_id'=>$own,
+$aliasData=[
+    'accepted_local_hotel_id'=>$legacy,'canonical_hotel_id'=>$own,
     'derived_from_namespace'=>'legacy_catalog','derived_from_source_sha256'=>hash('sha256',$source),
-],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+    'schema_version'=>1,
+];
+ksort($aliasData,SORT_STRING);
+$aliasSource=json_encode($aliasData,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
 $aliasBridge->execute([(string)$legacy,$own,$aliasSource,hash('sha256',$aliasSource)]);}
 $at=new DateTimeImmutable('2026-10-06T10:00:00Z');$expires=$at->modify('+2 hours');
 need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$scope,$at),'narrow scope indexed');
