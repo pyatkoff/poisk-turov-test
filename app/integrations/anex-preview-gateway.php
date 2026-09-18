@@ -19,17 +19,20 @@ final class AnyTourAnexPreviewGateway
     private $resolver;
     private $sensitive;
     private $clock;
+    private bool $enforcePreviewRateLimit;
 
     public function __construct(
         callable $clientFactory,
         ?callable $resolver = null,
         array $sensitive = [],
-        ?callable $clock = null
+        ?callable $clock = null,
+        bool $enforcePreviewRateLimit = true
     ) {
         $this->clientFactory = $clientFactory;
         $this->resolver = $resolver;
         $this->sensitive = $sensitive;
         $this->clock = $clock ?? static function (): int { return time(); };
+        $this->enforcePreviewRateLimit = $enforcePreviewRateLimit;
     }
 
     public function handle(array $request, array &$session): array
@@ -45,7 +48,10 @@ final class AnyTourAnexPreviewGateway
         }
         // Saved reads never instantiate the token-bearing client or fetch details.
         if ($action === 'offer') return $this->savedOffer($request, $session, $now);
-        $this->consumeRequest($session);
+        // Browser/preview traffic keeps its conservative per-session cap. Explicit
+        // server-side background collectors may disable only this UI-facing cap;
+        // AnyTourAnexClient still enforces shared supplier pacing/cooldown.
+        if ($this->enforcePreviewRateLimit) $this->consumeRequest($session);
 
         if ($action === 'search') {
             if (!self::exactKeys($request, ['action', 'criteria']) || !is_array($request['criteria'])) {
