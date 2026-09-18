@@ -16,11 +16,14 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         callable $captureSurcharge,
         callable $autosave,
         int $maxCaptures = 2,
-        string $captureMode = 'all'
+        string $captureMode = 'all',
+        int $maxCaptureSeconds = 0,
+        ?callable $clock = null
     ): array {
         if (!is_int($request['generation'] ?? null) || $request['generation'] < 1
             || !is_array($request['params'] ?? null)
             || $maxCaptures < 1 || $maxCaptures > 300
+            || $maxCaptureSeconds < 0 || $maxCaptureSeconds > 240
             || !in_array($captureMode, ['all','non_external_only'], true)) {
             throw new InvalidArgumentException('ANDROMEDA_LOCAL_COLLECTOR_INPUT');
         }
@@ -125,8 +128,31 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         $attempted = 0;
         $surchargeReady = 0;
         $captured = [];
+        $readClock = null;
+        $captureStartedAt = null;
+        $timeBudgetExhausted = false;
+        if ($maxCaptureSeconds > 0) {
+            $clock ??= static fn(): float => microtime(true);
+            $readClock = static function() use ($clock): float {
+                $value = $clock();
+                if ((!is_int($value) && !is_float($value))
+                    || !is_finite((float)$value) || (float)$value < 0) {
+                    throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_CLOCK');
+                }
+                return (float)$value;
+            };
+            $captureStartedAt = $readClock();
+        }
         foreach ($captureQueue as $key => $selection) {
             if ($attempted >= $maxCaptures) break;
+            if ($captureStartedAt !== null && $attempted > 0) {
+                $elapsed = $readClock() - $captureStartedAt;
+                if ($elapsed < 0) throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_CLOCK');
+                if ($elapsed >= $maxCaptureSeconds) {
+                    $timeBudgetExhausted = true;
+                    break;
+                }
+            }
             ++$attempted;
             try {
                 $receipt = $captureSurcharge($selection);
@@ -169,6 +195,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             'eligible_offers' => count($eligible),
             'capture_mode' => $captureMode,
             'capture_queue_offers' => count($captureQueue),
+            'capture_time_budget_seconds' => $maxCaptureSeconds > 0 ? $maxCaptureSeconds : null,
+            'capture_time_budget_exhausted' => $timeBudgetExhausted,
             'surcharge_capture_attempts' => $attempted,
             'surcharge_ready' => $surchargeReady,
             'autosave_published' => ($save['published'] ?? false) === true,
