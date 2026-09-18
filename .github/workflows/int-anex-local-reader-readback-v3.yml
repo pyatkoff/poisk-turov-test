@@ -1,0 +1,63 @@
+name: INT verify ANEX on published DB-first HTTP path v3
+
+on:
+  push:
+    branches: ['ops/int-anex-local-reader-readback-20260918-v3']
+    paths: ['.github/workflows/int-anex-local-reader-readback-v3.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  readback:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/int-anex-local-reader-readback-20260918-v3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Query published local-candidate DB-first endpoint
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/result"
+          cat > "$RUNNER_TEMP/request.json" <<'JSON'
+          {"params":{"departureId":"1","countryId":"4","dateFrom":"2026-10-12","dateTo":"2026-10-12","nightsFrom":7,"nightsTo":7,"adults":2,"childs":[],"meal":"AI","hotelCategory":"","hotelRating":"","hotelTypes":[],"hotelIds":[],"hotelServices":[],"arrivalId":"","regionIds":[],"subregionIds":[],"operatorIds":[],"priceFrom":"","priceTo":"","currency":"RUB","onlyCharter":false,"onlyDirect":false}}
+          JSON
+          code="$(curl --fail-with-body --silent --show-error --max-time 30             -o "$RUNNER_TEMP/result/http.json" -w '%{http_code}'             -H 'Content-Type: application/json' -H 'X-Requested-With: AnyTourSearch3'             --data-binary @"$RUNNER_TEMP/request.json"             'https://anytoour.ru/_preview/search3-local-candidate/data/search3-local-results-read-v1.php' || true)"
+          python3 - "$code" <<'PY'
+          import json,sys,os
+          code=sys.argv[1];p=os.path.join(os.environ['RUNNER_TEMP'],'result','http.json')
+          raw=open(p,encoding='utf-8').read() if os.path.exists(p) else ''
+          try:d=json.loads(raw)
+          except Exception:
+              d={'ok':False,'error':'non_json','http_status':code}
+          out={'schema_version':3,'source':'int-anex-local-reader-readback-v3','http_status':int(code or 0),'ok':d.get('ok') is True}
+          data=d.get('data') if isinstance(d,dict) else None
+          if isinstance(data,dict):
+              pc=data.get('providerOfferCounts') or {}
+              out.update({
+                'match_mode':data.get('matchMode'),
+                'hotel_count':data.get('hotelCount'),
+                'offer_count':data.get('offerCount'),
+                'stored_offer_count':data.get('storedOfferCount'),
+                'withheld_offer_count':data.get('withheldOfferCount'),
+                'anex_offers':int(pc.get('anex',0) or 0),
+                'provider_counts':pc,
+              })
+          else:
+              out['error']=d.get('error') if isinstance(d,dict) else 'invalid_response'
+          out.update({'supplier_calls':0,'db_writes':0,'search3_publication':0,'booking_calls':0,'lead_calls':0})
+          open(os.path.join(os.environ['RUNNER_TEMP'],'result','result.json'),'w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False,sort_keys=True))
+          print(json.dumps(out,ensure_ascii=False,sort_keys=True))
+          PY
+      - name: Upload sanitized HTTP readback
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-anex-local-reader-readback-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/result.json
+          if-no-files-found: error
+          retention-days: 14
