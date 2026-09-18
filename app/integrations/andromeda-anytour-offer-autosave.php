@@ -73,14 +73,21 @@ final class AnyTourAndromedaOfferAutosaveV1
             return self::receipt(false, 'cohort_rejected_rows', 0, 0, 0);
         }
 
-        $firstDecision = AnyTourAndromedaPaginationV1::nextTarget(
-            1,
-            $target,
-            count($firstSnapshot['offers']),
-            (string)($first['status'] ?? ''),
-            count($firstSnapshot['rejected']),
-            max(1, $target)
-        );
+        try {
+            $firstDecision = AnyTourAndromedaPaginationV1::nextTarget(
+                1,
+                $target,
+                count($firstSnapshot['offers']),
+                (string)($first['status'] ?? ''),
+                count($firstSnapshot['rejected']),
+                max(1, $target)
+            );
+        } catch (RuntimeException $error) {
+            if ($error->getMessage() === 'andromeda_pages_invalid') {
+                return self::receipt(false, 'cohort_invalid', 0, 0, 0);
+            }
+            throw $error;
+        }
         if (($firstDecision['terminal'] ?? false) === true) {
             $states = [];
             $snapshots = [];
