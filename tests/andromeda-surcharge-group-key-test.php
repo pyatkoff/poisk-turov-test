@@ -4,56 +4,68 @@ declare(strict_types=1);
 require_once __DIR__ . '/../app/integrations/andromeda-surcharge-group-key.php';
 
 $baseOffer = [
-    'offer_id' => 'offer-1',
-    'hotel_id' => 'hotel-1',
-    'check_in' => '2026-10-30',
+    'provider' => 'andromeda',
+    'offer_ref' => 'offer-1',
+    'local_hotel_id' => 101,
+    'check_in' => '2026-11-01',
     'nights' => 7,
     'adults' => 2,
     'children' => 0,
-    'meal' => 'AI',
     'room' => 'STD',
-    'currency' => 'USD',
-    'price' => 100000,
-    'operator_ref' => 'op1',
-    'program_ref' => 'program1',
-    'tour_ref' => 'tour1',
-    'spo_ref' => 'spo1',
-    'initial_package_price' => 100000,
+    'meal' => ['label' => 'AI'],
+    'operator_ref' => '315',
+    'transport_context' => [
+        'program_ref' => '5',
+        'tour_ref' => '3005',
+        'spo_ref' => '40082967',
+        'freight_external' => true,
+    ],
+    'price' => [
+        'amount' => '100000',
+        'currency' => 'RUB',
+        'kind' => 'offer',
+        'fees' => 'unknown',
+        'final' => false,
+    ],
 ];
 $baseRequest = ['departureId' => 1, 'countryId' => 4];
 
 $key = AndromedaSurchargeGroupKey::build($baseOffer, $baseRequest);
 assert(is_string($key));
-assert(str_starts_with($key, 'andromeda-surcharge-v1:'));
-assert(strlen($key) === strlen('andromeda-surcharge-v1:') + 64);
+assert(str_starts_with($key, 'andromeda-surcharge-v2:'));
+assert(strlen($key) === strlen('andromeda-surcharge-v2:') + 64);
 
-// Hotel presentation and PRICE amount are deliberately outside transport grouping.
+// The real Search3 request wrapper and its params block identify the same group.
+assert(AndromedaSurchargeGroupKey::build($baseOffer, ['params' => $baseRequest]) === $key);
+assert(AndromedaSurchargeGroupKey::build($baseOffer, ['params' => ['countryId' => '4', 'departureId' => '1']]) === $key);
+
+// Presentation/package variants and PRICE amount do not split transport surcharge evidence.
 $presentationVariant = $baseOffer;
-$presentationVariant['offer_id'] = 'offer-2';
-$presentationVariant['hotel_id'] = 'hotel-2';
+$presentationVariant['offer_ref'] = 'offer-2';
+$presentationVariant['local_hotel_id'] = 202;
 $presentationVariant['room'] = 'DLX';
-$presentationVariant['meal'] = 'BB';
-$presentationVariant['price'] = 145000;
-$presentationVariant['initial_package_price'] = 145000;
+$presentationVariant['meal'] = ['label' => 'BB'];
+$presentationVariant['price']['amount'] = '145000';
 assert(AndromedaSurchargeGroupKey::build($presentationVariant, $baseRequest) === $key);
 
-// Canonical numeric/string request forms produce the same key.
-assert(AndromedaSurchargeGroupKey::build($baseOffer, ['countryId' => '4', 'departureId' => '1']) === $key);
-$lowerCurrency = $baseOffer;
-$lowerCurrency['currency'] = 'usd';
-assert(AndromedaSurchargeGroupKey::build($lowerCurrency, $baseRequest) === $key);
+// Money experiment v1: three isolated SPO pairs had identical markup sets.
+$spoVariant = $baseOffer;
+$spoVariant['transport_context']['spo_ref'] = '39584402';
+assert(AndromedaSurchargeGroupKey::build($spoVariant, $baseRequest) === $key);
+$missingSpo = $baseOffer;
+$missingSpo['transport_context']['spo_ref'] = null;
+assert(AndromedaSurchargeGroupKey::build($missingSpo, $baseRequest) === $key);
 
-// Every transport/context discriminator must split the group.
+// Evidence has NOT removed these discriminators: each must still split the key.
 $variants = [
-    ['offer', 'operator_ref', 'op2'],
-    ['offer', 'program_ref', 'program2'],
-    ['offer', 'tour_ref', 'tour2'],
-    ['offer', 'spo_ref', 'spo2'],
-    ['offer', 'check_in', '2026-10-31'],
+    ['offer', 'operator_ref', '342'],
+    ['transport', 'program_ref', '25'],
+    ['transport', 'tour_ref', '1900'],
+    ['offer', 'check_in', '2026-11-02'],
     ['offer', 'nights', 8],
     ['offer', 'adults', 3],
     ['offer', 'children', 1],
-    ['offer', 'currency', 'EUR'],
+    ['price', 'currency', 'USD'],
     ['request', 'departureId', 2],
     ['request', 'countryId', 5],
 ];
@@ -62,6 +74,10 @@ foreach ($variants as [$where, $field, $value]) {
     $request = $baseRequest;
     if ($where === 'offer') {
         $offer[$field] = $value;
+    } elseif ($where === 'transport') {
+        $offer['transport_context'][$field] = $value;
+    } elseif ($where === 'price') {
+        $offer['price'][$field] = $value;
     } else {
         $request[$field] = $value;
     }
@@ -69,39 +85,52 @@ foreach ($variants as [$where, $field, $value]) {
     assert(is_string($variant) && $variant !== $key, $field . ' must split surcharge group');
 }
 
-// A transport identity requires operator plus at least one program/tour/SPO ref.
-$missingOperator = $baseOffer;
-$missingOperator['operator_ref'] = null;
-assert(AndromedaSurchargeGroupKey::build($missingOperator, $baseRequest) === null);
-$missingTransport = $baseOffer;
-$missingTransport['program_ref'] = null;
-$missingTransport['tour_ref'] = null;
-$missingTransport['spo_ref'] = null;
-assert(AndromedaSurchargeGroupKey::build($missingTransport, $baseRequest) === null);
+// Program identity and explicit external-freight fact are mandatory.
+$missingProgram = $baseOffer;
+$missingProgram['transport_context']['program_ref'] = null;
+assert(AndromedaSurchargeGroupKey::build($missingProgram, $baseRequest) === null);
+$regular = $baseOffer;
+$regular['transport_context']['freight_external'] = false;
+assert(AndromedaSurchargeGroupKey::build($regular, $baseRequest) === null);
+$unknownFreight = $baseOffer;
+unset($unknownFreight['transport_context']['freight_external']);
+assert(AndromedaSurchargeGroupKey::build($unknownFreight, $baseRequest) === null);
 
-// Invalid exact context is never grouped; sharing evidence would be unsafe.
-$invalidCases = [
-    [['check_in' => '2026-02-30'], $baseRequest],
-    [['nights' => 0], $baseRequest],
-    [['adults' => 0], $baseRequest],
-    [['children' => -1], $baseRequest],
-    [['currency' => 'US'], $baseRequest],
-    [$baseOffer, ['departureId' => 0, 'countryId' => 4]],
-    [$baseOffer, ['departureId' => 1, 'countryId' => 0]],
-];
-foreach ($invalidCases as [$offerPatch, $request]) {
-    $offer = array_is_list($offerPatch) ? $baseOffer : array_replace($baseOffer, $offerPatch);
+// Nullable tour remains a distinct, conservative group until isolated evidence says otherwise.
+$missingTour = $baseOffer;
+$missingTour['transport_context']['tour_ref'] = null;
+$missingTourKey = AndromedaSurchargeGroupKey::build($missingTour, $baseRequest);
+assert(is_string($missingTourKey) && $missingTourKey !== $key);
+
+// Malformed normalized context fails closed rather than broadening evidence reuse.
+$invalidCases = [];
+$invalid = $baseOffer; $invalid['provider'] = 'anex'; $invalidCases[] = [$invalid, $baseRequest];
+$invalid = $baseOffer; $invalid['transport_context'] = null; $invalidCases[] = [$invalid, $baseRequest];
+$invalid = $baseOffer; $invalid['transport_context']['program_ref'] = 'bad/ref'; $invalidCases[] = [$invalid, $baseRequest];
+$invalid = $baseOffer; $invalid['transport_context']['tour_ref'] = 'bad/ref'; $invalidCases[] = [$invalid, $baseRequest];
+$invalid = $baseOffer; $invalid['check_in'] = '2026-02-30'; $invalidCases[] = [$invalid, $baseRequest];
+$invalid = $baseOffer; $invalid['nights'] = 0; $invalidCases[] = [$invalid, $baseRequest];
+$invalid = $baseOffer; $invalid['adults'] = 0; $invalidCases[] = [$invalid, $baseRequest];
+$invalid = $baseOffer; $invalid['children'] = -1; $invalidCases[] = [$invalid, $baseRequest];
+$invalid = $baseOffer; $invalid['price']['currency'] = 'US'; $invalidCases[] = [$invalid, $baseRequest];
+$invalidCases[] = [$baseOffer, ['departureId' => 0, 'countryId' => 4]];
+$invalidCases[] = [$baseOffer, ['departureId' => 1, 'countryId' => 0]];
+foreach ($invalidCases as [$offer, $request]) {
     assert(AndromedaSurchargeGroupKey::build($offer, $request) === null);
 }
 
-// Invalid optional IDs must fail closed, not silently broaden the group.
-$badProgram = $baseOffer;
-$badProgram['program_ref'] = 'bad/ref';
-assert(AndromedaSurchargeGroupKey::build($badProgram, $baseRequest) === null);
+// Old synthetic flat refs/currency are intentionally not accepted as normalized PRICE shape.
+$flat = $baseOffer;
+$flat['program_ref'] = $flat['transport_context']['program_ref'];
+$flat['tour_ref'] = $flat['transport_context']['tour_ref'];
+$flat['currency'] = $flat['price']['currency'];
+unset($flat['transport_context'], $flat['price']);
+assert(AndromedaSurchargeGroupKey::build($flat, $baseRequest) === null);
 
-// The opaque key must not expose an offer/hotel/price identifier.
+// Opaque key must not expose offer/hotel/price/SPO identifiers.
 assert(!str_contains($key, 'offer-1'));
-assert(!str_contains($key, 'hotel-1'));
+assert(!str_contains($key, '101'));
 assert(!str_contains($key, '100000'));
+assert(!str_contains($key, '40082967'));
 
-echo "Andromeda surcharge group key: OK\n";
+echo "Andromeda surcharge group key evidence v1: OK\n";
