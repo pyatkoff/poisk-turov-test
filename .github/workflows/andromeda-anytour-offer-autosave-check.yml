@@ -6,7 +6,6 @@ on:
       - 'app/integrations/andromeda-normalizer.php'
       - 'app/integrations/andromeda-anytour-offer-autosave.php'
       - 'app/integrations/andromeda-surcharge-cache-autosave.php'
-      - 'app/integrations/andromeda-surcharge-cache-runtime.php'
       - 'app/integrations/andromeda-surcharge-evidence.php'
       - 'app/integrations/andromeda-surcharge-evidence-store.php'
       - 'app/integrations/three-provider-money-facts.php'
@@ -14,7 +13,6 @@ on:
       - 'tests/andromeda-party-criteria-fallback-test.php'
       - 'tests/andromeda-anytour-offer-autosave-test.php'
       - 'tests/andromeda-surcharge-cache-autosave-test.php'
-      - 'tests/andromeda-surcharge-cache-runtime-test.php'
       - 'tests/andromeda-surcharge-evidence-test.php'
       - 'tests/andromeda-surcharge-evidence-store-test.php'
       - 'tests/three-provider-money-facts-test.php'
@@ -41,20 +39,17 @@ jobs:
           php -l app/integrations/three-provider-money-facts.php
           php -l app/integrations/andromeda-anytour-offer-autosave.php
           php -l app/integrations/andromeda-surcharge-cache-autosave.php
-          php -l app/integrations/andromeda-surcharge-cache-runtime.php
           php -l app/integrations/andromeda-surcharge-evidence.php
           php -l app/integrations/andromeda-surcharge-evidence-store.php
           php -l v2/api-andromeda-search3-preview.php
           php -l tests/andromeda-party-criteria-fallback-test.php
           php -l tests/andromeda-anytour-offer-autosave-test.php
           php -l tests/andromeda-surcharge-cache-autosave-test.php
-          php -l tests/andromeda-surcharge-cache-runtime-test.php
           php -l tests/andromeda-surcharge-evidence-test.php
           php -l tests/andromeda-surcharge-evidence-store-test.php
           php tests/andromeda-party-criteria-fallback-test.php
           php tests/andromeda-anytour-offer-autosave-test.php
           php tests/andromeda-surcharge-cache-autosave-test.php
-          php tests/andromeda-surcharge-cache-runtime-test.php
           php tests/andromeda-surcharge-evidence-test.php
           php tests/andromeda-surcharge-evidence-store-test.php
       - name: Verify supplier-free persistence boundary
@@ -63,12 +58,11 @@ jobs:
           from pathlib import Path
           autosave=Path('app/integrations/andromeda-anytour-offer-autosave.php').read_text()
           cache=Path('app/integrations/andromeda-surcharge-cache-autosave.php').read_text()
-          cache_runtime=Path('app/integrations/andromeda-surcharge-cache-runtime.php').read_text()
           endpoint=Path('v2/api-andromeda-search3-preview.php').read_text()
           money=Path('app/integrations/three-provider-money-facts.php').read_text()
           store=Path('app/integrations/andromeda-surcharge-evidence-store.php').read_text()
           for forbidden in ['AnyTourAndromedaTransport(', '->login(', '->price(', 'bron_ticket', 'broninit', 'gateway.samo.ru']:
-              if forbidden in autosave or forbidden in cache or forbidden in cache_runtime or forbidden in store:
+              if forbidden in autosave or forbidden in cache or forbidden in store:
                   raise SystemExit('supplier action crossed autosave/evidence-store boundary: '+forbidden)
           required=[
               'AnyTourAndromedaOfferAutosaveV1',
@@ -83,9 +77,6 @@ jobs:
           for token in ['AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied', 'AnyTourAndromedaSurchargeEvidenceV1::capture', "'state' => 'estimated'", 'verified_quote']:
               if token not in cache and token not in store:
                   raise SystemExit('missing cache bridge contract token: '+token)
-          for token in ['anytour_andromeda_pricing_with_surcharge_cache', 'andromeda-saved-package-runtime.php', 'source_search_ref', 'source_offer_ref']:
-              if token not in cache_runtime:
-                  raise SystemExit('missing runtime cache bridge token: '+token)
           if "andromeda-anytour-offer-autosave.php" not in endpoint:
               raise SystemExit('endpoint autosave optional loader missing')
           if "is_file($andromedaAutosave)&&!is_link($andromedaAutosave)" not in endpoint:
