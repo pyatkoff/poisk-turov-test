@@ -37,6 +37,31 @@ function hs_source(PDO $db,int $hotelId,string $external): void
     $stmt->execute([$external,$hotelId,$json,hash('sha256',$json)]);
 }
 
+function hs_alias(PDO $db,int $hotelId,int $legacyId): void
+{
+    $legacy=json_encode(['legacy'=>$legacyId],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+    $legacySha=hash('sha256',$legacy);
+    $db->prepare(
+        "INSERT INTO anytour_hotel_sources
+        (namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at)
+        VALUES ('legacy_catalog',?,?,'fixture',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())"
+    )->execute([(string)$legacyId,$hotelId,$legacy,$legacySha]);
+    $alias=[
+        'accepted_local_hotel_id'=>$legacyId,
+        'canonical_hotel_id'=>$hotelId,
+        'derived_from_namespace'=>'legacy_catalog',
+        'derived_from_source_sha256'=>$legacySha,
+        'schema_version'=>1,
+    ];
+    ksort($alias,SORT_STRING);
+    $json=json_encode($alias,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+    $db->prepare(
+        "INSERT INTO anytour_hotel_sources
+        (namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at)
+        VALUES ('anytour_local_id',?,?,'canonical_local_alias_v1',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())"
+    )->execute([(string)$legacyId,$hotelId,$json,hash('sha256',$json)]);
+}
+
 $dsn=(string)getenv('ANYTOUR_HOTEL_STAY_V2_TEST_DSN');
 if ($dsn==='') {
     hs_check(AnyTourHotelStayCatalogV2::scope([
@@ -45,6 +70,16 @@ if ($dsn==='') {
     hs_check(AnyTourHotelStayCatalogV2::reference([
         'kind'=>'meal','keyKind'=>'label','externalKey'=>'AI'
     ])['externalKey']==='AI','pure-raw-key');
+    $digest=hash('sha256','hotel:fixture');
+    $exact=AnyTourHotelStayCatalogV2::offerScope('tourvisor',101,$digest,'Pegas Touristik');
+    $same=AnyTourHotelStayCatalogV2::offerScope('tourvisor',101,$digest,'Pegas Touristik');
+    $case=AnyTourHotelStayCatalogV2::offerScope('tourvisor',101,$digest,'PEGAS TOURISTIK');
+    $otherHotel=AnyTourHotelStayCatalogV2::offerScope('tourvisor',101,hash('sha256','hotel:other'),'Pegas Touristik');
+    hs_check($exact===$same,'pure-offer-scope-stable');
+    hs_check($exact['namespace']==='anytour_local_id' && $exact['hotelKey']==='101','pure-offer-scope-alias');
+    hs_check($exact['operatorKey']!==$case['operatorKey'],'pure-operator-case-exact');
+    hs_check($exact['operatorKey']!==$otherHotel['operatorKey'],'pure-provider-hotel-exact');
+    hs_check(AnyTourHotelStayCatalogV2::offerScope('tourvisor',101,$digest,null)===null,'pure-missing-operator');
     echo "ANYTOUR_HOTEL_STAY_V2_PURE_OK\n";
     exit(0);
 }
@@ -71,6 +106,8 @@ $insert->execute([$profileB,hash('sha256',$profileB)]);
 $hotelB=(int)$db->lastInsertId();
 hs_source($db,$hotelA,'hotel-A');
 hs_source($db,$hotelB,'hotel-B');
+hs_alias($db,$hotelA,101);
+hs_alias($db,$hotelB,202);
 
 $catalog=new AnyTourHotelStayCatalogV2($db);
 hs_check($catalog->readable(),'readable');
@@ -119,6 +156,57 @@ hs_check($resolved['items'][0]['canonical']['hotelId']===$hotelA,'meal-target-sa
 hs_check($resolved['items'][0]['canonical']['facts']['concept']==='hotel-a-ai','meal-concept-exact');
 hs_check($resolved['items'][1]['canonical']['localKey']==='standard','room-exact');
 
+$providerDigest=hash('sha256','tourvisor-hotel-A');
+$offerScope=AnyTourHotelStayCatalogV2::offerScope('tourvisor',101,$providerDigest,'Pegas Touristik');
+$db->beginTransaction();
+$catalog->recordDecision($offerScope,$mealRef,$hotelA,'accepted',$mealA,[
+    'ref'=>'review://offer/A/meal','sha256'=>hash('sha256','offer-A-meal'),'reviewedBy'=>'fixture'
+]);
+$catalog->recordDecision($offerScope,$roomRef,$hotelA,'accepted',$roomA,[
+    'ref'=>'review://offer/A/room','sha256'=>hash('sha256','offer-A-room'),'reviewedBy'=>'fixture'
+]);
+$db->commit();
+
+$exactBatch=$catalog->resolveOfferFactsBatch([[
+    'anytourHotelId'=>$hotelA,'legacyHotelId'=>101,'provider'=>'tourvisor',
+    'providerHotelRefDigest'=>$providerDigest,'operatorRaw'=>'Pegas Touristik',
+    'roomRaw'=>'STANDARD ROOM','mealRaw'=>'AI',
+]]);
+hs_check(count($exactBatch)===1 && $exactBatch[0]['exactScope']===true,'offer-batch-exact-scope');
+hs_check($exactBatch[0]['room']['status']==='accepted'
+    && $exactBatch[0]['room']['canonical']['localKey']==='standard','offer-room-exact');
+hs_check($exactBatch[0]['meal']['status']==='accepted'
+    && $exactBatch[0]['meal']['canonical']['facts']['concept']==='hotel-a-ai','offer-meal-exact');
+
+$mismatches=$catalog->resolveOfferFactsBatch([
+    [
+        'anytourHotelId'=>$hotelA,'legacyHotelId'=>101,'provider'=>'tourvisor',
+        'providerHotelRefDigest'=>$providerDigest,'operatorRaw'=>'PEGAS TOURISTIK',
+        'roomRaw'=>'STANDARD ROOM','mealRaw'=>'AI',
+    ],
+    [
+        'anytourHotelId'=>$hotelA,'legacyHotelId'=>101,'provider'=>'tourvisor',
+        'providerHotelRefDigest'=>hash('sha256','tourvisor-hotel-A-other'),'operatorRaw'=>'Pegas Touristik',
+        'roomRaw'=>'STANDARD ROOM','mealRaw'=>'AI',
+    ],
+    [
+        'anytourHotelId'=>$hotelA,'legacyHotelId'=>101,'provider'=>'tourvisor',
+        'providerHotelRefDigest'=>$providerDigest,'operatorRaw'=>null,
+        'roomRaw'=>'STANDARD ROOM','mealRaw'=>'AI',
+    ],
+]);
+hs_check($mismatches[0]['room']['status']==='unmapped' && $mismatches[0]['meal']['status']==='unmapped','operator-case-no-borrow');
+hs_check($mismatches[1]['room']['status']==='unmapped' && $mismatches[1]['meal']['status']==='unmapped','provider-hotel-no-borrow');
+hs_check($mismatches[2]['exactScope']===false && $mismatches[2]['reason']==='operator-unresolved','missing-operator-fail-closed');
+hs_expect(
+    fn()=> $catalog->resolveOfferFactsBatch(array_fill(0,1001,[
+        'anytourHotelId'=>$hotelA,'legacyHotelId'=>101,'provider'=>'tourvisor',
+        'providerHotelRefDigest'=>$providerDigest,'operatorRaw'=>'Pegas Touristik',
+        'roomRaw'=>'STANDARD ROOM','mealRaw'=>'AI',
+    ])),
+    'HOTEL_STAY_V2_OFFER_BATCH','offer-batch-limit'
+);
+
 $db->beginTransaction();
 hs_expect(
     fn()=> $catalog->recordDecision(
@@ -157,4 +245,4 @@ foreach (['anytour_meal_plans','anytour_room_categories','anytour_stay_mappings'
     hs_check(!str_contains($source,$legacy),'no-global-authority-'.$legacy);
 }
 
-echo "ANYTOUR_HOTEL_STAY_V2_OK hotel_scoped_rooms=1 hotel_scoped_meals=1 cross_hotel_blocked=1 raw_preserved=1\n";
+echo "ANYTOUR_HOTEL_STAY_V2_OK hotel_scoped_rooms=1 hotel_scoped_meals=1 exact_offer_mapping=1 cross_hotel_blocked=1 raw_preserved=1\n";

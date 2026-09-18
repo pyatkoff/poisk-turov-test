@@ -95,6 +95,48 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
                     'meals'=>$mealsByHotel[$hotelId]??[],
                 ];
             }unset($hotel);
+
+            $offerCoordinates=[];$offerRequests=[];
+            foreach($hotels as $hotelIndex=>&$hotel){
+                $hotelId=(int)$hotel['anytourHotelId'];
+                foreach($hotel['offers'] as $offerIndex=>&$offer){
+                    $listing=$offer['listing']??null;
+                    $identity=is_array($listing)?($listing['identity']??null):null;
+                    $operator=is_array($listing)?($listing['operator']??null):null;
+                    $tour=is_array($listing)?($listing['tour']??null):null;
+                    $digest=is_array($identity)?($identity['provider_hotel_ref_digest']??null):null;
+                    $roomRaw=is_array($tour)&&is_array($tour['room']??null)?($tour['room']['raw']??null):null;
+                    $mealRaw=is_array($tour)&&is_array($tour['meal']??null)?($tour['meal']['raw']??null):null;
+                    if(!is_string($digest)||!preg_match('/^[0-9a-f]{64}$/D',$digest)){
+                        $offer['stayMatch']=[
+                            'source'=>'anytour-hotel-stay-v2','exactScope'=>false,'reason'=>'offer-identity-unresolved',
+                            'room'=>['status'=>$roomRaw===null?'missing':'unmapped','canonical'=>null],
+                            'meal'=>['status'=>$mealRaw===null?'missing':'unmapped','canonical'=>null],
+                        ];
+                        continue;
+                    }
+                    $offerCoordinates[]=[$hotelIndex,$offerIndex];
+                    $offerRequests[]=[
+                        'anytourHotelId'=>$hotelId,
+                        'legacyHotelId'=>(int)$offer['legacyHotelId'],
+                        'provider'=>(string)$offer['provider'],
+                        'providerHotelRefDigest'=>$digest,
+                        'operatorRaw'=>is_array($operator)?($operator['raw']??null):null,
+                        'roomRaw'=>$roomRaw,
+                        'mealRaw'=>$mealRaw,
+                    ];
+                }unset($offer);
+            }unset($hotel);
+            $resolvedOffset=0;
+            foreach(array_chunk($offerRequests,AnyTourHotelStayCatalogV2::OFFER_BATCH_LIMIT) as $chunk){
+                $resolved=$stayV2->resolveOfferFactsBatch($chunk);
+                foreach($resolved as $index=>$match){
+                    [$hotelIndex,$offerIndex]=$offerCoordinates[$resolvedOffset+$index];
+                    $hotels[$hotelIndex]['offers'][$offerIndex]['stayMatch']=$match;
+                }
+                $resolvedOffset+=count($chunk);
+            }
+            if($resolvedOffset!==count($offerCoordinates))throw new RuntimeException('Stay mapping batch mismatch');
             $stayMeta=['source'=>'anytour-hotel-stay-v2','available'=>true,'hotelScoped'=>true,'compatibilityFallback'=>false];
         }else{
             $stayV1=new AnyTourStayCatalog($pdo);$stayV1Available=$stayV1->readable();

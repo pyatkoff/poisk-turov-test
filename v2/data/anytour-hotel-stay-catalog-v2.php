@@ -11,6 +11,8 @@ final class AnyTourHotelStayCatalogV2
 {
     public const BATCH_LIMIT = 100;
     public const HOTEL_BATCH_LIMIT = 1000;
+    public const OFFER_BATCH_LIMIT = 1000;
+    private const PROVIDERS = ['tourvisor'=>true,'anex'=>true,'andromeda'=>true];
     private const TABLES = [
         'anytour_hotel_room_concepts_v2',
         'anytour_hotel_meal_concepts_v2',
@@ -61,6 +63,77 @@ final class AnyTourHotelStayCatalogV2
             'hotelKey'=>self::text($value['hotelKey'] ?? null,128),
             'operatorKey'=>self::text($value['operatorKey'] ?? null,128),
         ];
+    }
+
+    /**
+     * Exact offer-to-stay scope. No operator normalization or cross-provider equivalence:
+     * provider, provider-hotel digest and raw operator label all participate byte-for-byte.
+     */
+    public static function offerScope(
+        string $provider,
+        int $legacyHotelId,
+        string $providerHotelRefDigest,
+        mixed $operatorRaw
+    ): ?array {
+        if (!isset(self::PROVIDERS[$provider])) {
+            throw new InvalidArgumentException('HOTEL_STAY_V2_OFFER_PROVIDER');
+        }
+        self::id($legacyHotelId);
+        if (!preg_match('/^[0-9a-f]{64}$/D',$providerHotelRefDigest)) {
+            throw new InvalidArgumentException('HOTEL_STAY_V2_OFFER_HOTEL_DIGEST');
+        }
+        if ($operatorRaw===null) return null;
+        $operator=self::text($operatorRaw,240);
+        $operatorKey='offer-exact-v1:'.hash('sha256',$provider."\0".$providerHotelRefDigest."\0".$operator);
+        return self::scope([
+            'namespace'=>'anytour_local_id',
+            'hotelKey'=>(string)$legacyHotelId,
+            'operatorKey'=>$operatorKey,
+        ]);
+    }
+
+    private static function offerReference(string $kind, mixed $raw): ?array
+    {
+        if ($raw===null || !is_string($raw) || trim($raw)==='' || strlen($raw)>512
+            || !preg_match('//u',$raw) || preg_match('/[\x00-\x1f\x7f]/',$raw)) {
+            return null;
+        }
+        return ['kind'=>$kind,'keyKind'=>'label','externalKey'=>$raw];
+    }
+
+    private static function exactKeys(array $value, array $expected): bool
+    {
+        return count($value)===count($expected)
+            && array_diff($expected,array_keys($value))===[]
+            && array_diff(array_keys($value),$expected)===[];
+    }
+
+    private static function localAliasValid(array $row, string $hotelKey, int $hotelId): bool
+    {
+        if (($row['acquired_via'] ?? null)!=='canonical_local_alias_v1'
+            || !is_string($row['source_json'] ?? null)
+            || !is_string($row['source_sha256'] ?? null)
+            || !preg_match('/^[0-9a-f]{64}$/D',$row['source_sha256'])
+            || !hash_equals($row['source_sha256'],hash('sha256',$row['source_json']))) {
+            return false;
+        }
+        try {
+            $source=json_decode($row['source_json'],true,16,JSON_THROW_ON_ERROR);
+        } catch (Throwable) {
+            return false;
+        }
+        $keys=[
+            'accepted_local_hotel_id','canonical_hotel_id','derived_from_namespace',
+            'derived_from_source_sha256','schema_version',
+        ];
+        return is_array($source)
+            && self::exactKeys($source,$keys)
+            && ($source['schema_version'] ?? null)===1
+            && ($source['accepted_local_hotel_id'] ?? null)===(int)$hotelKey
+            && ($source['canonical_hotel_id'] ?? null)===$hotelId
+            && ($source['derived_from_namespace'] ?? null)==='legacy_catalog'
+            && is_string($source['derived_from_source_sha256'] ?? null)
+            && preg_match('/^[0-9a-f]{64}$/D',$source['derived_from_source_sha256'])===1;
     }
 
     public static function reference(array $value): array
@@ -249,6 +322,151 @@ final class AnyTourHotelStayCatalogV2
             $state,$evidenceRef,$sha,$reviewedBy
         ]);
         return (int)$this->pdo->lastInsertId();
+    }
+
+    /**
+     * Resolve exact reviewed room/meal decisions for a bounded cached-offer cohort.
+     * Caller supplies only already identity-validated AnyTour/legacy pairs.
+     * No mapping is created, no raw supplier value is normalized, and missing operator
+     * evidence fails closed instead of borrowing another operator/provider decision.
+     */
+    public function resolveOfferFactsBatch(array $requests): array
+    {
+        if (!array_is_list($requests) || count($requests)>self::OFFER_BATCH_LIMIT) {
+            throw new InvalidArgumentException('HOTEL_STAY_V2_OFFER_BATCH');
+        }
+        if ($requests===[]) return [];
+
+        $expected=[
+            'anytourHotelId','legacyHotelId','provider','providerHotelRefDigest',
+            'operatorRaw','roomRaw','mealRaw',
+        ];
+        $prepared=[];$wanted=[];
+        foreach ($requests as $request) {
+            if (!is_array($request) || !self::exactKeys($request,$expected)) {
+                throw new InvalidArgumentException('HOTEL_STAY_V2_OFFER_REQUEST');
+            }
+            $hotelId=self::id($request['anytourHotelId']);
+            $legacyId=self::id($request['legacyHotelId']);
+            $scope=self::offerScope(
+                (string)$request['provider'],
+                $legacyId,
+                (string)$request['providerHotelRefDigest'],
+                $request['operatorRaw']
+            );
+            $room=self::offerReference('room',$request['roomRaw']);
+            $meal=self::offerReference('meal',$request['mealRaw']);
+            $prepared[]=[
+                'hotelId'=>$hotelId,'scope'=>$scope,'room'=>$room,'meal'=>$meal,
+            ];
+            if ($scope!==null) {
+                $wanted[self::json([$scope['hotelKey'],$scope['operatorKey']])]=[
+                    $scope['hotelKey'],$scope['operatorKey'],
+                ];
+            }
+        }
+
+        $byRef=[];
+        if ($wanted!==[]) {
+            $clauses=[];$params=['anytour_local_id'];
+            foreach ($wanted as [$hotelKey,$operatorKey]) {
+                $clauses[]='(m.external_hotel_key=? AND m.operator_key=?)';
+                $params[]=$hotelKey;$params[]=$operatorKey;
+            }
+            $sql='SELECT m.external_hotel_key,m.operator_key,m.kind,m.key_kind,m.external_key,m.anytour_hotel_id,m.state,
+                m.room_concept_id,m.meal_concept_id,
+                s.acquired_via,s.source_json,s.source_sha256,
+                r.local_key AS room_local_key,r.name_ru AS room_name,r.facts_json AS room_facts,
+                r.revision AS room_revision,r.is_active AS room_active,
+                p.local_key AS meal_local_key,p.name_ru AS meal_name,p.facts_json AS meal_facts,
+                p.revision AS meal_revision,p.is_active AS meal_active
+                FROM anytour_hotel_stay_mappings_v2 m
+                JOIN anytour_hotel_sources s
+                  ON s.namespace=m.namespace AND s.external_key=m.external_hotel_key
+                 AND s.anytour_hotel_id=m.anytour_hotel_id
+                JOIN anytour_hotels h ON h.id=m.anytour_hotel_id AND h.is_active=1
+                LEFT JOIN anytour_hotel_room_concepts_v2 r
+                  ON r.id=m.room_concept_id AND r.anytour_hotel_id=m.anytour_hotel_id
+                LEFT JOIN anytour_hotel_meal_concepts_v2 p
+                  ON p.id=m.meal_concept_id AND p.anytour_hotel_id=m.anytour_hotel_id
+                WHERE m.namespace=? AND ('.implode(' OR ',$clauses).')';
+            $stmt=$this->pdo->prepare($sql);$stmt->execute($params);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $hotelKey=(string)$row['external_hotel_key'];
+                $hotelId=(int)$row['anytour_hotel_id'];
+                if (!self::localAliasValid($row,$hotelKey,$hotelId)) continue;
+                $key=self::json([
+                    $hotelKey,(string)$row['operator_key'],(string)$row['kind'],
+                    (string)$row['key_kind'],(string)$row['external_key'],
+                ]);
+                if (isset($byRef[$key])) throw new RuntimeException('HOTEL_STAY_V2_CONFLICTING_MAPPING');
+                $byRef[$key]=$row;
+            }
+        }
+
+        $resolved=[];
+        foreach ($prepared as $item) {
+            $scope=$item['scope'];
+            if ($scope===null) {
+                $resolved[]=[
+                    'source'=>'anytour-hotel-stay-v2',
+                    'exactScope'=>false,
+                    'reason'=>'operator-unresolved',
+                    'room'=>['status'=>$item['room']===null?'missing':'unmapped','canonical'=>null],
+                    'meal'=>['status'=>$item['meal']===null?'missing':'unmapped','canonical'=>null],
+                ];
+                continue;
+            }
+
+            $parts=[];
+            foreach (['room','meal'] as $kind) {
+                $ref=$item[$kind];
+                if ($ref===null) {
+                    $parts[$kind]=['status'=>'missing','canonical'=>null];
+                    continue;
+                }
+                $key=self::json([
+                    $scope['hotelKey'],$scope['operatorKey'],$ref['kind'],$ref['keyKind'],$ref['externalKey'],
+                ]);
+                $row=$byRef[$key] ?? null;
+                if ($row===null) {
+                    $parts[$kind]=['status'=>'unmapped','canonical'=>null];
+                    continue;
+                }
+                if ((int)$row['anytour_hotel_id']!==$item['hotelId']) {
+                    $parts[$kind]=['status'=>'source-drift','canonical'=>null];
+                    continue;
+                }
+
+                $status=(string)$row['state'];$canonical=null;
+                if ($status==='accepted') {
+                    if ($kind==='room' && (int)($row['room_active'] ?? 0)===1) {
+                        $canonical=self::conceptDto([
+                            'id'=>$row['room_concept_id'],'anytour_hotel_id'=>$item['hotelId'],
+                            'local_key'=>$row['room_local_key'],'name_ru'=>$row['room_name'],
+                            'facts_json'=>$row['room_facts'],'revision'=>$row['room_revision'],
+                        ],'room');
+                    } elseif ($kind==='meal' && (int)($row['meal_active'] ?? 0)===1) {
+                        $canonical=self::conceptDto([
+                            'id'=>$row['meal_concept_id'],'anytour_hotel_id'=>$item['hotelId'],
+                            'local_key'=>$row['meal_local_key'],'name_ru'=>$row['meal_name'],
+                            'facts_json'=>$row['meal_facts'],'revision'=>$row['meal_revision'],
+                        ],'meal');
+                    } else {
+                        $status='target-unavailable';
+                    }
+                }
+                $parts[$kind]=['status'=>$status,'canonical'=>$canonical];
+            }
+            $resolved[]=[
+                'source'=>'anytour-hotel-stay-v2',
+                'exactScope'=>true,
+                'reason'=>null,
+                'room'=>$parts['room'],
+                'meal'=>$parts['meal'],
+            ];
+        }
+        return $resolved;
     }
 
     /**
