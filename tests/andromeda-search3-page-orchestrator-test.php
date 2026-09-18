@@ -24,8 +24,30 @@ $runner=static function(array $request)use(&$calls):array{
         3=>pagination_page(3,3,[['local_id'=>11,'name'=>'B','tours'=>[pagination_offer('c',120)]]]),
     };
 };
-$result=anytour_andromeda_search3_run_pages(['generation'=>7,'page'=>1,'params'=>['countryId'=>1]],$runner);
+
+// The published browser explicitly sends page=1 and rejects a response whose
+// page differs. It owns subsequent requests; do not drain them inside page one.
+$explicit=['generation'=>7,'page'=>1,'params'=>['countryId'=>1]];
+$singleFirst=anytour_andromeda_search3_run_pages($explicit,$runner);
+pagination_need($calls===[$explicit],'explicit_first_page_must_not_drain_cohort');
+pagination_need($singleFirst===pagination_page(1,3,[['local_id'=>10,'name'=>'A','tours'=>[pagination_offer('a',100)]]],'search-ref',7,'partial'),'explicit_first_page_response_preserved');
+pagination_need($singleFirst['page']===1&&$singleFirst['pages_count']===3,'browser_requested_page_identity');
+pagination_need($singleFirst['status']==='partial'&&$singleFirst['selection_enabled']===false,'single_page_not_complete_or_authoritative');
+$calls=[];$browserPages=[];
+for($page=1;$page<=3;++$page){
+    $request=$explicit;$request['page']=$page;
+    $result=anytour_andromeda_search3_run_pages($request,$runner);
+    pagination_need($result['page']===$page,'browser_page_response_mismatch');
+    $browserPages[]=$result;
+}
+pagination_need(array_column($calls,'page')===[1,2,3],'browser_pages_requested_once_each');
+$browserMerged=anytour_andromeda_search3_merge_projected_pages($browserPages);
+
+// Private complete-cohort collector intentionally omits page; preserve its drain.
+$calls=[];
+$result=anytour_andromeda_search3_run_pages(['generation'=>7,'params'=>['countryId'=>1]],$runner);
 pagination_need(array_column($calls,'page')===[1,2,3],'sequential_pages');
+pagination_need($result===$browserMerged,'explicit_pages_and_private_drain_keep_same_offers');
 pagination_need(count($result['hotels'])===2,'hotel_merge');
 pagination_need(count($result['hotels'][0]['tours'])===2,'tour_merge_and_dedupe');
 pagination_need(($result['hotels'][0]['andromeda_content']['image_url']??null)==='x','content_hydration');
@@ -68,6 +90,26 @@ pagination_need(array_column($calls,'page')===[2]&&$single['page']===2,'explicit
 $calls=[];
 $detail=anytour_andromeda_search3_run_pages(['generation'=>7,'action'=>'offer_detail','page'=>1,'params'=>[]],static function(array $request)use(&$calls):array{$calls[]=$request;return ['provider'=>'andromeda','detail'=>true];});
 pagination_need(count($calls)===1&&($detail['detail']??false)===true,'detail_not_paginated');
+
+$calls=[];
+$scoped=['generation'=>7,'page'=>1,'params'=>[],'hotel_scope'=>['local_id'=>10]];
+$singleScoped=anytour_andromeda_search3_run_pages($scoped,static function(array $request)use(&$calls):array{$calls[]=$request;return pagination_page(1,9,[]);});
+pagination_need($calls===[$scoped]&&$singleScoped['pages_count']===9,'hotel_scope_not_drained');
+
+$calls=[];
+$empty=anytour_andromeda_search3_run_pages(['generation'=>7,'page'=>1,'params'=>[]],static function(array $request)use(&$calls):array{$calls[]=$request;return pagination_page(1,0,[]);});
+pagination_need(count($calls)===1&&$empty['page']===1&&$empty['pages_count']===0,'explicit_empty_page_preserved');
+
+// Explicit invalid page values remain the single-page runner's validation duty;
+// presence must not silently normalize null/zero/string to page one and drain.
+foreach([null,0,'1',false] as $invalidPage){
+    $failed=false;$calls=[];
+    try{anytour_andromeda_search3_run_pages(['generation'=>7,'page'=>$invalidPage,'params'=>[]],static function(array $request)use(&$calls,$invalidPage):array{
+        $calls[]=$request;pagination_need(array_key_exists('page',$request)&&$request['page']===$invalidPage,'invalid_page_was_rewritten');
+        throw new InvalidArgumentException('invalid_page');
+    });}catch(InvalidArgumentException $e){$failed=$e->getMessage()==='invalid_page';}
+    pagination_need($failed&&count($calls)===1,'invalid_explicit_page_not_drained');
+}
 
 $failed=false;
 try{

@@ -18,12 +18,16 @@ permissions:
 jobs:
   contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-      - name: Verify terminal-empty EOF contract
+      - name: Verify explicit-page and terminal-empty EOF contracts
         run: |
           set -euo pipefail
           php -l app/integrations/andromeda-pagination.php
@@ -31,6 +35,7 @@ jobs:
           php -l app/integrations/andromeda-anytour-offer-autosave.php
           php -l scripts/ops/andromeda_local_offer_collect.php
           php -l tests/andromeda-pagination-contract-test.php
+          php -l tests/andromeda-search3-page-orchestrator-test.php
           php tests/andromeda-pagination-contract-test.php
           php tests/andromeda-search3-page-orchestrator-test.php "$(pwd)"
           php tests/andromeda-anytour-offer-autosave-test.php
