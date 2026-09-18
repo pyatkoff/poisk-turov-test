@@ -1,0 +1,158 @@
+name: MATCH Mauritius detail9 guarded apply v2
+on:
+  push:
+    branches: [ops/match-mauritius-detail9-apply-1971-20260919-v2]
+    paths:
+      - scripts/diagnostics/hotel_match_mauritius_detail9_apply_v2.php
+      - .github/workflows/hotel-match-mauritius-detail9-apply-v2.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-mauritius-detail9-apply-1971-20260919-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-mauritius-detail9-apply-1971-20260919-v2
+jobs:
+  apply:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10571892768'
+          run-id: 35405124595
+          github-token: ${{ github.token }}
+          path: evidence
+          merge-multiple: true
+      - name: Validate corrected source and build exact plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          php -l scripts/diagnostics/hotel_match_mauritius_detail9_apply_v2.php
+          php scripts/diagnostics/hotel_match_mauritius_detail9_apply_v2.php --self-test
+          grep -Fq 'SET TRANSACTION ISOLATION LEVEL SERIALIZABLE' scripts/diagnostics/hotel_match_mauritius_detail9_apply_v2.php
+          grep -Fq 'INSERT INTO anex_hotel_search_mappings' scripts/diagnostics/hotel_match_mauritius_detail9_apply_v2.php
+          ! grep -Eiq '\b(UPDATE|REPLACE|DELETE|ALTER|DROP|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_mauritius_detail9_apply_v2.php
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path('evidence/remote'); result=root/'result.json'; receipt=root/'receipt.json'
+          assert result.exists() and receipt.exists()
+          rh=hashlib.sha256(result.read_bytes()).hexdigest(); assert rh=='042ef4e565d8059988140298f061d06ce83218d7264579fb14b36d60775923b1'
+          d=json.loads(result.read_text()); r=json.loads(receipt.read_text())
+          assert d['operation']=='hotel-match-mauritius-retained-tour-detail-1971-20260919-v1'
+          assert d['state']=='completed_read_only' and d['provider_calls']==26 and d['database_writes']==d['mapping_writes']==0
+          assert r['state']=='completed_read_only' and r['result_sha256']==rh and r['anchors']==9 and r['holds']==17
+          expected={15640:11758,19015:11789,15490:11805,15779:15788,15788:26842,41420:28452,15637:44413,41477:60234,41416:106703}
+          pairs=[]
+          for a in d['anchors']:
+              native=a.get('native_anex_id'); local=a.get('local_id'); tokens=a.get('signed_native_tokens')
+              assert isinstance(native,int) and expected.get(native)==local and tokens==[native]
+              detail_sha=a.get('detail_sha256'); tour_id=str(a.get('tour_id') or '')
+              assert isinstance(detail_sha,str) and len(detail_sha)==64 and all(c in '0123456789abcdef' for c in detail_sha) and tour_id.isdigit()
+              detail_path=root/f'detail-{local}.json'; evidence_path=root/f'evidence-{local}.json'
+              assert detail_path.exists() and hashlib.sha256(detail_path.read_bytes()).hexdigest()==detail_sha and evidence_path.exists()
+              pairs.append({'anex_hotel_id':native,'catalog_hotel_id':local,'tour_id':tour_id,'detail_sha256':detail_sha,'signed_native_tokens':tokens})
+          assert len(pairs)==9 and {p['anex_hotel_id']:p['catalog_hotel_id'] for p in pairs}==expected
+          hold_locals={int(x['local_id']) for x in d['holds']}; assert not hold_locals.intersection({p['catalog_hotel_id'] for p in pairs})
+          assert d['deferred_missing_local_ids']==[11771]
+          pairs.sort(key=lambda x:x['anex_hotel_id'])
+          plan={'operation':os.environ['OPERATION_ID'],'source_operation':d['operation'],'source_run_id':35405124595,'source_artifact_id':10571892768,'source_artifact_sha256':'f9d50862467c128586aedbf08bcc9810d5dd4361edcf7eee037c5fda8bb589a6','source_result_sha256':rh,'pairs':pairs,'excluded_ambiguous_count':17,'excluded_missing_local_ids':[11771]}
+          p=pathlib.Path('payload/plan.json'); p.write_text(json.dumps(plan,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          ps=hashlib.sha256(p.read_bytes()).hexdigest(); pathlib.Path('result/plan-sha256.txt').write_text(ps+'\n')
+          reservation={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_db_write','plan_sha256':ps,'source_result_sha256':rh,'expected_count':9,'supplier_calls':0,'no_replay':True}
+          pathlib.Path('result/runner-reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          print(json.dumps({'pairs':9,'plan_sha256':ps,'source_result_sha256':rh}))
+          PY
+          cp scripts/diagnostics/hotel_match_mauritius_detail9_apply_v2.php payload/apply.php
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-mauritius-detail9-apply-v2-reservation-${{ github.run_id }}
+          path: |
+            result/runner-reservation.json
+            result/plan-sha256.txt
+          retention-days: 90
+          if-no-files-found: error
+      - name: Require SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+      - name: Execute immutable guarded write and retrieve receipt
+        id: execute
+        continue-on-error: true
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key" || exit 10
+          ssh-keygen -y -f "$key" >/dev/null || exit 11
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null || exit 12
+          test -s "$known" || exit 13
+          remote="$USER_VALUE@$HOST_VALUE"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          stage=".anytoour-match/staging/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytoour-match/staging\"; test ! -e \"\$HOME/$stage\"; mkdir \"\$HOME/$stage\"" >result/setup.stdout 2>result/setup.stderr || exit 14
+          scp "${opts[@]}" payload/apply.php payload/plan.json "$remote:$stage/" >result/scp.stdout 2>result/scp.stderr || exit 15
+          plan_sha="$(cat result/plan-sha256.txt)"
+          set +e
+          ssh "${opts[@]}" "$remote" "OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_PLAN_PATH=\"\$HOME/$stage/plan.json\" MATCH_PLAN_SHA256='$plan_sha' ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$stage/apply.php\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." >result/server-operation.tgz 2>result/readback.stderr
+          trc=$?
+          set -e
+          printf '%s\n' "$rc" >result/remote-exitcode.txt; printf '%s\n' "$trc" >result/readback-exitcode.txt
+          rm -f "$key" "$known"
+          if [[ "$trc" -eq 0 && -s result/server-operation.tgz ]]; then mkdir -p result/server; tar -xzf result/server-operation.tgz -C result/server; fi
+          exit "$rc"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-mauritius-detail9-apply-v2
+          path: result/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Enforce terminal receipt without replay
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          base=pathlib.Path('result/server'); p=base/'result.json'; c=base/'receipt.json'; res=base/'reservation.json'
+          assert p.exists() and c.exists() and res.exists(), 'missing server receipt'
+          d=json.loads(p.read_text()); r=json.loads(c.read_text()); q=json.loads(res.read_text()); rh=hashlib.sha256(p.read_bytes()).hexdigest()
+          assert d['operation_id']=='hotel-match-mauritius-detail9-apply-1971-20260919-v2' and q['operation_id']==d['operation_id']==r['operation_id']
+          assert r['result_sha256']==rh and r['readback_verified'] is True and r['no_replay'] is True
+          assert d['supplier_calls']==0 and d['tourvisor_calls']==0
+          assert d['status'] in ('completed','blocked_before_commit','unknown_after_commit_no_replay')
+          if d['status']=='completed':
+              wc=d['written_count']; assert 0<=wc<=9 and d['mapping_writes']==wc and d['database_writes']==wc
+              assert len(d['post_commit_readback'])==wc and d['new_triples']<=wc
+              expected_exit='0'
+          elif d['status']=='blocked_before_commit':
+              assert d['mapping_writes']==0 and d['database_writes']==0; expected_exit='2'
+          else:
+              assert d['mapping_writes'] is None and d['database_writes'] is None; expected_exit='3'
+          gate={'status':d['status'],'written_count':d.get('written_count'),'held_count':d.get('held_count',len(d.get('held',[]))),'new_triples':d.get('new_triples'),'result_sha256':rh,'receipt_verified':True,'no_replay':True}
+          pathlib.Path('result/workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n'); print(json.dumps(gate,sort_keys=True))
+          assert pathlib.Path('result/remote-exitcode.txt').read_text().strip()==expected_exit
+          assert pathlib.Path('result/readback-exitcode.txt').read_text().strip()=='0'
+          if d['status']!='completed': raise SystemExit(2)
+          PY
