@@ -210,6 +210,9 @@ $db->prepare('UPDATE anytour_offers SET payload_json=?,payload_sha256=? WHERE id
     ->execute([$stored['payload_json'],$stored['payload_sha256'],$stored['id']]);
 
 $result=$importer->apply($manifest,$plan1['planSha256'],$now);
+if (($result['status']??null)!=='committed_verified') {
+    fwrite(STDERR,"REVIEWED_IMPORT_RESULT ".json_encode($result,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n");
+}
 imp_check($result['status']==='committed_verified','commit verified');
 imp_check($result['inserted']===2&&$result['verified']===2&&$result['noReplay']===true,'two exact writes read back');
 imp_check($result['supplierCalls']===0&&$result['automaticAccepts']===0&&$result['conceptCreates']===0,'apply side effects bounded');
