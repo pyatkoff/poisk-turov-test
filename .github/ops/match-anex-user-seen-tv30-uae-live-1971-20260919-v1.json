@@ -1,0 +1,39 @@
+{
+  "operation": "hotel-match-anex-user-seen-tv30-uae-live-1971-20260919-v1",
+  "state": "reserved_before_provider_access",
+  "source": {
+    "feature_base": "a633c3fb005ff32b46025c947feae3b25fa55d8f",
+    "planner_run": 35401349877,
+    "planner_artifact": 10570506496,
+    "planner_result_sha256": "6f17eaa81ecb6cd36b3a1beee946db72b2a24ec503d41afaeb6148180afbeee2"
+  },
+  "daily_accounting": {
+    "date": "2026-09-19",
+    "limit": 3000,
+    "known_consumed_before": 91,
+    "operation_max_calls": 120
+  },
+  "target": {
+    "departure_id": 1,
+    "country_id": 9,
+    "country_name": "ОАЭ",
+    "date_from": "2026-12-10",
+    "date_to": "2026-12-16",
+    "nights_from": 7,
+    "nights_to": 10,
+    "adults": 2,
+    "children_count": 0,
+    "hotel_ids": [44669,2559,74083,2590,32230,2522,73509,55495,73055,63906,2586,113007,2565,2582,66192,133061,88323,54603,2634,49851],
+    "accepted_andromeda_count": 17
+  },
+  "rules": {
+    "operator_filter": false,
+    "hotel_ids_array": true,
+    "tourvisor_dates": false,
+    "fresh_search_only": true,
+    "full_drain": true,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "terminal_after_first_provider_access": true
+  }
+}
