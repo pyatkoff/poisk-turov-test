@@ -1,0 +1,260 @@
+name: MATCH TV-native ANEX details v1
+
+on:
+  push:
+    branches:
+      - ops/match-tv-native-anex-details-1971-20260918-v1
+    paths:
+      - scripts/diagnostics/hotel_match_tv_native_anex_details_v1.php
+      - .github/workflows/hotel-match-tv-native-anex-details-v1.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+env:
+  OPERATION_ID: hotel-match-tv-native-anex-details-1971-20260918-v1
+  EXPECTED_BASE: 049f2f650b443a8dc404e518a32ef6b3d0242591
+  CLAIM_COMMENT_ID: '5733932606'
+  SOURCE_ARTIFACT_ID: '10559558054'
+  SOURCE_ARTIFACT_DIGEST: 'sha256:fc7e4b4296e5d2baf7730c046ae7d77fcff4f7ad498b53bf87f54af78fb2b462'
+  SOURCE_RESULT_SHA256: '06f1ad32e17e72bd5b2c1ad4fce69d3d765ea455926378710dfe8fc63954930b'
+
+concurrency:
+  group: match-anex-direct-account-20260918
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/match-tv-native-anex-details-1971-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact isolated delta and claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_tv_native_anex_details_v1.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-tv-native-anex-details-v1.yml'
+          php -l scripts/diagnostics/hotel_match_tv_native_anex_details_v1.php
+          php scripts/diagnostics/hotel_match_tv_native_anex_details_v1.php --self-test
+          php -l app/integrations/anex-client.php
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/2530')
+          b=c['body']
+          assert os.environ['OPERATION_ID'] in b
+          assert '10559558054' in b and '40' in b
+          assert '<=60 requests/minute' in b and 'Tourvisor calls0' in b
+          PY
+
+      - name: Fetch and verify immutable reconcile source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p source
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID" > source/artifact.json
+          python3 - <<'PY'
+          import json,os
+          a=json.load(open('source/artifact.json'))
+          assert str(a['id'])==os.environ['SOURCE_ARTIFACT_ID']
+          assert a.get('expired') is False
+          assert a.get('digest')==os.environ['SOURCE_ARTIFACT_DIGEST']
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID/zip" > source/source.zip
+          unzip -q source/source.zip -d source/unpacked
+          test -f source/unpacked/server/result.json
+          printf '%s  %s\n' "$SOURCE_RESULT_SHA256" source/unpacked/server/result.json | sha256sum -c -
+          python3 - <<'PY'
+          import json
+          d=json.load(open('source/unpacked/server/result.json'))
+          assert d['status']=='completed_read_only'
+          assert d['needs_saved_geo_or_name_count']==40
+          rows=[r for r in d['rows'] if r.get('bucket')=='needs_saved_geo_or_name']
+          assert len(rows)==40
+          assert len({str(r['native_anex_hotel_id']) for r in rows})==40
+          PY
+
+      - name: Require existing credentials
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"; test -n "$ANEX_TOKEN"
+
+      - name: Create durable reservation before provider access
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          r={
+            'operation':os.environ['OPERATION_ID'],
+            'state':'reserved_before_provider_access',
+            'source_sha':os.environ['HEAD_SHA'],
+            'source_artifact_id':int(os.environ['SOURCE_ARTIFACT_ID']),
+            'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],
+            'provider':'direct_anex',
+            'details_request_cap':40,
+            'supplier_limit_per_minute':60,
+            'client_pacing_seconds':1.05,
+            'tourvisor_calls':0,'andromeda_calls':0,
+            'database_writes':0,'mapping_writes':0,
+            'no_replay_after_provider_access':True,
+          }
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-tv-native-anex-details-v1-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Stage immutable operation and source
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
+          test -s "$known"
+          remote="$SSH_USER@$SSH_HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          op=".anytour-match/operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytour-match/operations\"; test ! -e \"\$HOME/$op\"; mkdir -m 700 \"\$HOME/$op\"; mkdir -m 700 \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" source/unpacked/server/result.json "$remote:$op/source-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_tv_native_anex_details_v1.php app/integrations/anex-client.php "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "chmod 600 \"\$HOME/$op/reservation.json\" \"\$HOME/$op/source-result.json\" \"\$HOME/$op/payload/\"*"
+
+      - name: Run targeted current direct-ANEX details acquisition
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$SSH_USER@$SSH_HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          op=".anytour-match/operations/$OPERATION_ID"
+          set +e
+          printf '%s\n' "$ANEX_TOKEN" | ssh "${opts[@]}" "$remote" \
+            "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_RESULT=\"\$HOME/$op/source-result.json\" MATCH_SOURCE_RESULT_SHA256=\"$SOURCE_RESULT_SHA256\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$op/payload/hotel_match_tv_native_anex_details_v1.php\"" \
+            > terminal/stdout.json 2> terminal/stderr.txt
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$rc" <<'REMOTE'
+          set -euo pipefail
+          op="$1"; rc="$2"; p="$HOME/.anytour-match/operations/$op"
+          if [ ! -s "$p/result.json" ]; then
+            printf '{"operation":"%s","status":"terminal_failed_no_replay","reason":"runtime_failure_after_reservation","provider_access":true,"tourvisor_calls":0,"andromeda_calls":0,"database_writes":0,"mapping_writes":0}\n' "$op" > "$p/result.json"
+          fi
+          if [ ! -s "$p/receipt.json" ]; then
+            OP="$op" RC="$rc" RESULT="$p/result.json" RECEIPT="$p/receipt.json" php -r '
+              $raw=file_get_contents(getenv("RESULT"));$j=json_decode($raw,true);file_put_contents(getenv("RECEIPT"),json_encode([
+                "operation"=>getenv("OP"),"status"=>is_array($j)?($j["status"]??"terminal_failed_no_replay"):"terminal_failed_no_replay",
+                "remote_exit"=>(int)getenv("RC"),"result_sha256"=>hash("sha256",$raw),"provider_access"=>true,
+                "anex_detail_attempts"=>is_array($j)?($j["anex_detail_attempts"]??null):null,
+                "tourvisor_calls"=>0,"andromeda_calls"=>0,"database_writes"=>0,"mapping_writes"=>0,"no_replay"=>true
+              ],JSON_UNESCAPED_SLASHES).PHP_EOL);
+            '
+          fi
+          tar -C "$p" -czf - reservation.json source-result.json result.json receipt.json
+          REMOTE
+          tar_rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          printf '%s\n' "$tar_rc" > terminal/tar-exit.txt
+          test "$tar_rc" -eq 0
+
+      - name: Verify terminal result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s terminal/server-operation.tgz || { mv terminal/stdout.json terminal/no-archive-stdout.json 2>/dev/null || true; exit 2; }
+        # archive is streamed in the previous step; recover it from stdout only when script stdout is not the archive
+
+      - name: Fetch sealed operation archive
+        if: always()
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$SSH_USER@$SSH_HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytour-match/operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json source-result.json result.json receipt.json" > terminal/server-operation.tgz
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              names=sorted(t.getnames()); assert names==['receipt.json','reservation.json','result.json','source-result.json'],names
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<5_000_000
+                  (s/pathlib.Path(m.name).name).write_bytes(t.extractfile(m).read())
+          assert hashlib.sha256((s/'source-result.json').read_bytes()).hexdigest()==__import__('os').environ['SOURCE_RESULT_SHA256']
+          result=json.loads((s/'result.json').read_text()); receipt=json.loads((s/'receipt.json').read_text())
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest(); assert receipt['result_sha256']==digest
+          assert result['database_writes']==0 and result['mapping_writes']==0
+          assert result['tourvisor_calls']==0 and result['andromeda_calls']==0
+          assert (result.get('anex_detail_attempts') or 0)<=40
+          summary={k:result.get(k) for k in ['status','source_target_count','current_eligible_count','pre_provider_hold_count','anex_detail_attempts','anex_detail_calls','details_returned','provider_error_count','stop_reason','safe_native_detail_count','hold_count','needs_more_evidence_count']}
+          summary['safe_sample']=result.get('safe_native_details',[])[:15]
+          summary['result_sha256']=digest
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          if result.get('status')!='completed_read_only': raise SystemExit(2)
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-native-anex-details-v1-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
