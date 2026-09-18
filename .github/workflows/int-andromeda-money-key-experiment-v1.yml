@@ -1,0 +1,115 @@
+name: INT Andromeda money-key experiment v1
+
+on:
+  push:
+    branches: ['ops/int-andromeda-money-key-experiment-20260918-v1']
+    paths: ['.github/workflows/int-andromeda-money-key-experiment-v1.yml']
+
+permissions: {contents: read}
+concurrency:
+  group: int-andromeda-money-key-experiment-1717-20260918-v1
+  cancel-in-progress: false
+
+jobs:
+  experiment:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      BASE_SHA: 542cce6203a973486d8d59d81055f513126ac277
+      OPERATION_ID: int-andromeda-money-key-experiment-1717-20260918-v1
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v5
+        with: {ref: '${{ env.BASE_SHA }}', path: source, persist-credentials: false}
+      - uses: actions/checkout@v5
+        with: {ref: '${{ github.sha }}', path: ops, persist-credentials: false}
+      - name: Bind exact source and safety contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$BASE_SHA"
+          test "$(git -C ops rev-parse HEAD)" = "$GITHUB_SHA"
+          script=ops/scripts/ops/andromeda_money_key_experiment.php
+          php -l "$script" >/dev/null
+          php -l source/v2/api-andromeda-search3-preview.php >/dev/null
+          php -l source/app/integrations/andromeda-client.php >/dev/null
+          php -l source/app/integrations/andromeda-claim-actions.php >/dev/null
+          ! grep -Eq -- '->(calc|changeService)[[:space:]]*\(' "$script"
+          ! grep -Eiq -- '\b(INSERT|UPDATE|DELETE|REPLACE|CREATE[[:space:]]+TABLE|ALTER[[:space:]]+TABLE|DROP[[:space:]]+TABLE)\b' "$script"
+          ! grep -Fq -- 'anytour_andromeda_anytour_offer_autosave_runtime' "$script"
+          ! grep -Fq -- 'anytour_offer_snapshot' "$script"
+          grep -Fq -- "max-specimens'] ?? '12'" "$script"
+          grep -Fq -- "1, 12" "$script"
+      - name: Prepare private exact runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          stage="$RUNNER_TEMP/runtime"; mkdir -p "$stage/app" "$stage/v2/data" "$stage/scripts/ops"
+          cp -a source/app/integrations "$stage/app/"
+          cp source/v2/api-anex-search3-preview.php source/v2/api-andromeda-search3-preview.php "$stage/v2/"
+          cp source/v2/data/hotel-details-v1.php "$stage/v2/data/"
+          cp ops/scripts/ops/andromeda_money_key_experiment.php "$stage/scripts/ops/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/runtime.tar.gz" .
+          ssh-keyscan -T 15 -t ed25519 "$ANYTOOUR_DEPLOY_HOST" > "$RUNNER_TEMP/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+      - name: Execute fresh bounded money experiment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/result"
+          opts=(-T -i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=50)
+          scp_opts=(-i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"; archive="/tmp/${OPERATION_ID}.${GITHUB_RUN_ID}.tar.gz"
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$remote:$archive"
+          set +e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$archive" "$BASE_SHA" <<'REMOTE'
+          set -euo pipefail
+          operation="$1"; archive="$2"; source="$3"; site="$HOME/www/anytoour.ru"; private="$HOME/.anytoour-andromeda"; ledger="$HOME/.anytour-ops/$operation"
+          test -d "$site"; test -s "$site/config.php"; test -s "$private/search3-preview.php"; test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d "/tmp/${operation}.XXXXXX")"; trap 'rm -rf "$work"; rm -f "$archive"' EXIT; tar -C "$work" -xzf "$archive"
+          snapshot(){ php -d display_errors=0 <<'PHP'
+          <?php declare(strict_types=1); error_reporting(0); $root=rtrim((string)getenv('HOME'),'/').'/www/anytoour.ru'; require_once $root.'/config.php'; require_once (is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php'); $db=v2_data_db(); $db->exec('START TRANSACTION READ ONLY'); $c=static fn(string $s):int=>(int)$db->query($s)->fetchColumn(); echo json_encode(['all_offers'=>$c('SELECT COUNT(*) FROM anytour_offers'),'andromeda_offers'=>$c("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda'"),'andromeda_active'=>$c("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND is_active=1"),'hotel_identities'=>$c("SELECT COUNT(*) FROM andromeda_hotel_identities")],JSON_THROW_ON_ERROR); $db->rollBack();
+          PHP
+          }
+          snapshot > "$ledger/before.json"
+          set +e
+          php "$work/scripts/ops/andromeda_money_key_experiment.php" --site-root="$site" --private-config="$private/search3-preview.php" --source-sha="$source" --operation-id="$operation" --checkpoint="$ledger/progress.json" --departure=1 --country=4 --date=2026-11-01 --nights-from=7 --nights-to=10 --adults=2 --meal=7 --generation=17171844 --max-specimens=12 > "$ledger/result.json" 2> "$ledger/error.log"
+          rc=$?; set -e
+          snapshot > "$ledger/after.json"
+          if cmp -s "$ledger/before.json" "$ledger/after.json"; then db_same=true; else db_same=false; fi
+          RC="$rc" DB_SAME="$db_same" php -r '$r=is_file($argv[1])&&filesize($argv[1])?json_decode(file_get_contents($argv[1]),true,64,JSON_THROW_ON_ERROR):null;$p=is_file($argv[2])&&filesize($argv[2])?json_decode(file_get_contents($argv[2]),true,64,JSON_THROW_ON_ERROR):null;$out=["status"=>(int)getenv("RC")===0?"completed_terminal_no_replay":"failed_terminal_no_replay","operation"=>$argv[3],"source"=>$argv[4],"db_unchanged"=>getenv("DB_SAME")==="true","result"=>$r,"progress"=>$p,"replay_allowed"=>false];file_put_contents($argv[5],json_encode($out,JSON_UNESCAPED_SLASHES).PHP_EOL);' "$ledger/result.json" "$ledger/progress.json" "$operation" "$source" "$ledger/receipt.json"
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed_terminal_no_replay || echo failed_terminal_no_replay)" > "$ledger/state"
+          cat "$ledger/receipt.json"
+          exit "$rc"
+          REMOTE
+          rc=$?; set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/receipt.json" || true
+          test -s "$RUNNER_TEMP/result/receipt.json"; cat "$RUNNER_TEMP/result/receipt.json"
+          test "$rc" = 0
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['RUNNER_TEMP']+'/result/receipt.json'))
+          assert d['status']=='completed_terminal_no_replay' and d['replay_allowed'] is False and d['db_unchanged'] is True,d
+          r=d['result']; assert isinstance(r,dict) and r['status']=='completed_terminal_no_replay' and r['replay_allowed'] is False,r
+          assert 1 <= r['selected_count'] <= 12 and len(r['specimens'])==r['selected_count'],r
+          for k in ['calc_calls','changeservice_calls','booking_calls','db_writes','autosave_calls','search3_publication']:
+              assert r[k]==0,(k,r[k])
+          assert set(r['comparisons'])=={'nights','tourKey','spoKey'}
+          assert isinstance(r['recommended_group_key_fields_after_this_evidence'],list)
+          print(json.dumps({'price_pages':r['price_pages'],'price_rows':r['price_rows'],'external_program_candidates':r['external_program_candidates'],'selected':r['selected_count'],'usable':r['usable_specimens'],'comparisons':r['comparisons'],'recommended_key':r['recommended_group_key_fields_after_this_evidence']},sort_keys=True))
+          PY
+      - name: Preserve sanitized terminal receipt
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: int-andromeda-money-key-experiment-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
