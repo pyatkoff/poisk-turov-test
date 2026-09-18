@@ -57,7 +57,7 @@ CONTROLLER=(PAYLOAD/'tour-controller-v4.js').read_text()
 LIFECYCLE=(PAYLOAD/'search-lifecycle-v6.js').read_text()
 PROVIDER=(PAYLOAD/'andromeda-provider-v1.js').read_text()
 OUT=Path(os.environ.get('SEARCH3_EVIDENCE_DIR',str(ROOT/'canonical-card-evidence')));OUT.mkdir(parents=True,exist_ok=True)
-HTML='''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'''+CSS+'''</style></head><body class="search3-candidate"><main class="v2-shell"><p>Компонентный тест · вымышленные отели и предложения</p><form id="tourSearch" hidden></form><section id="status" class="status" hidden></section><section id="resultsTools" class="results-tools results-tools--ds2"><div><strong>Предложения</strong><span id="resultSummary">Актуальные варианты</span></div><div class="results-tools__actions"><label>Сортировка <select id="sortResults"><option value="price">Сначала дешевле</option><option value="rating">По рейтингу</option></select></label></div></section><div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results" aria-busy="false"></section></div><section id="selectedTour" class="selected-tour" hidden tabindex="-1"></section></main></body></html>'''
+HTML='''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'''+CSS+'''</style></head><body class="search3-candidate"><main class="v2-shell"><p>Компонентный тест · вымышленные отели и предложения</p><form id="tourSearch" hidden></form><section id="status" class="status" hidden></section><section id="resultsTools" class="results-tools results-tools--ds2"><div><strong>Предложения</strong><span id="resultSummary">Актуальные варианты</span></div><div class="results-tools__actions"><button type="button" id="resultsSearchEdit">Изменить поиск</button><label>Сортировка <select id="sortResults"><option value="price">Сначала дешевле</option><option value="rating">По рейтингу</option></select></label></div></section><div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results" aria-busy="false"></section></div><section id="selectedTour" class="selected-tour" hidden tabindex="-1"></section></main></body></html>'''
 
 def boot(browser,path='/_preview/search3-local-candidate/poisk-turov/',width=1440,original=False):
     context=browser.new_context(viewport={'width':width,'height':980},device_scale_factor=1)
@@ -149,7 +149,27 @@ with sync_playwright() as p:
             h['tours'][0]['meal']={'name':meal};h['tours'][0]['price']=price;h['price']=price
         render(page,items);resolve(page,0,{102:1,106:1,108:2})
         check(page.locator('.hotel-card').count()==2,f'{width}: real filters receive two own groups')
+        if width==375:
+            toolbar=page.locator('.results-tools__actions')
+            compact=toolbar.evaluate('''node=>{
+                const box=selector=>{const r=node.querySelector(selector).getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};};
+                const count=node.querySelector('.search3-mobile-filter-panel summary span');
+                return{edit:box('#resultsSearchEdit'),sort:box('#sortResults'),filter:box('.search3-mobile-filter-panel'),summary:box('.search3-mobile-filter-panel summary'),countVisible:getComputedStyle(count).display!=='none'};
+            }''')
+            check(compact['edit']['y']<compact['sort']['y'],f'{width}: mobile edit action remains on its own first row')
+            check(abs((compact['sort']['y']+compact['sort']['height'])-(compact['filter']['y']+compact['filter']['height']))<2,f'{width}: closed sort and filters share one compact row')
+            check(abs(compact['sort']['width']-compact['filter']['width'])<3,f'{width}: closed sort and filters use balanced columns')
+            check(compact['sort']['height']>=44 and compact['summary']['height']>=44,f'{width}: compact mobile toolbar keeps touch targets')
+            check(not compact['countVisible'],f'{width}: closed filter count does not crowd the compact action')
+            toolbar.screenshot(path=str(OUT/'canonical-toolbar-375.png'))
         if width<1025: page.locator('.search3-mobile-filter-panel > summary').click()
+        if width==375:
+            opened=page.locator('.results-tools__actions').evaluate('''node=>{
+                const r=node.getBoundingClientRect(),panel=node.querySelector('.search3-mobile-filter-panel').getBoundingClientRect(),count=node.querySelector('.search3-mobile-filter-panel summary span');
+                return{width:r.width,panelWidth:panel.width,countVisible:getComputedStyle(count).display!=='none'};
+            }''')
+            check(abs(opened['panelWidth']-opened['width'])<2,f'{width}: open filters restore full toolbar width')
+            check(opened['countVisible'],f'{width}: open filters retain their useful matching count')
         meal=page.locator('.search3-meal-filter select')
         # Selectors follow the actual exact-label controls, not a test-only filtering function.
         if meal.count()==0: meal=page.locator('select').filter(has=page.locator('option[value="meal:label:ai"]'))

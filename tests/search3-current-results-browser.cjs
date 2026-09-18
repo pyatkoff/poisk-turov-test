@@ -88,8 +88,9 @@ async function checkToolbarLayout(page, width, previous) {
   } else {
     const positioning = await tools.evaluate(node => ({ position: getComputedStyle(node).position, top: getComputedStyle(node).top }));
     assert.deepEqual(positioning, { position: 'static', top: 'auto' }, 'mobile results toolbar stays in document flow instead of entering the physical safe area');
-    assert.ok(closed.edit.width < closed.actions.width - 24, 'mobile edit remains a compact secondary action');
-    assert.ok(closed.sort.y >= closed.edit.y + closed.edit.height && closed.summary.y >= closed.sort.y + closed.sort.height, 'mobile controls follow their readable visual order');
+    assert.ok(Math.abs(closed.edit.width - closed.actions.width) < 2, 'mobile edit remains a full-width first action');
+    assert.ok(closed.sort.y >= closed.edit.y + closed.edit.height && Math.abs((closed.summary.y + closed.summary.height) - (closed.sort.y + closed.sort.height)) < 2, 'mobile sort and filters share the readable second row');
+    assert.ok(Math.abs(closed.summary.width - closed.sort.width) < 3, 'mobile sort and filters use balanced columns');
   }
   if (!previous && [375, 720, 1024, 1025, 1440].includes(width)) await tools.screenshot({ path: path.join(output, `toolbar-${width}-closed.png`), animations: 'disabled' });
   await edit.focus(); await edit.press('Tab');
