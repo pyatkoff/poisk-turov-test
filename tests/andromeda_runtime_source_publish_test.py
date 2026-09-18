@@ -151,7 +151,7 @@ class PackageInventoryTest(unittest.TestCase):
         publisher.assemble_runtime(self.current, self.package, self.runtime)
         receipt = self.export()
         packed, packed_hashes = publisher.load_handoff(self.base / 'out', source)
-        self.assertEqual(16, len(packed))
+        self.assertEqual(17, len(packed))
         self.assertEqual(source, receipt['dependencies']['candidate_quote'])
         self.assertEqual({
             'app/integrations/andromeda-package-capture.php',
@@ -167,6 +167,7 @@ class PackageInventoryTest(unittest.TestCase):
                      'andromeda-quote-attempt-state.php'):
             self.assertEqual('current', publisher.SOURCE_ORIGINS['app/integrations/' + name])
         self.assertEqual('current', publisher.SOURCE_ORIGINS['v2/api-andromeda-quote-preview.php'])
+        self.assertEqual('current', publisher.SOURCE_ORIGINS['app/integrations/andromeda-pagination.php'])
 
     def test_missing_quote_dependency_never_falls_back_to_historical_file(self):
         for name in ('app/integrations/andromeda-selected-quote.php',
