@@ -460,8 +460,14 @@ async function checkSearchRecovery(browser, width) {
     assert.equal(/utm_|yclid|phone|consent|token|cookie|payload/i.test(saved.searchQuery), false, 'persistent search conditions exclude attribution, contacts and raw data');
     const editSearch = page.locator('#resultsSearchEdit');
     assert.equal(await editSearch.getAttribute('aria-expanded'), 'false', 'populated results keep the canonical search editor collapsed');
+    assert.equal(await editSearch.textContent(), 'Изменить поиск', 'collapsed editor action describes opening the search parameters');
     await editSearch.click();
     assert.equal(await editSearch.getAttribute('aria-expanded'), 'true', 'editing the current search uses the existing disclosure control');
+    assert.equal(await editSearch.textContent(), 'Свернуть параметры', 'open editor action describes collapsing the search parameters');
+    await editSearch.click();
+    assert.equal(await editSearch.getAttribute('aria-expanded'), 'false', 'the disclosure control collapses the open search editor');
+    assert.equal(await editSearch.textContent(), 'Изменить поиск');
+    await editSearch.click();
     await page.locator('#tourSearch [name=count_people]').selectOption('3');
     await openComparison(page, width);
     const restore = page.locator('.search3-shortlist-restore');
