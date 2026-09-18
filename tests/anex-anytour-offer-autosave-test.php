@@ -173,6 +173,7 @@ $helperSource = file_get_contents($root . '/app/integrations/anex-anytour-offer-
 $batchSource = file_get_contents($root . '/app/integrations/anex-additional-prices-batch.php');
 $endpointSource = file_get_contents($root . '/v2/api-anex-search3-preview.php');
 $check(is_string($helperSource) && !preg_match('/\b(?:curl_|fsockopen|stream_socket_client)\b/i', $helperSource), 'autosave-no-supplier-transport');
+$check(str_contains($helperSource, 'MAX_ACCUMULATED_OFFERS = 4800'), 'mass-accumulator-cap');
 $check(is_string($batchSource) && str_contains($batchSource, 'anytour_anex_anytour_offer_autosave_runtime($plan, $state, $results);'), 'batch-runtime-hook');
 $check(is_string($endpointSource) && str_contains($endpointSource, "require_once \$additionalBatchFile;"), 'endpoint-loads-hooked-batch');
 

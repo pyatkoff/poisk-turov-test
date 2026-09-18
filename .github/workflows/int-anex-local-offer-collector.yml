@@ -5,6 +5,8 @@ on:
       - 'app/integrations/anex-local-offer-collector.php'
       - 'scripts/ops/anex_local_offer_collect.php'
       - 'tests/anex-local-offer-collector-test.php'
+      - 'app/integrations/anex-anytour-offer-autosave.php'
+      - 'tests/anex-anytour-offer-autosave-test.php'
       - '.github/workflows/int-anex-local-offer-collector.yml'
 permissions:
   contents: read
@@ -22,4 +24,7 @@ jobs:
           php -l app/integrations/anex-local-offer-collector.php
           php -l scripts/ops/anex_local_offer_collect.php
           php -l tests/anex-local-offer-collector-test.php
+          php -l app/integrations/anex-anytour-offer-autosave.php
+          php -l tests/anex-anytour-offer-autosave-test.php
           php tests/anex-local-offer-collector-test.php
+          php tests/anex-anytour-offer-autosave-test.php

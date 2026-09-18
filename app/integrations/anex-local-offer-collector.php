@@ -15,14 +15,14 @@ final class AnyTourAnexLocalOfferCollectorV1
         callable $expand,
         callable $recordPrograms,
         callable $additionalBatch,
-        int $maxExpands = 2,
-        int $maxBatchItems = 6
+        int $maxExpands = 60,
+        int $maxBatchItems = 300
     ): array {
         if (($searchRequest['action'] ?? null) !== 'search'
             || !is_int($searchRequest['generation'] ?? null)
             || !is_array($searchRequest['params'] ?? null)
-            || $maxExpands < 0 || $maxExpands > 10
-            || $maxBatchItems < 1 || $maxBatchItems > 20) {
+            || $maxExpands < 0 || $maxExpands > 120
+            || $maxBatchItems < 1 || $maxBatchItems > 600) {
             throw new InvalidArgumentException('ANEX_LOCAL_COLLECTOR_INPUT');
         }
 
@@ -57,27 +57,28 @@ final class AnyTourAnexLocalOfferCollectorV1
         }
 
         $items = array_slice(array_values($charters), 0, $maxBatchItems);
-        $batch = null;
-        if ($items !== []) {
+        $ready = 0;
+        $complete = 0;
+        $retryable = 0;
+        $batchCalls = 0;
+        foreach (array_chunk($items, 6) as $chunk) {
             $batch = $additionalBatch([
                 'action' => 'additional_prices_batch',
                 'generation' => $searchRequest['generation'],
                 'search_ref' => $searchData['search_ref'],
-                'items' => $items,
+                'items' => $chunk,
             ], $state);
-            if (!is_array($batch) || ($batch['status'] ?? null) !== 'additional_prices_batch') {
+            ++$batchCalls;
+            if (!is_array($batch) || ($batch['status'] ?? null) !== 'additional_prices_batch'
+                || !is_array($batch['offers'] ?? null)) {
                 throw new RuntimeException('ANEX_LOCAL_COLLECTOR_APD');
             }
-        }
-
-        $ready = 0;
-        $complete = 0;
-        $retryable = 0;
-        foreach (($batch['offers'] ?? []) as $offer) {
-            if (!is_array($offer)) continue;
-            if (($offer['status'] ?? null) === 'additional_prices') ++$complete;
-            if (($offer['finalPriceReady'] ?? null) === true) ++$ready;
-            if (($offer['retryable'] ?? null) === true) ++$retryable;
+            foreach ($batch['offers'] as $offer) {
+                if (!is_array($offer)) continue;
+                if (($offer['status'] ?? null) === 'additional_prices') ++$complete;
+                if (($offer['finalPriceReady'] ?? null) === true) ++$ready;
+                if (($offer['retryable'] ?? null) === true) ++$retryable;
+            }
         }
 
         return [
@@ -89,6 +90,7 @@ final class AnyTourAnexLocalOfferCollectorV1
             'charter_concrete_candidates' => count($charters),
             'regular_concrete_candidates' => count($regular),
             'apd_batch_items' => count($items),
+            'apd_batch_calls' => $batchCalls,
             'apd_complete_offers' => $complete,
             'final_price_ready_offers' => $ready,
             'retryable_offers' => $retryable,
