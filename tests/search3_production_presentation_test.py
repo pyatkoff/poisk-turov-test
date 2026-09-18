@@ -34,7 +34,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         # Keep a finite measured envelope for the same eight assets, not the historical 2x ratio.
         # Budget range + native mobile return: 89925B -> 92323B (+2398B), no added asset/owner.
         # Approved mobile reference + unique open description: 94481B -> 95218B (+737B CSS).
-        self.assertLessEqual(total, 96000, 'eight presentation assets stay within the 96KB envelope including approved mobile card hierarchy')
+        # In-form mobile return action: 96000B -> 96455B (+455B CSS/behavior).
+        self.assertLessEqual(total, 96500, 'eight presentation assets stay within the 96.5KB envelope including mobile card hierarchy and form return action')
 
     def test_reset_css_owners_and_native_selected_bound(self):
         assets = self.source['assets']

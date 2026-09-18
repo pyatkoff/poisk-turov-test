@@ -54,6 +54,17 @@ async function checkSubmittedTripContext(page, width) {
   await page.locator('#resultsTools').screenshot({ path: path.join(output, `submitted-trip-context-${width}.png`), animations: 'disabled' });
   await page.locator('#resultsSearchEdit').click();
   assert.equal(await context.isVisible(), false, 'the existing editor replaces the compact context without duplicate controls');
+  const collapse = page.locator('.search-editor-collapse');
+  assert.equal(await collapse.isVisible(), true, 'populated editor exposes a close action at the start of the form');
+  assert.equal(await collapse.innerText(), 'Свернуть параметры');
+  assert.ok(await collapse.evaluate(node => node.getBoundingClientRect().height >= 44), 'the close action remains a mobile touch target');
+  await page.locator('#tourSearch').screenshot({ path: path.join(output, `search-editor-open-${width}.png`), animations: 'disabled' });
+  const formData = await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]);
+  await collapse.click();
+  assert.equal(await page.locator('#tourSearch').isVisible(), false, 'the in-form action returns to the compact result context');
+  assert.equal(await page.locator('#resultsSearchEdit').evaluate(node => node === document.activeElement), true, 'closing restores focus to the result edit action');
+  await page.locator('#resultsSearchEdit').click();
+  assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]), formData, 'closing and reopening preserves every search parameter');
   await page.locator('[name=from]').selectOption('2');
   await page.waitForFunction(() => [...document.getElementById('tourSearch').elements.country.options].some(option => option.value === '1'));
   await page.locator('[name=country]').selectOption('1');
