@@ -113,6 +113,7 @@ jobs:
           set -e
           mkdir -p "$RUNNER_TEMP/result"
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/receipt.json" || true
+          ssh "${opts[@]}" "$remote" "printf 'state='; cat \"\$HOME/.anytour-ops/$OPERATION_ID/state\"; printf ' error='; sed -n '1,4p' \"\$HOME/.anytour-ops/$OPERATION_ID/error.log\"" || true
           test -s "$RUNNER_TEMP/result/receipt.json"
           cat "$RUNNER_TEMP/result/receipt.json"
           test "$rc" = 0
