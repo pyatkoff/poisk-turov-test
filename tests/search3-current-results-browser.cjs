@@ -715,7 +715,7 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     const swappedGallerySources = await card.locator('.hotel-gallery img').evaluateAll(images => images.map(image => image.getAttribute('src')));
     assert.equal(new Set(swappedGallerySources).size, swappedGallerySources.length, 'gallery swapping preserves unique visible images');
     await hotelInfo.locator('summary').press('Enter');
-    assert.equal(await card.locator('.hotel-description-summary').isVisible(), true, 'closing details restores the concise hotel summary');
+    assert.equal(await card.locator('.hotel-description-summary').isVisible(), width > 760, width > 760 ? 'closing details restores the concise hotel summary' : 'closed mobile keeps canonical description behind disclosure');
     await card.locator('.hotel-gallery-main').scrollIntoViewIfNeeded();
     await page.waitForFunction(() => { const img = document.querySelector('[data-hotel-id="21477"] .hotel-gallery-main'); return img && img.complete && img.naturalWidth > 0; });
     await card.locator('.hotel-gallery-main').evaluate(img => img.decode());
