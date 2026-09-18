@@ -18,6 +18,9 @@ final class AnyTourIntOfferSnapshotProducerV1
     private const VERIFIED_OFFER_KEYS = [
         'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money', 'verified_quote'
     ];
+    private const CONFIRMATION_OFFER_KEYS = [
+        'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money', 'confirmation_required'
+    ];
 
     /**
      * @param callable(string,array,array,DateTimeImmutable):array $ingest
@@ -53,12 +56,14 @@ final class AnyTourIntOfferSnapshotProducerV1
         $seen = [];
         $unresolved = 0;
         $notReady = 0;
+        $confirmationCount = 0;
         $nowTs = $now->getTimestamp();
 
         foreach ($refresh['offers'] as $entry) {
             $verifiedShape = is_array($entry) && self::exactKeys($entry, self::VERIFIED_OFFER_KEYS);
+            $confirmationShape = is_array($entry) && self::exactKeys($entry, self::CONFIRMATION_OFFER_KEYS);
             if (!is_array($entry)
-                || (!self::exactKeys($entry, self::OFFER_KEYS) && !$verifiedShape)) {
+                || (!self::exactKeys($entry, self::OFFER_KEYS) && !$verifiedShape && !$confirmationShape)) {
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_OFFER');
             }
             $offer = $entry['offer'];
@@ -66,11 +71,14 @@ final class AnyTourIntOfferSnapshotProducerV1
             $current = $entry['current'];
             $pricedMoney = $entry['priced_money'];
             $verifiedQuote = $verifiedShape ? $entry['verified_quote'] : null;
+            $confirmationRequired = $confirmationShape ? $entry['confirmation_required'] : false;
             if (!is_array($offer) || ($offer['provider'] ?? null) !== $provider
                 || !is_array($retained) || !is_array($current)
                 || ($pricedMoney !== null && !is_array($pricedMoney))
                 || ($verifiedShape && !is_array($verifiedQuote))
-                || ($verifiedShape && $pricedMoney !== null)) {
+                || ($verifiedShape && $pricedMoney !== null)
+                || ($confirmationShape && ($confirmationRequired !== true || $pricedMoney !== null))
+                || ($verifiedShape && $confirmationShape)) {
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_OFFER');
             }
 
@@ -100,6 +108,13 @@ final class AnyTourIntOfferSnapshotProducerV1
                 $dto['finalPrice'] = $verifiedAmount;
                 $dto['price'] = $verifiedAmount;
                 $dto['currency'] = 'RUB';
+            } elseif ($confirmationRequired === true) {
+                $dto = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
+                    $offer,
+                    $retained,
+                    $current,
+                    $nowTs
+                );
             } else {
                 $dto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
                     $offer,
@@ -109,10 +124,16 @@ final class AnyTourIntOfferSnapshotProducerV1
                     $pricedMoney
                 );
             }
-            if (($dto['finalPriceReady'] ?? null) !== true
-                || !is_string($dto['finalPrice'] ?? null)
-                || ($dto['price'] ?? null) !== $dto['finalPrice']
-                || ($dto['currency'] ?? null) !== 'RUB') {
+            $ready = ($dto['finalPriceReady'] ?? null) === true
+                && is_string($dto['finalPrice'] ?? null)
+                && ($dto['price'] ?? null) === $dto['finalPrice']
+                && ($dto['currency'] ?? null) === 'RUB';
+            $confirmation = ($dto['finalPriceReady'] ?? null) === false
+                && ($dto['finalPrice'] ?? null) === null
+                && is_string($dto['price'] ?? null)
+                && ($dto['currency'] ?? null) === 'RUB'
+                && $confirmationRequired === true;
+            if (!$ready && !$confirmation) {
                 ++$notReady;
                 continue;
             }
@@ -140,6 +161,7 @@ final class AnyTourIntOfferSnapshotProducerV1
                 'dto' => $dto,
                 'expires_at' => gmdate('Y-m-d\TH:i:s\Z', $expires),
             ];
+            if ($confirmation) ++$confirmationCount;
         }
 
         if ($refresh['offers'] !== [] && $rows === []) {
@@ -150,6 +172,7 @@ final class AnyTourIntOfferSnapshotProducerV1
                 'reason' => 'no_final_price_ready_resolved_offers',
                 'inputOfferCount' => count($refresh['offers']),
                 'readyOfferCount' => 0,
+                'confirmationRequiredOfferCount' => 0,
                 'unresolvedHotelCount' => $unresolved,
                 'notReadyCount' => $notReady,
                 'selectionAuthority' => false,
@@ -167,7 +190,8 @@ final class AnyTourIntOfferSnapshotProducerV1
             'published' => true,
             'reason' => null,
             'inputOfferCount' => count($refresh['offers']),
-            'readyOfferCount' => count($rows),
+            'readyOfferCount' => count($rows) - $confirmationCount,
+            'confirmationRequiredOfferCount' => $confirmationCount,
             'unresolvedHotelCount' => $unresolved,
             'notReadyCount' => $notReady,
             'selectionAuthority' => false,

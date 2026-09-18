@@ -150,6 +150,21 @@ handoff_check($searchOutputs['anex']['operator']['raw'] === null);
 handoff_check($searchOutputs['tourvisor']['operator']['raw'] === 'ANEX'
     && $searchOutputs['tourvisor']['operator']['canonical_verified'] === false);
 
+// Explicit regular/GDS ANEX listing keeps the supplier search amount but never upgrades it to final.
+[$regularAnex, $regularRetained, $regularCurrent] = handoff_setup('anex', 'regular');
+$confirmation = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
+    $regularAnex, $regularRetained, $regularCurrent, $now
+);
+handoff_check($confirmation['finalPriceReady'] === false
+    && $confirmation['finalPrice'] === null
+    && $confirmation['price'] === '119114'
+    && $confirmation['currency'] === 'RUB');
+handoff_check($confirmation['quote_state'] === 'unknown'
+    && $confirmation['final_price_verified'] === false
+    && $confirmation['quote_evidence_digest'] === null);
+handoff_check($confirmation['selection_state'] === 'disabled'
+    && $confirmation['booking_enabled'] === false);
+
 // Verified Andromeda quote enriches only money/provenance, never INT selection authority.
 [$andromeda, $retained, $current] = handoff_setup('andromeda');
 $quote = handoff_quote();

@@ -30,6 +30,16 @@ final class AnyTourThreeProviderSearchHandoff
         $out['price']=$readiness['amount']; $out['currency']='RUB'; return $out;
     }
 
+    public static function fromConfirmationRequiredSearchOffer(array $offer,array $retained,array $current,int $now):array
+    {
+        self::assertCurrentOffer($offer,$retained,$current,$now); self::assertCanonicalSearchSurface($offer);
+        $amount=self::readyRubAmount($offer['money']['search_price']??null);
+        if($amount===null) throw new InvalidArgumentException('THREE_PROVIDER_HANDOFF_CONFIRMATION_PRICE');
+        $out=self::project($offer,$retained,$offer['money'],'unknown',false,null);
+        $out['finalPriceReady']=false;$out['finalPrice']=null;$out['price']=$amount;$out['currency']='RUB';
+        return $out;
+    }
+
     public static function fromVerifiedQuote(array $offer,array $retained,array $current,array $quote,int $now):array
     {
         self::assertCanonicalSearchSurface($offer);

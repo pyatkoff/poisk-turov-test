@@ -152,6 +152,36 @@ producer_check($notRub['published']===false
     && $notRub['reason']==='no_final_price_ready_resolved_offers','verified-non-rub-not-listing-ready');
 producer_check(count($ingestCalls)===$beforeVerified,'verified-non-rub-no-ingest');
 
+// Explicit regular/GDS ANEX is persistable as supplier search price with confirmation required.
+$regularOffer=AnyTourThreeProviderOfferContract::fromSearch(
+    producer_raw('anex',3417,2,[],'131000','anex-regular')
+);
+$regularRetained=AnyTourThreeProviderOfferContext::retain($regularOffer,41,1,$issued,900);
+$regularCurrent=[
+    'provider'=>$regularRetained['provider'],'operator'=>$regularRetained['operator'],
+    'local_hotel_id'=>$regularRetained['local_hotel_id'],'identity'=>$regularRetained['identity'],
+    'generation'=>41,'page'=>1,
+];
+$regular=[
+    'anytour_hotel_id'=>501,'offer'=>$regularOffer,'retained'=>$regularRetained,
+    'current'=>$regularCurrent,'priced_money'=>null,'confirmation_required'=>true,
+];
+$regularResult=AnyTourIntOfferSnapshotProducerV1::produce('anex',producer_params(),[
+    'complete'=>true,'authoritative_empty'=>false,'offers'=>[$regular],
+],$now,$ingest);
+producer_check($regularResult['published']===true
+    &&$regularResult['readyOfferCount']===0
+    &&$regularResult['confirmationRequiredOfferCount']===1,'regular-published-confirmation');
+$regularDto=$ingestCalls[array_key_last($ingestCalls)]['rows'][0]['dto'];
+producer_check($regularDto['finalPriceReady']===false
+    &&$regularDto['finalPrice']===null
+    &&$regularDto['price']==='131000'
+    &&$regularDto['currency']==='RUB','regular-search-price');
+producer_check($regularDto['quote_state']==='unknown'
+    &&$regularDto['final_price_verified']===false
+    &&$regularDto['booking_enabled']===false
+    &&$regularDto['selection_state']==='disabled','regular-no-final-authority');
+
 $before=count($ingestCalls);
 producer_reject(static fn()=>AnyTourIntOfferSnapshotProducerV1::produce('anex',producer_params(),[
     'complete'=>false,'authoritative_empty'=>false,'offers'=>[$anex],

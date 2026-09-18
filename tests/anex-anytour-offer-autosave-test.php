@@ -54,6 +54,7 @@ $offer = [
     'price' => ['amount' => '1081', 'currency' => 'USD'],
     'converted_price' => ['amount' => '100000', 'currency' => 'RUB'],
     'availability' => ['hotel' => 'Y', 'flight_outbound_economy' => 'Y', 'flight_return_economy' => 'Y'],
+    'flight_type' => 'charter',
     'supplier_booking_flag' => true,
     'final_price_verified' => false,
 ];
@@ -225,11 +226,63 @@ $identity = AnyTourAnexOfferAutosaveV1::consume($db, $plan, $identityState, $ter
 $check($identity['published'] === false && $identity['reason'] === 'supplier_identity_changed', 'identity-revalidated');
 $check(count($ingestCalls) === 2, 'identity-change-no-ingest');
 
+// A regular/GDS offer is persisted from the exact supplier search price without APD.
+$regularRef = 'anex_online:' . str_repeat('c', 64);
+$regularOffer = $offer;
+$regularOffer['offer_key'] = $regularRef;
+$regularOffer['hotel']['external_id'] = '8102';
+$regularOffer['hotel']['local_id'] = 3418;
+$regularOffer['price'] = ['amount' => '1200', 'currency' => 'USD'];
+$regularOffer['converted_price'] = ['amount' => '111000', 'currency' => 'RUB'];
+$regularOffer['flight_type'] = 'regular';
+$regularState = $state;
+$regularState['gateway']['saved_offers']['offers'] = [
+    $regularRef => [
+        'offer' => $regularOffer,
+        'observed_at' => $created + 12,
+        'supplier_tour_program_id' => '7777',
+        'supplier_currency_id' => '1',
+    ],
+];
+$regularState['gateway']['search']['offers'] = [[
+    'offer_key' => $regularRef, 'kind' => 'concrete', 'hotel_external_id' => '8102',
+]];
+$regularState['additional_prices'] = [];
+unset($regularState['anytour_offer_autosave']);
+$regularResolver = static function (string $namespace, string $external): ?int {
+    return $namespace === 'anex_online' && $external === '8102' ? 3418 : null;
+};
+$regular = AnyTourAnexOfferAutosaveV1::consume(
+    $db,
+    ['offers' => []],
+    $regularState,
+    [],
+    $now,
+    static function (): array { throw new RuntimeException('APD_MUST_NOT_RUN_FOR_REGULAR'); },
+    $regularResolver,
+    $ingest
+);
+$check($regular['published'] === true
+    && $regular['readyOfferCount'] === 0
+    && $regular['confirmationRequiredOfferCount'] === 1, 'regular-published-confirmation');
+$check(count($ingestCalls) === 3 && count($ingestCalls[2]['rows']) === 1, 'regular-one-row-ingested');
+$regularDto = $ingestCalls[2]['rows'][0]['dto'];
+$check($regularDto['finalPriceReady'] === false
+    && $regularDto['finalPrice'] === null
+    && $regularDto['price'] === '111000'
+    && $regularDto['currency'] === 'RUB', 'regular-search-price-only');
+$check(($regularDto['money']['search_price']['amount'] ?? null) === '111000'
+    && ($regularDto['money']['search_price']['currency'] ?? null) === 'RUB', 'regular-converted-rub-provenance');
+$check($regularDto['selection_state'] === 'disabled'
+    && $regularDto['booking_enabled'] === false
+    && $regularDto['final_price_verified'] === false, 'regular-no-authority');
+
 $helperSource = file_get_contents($root . '/app/integrations/anex-anytour-offer-autosave.php');
 $batchSource = file_get_contents($root . '/app/integrations/anex-additional-prices-batch.php');
 $endpointSource = file_get_contents($root . '/v2/api-anex-search3-preview.php');
 $check(is_string($helperSource) && !preg_match('/\b(?:curl_|fsockopen|stream_socket_client)\b/i', $helperSource), 'autosave-no-supplier-transport');
 $check(str_contains($helperSource, 'MAX_ACCUMULATED_OFFERS = 4800'), 'mass-accumulator-cap');
+$check(str_contains($helperSource, 'anytour_anex_anytour_offer_autosave_finalize_runtime'), 'regular-finalize-hook');
 $check(is_string($batchSource) && str_contains($batchSource, 'anytour_anex_anytour_offer_autosave_runtime($plan, $state, $results);'), 'batch-runtime-hook');
 $check(is_string($endpointSource) && str_contains($endpointSource, "require_once \$additionalBatchFile;"), 'endpoint-loads-hooked-batch');
 
