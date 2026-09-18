@@ -5,7 +5,7 @@ final class AndromedaSurchargeGroupKey
 {
     private const PREFIX = 'andromeda-surcharge-v1:';
     private const ID_PATTERN = '/^[A-Za-z0-9_-]{1,128}$/';
-    private const CURRENCY_PATTERN = '/^[A-Z]{3}$/' ;
+    private const CURRENCY_PATTERN = '/^[A-Z]{3}$/';
 
     /**
      * Build a fail-closed cache/group key for transport surcharge evidence.
@@ -20,11 +20,23 @@ final class AndromedaSurchargeGroupKey
     public static function build(array $offer, array $request): ?string
     {
         $operator = self::id($offer['operator_ref'] ?? null);
-        $program = self::optionalId($offer['program_ref'] ?? null);
-        $tour = self::optionalId($offer['tour_ref'] ?? null);
-        $spo = self::optionalId($offer['spo_ref'] ?? null);
+        if ($operator === null) {
+            return null;
+        }
 
-        if ($operator === null || ($program === null && $tour === null && $spo === null)) {
+        $refs = [];
+        foreach (['program_ref', 'tour_ref', 'spo_ref'] as $field) {
+            $raw = $offer[$field] ?? null;
+            if ($raw === null || $raw === '') {
+                $refs[$field] = null;
+                continue;
+            }
+            $refs[$field] = self::id($raw);
+            if ($refs[$field] === null) {
+                return null;
+            }
+        }
+        if ($refs['program_ref'] === null && $refs['tour_ref'] === null && $refs['spo_ref'] === null) {
             return null;
         }
 
@@ -43,9 +55,9 @@ final class AndromedaSurchargeGroupKey
 
         $canonical = [
             'operator' => $operator,
-            'program' => $program,
-            'tour' => $tour,
-            'spo' => $spo,
+            'program' => $refs['program_ref'],
+            'tour' => $refs['tour_ref'],
+            'spo' => $refs['spo_ref'],
             'departure' => $departure,
             'country' => $country,
             'date' => $date,
@@ -68,14 +80,6 @@ final class AndromedaSurchargeGroupKey
         }
         $value = trim((string) $value);
         return $value !== '' && preg_match(self::ID_PATTERN, $value) === 1 ? $value : null;
-    }
-
-    private static function optionalId(mixed $value): ?string
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-        return self::id($value);
     }
 
     private static function positiveInt(mixed $value): ?int
