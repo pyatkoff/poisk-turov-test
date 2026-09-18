@@ -27,12 +27,12 @@ jobs:
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
     steps:
-      - uses: actions/checkout@owner-7n-v2
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 8
           persist-credentials: false
-      - uses: actions/checkout@owner-7n-v2
+      - uses: actions/checkout@v4
         with:
           ref: ${{ env.RELEASE_DATA_SHA }}
           path: release-data
@@ -138,7 +138,7 @@ jobs:
 
       - name: Preserve combined fill receipt
         if: always()
-        uses: actions/upload-artifact@owner-7n-v2
+        uses: actions/upload-artifact@v4
         with:
           name: int-anex-charter-regular-owner-7n-v2-${{ github.run_id }}
           path: ${{ runner.temp }}/result/receipt.json
