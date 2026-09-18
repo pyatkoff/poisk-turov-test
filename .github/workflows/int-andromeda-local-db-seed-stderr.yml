@@ -1,0 +1,45 @@
+name: INT read Andromeda seed local stderr
+
+on:
+  push:
+    branches:
+      - 'ops/int-andromeda-local-db-seed-20260918-v1'
+    paths:
+      - '.github/workflows/int-andromeda-local-db-seed-stderr.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - name: Read sanitized sealed stderr only
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15 "$remote" 'python3 -' <<'PY'
+          import pathlib,re
+          p=pathlib.Path.home()/'.anytour-ops/int-andromeda-local-db-seed-1717-20260918-v1/error.log'
+          s=p.read_text(errors='ignore')[-3000:]
+          s=re.sub(r'https?://\S+','<url>',s)
+          s=re.sub(r'/(?:[^\s:]+/)*[^\s:]+\.(?:php|json|yml|yaml)','<path>',s)
+          s=re.sub(r'[A-Fa-f0-9]{32,}','<digest>',s)
+          s=re.sub(r'(?i)(token|password|sid|uid)\s*[=:]\s*\S+',r'\1=<redacted>',s)
+          lines=[re.sub(r'\s+',' ',x).strip() for x in s.splitlines() if x.strip()]
+          print('\n'.join(lines[-8:])[:1600])
+          PY
