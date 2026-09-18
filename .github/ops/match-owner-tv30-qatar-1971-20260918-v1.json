@@ -1,0 +1,34 @@
+{
+  "operation": "hotel-match-owner-tv30-qatar-1971-20260918-v1",
+  "state": "reserved_before_provider_access",
+  "source_sha": "4995160b39965b29c572c411d424d74b4e7d5f8c",
+  "transport": "canonical https://anytoour.ru/api-v2.php",
+  "owner_additional_allowance_total": 300,
+  "supplemental_used_before_operation": 10,
+  "effective_remaining_before_operation": 290,
+  "operation_cap": 40,
+  "rules": {
+    "tourvisor_dates_endpoint": false,
+    "fresh_search_only": true,
+    "fresh_tour_detail_only": true,
+    "full_drain_continue": true,
+    "operator_filter": false,
+    "php_array_hotel_ids": true,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "no_replay_after_first_provider_access": true
+  },
+  "cohort": {
+    "country_id": 79,
+    "country": "Катар",
+    "departure_id": 1,
+    "departure": "Москва",
+    "date_from": "2027-01-02",
+    "date_to": "2027-01-08",
+    "nights_from": 9,
+    "nights_to": 10,
+    "adults": 2,
+    "hotel_ids": [112358,60006,81356,60957,92738,130835,60968,70035,89073,114210,59991,81750,92745,60985,99759,60940,60947,70424,95553,60257,69289,69290,81197,100475,127325,68625,99760,101025,101026,59990]
+  },
+  "canonical_sha256": "4e3ad57dcfd670c941563190d23c8abe1a7b1db56ea171ca0eb4a686cb8682f4"
+}
