@@ -1,0 +1,116 @@
+name: INT ANEX mass local DB fill v1
+
+on:
+  push:
+    branches: ['ops/int-anex-mass-local-fill-20260918-v1']
+    paths:
+      - 'scripts/ops/int_anex_mass_local_db_fill.php'
+      - '.github/workflows/int-anex-mass-local-db-fill-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-anex-mass-local-fill-2506-20260918-v1
+  cancel-in-progress: false
+
+jobs:
+  fill:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BASE_SHA: 566c6ae6811f53cec18051f2c430fa9f931ad293
+      RELEASE_DATA_SHA: a85b0f061d6016bc258dccca4ee784c2d6ef7c27
+      OPERATION_ID: int-anex-mass-local-fill-2506-20260918-v1
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 8
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_DATA_SHA }}
+          path: release-data
+          persist-credentials: false
+
+      - name: Bind exact mass-fill source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-anex-mass-local-db-fill-v1.yml'
+          test "${changed[1]}" = 'scripts/ops/int_anex_mass_local_db_fill.php'
+          php -l scripts/ops/int_anex_mass_local_db_fill.php
+          php -l scripts/ops/anex_local_offer_collect.php
+          php -l app/integrations/anex-local-offer-collector.php
+          php -l app/integrations/anex-anytour-offer-autosave.php
+          php tests/anex-local-offer-collector-test.php
+          php tests/anex-anytour-offer-autosave-test.php
+          test "$(git -C release-data rev-parse HEAD)" = "$RELEASE_DATA_SHA"
+          test "$(git -C release-data hash-object v2/data/anytour-offer-snapshot-ingest-v1.php)" = '4b6b73c11a8de0401c05187982ba977e61a14354'
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY"
+          test -n "$ANYTOOUR_DEPLOY_HOST"
+          test -n "$ANYTOOUR_DEPLOY_USER"
+
+      - name: Prepare private exact runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          stage="$RUNNER_TEMP/runtime"; mkdir -p "$stage/app" "$stage/v2" "$stage/scripts/ops"
+          cp -a app/integrations "$stage/app/"
+          cp v2/api-anex-search3-preview.php "$stage/v2/"
+          cp -a release-data/v2/data "$stage/v2/"
+          cp scripts/ops/anex_local_offer_collect.php "$stage/scripts/ops/"
+          cp scripts/ops/int_anex_mass_local_db_fill.php "$stage/scripts/ops/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/runtime.tar.gz" .
+
+      - name: Execute one mass-fill scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          archive="/tmp/${OPERATION_ID}.${GITHUB_RUN_ID}.tar.gz"
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$remote:$archive"
+          set +e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$archive" <<'REMOTE'
+          set -euo pipefail
+          op="$1"; archive="$2"; site="$HOME/www/anytoour.ru"; ledger="$HOME/.anytour-ops/$op"
+          test -d "$site"; test -s "$site/config.php"; test -s "$HOME/.anytoour-anex/search3-preview.php"; test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d "/tmp/${op}.XXXXXX")"; trap 'rm -rf "$work"; rm -f "$archive"' EXIT
+          tar -C "$work" -xzf "$archive"
+          set +e
+          php "$work/scripts/ops/int_anex_mass_local_db_fill.php" "$site" > "$ledger/receipt.json" 2> "$ledger/error.log"
+          rc=$?
+          set -e
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed || echo failed_terminal_no_replay)" > "$ledger/state"
+          exit "$rc"
+          REMOTE
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/receipt.json" || true
+          test -s "$RUNNER_TEMP/receipt.json"
+          cat "$RUNNER_TEMP/receipt.json"
+          test "$rc" = 0
+          jq -e '.status=="completed" and .provider=="anex" and .replay_allowed==false and .search3_publication==0 and .booking_calls==0 and .lead_calls==0' "$RUNNER_TEMP/receipt.json" >/dev/null
+
+      - name: Preserve mass-fill receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-anex-mass-fill-${{ github.run_id }}
+          path: ${{ runner.temp }}/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
