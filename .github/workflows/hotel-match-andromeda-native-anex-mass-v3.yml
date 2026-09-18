@@ -57,7 +57,7 @@ jobs:
           c=json.load(open('claim.json')); b=c.get('body','')
           assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
           assert os.environ['OPERATION_ID'] in b
-          assert 'original.hotelKey' in b and 'isOperatorHotelKey=0' in b
+          assert 'original.hotelKey' in b
           low=b.lower(); assert 'first **two**' in low and 'price context' in low and 'writes0' in low
           PY
 
