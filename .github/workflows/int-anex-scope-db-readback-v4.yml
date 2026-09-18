@@ -1,0 +1,49 @@
+name: INT inspect persisted ANEX scope metadata v4
+on:
+  push:
+    branches: ['ops/int-anex-scope-db-readback-20260918-v4']
+    paths: ['.github/workflows/int-anex-scope-db-readback-v4.yml']
+permissions: {contents: read}
+jobs:
+  readback:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read ANEX scope rows only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          ssh -T -i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null "$REMOTE_USER@$HOST" 'php -d display_errors=0 -d log_errors=0' > "$RUNNER_TEMP/result/result.json" <<'PHP'
+          <?php
+          declare(strict_types=1); error_reporting(0);
+          $home=rtrim((string)getenv('HOME'),'/');$root=$home.'/www/anytoour.ru';
+          $dbp=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';require_once $dbp;
+          $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('START TRANSACTION READ ONLY');
+          try{
+            $rows=$db->query("SELECT o.scope_sha256,COUNT(*) offers,COALESCE(SUM(o.is_active=1),0) active,COALESCE(SUM(o.final_price_ready=1),0) ready,COALESCE(SUM(o.expires_at>UTC_TIMESTAMP()),0) unexpired,MIN(o.checkin) min_checkin,MAX(o.checkin) max_checkin,MIN(o.nights) min_nights,MAX(o.nights) max_nights,MIN(o.adults) adults_min,MAX(o.adults) adults_max,MIN(o.children) children_min,MAX(o.children) children_max,MAX(o.expires_at) max_expires,s.latest_complete_refresh_token latest, x.params_json params_json FROM anytour_offers o LEFT JOIN anytour_offer_scope_state s ON s.provider=o.provider AND s.scope_sha256=o.scope_sha256 LEFT JOIN anytour_offer_scopes x ON x.scope_sha256=o.scope_sha256 WHERE o.provider='anex' GROUP BY o.scope_sha256,s.latest_complete_refresh_token,x.params_json ORDER BY o.scope_sha256")->fetchAll(PDO::FETCH_ASSOC);
+            $out=[];
+            foreach($rows as $r){
+              $p=null;if(is_string($r['params_json']??null)&&$r['params_json']!==''){try{$p=json_decode($r['params_json'],true,64,JSON_THROW_ON_ERROR);}catch(Throwable){}}
+              $safe=null;if(is_array($p)){$safe=array_intersect_key($p,array_flip(['departureId','countryId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs','meal','hotelCategory','hotelRating','hotelIds','regionIds','subregionIds','operatorIds','priceFrom','priceTo','currency','onlyCharter','onlyDirect']));}
+              $out[]=['scope'=>(string)$r['scope_sha256'],'offers'=>(int)$r['offers'],'active'=>(int)$r['active'],'ready'=>(int)$r['ready'],'unexpired'=>(int)$r['unexpired'],'latest_complete'=>is_string($r['latest'])&&$r['latest']!=='','min_checkin'=>(string)$r['min_checkin'],'max_checkin'=>(string)$r['max_checkin'],'min_nights'=>(int)$r['min_nights'],'max_nights'=>(int)$r['max_nights'],'adults_min'=>(int)$r['adults_min'],'adults_max'=>(int)$r['adults_max'],'children_min'=>(int)$r['children_min'],'children_max'=>(int)$r['children_max'],'max_expires'=>(string)$r['max_expires'],'scope_indexed'=>$safe!==null,'params'=>$safe];
+            }
+            echo json_encode(['schema_version'=>4,'source'=>'int-anex-scope-db-readback-v4','scopes'=>$out,'supplier_calls'=>0,'db_writes'=>0,'filesystem_writes'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          } finally {$db->rollBack();}
+          PHP
+          cat "$RUNNER_TEMP/result/result.json"
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-anex-scope-db-readback-v4-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/result.json
+          if-no-files-found: error
+          retention-days: 14
