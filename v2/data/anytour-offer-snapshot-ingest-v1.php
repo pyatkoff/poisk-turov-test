@@ -102,6 +102,7 @@ final class AnyTourOfferSnapshotIngestV1
                     $scope['digest'],
                     $token,
                     $freshOfferRefs,
+                    count($written),
                     $now
                 );
             }
@@ -145,6 +146,12 @@ final class AnyTourOfferSnapshotIngestV1
      * cohort, are still unexpired, still have an accepted exact local identity, and
      * were not superseded by this partial batch. The previous completed rows remain
      * untouched while the new refresh is running, preserving v2 atomic visibility.
+     *
+     * Partial refreshes are additive, not an eviction mechanism. If the complete set
+     * of fresh physical rows plus valid unseen carry rows would exceed MAX_OFFERS, the
+     * new refresh aborts before any carry copy. The previous completed cohort therefore
+     * stays authoritative instead of silently losing unseen offers or overflowing the
+     * documented per-provider bound used by the bounded three-provider reader.
      */
     private static function carryForwardLatestComplete(
         PDO $db,
@@ -152,8 +159,13 @@ final class AnyTourOfferSnapshotIngestV1
         string $scopeDigest,
         string $token,
         array $freshOfferRefs,
+        int $freshRowCount,
         DateTimeImmutable $now
     ): int {
+        if ($freshRowCount < 1 || $freshRowCount > self::MAX_OFFERS) {
+            throw new LogicException('ANYTOUR_OFFER_PARTIAL_FRESH_COUNT');
+        }
+
         $state = $db->prepare(
             'SELECT active_refresh_token,latest_complete_refresh_token '
             . 'FROM anytour_offer_scope_state WHERE provider=:provider AND scope_sha256=:scope LIMIT 1'
@@ -175,7 +187,7 @@ final class AnyTourOfferSnapshotIngestV1
             . 'payload_json,payload_sha256,last_seen_at,expires_at '
             . 'FROM anytour_offers WHERE provider=:provider AND scope_sha256=:scope '
             . 'AND last_refresh_token=:previous AND is_active=1 AND expires_at>:now '
-            . 'ORDER BY last_seen_at DESC,id DESC LIMIT ' . self::MAX_OFFERS
+            . 'ORDER BY last_seen_at DESC,id DESC LIMIT ' . (self::MAX_OFFERS + 1)
         );
         $query->execute([
             'provider'=>$provider,
@@ -185,28 +197,17 @@ final class AnyTourOfferSnapshotIngestV1
         ]);
         $candidates = $query->fetchAll(PDO::FETCH_ASSOC);
         if ($candidates === []) return 0;
+        // An oversized prior physical cohort already violates the bounded reader's
+        // per-provider assumption. Do not truncate it into a seemingly valid partial.
+        if (count($candidates) > self::MAX_OFFERS) {
+            throw new DomainException('ANYTOUR_OFFER_PARTIAL_CAPACITY');
+        }
 
         // Revalidate accepted provider->local identity at carry time. Rejected, pending,
         // reassigned, or otherwise unresolved supplier hotels are not copied forward.
         $valid = AnyTourProviderIdentityBridgeV1::filterOfferRows($db, $candidates);
-        $copy = $db->prepare(
-            'INSERT INTO anytour_offers('
-            . 'anytour_hotel_id,legacy_hotel_id,provider,scope_sha256,search_ref_digest,offer_ref_digest,'
-            . 'provider_hotel_ref_digest,identity_sha256,operator_json,operator_sha256,checkin,nights,adults,children,'
-            . 'child_ages_json,party_sha256,meal_json,room_json,placement_json,display_price,currency,final_price_ready,'
-            . 'final_price_verified,payload_json,payload_sha256,observed_at,source_context_expires_at,last_refresh_token,'
-            . 'last_seen_at,expires_at,is_active) '
-            . 'SELECT old.anytour_hotel_id,old.legacy_hotel_id,old.provider,old.scope_sha256,old.search_ref_digest,'
-            . 'old.offer_ref_digest,old.provider_hotel_ref_digest,old.identity_sha256,old.operator_json,old.operator_sha256,'
-            . 'old.checkin,old.nights,old.adults,old.children,old.child_ages_json,old.party_sha256,old.meal_json,old.room_json,'
-            . 'old.placement_json,old.display_price,old.currency,old.final_price_ready,old.final_price_verified,old.payload_json,'
-            . 'old.payload_sha256,old.observed_at,old.source_context_expires_at,:token,old.last_seen_at,old.expires_at,1 '
-            . 'FROM anytour_offers old WHERE old.id=:id AND old.provider=:provider AND old.scope_sha256=:scope '
-            . 'AND old.last_refresh_token=:previous AND old.is_active=1 AND old.expires_at>:now LIMIT 1'
-        );
-
         $seenOfferRefs = [];
-        $carried = 0;
+        $carryRows = [];
         foreach ($valid as $row) {
             $offerRef = $row['offer_ref_digest'] ?? null;
             if (!is_string($offerRef) || !preg_match('/\A[a-f0-9]{64}\z/D', $offerRef)) {
@@ -224,7 +225,32 @@ final class AnyTourOfferSnapshotIngestV1
                 || !hash_equals($payloadSha, hash('sha256', $payload))) {
                 throw new RuntimeException('ANYTOUR_OFFER_PAYLOAD_INTEGRITY');
             }
+            $carryRows[] = $row;
+        }
 
+        if ($freshRowCount + count($carryRows) > self::MAX_OFFERS) {
+            throw new DomainException('ANYTOUR_OFFER_PARTIAL_CAPACITY');
+        }
+        if ($carryRows === []) return 0;
+
+        $copy = $db->prepare(
+            'INSERT INTO anytour_offers('
+            . 'anytour_hotel_id,legacy_hotel_id,provider,scope_sha256,search_ref_digest,offer_ref_digest,'
+            . 'provider_hotel_ref_digest,identity_sha256,operator_json,operator_sha256,checkin,nights,adults,children,'
+            . 'child_ages_json,party_sha256,meal_json,room_json,placement_json,display_price,currency,final_price_ready,'
+            . 'final_price_verified,payload_json,payload_sha256,observed_at,source_context_expires_at,last_refresh_token,'
+            . 'last_seen_at,expires_at,is_active) '
+            . 'SELECT old.anytour_hotel_id,old.legacy_hotel_id,old.provider,old.scope_sha256,old.search_ref_digest,'
+            . 'old.offer_ref_digest,old.provider_hotel_ref_digest,old.identity_sha256,old.operator_json,old.operator_sha256,'
+            . 'old.checkin,old.nights,old.adults,old.children,old.child_ages_json,old.party_sha256,old.meal_json,old.room_json,'
+            . 'old.placement_json,old.display_price,old.currency,old.final_price_ready,old.final_price_verified,old.payload_json,'
+            . 'old.payload_sha256,old.observed_at,old.source_context_expires_at,:token,old.last_seen_at,old.expires_at,1 '
+            . 'FROM anytour_offers old WHERE old.id=:id AND old.provider=:provider AND old.scope_sha256=:scope '
+            . 'AND old.last_refresh_token=:previous AND old.is_active=1 AND old.expires_at>:now LIMIT 1'
+        );
+
+        $carried = 0;
+        foreach ($carryRows as $row) {
             $copy->execute([
                 'token'=>$token,
                 'id'=>(int)$row['id'],
