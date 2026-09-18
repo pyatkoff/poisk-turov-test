@@ -38,7 +38,7 @@ const viewports = [
           hotelQueries.push(Object.fromEntries(url.searchParams));
           const pause = pauseLookup;
           if (pause) { pauseLookup = null; pause.started(); await pause.wait; }
-          const items = url.searchParams.get('q') === 'Marriott' ? [{ ...hotels[0], id: 42001, name: 'MARRIOTT HOTEL' }] : hotels;
+          const items = url.searchParams.get('q') === 'NoSuchHotel' ? [] : url.searchParams.get('q') === 'Marriott' ? [{ ...hotels[0], id: 42001, name: 'MARRIOTT HOTEL' }] : hotels;
           try {
             await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, source: 'anytour-catalog', items }) });
           } finally { if (pause) pause.finished(); }
@@ -183,6 +183,44 @@ const viewports = [
       assert.equal(hotelQueries.length, lookupsBeforeEscape, 'Escape also cancels a lookup waiting for debounce');
       assert.equal(await list.isVisible(), false);
       assert.deepEqual(searchStarts, [], 'pending Enter and cancelled suggestions never start a broad supplier search');
+
+      const tripBeforeRecovery = await form.evaluate(node => ({
+        country: node.elements.country.value,
+        dateFrom: node.elements.dateFrom.value,
+        dateTo: node.elements.dateTo.value,
+        daysFrom: node.elements.daysFrom.value,
+        daysTill: node.elements.daysTill.value,
+        adults: node.elements.count_people.value,
+        children: node.elements.child_count.value
+      }));
+      await input.fill('NoSuchHotel');
+      await list.waitFor({ state: 'visible' });
+      const recovery = list.locator('.hotel-autocomplete__empty');
+      const searchAll = recovery.getByRole('button', { name: 'Искать туры по всем отелям' });
+      assert.match(await recovery.innerText(), /По названию ничего не нашли[\s\S]*Проверьте написание или найдите тур среди всех отелей/);
+      assert.equal(await list.getAttribute('role'), 'group', 'actionable empty recovery is not exposed as a listbox with invalid children');
+      assert.equal(await list.locator('[role="option"]').count(), 0, 'an empty canonical lookup cannot expose a selectable hotel');
+      const recoveryButtonBox = await searchAll.boundingBox();
+      assert.ok(recoveryButtonBox.height >= 44, 'all-hotels recovery is a full touch target');
+      assert.ok(recoveryButtonBox.y >= 0 && recoveryButtonBox.y + recoveryButtonBox.height <= viewport.height + 1, 'all-hotels recovery remains reachable in the short viewport');
+      assert.equal(await recovery.evaluate(node => node.scrollWidth > node.clientWidth + 1), false, 'empty recovery does not overflow its lookup panel');
+      await page.screenshot({ path: path.join(output, `known-hotel-empty-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+      const recoverySearch = page.waitForRequest(request => new URL(request.url()).searchParams.get('action') === 'search_start');
+      await Promise.all([recoverySearch, searchAll.click()]);
+      assert.equal(await input.inputValue(), '', 'all-hotels recovery clears only the unmatched hotel query');
+      assert.equal(await select.inputValue(), '', 'all-hotels recovery cannot retain an exact hotel identity');
+      assert.equal(await list.isVisible(), false);
+      assert.deepEqual(await form.evaluate(node => ({
+        country: node.elements.country.value,
+        dateFrom: node.elements.dateFrom.value,
+        dateTo: node.elements.dateTo.value,
+        daysFrom: node.elements.daysFrom.value,
+        daysTill: node.elements.daysTill.value,
+        adults: node.elements.count_people.value,
+        children: node.elements.child_count.value
+      })), tripBeforeRecovery, 'all-hotels recovery preserves the complete trip context');
+      assert.equal(searchStarts.length, 1, 'explicit all-hotels recovery starts exactly one normal search');
+      assert.equal(new URL(searchStarts[0]).searchParams.has('hotel'), false, 'recovery search does not send a stale hotel restriction');
       evidence.push({ viewport, geometry, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
       assert.deepEqual(errors, []);
       await page.close();
