@@ -66,6 +66,39 @@ ok($priorityOrder===[23,24,22],'external freight must consume capture budget bef
 ok($priorityResult['surcharge_capture_attempts']===3,'priority capture bound');
 ok($priorityResult['eligible_offers']===4,'priority keeps all candidates eligible');
 
+$terminalOrder=[];$terminalAutosaveCalls=0;
+$terminalCapture=static function(array $selection)use(&$terminalOrder):array{
+    $terminalOrder[]=$selection['local_id'];
+    if($selection['local_id']===23)throw new RuntimeException('ANDROMEDA_PACKAGE_OUTCOME_UNKNOWN');
+    return ['status'=>'captured','surcharge'=>['status'=>'unavailable','fact'=>null]];
+};
+$terminalAutosave=static function(array $r,string $ref,int $generation)use(&$terminalAutosaveCalls):array{
+    ++$terminalAutosaveCalls;
+    return ['published'=>false,'reason'=>'no_final_price_ready_resolved_offers','readyOfferCount'=>0];
+};
+$terminalResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
+    $request,
+    static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('c',64),'pages_count'=>1,'status'=>'complete'],
+    $priorityCohort,$allAllowed,$terminalCapture,$terminalAutosave,3
+);
+ok($terminalOrder===[23,24,22],'sealed package outcome must continue with disjoint candidates');
+ok($terminalResult['surcharge_capture_attempts']===3,'terminal package outcome still consumes capture budget');
+ok($terminalAutosaveCalls===1,'terminal per-offer package outcome must not skip autosave');
+
+$invariantAutosaveCalls=0;$invariantThrown=false;
+try{
+    AnyTourAndromedaLocalOfferCollectorV1::collect(
+        $request,
+        static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('d',64),'pages_count'=>1,'status'=>'complete'],
+        $priorityCohort,$allAllowed,
+        static function(array $selection):array{throw new RuntimeException('ANDROMEDA_PACKAGE_CHECKPOINT_FAILED');},
+        static function(array $r,string $ref,int $generation)use(&$invariantAutosaveCalls):array{++$invariantAutosaveCalls;return ['published'=>false,'readyOfferCount'=>0];},
+        1
+    );
+}catch(RuntimeException $error){$invariantThrown=$error->getMessage()==='ANDROMEDA_PACKAGE_CHECKPOINT_FAILED';}
+ok($invariantThrown,'unexpected capture invariant must fail closed');
+ok($invariantAutosaveCalls===0,'unexpected capture invariant must not autosave');
+
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('ANEX')===false,'ANEX excluded');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('PEGAS Touristik')===false,'PEGAS excluded');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Coral Travel')===false,'Coral excluded');
@@ -74,4 +107,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 priority=1 autosave=1\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 priority=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
