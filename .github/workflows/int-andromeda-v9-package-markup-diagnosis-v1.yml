@@ -62,13 +62,20 @@ jobs:
           foreach($paths as $path){$env=$read($path);$rec=is_array($env)?($env['record']??null):null;if(!is_array($rec)||($rec['status']??null)!=='captured'||!is_array($rec['private_package']??null))continue;
             $ctx=$rec['context']??[];$or=is_array($ctx)&&is_string($ctx['offer_ref']??null)?$ctx['offer_ref']:'';$search=$offerMoney[$or]??null;if(!is_array($search))$fail('search_money');
             $pkg=$rec['private_package'];$doc=is_array($pkg['claimDocument'][0]??null)?$pkg['claimDocument'][0]:[];
-            $markups=[];foreach(($pkg['variants']??[]) as $v){if(!is_array($v))continue;foreach($flat($v,'transports','transport') as $t){if(($t['type']??null)!=='ttAvia')continue;foreach(($t['details']??[]) as $b){if(!is_array($b)||!is_array($b['detail']??null))continue;foreach($b['detail'] as $d){if(!is_array($d))continue;$a=$money($d['markup']??null,2);$c=$currency($d['currency']??null);if($a!==null&&$c!==null)$markups[]=['amount'=>$a,'currency'=>$c];}}}}
+            $markups=[];$markupTypes=[];$currencyTypes=[];$markupScalars=[];$currencyScalars=[];
+            foreach(($pkg['variants']??[]) as $v){if(!is_array($v))continue;foreach($flat($v,'transports','transport') as $t){if(($t['type']??null)!=='ttAvia')continue;foreach(($t['details']??[]) as $b){if(!is_array($b)||!is_array($b['detail']??null))continue;foreach($b['detail'] as $d){if(!is_array($d)||!array_key_exists('markup',$d)||!array_key_exists('currency',$d))continue;
+              $mv=$d['markup'];$cv=$d['currency'];$mt=get_debug_type($mv);$ct=get_debug_type($cv);$markupTypes[$mt]=($markupTypes[$mt]??0)+1;$currencyTypes[$ct]=($currencyTypes[$ct]??0)+1;
+              if(is_scalar($mv)){ $s=trim((string)$mv); if(strlen($s)<=32 && preg_match('/\A[-+A-Za-z0-9., _]+\z/D',$s)) $markupScalars[$s]=true; }
+              if(is_scalar($cv)){ $s=trim((string)$cv); if(strlen($s)<=32 && preg_match('/\A[-+A-Za-z0-9., _]+\z/D',$s)) $currencyScalars[$s]=true; }
+              $a=$money($mv,2);$cc=$currency($cv);if($a!==null&&$cc!==null)$markups[]=['amount'=>$a,'currency'=>$cc];
+            }}}}
+            ksort($markupTypes,SORT_STRING);ksort($currencyTypes,SORT_STRING);ksort($markupScalars,SORT_STRING);ksort($currencyScalars,SORT_STRING);
             $distinct=[];foreach($markups as $m)$distinct[$m['currency'].':'.$m['amount']]=$m;ksort($distinct,SORT_STRING);
             $rates=[];foreach($flat($doc,'moneys','money') as $m){$c=$currency($m['currency']??null);$r=$money($m['rate']??null,6);if($c===null||$r===null||!preg_match('/[1-9]/',$r))continue;$key=$c.':'.$r;$rates[$key]=['currency'=>$c,'rate'=>$r,'is_claim_currency'=>(string)($m['isClaimCurrency']??'')==='true'?true:((string)($m['isClaimCurrency']??'')==='false'?false:null)];}ksort($rates,SORT_STRING);
             $buyer=[];foreach($flat($doc,'buyerMoneys','buyerClaimMoney') as $m){$a=$money($m['net']??null,2);$c=$currency($m['currency']??null);if($a!==null&&$c!==null)$buyer[]=['amount'=>$a,'currency'=>$c];}
             $fuel=[];foreach($flat($doc,'services','service') as $s){if((string)($s['servicetype']??'')!=='8'||(string)($s['servicecategoryName']??'')!=='Топливный сбор')continue;$a=$money($s['price']??null,2);$c=$currency($s['currencyAlias']??null);$fuel[]=['money_present'=>$a!==null&&$c!==null,'amount'=>$a,'currency'=>$c];}
             $stem=substr($path,0,-strlen('-package.json'));$side=$read($stem.'-surcharge-v1.json',16384);$fact=is_array($side)?($side['fact']??null):null;
-            $records[]=['search_price'=>$search,'package_buyer_money'=>$buyer,'transport_markup_rows'=>count($markups),'transport_markup_distinct'=>array_values($distinct),'operator_currency_rates'=>array_values($rates),'fuel_services'=>$fuel,'surcharge_fact_state'=>is_array($fact)&&is_string($fact['state']??null)?$fact['state']:null];
+            $records[]=['search_price'=>$search,'package_buyer_money'=>$buyer,'transport_markup_rows'=>count($markups),'transport_markup_distinct'=>array_values($distinct),'markup_types'=>$markupTypes,'currency_types'=>$currencyTypes,'markup_scalars'=>array_keys($markupScalars),'currency_scalars'=>array_keys($currencyScalars),'operator_currency_rates'=>array_values($rates),'fuel_services'=>$fuel,'surcharge_fact_state'=>is_array($fact)&&is_string($fact['state']??null)?$fact['state']:null];
           }
           if(count($records)!==4)$fail('package_count');
           echo json_encode(['schema_version'=>1,'source'=>'andromeda-v9-package-markup-diagnosis-v1','cohort'=>['generation'=>17171829,'package_records'=>count($records)],'records'=>$records,'supplier_calls'=>0,'db_reads'=>0,'db_writes'=>0,'remote_filesystem_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'search3_publication'=>0,'production_webroot_writes'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
@@ -79,7 +86,8 @@ jobs:
           assert d['source']=='andromeda-v9-package-markup-diagnosis-v1' and d['cohort']['package_records']==4 and len(d['records'])==4
           assert d['supplier_calls']==d['db_reads']==d['db_writes']==d['remote_filesystem_writes']==d['booking_calls']==d['lead_calls']==d['search3_publication']==d['production_webroot_writes']==0
           for r in d['records']:
-              assert r['transport_markup_rows']>0 and len(r['transport_markup_distinct'])>0 and r['surcharge_fact_state']=='unknown'
+              assert r['surcharge_fact_state']=='unknown'
+              assert sum(r['markup_types'].values())>0 and sum(r['currency_types'].values())>0
           print(json.dumps(d,ensure_ascii=False,sort_keys=True))
           PY
       - name: Upload sanitized package money diagnosis
