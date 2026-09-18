@@ -1,0 +1,187 @@
+name: MATCH TV30 Turkey ANEX links v2
+
+on:
+  push:
+    branches: [ops/match-owner-tv30-turkey-anexlink-1971-20260919-v1]
+    paths: [.github/workflows/hotel-match-owner-tv30-turkey-anexlink-1971-20260919-v2.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {fetch-depth: 0, persist-credentials: false}
+
+      - name: Validate reservation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          r=json.load(open('.github/ops/match-owner-tv30-turkey-anexlink-1971-20260919-v1.json'))
+          assert r['state']=='reserved_before_provider_access'
+          assert len(r['target']['hotel_ids'])==30 and len(set(r['target']['hotel_ids']))==30
+          assert r['rules']['operator_filter'] is False and r['rules']['hotel_ids_array'] is True
+          PY
+
+      - name: Search 30 and extract fresh ANEX operatorLinks
+        id: acquire
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p terminal
+          python3 - <<'PY'
+          import json,subprocess,urllib.parse,time,pathlib,re,os
+          R=json.load(open('.github/ops/match-owner-tv30-turkey-anexlink-1971-20260919-v1.json'))
+          API='https://anytoour.ru/api-v2.php'; calls=0; CAP=120
+          ledger=pathlib.Path('terminal/ledger.ndjson')
+          def req(action,p=None,allow404=False):
+              global calls
+              if calls>=CAP: raise RuntimeError('operation_cap')
+              q=[('action',action)]
+              for k,v in (p or {}).items():
+                  if isinstance(v,list): q.extend((k,str(x)) for x in v)
+                  elif v is not None and v!='': q.append((k,str(v).lower() if isinstance(v,bool) else str(v)))
+              url=API+'?'+urllib.parse.urlencode(q); calls+=1
+              with ledger.open('a') as f:
+                  f.write(json.dumps({'call':calls,'action':action,'url':url},ensure_ascii=False)+'\n');f.flush();os.fsync(f.fileno())
+              cp=subprocess.run(['curl','--silent','--show-error','--http1.1','--compressed','--max-time','55','-A','Mozilla/5.0','-H','Accept: application/json','-w','\n%{http_code}',url],text=True,capture_output=True)
+              body,code=cp.stdout.rsplit('\n',1); code=int(code)
+              if code==404 and allow404:return {'_404':True}
+              if code<200 or code>=300: raise RuntimeError('http_'+str(code))
+              return json.loads(body)
+          def sid(x):
+              if isinstance(x,dict):
+                  for k in ('searchId','id'):
+                      if str(x.get(k,'')).isdigit() and int(x[k])>0:return int(x[k])
+                  for v in x.values():
+                      z=sid(v)
+                      if z:return z
+              elif isinstance(x,list):
+                  for v in x:
+                      z=sid(v)
+                      if z:return z
+          def complete(x):
+              if isinstance(x,dict):
+                  if isinstance(x.get('progress'),(int,float)) and x['progress']>=100:return True
+                  if str(x.get('status','')).lower() in ('complete','completed','done','ready'):return True
+                  return any(complete(v) for v in x.values() if isinstance(v,(dict,list)))
+              return isinstance(x,list) and any(complete(v) for v in x)
+          def rows(x):
+              if isinstance(x,list):return x
+              if isinstance(x,dict):
+                  for k in ('hotels','results','items'):
+                      if isinstance(x.get(k),list):return x[k]
+              return []
+          def rcount(x):
+              if isinstance(x,dict):
+                  for k in ('requestCount','requestsCount','request_count'):
+                      if str(x.get(k,'')).isdigit():return int(x[k])
+                  for v in x.values():
+                      if isinstance(v,(dict,list)):
+                          n=rcount(v)
+                          if n:return n
+              elif isinstance(x,list):
+                  for v in x:
+                      n=rcount(v)
+                      if n:return n
+              return 0
+          def merge(a,b):
+              d={}
+              for h in a+b:
+                  if not isinstance(h,dict) or not str(h.get('id','')).isdigit():continue
+                  i=int(h['id'])
+                  if i not in d:d[i]=dict(h);d[i]['tours']=list(h.get('tours') or []);continue
+                  old=d[i]['tours'];seen={str(t.get('id') or t.get('tourId')) for t in old if isinstance(t,dict)}
+                  for t in h.get('tours') or []:
+                      if not isinstance(t,dict):continue
+                      k=str(t.get('id') or t.get('tourId') or '')
+                      if k and k not in seen:seen.add(k);old.append(t)
+              return list(d.values())
+          def parse_links(detail):
+              fields=[];native=[]
+              def walk(v,k=''):
+                  if isinstance(v,dict):
+                      for a,b in v.items():walk(b,str(a))
+                  elif isinstance(v,list):
+                      for b in v:walk(b,k)
+                  elif isinstance(v,str) and ('link' in k.lower() or 'url' in k.lower()) and '://' in v:
+                      fields.append({'key':k,'url':v})
+                      try:q=urllib.parse.parse_qs(urllib.parse.urlparse(v).query)
+                      except:return
+                      for a,vals in q.items():
+                          if a.lower() in ('hotellist','hotelcode','hotel_code','hotelid','hotel_id','hotelinc','hotel'):
+                              for z in vals:
+                                  for y in re.split('[,;]',z):
+                                      if y.strip().isdigit():native.append(int(y.strip()))
+              walk(detail);return fields,sorted(set(native))
+          result={'operation':R['operation'],'state':'running','tv_calls':0,'anchors':[],'no_anex':[],'holds':[],'database_writes':0,'mapping_writes':0}
+          try:
+              t=R['target']
+              start=req('search_start',{'departureId':t['departure_id'],'countryId':t['country_id'],'dateFrom':t['date_from'],'dateTo':t['date_to'],'nightsFrom':t['nights_from'],'nightsTo':t['nights_to'],'adults':t['adults'],'currency':'RUB','onlyCharter':False,'hotelIds[]':t['hotel_ids']})
+              search_id=sid(start)
+              if not search_id:raise RuntimeError('no_search_id')
+              union=[];rounds=[]
+              for _ in range(4):
+                  time.sleep(3);st=req('search_status',{'searchId':search_id})
+                  if complete(st):break
+              union=merge(union,rows(req('search_results',{'searchId':search_id,'limit':100})))
+              pathlib.Path('terminal/partial-0.json').write_text(json.dumps(union,ensure_ascii=False,indent=2))
+              for r in range(1,13):
+                  co=req('search_continue',{'searchId':search_id});rc=rcount(co)
+                  if rc>0:
+                      for _ in range(3):
+                          time.sleep(3);st=req('search_status',{'searchId':search_id})
+                          if complete(st):break
+                  before=sum(len(h.get('tours') or []) for h in union)
+                  union=merge(union,rows(req('search_results',{'searchId':search_id,'limit':100})))
+                  after=sum(len(h.get('tours') or []) for h in union)
+                  rounds.append({'round':r,'request_count':rc,'added_tours':after-before,'hotels':len(union),'tours':after})
+                  pathlib.Path(f'terminal/partial-{r}.json').write_text(json.dumps(union,ensure_ascii=False,indent=2))
+                  if rc==0 or after==before:break
+              target=set(t['hotel_ids']); returned={int(h['id']):h for h in union if isinstance(h,dict) and str(h.get('id','')).isdigit() and int(h['id']) in target}
+              for hid in t['hotel_ids']:
+                  h=returned.get(hid)
+                  if not h:
+                      result['holds'].append({'local_id':hid,'reason':'not_returned'})
+                      continue
+                  tours=[x for x in h.get('tours') or [] if isinstance(x,dict)]
+                  anex=[x for x in tours if ((x.get('operator') or {}).get('id')==13 or 'anex' in str((x.get('operator') or {}).get('name','')).lower())]
+                  if not anex:
+                      result['no_anex'].append({'local_id':hid,'local_name':h.get('name'),'fresh_tours':len(tours)})
+                      continue
+                  tid=str(anex[0].get('id') or anex[0].get('tourId'))
+                  d=req('tour',{'tourId':tid,'currency':'RUB'},True)
+                  if d.get('_404'):
+                      result['holds'].append({'local_id':hid,'reason':'fresh_anex_detail_404','tour_id':tid});continue
+                  fields,native=parse_links(d)
+                  result['anchors'].append({'local_id':hid,'local_name':h.get('name'),'fresh_anex_tours':len(anex),'fresh_anex_tour_id':tid,'operator_link_fields':fields,'native_ids':native})
+              result.update(state='completed_read_only',search_id=search_id,returned_target_hotels=len(returned),rounds=rounds,tv_calls=calls)
+          except Exception as e:
+              result.update(state='terminal_failed_no_replay',reason=str(e),tv_calls=calls)
+          pathlib.Path('terminal/result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(result,ensure_ascii=False))
+          PY
+
+      - name: Receipt
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,hashlib
+          p=pathlib.Path('terminal/result.json')
+          if not p.exists():p.write_text('{"state":"missing"}\n')
+          raw=p.read_bytes();j=json.loads(raw);L=pathlib.Path('terminal/ledger.ndjson');n=sum(1 for _ in L.open()) if L.exists() else 0
+          pathlib.Path('terminal/receipt.json').write_text(json.dumps({'operation':'hotel-match-owner-tv30-turkey-anexlink-1971-20260919-v2','state':j.get('state'),'tv_calls':n,'provider_accessed':n>0,'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':n>0},indent=2)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv30-turkey-anexlink-v2
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
