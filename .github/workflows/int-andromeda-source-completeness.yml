@@ -35,6 +35,6 @@ jobs:
           php -l tests/andromeda-source-completeness-test.php
           php tests/andromeda-source-completeness-test.php
           php tests/andromeda-search3-page-orchestrator-test.php
-          php tests/andromeda-retained-mapping-smoke.php
+          php tests/andromeda-retained-mapping-smoke.php "$(pwd)"
           php tests/andromeda-anytour-offer-autosave-test.php
           php tests/andromeda-local-offer-collector-test.php
