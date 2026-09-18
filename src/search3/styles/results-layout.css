@@ -114,7 +114,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .v2-shell{padding:12px}
 & .results-tools{position:static;top:auto;padding:16px;margin-block:16px}
 & .results-tools>div:first-child>strong{font-size:22px}
-& #resultsSearchEdit{grid-column:1/-1}
+& #resultsSearchEdit{grid-column:1/-1;justify-self:stretch;width:100%}
 & .results-tools__actions>label{gap:0;font-size:0}
 & .search3-mobile-filter-panel:not([open]){grid-column:auto}
 & .search3-mobile-filter-panel:not([open]) span{display:none}
