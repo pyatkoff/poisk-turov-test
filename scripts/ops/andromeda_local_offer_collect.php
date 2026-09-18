@@ -53,6 +53,7 @@ $adults=$int($args['adults']??'2',1,6);
 $meal=$args['meal']??'7';
 $generation=$int($args['generation']??'17171801',1,2147483647);
 $maxCaptures=$int($args['max-captures']??'2',1,300);
+$maxCaptureSeconds=$int($args['max-capture-seconds']??'0',0,240);
 $captureMode=$args['capture-mode']??'all';
 if(!in_array($captureMode,['all','non_external_only'],true))throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_CAPTURE_MODE');
 
@@ -127,6 +128,7 @@ $autosave=static function(array $req,string $ref,int $generation)use($pdo,$saved
 };
 
 $result=AnyTourAndromedaLocalOfferCollectorV1::collect(
-    $request,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,$maxCaptures,$captureMode
+    $request,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
+    $maxCaptures,$captureMode,$maxCaptureSeconds
 );
 echo json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
