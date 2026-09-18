@@ -1,0 +1,84 @@
+name: INT read terminal ANEX mass-fill v1
+
+on:
+  push:
+    branches: ['diag/int-anex-mass-fill-v1-readback-20260918']
+    paths: ['.github/workflows/int-anex-mass-fill-v1-readback.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  readback:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read sanitized terminal state
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/out"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          ssh -T -i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 "$REMOTE_USER@$HOST" 'bash -s' > "$RUNNER_TEMP/out/result.json" <<'REMOTE'
+          set -euo pipefail
+          op="$HOME/.anytour-ops/int-anex-mass-local-fill-2506-20260918-v1"
+          test -d "$op" && test ! -L "$op"
+          state="$(head -n1 "$op/state" 2>/dev/null || true)"
+          tokens="$(python3 - "$op/error.log" <<'PY'
+          import re,sys,pathlib,json
+          p=pathlib.Path(sys.argv[1])
+          raw=p.read_text(errors='ignore')[:65536] if p.is_file() and not p.is_symlink() else ''
+          out=[]
+          for pat in [r'ANEX_[A-Z0-9_:-]{2,96}',r'(?:RuntimeException|InvalidArgumentException|DomainException|PDOException)']:
+              for x in re.findall(pat,raw):
+                  if x not in out: out.append(x)
+          print(json.dumps(out[:20]))
+          PY
+          )"
+          cd "$HOME/www/anytoour.ru"
+          counts="$(php -d display_errors=0 <<'PHP'
+          <?php
+          declare(strict_types=1);error_reporting(0);
+          require_once 'config.php';require_once (is_file('data/db-v1.php')?'data/db-v1.php':'v2/data/db-v1.php');
+          $db=v2_data_db();$db->exec('START TRANSACTION READ ONLY');
+          $one=static fn(string $q):int=>(int)$db->query($q)->fetchColumn();
+          $out=[
+            'programs'=>$one('SELECT COUNT(*) FROM anytour_anex_programs'),
+            'contexts'=>$one('SELECT COUNT(*) FROM anytour_anex_program_contexts'),
+            'apd'=>$one('SELECT COUNT(*) FROM anytour_anex_apd_rates'),
+            'anex_rows'=>$one("SELECT COUNT(*) FROM anytour_offers WHERE provider='anex'"),
+            'anex_active'=>$one("SELECT COUNT(*) FROM anytour_offers WHERE provider='anex' AND is_active=1"),
+            'anex_ready'=>$one("SELECT COUNT(*) FROM anytour_offers WHERE provider='anex' AND final_price_ready=1"),
+          ];
+          $db->rollBack();echo json_encode($out,JSON_THROW_ON_ERROR);
+          PHP
+          )"
+          python3 - "$state" "$tokens" "$counts" <<'PY'
+          import json,sys
+          print(json.dumps({
+            'ledger_state':sys.argv[1],
+            'error_tokens':json.loads(sys.argv[2]),
+            'counts':json.loads(sys.argv[3]),
+            'supplier_calls':0,'db_writes':0,'search3_publication':0
+          },sort_keys=True))
+          PY
+          REMOTE
+          cat "$RUNNER_TEMP/out/result.json"
+          python3 - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'out','result.json');d=json.load(open(p))
+          assert d['supplier_calls']==d['db_writes']==d['search3_publication']==0
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: int-anex-mass-fill-v1-readback-${{ github.run_id }}
+          path: ${{ runner.temp }}/out/result.json
+          if-no-files-found: warn
+          retention-days: 14
