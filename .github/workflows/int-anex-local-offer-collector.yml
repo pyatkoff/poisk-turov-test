@@ -1,0 +1,25 @@
+name: INT ANEX local DB collector
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/anex-local-offer-collector.php'
+      - 'scripts/ops/anex_local_offer_collect.php'
+      - 'tests/anex-local-offer-collector-test.php'
+      - '.github/workflows/int-anex-local-offer-collector.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Check collector
+        run: |
+          set -euo pipefail
+          php -l app/integrations/anex-local-offer-collector.php
+          php -l scripts/ops/anex_local_offer_collect.php
+          php -l tests/anex-local-offer-collector-test.php
+          php tests/anex-local-offer-collector-test.php
