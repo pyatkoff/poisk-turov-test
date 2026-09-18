@@ -1,0 +1,39 @@
+name: INT identify missing Andromeda seed include
+
+on:
+  push:
+    branches:
+      - 'ops/int-andromeda-local-db-seed-20260918-v1'
+    paths:
+      - '.github/workflows/int-andromeda-local-db-seed-missing-include.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15 "$remote" 'python3 -' <<'PY'
+          import pathlib,re
+          p=pathlib.Path.home()/'.anytour-ops/int-andromeda-local-db-seed-1717-20260918-v1/error.log'
+          s=p.read_text(errors='ignore')
+          req=re.search(r'require_once\(([^)]+\.php)\)',s)
+          locs=re.findall(r'in\s+([^\s]+\.php)\s+on line\s+(\d+)',s)
+          print('missing='+(pathlib.Path(req.group(1).strip("'\"")).name if req else 'unknown'))
+          for path,line in locs[-4:]:
+              print('caller='+pathlib.Path(path).name+':'+line)
+          PY
