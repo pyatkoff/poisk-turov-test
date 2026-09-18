@@ -1,0 +1,31 @@
+name: Andromeda surcharge group key check
+
+on:
+  push:
+    branches: ['feat/int-andromeda-surcharge-group-key-20260918']
+    paths:
+      - 'app/integrations/andromeda-surcharge-group-key.php'
+      - 'tests/andromeda-surcharge-group-key-test.php'
+      - '.github/workflows/andromeda-surcharge-group-key-check.yml'
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-surcharge-group-key.php'
+      - 'tests/andromeda-surcharge-group-key-test.php'
+      - '.github/workflows/andromeda-surcharge-group-key-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Syntax and contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/integrations/andromeda-surcharge-group-key.php
+          php -l tests/andromeda-surcharge-group-key-test.php
+          php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-group-key-test.php
