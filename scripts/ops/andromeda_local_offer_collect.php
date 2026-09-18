@@ -84,17 +84,24 @@ $loadCohort=static function(string $ref,int $generation)use($directory):array{
         throw new RuntimeException('ANDROMEDA_COLLECTOR_COHORT');
     $created=$first['store']['created_at']??null;
     $target=$first['store']['snapshot']['pages_count']??null;
-    if(!is_int($created)||!is_int($target)||$target<1||$target>1000)throw new RuntimeException('ANDROMEDA_COLLECTOR_COHORT');
-    $rows=[];
-    for($page=1;$page<=$target;++$page){
+    if(!is_int($created)||!is_int($target)||$target<0||$target>AnyTourAndromedaPaginationV1::MAX_PAGES)throw new RuntimeException('ANDROMEDA_COLLECTOR_COHORT');
+    $rows=[];$page=1;$currentTarget=max(1,$target);
+    while($page<=$currentTarget){
         $path=$page===1?$firstPath:$directory.'/'.$ref.'-'.$created.'-'.$page.'.json';
         if(!is_file($path)||is_link($path))throw new RuntimeException('ANDROMEDA_COLLECTOR_COHORT');
         $state=json_decode((string)file_get_contents($path),true,64,JSON_THROW_ON_ERROR);
         $snap=$state['store']['snapshot']??null;
         if(!is_array($snap)||($snap['provider']??null)!=='andromeda'||($snap['search_ref']??null)!==$ref
             ||($snap['generation']??null)!==$generation||($snap['page']??null)!==$page
-            ||!is_array($snap['offers']??null)||!array_is_list($snap['offers']))throw new RuntimeException('ANDROMEDA_COLLECTOR_COHORT');
+            ||!is_array($snap['offers']??null)||!array_is_list($snap['offers'])
+            ||!is_array($snap['rejected']??null)||!array_is_list($snap['rejected']))throw new RuntimeException('ANDROMEDA_COLLECTOR_COHORT');
+        $decision=AnyTourAndromedaPaginationV1::nextTarget(
+            $page,(int)$snap['pages_count'],count($snap['offers']),(string)($state['status']??''),
+            count($snap['rejected']),$currentTarget
+        );
+        if(($decision['terminal']??false)===true)break;
         foreach($snap['offers'] as $offer)$rows[]=['page'=>$page,'offer'=>$offer];
+        $currentTarget=$decision['target'];++$page;
     }
     return $rows;
 };

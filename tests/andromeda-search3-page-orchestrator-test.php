@@ -35,6 +35,32 @@ pagination_need($result['received_offers']===3&&$result['mapped_offers']===3,'co
 pagination_need($result['external_search_pending']===false,'not_pending_after_complete_drain');
 pagination_need($result['selection_enabled']===false,'selection_unchanged');
 
+// Real SAMO EOF shape: earlier pages advertise more pages, then an empty complete
+// page resets PAGES_COUNT to 0. Stop there and expose only actual data pages.
+$calls=[];
+$terminal=anytour_andromeda_search3_run_pages(['generation'=>7,'params'=>[]],static function(array $request)use(&$calls):array{
+    $calls[]=$request;
+    return match($request['page']){
+        1=>pagination_page(1,5,[['local_id'=>20,'name'=>'C','tours'=>[pagination_offer('d',130)]]],'terminal-ref',7,'partial'),
+        2=>pagination_page(2,5,[['local_id'=>21,'name'=>'D','tours'=>[pagination_offer('e',140)]]],'terminal-ref',7,'partial'),
+        3=>pagination_page(3,0,[],'terminal-ref',7,'complete'),
+        default=>throw new RuntimeException('unexpected_supplier_page'),
+    };
+});
+pagination_need(array_column($calls,'page')===[1,2,3],'terminal_empty_stops_future_pages');
+pagination_need($terminal['page']===2&&$terminal['pages_count']===2&&$terminal['status']==='complete','terminal_empty_actual_range');
+pagination_need(count($terminal['hotels'])===2&&$terminal['received_offers']===2,'terminal_empty_keeps_data_pages');
+
+$failed=false;
+try{
+    anytour_andromeda_search3_run_pages(['generation'=>7,'params'=>[]],static function(array $request):array{
+        return $request['page']===1
+            ? pagination_page(1,3,[],'bad-zero-ref',7,'partial')
+            : pagination_page(2,0,[['local_id'=>22,'name'=>'E','tours'=>[pagination_offer('f',150)]]],'bad-zero-ref',7,'complete');
+    });
+}catch(RuntimeException $e){$failed=$e->getMessage()==='andromeda_pages_invalid';}
+pagination_need($failed,'nonempty_zero_pages_count_rejected');
+
 $calls=[];
 $single=anytour_andromeda_search3_run_pages(['generation'=>7,'page'=>2,'params'=>[]],static function(array $request)use(&$calls):array{$calls[]=$request;return pagination_page(2,2,[]);});
 pagination_need(array_column($calls,'page')===[2]&&$single['page']===2,'explicit_continuation_preserved');

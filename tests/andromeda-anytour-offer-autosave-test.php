@@ -181,6 +181,37 @@ try {
     aassert($again['reason'] === 'already_published' && count($ingests) === 1, 'identical cohort republished');
 } finally { cleanup_dir($dir); }
 
+// Real SAMO EOF: advertised page count may later terminate with an empty complete
+// page whose pages_count resets to zero. Preceding data pages form the complete cohort.
+$dir = temp_searches();
+try {
+    $ref = hash('sha256', 'terminal-empty-eof'); $created = time() - 30; $ingests = [];
+    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 5, $created, [normalized_offer('eof1')]));
+    write_state($dir, $ref, $created, 2, state($ref, 1, 2, 5, $created, [normalized_offer('eof2', 'Интурист', 102, '101')]));
+    $terminal = state($ref, 1, 3, 0, $created, []);
+    $terminal['status'] = 'complete';
+    write_state($dir, $ref, $created, 3, $terminal);
+    [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
+    $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+        new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
+    aassert($result['published'] === true, 'terminal empty cohort not published');
+    aassert(count($ingests) === 1 && count($ingests[0]['rows']) === 2, 'terminal empty data pages lost');
+} finally { cleanup_dir($dir); }
+
+// A zero pages_count page with offers is not EOF and must fail closed.
+$dir = temp_searches();
+try {
+    $ref = hash('sha256', 'invalid-zero-nonempty'); $created = time() - 30; $ingests = [];
+    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 3, $created, [normalized_offer('badzero1')]));
+    $bad = state($ref, 1, 2, 0, $created, [normalized_offer('badzero2', 'Интурист', 102, '101')]);
+    $bad['status'] = 'complete';
+    write_state($dir, $ref, $created, 2, $bad);
+    [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
+    $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+        new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
+    aassert($result['published'] === false && $result['reason'] === 'cohort_invalid' && $ingests === [], 'nonempty zero page accepted');
+} finally { cleanup_dir($dir); }
+
 // Missing advertised page blocks publication.
 $dir = temp_searches();
 try {

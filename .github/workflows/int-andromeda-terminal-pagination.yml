@@ -1,0 +1,37 @@
+name: INT Andromeda terminal pagination
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-pagination.php'
+      - 'v2/api-andromeda-search3-preview.php'
+      - 'app/integrations/andromeda-anytour-offer-autosave.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
+      - 'tests/andromeda-pagination-contract-test.php'
+      - 'tests/andromeda-search3-page-orchestrator-test.php'
+      - 'tests/andromeda-anytour-offer-autosave-test.php'
+      - '.github/workflows/int-andromeda-terminal-pagination.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Verify terminal-empty EOF contract
+        run: |
+          set -euo pipefail
+          php -l app/integrations/andromeda-pagination.php
+          php -l v2/api-andromeda-search3-preview.php
+          php -l app/integrations/andromeda-anytour-offer-autosave.php
+          php -l scripts/ops/andromeda_local_offer_collect.php
+          php -l tests/andromeda-pagination-contract-test.php
+          php tests/andromeda-pagination-contract-test.php
+          php tests/andromeda-search3-page-orchestrator-test.php "$(pwd)"
+          php tests/andromeda-anytour-offer-autosave-test.php
+          php tests/andromeda-local-offer-collector-test.php

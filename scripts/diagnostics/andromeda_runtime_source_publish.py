@@ -17,6 +17,7 @@ import sys
 # The two package-only files retain their reviewed historical source, not a fallback.
 SOURCE_ORIGINS = {
     'app/integrations/andromeda-client.php': 'current',
+    'app/integrations/andromeda-pagination.php': 'current',
     'app/integrations/andromeda-package-capture.php': 'package',
     'app/integrations/andromeda-selected-offer.php': 'package',
     'app/integrations/andromeda-transport.php': 'current',
