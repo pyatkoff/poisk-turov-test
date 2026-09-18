@@ -1,0 +1,145 @@
+name: INT diagnose sealed Andromeda v9 retained state
+
+on:
+  push:
+    branches: ['ops/int-andromeda-v9-retained-diagnosis-20260918-v1']
+    paths: ['.github/workflows/int-andromeda-v9-retained-diagnosis-v1.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/int-andromeda-v9-retained-diagnosis-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read sealed v9 ledger and retained cohort only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"
+          ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          ssh -T -i "$RUNNER_TEMP/ssh/key" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null \
+            -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 \
+            "$REMOTE_USER@$HOST" 'php -d display_errors=0 -d log_errors=0' \
+            > "$RUNNER_TEMP/result/result.json" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          error_reporting(0);
+          $fail=static function(string $reason):never{fwrite(STDERR,"DIAG_FAIL ".preg_replace('/[^A-Za-z0-9_.:-]+/','_',$reason)."\n");exit(2);};
+          $read=static function(string $path,int $max=3000000):?array{
+              if(is_link($path)||!is_file($path))return null;
+              $size=filesize($path);if(!is_int($size)||$size<2||$size>$max)return null;
+              try{$v=json_decode((string)file_get_contents($path),true,64,JSON_THROW_ON_ERROR);return is_array($v)?$v:null;}
+              catch(Throwable){return null;}
+          };
+          $bump=static function(array &$bucket,string $key):void{$bucket[$key]=($bucket[$key]??0)+1;};
+          $home=rtrim((string)getenv('HOME'),'/');if($home==='')$fail('home');
+          $ledger=$home.'/.anytour-ops/int-andromeda-local-db-seed-1717-20260918-v9';
+          if(!is_dir($ledger)||is_link($ledger))$fail('ledger_missing');
+          $ledgerState=is_file($ledger.'/state')?trim((string)file_get_contents($ledger.'/state')):'missing';
+          if(!preg_match('/\A[a-z0-9_]{1,64}\z/D',$ledgerState))$ledgerState='invalid';
+          $receipt=$read($ledger.'/receipt.json',65536);
+          $errorRaw=is_file($ledger.'/error.log')&&!is_link($ledger.'/error.log')?(string)file_get_contents($ledger.'/error.log'):'';
+          $errorBytes=strlen($errorRaw);$errorTokens=[];
+          preg_match_all('/\bANDROMEDA_[A-Z0-9_]{2,96}\b/D',$errorRaw,$m);
+          foreach(array_unique($m[0]??[]) as $token){$errorTokens[]=$token;}sort($errorTokens,SORT_STRING);
+
+          $dir=$home.'/.anytoour-andromeda/searches';if(!is_dir($dir)||is_link($dir))$fail('search_dir');
+          $latest=null;$files=0;
+          foreach(new DirectoryIterator($dir) as $entry){
+              if($entry->isDot())continue;if(++$files>100000)$fail('inventory');
+              if($entry->isLink()||!$entry->isFile()||!preg_match('/\A([a-f0-9]{64})-1\.json\z/D',$entry->getFilename(),$m))continue;
+              $state=$read($entry->getPathname());$store=is_array($state)?($state['store']??null):null;$criteria=is_array($state)?($state['criteria']??null):null;
+              if(!is_array($store)||!is_array($criteria)||!is_int($store['created_at']??null)||!is_int($state['generation']??null))continue;
+              if((string)($criteria['CHECKIN_BEG']??'')!=='20261017'||(string)($criteria['CHECKIN_END']??'')!=='20261017'
+                ||(string)($criteria['NIGHTS_FROM']??'')!=='7'||(string)($criteria['NIGHTS_TILL']??'')!=='7'
+                ||(string)($criteria['ADULT']??'')!=='2'||(string)($criteria['CHILD']??'')!=='0')continue;
+              if(($state['generation']??null)!==17171829)continue;
+              if($latest===null||$store['created_at']>$latest['created'])$latest=['ref'=>$m[1],'created'=>$store['created_at'],'generation'=>$state['generation']];
+          }
+          if($latest===null)$fail('cohort_not_found');
+          $ref=$latest['ref'];$created=$latest['created'];$generation=$latest['generation'];
+          $pages=[];$reasonCounts=[];$accepted=0;$rejected=0;$candidateFiles=[];
+          foreach(new DirectoryIterator($dir) as $entry){
+              if($entry->isDot()||$entry->isLink()||!$entry->isFile())continue;$name=$entry->getFilename();
+              if($name===$ref.'-1.json'){$candidateFiles[1]=$entry->getPathname();continue;}
+              if(preg_match('/\A'.preg_quote($ref,'/').'-'.preg_quote((string)$created,'/').'-(\d+)\.json\z/D',$name,$m))$candidateFiles[(int)$m[1]]=$entry->getPathname();
+          }
+          ksort($candidateFiles,SORT_NUMERIC);
+          foreach($candidateFiles as $page=>$path){
+              $state=$read($path);$snap=is_array($state)?($state['store']['snapshot']??null):null;
+              if(!is_array($state)||!is_array($snap)||($state['generation']??null)!==$generation||($snap['search_ref']??null)!==$ref
+                ||($snap['generation']??null)!==$generation||($snap['page']??null)!==$page||!is_array($snap['offers']??null)||!array_is_list($snap['offers'])
+                ||!is_array($snap['rejected']??null)||!array_is_list($snap['rejected']))continue;
+              $pc=count($snap['offers']);$rc=count($snap['rejected']);$accepted+=$pc;$rejected+=$rc;$pageReasons=[];
+              foreach($snap['rejected'] as $row){$reason=is_array($row)&&is_string($row['reason']??null)?$row['reason']:'INVALID_REJECTION';
+                  if(!preg_match('/\A[A-Z0-9_]{1,64}\z/D',$reason))$reason='INVALID_REJECTION';$bump($reasonCounts,$reason);$bump($pageReasons,$reason);}
+              ksort($pageReasons,SORT_STRING);$pages[]=['page'=>$page,'status'=>$state['status']??null,'advertised_pages'=>$snap['pages_count']??null,'accepted'=>$pc,'rejected'=>$rc,'reasons'=>$pageReasons];
+          }
+          ksort($reasonCounts,SORT_STRING);
+
+          $side=['package_attempt_status'=>[],'package_attempt_failure_class'=>[],'package_record_status'=>[],'surcharge_status'=>[],
+            'surcharge_fact_state'=>[],'surcharge_fact_arithmetic'=>[],'surcharge_fact_markup_present'=>[],'surcharge_fact_party_present'=>[],
+            'surcharge_fact_total_present'=>[],'surcharge_fact_rate_count'=>[],'autosave_checkpoint'=>false];
+          $prefix=$ref.'-'.$created.'-';
+          foreach(new DirectoryIterator($dir) as $entry){
+              if($entry->isDot()||$entry->isLink()||!$entry->isFile())continue;$name=$entry->getFilename();
+              if(!str_starts_with($name,$prefix))continue;$row=$read($entry->getPathname(),65536);if(!is_array($row))continue;
+              if(str_ends_with($name,'-package-attempt-v2.json')){$state=$row['state']??null;if(is_array($state)){
+                  $s=is_string($state['status']??null)?$state['status']:'invalid';$f=is_string($state['failure_class']??null)?$state['failure_class']:'invalid';$bump($side['package_attempt_status'],$s);$bump($side['package_attempt_failure_class'],$f);}}
+              elseif(str_ends_with($name,'-package.json')){$record=$row['record']??null;$s=is_array($record)&&is_string($record['status']??null)?$record['status']:'invalid';$bump($side['package_record_status'],$s);}
+              elseif(str_ends_with($name,'-surcharge-v1.json')){
+                  $s=is_string($row['status']??null)?$row['status']:'invalid';$bump($side['surcharge_status'],$s);$fact=$row['fact']??null;if(!is_array($fact))continue;
+                  $state=is_string($fact['state']??null)?$fact['state']:'invalid';$bump($side['surcharge_fact_state'],$state);
+                  $bump($side['surcharge_fact_arithmetic'],($fact['arithmetic_applied']??null)===true?'true':(($fact['arithmetic_applied']??null)===false?'false':'invalid'));
+                  $markup=is_array($fact['transport_markup_reported']??null)?$fact['transport_markup_reported']:null;$party=is_array($fact['party_surcharge']??null)?$fact['party_surcharge']:null;$total=is_array($fact['search_price_with_surcharge']??null)?$fact['search_price_with_surcharge']:null;
+                  $bump($side['surcharge_fact_markup_present'],$markup===null?'false':'true');$bump($side['surcharge_fact_party_present'],$party===null?'false':'true');$bump($side['surcharge_fact_total_present'],$total===null?'false':'true');
+                  $rates=is_array($fact['operator_currency_rates_reported']??null)?$fact['operator_currency_rates_reported']:[];$bump($side['surcharge_fact_rate_count'],(string)count($rates));
+              }
+          }
+          foreach($side as &$v)if(is_array($v))ksort($v,SORT_STRING);unset($v);
+          $checkpoint=$read($dir.'/'.$ref.'-'.$created.'-anytour-offer-autosave-v1.json',65536);$side['autosave_checkpoint']=is_array($checkpoint);
+
+          $root=$home.'/www/anytoour.ru';$dbFile=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';if(!is_file($dbFile)||is_link($dbFile))$fail('db_runtime');
+          require_once $dbFile;if(!function_exists('v2_data_db'))$fail('db_helper');$db=v2_data_db();if(!$db instanceof PDO)$fail('db');$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $scalar=static function(PDO $db,string $sql):int{$q=$db->query($sql);return (int)$q->fetchColumn();};
+          $dbCounts=['andromeda_rows'=>$scalar($db,"SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda'"),'andromeda_active'=>$scalar($db,"SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND is_active=1"),'andromeda_ready'=>$scalar($db,"SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND final_price_ready=1")];
+          echo json_encode(['schema_version'=>1,'source'=>'andromeda-v9-retained-diagnosis-v1','ledger'=>['state'=>$ledgerState,'receipt_status'=>$receipt['status']??null,'error_bytes'=>$errorBytes,'error_tokens'=>$errorTokens],
+              'cohort'=>['created_at'=>$created,'generation'=>$generation,'page_files'=>count($pages),'accepted_offers'=>$accepted,'rejected_rows'=>$rejected,'rejected_reasons'=>$reasonCounts,'pages'=>$pages],
+              'sidecars'=>$side,'database'=>$dbCounts,'supplier_calls'=>0,'filesystem_writes'=>0,'db_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'search3_publication'=>0,'production_webroot_writes'=>0],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)."\n";
+          PHP
+          test -s "$RUNNER_TEMP/result/result.json"
+          python3 - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'result','result.json');d=json.load(open(p,encoding='utf-8'))
+          assert d['source']=='andromeda-v9-retained-diagnosis-v1' and d['schema_version']==1
+          assert d['supplier_calls']==d['filesystem_writes']==d['db_writes']==d['booking_calls']==d['lead_calls']==d['search3_publication']==d['production_webroot_writes']==0
+          assert d['ledger']['state']=='failed_terminal_no_replay' and d['ledger']['receipt_status']=='failed_terminal_no_replay'
+          c=d['cohort'];assert c['generation']==17171829 and c['accepted_offers']>0 and c['page_files']>=1
+          print('ledger='+json.dumps(d['ledger'],sort_keys=True));print('cohort='+json.dumps({k:c[k] for k in ['generation','page_files','accepted_offers','rejected_rows','rejected_reasons']},sort_keys=True));print('sidecars='+json.dumps(d['sidecars'],sort_keys=True));print('database='+json.dumps(d['database'],sort_keys=True))
+          PY
+
+      - name: Upload sanitized diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-andromeda-v9-retained-diagnosis-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/result.json
+          if-no-files-found: warn
+          retention-days: 14
