@@ -62,7 +62,9 @@ final class AnyTourAndromedaSurchargeCacheAutosaveV1
                 $request,
                 $now
             );
-            if ($fact === null) return null;
+            if ($fact === null || ($fact['final_price_verified'] ?? null) !== false) return null;
+            // Make the non-final cache boundary explicit in the returned fact as well.
+            $fact = array_replace($fact, ['final_price_verified' => false]);
             return ['state' => 'estimated', 'fact' => $fact, 'verified_quote' => null];
         } catch (Throwable $ignored) {
             return null;
