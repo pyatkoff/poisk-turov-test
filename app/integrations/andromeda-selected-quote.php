@@ -67,6 +67,33 @@ final class AnyTourAndromedaSelectedQuote
     }
 
     /**
+     * Continue a captured supplier package that explicitly declares non-external
+     * freight. No flight discovery/selection is allowed here: supplier calc is the
+     * only authority for the verified customer total.
+     */
+    public static function continueWithoutExternalFlights(
+        array $resolved,
+        array $claim,
+        AnyTourAndromedaClaimActions $actions
+    ): array {
+        if (!isset($resolved['offer']) || !is_array($resolved['offer'])) {
+            throw new InvalidArgumentException('ANDROMEDA_QUOTE_SELECTION_INVALID');
+        }
+        $doc = self::document($claim);
+        if (($doc['condition'] ?? null) !== 'ccOffer') {
+            throw new RuntimeException('ANDROMEDA_QUOTE_NOT_OFFER');
+        }
+        $external = $doc['freightExternal'] ?? null;
+        if (is_string($external) && preg_match('/^0$/D', $external) === 1) $external = 0;
+        if ($external !== 0) {
+            throw new RuntimeException('ANDROMEDA_NONEXTERNAL_PACKAGE_REQUIRED');
+        }
+        $packagePrice = self::touristPrice($claim);
+        $selectedFlights = self::selectedFlights($claim);
+        return self::finalize($resolved, $claim, $packagePrice, null, $selectedFlights, $actions);
+    }
+
+    /**
      * Continue an already retained post-get_flights claim after the browser chooses
      * exactly one outbound and one return. This method cannot call package/get_flights.
      */
