@@ -23,6 +23,17 @@ const reports = [];
 async function run(engine, width, height) {
   const browser = await ({ chromium, webkit }[engine]).launch();
   const context = await browser.newContext({ viewport: { width, height }, serviceWorkers: 'block' });
+  await context.addInitScript(() => {
+    const property = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'hidden');
+    window.hotelTabRailTrace = [];
+    Object.defineProperty(HTMLElement.prototype, 'hidden', {
+      ...property,
+      set(value) {
+        if (this.classList.contains('results-filter-rail')) window.hotelTabRailTrace.push({ value, stack: new Error().stack });
+        property.set.call(this, value);
+      }
+    });
+  });
   const calls = [], failures = [], errors = [];
   const scenarioQuery = new URLSearchParams(query);
   if (width === 390) {
@@ -171,6 +182,7 @@ async function run(engine, width, height) {
     reports.push({ engine, width, height, sourceSha, passed: true, searchStarts: 1, detailTabs: 3, directReload: true, expiredManualRecovery: true, exactOffer: exact });
   } catch (error) {
     for (const [index, current] of context.pages().entries()) {
+      fs.writeFileSync(path.join(output, `${engine}-${width}-failure-${index}-layout.json`), JSON.stringify(await current.evaluate(() => ({ rail: document.querySelector('.results-filter-rail')?.outerHTML, trace: window.hotelTabRailTrace })), null, 2));
       await current.screenshot({ path: path.join(output, `${engine}-${width}-failure-${index}.png`), fullPage: true }).catch(() => {});
       fs.writeFileSync(path.join(output, `${engine}-${width}-failure-${index}.html`), await current.content().catch(() => ''));
     }
