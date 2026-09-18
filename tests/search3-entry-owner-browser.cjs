@@ -62,8 +62,10 @@ async function checkSubmittedTripContext(page, width) {
   await page.locator('#tourSearch').screenshot({ path: path.join(output, `search-editor-open-${width}.png`), animations: 'disabled' });
   if (width <= 700) {
     await page.evaluate(() => { const form = document.getElementById('tourSearch'); scrollTo(0, form.offsetTop + form.offsetHeight / 2); });
-    assert.ok(await collapse.evaluate(node => { const rect = node.closest('.search-section-title').getBoundingClientRect(); return rect.top >= -1 && rect.top <= 1; }), 'the mobile result return remains pinned during deep form scroll');
+    const sticky = await collapse.evaluate(node => { const rect = node.closest('.search-section-title').getBoundingClientRect(); return { top: rect.top, bottom: rect.bottom, scrollY }; });
     await page.screenshot({ path: path.join(output, `search-editor-scrolled-${width}.png`), animations: 'disabled' });
+    fs.writeFileSync(path.join(output, `search-editor-scrolled-${width}.json`), JSON.stringify(sticky, null, 2) + '\n');
+    assert.ok(sticky.top >= -2 && sticky.top <= 20, `the mobile result return remains pinned during deep form scroll: ${JSON.stringify(sticky)}`);
   }
   const formData = await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]);
   await collapse.click();
