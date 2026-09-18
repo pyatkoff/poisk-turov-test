@@ -1,0 +1,254 @@
+name: MATCH common4 live full-drain v5
+
+on:
+  push:
+    branches:
+      - ops/match-common4-live-1971-20260918-v5
+    paths:
+      - .github/workflows/hotel-match-tv-samo-common4-live-v5.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: match-common4-live-1971-20260918-v5
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-tv-samo-common4-full-drain-1971-20260918-v5
+  EXPECTED_BASE: d6a490ea55977cffbf346b84e6c5132eb4c5f36c
+  CLAIM_COMMENT_ID: '5727819598'
+
+jobs:
+  live:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/match-common4-live-1971-20260918-v5'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact v5 delta and owner order
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v5.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-tv-samo-common4-live-v5.yml'
+
+          php -l scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php
+          php -l scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v1.php
+          php -l scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v5.php
+          php scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v1.php --self-test
+          php scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v5.php --self-test
+
+          grep -F "OWNER ORDER: establish the date from SAMO + direct ANEX first. No Tourvisor call before this block completes."             scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v5.php
+          grep -F "date_authority'=>'direct_anex_resort_plus_samo_hotel_scoped'"             scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v5.php
+
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json, os
+          c=json.load(open('claim.json'))
+          assert c['user']['id'] == 226193297
+          assert c['author_association'] == 'OWNER'
+          b=c['body']
+          assert os.environ['OPERATION_ID'] in b
+          PY
+
+      - name: Create durable reservation before provider access
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          deps=[
+            'scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v5.php',
+            'scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v1.php',
+            'scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php',
+            'app/integrations/andromeda-client.php',
+            'app/integrations/andromeda-transport.php',
+            'app/integrations/andromeda-network-transport-failure.php',
+            'v2/data/tourvisor-client-v1.php',
+          ]
+          r={
+            'operation':os.environ['OPERATION_ID'],
+            'state':'reserved_before_provider_access',
+            'ops_head':os.environ['HEAD_SHA'],
+            'date_authority':'direct_anex_plus_samo',
+            'tourvisor_date_source':False,
+            'route':'Moscow->Turkey/Antalya',
+            'nights':7,'adults':2,'children':0,'stars':[3,4,5],
+            'dependencies':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in deps},
+            'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_writes':0,'metrika_writes':0,
+            'no_replay_after_provider_access':True,
+          }
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-common4-live-v5-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Require credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANDROMEDA_USERNAME_VALUE: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD_VALUE: ${{ secrets.ANDROMEDA_PASSWORD }}
+          ANEX_API_TOKEN_VALUE: ${{ secrets.ANEX_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          test -n "$HOST_VALUE"
+          test -n "$USER_VALUE"
+          test -n "$ANDROMEDA_USERNAME_VALUE"
+          test -n "$ANDROMEDA_PASSWORD_VALUE"
+          test -n "$ANEX_API_TOKEN_VALUE"
+
+      - name: Stage exact read-only v5 payload
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytour-operations\"; test ! -e \"\$HOME/$op\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+          scp "${opts[@]}"             reservation/reservation.json             scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v5.php             scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v1.php             scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php             app/integrations/anex-client.php             app/integrations/andromeda-client.php             app/integrations/andromeda-transport.php             app/integrations/andromeda-network-transport-failure.php             v2/data/tourvisor-client-v1.php             "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\"; chmod 600 \"\$HOME/$op/reservation.json\" \"\$HOME/$op/payload/\"*"
+
+      - name: Run ANEX plus SAMO date first, then TV full drain
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANDROMEDA_USERNAME_VALUE: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD_VALUE: ${{ secrets.ANDROMEDA_PASSWORD }}
+          ANEX_API_TOKEN_VALUE: ${{ secrets.ANEX_API_TOKEN }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          printf '%s\n%s\n%s\n' "$ANDROMEDA_USERNAME_VALUE" "$ANDROMEDA_PASSWORD_VALUE" "$ANEX_API_TOKEN_VALUE" |             ssh "${opts[@]}" "$remote"               "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$op/payload/hotel_match_tv_samo_common4_full_drain_v5.php\" --execute"               > terminal/remote-stdout.txt 2> terminal/remote-stderr.txt
+          rc=$?
+          ssh "${opts[@]}" "$remote"             "p=\"\$HOME/$op\"; test -f \"\$p/reservation.json\"; test -f \"\$p/result.json\"; test -f \"\$p/receipt.json\"; tar -C \"\$p\" -czf - reservation.json result.json receipt.json"             > terminal/server-operation.tgz 2>>terminal/remote-stderr.txt
+          trc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          printf '%s\n' "$trc" > terminal/tar-exit.txt
+
+      - name: Verify terminal receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('terminal'); server=p/'server'; server.mkdir(exist_ok=True)
+          a=p/'server-operation.tgz'
+          if not a.exists() or a.stat().st_size==0: raise SystemExit('missing terminal server operation archive')
+          with tarfile.open(a,'r:gz') as t:
+            names=sorted(t.getnames()); assert names==['receipt.json','reservation.json','result.json'],names
+            for m in t.getmembers():
+              assert m.isfile() and m.size<25_000_000
+              (server/m.name).write_bytes(t.extractfile(m).read())
+          assert pathlib.Path('reservation/reservation.json').read_bytes()==(server/'reservation.json').read_bytes()
+          result=json.loads((server/'result.json').read_text()); receipt=json.loads((server/'receipt.json').read_text())
+          digest=hashlib.sha256((server/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['readback_verified'] is True
+          assert receipt['database_writes']==0 and receipt['mapping_writes']==0 and receipt['no_replay'] is True
+          if result['state']!='completed_read_only':
+            print(json.dumps({'state':result['state'],'reason':result.get('reason'),'result_sha256':digest,'no_replay':result.get('no_replay')},sort_keys=True))
+            raise SystemExit(2)
+          assert result['date_authority']=='direct_anex_resort_plus_samo_hotel_scoped'
+          assert result['andromeda_calls'] <= 1000
+          assert result['anex_calls'] <= 120
+          d=result['date_discovery']
+          assert d['authority']=='direct_anex_resort_plus_samo_hotel_scoped'
+          assert d['anex_resort_hotel_count']>0
+          assert d['anex_resort_town_ids']
+          assert d['direct_anex_proof']['matched_offer_count']>0
+          assert d['proven_native_anex_hotel_ids']
+          assert d['proven_andromeda_hotel_ids']
+          assert result['samo_resort_scope_hotel_ids']
+          for data in result['stars'].values():
+            assert data['tourvisor']['fully_drained'] is True
+            s=data['andromeda']
+            assert s['termination'] in ['first_page_zero_empty','pages_count_zero_empty','advertised_pages_complete']
+            if s['termination']=='advertised_pages_complete':
+              assert s['pages_count']>0 and s['pages_drained']==s['pages_count']
+            elif s['termination']=='first_page_zero_empty':
+              assert s['pages_count']==0 and s['pages_drained']==0 and s['pages_requested']==1
+            else:
+              assert s['pages_count']>0 and s['pages_requested']==s['pages_drained']+1
+              assert s['page_meta'][-1]['terminal_empty'] is True
+          summary={
+            'state':result['state'],'route':result['route'],'date_authority':result['date_authority'],
+            'date_discovery':result['date_discovery'],'anex_calls':result['anex_calls'],'tv_calls':result['tv_calls'],
+            'andromeda_calls':result['andromeda_calls'],'tourvisor_detail_calls':result['tourvisor_detail_calls'],
+            'stars':{star:{
+              'tv_evidence_rows':d['tourvisor']['evidence_rows'],
+              'samo_evidence_rows':d['andromeda']['evidence_rows'],
+              'hotel_candidates':d['resolver']['hotel_candidate_count'],
+              'room_candidates':d['resolver']['room_candidate_count'],
+              'samo_pages':d['andromeda']['pages_drained'],
+              'samo_pages_requested':d['andromeda']['pages_requested'],
+              'samo_termination':d['andromeda']['termination'],
+              'tv_continue_rounds':max(0,len(d['tourvisor']['continue_rounds'])-1),
+            } for star,d in result['stars'].items()},
+            'result_sha256':digest,'no_replay':True,
+          }
+          pathlib.Path('terminal/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-common4-live-v5-result-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
