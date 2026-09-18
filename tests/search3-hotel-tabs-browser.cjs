@@ -77,7 +77,10 @@ async function run(engine, width, height) {
     if (width < 1025) await page.locator('.search3-mobile-filter-panel > summary').click();
     await page.getByRole('searchbox', { name: /Название отеля/ }).fill('Проверочный');
     if (width < 1025) await page.locator('.search3-mobile-filter-panel > summary').click();
-    await page.locator('.hotel-card').first().getByRole('button', { name: 'Поменять главное фото, миниатюра 2' }).click();
+    const firstPhoto = page.locator('.hotel-card').first().locator('.hotel-gallery-main');
+    const previousPhoto = await firstPhoto.getAttribute('src');
+    await page.locator('.hotel-card').first().getByRole('button', { name: 'Поменять главное фото, миниатюра 1' }).click();
+    assert.notEqual(await firstPhoto.getAttribute('src'), previousPhoto, 'gallery really switches the main photo');
     await page.locator('.hotel-card').first().locator('.hotel-details > summary').click();
     const state = () => page.evaluate(() => ({ url: location.href, scroll: scrollY, filter: document.querySelector('input[placeholder="Введите название"]')?.value, sort: document.querySelector('#sortResults').value, photo: document.querySelector('.hotel-card .hotel-photo img')?.src, open: document.querySelector('.hotel-card .hotel-details')?.open, ids: [...document.querySelectorAll('.hotel-card')].map(n => n.dataset.hotelId) }));
     const children = [];
@@ -112,6 +115,7 @@ async function run(engine, width, height) {
     assert.equal(await child.locator('.direct-tour').count(), 4, 'all exact offers remain reachable');
     await child.locator('.search3-shortlist-toggle').first().click();
     const saved = await child.locator('.search3-shortlist-toggle').first().getAttribute('aria-pressed');
+    assert.equal(saved, 'true', 'exact offer is actually saved before testing Back');
     const exact = await child.locator('.direct-tour').first().getAttribute('data-tid');
     await child.locator('.direct-tour').first().click();
     await child.waitForSelector('#selectedTour .flight-variant');
@@ -146,6 +150,13 @@ async function run(engine, width, height) {
     assert.deepEqual(failures, [], 'no lead/booking/unknown writes');
     assert.deepEqual(errors, [], 'no browser exceptions');
     reports.push({ engine, width, height, sourceSha, passed: true, searchStarts: 1, detailTabs: 3, directReload: true, expiredManualRecovery: true, exactOffer: exact });
+  } catch (error) {
+    for (const [index, current] of context.pages().entries()) {
+      await current.screenshot({ path: path.join(output, `${engine}-${width}-failure-${index}.png`), fullPage: true }).catch(() => {});
+      fs.writeFileSync(path.join(output, `${engine}-${width}-failure-${index}.html`), await current.content().catch(() => ''));
+    }
+    fs.writeFileSync(path.join(output, `${engine}-${width}-failure.json`), JSON.stringify({ error: String(error), errors, calls: calls.map(({ page: _, ...call }) => call) }, null, 2));
+    throw error;
   } finally { await browser.close(); }
 }
 (async () => {

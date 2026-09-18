@@ -459,11 +459,11 @@ jobs:
           php_pid=$!
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
-          if [ "${{ steps.results-current.outputs.required }}" = "true" ] || [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
-            node tests/search3-current-results-browser.cjs
-          fi
           if [ "${{ steps.results-geometry.outputs.hotel-tabs }}" = "true" ]; then
             node tests/search3-hotel-tabs-browser.cjs
+          fi
+          if [ "${{ steps.results-current.outputs.required }}" = "true" ] || [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
+            node tests/search3-current-results-browser.cjs
           fi
           if [ "${{ steps.results-shortlist.outputs.required }}" = "true" ] || { [ "${{ steps.results-geometry.outputs.required }}" = "true" ] && [ "${{ steps.presentation-scope.outputs.card-only }}" != "true" ]; }; then
             node tests/search3-shortlist-browser.cjs
