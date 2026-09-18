@@ -10,9 +10,12 @@ declare(strict_types=1);
  */
 function anytour_andromeda_capture_saved_package(string $directory, array $context,
     string $source, callable $mappingAllows, callable $transport, bool $enabled = false,
-    ?callable $clock = null, bool $withSurcharge = false, ?callable $flightRequest = null): array
+    ?callable $clock = null, bool $withSurcharge = false, ?callable $flightRequest = null,
+    array $operatorConfig = []): array
 {
     if (!$enabled || PHP_SAPI !== 'cli') throw new RuntimeException('ANDROMEDA_PACKAGE_DISABLED');
+    require_once __DIR__ . '/andromeda-operator-config.php';
+    [$operatorLogin, $operatorPassword] = anytour_andromeda_operator_credentials_from_config($operatorConfig);
     require_once __DIR__ . '/andromeda-package-capture.php';
     require_once __DIR__ . '/andromeda-package-attempt-state.php';
     if ($withSurcharge) {
@@ -137,7 +140,7 @@ function anytour_andromeda_capture_saved_package(string $directory, array $conte
                     }
                     throw $error;
                 }
-            }, true, true);
+            }, true, true, $operatorLogin, $operatorPassword);
             $client->restorePrivateSession($auth['session'] ?? []);
             try {
                 $result = $capture->capture($store, $client, $context);
@@ -210,7 +213,7 @@ function anytour_andromeda_capture_selected_package(array $config, array $catalo
             && anytour_andromeda_search3_mapping_allows($pdo, $country, $offer);
     };
     return anytour_andromeda_capture_saved_package(dirname($catalogPath) . '/searches',
-        $context, $source, $allows, $transport, true, $clock, $withSurcharge, $flightRequest);
+        $context, $source, $allows, $transport, true, $clock, $withSurcharge, $flightRequest, $config);
 }
 
 /** Internal to the opt-in capture owner; its existing exclusive search lock is held. */
