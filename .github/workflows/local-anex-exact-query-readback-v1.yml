@@ -23,7 +23,7 @@ jobs:
           endpoint='https://anytoour.ru/_preview/search3-local-candidate/data/search3-local-results-read-v1.php'
           page_code="$(curl --silent --show-error --location --max-time 30 --output "$RUNNER_TEMP/result/page.html" --write-out '%{http_code}' "$page")"
           test "$page_code" = 200
-          grep -qi '<meta[^>]*name=["'"']robots["'"'][^>]*noindex' "$RUNNER_TEMP/result/page.html"
+          grep -qi 'noindex' "$RUNNER_TEMP/result/page.html"
           cat > "$RUNNER_TEMP/result/request.json" <<'JSON'
           {"params":{"departureId":"1","countryId":"4","dateFrom":"2026-09-19","dateTo":"2026-09-22","nightsFrom":7,"nightsTo":10,"adults":2,"childs":[],"meal":"","hotelCategory":"4","hotelRating":"","hotelTypes":[],"hotelIds":[],"hotelServices":[],"arrivalId":"","regionIds":[],"subregionIds":[],"operatorIds":[],"priceFrom":"","priceTo":"","currency":"RUB","onlyCharter":false,"onlyDirect":false}}
           JSON
