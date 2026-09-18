@@ -56,8 +56,9 @@ async function checkSubmittedTripContext(page, width) {
   assert.equal(await context.isVisible(), false, 'the existing editor replaces the compact context without duplicate controls');
   const collapse = page.locator('.search-editor-collapse');
   assert.equal(await collapse.isVisible(), true, 'populated editor exposes a close action at the start of the form');
-  assert.equal(await collapse.innerText(), 'Свернуть параметры');
+  assert.equal(await collapse.innerText(), 'К результатам');
   assert.ok(await collapse.evaluate(node => node.getBoundingClientRect().height >= 44), 'the close action remains a mobile touch target');
+  assert.ok(await page.locator('#tourSearch > .search-section-title').evaluate(node => node.getBoundingClientRect().height <= 60), 'the form heading and result return action stay in one compact row');
   await page.locator('#tourSearch').screenshot({ path: path.join(output, `search-editor-open-${width}.png`), animations: 'disabled' });
   const formData = await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]);
   await collapse.click();
