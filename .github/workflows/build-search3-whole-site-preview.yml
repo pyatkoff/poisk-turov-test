@@ -29,6 +29,8 @@ on:
       - 'tests/search3-entry-geometry-browser.cjs'
       - 'tests/search3-calendar-readability.cjs'
       - 'tests/search3-current-results-browser.cjs'
+      - 'tests/search3-hotel-tabs.cjs'
+      - 'tests/search3-hotel-tabs-browser.cjs'
       - 'tests/search3-shortlist-browser.cjs'
       - 'scripts/build/search3_site_preview_isolation.py'
       - '.github/workflows/build-search3-whole-site-preview.yml'
@@ -76,6 +78,7 @@ jobs:
           php tests/seo-price-calendar-ui-smoke.php
           php tests/offer-freshness-smoke.php
           node tests/home-search-loading-handoff.cjs
+          node tests/search3-hotel-tabs.cjs
           python3 -B scripts/build/search3_assets.py --check
           node scripts/build/search3-js/shared-runtime.cjs --check
           php tests/search3-shared-runtime-smoke.php
@@ -328,6 +331,10 @@ jobs:
           if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/styles/entry-native-controls.css tests/search3-entry-geometry-browser.cjs; then
             echo "native-date=true" >> "$GITHUB_OUTPUT"
           fi
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/search-lifecycle-v6.js v2/results-renderer-v5.js tests/search3-hotel-tabs.cjs tests/search3-hotel-tabs-browser.cjs; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            echo "hotel-tabs=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Detect entry behavior owner changes
         id: entry-owner
@@ -346,7 +353,7 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/search3-geometry-tools" --no-audit --no-fund --no-save playwright@1.55.0
           "$RUNNER_TEMP/search3-geometry-tools/node_modules/.bin/playwright" install --with-deps chromium
-          if [ "${{ steps.results-geometry.outputs.native-date }}" = "true" ]; then
+          if [ "${{ steps.results-geometry.outputs.native-date }}" = "true" ] || [ "${{ steps.results-geometry.outputs.hotel-tabs }}" = "true" ]; then
             "$RUNNER_TEMP/search3-geometry-tools/node_modules/.bin/playwright" install --with-deps webkit
           fi
 
@@ -452,6 +459,9 @@ jobs:
           php_pid=$!
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
+          if [ "${{ steps.results-geometry.outputs.hotel-tabs }}" = "true" ]; then
+            node tests/search3-hotel-tabs-browser.cjs
+          fi
           if [ "${{ steps.results-current.outputs.required }}" = "true" ] || [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
             node tests/search3-current-results-browser.cjs
           fi
