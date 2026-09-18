@@ -46,6 +46,7 @@ jobs:
           ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
           remote="$SSH_USER@$SSH_HOST"
           opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" 'p="$HOME/.anytour-match/provider-quotas/anex-$(date -u +%F).json"; if [ -f "$p" ]; then cat "$p"; else printf "%s\n" "{}"; fi' > terminal/anex-quota.json
           ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" > terminal/state.tar.gz <<'REMOTE'
           set -euo pipefail
           op="$1"; p="$HOME/.anytour-match/operations/$op"
@@ -72,6 +73,8 @@ jobs:
                   except Exception: out[name.replace('.json','')+'_sha256']=hashlib.sha256(f.read_bytes()).hexdigest()
           if (d/'result.json').exists():
               out['result_sha256']=hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+          try: out['quota']=json.loads((p/'anex-quota.json').read_text())
+          except Exception: out['quota']={}
           (p/'summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
           print(json.dumps(out,ensure_ascii=False,sort_keys=True))
           PY
