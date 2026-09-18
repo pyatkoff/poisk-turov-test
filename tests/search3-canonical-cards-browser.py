@@ -57,7 +57,7 @@ CONTROLLER=(PAYLOAD/'tour-controller-v4.js').read_text()
 LIFECYCLE=(PAYLOAD/'search-lifecycle-v6.js').read_text()
 PROVIDER=(PAYLOAD/'andromeda-provider-v1.js').read_text()
 OUT=Path(os.environ.get('SEARCH3_EVIDENCE_DIR',str(ROOT/'canonical-card-evidence')));OUT.mkdir(parents=True,exist_ok=True)
-HTML='''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'''+CSS+'''</style></head><body class="search3-candidate"><main class="v2-shell"><p>Компонентный тест · вымышленные отели и предложения</p><form id="tourSearch" hidden></form><section id="status" class="status" hidden></section><section id="resultsTools" class="results-tools results-tools--ds2"><div><strong>Предложения</strong><span id="resultSummary">Актуальные варианты</span></div><div class="results-tools__actions"><button type="button" id="resultsSearchEdit">Изменить поиск</button><label>Сортировка <select id="sortResults"><option value="price">По цене</option><option value="rating">По рейтингу</option></select></label></div></section><div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results" aria-busy="false"></section></div><section id="selectedTour" class="selected-tour" hidden tabindex="-1"></section></main></body></html>'''
+HTML='''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'''+CSS+'''</style></head><body class="search3-candidate"><main class="v2-shell"><p>Компонентный тест · вымышленные отели и предложения</p><form id="tourSearch" hidden></form><section id="status" class="status" hidden></section><section id="resultsTools" class="results-tools results-tools--ds2"><div><span id="resultSummary">Актуальные варианты</span><p id="resultsTripContext" class="search3-trip-context" aria-label="Параметры поиска" hidden><strong data-search3-trip-route></strong><span data-search3-trip-details></span></p></div><div class="results-tools__actions"><button type="button" id="resultsSearchEdit">Изменить поиск</button><label>Сортировка <select id="sortResults"><option value="price">По цене</option><option value="rating">По рейтингу</option></select></label></div></section><div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results" aria-busy="false"></section></div><section id="selectedTour" class="selected-tour" hidden tabindex="-1"></section></main></body></html>'''
 
 def boot(browser,path='/_preview/search3-local-candidate/poisk-turov/',width=1440,original=False):
     context=browser.new_context(viewport={'width':width,'height':980},device_scale_factor=1)
@@ -143,7 +143,7 @@ with sync_playwright() as p:
         check(page.evaluate('__requests.length')==1,f'{width}: sort/expand/gallery do not refetch or call supplier')
         c.close()
 
-    for width in [375,768,1440]:
+    for width in [375,430,768,1440]:
         c,page,errors=boot(browser,width=width)
         page.add_script_tag(content=FILTER)
         page.evaluate("delete window.__projected;")
@@ -152,7 +152,25 @@ with sync_playwright() as p:
             h['tours'][0]['meal']={'name':meal};h['tours'][0]['price']=price;h['price']=price
         render(page,items);resolve(page,0,{102:1,106:1,108:2})
         check(page.locator('.hotel-card').count()==2,f'{width}: real filters receive two own groups')
-        if width==375:
+        if width<=600:
+            # The component fixture mirrors the current native Search3 header.
+            # Inject only submitted trip text here; real form/URL ownership is
+            # covered by the existing served-route native-entry browser tier.
+            page.evaluate('''()=>{
+                const context=document.getElementById('resultsTripContext');
+                context.hidden=false;
+                context.querySelector('strong').textContent='Москва → Турция';
+                context.querySelector('span').textContent='Вылет 19.09.2026 — 02.10.2026 · 7–10 ночей · 2 взрослых';
+            }''')
+            density=page.locator('#resultsTools').evaluate('''node=>{
+                const style=getComputedStyle(node),count=node.querySelector('#resultSummary'),context=node.querySelector('.search3-trip-context');
+                return{height:node.getBoundingClientRect().height,padding:style.paddingTop,gap:style.rowGap,countFont:getComputedStyle(count).fontSize,context:context.innerText,clipped:[count,...context.children].some(el=>el.scrollWidth>el.clientWidth+1||el.scrollHeight>el.clientHeight+1)};
+            }''')
+            check(density['padding']=='12px' and density['gap']=='10px',f'{width}: mobile header removes excess framing space')
+            check(density['countFont']=='14px' and density['height']<=254,f'{width}: secondary count and trip context fit a compact readable header')
+            check('7–10 ночей · 2 взрослых' in density['context'] and not density['clipped'],f'{width}: dates nights and party remain complete without clipping')
+            (OUT/f'canonical-toolbar-density-{width}.json').write_text(json.dumps(density,ensure_ascii=False,indent=2))
+            page.locator('#resultsTools').screenshot(path=str(OUT/f'canonical-toolbar-context-{width}.png'))
             toolbar=page.locator('.results-tools__actions')
             compact=toolbar.evaluate('''node=>{
                 const box=selector=>{const r=node.querySelector(selector).getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};};
@@ -165,15 +183,24 @@ with sync_playwright() as p:
             check(compact['sort']['height']>=44 and compact['summary']['height']>=44,f'{width}: compact mobile toolbar keeps touch targets')
             check(not compact['countVisible'],f'{width}: closed filter count does not crowd the compact action')
             check(page.locator('#sortResults option:checked').inner_text()=='По цене',f'{width}: compact mobile sort uses an unclipped price label')
-            toolbar.screenshot(path=str(OUT/'canonical-toolbar-375.png'))
+            check(compact['edit']['height']>=44,f'{width}: full-width edit action keeps its touch target')
+            toolbar.screenshot(path=str(OUT/f'canonical-toolbar-{width}.png'))
+            page.evaluate('''()=>{
+                document.querySelector('[data-search3-trip-route]').textContent='Санкт-Петербург → Объединённые Арабские Эмираты';
+                document.querySelector('[data-search3-trip-details]').textContent='Вылет 19.09.2026 — 02.10.2026 · 7–10 ночей · 2 взрослых · 3 ребёнка (0, 7, 17 лет)';
+            }''')
+            check(page.locator('#resultsTripContext').is_visible() and '17 лет' in page.locator('#resultsTripContext').inner_text(),f'{width}: long family context stays fully available')
+            check(not page.evaluate('document.documentElement.scrollWidth>innerWidth+1'),f'{width}: long destination and family do not overflow')
+            page.locator('#resultsTools').screenshot(path=str(OUT/f'canonical-toolbar-family-{width}.png'))
         if width<1025: page.locator('.search3-mobile-filter-panel > summary').click()
-        if width==375:
+        if width<=600:
             opened=page.locator('.results-tools__actions').evaluate('''node=>{
                 const r=node.getBoundingClientRect(),panel=node.querySelector('.search3-mobile-filter-panel').getBoundingClientRect(),count=node.querySelector('.search3-mobile-filter-panel summary span');
                 return{width:r.width,panelWidth:panel.width,countVisible:getComputedStyle(count).display!=='none'};
             }''')
             check(abs(opened['panelWidth']-opened['width'])<2,f'{width}: open filters restore full toolbar width')
             check(opened['countVisible'],f'{width}: open filters retain their useful matching count')
+            page.locator('#resultsTools').screenshot(path=str(OUT/f'canonical-toolbar-open-{width}.png'))
         meal=page.locator('.search3-meal-filter select')
         # Selectors follow the actual exact-label controls, not a test-only filtering function.
         if meal.count()==0: meal=page.locator('select').filter(has=page.locator('option[value="meal:label:ai"]'))
@@ -323,7 +350,7 @@ with sync_playwright() as p:
         check(out[0]==out[1],f'isolation: byte-identical legacy DOM {path}')
     browser.close()
 result={'status':'offline_component_verified','checks':len(RESULTS),'passed':sum(x['pass'] for x in RESULTS),'checks_detail':RESULTS,
-        'baseline_source_sha':'7482c62f2e6b6cb3d7f202441281868d500652d9','tested_source_sha':os.environ.get('GITHUB_SHA','local-uncommitted'),'browser':'Chromium about:blank; location dependency is a fixture','widths':[375,768,1440],'css_files':CSS_FILES,'css_scope':'actual search3 bundle scope and presentation order','filter_integration':'component tests use spy; integrated cases use actual filter/controller/lifecycle with fixture transport' ,'operator_logos':'unaltered artifact files, embedded offline',
+        'baseline_source_sha':'7482c62f2e6b6cb3d7f202441281868d500652d9','tested_source_sha':os.environ.get('GITHUB_SHA','local-uncommitted'),'browser':'Chromium about:blank; location dependency is a fixture','widths':[375,430,768,1440],'css_files':CSS_FILES,'css_scope':'actual search3 bundle scope and presentation order','filter_integration':'component tests use spy; integrated cases use actual filter/controller/lifecycle with fixture transport' ,'operator_logos':'unaltered artifact files, embedded offline',
         'real_supplier_requests':0,'real_leads':0,'live_site_acceptance':False,'actual_SQL':False,'hosted_CI':os.environ.get('GITHUB_ACTIONS')=='true',
         'renderer_sha256':hashlib.sha256((PAYLOAD/'results-renderer-v5.js').read_bytes()).hexdigest(),'profile_module_sha256':hashlib.sha256((PAYLOAD/'search3-canonical-profiles-v1.js').read_bytes()).hexdigest()}
 (OUT/'browser-results.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))

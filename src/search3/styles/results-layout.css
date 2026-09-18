@@ -13,7 +13,6 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .v2-shell{max-width:1120px;margin:auto;padding:20px;padding-bottom:clamp(28px,5vw,64px);font:16px/1.5 Arial,sans-serif}
 & .results-tools:not([hidden]){display:grid;gap:14px}
 & .results-tools>div:first-child{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 16px}
-& .results-tools>div:first-child>strong{font-size:24px;line-height:1.2;letter-spacing:-.025em}
 & .results-tools__actions{display:grid;grid-template-columns:1fr 1fr;align-items:end;gap:12px}
 & :is(.results-tools__actions>label,.search3-mobile-filter-panel__body>label,.search3-meal-filter>label,.search3-category-filter>label){display:grid;gap:5px;color:#526078;font-size:13px;line-height:1.5;font-weight:600}
 & :is(.results-tools__actions,.search3-mobile-filter-panel__body) :is(input,select){width:100%;min-height:46px;padding:10px 12px;font-size:16px;font-weight:400;background:var(--at-soft,#f5f8ff)}
@@ -112,8 +111,9 @@ margin:0;background:#f5f7fb;color:#17233b;
 &.search3-selected-open :is(#tourSearch,.results-tools,.results-layout){display:none!important}
 @media(max-width:600px){
 & .v2-shell{padding:12px}
-& .results-tools{position:static;top:auto;padding:16px;margin-block:16px}
-& .results-tools>div:first-child>strong{font-size:22px}
+& .results-tools:not([hidden]){position:static;top:auto;padding:12px;margin-block:12px;gap:10px}
+& #resultSummary{font-size:14px;line-height:1.4}
+& .results-tools__actions{gap:8px}
 & #resultsSearchEdit{grid-column:1/-1;justify-self:stretch;width:100%}
 & .results-tools__actions>label{gap:0;font-size:0}
 & #sortResults{font-size:16px}
