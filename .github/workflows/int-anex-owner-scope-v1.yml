@@ -138,7 +138,7 @@ jobs:
 
       - name: Preserve combined fill receipt
         if: always()
-        uses: actions/upload-artifact@owner scope v1
+        uses: actions/upload-artifact@v4
         with:
           name: int-anex-charter-regular-owner scope v1-${{ github.run_id }}
           path: ${{ runner.temp }}/result/receipt.json
