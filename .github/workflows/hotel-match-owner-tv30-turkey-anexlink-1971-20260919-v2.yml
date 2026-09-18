@@ -2,7 +2,7 @@ name: MATCH TV30 Turkey ANEX links v2
 
 on:
   push:
-    branches: [ops/match-owner-tv30-turkey-anexlink-1971-20260919-v1]
+    branches: [ops/match-owner-tv30-turkey-anexlink-1971-20260919-v2]
     paths: [.github/workflows/hotel-match-owner-tv30-turkey-anexlink-1971-20260919-v2.yml]
 
 permissions:
