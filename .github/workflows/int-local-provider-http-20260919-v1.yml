@@ -1,0 +1,93 @@
+name: INT local provider HTTP acceptance 20260919 v1
+on:
+  push:
+    branches: ['ops/int-local-provider-http-2506-20260919-v1']
+    paths: ['.github/workflows/int-local-provider-http-20260919-v1.yml']
+permissions:
+  contents: read
+jobs:
+  read-only:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/int-local-provider-http-2506-20260919-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Three fixed read-only local DB HTTP requests
+        run: |
+          python3 - <<'PY'
+          import collections, datetime, hashlib, json, os, pathlib, urllib.request, urllib.error
+          endpoint='https://anytoour.ru/_preview/search3-local-candidate/data/search3-local-results-read-v1.php'
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          opener=urllib.request.build_opener(NoRedirect)
+          base={'departureId':'1','countryId':'4','dateFrom':'2026-09-18','dateTo':'2026-09-24',
+                'nightsFrom':7,'nightsTo':10,'adults':2,'childs':[],'meal':'','hotelCategory':'','hotelRating':'',
+                'hotelTypes':[],'hotelIds':[],'hotelServices':[],'arrivalId':'','regionIds':[],'subregionIds':[],
+                'operatorIds':[],'priceFrom':'','priceTo':'','currency':'RUB','onlyCharter':False,'onlyDirect':False}
+          cases=[('owner_broad',{}),('reported_4star',{'dateFrom':'2026-09-19','dateTo':'2026-09-22','hotelCategory':'4'}),
+                 ('samo_saved_scope',{'dateFrom':'2026-10-30','dateTo':'2026-10-30','nightsTo':7,'meal':'7'})]
+          result={'operation_id':'int-local-provider-http-2506-1717-20260919-v1','observed_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                  'cases':[],'supplier_calls':0,'db_writes':0,'search3_publication':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          for name,delta in cases:
+              params={**base,**delta};out={'case':name,'params':params}
+              request=urllib.request.Request(endpoint,data=json.dumps({'params':params}).encode(),method='POST',
+                  headers={'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3','Accept':'application/json'})
+              try:
+                  with opener.open(request,timeout=40) as response:
+                      out['http_status']=response.status
+                      raw=response.read(16777217)
+                  if len(raw)>16777216: raise ValueError('response_limit')
+                  out['response_sha256']=hashlib.sha256(raw).hexdigest()
+                  payload=json.loads(raw);data=payload.get('data')
+                  if payload.get('ok') is not True or not isinstance(data,dict): raise ValueError('invalid_envelope')
+                  if data.get('source')!='anytour-db-first-results-v1' or data.get('selectionAuthority') is not False: raise ValueError('authority')
+                  counts=collections.Counter();states=collections.Counter();samples={};seen=set();duplicates=0
+                  hotels=data.get('hotels')
+                  if not isinstance(hotels,list): raise ValueError('hotels')
+                  for group in hotels:
+                      profile=group.get('hotel') or {}
+                      for row in group.get('offers',[]):
+                          provider=row.get('provider');listing=row.get('listing') or {};tour=listing.get('tour') or {};identity=listing.get('identity') or {}
+                          if provider not in ('anex','andromeda','tourvisor'): raise ValueError('provider')
+                          if listing.get('booking_enabled') is not False or listing.get('selection_state')!='refresh_required': raise ValueError('listing_authority')
+                          if listing.get('currency')!='RUB' or row.get('currency')!='RUB': raise ValueError('currency')
+                          counts[provider]+=1;state=listing.get('listingPriceState','legacy_ready')
+                          states[provider+':'+state]+=1
+                          key=(provider,identity.get('offer_ref_digest'))
+                          if key[1] and key in seen: duplicates+=1
+                          seen.add(key)
+                          sample_key=provider+':'+state
+                          if sample_key not in samples:
+                              samples[sample_key]={'provider':provider,'listing_price_state':state,'anytour_hotel_id':group.get('anytourHotelId'),
+                                  'hotel_name':str(profile.get('name',''))[:180],'checkin':tour.get('checkin'),'nights':tour.get('nights'),
+                                  'price':row.get('price'),'final_price_ready':listing.get('finalPriceReady'),
+                                  'final_price_verified':listing.get('final_price_verified'),'expires_at':row.get('expiresAt')}
+                  announced=data.get('providerOfferCounts') or {}
+                  if not isinstance(announced,dict) or dict(counts)!=announced or sum(counts.values())!=data.get('offerCount') or len(hotels)!=data.get('hotelCount'):
+                      raise ValueError('count_integrity')
+                  out.update({'ok':True,'match_mode':data.get('matchMode'),'hotel_count':len(hotels),'offer_count':sum(counts.values()),
+                      'stored_offer_count':data.get('storedOfferCount'),'withheld_offer_count':data.get('withheldOfferCount'),
+                      'source_scope_count':len(data.get('sourceScopeDigests',[])),'provider_counts':dict(counts),'price_state_counts':dict(states),
+                      'duplicate_offer_refs':duplicates,'samples':list(samples.values())})
+              except urllib.error.HTTPError as error:
+                  out.update({'ok':False,'http_status':error.code,'error_class':'http_error'})
+              except Exception as error:
+                  out.update({'ok':False,'error_class':type(error).__name__})
+              result['cases'].append(out)
+              print(json.dumps(out,ensure_ascii=False,sort_keys=True),flush=True)
+          directory=pathlib.Path(os.environ['RUNNER_TEMP'])/'int-http-result';directory.mkdir(exist_ok=True)
+          (directory/'result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          if not all(case.get('ok') for case in result['cases']): raise SystemExit('Read-only HTTP acceptance incomplete; do not replay')
+          PY
+      - name: Retain sanitized acceptance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-local-provider-http-${{ github.run_id }}
+          path: ${{ runner.temp }}/int-http-result/result.json
+          retention-days: 14
+          if-no-files-found: error
