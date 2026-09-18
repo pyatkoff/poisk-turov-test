@@ -104,6 +104,9 @@ $batchRunner=static function(array $req,array &$collectorState)use($resolver,$me
 $result=AnyTourAnexLocalOfferCollectorV1::collect(
     $request,$state,$searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch
 );
+if(function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
+    $result['snapshot_finalize']=anytour_anex_anytour_offer_autosave_finalize_runtime($state);
+}
 $result['search_client_instances']=$searchRequests;
 $result['apd_client_instances']=$apdRequests;
 $result['search_budget']=$searchBudget;
