@@ -3,9 +3,11 @@ name: Andromeda AnyTour offer autosave
 on:
   pull_request:
     paths:
+      - 'app/integrations/andromeda-normalizer.php'
       - 'app/integrations/andromeda-anytour-offer-autosave.php'
       - 'app/integrations/three-provider-money-facts.php'
       - 'v2/api-andromeda-search3-preview.php'
+      - 'tests/andromeda-party-criteria-fallback-test.php'
       - 'tests/andromeda-anytour-offer-autosave-test.php'
       - 'tests/three-provider-money-facts-test.php'
       - 'tests/three-provider-final-price-readiness-test.php'
@@ -27,10 +29,13 @@ jobs:
       - name: Lint and focused contract
         run: |
           set -euo pipefail
+          php -l app/integrations/andromeda-normalizer.php
           php -l app/integrations/three-provider-money-facts.php
           php -l app/integrations/andromeda-anytour-offer-autosave.php
           php -l v2/api-andromeda-search3-preview.php
+          php -l tests/andromeda-party-criteria-fallback-test.php
           php -l tests/andromeda-anytour-offer-autosave-test.php
+          php tests/andromeda-party-criteria-fallback-test.php
           php tests/andromeda-anytour-offer-autosave-test.php
       - name: Verify supplier-free persistence boundary
         run: |
