@@ -258,3 +258,259 @@ class Search3HalfSizeResetTest(unittest.TestCase):
             source = (ROOT / 'v2' / name).read_bytes()
             if name == 'tour-controller-v4.js':
                 # Reviewed canonical hotel presentation only. Reverse every exact
+                # display insertion before the existing business/transport digest.
+                # The supplier tour and lead source remain byte-for-byte protected.
+                canonical_fragments = (
+                    (",selectedHotelProfile=null", ""),
+                    ("// Capture presentation from the admitted exact offer, never from supplier hotel IDs.\n"
+                     "function canonicalSelectedHotel(tid){\n"
+                     " const owner=window.Search3CanonicalProfilesV1&&window.Search3CanonicalProfilesV1.current();\n"
+                     " if(!owner)return null;\n"
+                     " const items=window.V2Results&&window.V2Results.state&&window.V2Results.state.items||[],matches=items.filter(h=>Array.isArray(h.tours)&&h.tours.some(t=>String(t&&t.id||'')===String(tid)));\n"
+                     " return matches.length===1?owner.details(matches[0])||{}:{};\n"
+                     "}\n", ""),
+                    ("h=selectedHotelProfile||t.hotel||{}", "h=t.hotel||{}"),
+                    ("desc=clean(selectedHotelProfile?selectedHotelProfile.description:t.hotelDescription)", "desc=clean(t.hotelDescription)"),
+                    ("pic=selectedHotelProfile?selectedHotelProfile.primaryImage||'':t.picture||h.picturelink||''", "pic=t.picture||h.picturelink||''"),
+                    ("h.name||(selectedHotelProfile?'Отель':t.name||'Тур')", "h.name||t.name||'Тур'"),
+                    ("alt=\"'+esc(selectedHotelProfile&&h.name?'Фото отеля '+h.name:'')+'\"", 'alt=""'),
+                    ("selectedHotelProfile=canonicalSelectedHotel(tid);", ""),
+                    ("selectedHotelProfile=canonicalSelectedHotel(currentTour.id);", ""),
+                    (";selectedHotelProfile=null;", ";"),
+                )
+                for reviewed, original in canonical_fragments:
+                    self.assertEqual(source.count(reviewed.encode()), 1, 'one canonical selected hotel display seam')
+                    source = source.replace(reviewed.encode(), original.encode(), 1)
+                # Reviewed provider receipt handoff only. Reverse the exact
+                # Andromeda selection seam before applying the older display
+                # reversals and comparing the frozen Tourvisor controller.
+                transition_source = b"function available(node){return!!(node&&document.contains(node)&&!node.disabled&&!node.hidden&&node.getAttribute('aria-hidden')!=='true');}\nfunction usable(node){return available(node)&&(typeof node.getClientRects!=='function'||node.getClientRects().length>0);}\nfunction sourceUsable(node){return usable(node)||(document.body.classList.contains('search3-selected-open')&&available(node));}"
+                original_usable = b"function usable(node){if(!(node&&document.contains(node)&&!node.disabled))return false;if(node.hidden||node.getAttribute('aria-hidden')==='true')return false;return typeof node.getClientRects!=='function'||node.getClientRects().length>0;}"
+                self.assertEqual(source.count(transition_source), 1, 'one selected-to-results transition availability seam')
+                source = source.replace(transition_source, original_usable, 1)
+                current_source = b"function currentSource(){if(sourceUsable(sourceButton))return sourceButton;if(!sourceTourId)return null;for(const selector of ['.direct-tour','[data-andromeda-select]'])for(const button of document.querySelectorAll(selector)){if(String(button.dataset&&button.dataset.tid||'')===sourceTourId&&sourceUsable(button)){sourceButton=button;return button;}}const renderer=window.V2Results,revealed=renderer&&typeof renderer.revealOfferAlternatives==='function'?renderer.revealOfferAlternatives(sourceTourId):null;if(sourceUsable(revealed)){sourceButton=revealed;return revealed;}return null;}"
+                original_source = b"function currentSource(){if(usable(sourceButton))return sourceButton;if(!sourceTourId)return null;for(const button of document.querySelectorAll('.direct-tour')){if(String(button.dataset&&button.dataset.tid||'')===sourceTourId&&usable(button)){sourceButton=button;return button;}}const renderer=window.V2Results,revealed=renderer&&typeof renderer.revealOfferAlternatives==='function'?renderer.revealOfferAlternatives(sourceTourId):null;if(usable(revealed)){sourceButton=revealed;return revealed;}return null;}"
+                self.assertEqual(source.count(current_source), 1, 'one provider-aware result return lookup')
+                source = source.replace(current_source, original_source, 1)
+                provider_class = ",f.plane,f.className?'класс '+f.className:''".encode()
+                self.assertEqual(source.count(provider_class), 1, 'one provider flight class display')
+                source = source.replace(provider_class, b',f.plane', 1)
+                lead_start = source.index(b'function leadSectionHtml(t){')
+                tour_start = source.index(b'function tourHtml(t,tid){', lead_start)
+                self.assertGreater(tour_start, lead_start, 'provider lead guard precedes the canonical tour renderer')
+                source = source[:lead_start] + source[tour_start:]
+                lead_form = ('<form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер получит выбранный тур и рейс</span></div>'
+                             '<div class="lead-fields"><label>Имя<input name="name" maxlength="120" autocomplete="name"></label><label>Телефон<input name="phone" type="tel" required maxlength="40" autocomplete="tel" placeholder="+7 999 123-45-67"></label></div>'
+                             '<label>Комментарий<textarea name="comment" maxlength="1000" rows="3" placeholder="Необязательно"></textarea></label>\'+consentHtml()+\'<button type="submit" class="primary">Отправить заявку</button><p class="lead-message" aria-live="polite"></p></form>').encode()
+                provider_lead_call = b'</div>\'+leadSectionHtml(t);}'
+                self.assertEqual(source.count(provider_lead_call), 1, 'one provider-aware lead handoff')
+                source = source.replace(provider_lead_call, b'</div>' + lead_form + b"';}", 1)
+                helper_start = source.index(b'function providerMoment(value){')
+                select_start = source.index(b'async function selectTour(tid,button){', helper_start)
+                self.assertGreater(select_start, helper_start, 'provider receipt helpers precede the protected Tourvisor selector')
+                source = source[:helper_start] + source[select_start:]
+                provider_export = b'window.V2TourController={selectTour,selectProviderQuote,get currentTour(){return currentTour;},version:4};'
+                original_export = b'window.V2TourController={selectTour,get currentTour(){return currentTour;},version:4};'
+                self.assertEqual(source.count(provider_export), 1, 'one canonical provider selection entry')
+                source = source.replace(provider_export, original_export, 1)
+                # Reviewed Search3-only selected history seam. The canonical
+                # lifecycle remains the only real popstate owner; the controller
+                # owns only its retained selected DOM and return focus.
+                history_header = b",selectedHistoryActive=false;\nconst selectedHistoryKey='anytourSearch3SelectedTour';"
+                self.assertEqual(source.count(history_header), 1, 'one selected history state owner')
+                source = source.replace(history_header, b';', 1)
+                settled_focus = b'requestAnimationFrame(()=>window.setTimeout(()=>{'
+                self.assertEqual(source.count(settled_focus), 1, 'one history-traversal focus settling seam')
+                source = source.replace(settled_focus, b'requestAnimationFrame(()=>{', 1)
+                settled_focus_close = b'}},80));emit(\'tour-returned\''
+                self.assertEqual(source.count(settled_focus_close), 1, 'one history-traversal focus settling close')
+                source = source.replace(settled_focus_close, b'}});emit(\'tour-returned\'', 1)
+                history_helpers_start = source.index(b'function historyTourId(state){')
+                history_helpers_end = source.index(b'function mealName(t){', history_helpers_start)
+                self.assertGreater(history_helpers_end, history_helpers_start, 'selected history helpers remain bounded before display helpers')
+                source = source[:history_helpers_start] + source[history_helpers_end:]
+                reviewed_history_entry = b'rememberSelectedHistory(tid);'
+                self.assertEqual(source.count(reviewed_history_entry), 1, 'one protected Tourvisor selected history entry')
+                source = source.replace(reviewed_history_entry, b'', 1)
+                self.assertEqual(source.count(b'returnFromSelected(root)'), 2, 'two selected return actions traverse the selected history entry')
+                source = source.replace(b'returnFromSelected(root)', b'returnToResults(root)')
+                history_listener = b"window.addEventListener('v2:search-history-pop',e=>{const root=selected(),requested=historyTourId(e&&e.detail&&e.detail.state);if(requested){selectedHistoryActive=true;restoreSelected(root);return;}if(!selectedHistoryActive)return;selectedHistoryActive=false;if(root&&!root.hidden)returnToResults(root);});\n"
+                self.assertEqual(source.count(history_listener), 1, 'one controller listener for lifecycle-owned same-query history')
+                source = source.replace(history_listener, b'', 1)
+                self.assertEqual(source.count(b"window.addEventListener('v2:search-reset',()=>{clearSelectedHistory();leadDraft=null;"), 1)
+                source = source.replace(b"window.addEventListener('v2:search-reset',()=>{clearSelectedHistory();leadDraft=null;", b"window.addEventListener('v2:search-reset',()=>{leadDraft=null;", 1)
+                # Reviewed selected placement display only. The result renderer
+                # carries its canonical label through the existing action while
+                # the detail object and lead payload retain their raw values.
+                placement_fragments = (
+                    (b",selectedPlacementLabel=''", b''),
+                    (b"placement=displayText(selectedPlacementLabel)||displayText(t.placement)", b"placement=displayText(t.placement)"),
+                    (b"selectedPlacementLabel=String(button&&button.dataset&&button.dataset.placementLabel||'').trim();", b''),
+                    (b" data-placement-label=\"'+esc(selectedPlacementLabel)+'\"", b''),
+                    (b"currentTour=null;selectedPlacementLabel='';flightVariants=[]", b"currentTour=null;flightVariants=[]"),
+                )
+                for reviewed, original in placement_fragments:
+                    self.assertEqual(source.count(reviewed), 1, 'one selected placement display seam')
+                    source = source.replace(reviewed, original, 1)
+                # Reviewed offer handoff and in-memory editor draft only.
+                self.assertEqual(source.count("window.addEventListener('v2:search-reset',()=>{leadDraft=null;tourGeneration++;".encode()), 1)
+                source = source.replace("window.addEventListener('v2:search-reset',()=>{leadDraft=null;tourGeneration++;".encode(), "window.addEventListener('v2:search-reset',()=>{tourGeneration++;".encode(), 1)
+                self.assertEqual(source.count("if(e.target.closest&&e.target.closest('.other-hotel-offers')){e.preventDefault();e.stopPropagation();const renderer=window.V2Results,target=renderer&&renderer.revealOfferAlternatives&&renderer.revealOfferAlternatives(currentTour&&currentTour.id);rememberSource(target);returnToResults(root);return;}const retry=e.target.closest&&e.target.closest('.retry-tour');".encode()), 1)
+                source = source.replace("if(e.target.closest&&e.target.closest('.other-hotel-offers')){e.preventDefault();e.stopPropagation();const renderer=window.V2Results,target=renderer&&renderer.revealOfferAlternatives&&renderer.revealOfferAlternatives(currentTour&&currentTour.id);rememberSource(target);returnToResults(root);return;}const retry=e.target.closest&&e.target.closest('.retry-tour');".encode(), "const retry=e.target.closest&&e.target.closest('.retry-tour');".encode(), 1)
+                self.assertEqual(source.count("root.innerHTML=tourHtml(t,tid);restoreLeadDraft(root);emit('tour-selected'".encode()), 1)
+                source = source.replace("root.innerHTML=tourHtml(t,tid);restoreLeadDraft(root);emit('tour-selected'".encode(), "root.innerHTML=tourHtml(t,tid);emit('tour-selected'".encode(), 1)
+                self.assertEqual(source.count('busyTourId=String(tid);keepLeadDraft(root);currentTour=null;'.encode()), 1)
+                source = source.replace('busyTourId=String(tid);keepLeadDraft(root);currentTour=null;'.encode(), 'busyTourId=String(tid);currentTour=null;'.encode(), 1)
+                self.assertEqual(source.count('+alternativesHtml(tid)+descriptionHtml(desc)+\'<div class="tour-flights">'.encode()), 1)
+                source = source.replace('+alternativesHtml(tid)+descriptionHtml(desc)+\'<div class="tour-flights">'.encode(), '+descriptionHtml(desc)+\'<div class="tour-flights">'.encode(), 1)
+                self.assertEqual(source.count('let leadDraft=null;\nfunction keepLeadDraft(root){if(!currentTour||!document.body.classList.contains(\'search3-candidate\'))return;const form=root.querySelector(\'.lead-form\');if(!form)return;if(form.dataset.sent===\'1\'){leadDraft=null;return;}leadDraft={};for(const name of[\'name\',\'phone\',\'comment\']){const field=form.querySelector(\'[name="\'+name+\'"]\');if(field)leadDraft[name]=field.value;}}\nfunction restoreLeadDraft(root){if(!leadDraft||!document.body.classList.contains(\'search3-candidate\'))return;for(const name of[\'name\',\'phone\',\'comment\']){const field=root.querySelector(\'.lead-form [name="\'+name+\'"]\');if(field&&typeof leadDraft[name]===\'string\')field.value=leadDraft[name];}}\nfunction alternativesHtml(tid){if(!document.body.classList.contains(\'search3-candidate\'))return\'\';const renderer=window.V2Results,info=renderer&&renderer.offerAlternatives&&renderer.offerAlternatives(tid);return info&&info.count>1?\'<button type="button" class="secondary other-hotel-offers">Другие варианты этого отеля (\'+(info.count-1)+\')</button>\':\'\';}\nfunction tourHtml(t,tid){'.encode()), 1)
+                source = source.replace('let leadDraft=null;\nfunction keepLeadDraft(root){if(!currentTour||!document.body.classList.contains(\'search3-candidate\'))return;const form=root.querySelector(\'.lead-form\');if(!form)return;if(form.dataset.sent===\'1\'){leadDraft=null;return;}leadDraft={};for(const name of[\'name\',\'phone\',\'comment\']){const field=form.querySelector(\'[name="\'+name+\'"]\');if(field)leadDraft[name]=field.value;}}\nfunction restoreLeadDraft(root){if(!leadDraft||!document.body.classList.contains(\'search3-candidate\'))return;for(const name of[\'name\',\'phone\',\'comment\']){const field=root.querySelector(\'.lead-form [name="\'+name+\'"]\');if(field&&typeof leadDraft[name]===\'string\')field.value=leadDraft[name];}}\nfunction alternativesHtml(tid){if(!document.body.classList.contains(\'search3-candidate\'))return\'\';const renderer=window.V2Results,info=renderer&&renderer.offerAlternatives&&renderer.offerAlternatives(tid);return info&&info.count>1?\'<button type="button" class="secondary other-hotel-offers">Другие варианты этого отеля (\'+(info.count-1)+\')</button>\':\'\';}\nfunction tourHtml(t,tid){'.encode(), 'function tourHtml(t,tid){'.encode(), 1)
+                # Search3-only native disclosure changes presentation, with the
+                # original legacy markup and all protected bytes recovered below.
+                description_helper = 'function descriptionHtml(desc){if(!desc)return\'\';const content=\'<div class="hotel-desc">\'+esc(desc)+\'</div>\';return document.body.classList.contains(\'search3-candidate\')&&desc.length>280?\'<details class="selected-description"><summary>Об отеле</summary>\'+content+\'</details>\':content;}\n'.encode()
+                self.assertEqual(source.count(description_helper), 1)
+                self.assertEqual(source.count(b"+descriptionHtml(desc)+"), 1)
+                source = source.replace(description_helper, b'', 1).replace(
+                    b"+descriptionHtml(desc)+", '+(desc?\'<div class="hotel-desc">\'+esc(desc)+\'</div>\':\'\')+'.encode(), 1)
+                # Reviewed keyboard-entry fix only; reversing the exact insertion
+                # must recover all existing business and transport bytes below.
+                focus_entry = b"if(root.focus)root.focus({preventScroll:true});root.scrollIntoView({behavior:'smooth',block:'start'});"
+                self.assertEqual(source.count(focus_entry), 1, 'one selected-tour entry focus owner')
+                source = source.replace(focus_entry, b"root.scrollIntoView({behavior:'smooth',block:'start'});", 1)
+                # Owner-authorized display-only meal label and hotel-description
+                # entity decoding: reversing these exact fragments must recover
+                # the entire protected controller. Decoded text is still escaped.
+                # Lead mapping, arithmetic, selection and transport stay hash-locked.
+                entity_decoder = ("const descriptionEntities={amp:'&',lt:'<',gt:'>',quot:'\"',apos:\"'\",nbsp:' ',sup2:'²'};\n"
+                                  "function decodeEntities(v){return String(v||'').replace(/&(#(?:x[0-9a-f]+|[0-9]+)|amp|lt|gt|quot|apos|nbsp|sup2);/gi,(match,entity)=>{if(entity[0]!=='#')return descriptionEntities[entity.toLowerCase()];const hex=entity[1].toLowerCase()==='x',point=Number.parseInt(entity.slice(hex?2:1),hex?16:10);return Number.isInteger(point)&&point>0&&point<=1114111&&!(point>=55296&&point<=57343)?String.fromCodePoint(point):match;});}\n").encode()
+                current_clean = b"function clean(v){return decodeEntities(String(v||'').replace(/<[^>]*>/g,' ')).replace(/\\s+/g,' ').trim();}"
+                original_clean = b"function clean(v){return String(v||'').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim();}"
+                self.assertEqual(source.count(entity_decoder), 1, 'one reviewed description entity decoder')
+                self.assertEqual(source.count(current_clean), 1, 'one reviewed description clean path')
+                source = source.replace(entity_decoder, b'', 1).replace(current_clean, original_clean, 1)
+                display = b"esc((window.V2Results&&typeof window.V2Results.mealLabel==='function'?window.V2Results.mealLabel(t):mealName(t))||'\xe2\x80\x94')"
+                original = b"esc(mealName(t)||'\xe2\x80\x94')"
+                self.assertEqual(source.count(display), 1, 'one reviewed meal display expression')
+                source = source.replace(display, original, 1)
+                # Reviewed operator display only. Results, Compare and selected
+                # tour reuse the canonical renderer identity while the raw
+                # supplier value remains untouched in state and lead payload.
+                operator_helper = b"function operatorDisplayName(t){const results=window.V2Results,identity=results&&typeof results.operatorIdentity==='function'?results.operatorIdentity(t):null;return identity&&identity.label||operatorName(t);}\n"
+                operator_display = b"esc(operatorDisplayName(t)||'\xe2\x80\x94')"
+                raw_operator_display = b"esc(operatorName(t)||'\xe2\x80\x94')"
+                self.assertEqual(source.count(operator_helper), 1, 'one canonical selected operator display helper')
+                self.assertEqual(source.count(operator_display), 1, 'one canonical selected operator display call')
+                source = source.replace(operator_helper, b'', 1).replace(operator_display, raw_operator_display, 1)
+                # Reviewed room display only. The raw roomType remains in the
+                # offer and lead payload; reverse the exact selected-tour call
+                # before comparing the frozen controller/business digest.
+                room_display = b"room=window.V2Results&&typeof window.V2Results.roomLabel==='function'?window.V2Results.roomLabel(t):displayText(t.roomType)"
+                room_original = b"room=displayText(t.roomType)"
+                self.assertEqual(source.count(room_display), 1, 'one reviewed selected room display expression')
+                source = source.replace(room_display, room_original, 1)
+                # Reviewed selected-tour date display only. The supplier ISO value
+                # remains unchanged in state and the lead payload; reversing these
+                # two exact fragments recovers the protected controller.
+                date_display = b",date=window.V2Results&&typeof window.V2Results.formatTourDate==='function'?window.V2Results.formatTourDate(t.date):t.date;return"
+                date_original = b";return"
+                date_value = b"esc(date||'\xe2\x80\x94')"
+                raw_date_value = b"esc(t.date||'\xe2\x80\x94')"
+                self.assertEqual(source.count(date_display), 1, 'one canonical selected date formatter call')
+                self.assertEqual(source.count(date_value), 1, 'one formatted selected date value')
+                source = source.replace(date_display, date_original, 1).replace(date_value, raw_date_value, 1)
+                # Reviewed flight-fee display correction only. It distinguishes
+                # missing, explicit zero and positive values without changing
+                # the raw fee, selected total, arithmetic or lead payload.
+                fuel_helper = b"function flightFuelText(v){if(!v||!Object.prototype.hasOwnProperty.call(v,'fuelCharge')||v.fuelCharge===null||v.fuelCharge==='')return'\xd1\x83\xd1\x82\xd0\xbe\xd1\x87\xd0\xbd\xd1\x8f\xd0\xb5\xd1\x82\xd1\x81\xd1\x8f';const fuel=v.fuelCharge,raw=fuel&&typeof fuel==='object'&&fuel.value!==undefined?fuel.value:fuel,n=Number(raw);if(!Number.isFinite(n)||n<0)return'\xd1\x83\xd1\x82\xd0\xbe\xd1\x87\xd0\xbd\xd1\x8f\xd0\xb5\xd1\x82\xd1\x81\xd1\x8f';return n?money(n)+' \xe2\x82\xbd':'\xd0\xb1\xd0\xb5\xd0\xb7 \xd0\xb4\xd0\xbe\xd0\xbf\xd0\xbb\xd0\xb0\xd1\x82\xd1\x8b';}\n"
+                current_variant = b"function variantHtml(v,i){const p=v&&v.price||{},price=p&&p.value!==undefined?p.value:p||0,fuelSource=v&&Object.prototype.hasOwnProperty.call(v,'fuelCharge')?v:currentTour,fuelText=flightFuelText(fuelSource);return '<div class=\"flight-variant'+(i===selectedFlightIndex?' is-selected':'')+'\" data-flight-index=\"'+i+'\"><label class=\"flight-choice\"><input type=\"radio\" name=\"v2flight\" value=\"'+i+'\"'+(i===selectedFlightIndex?' checked':'')+'><span>\xd0\x92\xd0\xb0\xd1\x80\xd0\xb8\xd0\xb0\xd0\xbd\xd1\x82 '+(i+1)+(v&&v.isDefault?' \xc2\xb7 \xd1\x80\xd0\xb5\xd0\xba\xd0\xbe\xd0\xbc\xd0\xb5\xd0\xbd\xd0\xb4\xd1\x83\xd0\xb5\xd0\xbc\xd1\x8b\xd0\xb9':'')+'</span><b>'+money(price)+' \xe2\x82\xbd</b></label>'+((v&&Array.isArray(v.forward)?v.forward:[]).map((f,n)=>segmentHtml(f,n?'\xd0\x9f\xd0\xb5\xd1\x80\xd0\xb5\xd1\x81\xd0\xb0\xd0\xb4\xd0\xba\xd0\xb0 \xd1\x82\xd1\x83\xd0\xb4\xd0\xb0':'\xd0\xa2\xd1\x83\xd0\xb4\xd0\xb0')).join(''))+((v&&Array.isArray(v.backward)?v.backward:[]).map((f,n)=>segmentHtml(f,n?'\xd0\x9f\xd0\xb5\xd1\x80\xd0\xb5\xd1\x81\xd0\xb0\xd0\xb4\xd0\xba\xd0\xb0 \xd0\xbe\xd0\xb1\xd1\x80\xd0\xb0\xd1\x82\xd0\xbd\xd0\xbe':'\xd0\x9e\xd0\xb1\xd1\x80\xd0\xb0\xd1\x82\xd0\xbd\xd0\xbe')).join(''))+'<div class=\"flight-fuel\">\xd0\xa2\xd0\xbe\xd0\xbf\xd0\xbb\xd0\xb8\xd0\xb2\xd0\xbd\xd1\x8b\xd0\xb9 \xd1\x81\xd0\xb1\xd0\xbe\xd1\x80: '+esc(fuelText)+'</div></div>'; }".replace(b"; }", b";}")
+                original_variant = b"function variantHtml(v,i){const p=v&&v.price||{},fuel=v&&v.fuelCharge||{},price=p&&p.value!==undefined?p.value:p||0,fuelValue=fuel&&fuel.value!==undefined?fuel.value:fuel||0;return '<div class=\"flight-variant'+(i===selectedFlightIndex?' is-selected':'')+'\" data-flight-index=\"'+i+'\"><label class=\"flight-choice\"><input type=\"radio\" name=\"v2flight\" value=\"'+i+'\"'+(i===selectedFlightIndex?' checked':'')+'><span>\xd0\x92\xd0\xb0\xd1\x80\xd0\xb8\xd0\xb0\xd0\xbd\xd1\x82 '+(i+1)+(v&&v.isDefault?' \xc2\xb7 \xd1\x80\xd0\xb5\xd0\xba\xd0\xbe\xd0\xbc\xd0\xb5\xd0\xbd\xd0\xb4\xd1\x83\xd0\xb5\xd0\xbc\xd1\x8b\xd0\xb9':'')+'</span><b>'+money(price)+' \xe2\x82\xbd</b></label>'+((v&&Array.isArray(v.forward)?v.forward:[]).map((f,n)=>segmentHtml(f,n?'\xd0\x9f\xd0\xb5\xd1\x80\xd0\xb5\xd1\x81\xd0\xb0\xd0\xb4\xd0\xba\xd0\xb0 \xd1\x82\xd1\x83\xd0\xb4\xd0\xb0':'\xd0\xa2\xd1\x83\xd0\xb4\xd0\xb0')).join(''))+((v&&Array.isArray(v.backward)?v.backward:[]).map((f,n)=>segmentHtml(f,n?'\xd0\x9f\xd0\xb5\xd1\x80\xd0\xb5\xd1\x81\xd0\xb0\xd0\xb4\xd0\xba\xd0\xb0 \xd0\xbe\xd0\xb1\xd1\x80\xd0\xb0\xd1\x82\xd0\xbd\xd0\xbe':'\xd0\x9e\xd0\xb1\xd1\x80\xd0\xb0\xd1\x82\xd0\xbd\xd0\xbe')).join(''))+(fuelValue?'<div class=\"flight-fuel\">\xd0\xa2\xd0\xbe\xd0\xbf\xd0\xbb\xd0\xb8\xd0\xb2\xd0\xbd\xd1\x8b\xd0\xb9 \xd1\x81\xd0\xb1\xd0\xbe\xd1\x80: '+money(fuelValue)+' \xe2\x82\xbd</div>':'')+'</div>'; }".replace(b"; }", b";}")
+                self.assertEqual(source.count(fuel_helper), 1, 'one reviewed flight fuel display helper')
+                self.assertEqual(source.count(current_variant), 1, 'one reviewed flight fuel variant renderer')
+                source = source.replace(fuel_helper, b'', 1).replace(current_variant, original_variant, 1)
+                selected_fuel = b"esc(flightFuelText(t))"
+                original_selected_fuel = b"(t.fuelCharge?money(t.fuelCharge)+' \xe2\x82\xbd':'\xe2\x80\x94')"
+                self.assertEqual(source.count(selected_fuel), 1, 'one selected-tour fuel display owner')
+                source = source.replace(selected_fuel, original_selected_fuel, 1)
+                # Reviewed flight segment date display only. The lead serializer
+                # below keeps dep.date/arr.date untouched; reversing this exact
+                # display function recovers the protected controller.
+                moment_display = b"function momentText(point,isPlaceholder){const p=point||{},parts=[],date=window.V2Results&&typeof window.V2Results.formatTourDate==='function'?window.V2Results.formatTourDate(p.date):p.date;if(date)parts.push(date);if(p.time&&!(isPlaceholder&&String(p.time)==='00:00'))parts.push(p.time);if(isPlaceholder)parts.push('\xd0\xb2\xd1\x80\xd0\xb5\xd0\xbc\xd1\x8f \xd1\x83\xd1\x82\xd0\xbe\xd1\x87\xd0\xbd\xd1\x8f\xd0\xb5\xd1\x82\xd1\x81\xd1\x8f');return parts.join(' \xc2\xb7 ')||'\xe2\x80\x94';}"
+                moment_original = b"function momentText(point,isPlaceholder){const p=point||{},parts=[];if(p.date)parts.push(p.date);if(p.time&&!(isPlaceholder&&String(p.time)==='00:00'))parts.push(p.time);if(isPlaceholder)parts.push('\xd0\xb2\xd1\x80\xd0\xb5\xd0\xbc\xd1\x8f \xd1\x83\xd1\x82\xd0\xbe\xd1\x87\xd0\xbd\xd1\x8f\xd0\xb5\xd1\x82\xd1\x81\xd1\x8f');return parts.join(' \xc2\xb7 ')||'\xe2\x80\x94';}"
+                self.assertEqual(source.count(moment_display), 1, 'one canonical selected flight date display')
+                source = source.replace(moment_display, moment_original, 1)
+                self.assertTrue(source.endswith(b'})();\n'), 'reviewed controller keeps one canonical final line break')
+                source = source[:-1]
+                # Reviewed selected loading/error semantics only. Exact markup
+                # reversals preserve the frozen business/controller digest.
+                role_fragments = (
+                    ('<div class="selected-loading" role="status">Загружаем тур…</div>',
+                     '<div class="selected-loading">Загружаем тур…</div>'),
+                    ('<div class="selected-loading" role="alert">Не удалось загрузить выбранный тур: ',
+                     '<div class="selected-loading">Не удалось загрузить выбранный тур: '),
+                )
+                for reviewed, original in role_fragments:
+                    self.assertEqual(source.count(reviewed.encode()), 1, 'one canonical selected status fragment')
+                    source = source.replace(reviewed.encode(), original.encode(), 1)
+                # Reviewed presentation-state fix: preserve the renderer's exact
+                # action label while the existing selection request is pending.
+                # Reversing both fragments recovers the protected controller.
+                label_capture = b"const buttonLabel=button?button.textContent:'';"
+                label_restore = b"button.textContent=buttonLabel;"
+                self.assertEqual(source.count(label_capture), 1, 'one selection action label capture')
+                self.assertEqual(source.count(label_restore), 1, 'one selection action label restore')
+                source = source.replace(label_capture, b'', 1).replace(
+                    label_restore, "button.textContent='Выбрать';".encode(), 1)
+            elif name == 'flight-price-sync-v1.js':
+                fuel_display = ("function fuelText(source){if(!source||!Object.prototype.hasOwnProperty.call(source,'fuelCharge')||source.fuelCharge===null||source.fuelCharge==='')return'уточняется';const fuel=source.fuelCharge,raw=fuel&&typeof fuel==='object'&&fuel.value!==undefined?fuel.value:fuel,value=Number(raw);if(!Number.isFinite(value)||value<0)return'уточняется';return value?money(value)+' ₽':'без доплаты';}\n"
+                                "function renderFuel(source){const fact=fuelFact(),valueEl=fact&&fact.querySelector('b');if(!valueEl)return;valueEl.textContent=fuelText(source);}").encode()
+                original_fuel_display = "function renderFuel(source){if(!source||!Object.prototype.hasOwnProperty.call(source,'fuelCharge'))return;const fact=fuelFact(),valueEl=fact&&fact.querySelector('b');if(!valueEl)return;const value=valueOfPrice(source.fuelCharge);valueEl.textContent=value?money(value)+' ₽':'—';}".encode()
+                self.assertEqual(source.count(fuel_display), 1, 'one selected flight-fee display owner')
+                source = source.replace(fuel_display, original_fuel_display, 1)
+            digest = hashlib.sha256(source).hexdigest()
+            self.assertEqual(digest, protected[name], name)
+            for closure in closures:
+                self.assertEqual(closure.count(name), 1, name)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node required for retained behavior contracts')
+    def test_retained_business_and_runtime_behavior(self):
+        # The reset retires CSS-owner assertions, not booking, lifecycle, price,
+        # filter, handoff or lead behavior. Keep those contracts executable.
+        for name in (
+            'search3-presentation-utils.cjs', 'search3-booking-summary.cjs',
+            'search3-booking-services.cjs', 'search3-lead-note-owner.cjs',
+            'search3-booking-navigation.cjs',
+            'search3-selected-flow-scheduler.cjs',
+            'search3-selected-return-owner.cjs', 'search3-entry-summary.cjs',
+            'search3-meal-owner.cjs',
+        ):
+            subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
+
+    def test_search_progress_presentation_is_retired(self):
+        self.assertFalse((ROOT / 'src/search3/behavior/search-progress.js').exists())
+        self.assertNotIn('behavior/search-progress.js', json.dumps(self.source))
+
+    def test_preview_controls_are_absent_from_production_assets(self):
+        for name in MANIFEST['assets']:
+            source = (ROOT / 'v2' / name).read_text()
+            for marker in ('search3:preview-lead-state', '__search3CandidateNativeMatchMedia', '?lead=disabled', 'PREVIEW_LEAD_DISABLED'):
+                self.assertNotIn(marker, source, name)
+
+    def test_duplicate_supplier_party_card_is_retired(self):
+        source = (ROOT / 'v2' / 'search3-results-filters-v1.js').read_text()
+        controller = (ROOT / 'v2' / 'tour-controller-v4.js').read_text()
+        self.assertNotIn('Состав размещения у туроператора', source)
+        self.assertNotIn('search3-final-sections', source)
+        self.assertNotIn('Состав поездки из поиска', source)
+        for marker in ('placement', 'fuelCharge', 'baggage'):
+            self.assertIn(marker, controller)
+
+    def test_shared_footer_has_no_search3_replacement(self):
+        # Search3 renders the same server footer as the rest of the site.
+        # Its retired client replacement and private CSS must not be shipped.
+        for name in MANIFEST['assets']:
+            self.assertFalse('search3-footer-' in (ROOT / 'v2' / name).read_text(), name)
+
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
