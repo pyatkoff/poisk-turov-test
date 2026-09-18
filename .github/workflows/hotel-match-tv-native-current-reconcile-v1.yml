@@ -1,0 +1,230 @@
+name: MATCH TV native CURRENT reconcile v1
+
+on:
+  push:
+    branches:
+      - match/tv-native-current-reconcile-1971-20260918-v1
+    paths:
+      - scripts/diagnostics/hotel_match_tv_native_current_reconcile_v1.php
+      - .github/workflows/hotel-match-tv-native-current-reconcile-v1.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: match-tv-native-current-reconcile-1971-20260918-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-tv-native-current-reconcile-1971-20260918-v1
+  EXPECTED_BASE: 049f2f650b443a8dc404e518a32ef6b3d0242591
+  CLAIM_COMMENT_ID: '5733639784'
+  SOURCE_ARTIFACT_ID: '10555097860'
+  SOURCE_RESULT_SHA256: 62399dcae24ebd48d795818e318c4ca97231b4147879d261d67bc5961e516869
+  SOURCE_RESULT_BYTES: '57477'
+
+jobs:
+  reconcile:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/match/tv-native-current-reconcile-1971-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate isolated claim and source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_tv_native_current_reconcile_v1.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-tv-native-current-reconcile-v1.yml'
+          php -l scripts/diagnostics/hotel_match_tv_native_current_reconcile_v1.php
+          php scripts/diagnostics/hotel_match_tv_native_current_reconcile_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json'))
+          assert c.get('user',{}).get('id') == 226193297
+          assert c.get('author_association') == 'OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          b=c.get('body','')
+          assert os.environ['OPERATION_ID'] in b
+          assert os.environ['SOURCE_RESULT_SHA256'] in b
+          assert os.environ['SOURCE_ARTIFACT_ID'] in b
+          assert 'No Tourvisor/direct-ANEX/Andromeda HTTP' in b
+          PY
+          mkdir -p source-unpacked source
+          gh api -H 'Accept: application/vnd.github+json' "repos/pyatkoff/poisk-turov-test/actions/artifacts/$SOURCE_ARTIFACT_ID/zip" > source.zip
+          unzip -q source.zip -d source-unpacked
+          mapfile -t hits < <(find source-unpacked -type f -name source-result.json -print)
+          test "${#hits[@]}" -eq 1
+          cp "${hits[0]}" source/source-result.json
+          test "$(wc -c < source/source-result.json | tr -d ' ')" = "$SOURCE_RESULT_BYTES"
+          test "$(sha256sum source/source-result.json | awk '{print $1}')" = "$SOURCE_RESULT_SHA256"
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('source/source-result.json'))
+          assert r['operation']=='hotel-match-user-seen-tv-detail-saturation-1971-20260918-v3'
+          assert r['state']=='completed_read_only'
+          assert r['http_attempts']==2705 and r['http_200']==700 and r['http_404']==2005
+          assert r['rate_limited'] is False
+          assert len(r['unique_pairs'])==45 and len(r['direct_evidence'])==74 and len(r['conflicts'])==0
+          assert r['database_writes']==0 and r['mapping_writes']==0 and r['anex_calls']==0 and r['andromeda_calls']==0
+          PY
+
+      - name: Create durable reservation before SSH and DB
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p='scripts/diagnostics/hotel_match_tv_native_current_reconcile_v1.php'
+          r={
+            'operation':os.environ['OPERATION_ID'],
+            'state':'reserved_before_db_read',
+            'source_sha':os.environ['HEAD_SHA'],
+            'source_artifact_id':int(os.environ['SOURCE_ARTIFACT_ID']),
+            'source_sha256':os.environ['SOURCE_RESULT_SHA256'],
+            'source_bytes':int(os.environ['SOURCE_RESULT_BYTES']),
+            'diagnostic_sha256':hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest(),
+            'provider_access':False,
+            'tourvisor_calls':0,'anex_calls':0,'andromeda_calls':0,
+            'database_writes':0,'mapping_writes':0,'request_accounting_delta':0,
+            'no_replay':True,
+          }
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-tv-native-current-reconcile-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Require existing SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+
+      - name: Stage immutable evidence and diagnostic
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/operations/$OPERATION_ID"
+          stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op\" \"\$HOME/$stage\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_tv_native_current_reconcile_v1.php source/source-result.json "$remote:$stage/"
+          ssh "${opts[@]}" "$remote" "test \"\$(wc -c < \"\$HOME/$stage/source-result.json\")\" = '$SOURCE_RESULT_BYTES'; test \"\$(sha256sum \"\$HOME/$stage/source-result.json\" | awk '{print \$1}')\" = '$SOURCE_RESULT_SHA256'"
+
+      - name: Run CURRENT read-only reconciliation
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/operations/$OPERATION_ID"; stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_RESULT=\"\$HOME/$stage/source-result.json\" MATCH_SOURCE_SHA='$HEAD_SHA' php -d display_errors=0 -d log_errors=0 \"\$HOME/$stage/hotel_match_tv_native_current_reconcile_v1.php\"" > terminal/stdout.json 2> terminal/stderr.txt
+          rc=$?
+          ssh "${opts[@]}" "$remote" "p=\"\$HOME/$op\"; test -f \"\$p/reservation.json\"; test -f \"\$p/result.json\"; test -f \"\$p/receipt.json\"; tar -C \"\$p\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz 2>>terminal/stderr.txt
+          trc=$?
+          ssh "${opts[@]}" "$remote" "rm -rf \"\$HOME/$stage\"" || true
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          printf '%s\n' "$trc" > terminal/tar-exit.txt
+
+      - name: Verify terminal result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True)
+          a=p/'server-operation.tgz'
+          if not a.exists() or a.stat().st_size==0: raise SystemExit('missing terminal archive')
+          with tarfile.open(a,'r:gz') as t:
+              names=sorted(t.getnames()); assert names==['receipt.json','reservation.json','result.json'],names
+              for m in t.getmembers():
+                  assert m.isfile() and m.size < 5_000_000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          assert pathlib.Path('reservation/reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          result=json.loads((s/'result.json').read_text()); receipt=json.loads((s/'receipt.json').read_text())
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest
+          assert result['status']=='completed_read_only',result
+          assert result['source_result_sha256']=='62399dcae24ebd48d795818e318c4ca97231b4147879d261d67bc5961e516869'
+          assert result['source_unique_pairs']==45 and result['source_direct_evidence_rows']==74
+          assert sum(result['current_bucket_counts'].values())==45
+          for k in ['tourvisor_calls','anex_calls','andromeda_calls','supplier_calls','database_writes','mapping_writes','request_accounting_delta']:
+              assert result[k]==0,(k,result[k])
+          summary={
+            'status':result['status'],
+            'source_unique_pairs':result['source_unique_pairs'],
+            'source_direct_evidence_rows':result['source_direct_evidence_rows'],
+            'current_bucket_counts':result['current_bucket_counts'],
+            'current_safe_native_count':result['current_safe_native_count'],
+            'already_same_count':result['already_same_count'],
+            'covered_by_andromeda_count':result['covered_by_andromeda_count'],
+            'needs_saved_geo_or_name_count':result['needs_saved_geo_or_name_count'],
+            'protected_hold_count':result['protected_hold_count'],
+            'safe_sample':[x for x in result['rows'] if x['bucket']=='current_safe_native'][:20],
+            'protected_sample':[x for x in result['rows'] if x['bucket']=='protected_hold'][:20],
+            'result_sha256':digest,
+          }
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0
+          test "$(cat terminal/tar-exit.txt)" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-native-current-reconcile-result-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
