@@ -116,15 +116,17 @@ try{
             'last_observed_at'=>$seen[$id]['last_observed_at'],'observation_rows'=>$seen[$id]['observation_rows']];
     }
 
-    $active=hmu_rows($pdo,'SELECT id,country_id,country_name,name FROM catalog_hotels WHERE is_active=1');
+    $frontierCountries=[];foreach($frontier as $r)if((int)$r['country_id']>0)$frontierCountries[(int)$r['country_id']]=true;
+    if(!$frontierCountries)throw new RuntimeException('frontier_country_missing');
+    $countryIds=array_keys($frontierCountries);sort($countryIds,SORT_NUMERIC);
+    $cp=implode(',',array_fill(0,count($countryIds),'?'));
+    $active=hmu_rows($pdo,"SELECT id,country_id,country_name,name FROM catalog_hotels WHERE is_active=1 AND country_id IN ($cp)",$countryIds);
     $localIndex=[];$countryNameToId=[];
     foreach($active as $r){
         $id=(int)$r['id'];$cid=(int)$r['country_id'];$key=hmu_key((string)$r['name']);
         if($cid>0&&$key!=='')$localIndex[$cid][$key][$id]=true;
         $cn=hmu_country_name((string)$r['country_name']);if($cid>0&&$cn!=='')$countryNameToId[$cn][$cid]=true;
     }
-    $aliasRows=hmu_rows($pdo,'SELECT a.hotel_id,a.alias,h.country_id FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.is_active=1');
-    foreach($aliasRows as $r){$id=(int)$r['hotel_id'];$cid=(int)$r['country_id'];$key=hmu_key((string)$r['alias']);if($cid>0&&$key!=='')$localIndex[$cid][$key][$id]=true;}
 
     $pairExclusions=[];
     if(hmu_table($pdo,'anex_review_pair_exclusions')){
@@ -211,7 +213,7 @@ try{
 
     $result=[
         'operation'=>HMU_OPERATION,'status'=>'read_only_complete',
-        'user_seen_unmapped_frontier_count'=>count($frontier),
+        'user_seen_unmapped_frontier_count'=>count($frontier),'frontier_country_ids'=>$countryIds,'active_catalog_rows_indexed'=>count($active),'alias_matching_in_this_pass'=>false,
         'anex_candidate_identity_count'=>count($anexCandidates),
         'andromeda_candidate_identity_count'=>count($andCandidates),
         'candidate_identity_count'=>count($anexCandidates)+count($andCandidates),
