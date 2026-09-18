@@ -146,6 +146,15 @@ AnyTourOfferStoreV1::upsertReadyOffer($db,$tvToken,$hotelA,cand_dto(
 AnyTourOfferStoreV1::upsertReadyOffer($db,$tvToken,$hotelA,cand_dto(
     'tourvisor',101,'tv-deluxe','tourvisor-hotel-A','Pegas Touristik','DELUXE ROOM','AI',$issued,'125000'
 ),$now->modify('+2 hours'),$now);
+$regular=cand_dto(
+    'tourvisor',101,'tv-deluxe-regular','tourvisor-hotel-A','Pegas Touristik','DELUXE ROOM','AI',$issued,'126000'
+);
+$regular['finalPriceReady']=false;
+$regular['finalPrice']=null;
+$regular['money']['search_price']=['amount'=>'126000','currency'=>'RUB'];
+AnyTourOfferStoreV1::upsertReadyOffer(
+    $db,$tvToken,$hotelA,$regular,$now->modify('+2 hours'),$now
+);
 AnyTourOfferStoreV1::upsertReadyOffer($db,$tvToken,$hotelA,cand_dto(
     'tourvisor',101,'tv-no-operator','tourvisor-hotel-A-2',null,'STANDARD ROOM','AI',$issued,'121000'
 ),$now->modify('+2 hours'),$now);
@@ -178,7 +187,7 @@ cand_check($before===$after,'inventory is read-only');
 cand_check($inventory['status']==='read_only_current_offer_review_inventory','status');
 cand_check($inventory['source']==='anytour-current-complete-offer-snapshots','current snapshots only');
 cand_check($inventory['writes']===0&&$inventory['supplierCalls']===0&&$inventory['automaticAccepts']===0,'zero side effects');
-cand_check($inventory['currentIdentityValidatedOffers']===4,'four current identity-valid saved offers');
+cand_check($inventory['currentIdentityValidatedOffers']===5,'five current identity-valid saved offers including confirmation-required');
 cand_check($inventory['omittedMissingOperatorOffers']===1,'missing operator held outside exact review');
 cand_check($inventory['totalExactCohorts']===3&&$inventory['returnedCohorts']===3,'three exact cohorts');
 cand_check($inventory['reviewNeededCohorts']===2,'two cohorts need mapping review');
@@ -195,6 +204,7 @@ cand_check(($std['match']['room']['status']??null)==='accepted'
 cand_check(($std['match']['meal']['status']??null)==='accepted'
     &&($std['match']['meal']['canonical']['localKey']??null)==='a-ai','accepted meal retained');
 cand_check(is_array($deluxe)&&$deluxe['reviewState']==='needs-review','unmapped deluxe queued');
+cand_check(($deluxe['observedCount']??null)===2,'confirmation-required offer contributes to exact stay cohort frequency');
 cand_check(($deluxe['match']['room']['status']??null)==='unmapped'
     &&($deluxe['match']['meal']['status']??null)==='accepted','room-only gap explicit');
 cand_check(is_array($anex)&&$anex['reviewState']==='needs-review','unmapped anex queued');
@@ -214,7 +224,7 @@ cand_expect(fn()=>(new AnyTourHotelStayOfferCandidatesV2($db))->collect(5001,$no
 
 $db->prepare("DELETE FROM anytour_hotel_sources WHERE namespace='anytour_local_id' AND external_key='202'")->execute();
 $revoked=(new AnyTourHotelStayOfferCandidatesV2($db))->collect(50,$now);
-cand_check($revoked['currentIdentityValidatedOffers']===3,'revoked hotel identity removes saved offer before review');
+cand_check($revoked['currentIdentityValidatedOffers']===4,'revoked hotel identity removes saved offer before review');
 cand_check(count(array_filter($revoked['cohorts'],static fn($v)=>$v['provider']==='anex'))===0,'revoked anex cohort hidden');
 
 $db->prepare("UPDATE anytour_offers SET payload_json='{}' WHERE provider='tourvisor' LIMIT 1")->execute();
@@ -224,4 +234,4 @@ cand_expect(
     'payload tamper fails closed'
 );
 
-echo "ANYTOUR_HOTEL_STAY_OFFER_CANDIDATES_V2_OK checks=$checks current_offers=4 exact_cohorts=3 review_needed=2 supplier_calls=0 writes=0\n";
+echo "ANYTOUR_HOTEL_STAY_OFFER_CANDIDATES_V2_OK checks=$checks current_offers=5 exact_cohorts=3 confirmation_required_counted=1 review_needed=2 supplier_calls=0 writes=0\n";
