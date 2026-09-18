@@ -9,6 +9,11 @@ function stored(provider,legacy,digestChar,price){
  return{provider,legacyHotelId:legacy,price,currency:'RUB',observedAt:'2026-10-06T10:00:00Z',lastSeenAt:'2026-10-06T10:00:00Z',expiresAt:'2026-10-06T12:00:00Z',listing:{schema_version:1,provider,operator:{raw:provider==='anex'?'ANEX':'Pegas Touristik',canonical_name:provider==='anex'?'ANEX':null},identity:{search_ref_digest:'a'.repeat(64),offer_ref_digest:d,provider_hotel_ref_digest:'b'.repeat(64)},tour:{checkin:'2026-10-05',nights:7,party:{adults:2,children:0,child_ages:[]},meal:{raw:'AI'},room:{raw:'STANDARD ROOM'},placement:{raw:'DBL'}},listingPriceReady:true,listingPrice:{amount:String(price),currency:'RUB'},currency:'RUB',selection_state:'refresh_required',booking_enabled:false}};
 }
 function payload(offers){return{source:'anytour-db-first-results-v1',scopeVersion:1,scopeDigest:'c'.repeat(64),selectionAuthority:false,hotelCount:offers.length?1:0,offerCount:offers.length,storedOfferCount:offers.length,withheldOfferCount:0,hotels:offers.length?[{anytourHotelId:77,hotel:{id:77,catalog:'anytour',revision:1,name:'Own Hotel'},offers}]:[]};}
+function stateRow(state,provider='anex',digestChar='e'){
+ const row=stored(provider,102,digestChar,125000),verified=state==='final_verified',confirmation=state==='search_price_confirmation_required';
+ Object.assign(row.listing,{listingPriceState:state,listingPriceReady:!confirmation,priceConfirmationRequired:confirmation,quoteState:verified?'verified':'unknown',finalPriceVerified:verified,quoteEvidenceDigest:verified?'f'.repeat(64):null});
+ return row;
+}
 function fakeRoot(pathname,fetcher){
  const events=new Map(),renders=[],ownerCalls={clear:[],hotels:[],offers:[],refreshes:0};
  const owner={
@@ -49,6 +54,29 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
  for(const item of parsed.hotels[0].offers){assert.equal(item.legacyHotelId,'102');assert.equal(item.tour.selectionEnabled,false);assert.equal(item.tour.quoteRequired,true);assert.equal(item.tour.finalPriceReady,true);assert.equal(item.tour.cachedListing,true);}
  assert.equal(api.project,undefined,'retired fake Tourvisor projection stays deleted');assert.equal(api.merge,undefined,'retired renderer merge stays deleted');
  const malformed=payload([stored('anex',102,'f',125000)]);malformed.hotels[0].offers[0].listing.selection_state='enabled';assert.equal(api.parse(malformed),null,'cached listing never gains selection authority');
+
+ const states=['final_ready_estimate','final_verified','search_price_confirmation_required'];
+ const mixed=payload([stored('tourvisor',102,'d',120000),...states.map((state,i)=>stateRow(state,['anex','andromeda','anex'][i],['e','f','a'][i]))]);
+ const mixedBefore=JSON.stringify(mixed),mixedParsed=api.parse(mixed);
+ assert.ok(mixedParsed,'one valid confirmation-required offer must not discard the whole DB response');
+ assert.equal(mixedParsed.offerCount,4);assert.equal(JSON.stringify(mixed),mixedBefore,'supplier facts and amounts stay untouched');
+ for(const {tour} of mixedParsed.hotels[0].offers){
+  assert.equal(tour.selectionEnabled,false);assert.equal(tour.quoteRequired,true);
+  assert.equal(tour.finalPriceReady,tour.listingPriceState!=='search_price_confirmation_required');
+  assert.equal(tour.priceNeedsConfirmation,tour.listingPriceState==='search_price_confirmation_required');
+  assert.equal(tour.finalPriceVerified,undefined,'historical verified cache never supplies current quote authority');
+  assert.equal(tour.offerRef,undefined);assert.equal(tour.offerContext,undefined);
+ }
+ const confirmation=mixedParsed.hotels[0].offers[3].tour;
+ assert.equal(confirmation.price,125000);assert.equal(confirmation.roomType,'STANDARD ROOM');assert.equal(confirmation.meal.name,'AI');assert.equal(confirmation.date,'2026-10-05');assert.equal(confirmation.nights,7);
+ assert.equal(confirmation.id,'cached:anex:'+ 'a'.repeat(64));assert.equal(confirmation.isCharter,undefined,'price readiness does not imply flight type');
+ for(const state of states){
+  const row=stateRow(state);
+  const mutations=[{listingPriceState:'unknown'},{listingPriceReady:!row.listing.listingPriceReady},{priceConfirmationRequired:!row.listing.priceConfirmationRequired},{quoteState:'bookable'},{finalPriceVerified:!row.listing.finalPriceVerified},{quoteEvidenceDigest:state==='final_verified'?null:'a'.repeat(64)},{booking_enabled:true},{selection_state:'enabled'}];
+  for(const mutation of mutations){const bad=structuredClone(row);Object.assign(bad.listing,mutation);assert.equal(api.parse(payload([stored('tourvisor',102,'d',120000),bad])),null,JSON.stringify({state,mutation}));}
+ }
+ const invalidCalls=JSON.stringify(env.ownerCalls),invalid=stateRow('search_price_confirmation_required');invalid.listing.quoteState='verified';
+ assert.equal(api.apply(env.owner,payload([invalid])),null);assert.equal(JSON.stringify(env.ownerCalls),invalidCalls,'invalid payload cannot partially replace canonical offers');
 
  const direct=api.apply(env.owner,payload([stored('anex',102,'e',125000)]));
  assert.ok(direct);assert.deepEqual(env.ownerCalls.clear,['local-db']);assert.equal(env.ownerCalls.hotels.length,1);assert.equal(env.ownerCalls.offers.length,1);assert.equal(env.ownerCalls.offers[0].anytourHotelId,'77');assert.equal(env.ownerCalls.offers[0].meta.source,'local-db');assert.equal(env.ownerCalls.refreshes,1);assert.equal(env.renders.length,0,'apply only invalidates canonical owner');

@@ -6,6 +6,7 @@ on:
       - 'v2/search3-local-db-provider-v1.js'
       - 'v2/bundle-manifest-v1.php'
       - 'tests/search3-local-db-provider-v1.test.js'
+      - 'tests/search3-local-db-price-states-browser.py'
       - 'tests/search3-lean-base-bundle-smoke.php'
       - '.github/workflows/search3-local-db-browser.yml'
 permissions:
@@ -25,3 +26,17 @@ jobs:
           node tests/search3-local-db-provider-v1.test.js
       - name: Search3-only dependency order and legacy isolation
         run: php tests/search3-lean-base-bundle-smoke.php
+      - name: Install pinned browser tools
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: Cached price states in the canonical renderer at mobile and desktop widths
+        run: python tests/search3-local-db-price-states-browser.py
+      - name: Retain visual acceptance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-local-db-price-states-${{ github.event.pull_request.head.sha }}
+          path: local-db-price-evidence/
+          if-no-files-found: warn
+          retention-days: 14
