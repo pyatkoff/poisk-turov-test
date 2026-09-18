@@ -91,7 +91,7 @@ try {
         null, $sibling, $request, $directory, $now
     );
     cache_autosave_assert(($fallback['state'] ?? null) === 'estimated', 'cache fallback state');
-    cache_autosave_assert(($fallback['verified_quote'] ?? 'missing') === null, 'cache fallback gained verified quote');
+    cache_autosave_assert(array_key_exists('verified_quote',$fallback) && $fallback['verified_quote'] === null, 'cache fallback gained verified quote');
     cache_autosave_assert(($fallback['fact']['search_price'] ?? null) === ['amount' => '190000', 'currency' => 'RUB'], 'cache fallback did not rebase base price');
     cache_autosave_assert(($fallback['fact']['party_surcharge']['amount'] ?? null) === '14265', 'cache fallback surcharge changed');
     cache_autosave_assert(($fallback['fact']['search_price_with_surcharge']['amount'] ?? null) === '204265', 'cache fallback total');
