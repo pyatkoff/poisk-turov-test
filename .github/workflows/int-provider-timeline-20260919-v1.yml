@@ -1,0 +1,113 @@
+name: INT local provider timeline 20260919 v1
+on:
+  push:
+    branches: ['ops/int-provider-timeline-20260919-v1']
+    paths: ['.github/workflows/int-provider-timeline-20260919-v1.yml']
+permissions:
+  contents: read
+jobs:
+  observe:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/int-provider-timeline-20260919-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Install isolated browser
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          mkdir int-provider-timeline
+          cd int-provider-timeline
+          npm init -y >/dev/null
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Observe one fresh page load without selecting or submitting
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/int-provider-timeline"
+          mkdir evidence
+          cat > observe.cjs <<'JS'
+          'use strict';
+          const {chromium}=require('playwright');
+          const fs=require('fs'),crypto=require('crypto');
+          const target='https://anytoour.ru/_preview/search3-local-candidate/poisk-turov/?from=1&country=4&dateFrom=2026-09-19&dateTo=2026-09-22&daysFrom=7&daysTill=10&count_people=2&child_count=0';
+          const out={operation:'int-provider-timeline-2506-1717-20260919-v1',target,startedAt:new Date().toISOString(),requests:[],responses:[],dom:[],assets:{},events:[],blocked:[],pageErrors:[],navigationCount:0,selectionClicks:0,leadSubmits:0,publication:0,noReplay:true};
+          const safe=v=>typeof v==='string'?v.replace(/[\u0000-\u001f]/g,' ').slice(0,100):null;
+          let started=Date.now(),apiRequests=0;
+          function action(req){try{const u=new URL(req.url());let a=u.searchParams.get('action')||'';if(req.method()==='POST'){const raw=req.postData()||'';try{a=JSON.parse(raw).action||a;}catch(_){a=new URLSearchParams(raw).get('action')||a;}}return typeof a==='string'&&/^[a-zA-Z0-9_-]{1,50}$/.test(a)?a:'';}catch(_){return '';}}
+          function counts(hotels){const providers={},cached={},states={};let tours=0;for(const h of hotels||[]){for(const t of h.tours||h.offers||[]){const p=String(t.provider||h.provider||'tourvisor');providers[p]=(providers[p]||0)+1;tours++;if(t.cachedListing)cached[p]=(cached[p]||0)+1;if(t.listingPriceState)states[p+':'+t.listingPriceState]=(states[p+':'+t.listingPriceState]||0)+1;}}return {hotelCount:hotels.length,tours,providers,cached,states};}
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:1440,height:1000},extraHTTPHeaders:{'X-AnyTour-CI':'1'}});
+            const page=await context.newPage();let done=false;
+            await context.route('**/*',async route=>{
+              const req=route.request(),u=new URL(req.url()),a=action(req);
+              const denied=/^mc\.yandex\./i.test(u.hostname)||/(?:lead|booking|quote|broninit|changeservice|\/calc|package)/i.test(u.pathname+' '+a);
+              const isApi=u.origin==='https://anytoour.ru'&&['fetch','xhr'].includes(req.resourceType())&&u.pathname.endsWith('.php');
+              if(isApi){apiRequests++;if(out.requests.length<180)out.requests.push({ms:Date.now()-started,path:u.pathname,action:a,method:req.method()});}
+              if(denied||done||(isApi&&apiRequests>160)){if(out.blocked.length<200)out.blocked.push({ms:Date.now()-started,path:u.pathname,action:a,reason:denied?'protected':done?'observation_finished':'request_budget'});return route.abort();}
+              return route.continue();
+            });
+            await page.addInitScript(()=>{
+              window.__intTimeline=[];
+              const add=(type,detail)=>{if(window.__intTimeline.length<1000)window.__intTimeline.push(Object.assign({ms:Math.round(performance.now()),type},detail));};
+              const summarize=items=>{const providers={},cached={},states={};let offers=0;for(const h of items){for(const t of h.tours||[]){const p=String(t.provider||h.provider||'tourvisor');providers[p]=(providers[p]||0)+1;offers++;if(t.cachedListing)cached[p]=(cached[p]||0)+1;if(t.listingPriceState)states[p+':'+t.listingPriceState]=(states[p+':'+t.listingPriceState]||0)+1;}}return {hotels:items.length,offers,providers,cached,states};};
+              for(const type of ['v2:search-reset','v2:search-started','v2:search-progress','v2:search-complete','v2:search-error','v2:provider-status','v2:results-rendered'])window.addEventListener(type,e=>{
+                const d=e.detail||{},r={};for(const k of ['generation','provider','status','progress','hotels','offers','storedOffers','withheldOffers','errorCode','dirty','phase'])if(['string','number','boolean'].includes(typeof d[k]))r[k]=typeof d[k]==='string'?d[k].slice(0,100):d[k];
+                if(Array.isArray(d.items))r.items=summarize(d.items);add(type,r);
+              });
+            });
+            page.on('pageerror',()=>out.pageErrors.push({ms:Date.now()-started,error:'pageerror'}));
+            page.on('response',async response=>{
+              try{
+                const u=new URL(response.url()),req=response.request();if(u.origin!=='https://anytoour.ru')return;
+                if(/\/(?:search3-canonical-profiles-v1|search3-local-db-provider-v1|search-lifecycle-v6|andromeda-provider-v1|anex-final-price-provider-v1)\.js$/.test(u.pathname))out.assets[u.pathname]=crypto.createHash('sha256').update(await response.body()).digest('hex');
+                if(!['fetch','xhr'].includes(req.resourceType())||!u.pathname.endsWith('.php'))return;
+                const entry={ms:Date.now()-started,path:u.pathname,action:action(req),status:response.status()};
+                const raw=await response.body();entry.bytes=raw.length;
+                if(raw.length<=33554432){try{
+                  const body=JSON.parse(raw.toString()),d=body&&body.data!==undefined?body.data:body;
+                  entry.ok=body&&body.ok;entry.source=safe(d&&d.source);entry.provider=safe(d&&d.provider);
+                  if(Array.isArray(d))entry.items=counts(d);
+                  if(d&&typeof d==='object'){
+                    for(const key of ['hotelCount','offerCount','storedOfferCount','withheldOfferCount','categoryFilteredOfferCount','pages_count','page','progress','matchMode','status'])if(['number','string','boolean'].includes(typeof d[key]))entry[key]=typeof d[key]==='string'?safe(d[key]):d[key];
+                    if(d.providerOfferCounts)entry.providerOfferCounts=d.providerOfferCounts;
+                    if(Array.isArray(d.hotels)){entry.hotels=d.hotels.length;const p={};for(const h of d.hotels)for(const row of h.offers||h.tours||[]){const k=row.provider||h.provider||'tourvisor';p[k]=(p[k]||0)+1;}entry.hotelOfferProviders=p;}
+                    if(Array.isArray(d.offers)){entry.offers=d.offers.length;entry.ready=d.offers.filter(o=>o.finalPriceReady===true).length;}
+                    if(Array.isArray(d.items))entry.itemCount=d.items.length;
+                  }
+                }catch(_){entry.nonJson=true;}}
+                if(out.responses.length<180)out.responses.push(entry);
+              }catch(_){ }
+            });
+            try{
+              out.navigationCount++;const nav=await page.goto(target,{waitUntil:'domcontentloaded',timeout:45000});out.httpStatus=nav&&nav.status();
+              let last='',terminalAt=0;
+              for(let i=0;i<360;i++){
+                const sample=await page.evaluate(()=>({cards:document.querySelectorAll('#results .hotel-card').length,tools:(document.querySelector('#resultsTools')?.innerText||'').slice(0,240),status:(document.querySelector('.results-state')?.innerText||'').slice(0,240),events:window.__intTimeline||[],generation:window.V2SearchLifecycle?.generation,params:window.V2SearchLifecycle?.snapshot?{departureId:window.V2SearchLifecycle.snapshot.departureId,countryId:window.V2SearchLifecycle.snapshot.countryId,dateFrom:window.V2SearchLifecycle.snapshot.dateFrom,dateTo:window.V2SearchLifecycle.snapshot.dateTo,nightsFrom:window.V2SearchLifecycle.snapshot.nightsFrom,nightsTo:window.V2SearchLifecycle.snapshot.nightsTo,adults:window.V2SearchLifecycle.snapshot.adults,childs:window.V2SearchLifecycle.snapshot.childs,meal:window.V2SearchLifecycle.snapshot.meal,hotelCategory:window.V2SearchLifecycle.snapshot.hotelCategory}:null}));
+                out.events=sample.events;delete sample.events;out.actualParams=sample.params;delete sample.params;
+                const encoded=JSON.stringify(sample);if(encoded!==last){out.dom.push({ms:Date.now()-started,...sample});last=encoded;if(out.dom.length<=3)await page.screenshot({path:'evidence/early-'+out.dom.length+'.png'});}
+                const tv=out.events.some(e=>e.type==='v2:search-complete'||e.type==='v2:search-error');
+                const providers=['anex','andromeda','local-db'].every(p=>out.events.some(e=>e.type==='v2:provider-status'&&e.provider===p&&['complete','error'].includes(e.status)));
+                if(tv&&providers){if(!terminalAt)terminalAt=Date.now();if(Date.now()-terminalAt>4000)break;}
+                await page.waitForTimeout(250);
+              }
+              out.terminalEvents=out.events.filter(e=>e.type==='v2:provider-status'&&['complete','error'].includes(e.status));
+              await page.screenshot({path:'evidence/final.png',fullPage:false});
+            }catch(e){out.errorClass=e&&e.name||'Error';}
+            finally{done=true;out.finishedAt=new Date().toISOString();fs.writeFileSync('evidence/timeline.json',JSON.stringify(out,null,2)+'\n');await browser.close();}
+            console.log('PROVIDER_TIMELINE',JSON.stringify(out));
+          })().catch(e=>{fs.writeFileSync('evidence/failure.json',JSON.stringify({errorClass:e.name,noReplay:true}));process.exitCode=1;});
+          JS
+          node observe.cjs
+      - name: Retain sanitized timeline and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-provider-timeline-${{ github.run_id }}
+          path: ${{ runner.temp }}/int-provider-timeline/evidence/
+          retention-days: 14
+          if-no-files-found: error
