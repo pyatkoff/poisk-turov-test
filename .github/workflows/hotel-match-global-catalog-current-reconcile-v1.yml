@@ -1,0 +1,187 @@
+name: MATCH global catalog CURRENT reconcile v1
+
+on:
+  push:
+    branches:
+      - match/global-catalog-current-reconcile-1971-20260918-v1
+    paths:
+      - scripts/diagnostics/hotel_match_global_catalog_current_reconcile_v1.php
+      - .github/workflows/hotel-match-global-catalog-current-reconcile-v1.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: match-global-catalog-current-reconcile-1971-20260918-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-global-catalog-current-reconcile-1971-20260918-v1
+  EXPECTED_BASE: 325ea3d8fc4752c95ddcc6bccf715dae24f7836a
+  CLAIM_COMMENT_ID: '5728276704'
+  SOURCE_RESULT_SHA: 7516046dd2a0d052ea806ca07b337400d7d3769e2ff3fd7832e3479eecde1324
+
+jobs:
+  reconcile:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/match/global-catalog-current-reconcile-1971-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact read-only delta and owner claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_global_catalog_current_reconcile_v1.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-global-catalog-current-reconcile-v1.yml'
+          php -l scripts/diagnostics/hotel_match_global_catalog_current_reconcile_v1.php
+          php scripts/diagnostics/hotel_match_global_catalog_current_reconcile_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json, os
+          c=json.load(open('claim.json'))
+          assert c.get('user',{}).get('id')==226193297
+          assert c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          assert os.environ['OPERATION_ID'] in c.get('body','')
+          PY
+
+      - name: Download immutable source result
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 35331022650
+          artifact-ids: 10541335669
+          path: ${{ runner.temp }}/source
+
+      - name: Verify immutable source result
+        shell: bash
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/source/server/result.json"
+          test -f "$src"
+          test "$(sha256sum "$src" | awk '{print $1}')" = "$SOURCE_RESULT_SHA"
+          python3 - <<'PY'
+          import json, os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'source','server','result.json')
+          d=json.load(open(p))
+          assert d['operation']=='hotel-match-user-seen-common4-samo-catalog-acquire-1971-20260918-v2'
+          assert d['state']=='completed_read_only' and d['no_replay'] is True
+          assert d['strict_catalog_candidate_count']==102
+          assert len(d['strict_catalog_candidates'])==102
+          assert d['database_writes']==0 and d['mapping_writes']==0
+          PY
+
+      - name: Require existing SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          test -n "$HOST_VALUE"
+          test -n "$USER_VALUE"
+
+      - name: Run CURRENT read-only reconcile
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/operations/$OPERATION_ID"
+          stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; rm -rf \"\$HOME/$stage\"; mkdir -p \"\$HOME/$stage\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_global_catalog_current_reconcile_v1.php "$remote:$stage/scan.php"
+          scp "${opts[@]}" "$RUNNER_TEMP/source/server/result.json" "$remote:$stage/source-result.json"
+          set +e
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php \"\$HOME/$stage/scan.php\" \"\$HOME/$stage/source-result.json\"" > terminal/stdout.json 2> terminal/stderr.txt
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          ssh "${opts[@]}" "$remote" "p=\"\$HOME/$op\"; test -f \"\$p/reservation.json\"; test -f \"\$p/result.json\"; test -f \"\$p/receipt.json\"; tar -C \"\$p\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz
+          ssh "${opts[@]}" "$remote" "rm -rf \"\$HOME/$stage\"" || true
+
+      - name: Verify CURRENT receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('terminal');s=p/'server';s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              names=sorted(t.getnames());assert names==['receipt.json','reservation.json','result.json'],names
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<25_000_000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          result=json.loads((s/'result.json').read_text());receipt=json.loads((s/'receipt.json').read_text())
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest
+          assert receipt['provider_access'] is False
+          assert result['database_writes']==0 and result['mapping_writes']==0
+          assert result['supplier_calls']==0 and result['tourvisor_calls']==0
+          assert result['candidate_count']==102
+          summary={
+            'status':result['status'],
+            'route_counts':result.get('route_counts',{}),
+            'current_clean_geo_count':result.get('current_clean_geo_count'),
+            'current_clean_needs_geo_count':result.get('current_clean_needs_geo_count'),
+            'held_count':result.get('held_count'),
+            'already_same_count':result.get('already_same_count'),
+            'observation_table_present':result.get('observation_table_present'),
+            'observation_geo_usable':result.get('observation_geo_usable'),
+            'clean_geo_sample':[x for x in result.get('rows',[]) if x.get('route')=='current_clean_geo'][:30],
+            'needs_geo_sample':[x for x in result.get('rows',[]) if x.get('route')=='current_clean_needs_geo'][:30],
+            'held_sample':[x for x in result.get('rows',[]) if x.get('route')=='held'][:30],
+            'result_sha256':digest,
+          }
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          if result['status']!='read_only_complete': raise SystemExit(2)
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-global-catalog-current-reconcile-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
