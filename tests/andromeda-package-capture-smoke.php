@@ -91,7 +91,7 @@ ob_start(); var_dump($again); $debug = ob_get_clean();
 ok(strpos($debug, 'supplier-package-key') === false && strpos($debug, '123456.70') === false);
 denied(fn() => serialize($again), 'ANDROMEDA_SERIALIZATION_DISABLED');
 
-foreach (['reserve_write', 'reserve_readback', 'transport', 'http', 'result_write', 'late', 'new_generation', 'mapping_revoked'] as $scenario) {
+foreach (['reserve_write', 'reserve_readback', 'transport', 'http', 'supplier', 'result_write', 'late', 'new_generation', 'mapping_revoked'] as $scenario) {
     $state = []; [$store, $context] = fixtureStore($state);
     $record = []; $disk = []; $calls = 0; $now = 1002; $mapping = true;
     $write = persistence($disk);
@@ -105,6 +105,8 @@ foreach (['reserve_write', 'reserve_readback', 'transport', 'http', 'result_writ
         ++$calls; ok($disk['status'] === 'reserved');
         if ($scenario === 'transport') throw new RuntimeException('private transport URL');
         if ($scenario === 'http') return ['status'=>429,'body'=>'private supplier diagnostic'];
+        if ($scenario === 'supplier') return ['status'=>200,'body'=>json_encode(['error'=>[
+            'code'=>'CLAIM_STALE', 'message'=>'booking package expired private supplier text']])];
         if ($scenario === 'late') $now = 1900;
         if ($scenario === 'new_generation') $store->begin('new_search', 2, 1003);
         if ($scenario === 'mapping_revoked') $mapping = false;
@@ -125,6 +127,14 @@ foreach (['reserve_write', 'reserve_readback', 'transport', 'http', 'result_writ
     if ($scenario === 'http') {
         ok($disk['status'] === 'unknown' && $disk['diagnostic_code'] === 'ANDROMEDA_HTTP_ERROR');
         ok(strpos(json_encode($disk), 'private supplier diagnostic') === false);
+    }
+    if ($scenario === 'supplier') {
+        $facts = $disk['supplier_error_facts'] ?? null;
+        ok($disk['status'] === 'unknown' && $disk['diagnostic_code'] === 'ANDROMEDA_SUPPLIER_ERROR');
+        ok(is_array($facts) && $facts['source'] === 'andromeda_package_error' && $facts['shape'] === 'array');
+        ok($facts['reason_category'] === 'claim_or_package' && $facts['code'] === 'CLAIM_STALE' && $facts['code_field'] === 'code');
+        ok(is_string($facts['error_sha256']) && strlen($facts['error_sha256']) === 64);
+        ok(strpos(json_encode($disk), 'booking package expired private supplier text') === false);
     }
     if (in_array($scenario, ['late','new_generation','mapping_revoked'], true)) ok($disk['status'] === 'stale' && $disk['private_package'] === $raw);
     if ($disk !== []) {
