@@ -1,4 +1,4 @@
-name: INT Andromeda selected-flight v4 readback
+name: INT Andromeda selected-flight v4 readback v2
 
 on:
   push:
@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 5
     env:
       BASE_SHA: 325ea3d8fc4752c95ddcc6bccf715dae24f7836a
+      READBACK_OPERATION: int-andromeda-selected-flight-proof-v4-readback-1717-20260918-v2
       SOURCE_OPERATION: int-andromeda-selected-flight-proof-1717-20260918-v4
       SOURCE_GENERATION: '17171832'
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -56,20 +57,23 @@ jobs:
           opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes \
             -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
           remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
-          ssh "${opts[@]}" "$remote" bash -s -- "$SOURCE_OPERATION" "$SOURCE_GENERATION" <<'REMOTE' | tee "$RUNNER_TEMP/readback.json"
+          ssh "${opts[@]}" "$remote" bash -s -- "$SOURCE_OPERATION" "$SOURCE_GENERATION" "$READBACK_OPERATION" <<'REMOTE' | tee "$RUNNER_TEMP/readback.json"
           set -euo pipefail
-          export READBACK_OPERATION="$1"
+          export SOURCE_OPERATION="$1"
           export READBACK_GENERATION="$2"
+          export READBACK_OPERATION="$3"
           php <<'PHP'
           <?php
           declare(strict_types=1);
-          $op=(string)getenv('READBACK_OPERATION');
+          $op=(string)getenv('SOURCE_OPERATION');
           $generation=(int)getenv('READBACK_GENERATION');
+          $readbackOperation=(string)getenv('READBACK_OPERATION');
           $home=(string)getenv('HOME');
           $ledger=$home.'/.anytour-ops/'.$op;
           $state=is_file($ledger.'/state')?trim((string)file_get_contents($ledger.'/state')):'missing';
           $error=is_file($ledger.'/error.log')?(string)file_get_contents($ledger.'/error.log'):'';
           $failure='unknown';
+          $fatalKind=null; $fatalSymbol=null; $fatalFile=null; $fatalLine=null;
           if(preg_match('/(ANDROMEDA_SELECTED_PROOF_[A-Z_]+)/',$error,$m)) $failure=$m[1];
           elseif(str_contains($error,'anytour_andromeda_search3_mapping_allows')) $failure='missing_mapping_helper';
           elseif(str_contains($error,'Failed opening required')||str_contains($error,'failed to open stream')) $failure='missing_runtime_dependency';
@@ -77,6 +81,21 @@ jobs:
           elseif(str_contains($error,'TypeError')) $failure='type_error';
           elseif(str_contains($error,'Fatal error')) $failure='other_fatal';
           elseif($error==='') $failure='no_error_log';
+
+          $patterns=[
+            'undefined_function'=>'/Call to undefined function\\s+([A-Za-z0-9_\\\\]+)\\(\\)/',
+            'undefined_method'=>'/Call to undefined method\\s+([A-Za-z0-9_\\\\]+(?:::|->)[A-Za-z0-9_]+)\\(\\)/',
+            'missing_class'=>'/Class [\"\']([A-Za-z0-9_\\\\]+)[\"\'] not found/',
+            'argument_count'=>'/(?:Too few|Too many) arguments to function\\s+([A-Za-z0-9_\\\\]+(?:::|->)?[A-Za-z0-9_]*)/',
+            'undefined_constant'=>'/Undefined constant [\"\']([A-Za-z0-9_\\\\]+)[\"\']/',
+            'redeclare'=>'/Cannot redeclare\\s+([A-Za-z0-9_\\\\]+)\\(\\)/',
+          ];
+          foreach($patterns as $kind=>$pattern){
+            if(preg_match($pattern,$error,$m)){ $fatalKind=$kind; $fatalSymbol=$m[1]; break; }
+          }
+          if(preg_match('/(?: in |thrown in )([^\\s:]+\\.php)(?::| on line )(\\d+)/',$error,$m)){
+            $fatalFile=basename($m[1]); $line=(int)$m[2]; if($line>0&&$line<100000)$fatalLine=$line;
+          }
 
           $configPath=$home.'/.anytoour-andromeda/search3-preview.php';
           $searchFiles=0; $completeSearchFiles=0; $packageAttempts=0; $packages=0; $surcharges=0;
@@ -103,8 +122,14 @@ jobs:
           }
           echo json_encode([
             'status'=>'readback_complete',
+            'readback_operation'=>$readbackOperation,
             'source_operation_state'=>$state,
             'failure_class'=>$failure,
+            'fatal_kind'=>$fatalKind,
+            'fatal_symbol'=>$fatalSymbol,
+            'fatal_file'=>$fatalFile,
+            'fatal_line'=>$fatalLine,
+            'error_sha256'=>$error!==''?hash('sha256',$error):null,
             'search_state_files'=>$searchFiles,
             'complete_search_state_files'=>$completeSearchFiles,
             'package_attempt_sidecars'=>$packageAttempts,
@@ -120,6 +145,6 @@ jobs:
       - name: Preserve sanitized readback
         uses: actions/upload-artifact@v4
         with:
-          name: int-andromeda-selected-flight-v4-readback-${{ github.run_id }}
+          name: int-andromeda-selected-flight-v4-readback-v2-${{ github.run_id }}
           path: ${{ runner.temp }}/readback.json
           retention-days: 30
