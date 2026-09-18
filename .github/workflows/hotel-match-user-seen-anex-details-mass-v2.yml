@@ -100,7 +100,18 @@ jobs:
           key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$SSH_USER@$SSH_HOST"
           opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ConnectionAttempts=3 -o ServerAliveInterval=20 -o ServerAliveCountMax=3)
           stage=".anytour-match/stages/$OPERATION_ID"
-          ssh "${opts[@]}" "$remote"             "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$stage\" HMA_PREP_ONLY=1 php -d display_errors=1 -d log_errors=0 \"\$HOME/$stage/hotel_match_user_seen_anex_details_mass_v2.php\""             > terminal/preflight.json
+          rm -f terminal/preflight.json terminal/preflight.tmp terminal/preflight.err
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            if ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$stage\" HMA_PREP_ONLY=1 php -d display_errors=1 -d log_errors=0 \"\$HOME/$stage/hotel_match_user_seen_anex_details_mass_v2.php\"" > terminal/preflight.tmp 2> terminal/preflight.err; then
+              mv terminal/preflight.tmp terminal/preflight.json
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ok" -eq 1
+          test -s terminal/preflight.json
           python3 - <<'PY'
           import json
           d=json.load(open('terminal/preflight.json'))
