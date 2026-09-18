@@ -1,0 +1,25 @@
+name: MATCH ANEX config name inventory #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths: ['.github/workflows/hotel-match-anex-config-name-inventory-1971.yml']
+permissions: {contents: read}
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Read ANEX credential field names only
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          k="$RUNNER_TEMP/key"; if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$k"; else printf '%s' "$KEY"|base64 -d>"$k"; fi; chmod 600 "$k"
+          o=(-i "$k" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e; ssh "${o[@]}" "$USER@$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '\''require "config.php"; $p="_preview/search3-anex-candidate/.anex-private.php"; if(is_file($p)) require $p; $names=[]; foreach((get_defined_constants(true)["user"]??[]) as $n=>$v){$u=strtoupper((string)$n); if(strpos($u,"ANEX")!==false && (strpos($u,"TOKEN")!==false || strpos($u,"KEY")!==false)) $names[]=(string)$n;} sort($names); echo json_encode(array_values(array_unique($names)));'\''' >"$RUNNER_TEMP/out" 2>"$RUNNER_TEMP/err"; rc=$?; set -e
+          if [ "$rc" -ne 0 ] && grep -Eq 'Connection reset by peer|Connection closed by remote host|kex_exchange_identification' "$RUNNER_TEMP/err"; then sleep 2; ssh "${o[@]}" "$USER@$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '\''require "config.php"; $p="_preview/search3-anex-candidate/.anex-private.php"; if(is_file($p)) require $p; $names=[]; foreach((get_defined_constants(true)["user"]??[]) as $n=>$v){$u=strtoupper((string)$n); if(strpos($u,"ANEX")!==false && (strpos($u,"TOKEN")!==false || strpos($u,"KEY")!==false)) $names[]=(string)$n;} sort($names); echo json_encode(array_values(array_unique($names)));'\''' >"$RUNNER_TEMP/out"; elif [ "$rc" -ne 0 ]; then cat "$RUNNER_TEMP/err" >&2; exit "$rc"; fi
+          cat "$RUNNER_TEMP/out"
