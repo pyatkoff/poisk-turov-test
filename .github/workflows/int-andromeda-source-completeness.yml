@@ -1,0 +1,40 @@
+name: INT Andromeda source completeness
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-search.php'
+      - 'app/integrations/andromeda-offer-store.php'
+      - 'app/integrations/andromeda-hotel-resolver.php'
+      - 'app/integrations/andromeda-hotel-observations.php'
+      - 'tests/andromeda-source-completeness-test.php'
+      - '.github/workflows/int-andromeda-source-completeness.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Verify recovered installed sources exactly
+        run: |
+          set -euo pipefail
+          echo '62ccfd0ad958a471c86f51ba108977272e2e7e5c65e02a2808bfa27fe7083e17  app/integrations/andromeda-search.php' | sha256sum -c -
+          echo '8083fff227e44f4df9b132a0482b715aedda521bf0204a141abf9429139ee032  app/integrations/andromeda-offer-store.php' | sha256sum -c -
+          echo '805ad9509de681c95a18ee7f96ae8e1b77d1eb2b29221e35e2d38ce9b6f52754  app/integrations/andromeda-hotel-resolver.php' | sha256sum -c -
+          echo 'cd093f6a2253d1c5159520ca69098e580a3ba9a3d7cfdbc7c4faae2b8cb3891c  app/integrations/andromeda-hotel-observations.php' | sha256sum -c -
+          php -l app/integrations/andromeda-search.php
+          php -l app/integrations/andromeda-offer-store.php
+          php -l app/integrations/andromeda-hotel-resolver.php
+          php -l app/integrations/andromeda-hotel-observations.php
+          php -l tests/andromeda-source-completeness-test.php
+          php tests/andromeda-source-completeness-test.php
+          php tests/andromeda-search3-page-orchestrator-test.php
+          php tests/andromeda-retained-mapping-smoke.php
+          php tests/andromeda-anytour-offer-autosave-test.php
+          php tests/andromeda-local-offer-collector-test.php
