@@ -1,0 +1,220 @@
+name: MATCH saved Tourvisor ANEX operator-link bridge v2
+
+on:
+  push:
+    branches:
+      - match/user-seen-anex-saved-operatorlink-bridge-1971-20260918-v2
+    paths:
+      - scripts/diagnostics/hotel_match_user_seen_anex_saved_operatorlink_bridge_v2.php
+      - .github/workflows/hotel-match-user-seen-anex-saved-operatorlink-bridge-v2.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: match-user-seen-anex-saved-operatorlink-bridge-1971-20260918-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-user-seen-anex-saved-operatorlink-bridge-1971-20260918-v2
+  EXPECTED_BASE: 1f7fa9d1f51625b6d4ec95139c0fc5de36530364
+  CLAIM_COMMENT_ID: '5730388295'
+
+jobs:
+  bridge:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/match/user-seen-anex-saved-operatorlink-bridge-1971-20260918-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact isolated delta and canonical owner claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_user_seen_anex_saved_operatorlink_bridge_v2.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-user-seen-anex-saved-operatorlink-bridge-v2.yml'
+          php -l scripts/diagnostics/hotel_match_user_seen_anex_saved_operatorlink_bridge_v2.php
+          php scripts/diagnostics/hotel_match_user_seen_anex_saved_operatorlink_bridge_v2.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json, os
+          c=json.load(open('claim.json'))
+          assert c.get('user',{}).get('id') == 226193297
+          assert c.get('author_association') == 'OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          assert os.environ['OPERATION_ID'] in c.get('body','')
+          PY
+
+      - name: Create durable reservation before CURRENT DB access
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p='scripts/diagnostics/hotel_match_user_seen_anex_saved_operatorlink_bridge_v2.php'
+          r={
+            'operation':os.environ['OPERATION_ID'],
+            'state':'reserved_before_current_db_access',
+            'source_sha':os.environ['HEAD_SHA'],
+            'script_sha256':hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest(),
+            'database_writes':0,'mapping_writes':0,'provider_calls':0,'tourvisor_calls':0,
+            'no_replay':True,
+          }
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-saved-operatorlink-v2-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Require SSH credentials and stage exact payload
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          umask 077
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/operations/$OPERATION_ID"
+          stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op\" \"\$HOME/$stage\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_user_seen_anex_saved_operatorlink_bridge_v2.php "$remote:$stage/"
+          ssh "${opts[@]}" "$remote" "chmod 600 \"\$HOME/$op/reservation.json\" \"\$HOME/$stage/hotel_match_user_seen_anex_saved_operatorlink_bridge_v2.php\""
+
+      - name: Run CURRENT saved-evidence bridge
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/operations/$OPERATION_ID"
+          stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$stage/hotel_match_user_seen_anex_saved_operatorlink_bridge_v2.php\"" > terminal/stdout.json 2> terminal/stderr.txt
+          rc=$?
+          ssh "${opts[@]}" "$remote" "p=\"\$HOME/$op\"; test -f \"\$p/reservation.json\"; test -f \"\$p/result.json\"; test -f \"\$p/receipt.json\"; tar -C \"\$p\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz 2>>terminal/stderr.txt
+          trc=$?
+          ssh "${opts[@]}" "$remote" "rm -rf \"\$HOME/$stage\"" || true
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          printf '%s\n' "$trc" > terminal/tar-exit.txt
+
+      - name: Verify result and build summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile,os
+          p=pathlib.Path('terminal'); p.mkdir(exist_ok=True); s=p/'server'; s.mkdir(exist_ok=True)
+          a=p/'server-operation.tgz'
+          if not a.exists() or a.stat().st_size==0:
+              raise SystemExit('missing terminal archive')
+          with tarfile.open(a,'r:gz') as t:
+              names=sorted(t.getnames())
+              assert names==['receipt.json','reservation.json','result.json'],names
+              for m in t.getmembers():
+                  assert m.isfile() and m.size < 20_000_000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          assert pathlib.Path('reservation/reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          r=json.loads((s/'result.json').read_text())
+          receipt=json.loads((s/'receipt.json').read_text())
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest
+          assert r['database_writes']==0 and r['mapping_writes']==0
+          assert r['provider_calls']==0 and r['tourvisor_calls']==0
+          summary={
+            'state':r['state'],
+            'future_user_seen_anex_frontier':r.get('future_user_seen_anex_frontier'),
+            'frontier_with_saved_operator_rows':r.get('frontier_with_saved_operator_rows'),
+            'saved_operator_rows_parsed':r.get('saved_operator_rows_parsed'),
+            'saved_hotellist_rows':r.get('saved_hotellist_rows'),
+            'saved_samo_hotelcode_rows':r.get('saved_samo_hotelcode_rows'),
+            'safe_direct_anex_candidate_count':r.get('safe_direct_anex_candidate_count'),
+            'diagnostic_samo_hotelcode_count':r.get('diagnostic_samo_hotelcode_count'),
+            'hold_count':r.get('hold_count'),
+            'hold_reason_counts':r.get('hold_reason_counts',{}),
+            'safe_sample':r.get('safe_direct_anex_candidates',[])[:40],
+            'result_sha256':digest,
+          }
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          if r['state']!='completed_read_only': raise SystemExit(2)
+          safe=r.get('safe_direct_anex_candidate_count',0)
+          front=r.get('future_user_seen_anex_frontier',0)
+          saved=r.get('frontier_with_saved_operator_rows',0)
+          samo=r.get('diagnostic_samo_hotelcode_count',0)
+          msg=(f"MATCH #1971 saved Tourvisor→ANEX bridge **COMPLETE / READ ONLY / NO-REPLAY**. "
+               f"CURRENT future user-seen ANEX-family frontier: **{front}**; saved operator-link coverage: **{saved}** hotels; "
+               f"strict direct HOTELLIST candidates: **{safe}**; separate SAMO hotelCode evidence rows: **{samo}**. "
+               f"Provider/Tourvisor calls0, DB/mapping writes0. Result SHA256 `{digest}`. "
+               f"Next: subtract this direct evidence and mass-probe only the residual under today's ANEX 3000/day ledger, then spend Tourvisor quota on the remainder.")
+          (p/'summary.md').write_text(msg+'\n')
+          print(msg)
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0
+          test "$(cat terminal/tar-exit.txt)" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-saved-operatorlink-v2-result-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record MATCH result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file terminal/summary.md
+          gh issue comment 2530 --repo "$GITHUB_REPOSITORY" --body-file terminal/summary.md
