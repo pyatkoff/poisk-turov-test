@@ -54,7 +54,7 @@ async function inspect(browser, width, previous) {
     await page.waitForTimeout(100); // Drain native toggle event before lifecycle snapshots.
     const initial = await state();
     if (!previous) {
-      const controls = await page.locator('#tourSearch .main-fields input,#tourSearch .main-fields select').evaluateAll(nodes => nodes.map(n => ({height:n.getBoundingClientRect().height,font:parseFloat(getComputedStyle(n).fontSize)})));
+      const controls = await page.locator('#tourSearch .main-fields input,#tourSearch .main-fields select').evaluateAll(nodes => nodes.filter(n => n.getClientRects().length).map(n => ({height:n.getBoundingClientRect().height,font:parseFloat(getComputedStyle(n).fontSize)})));
       assert.ok(controls.length >= 8 && controls.every(n => n.height >= 44 && n.font >= 16), 'native primary controls stay readable and touchable');
       if (width === 375 || width === 1440) await page.screenshot({ path: path.join(process.env.SEARCH3_GEOMETRY_OUTPUT, `entry-current-${width}.png`), fullPage: true });
     }

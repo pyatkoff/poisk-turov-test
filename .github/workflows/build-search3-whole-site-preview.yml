@@ -31,6 +31,7 @@ on:
       - 'tests/search3-current-results-browser.cjs'
       - 'tests/search3-hotel-tabs.cjs'
       - 'tests/search3-hotel-tabs-browser.cjs'
+      - 'tests/search3-known-hotel-browser.cjs'
       - 'tests/search3-shortlist-browser.cjs'
       - 'scripts/build/search3_site_preview_isolation.py'
       - '.github/workflows/build-search3-whole-site-preview.yml'
@@ -433,6 +434,7 @@ jobs:
           node tests/search3-lazy-selected-browser.cjs
           node tests/search3-lean-entry-browser.cjs
           node tests/search3-flight-fallback-browser.cjs
+          SEARCH3_KNOWN_HOTEL_OUTPUT="$RUNNER_TEMP/search3-selected-geometry/known-hotel" node tests/search3-known-hotel-browser.cjs
 
       - name: Verify results browser tier
         if: steps.results-current.outputs.required == 'true' || steps.results-shortlist.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
