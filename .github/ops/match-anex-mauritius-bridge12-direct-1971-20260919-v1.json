@@ -1,0 +1,55 @@
+{
+  "operation": "hotel-match-anex-mauritius-bridge12-direct-1971-20260919-v1",
+  "state": "reserved_before_provider_access",
+  "source_base": "813112d90682fc14dcdbbe204537c64b77502aa0",
+  "authority": {
+    "planner_operation": "hotel-match-anex-user-seen-tv30-current-plan-1971-20260919-v3",
+    "planner_run": 35403195182,
+    "planner_result_sha256": "ace4bfe1314a8d46d38cbe28b00cac25d7f6659840b185e3154e9bca5c55ca7c",
+    "prior_mauritius_operation": "hotel-match-anex-user-seen-mauritius27-direct-1971-20260919-v2",
+    "prior_mauritius_state": "terminal_failed_no_replay",
+    "prior_mauritius_reason": "continue_cap"
+  },
+  "source_account": {
+    "endpoint": "https://api.tourvisor.ru/search/api/v1",
+    "credential": "server TOURVISOR_JWT",
+    "operator_id": 13,
+    "operator_family": "ANEX"
+  },
+  "daily_accounting": {
+    "provider_timezone": "Europe/Moscow",
+    "provider_day": "2026-09-19",
+    "known_prior_attempt_floor": 184,
+    "required_accounted_floor": 396,
+    "daily_limit": 3000,
+    "operation_cap": 450
+  },
+  "target": {
+    "departure_id": 1,
+    "country_id": 27,
+    "country_name": "Маврикий",
+    "date_from": "2026-10-28",
+    "date_to": "2026-11-03",
+    "nights_from": 7,
+    "nights_to": 10,
+    "adults": 2,
+    "children_count": 0,
+    "hotel_ids": [11745,11751,11754,11756,11758,11761,11770,11775,11788,11789,26841,64582],
+    "andromeda_accepted_missing_anex_count": 12
+  },
+  "rules": {
+    "operator_filter": [13],
+    "no_dates_endpoint": true,
+    "fresh_search_only": true,
+    "initial_details_before_continue": true,
+    "detail_evidence_durable_immediately": true,
+    "continue_round_cap": 60,
+    "full_drain": true,
+    "http400_requires_zero_growth": true,
+    "positive_hotellist_only": true,
+    "raw_room_evidence_hotel_local_only": true,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "no_replay_after_provider_access": true
+  }
+}
