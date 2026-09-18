@@ -55,7 +55,7 @@ jobs:
           php tests/anex-anytour-offer-autosave-test.php
           php tests/anex-background-gateway-limit-test.php
           test "$(git -C release-data rev-parse HEAD)" = "$RELEASE_DATA_SHA"
-          test "$(git -C release-data hash-object v2/data/anytour-offer-snapshot-ingest-v2.php)" = '4b6b73c11a8de0401c05187982ba977e61a14354'
+          test "$(git -C release-data hash-object v2/data/anytour-offer-snapshot-ingest-v1.php)" = '4b6b73c11a8de0401c05187982ba977e61a14354'
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY"
           test -n "$ANYTOOUR_DEPLOY_HOST"
           test -n "$ANYTOOUR_DEPLOY_USER"
