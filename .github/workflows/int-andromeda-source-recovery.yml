@@ -35,7 +35,19 @@ jobs:
           mkdir -p recovered
           base="$HOME/www/anytoour.ru/_preview/search3-anex-candidate/app/integrations"
           for f in andromeda-search.php andromeda-hotel-resolver.php andromeda-hotel-observations.php; do
-            ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15 "$remote" "set -eu; p=\"$base/\$f\"; test -f \"\$p\"; test ! -L \"\$p\"; n=\$(wc -c < \"\$p\"); test \"\$n\" -gt 0; test \"\$n\" -lt 300000; cat \"\$p\"" > "recovered/$f"
+            ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15 "$remote" 'bash -s' -- "$f" > "recovered/$f" <<'REMOTE'
+          set -euo pipefail
+          f="$1"
+          case "$f" in
+            andromeda-search.php|andromeda-hotel-resolver.php|andromeda-hotel-observations.php) ;;
+            *) exit 2 ;;
+          esac
+          p="$HOME/www/anytoour.ru/_preview/search3-anex-candidate/app/integrations/$f"
+          test -f "$p" && test ! -L "$p"
+          n="$(wc -c < "$p")"
+          test "$n" -gt 0 && test "$n" -lt 300000
+          cat "$p"
+          REMOTE
           done
           for f in recovered/*.php; do php -l "$f"; sha256sum "$f"; done
       - uses: actions/upload-artifact@v4
