@@ -5,6 +5,7 @@ on:
     branches:
       - ops/match-user-seen-common4-samo-catalog-acquire-1971-20260918-v2
     paths:
+      - scripts/diagnostics/hotel_match_user_seen_common4_samo_catalog_acquire_v2.php
       - .github/workflows/hotel-match-user-seen-common4-samo-catalog-acquire-v2.yml
 
 permissions:
