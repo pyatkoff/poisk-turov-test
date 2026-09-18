@@ -107,6 +107,9 @@ final class AnyTourAndromedaPackageCapture
             $unknown = $reserved;
             $unknown['status'] = 'unknown';
             $unknown['diagnostic_code'] = self::safePackageFailureCode($error);
+            if ($error instanceof AnyTourAndromedaPackageSupplierException) {
+                $unknown['supplier_error_facts'] = $error->diagnosticFacts();
+            }
             $this->save($unknown, $reserved);
             throw new RuntimeException('ANDROMEDA_PACKAGE_OUTCOME_UNKNOWN');
         }
