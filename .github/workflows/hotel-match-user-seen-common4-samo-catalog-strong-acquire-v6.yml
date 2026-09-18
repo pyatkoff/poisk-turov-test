@@ -1,0 +1,254 @@
+name: MATCH global common4 strong SAMO catalog acquire v6
+
+on:
+  push:
+    branches:
+      - ops/match-user-seen-common4-samo-catalog-strong-acquire-1971-20260918-v6
+    paths:
+      - scripts/diagnostics/hotel_match_user_seen_common4_samo_catalog_strong_acquire_v6.php
+      - .github/workflows/hotel-match-user-seen-common4-samo-catalog-strong-acquire-v6.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: match-user-seen-common4-samo-catalog-acquire-1971-20260918-v2
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-user-seen-common4-samo-catalog-strong-acquire-1971-20260918-v6
+  EXPECTED_BASE: dc3d4326662f1e83f2dabe783e38d6812caed0ef
+  CLAIM_COMMENT_ID: '5729604230'
+
+jobs:
+  acquire:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/match-user-seen-common4-samo-catalog-strong-acquire-1971-20260918-v6'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact isolated delta and owner claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_user_seen_common4_samo_catalog_strong_acquire_v6.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-user-seen-common4-samo-catalog-strong-acquire-v6.yml'
+          php -l scripts/diagnostics/hotel_match_user_seen_common4_samo_catalog_strong_acquire_v6.php
+          php scripts/diagnostics/hotel_match_user_seen_common4_samo_catalog_strong_acquire_v6.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json, os
+          c=json.load(open('claim.json'))
+          assert c.get('user',{}).get('id') == 226193297
+          assert c.get('author_association') == 'OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          b=c.get('body','')
+          assert os.environ['OPERATION_ID'] in b
+          PY
+
+      - name: Create durable reservation before provider access
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reservation
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          deps=[
+            'scripts/diagnostics/hotel_match_user_seen_common4_samo_catalog_strong_acquire_v6.php',
+            'app/integrations/andromeda-client.php',
+            'app/integrations/andromeda-transport.php',
+            'app/integrations/andromeda-network-transport-failure.php',
+            'app/integrations/anex-search-mapping-registry.php',
+            'scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php',
+            'scripts/diagnostics/hotel_match_current_supplier_bridge.php',
+            'scripts/diagnostics/hotel_full_catalog_reconcile.php',
+          ]
+          r={
+            'operation':os.environ['OPERATION_ID'],
+            'state':'reserved_before_provider_access',
+            'source_sha':os.environ['HEAD_SHA'],
+            'provider':'andromeda',
+            'catalog_call_cap':400,
+            'price_call_cap':0,
+            'tourvisor_calls':0,
+            'database_writes':0,
+            'mapping_writes':0,
+            'dependencies':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in deps},
+            'no_replay_after_provider_access':True,
+          }
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True)+'\n').encode()
+          pathlib.Path('reservation/reservation.json').write_bytes(raw)
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-global-strong-catalog-v6-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Require existing credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANDROMEDA_USERNAME_VALUE: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD_VALUE: ${{ secrets.ANDROMEDA_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          test -n "$HOST_VALUE"
+          test -n "$USER_VALUE"
+          test -n "$ANDROMEDA_USERNAME_VALUE"
+          test -n "$ANDROMEDA_PASSWORD_VALUE"
+
+      - name: Stage exact private payload
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/operations/$OPERATION_ID"
+          stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op\" \"\$HOME/$stage\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" \
+            scripts/diagnostics/hotel_match_user_seen_common4_samo_catalog_strong_acquire_v6.php \
+            app/integrations/andromeda-client.php \
+            app/integrations/andromeda-transport.php \
+            app/integrations/andromeda-network-transport-failure.php \
+            app/integrations/anex-search-mapping-registry.php \
+            scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php \
+            scripts/diagnostics/hotel_match_current_supplier_bridge.php \
+            scripts/diagnostics/hotel_full_catalog_reconcile.php \
+            "$remote:$stage/"
+          ssh "${opts[@]}" "$remote" "chmod 600 \"\$HOME/$op/reservation.json\" \"\$HOME/$stage/\"*"
+
+      - name: Run global common4 catalog acquisition
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANDROMEDA_USERNAME_VALUE: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD_VALUE: ${{ secrets.ANDROMEDA_PASSWORD }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-match/operations/$OPERATION_ID"
+          stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          printf '%s\n%s\n' "$ANDROMEDA_USERNAME_VALUE" "$ANDROMEDA_PASSWORD_VALUE" | \
+            ssh "${opts[@]}" "$remote" \
+              "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" MATCH_MAPPING_REGISTRY_PATH=\"\$HOME/$stage/anex-search-mapping-registry.php\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$stage/hotel_match_user_seen_common4_samo_catalog_strong_acquire_v6.php\"" \
+              > terminal/stdout.json 2> terminal/stderr.txt
+          rc=$?
+          ssh "${opts[@]}" "$remote" "p=\"\$HOME/$op\"; test -f \"\$p/reservation.json\"; test -f \"\$p/result.json\"; test -f \"\$p/receipt.json\"; tar -C \"\$p\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz 2>>terminal/stderr.txt
+          trc=$?
+          ssh "${opts[@]}" "$remote" "rm -rf \"\$HOME/$stage\"" || true
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          printf '%s\n' "$trc" > terminal/tar-exit.txt
+
+      - name: Verify terminal result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True)
+          a=p/'server-operation.tgz'
+          if not a.exists() or a.stat().st_size==0:
+              raise SystemExit('missing terminal archive')
+          with tarfile.open(a,'r:gz') as t:
+              names=sorted(t.getnames())
+              assert names==['receipt.json','reservation.json','result.json'],names
+              for m in t.getmembers():
+                  assert m.isfile() and m.size < 25_000_000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          assert pathlib.Path('reservation/reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          result=json.loads((s/'result.json').read_text())
+          receipt=json.loads((s/'receipt.json').read_text())
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest
+          assert result['database_writes']==0 and result['mapping_writes']==0
+          assert result['price_calls']==0 and result['tourvisor_calls']==0
+          assert result['provider_calls'] <= 401
+          summary={
+            'state':result['state'],
+            'reason':result.get('reason'),
+            'provider_calls':result.get('provider_calls'),
+            'catalog_calls':result.get('catalog_calls'),
+            'future_real_common4_locals':result.get('future_real_common4_locals'),
+            'context_pair_count':result.get('context_pair_count'),
+            'bound_departure_count':result.get('bound_departure_count'),
+            'bound_pair_count':result.get('bound_pair_count'),
+            'strong_catalog_candidate_count':result.get('strong_catalog_candidate_count'),
+            'ranked_provider_rows':result.get('ranked_provider_rows'),
+            'accepted_town_crosswalk_keys':result.get('accepted_town_crosswalk_keys'),
+            'accepted_town_crosswalk_conflicts':result.get('accepted_town_crosswalk_conflicts'),
+            'ambiguous_candidate_count':result.get('ambiguous_candidate_count'),
+            'family_potential_unique_hotels':result.get('family_potential_unique_hotels',{}),
+            'unbound_departures':result.get('unbound_departures',{}),
+            'unbound_states':result.get('unbound_states',{}),
+            'hold_reason_counts':result.get('hold_reason_counts',{}),
+            'strong_sample':result.get('strong_catalog_candidates',[])[:40],
+            'result_sha256':digest,
+          }
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          if result['state']!='completed_read_only':
+              raise SystemExit(2)
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0
+          test "$(cat terminal/tar-exit.txt)" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-global-strong-catalog-v6-result-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
