@@ -3,8 +3,11 @@ on:
   pull_request:
     paths:
       - 'app/integrations/anex-local-offer-collector.php'
+      - 'app/integrations/anex-preview-gateway.php'
+      - 'v2/api-anex-search3-preview.php'
       - 'scripts/ops/anex_local_offer_collect.php'
       - 'tests/anex-local-offer-collector-test.php'
+      - 'tests/anex-background-gateway-limit-test.php'
       - 'app/integrations/anex-anytour-offer-autosave.php'
       - 'tests/anex-anytour-offer-autosave-test.php'
       - '.github/workflows/int-anex-local-offer-collector.yml'
@@ -22,9 +25,13 @@ jobs:
         run: |
           set -euo pipefail
           php -l app/integrations/anex-local-offer-collector.php
+          php -l app/integrations/anex-preview-gateway.php
+          php -l v2/api-anex-search3-preview.php
           php -l scripts/ops/anex_local_offer_collect.php
           php -l tests/anex-local-offer-collector-test.php
+          php -l tests/anex-background-gateway-limit-test.php
           php -l app/integrations/anex-anytour-offer-autosave.php
           php -l tests/anex-anytour-offer-autosave-test.php
           php tests/anex-local-offer-collector-test.php
+          php tests/anex-background-gateway-limit-test.php
           php tests/anex-anytour-offer-autosave-test.php
