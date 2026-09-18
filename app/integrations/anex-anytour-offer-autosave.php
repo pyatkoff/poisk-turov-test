@@ -45,7 +45,7 @@ final class AnyTourAnexOfferAutosaveV1
             return self::receipt(false, 'not_applicable', 0, 0);
         }
         $offers = $plan['offers'] ?? null;
-        if (!is_array($offers) || !array_is_list($offers) || $offers === [] || count($offers) > 6) {
+        if (!is_array($offers) || !array_is_list($offers) || count($offers) > 6) {
             throw new InvalidArgumentException('ANEX_ANYTOUR_AUTOSAVE_PLAN');
         }
 
@@ -108,10 +108,9 @@ final class AnyTourAnexOfferAutosaveV1
             $auto['offers'] = array_slice($auto['offers'], -self::MAX_ACCUMULATED_OFFERS, null, true);
         }
         $state['anytour_offer_autosave'] = $auto;
-        if ($auto['offers'] === []) return self::receipt(false, 'no_final_price_ready', 0, 0);
 
         self::loadIntContracts();
-        $entries = [];
+        $entries = self::regularEntries($db,$saved,$state,$now,$supplierResolver);
         foreach ($auto['offers'] as $offerRef => $item) {
             $entry = $saved['offers'][$offerRef] ?? null;
             $offer = is_array($entry) ? ($entry['offer'] ?? null) : null;
@@ -204,13 +203,16 @@ final class AnyTourAnexOfferAutosaveV1
             ];
         }
 
-        if ($entries === []) return self::receipt(false, 'no_final_price_ready', 0, count($state['anytour_offer_autosave']['offers'] ?? []));
+        if ($entries === []) return self::receipt(false, 'no_persistable_offers', 0, count($state['anytour_offer_autosave']['offers'] ?? []));
         $auto = $state['anytour_offer_autosave'];
         $publishDigest = hash('sha256', json_encode(array_map(static function (array $entry): array {
             return [
                 'hotel' => $entry['anytour_hotel_id'],
                 'identity' => $entry['current']['identity'],
-                'price' => $entry['priced_money']['search_price_with_surcharge']['amount'] ?? null,
+                'state' => ($entry['confirmation_required'] ?? false) === true ? 'confirmation_required' : 'final_ready',
+                'price' => ($entry['confirmation_required'] ?? false) === true
+                    ? ($entry['offer']['money']['search_price']['amount'] ?? null)
+                    : ($entry['priced_money']['search_price_with_surcharge']['amount'] ?? null),
             ];
         }, $entries), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
         if (($auto['last_published_digest'] ?? null) === $publishDigest) {
@@ -230,9 +232,68 @@ final class AnyTourAnexOfferAutosaveV1
             'published' => ($result['published'] ?? false) === true,
             'reason' => $result['reason'] ?? null,
             'readyOfferCount' => (int)($result['readyOfferCount'] ?? 0),
+            'confirmationRequiredOfferCount' => (int)($result['confirmationRequiredOfferCount'] ?? 0),
             'accumulatedOfferCount' => count($state['anytour_offer_autosave']['offers'] ?? []),
             'selectionAuthority' => false,
         ];
+    }
+
+    private static function regularEntries(
+        PDO $db,
+        array $saved,
+        array $state,
+        DateTimeImmutable $now,
+        callable $supplierResolver
+    ): array {
+        $out=[];
+        $searchRef=$saved['search_ref']??null;
+        if(!is_string($searchRef)||!preg_match('/\A[a-f0-9]{32}\z/D',$searchRef)) return [];
+        foreach(($saved['offers']??[]) as $offerRef=>$entry){
+            $offer=is_array($entry)?($entry['offer']??null):null;
+            if(!is_array($offer)||($offer['kind']??null)!=='concrete'||($offer['flight_type']??null)!=='regular'
+                ||!is_string($offerRef)||($offer['offer_key']??null)!==$offerRef) continue;
+            $legacyId=$offer['hotel']['local_id']??null;
+            $external=$offer['hotel']['external_id']??null;
+            if(!is_int($legacyId)||$legacyId<1||!is_string($external)) continue;
+            if($supplierResolver('anex_online',$external)!==$legacyId) continue;
+            $ownId=self::ownHotelId($db,$legacyId); if($ownId===null) continue;
+            $customerSearchPrice=self::regularCustomerSearchPrice($offer); if($customerSearchPrice===null) continue;
+            $observed=$entry['observed_at']??null;
+            if(!is_int($observed)||$observed<$saved['created_at']||$observed>$now->getTimestamp()) continue;
+            try{
+                $contract=AnyTourThreeProviderAnexOffer::fromPage([
+                    'schema_version'=>1,'provider'=>'anex','supplier_namespace'=>'anex_online',
+                    'search'=>$saved['search'],'offers'=>[$offer],
+                ],0,[
+                    'supplier_namespace'=>'anex_online','external_id'=>$external,'local_id'=>$legacyId,
+                ],$searchRef,gmdate('Y-m-d\TH:i:s\Z',$observed),[],$customerSearchPrice);
+                $retained=AnyTourThreeProviderOfferContext::retain(
+                    $contract,$state['generation'],1,$saved['created_at'],900
+                );
+                $current=array_intersect_key($retained,array_flip([
+                    'provider','operator','local_hotel_id','identity','generation','page',
+                ]));
+                $out[]=[
+                    'anytour_hotel_id'=>$ownId,'offer'=>$contract,'retained'=>$retained,
+                    'current'=>$current,'priced_money'=>null,'confirmation_required'=>true,
+                ];
+            }catch(Throwable $ignored){
+                continue;
+            }
+        }
+        return $out;
+    }
+
+    private static function regularCustomerSearchPrice(array $offer): ?array
+    {
+        foreach([($offer['price']??null),($offer['converted_price']??null)] as $money){
+            if(!is_array($money)||($money['currency']??null)!=='RUB'||!is_string($money['amount']??null)) continue;
+            $amount=$money['amount'];
+            if(preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D',$amount)&&preg_match('/[1-9]/',$amount)){
+                return ['amount'=>$amount,'currency'=>'RUB'];
+            }
+        }
+        return null;
     }
 
     private static function additionalFacts(array $application, array $offer): ?array
@@ -292,7 +353,7 @@ final class AnyTourAnexOfferAutosaveV1
  * Best-effort runtime adapter. Persistence failure must never turn a valid supplier
  * response into a user-visible search failure.
  */
-function anytour_anex_anytour_offer_autosave_runtime(array $plan, array &$state, array $contextResults): array
+function anytour_anex_anytour_offer_autosave_execute(array $plan, array &$state, array $contextResults): array
 {
     if (!AnyTourAnexOfferAutosaveV1::applicable($state)) {
         return ['published' => false, 'reason' => 'not_applicable'];
@@ -345,4 +406,15 @@ function anytour_anex_anytour_offer_autosave_runtime(array $plan, array &$state,
         error_log('ANEX_ANYTOUR_AUTOSAVE_FAILED ' . preg_replace('/[^A-Z0-9_:-]+/i', '_', substr($error->getMessage(), 0, 120)));
         return ['published' => false, 'reason' => 'autosave_failed'];
     }
+}
+
+
+function anytour_anex_anytour_offer_autosave_runtime(array $plan, array &$state, array $contextResults): array
+{
+    return anytour_anex_anytour_offer_autosave_execute($plan,$state,$contextResults);
+}
+
+function anytour_anex_anytour_offer_autosave_finalize_runtime(array &$state): array
+{
+    return anytour_anex_anytour_offer_autosave_execute(['offers'=>[]],$state,[]);
 }
