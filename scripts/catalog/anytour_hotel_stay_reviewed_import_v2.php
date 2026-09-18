@@ -525,7 +525,7 @@ if (realpath((string)($_SERVER['SCRIPT_FILENAME']??''))===__FILE__) {
         ? $importer->plan($manifest,$clock)
         : $importer->apply(
             $manifest,
-            self::digest($expected,'HOTEL_STAY_REVIEWED_IMPORT_PLAN_SHA'),
+            (string)$expected,
             $clock
         );
     echo json_encode(
