@@ -6,6 +6,7 @@ on:
       - match/user-seen-968-exact-current-1971-20260918-v1
     paths:
       - .github/workflows/hotel-match-user-seen-968-exact-current-v1.yml
+      - scripts/diagnostics/hotel_match_user_seen_968_exact_current_v1.php
 
 permissions:
   contents: read
