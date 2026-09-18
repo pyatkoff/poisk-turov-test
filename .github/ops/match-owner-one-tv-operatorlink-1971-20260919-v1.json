@@ -1,0 +1,32 @@
+{
+  "operation": "hotel-match-owner-one-tv-operatorlink-1971-20260919-v1",
+  "state": "reserved_before_provider_access",
+  "source_sha": "4995160b39965b29c572c411d424d74b4e7d5f8c",
+  "target": {
+    "hotel_id": 1063,
+    "hotel_name": "BRITANNIA HOTEL & VILLAS",
+    "country_id": 4,
+    "country": "Турция",
+    "region_id": 22,
+    "region": "Кемер"
+  },
+  "search": {
+    "departure_id": 1,
+    "date_from": "2026-10-05",
+    "date_to": "2026-10-11",
+    "nights_from": 7,
+    "nights_to": 10,
+    "adults": 2
+  },
+  "rules": {
+    "hotel_ids_array": true,
+    "operator_filter": false,
+    "tourvisor_dates_endpoint": false,
+    "fresh_search_only": true,
+    "fresh_tour_detail_only": true,
+    "full_drain_continue": true,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "no_replay_after_first_provider_access": true
+  }
+}
