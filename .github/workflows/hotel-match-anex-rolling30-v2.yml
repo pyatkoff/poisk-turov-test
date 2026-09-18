@@ -31,7 +31,7 @@ jobs:
           umask 077
           mkdir -p payload result
           cp scripts/diagnostics/hotel_match_anex_rolling30_current_v2.php scripts/diagnostics/hotel_match_anex_rolling30_v2.py app/integrations/anex-search-mapping-registry.php payload/
-          test "$(git hash-object payload/hotel_match_anex_rolling30_current_v2.php)" = e9df5369a09e4f6298f1e3f6a4ccc345aae58113
+          test "$(git hash-object payload/hotel_match_anex_rolling30_current_v2.php)" = 183783b2f2155929e5fc64e3b35ec0e8cabc4b9a
           test "$(git hash-object payload/hotel_match_anex_rolling30_v2.py)" = 6cc12b51f6c80b0736ef7105fa01b8bbfe2457cf
           test "$(git hash-object payload/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
           php -l payload/hotel_match_anex_rolling30_current_v2.php
