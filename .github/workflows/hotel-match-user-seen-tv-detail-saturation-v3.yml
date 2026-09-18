@@ -54,7 +54,7 @@ jobs:
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
           assert os.environ['OPERATION_ID'] in c['body']
           assert 'saved user-search tour_id' in c['body']
-          assert '3000 requests/day' in c['body'] and '2705' in c['body']
+          assert '3000' in c['body'] and '2705' in c['body'] and 'Tourvisor' in c['body']
           assert '429' in c['body'] and 'no retry' in c['body'].lower()
           PY
 
