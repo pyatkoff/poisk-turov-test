@@ -208,7 +208,7 @@ $internalRaw = [
         'condition'=>'ccOffer',
         'freightExternal'=>0,
         'buyerMoneys'=>[['buyerClaimMoney'=>[['net'=>'83080','currency'=>'RUB']]]],
-        'moneys'=>[['money'=>[['currency'=>'RUB','rate'=>'1','isClaimCurrency'=>'true','price'=>'83080','net'=>'83080']]],
+        'moneys'=>[['money'=>[['currency'=>'RUB','rate'=>'1','isClaimCurrency'=>'true','price'=>'83080','net'=>'83080']]]],
     ]],
 ];
 $internalBootstrapCalls=0;$internalActions=[];
