@@ -1,0 +1,170 @@
+name: Search3 AnyTour live stay review frontier V2
+
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php'
+      - '.github/workflows/search3-anytour-hotel-stay-review-frontier-live-v2.yml'
+  push:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php'
+      - '.github/workflows/search3-anytour-hotel-stay-review-frontier-live-v2.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: search3-local-live-stay-review-frontier-v2
+  cancel-in-progress: false
+
+env:
+  EXPECTED_BEFORE_SHA: 503d18604f89c6f6aca661cfc1a50723f7bb43eb
+
+jobs:
+  preflight:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate read-only frontier operation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php
+          grep -Fq '503d18604f89c6f6aca661cfc1a50723f7bb43eb' .github/workflows/search3-anytour-hotel-stay-review-frontier-live-v2.yml
+          grep -Fq "'database_writes' => 0" scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php
+          grep -Fq "'mapping_writes' => 0" scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php
+          grep -Fq "'supplier_calls' => 0" scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php
+          grep -Fq "'automatic_decisions' => 0" scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php
+          grep -Fq "'site_file_writes' => 0" scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php
+          ! grep -Eq 'INSERT[[:space:]]|UPDATE[[:space:]]|DELETE[[:space:]]|REPLACE[[:space:]]|curl_|https?://' scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php
+
+  frontier:
+    if: >-
+      github.event_name == 'push' &&
+      github.event.before == '503d18604f89c6f6aca661cfc1a50723f7bb43eb' &&
+      github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      REMOTE_TMP: /tmp/anytour-stay-review-frontier-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Pin exact release transition
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/release/search3-production-ready-v1'
+          test '${{ github.event.before }}' = "$EXPECTED_BEFORE_SHA"
+          [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
+          git rev-parse HEAD | grep -Fx "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^1)" = "$EXPECTED_BEFORE_SHA"
+
+      - name: Prepare ephemeral SSH key and operation bundle
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          tar -czf "$RUNNER_TEMP/stay-review-frontier.tgz" \
+            scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php \
+            scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php \
+            scripts/catalog/anytour_hotel_stay_review_packet_v2.php \
+            v2/data/anytour-hotel-stay-catalog-v2.php \
+            v2/data/anytour-provider-identity-bridge-v1.php
+
+      - name: Execute live read-only frontier and retrieve packet
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir '$REMOTE_TMP'; mkdir '$REMOTE_TMP/repo' '$REMOTE_TMP/out'; test -s \"\$HOME/www/anytoour.ru/data/db-v1.php\""
+          scp "${opts[@]}" "$RUNNER_TEMP/stay-review-frontier.tgz" "$remote:$REMOTE_TMP/frontier.tgz"
+          ssh "${opts[@]}" "$remote" "tar -xzf '$REMOTE_TMP/frontier.tgz' -C '$REMOTE_TMP/repo'"
+          ssh "${opts[@]}" "$remote" "bash -s -- '$REMOTE_TMP' '$GITHUB_SHA'" <<'REMOTE' | tee stay-review-frontier-receipt.json
+          set -euo pipefail
+          tmp="$1"; release_sha="$2"; root="$HOME/www/anytoour.ru"
+          ANYTOUR_SITE_ROOT="$root" \
+          ANYTOUR_OPERATION_RELEASE_SHA="$release_sha" \
+          ANYTOUR_OPERATION_OUTPUT_DIR="$tmp/out" \
+            php "$tmp/repo/scripts/catalog/anytour_hotel_stay_review_frontier_live_v2.php" \
+              "--release-sha=$release_sha" --limit=5000
+          REMOTE
+          scp "${opts[@]}" "$remote:$REMOTE_TMP/out/review-packet.json" review-packet.json
+
+      - name: Validate receipt and packet integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os
+          lines=[x.strip() for x in open('stay-review-frontier-receipt.json', encoding='utf-8') if x.strip().startswith('{')]
+          if len(lines)!=1: raise SystemExit('receipt shape mismatch')
+          r=json.loads(lines[0])
+          if r.get('operation')!='anytour-hotel-stay-review-frontier-live-v2': raise SystemExit('operation mismatch')
+          if r.get('release_sha')!=os.environ['GITHUB_SHA']: raise SystemExit('release mismatch')
+          for k in ('database_writes','mapping_writes','supplier_calls','automatic_decisions','site_file_writes'):
+              if r.get(k)!=0: raise SystemExit(f'ownership mismatch: {k}')
+          raw=open('review-packet.json','rb').read()
+          p=json.loads(raw)
+          sha=p.get('packetSha256')
+          body=dict(p); body.pop('packetSha256',None)
+          canonical=json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(',',':')).encode('utf-8')
+          if hashlib.sha256(canonical).hexdigest()!=sha: raise SystemExit('packet canonical sha mismatch')
+          if r.get('packet_sha256')!=sha: raise SystemExit('receipt packet sha mismatch')
+          if r.get('packet_file_sha256')!=hashlib.sha256(raw).hexdigest(): raise SystemExit('packet file sha mismatch')
+          print('FRONTIER_RECEIPT='+json.dumps(r, sort_keys=True, separators=(',',':')))
+          PY
+          {
+            echo '### AnyTour LOCAL live stay review frontier V2'
+            echo '```json'; cat stay-review-frontier-receipt.json; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve review frontier artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: anytour-stay-review-frontier-${{ github.run_id }}
+          path: |
+            stay-review-frontier-receipt.json
+            review-packet.json
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Remove temporary remote operation bundle
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ -s "$key" && -n "${HOST_VALUE:-}" && -n "${USER_VALUE:-}" ]]; then
+            opts=(-i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+            ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$REMOTE_TMP'" || true
+          fi
