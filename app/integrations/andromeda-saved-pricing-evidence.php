@@ -62,11 +62,14 @@ function anytour_andromeda_read_saved_pricing_with_evidence(
             return ['pricing' => $pricing, 'evidence_meta' => null];
         }
         $record = json_decode((string)file_get_contents($path), true, 20, JSON_THROW_ON_ERROR);
+        $publicFact = is_array($record)
+            ? anytour_andromeda_saved_surcharge_public($record, $resolved, $storeState, $created, $now)
+            : null;
         if (!is_array($record)
             || ($record['status'] ?? null) !== 'complete'
             || ($record['context'] ?? null) !== $canonicalContext
             || ($record['snapshot_created_at'] ?? null) !== $created
-            || ($record['fact'] ?? null) !== ($pricing['fact'] ?? null)
+            || $publicFact !== ($pricing['fact'] ?? null)
             || !is_string($record['source'] ?? null)
             || preg_match('/^[a-f0-9]{40}$/D', $record['source']) !== 1
             || !is_int($record['observed_at'] ?? null)
