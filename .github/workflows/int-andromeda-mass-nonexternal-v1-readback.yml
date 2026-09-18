@@ -1,0 +1,73 @@
+name: INT diagnose terminal Andromeda non-external mass fill v1
+
+on:
+  push:
+    branches: ['diag/int-andromeda-mass-nonexternal-v1-readback-20260918']
+    paths: ['.github/workflows/int-andromeda-mass-nonexternal-v1-readback.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  readback:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read terminal private error safely
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          remote="$REMOTE_USER@$HOST"
+          ssh -T -i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes             -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15             "$remote" 'php -d display_errors=0 -d log_errors=0' > "$RUNNER_TEMP/result/result.json" <<'PHP'
+          <?php
+          declare(strict_types=1); error_reporting(0);
+          $home=rtrim((string)getenv('HOME'),'/');
+          $ledger=$home.'/.anytour-ops/int-andromeda-mass-nonexternal-1717-20260918-v1';
+          $state=is_file($ledger.'/state')?trim((string)file_get_contents($ledger.'/state')):'missing';
+          $err=is_file($ledger.'/error.log')?(string)file_get_contents($ledger.'/error.log'):'';
+          $collectorBytes=is_file($ledger.'/collector.json')?(int)filesize($ledger.'/collector.json'):0;
+          $tokens=[];
+          if(preg_match_all('/ANDROMEDA_[A-Z0-9_:-]{2,120}/',$err,$m)){
+            foreach($m[0] as $token)$tokens[$token]=($tokens[$token]??0)+1;
+          }
+          ksort($tokens,SORT_STRING);
+          $classes=[];
+          foreach(['RuntimeException','DomainException','InvalidArgumentException','Error','TypeError'] as $class){
+            if(str_contains($err,$class))$classes[$class]=substr_count($err,$class);
+          }
+          $files=[];
+          if(preg_match_all('~(?:andromeda-[a-z0-9-]+\.php|andromeda_[a-z0-9_]+\.php)(?::| on line )(\d{1,5})~i',$err,$m,PREG_SET_ORDER)){
+            foreach($m as $row){
+              if(preg_match('~(andromeda-[a-z0-9-]+\.php|andromeda_[a-z0-9_]+\.php)~i',$row[0],$fm)){
+                $k=strtolower($fm[1]).':'.$row[1];$files[$k]=($files[$k]??0)+1;
+              }
+            }
+          }
+          ksort($files,SORT_STRING);
+          echo json_encode([
+            'source'=>'int-andromeda-mass-nonexternal-v1-readback',
+            'ledger_state'=>$state,
+            'error_bytes'=>strlen($err),
+            'collector_bytes'=>$collectorBytes,
+            'andromeda_tokens'=>$tokens,
+            'exception_classes'=>$classes,
+            'locations'=>$files,
+            'supplier_calls'=>0,'db_writes'=>0,'filesystem_writes'=>0,'replay'=>0
+          ],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          PHP
+          cat "$RUNNER_TEMP/result/result.json"
+      - name: Upload sanitized readback
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-andromeda-mass-nonexternal-v1-readback-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/result.json
+          if-no-files-found: error
+          retention-days: 14
