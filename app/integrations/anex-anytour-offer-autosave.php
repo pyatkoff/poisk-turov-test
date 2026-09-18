@@ -23,8 +23,9 @@ final class AnyTourAnexOfferAutosaveV1
     }
 
     /**
-     * Consume one terminal APD batch and, when the whole requested batch is ready,
-     * publish the union of all complete autosave batches observed in this search session.
+     * Consume one APD batch and publish the union of all price-ready offers observed
+     * in this search session. Non-ready/empty/unknown APD rows remain excluded without
+     * blocking unrelated ready charter offers.
      *
      * @param callable(array,array):array $applyAdditional existing anytour_anex_search3_additional_application
      * @param callable(string,string):?int $supplierResolver current accepted ANEX->legacy resolver
@@ -46,18 +47,6 @@ final class AnyTourAnexOfferAutosaveV1
         $offers = $plan['offers'] ?? null;
         if (!is_array($offers) || !array_is_list($offers) || $offers === [] || count($offers) > 6) {
             throw new InvalidArgumentException('ANEX_ANYTOUR_AUTOSAVE_PLAN');
-        }
-
-        // A browser-visible APD batch is atomic for autosave: one unknown/deferred
-        // context means this batch cannot advance the active AnyTour snapshot.
-        foreach ($offers as $item) {
-            $digest = is_array($item) ? ($item['context_digest'] ?? null) : null;
-            $result = is_string($digest) ? ($contextResults[$digest] ?? null) : null;
-            if (!is_array($result)
-                || ($result['status'] ?? null) !== 'complete'
-                || !is_array($result['evidence'] ?? null)) {
-                return self::receipt(false, 'batch_not_terminal', 0, 0);
-            }
         }
 
         $saved = $state['gateway']['saved_offers'];
@@ -90,7 +79,28 @@ final class AnyTourAnexOfferAutosaveV1
                 || !is_string($digest) || !preg_match('/\A[a-f0-9]{64}\z/D', $digest)) {
                 throw new InvalidArgumentException('ANEX_ANYTOUR_AUTOSAVE_PLAN');
             }
-            // Only canonical AnyTour-bridge-eligible hotels enter the autosave set.
+            $result = $contextResults[$digest] ?? null;
+            if (!is_array($result)
+                || ($result['status'] ?? null) !== 'complete'
+                || !is_array($result['evidence'] ?? null)) {
+                continue;
+            }
+            $entry = $saved['offers'][$offerRef] ?? null;
+            $offer = is_array($entry) ? ($entry['offer'] ?? null) : null;
+            if (!is_array($offer) || ($offer['offer_key'] ?? null) !== $offerRef) {
+                continue;
+            }
+            $application = $applyAdditional($result['evidence'], $offer);
+            $additionalFacts = self::additionalFacts($application, $offer);
+            $customerSearch = $application['search_price'] ?? null;
+            if ($additionalFacts === null
+                || !is_array($customerSearch)
+                || ($customerSearch['source'] ?? null) !== 'direct_anex_search'
+                || !is_string($customerSearch['amount'] ?? null)
+                || !is_string($customerSearch['currency'] ?? null)) {
+                continue;
+            }
+            // Only price-ready, canonical AnyTour-bridge-eligible hotels enter the accumulator.
             if (self::ownHotelId($db, $localId) === null) continue;
             $auto['offers'][$offerRef] = ['local_hotel_id' => $localId, 'context_digest' => $digest];
         }
@@ -98,7 +108,7 @@ final class AnyTourAnexOfferAutosaveV1
             $auto['offers'] = array_slice($auto['offers'], -self::MAX_ACCUMULATED_OFFERS, null, true);
         }
         $state['anytour_offer_autosave'] = $auto;
-        if ($auto['offers'] === []) return self::receipt(false, 'no_canonical_bridge', 0, 0);
+        if ($auto['offers'] === []) return self::receipt(false, 'no_final_price_ready', 0, 0);
 
         self::loadIntContracts();
         $entries = [];
@@ -137,7 +147,8 @@ final class AnyTourAnexOfferAutosaveV1
                 || ($customerSearch['source'] ?? null) !== 'direct_anex_search'
                 || !is_string($customerSearch['amount'] ?? null)
                 || !is_string($customerSearch['currency'] ?? null)) {
-                return self::receipt(false, 'final_price_not_ready', 0, count($auto['offers']));
+                unset($state['anytour_offer_autosave']['offers'][$offerRef]);
+                continue;
             }
             $customerSearchPrice = [
                 'amount' => $customerSearch['amount'],
@@ -193,6 +204,8 @@ final class AnyTourAnexOfferAutosaveV1
             ];
         }
 
+        if ($entries === []) return self::receipt(false, 'no_final_price_ready', 0, count($state['anytour_offer_autosave']['offers'] ?? []));
+        $auto = $state['anytour_offer_autosave'];
         $publishDigest = hash('sha256', json_encode(array_map(static function (array $entry): array {
             return [
                 'hotel' => $entry['anytour_hotel_id'],
@@ -217,7 +230,7 @@ final class AnyTourAnexOfferAutosaveV1
             'published' => ($result['published'] ?? false) === true,
             'reason' => $result['reason'] ?? null,
             'readyOfferCount' => (int)($result['readyOfferCount'] ?? 0),
-            'accumulatedOfferCount' => count($auto['offers']),
+            'accumulatedOfferCount' => count($state['anytour_offer_autosave']['offers'] ?? []),
             'selectionAuthority' => false,
         ];
     }

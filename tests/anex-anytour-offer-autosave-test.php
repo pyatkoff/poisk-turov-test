@@ -142,11 +142,67 @@ $check($again['published'] === false && $again['reason'] === 'already_published'
 $check(count($ingestCalls) === 1, 'no-duplicate-ingest');
 
 $incompleteState = $state;
-$incompleteState['anytour_offer_autosave']['last_published_digest'] = null;
+$incompleteState['anytour_offer_autosave'] = [
+    'search_ref' => $searchRef, 'generation' => 41, 'offers' => [], 'last_published_digest' => null,
+];
 $incomplete = AnyTourAnexOfferAutosaveV1::consume($db, $plan, $incompleteState,
     [$digest => ['status' => 'unknown', 'cached' => false, 'evidence' => null]], $now, $apply, $resolver, $ingest);
-$check($incomplete['published'] === false && $incomplete['reason'] === 'batch_not_terminal', 'incomplete-preserves-old');
+$check($incomplete['published'] === false && $incomplete['reason'] === 'no_final_price_ready', 'incomplete-skipped');
 $check(count($ingestCalls) === 1, 'incomplete-no-ingest');
+
+
+$mixedState = $state;
+$mixedState['anytour_offer_autosave'] = [
+    'search_ref' => $searchRef, 'generation' => 41, 'offers' => [], 'last_published_digest' => null,
+];
+$offerRef2 = 'anex_online:' . str_repeat('b', 64);
+$digest2 = hash('sha256', "9999\0" . "1\0" . "2026-10-05\0" . "7");
+$offer2 = $offer;
+$offer2['offer_key'] = $offerRef2;
+$offer2['hotel']['external_id'] = '8102';
+$offer2['hotel']['local_id'] = 3418;
+$mixedState['gateway']['saved_offers']['offers'][$offerRef2] = [
+    'offer' => $offer2, 'observed_at' => $created + 11,
+    'supplier_tour_program_id' => '9999', 'supplier_currency_id' => '1',
+];
+$mixedState['additional_prices'][$digest2] = ['status' => 'complete', 'evidence' => ['marker' => 'empty-apd']];
+$mixedPlan = $plan;
+$mixedPlan['requested_offers'] = 2;
+$mixedPlan['unique_contexts'] = 2;
+$mixedPlan['offers'][] = ['offer_ref' => $offerRef2, 'local_hotel_id' => 3418, 'context_digest' => $digest2];
+$mixedPlan['contexts'][] = [
+    'context_digest' => $digest2, 'supplier_tour_program_id' => '9999',
+    'supplier_currency_id' => '1', 'checkin' => '2026-10-05', 'nights' => 7,
+];
+$mixedTerminal = $terminal + [
+    $digest2 => ['status' => 'complete', 'cached' => false, 'evidence' => ['marker' => 'empty-apd'], 'retryable' => false, 'retry_reason' => null],
+];
+$mixedApply = static function (array $evidence, array $rawOffer): array {
+    if (($evidence['marker'] ?? null) === 'empty-apd') {
+        return [
+            'application_state' => 'unknown',
+            'search_price' => ['amount' => '100000', 'currency' => 'RUB', 'source' => 'direct_anex_search'],
+            'search_plus_additional' => null,
+            'rates' => null,
+        ];
+    }
+    return [
+        'application_state' => 'applied',
+        'search_price' => ['amount' => '100000', 'currency' => 'RUB', 'source' => 'direct_anex_search'],
+        'search_plus_additional' => ['amount' => '110000', 'currency' => 'RUB'],
+        'rates' => ['adult' => ['amount' => '5000', 'currency' => 'RUB'], 'child' => null],
+    ];
+};
+$mixedResolver = static function (string $namespace, string $external): ?int {
+    if ($namespace !== 'anex_online') return null;
+    return $external === '8101' ? 3417 : ($external === '8102' ? 3418 : null);
+};
+$mixed = AnyTourAnexOfferAutosaveV1::consume(
+    $db, $mixedPlan, $mixedState, $mixedTerminal, $now, $mixedApply, $mixedResolver, $ingest
+);
+$check($mixed['published'] === true && $mixed['readyOfferCount'] === 1, 'mixed-batch-publishes-ready-only');
+$check($mixed['accumulatedOfferCount'] === 1, 'mixed-batch-skips-nonready');
+$check(count($ingestCalls) === 2 && count($ingestCalls[1]['rows']) === 1, 'mixed-batch-one-row-ingested');
 
 $mismatchState = $state;
 $mismatchState['anytour_offer_autosave']['last_published_digest'] = null;
@@ -160,14 +216,14 @@ $mismatch = AnyTourAnexOfferAutosaveV1::consume($db, $plan, $mismatchState, $ter
         ];
     }, $resolver, $ingest);
 $check($mismatch['published'] === false && $mismatch['reason'] === 'protected_price_mismatch', 'price-mismatch-fails-closed');
-$check(count($ingestCalls) === 1, 'price-mismatch-no-ingest');
+$check(count($ingestCalls) === 2, 'price-mismatch-no-ingest');
 
 $identityState = $state;
 $identityState['anytour_offer_autosave']['last_published_digest'] = null;
 $identity = AnyTourAnexOfferAutosaveV1::consume($db, $plan, $identityState, $terminal, $now, $apply,
     static fn(string $namespace, string $external): ?int => 3418, $ingest);
 $check($identity['published'] === false && $identity['reason'] === 'supplier_identity_changed', 'identity-revalidated');
-$check(count($ingestCalls) === 1, 'identity-change-no-ingest');
+$check(count($ingestCalls) === 2, 'identity-change-no-ingest');
 
 $helperSource = file_get_contents($root . '/app/integrations/anex-anytour-offer-autosave.php');
 $batchSource = file_get_contents($root . '/app/integrations/anex-additional-prices-batch.php');
