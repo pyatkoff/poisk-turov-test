@@ -57,6 +57,7 @@ const viewports = [
       assert.equal(response.status(), 200);
       const form = page.locator('#tourSearch');
       await page.waitForFunction(() => document.forms.tourSearch?.dataset.search3Ready === '1');
+      await page.waitForFunction(() => document.forms.tourSearch?.dataset.catalogSource === 'anytour-departures');
       const input = form.locator('[data-v2-hotel-query]');
       const select = form.locator('select[name="hotel"]');
       assert.equal(await input.count(), 1, 'Search3 exposes one known-hotel query');
