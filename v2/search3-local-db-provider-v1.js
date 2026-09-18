@@ -7,13 +7,24 @@ function positiveId(value){const s=String(value??'');return /^(?:[1-9][0-9]*)$/.
 function digest(value){return typeof value==='string'&&/^[a-f0-9]{64}$/.test(value)?value:'';}
 function amount(value){const raw=value&&typeof value==='object'?value.amount:value,n=Number(raw);return Number.isFinite(n)&&n>0&&n<=1e12?n:0;}
 function safeText(value,limit){return typeof value==='string'&&value.length<=limit&&!/[\u0000-\u001f\u007f]/.test(value)?value.trim():'';}
+// Mirror the LOCAL listing contract. Even a previously verified quote is display-only here.
+function priceState(listing){
+ const state=listing.listingPriceState;
+ if(state==null)return listing.listingPriceReady===true?'final_ready_estimate':'';
+ const confirmation=state==='search_price_confirmation_required',verified=state==='final_verified';
+ if(!confirmation&&!verified&&state!=='final_ready_estimate')return'';
+ if(listing.listingPriceReady!==!confirmation||listing.priceConfirmationRequired!==confirmation||listing.quoteState!==(verified?'verified':'unknown')||listing.finalPriceVerified!==verified)return'';
+ if(verified?!digest(listing.quoteEvidenceDigest):listing.quoteEvidenceDigest!=null)return'';
+ return state;
+}
 function offerTour(row){
  if(!row||!PROVIDERS.has(row.provider)||!positiveId(row.legacyHotelId)||row.currency!=='RUB'||!amount(row.price))return null;
- const listing=row.listing;if(!listing||listing.schema_version!==1||listing.provider!==row.provider||listing.listingPriceReady!==true||listing.currency!=='RUB'||listing.selection_state!=='refresh_required'||listing.booking_enabled!==false)return null;
+ const listing=row.listing;if(!listing||listing.schema_version!==1||listing.provider!==row.provider||listing.currency!=='RUB'||listing.selection_state!=='refresh_required'||listing.booking_enabled!==false)return null;
+ const listingPriceState=priceState(listing);if(!listingPriceState)return null;
  const identity=listing.identity,tour=listing.tour,operator=listing.operator;if(!identity||!digest(identity.offer_ref_digest)||!digest(identity.search_ref_digest)||!digest(identity.provider_hotel_ref_digest)||!tour||!operator)return null;
  const price=amount(listing.listingPrice);if(!price||price!==amount(row.price)||!/^\d{4}-\d{2}-\d{2}$/.test(String(tour.checkin||''))||!Number.isInteger(tour.nights)||tour.nights<1||tour.nights>60)return null;
  const meal=safeText(tour.meal&&tour.meal.raw,160),room=safeText(tour.room&&tour.room.raw,300),placement=safeText(tour.placement&&tour.placement.raw,160),operatorName=safeText(operator.canonical_name||operator.raw,180),party=tour.party||{};
- return{id:'cached:'+row.provider+':'+identity.offer_ref_digest,provider:row.provider,cachedListing:true,offerIdentityDigest:identity.offer_ref_digest,searchIdentityDigest:identity.search_ref_digest,selectionEnabled:false,quoteRequired:true,finalPriceReady:true,price,currency:'RUB',date:String(tour.checkin),nights:tour.nights,meal:{name:meal},roomType:room,placement,operator:{name:operatorName},adults:Number.isInteger(party.adults)?party.adults:undefined,childs:Number.isInteger(party.children)?party.children:undefined};
+ return{id:'cached:'+row.provider+':'+identity.offer_ref_digest,provider:row.provider,cachedListing:true,offerIdentityDigest:identity.offer_ref_digest,searchIdentityDigest:identity.search_ref_digest,selectionEnabled:false,quoteRequired:true,listingPriceState,finalPriceReady:listing.listingPriceReady,priceNeedsConfirmation:listingPriceState==='search_price_confirmation_required',price,currency:'RUB',date:String(tour.checkin),nights:tour.nights,meal:{name:meal},roomType:room,placement,operator:{name:operatorName},adults:Number.isInteger(party.adults)?party.adults:undefined,childs:Number.isInteger(party.children)?party.children:undefined};
 }
 function parse(data){
  if(!data||data.source!=='anytour-db-first-results-v1'||data.scopeVersion!==1||!digest(data.scopeDigest)||data.selectionAuthority!==false||!Array.isArray(data.hotels)||data.hotels.length>MAX_HOTELS)return null;
