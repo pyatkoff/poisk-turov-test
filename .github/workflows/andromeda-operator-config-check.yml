@@ -1,0 +1,28 @@
+name: Andromeda operator config offline
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-client.php'
+      - 'app/integrations/andromeda-operator-config.php'
+      - 'app/integrations/andromeda-saved-package-runtime.php'
+      - 'tests/andromeda-operator-config-smoke.php'
+      - '.github/workflows/andromeda-operator-config-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Lint operator config plumbing
+        run: |
+          php -l app/integrations/andromeda-client.php
+          php -l app/integrations/andromeda-operator-config.php
+          php -l app/integrations/andromeda-saved-package-runtime.php
+          php -l tests/andromeda-operator-config-smoke.php
+      - name: Exercise private operator config without supplier access
+        run: php -d allow_url_fopen=0 tests/andromeda-operator-config-smoke.php
