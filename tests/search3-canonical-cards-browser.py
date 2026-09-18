@@ -153,20 +153,23 @@ with sync_playwright() as p:
             toolbar=page.locator('.results-tools__actions')
             compact=toolbar.evaluate('''node=>{
                 const box=selector=>{const r=node.querySelector(selector).getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};};
-                return{edit:box('#resultsSearchEdit'),sort:box('#sortResults'),filter:box('.search3-mobile-filter-panel'),summary:box('.search3-mobile-filter-panel summary')};
+                const count=node.querySelector('.search3-mobile-filter-panel summary span');
+                return{edit:box('#resultsSearchEdit'),sort:box('#sortResults'),filter:box('.search3-mobile-filter-panel'),summary:box('.search3-mobile-filter-panel summary'),countVisible:getComputedStyle(count).display!=='none'};
             }''')
             check(compact['edit']['y']<compact['sort']['y'],f'{width}: mobile edit action remains on its own first row')
             check(abs(compact['sort']['y']-compact['filter']['y'])<2,f'{width}: closed sort and filters share one compact row')
             check(abs(compact['sort']['width']-compact['filter']['width'])<3,f'{width}: closed sort and filters use balanced columns')
             check(compact['sort']['height']>=44 and compact['summary']['height']>=44,f'{width}: compact mobile toolbar keeps touch targets')
+            check(not compact['countVisible'],f'{width}: closed filter count does not crowd the compact action')
             toolbar.screenshot(path=str(OUT/'canonical-toolbar-375.png'))
         if width<1025: page.locator('.search3-mobile-filter-panel > summary').click()
         if width==375:
             opened=page.locator('.results-tools__actions').evaluate('''node=>{
-                const r=node.getBoundingClientRect(),panel=node.querySelector('.search3-mobile-filter-panel').getBoundingClientRect();
-                return{width:r.width,panelWidth:panel.width};
+                const r=node.getBoundingClientRect(),panel=node.querySelector('.search3-mobile-filter-panel').getBoundingClientRect(),count=node.querySelector('.search3-mobile-filter-panel summary span');
+                return{width:r.width,panelWidth:panel.width,countVisible:getComputedStyle(count).display!=='none'};
             }''')
             check(abs(opened['panelWidth']-opened['width'])<2,f'{width}: open filters restore full toolbar width')
+            check(opened['countVisible'],f'{width}: open filters retain their useful matching count')
         meal=page.locator('.search3-meal-filter select')
         # Selectors follow the actual exact-label controls, not a test-only filtering function.
         if meal.count()==0: meal=page.locator('select').filter(has=page.locator('option[value="meal:label:ai"]'))
