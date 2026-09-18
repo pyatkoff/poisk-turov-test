@@ -1,0 +1,174 @@
+name: MATCH native ANEX CURRENT audit v6
+
+on:
+  push:
+    branches: [ops/match-andromeda-native-anex-audit-1971-20260918-v6]
+    paths:
+      - .github/workflows/hotel-match-andromeda-native-anex-audit-v6.yml
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: match-andromeda-catalog-writer
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-andromeda-native-anex-audit-1971-20260918-v6
+  EXPECTED_BASE: be87e8b68268484865e08c4da404db5d671aff93
+  PLAN_PATH: reports/hotel-match-andromeda-native-anex-v5-apply-plan-20260918.json
+  PLAN_SHA256: 17180b81d4d5cd273cb90a14bb52023f7fdca49b1861f299198656fc47a89259
+  SOURCE_RESULT_SHA256: 7a19709d8b5cbf2b509da80811ab12f38fd18253279cff072dd286038f5fb5ce
+  CLAIM_COMMENT_ID: '5735838443'
+
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate isolated input and build read-only audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD" | sort)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/hotel-match-andromeda-native-anex-audit-v6.yml'
+          test "${changed[1]}" = 'reports/hotel-match-andromeda-native-anex-v5-apply-plan-20260918.json'
+          test "$(sha256sum "$PLAN_PATH" | awk '{print $1}')" = "$PLAN_SHA256"
+          python3 - <<'PY'
+          import json,hashlib,os
+          p=json.load(open(os.environ['PLAN_PATH']))
+          assert p['schema']=='hman-v5-native-apply-plan/1'
+          assert p['source_result_sha256']==os.environ['SOURCE_RESULT_SHA256']
+          assert len(p['rows'])==257
+          assert len({r[0] for r in p['rows']})==257 and len({r[2] for r in p['rows']})==257
+          assert all(len(r)==4 and str(r[0]).isdigit() and all(isinstance(x,int) and x>0 for x in r[1:]) for r in p['rows'])
+          PY
+          cat > "$RUNNER_TEMP/audit.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          function q(PDO $db,string $sql,array $p=[]):array{$s=$db->prepare($sql);$s->execute(array_values($p));return $s->fetchAll(PDO::FETCH_ASSOC)?:[];}
+          function protected_marker(mixed $v,string $key='',int $depth=0):bool{
+            if($depth>24)return true;
+            if(is_array($v)){foreach($v as $k=>$x)if(protected_marker($x,(string)$k,$depth+1))return true;return false;}
+            if(!preg_match('/manual|exclude|exclusion|conflict|reject|review/i',$key))return false;
+            if(is_bool($v))return $v;if(is_numeric($v))return((float)$v)!=0.0;
+            return is_string($v)&&trim($v)!==''&&!in_array(strtolower(trim($v)),['false','none','no','null'],true);
+          }
+          function write_durable(string $path,array $v):string{$raw=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";$f=fopen($path,'x+b');if(!$f)throw new RuntimeException('durable_exists');try{if(fwrite($f,$raw)!==strlen($raw)||!fflush($f))throw new RuntimeException('durable_write');if(function_exists('fsync')&&!fsync($f))throw new RuntimeException('durable_sync');rewind($f);if(stream_get_contents($f)!==$raw)throw new RuntimeException('durable_readback');}finally{fclose($f);}return hash('sha256',$raw);}
+          $root=realpath((string)getenv('ANYTOUR_ROOT'));$opDir=(string)getenv('MATCH_OPERATION_DIR');$sha=(string)getenv('MATCH_SOURCE_SHA');
+          if(!$root||$opDir===''||!is_dir($opDir)||!preg_match('/^[a-f0-9]{40}$/D',$sha)||!is_file($opDir.'/reservation.json')||!is_file($opDir.'/payload/plan.json')||!is_file($opDir.'/payload/anex-search-mapping-registry.php'))throw new RuntimeException('runtime_guard');
+          $res=json_decode((string)file_get_contents($opDir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);if(($res['operation_id']??'')!==getenv('MATCH_OPERATION_ID')||($res['state']??'')!=='reserved_before_db_access')throw new RuntimeException('reservation_guard');
+          $planRaw=(string)file_get_contents($opDir.'/payload/plan.json');if(hash('sha256',$planRaw)!==getenv('MATCH_PLAN_SHA'))throw new RuntimeException('plan_hash');$plan=json_decode($planRaw,true,32,JSON_THROW_ON_ERROR);if(count($plan['rows']??[])!==257)throw new RuntimeException('plan_count');
+          require_once $opDir.'/payload/anex-search-mapping-registry.php';$dbf=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';require_once $dbf;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+          try{
+            $registry=AnyTourAnexSearchMappingRegistry::fromPdo($db);
+            $identity=[];$occupancy=[];foreach(q($db,"SELECT external_hotel_id,local_hotel_id,decision_status,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog'") as $r){$ext=(string)$r['external_hotel_id'];$identity[$ext][]=$r;if($r['local_hotel_id']!==null)$occupancy[(int)$r['local_hotel_id']][]=$ext;}
+            $need=[];foreach($plan['rows'] as $p)$need[(int)$p[2]]=true;$hotels=[];foreach(array_chunk(array_keys($need),700) as $chunk){$ph=implode(',',array_fill(0,count($chunk),'?'));foreach(q($db,"SELECT id,country_id,is_active,name FROM catalog_hotels WHERE id IN ($ph)",$chunk) as $r)$hotels[(int)$r['id']]=$r;}
+            $eligible=[];$already=[];$holds=[];
+            foreach($plan['rows'] as $p){[$ext,$native,$local,$country]=$p;$ext=(string)$ext;$native=(int)$native;$local=(int)$local;$country=(int)$country;$why=[];
+              $resolved=$registry->resolve('anex_online',(string)$native,'preview');if(!is_int($resolved)||$resolved!==$local)$why[]='native_anex_anchor_changed';
+              $h=$hotels[$local]??null;if(!$h||!(int)$h['is_active'])$why[]='local_inactive_or_missing';elseif((int)$h['country_id']!==$country)$why[]='country_context_conflict';
+              $rows=$identity[$ext]??[];if(count($rows)!==1)$why[]=count($rows)===0?'identity_row_missing':'identity_row_ambiguous';
+              $r=$rows[0]??null;
+              if($r){$status=(string)$r['decision_status'];$cur=$r['local_hotel_id']===null?null:(int)$r['local_hotel_id'];$ev=[];try{$ev=json_decode((string)($r['evidence_json']??''),true,64,JSON_THROW_ON_ERROR);if(!is_array($ev))$ev=[];}catch(Throwable){$ev=[];}
+                if(protected_marker($ev))$why[]='protected_evidence_marker';
+                if($status==='accepted'&&$cur===$local){if(!$why){$already[]=['external_hotel_id'=>$ext,'native_anex_hotel_id'=>$native,'local_hotel_id'=>$local,'country_id'=>$country];continue;}}
+                elseif($status!=='pending')$why[]='status_'.$status;
+                elseif($cur!==null)$why[]='pending_local_not_null';
+                foreach(array_unique($occupancy[$local]??[]) as $other)if($other!==$ext)$why[]='same_provider_target_occupied';
+              }
+              $why=array_values(array_unique($why));if($why){$holds[]=['external_hotel_id'=>$ext,'native_anex_hotel_id'=>$native,'local_hotel_id'=>$local,'country_id'=>$country,'reasons'=>$why];continue;}
+              $eligible[]=['external_hotel_id'=>$ext,'native_anex_hotel_id'=>$native,'local_hotel_id'=>$local,'country_id'=>$country,'prior_evidence_sha256'=>$r['evidence_sha256']??null];
+            }
+            $db->commit();$result=['schema'=>'hman-v5-current-audit/1','operation_id'=>(string)getenv('MATCH_OPERATION_ID'),'source_sha'=>$sha,'state'=>'completed_read_only','planned'=>257,'eligible_count'=>count($eligible),'already_exact_count'=>count($already),'hold_count'=>count($holds),'eligible'=>$eligible,'already_exact'=>$already,'holds'=>$holds,'supplier_calls'=>0,'tourvisor_calls'=>0,'andromeda_calls'=>0,'direct_anex_calls'=>0,'db_writes'=>0,'mapping_writes'=>0,'readback_verified'=>true,'no_replay'=>true];$hash=write_durable($opDir.'/result.json',$result);write_durable($opDir.'/receipt.json',['operation_id'=>(string)getenv('MATCH_OPERATION_ID'),'source_sha'=>$sha,'state'=>'completed_read_only','result_sha256'=>$hash,'readback_verified'=>true,'eligible_count'=>count($eligible),'already_exact_count'=>count($already),'hold_count'=>count($holds),'no_replay'=>true]);echo json_encode(['eligible'=>count($eligible),'already'=>count($already),'holds'=>count($holds)],JSON_THROW_ON_ERROR),"\n";
+          }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+          PHP
+          php -l "$RUNNER_TEMP/audit.php"
+
+      - name: Reserve before SSH or database access
+        shell: bash
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['HEAD_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_db_access','coordination_issue':2530,'claim_comment_id':5735838443,'queue_issue':1971,'purpose':'Supplier-free CURRENT audit of 257 v5 native-ANEX correspondence candidates','planned_rows':257,'plan_sha256':os.environ['PLAN_SHA256'],'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'maximum_database_writes':0,'supplier_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-native-anex-audit-v6-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-andromeda-native-anex-audit-1971-20260918-v6/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute CURRENT read-only audit once
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID";key="$RUNNER_TEMP/k";known="$RUNNER_TEMP/known";sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key";ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          remote="$U@$H";op=".anytour-match/operations/$OPERATION_ID"
+          ssh -S "$sock" -T -o ControlMaster=no "$remote" "set -e;umask 077;test ! -e \"\$HOME/$op\";mkdir -m 700 -p \"\$HOME/$op/payload\""
+          scp -o ControlPath="$sock" "$out/reservation.json" "$PLAN_PATH" app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/"
+          ssh -S "$sock" -T -o ControlMaster=no "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\";mv \"\$HOME/$op/payload/$(basename "$PLAN_PATH")\" \"\$HOME/$op/payload/plan.json\";sync"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$HEAD_SHA' MATCH_PLAN_SHA='$PLAN_SHA256' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < "$RUNNER_TEMP/audit.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?;set -e;echo "$rc" > "$out/remote-exit.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$remote" "tar -C \"\$HOME/$op\" --exclude=payload -czf - ." > "$out/server-operation.tgz"
+          mkdir "$out/server";tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,collections
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server';r=json.load(open(s/'result.json'));rec=json.load(open(s/'receipt.json'));dig=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert rec['result_sha256']==dig and rec['readback_verified'] and r['readback_verified']
+          assert r['state']=='completed_read_only' and r['planned']==257 and r['eligible_count']+r['already_exact_count']+r['hold_count']==257
+          assert r['db_writes']==r['mapping_writes']==r['supplier_calls']==r['tourvisor_calls']==r['andromeda_calls']==r['direct_anex_calls']==0
+          assert os.environ['REMOTE_RC']=='0'
+          reasons=collections.Counter(x for h in r['holds'] for x in h['reasons'])
+          summary={'state':r['state'],'planned':257,'eligible':r['eligible_count'],'already_exact':r['already_exact_count'],'holds':r['hold_count'],'hold_reasons':dict(reasons),'result_sha256':dig}
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          (p/'summary.md').write_text(f"MATCH #1971 native-ANEX CURRENT audit v6 COMPLETE / READ ONLY / NO-REPLAY. Planned 257; eligible {r['eligible_count']}; already exact {r['already_exact_count']}; holds {r['hold_count']}. Supplier/Tourvisor/Andromeda/direct-ANEX calls0; DB/mapping writes0. Result SHA256 {dig}.\n")
+          print(json.dumps(summary))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-native-anex-audit-v6-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-andromeda-native-anex-audit-1971-20260918-v6/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record terminal audit result
+        if: always() && hashFiles(format('{0}/{1}/summary.md', runner.temp, env.OPERATION_ID)) != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/$OPERATION_ID/summary.md"
+          gh issue comment 2530 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/$OPERATION_ID/summary.md"
