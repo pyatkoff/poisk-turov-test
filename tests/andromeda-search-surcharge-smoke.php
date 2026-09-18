@@ -41,6 +41,50 @@ same_surcharge($unknown['party_surcharge'], null, 'different_flight_no_surcharge
 same_surcharge($unknown['search_price_with_surcharge'], null, 'different_flight_no_total');
 same_surcharge($unknown['arithmetic_applied'], false, 'different_flight_no_arithmetic');
 
+// Choice-dependent transport can be resolved privately to the cheapest safely
+// comparable option per required direction. This is only a selection strategy;
+// supplier changeservice+calc must still establish the final customer price.
+$choice = $claim;
+$choice['groups'] = [[ 'group' => [
+    ['id'=>'g0','required'=>'true','oneItem'=>'true'],
+    ['id'=>'g1','required'=>'true','oneItem'=>'true'],
+] ]];
+$choice['variants'] = [[
+    'transports' => [[ 'transport' => [
+        ['type'=>'ttAvia','direction'=>'0','groupId'=>'g0','uid'=>'out-expensive',
+            'details'=>[[ 'detail'=>[['markup'=>'200','currency'=>'USD']] ]]],
+        ['type'=>'ttAvia','direction'=>'0','groupId'=>'g0','uid'=>'out-cheap',
+            'details'=>[[ 'detail'=>[['markup'=>'100','currency'=>'USD']] ]]],
+        ['type'=>'ttAvia','direction'=>'1','groupId'=>'g1','uid'=>'ret-expensive',
+            'details'=>[[ 'detail'=>[['markup'=>'150','currency'=>'USD']] ]]],
+        ['type'=>'ttAvia','direction'=>'1','groupId'=>'g1','uid'=>'ret-cheap',
+            'details'=>[[ 'detail'=>[['markup'=>'50','currency'=>'USD']] ]]],
+    ]]],
+]];
+$selected = AnyTourAndromedaSearchSurcharge::cheapestRequiredFlightSelection(
+    $choice, ['amount'=>'119114','currency'=>'RUB']
+);
+same_surcharge(is_array($selected), true, 'cheapest_selection_available');
+same_surcharge($selected['candidate_counts'], ['0'=>2,'1'=>2], 'cheapest_selection_counts');
+same_surcharge($selected['target_currency'], 'RUB', 'cheapest_selection_currency');
+same_surcharge($selected['selected'][0]['uid'], 'out-cheap', 'cheapest_outbound');
+same_surcharge($selected['selected'][1]['uid'], 'ret-cheap', 'cheapest_return');
+
+// An option with internally contradictory markup is not safely comparable.
+$unsafeChoice = $choice;
+$unsafeChoice['variants'][0]['transports'][0]['transport'][1]['details'][0]['detail'][] =
+    ['markup'=>'101','currency'=>'USD'];
+$unsafeChoice['variants'][0]['transports'][0]['transport'] =
+    [$unsafeChoice['variants'][0]['transports'][0]['transport'][1],
+     $unsafeChoice['variants'][0]['transports'][0]['transport'][2]];
+same_surcharge(
+    AnyTourAndromedaSearchSurcharge::cheapestRequiredFlightSelection(
+        $unsafeChoice, ['amount'=>'119114','currency'=>'RUB']
+    ),
+    null,
+    'unsafe_direction_fails_closed'
+);
+
 // Missing target conversion rate is unknown, never zero.
 $noRate = $claim;
 $noRate['claimDocument'][0]['moneys'][0]['money'] = [['currency'=>'USD','rate'=>'1','isClaimCurrency'=>'true']];
