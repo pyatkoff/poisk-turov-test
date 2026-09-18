@@ -1,0 +1,197 @@
+name: MATCH user-seen ANEX details mass v4
+
+on:
+  push:
+    branches:
+      - ops/match-user-seen-anex-details-mass-1971-20260918-v4
+    paths:
+      - .github/workflows/hotel-match-user-seen-anex-details-mass-v4.yml
+
+permissions:
+  contents: read
+  issues: read
+
+env:
+  OPERATION_ID: hotel-match-user-seen-anex-details-mass-1971-20260918-v4
+  EXPECTED_BASE: 1f7fa9d1f51625b6d4ec95139c0fc5de36530364
+  CLAIM_COMMENT_ID: '5730727788'
+
+concurrency:
+  group: match-anex-direct-account-20260918
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact mass-acquisition v4 delta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_user_seen_anex_details_mass_v4.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-user-seen-anex-details-mass-v4.yml'
+          php -l scripts/diagnostics/hotel_match_user_seen_anex_details_mass_v4.php
+          php scripts/diagnostics/hotel_match_user_seen_anex_details_mass_v4.php --self-test
+          php -l app/integrations/anex-client.php
+          php -l app/integrations/anex-search-mapping-registry.php
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          b=c['body']
+          assert os.environ['OPERATION_ID'] in b
+          assert '2200' in b and '3000/day' in b
+          assert 'prepare-only' in b
+          PY
+
+      - name: Require credentials
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"; test -n "$ANEX_TOKEN"
+
+      - name: Stage exact runtime
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
+          test -s "$known"
+          remote="$SSH_USER@$SSH_HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          stage=".anytour-match/stages/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytour-match/stages\"; rm -rf \"\$HOME/$stage\"; mkdir -m 700 \"\$HOME/$stage\""
+          scp "${opts[@]}"             scripts/diagnostics/hotel_match_user_seen_anex_details_mass_v4.php             app/integrations/anex-client.php             app/integrations/anex-search-mapping-registry.php             "$remote:$stage/"
+
+      - name: CURRENT DB preparation before reservation/provider
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$SSH_USER@$SSH_HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ConnectionAttempts=3 -o ServerAliveInterval=20 -o ServerAliveCountMax=3)
+          stage=".anytour-match/stages/$OPERATION_ID"
+          rm -f terminal/preflight.json terminal/preflight.tmp terminal/preflight.err
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            if ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$stage\" HMA_PREP_ONLY=1 php -d display_errors=1 -d log_errors=0 \"\$HOME/$stage/hotel_match_user_seen_anex_details_mass_v4.php\"" > terminal/preflight.tmp 2> terminal/preflight.err; then
+              mv terminal/preflight.tmp terminal/preflight.json
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ok" -eq 1
+          test -s terminal/preflight.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('terminal/preflight.json'))
+          assert d['state']=='prepared_before_provider_access'
+          assert d['provider_calls']==0 and d['database_writes']==0 and d['mapping_writes']==0
+          assert d['frontier_count']>0 and d['unique_anex_candidates']>0
+          print(json.dumps(d,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Reserve and execute one direct ANEX mass sweep
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$SSH_USER@$SSH_HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          op=".anytour-match/operations/$OPERATION_ID"; stage=".anytour-match/stages/$OPERATION_ID"
+          set -e
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytour-match/operations\"; test ! -e \"\$HOME/$op\"; mkdir -m 700 \"\$HOME/$op\"; mkdir -m 700 \"\$HOME/$op/payload\"; cp \"\$HOME/$stage/\"* \"\$HOME/$op/payload/\""
+          python3 - <<'PY' > terminal/reservation.json
+          import json,os
+          print(json.dumps({
+            "operation":os.environ["OPERATION_ID"],"state":"reserved_before_provider_access",
+            "source_sha":os.environ["HEAD_SHA"],"provider":"anex","owner_daily_limit":3000,
+            "operation_request_cap":2200,"preflight_verified":True,
+            "database_writes":0,"mapping_writes":0,"no_replay":True
+          },sort_keys=True))
+          PY
+          scp "${opts[@]}" terminal/reservation.json "$remote:$op/reservation.json"
+          set +e
+          printf '%s\n' "$ANEX_TOKEN" | ssh "${opts[@]}" "$remote"             "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$op/payload/hotel_match_user_seen_anex_details_mass_v4.php\" > \"\$HOME/$op/result.json\""
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$rc" <<'REMOTE'
+          set -euo pipefail
+          op="$1"; rc="$2"; p="$HOME/.anytour-match/operations/$op"; result="$p/result.json"
+          if [ ! -s "$result" ]; then
+            printf '{"operation":"%s","state":"terminal_failed_no_replay","reason":"runtime_failure","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$op" > "$result"
+          fi
+          OP="$op" RC="$rc" RESULT="$result" RECEIPT="$p/receipt.json" php -r '
+            $raw=file_get_contents(getenv("RESULT"));$j=json_decode($raw,true);$sha=hash("sha256",$raw);
+            $state=is_array($j)?($j["state"]??"terminal_failed_no_replay"):"terminal_failed_no_replay";
+            file_put_contents(getenv("RECEIPT"),json_encode([
+              "operation"=>getenv("OP"),"state"=>$state,"remote_exit"=>(int)getenv("RC"),
+              "result_sha256"=>$sha,"provider_access"=>true,"anex_detail_calls"=>(int)($j["anex_detail_calls"]??0),
+              "database_writes"=>0,"mapping_writes"=>0,"no_replay"=>true
+            ],JSON_UNESCAPED_SLASHES).PHP_EOL);
+          '
+          REMOTE
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          python3 - <<'PY'
+          import tarfile,json,hashlib,pathlib
+          p=pathlib.Path('terminal'); d=p/'server'; d.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            for m in t.getmembers():
+              assert m.isfile() and m.size<100_000_000
+              (d/pathlib.Path(m.name).name).write_bytes(t.extractfile(m).read())
+          r=json.loads((d/'result.json').read_text()); receipt=json.loads((d/'receipt.json').read_text())
+          sha=hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==sha and receipt['database_writes']==0 and receipt['mapping_writes']==0
+          if r.get('state')!='completed_read_only':
+            print(json.dumps({'state':r.get('state'),'reason':r.get('reason'),'calls':receipt.get('anex_detail_calls'),'result_sha256':sha},sort_keys=True))
+            raise SystemExit(2)
+          assert r['anex_detail_calls']<=2200 and r['database_writes']==0 and r['mapping_writes']==0
+          summary={k:r.get(k) for k in ['state','frontier_count','planned_local_count','unique_anex_candidates','anex_detail_calls','details_returned','safe_candidate_count','ambiguous_local_count','hold_count','stop_reason']}
+          summary['result_sha256']=sha
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-user-seen-anex-details-mass-v4-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
