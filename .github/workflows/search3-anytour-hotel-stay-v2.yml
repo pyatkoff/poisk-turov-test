@@ -1,0 +1,54 @@
+name: Search3 AnyTour hotel-scoped stay V2
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'v2/data/migrations/20260918-anytour-hotel-stay-v2.sql'
+      - 'v2/data/anytour-hotel-stay-catalog-v2.php'
+      - 'tests/anytour_hotel_stay_catalog_v2_test.php'
+      - '.github/workflows/search3-anytour-hotel-stay-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  hotel-stay-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_hotel_stay_v2_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Guard hotel-scoped authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/anytour-hotel-stay-catalog-v2.php
+          php -l tests/anytour_hotel_stay_catalog_v2_test.php
+          php tests/anytour_hotel_stay_catalog_v2_test.php
+          ! grep -Eq 'anytour_meal_plans|anytour_room_categories|anytour_stay_mappings([^_]|$)' v2/data/anytour-hotel-stay-catalog-v2.php
+          grep -Fq 'FOREIGN KEY (anytour_hotel_id, room_concept_id)' v2/data/migrations/20260918-anytour-hotel-stay-v2.sql
+          grep -Fq 'FOREIGN KEY (anytour_hotel_id, meal_concept_id)' v2/data/migrations/20260918-anytour-hotel-stay-v2.sql
+      - name: Exercise hotel-local concepts against MySQL
+        env:
+          ANYTOUR_HOTEL_STAY_V2_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_hotel_stay_v2_fixture;charset=utf8mb4'
+          ANYTOUR_HOTEL_STAY_V2_TEST_USER: root
+          ANYTOUR_HOTEL_STAY_V2_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour_hotel_stay_catalog_v2_test.php
