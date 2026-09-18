@@ -1,0 +1,161 @@
+name: MATCH Tourvisor saved-detail saturation v2
+
+on:
+  push:
+    branches:
+      - ops/match-user-seen-tv-detail-saturation-1971-20260918-v2
+    paths:
+      - .github/workflows/hotel-match-user-seen-tv-detail-saturation-v2.yml
+
+permissions:
+  contents: read
+  issues: read
+
+env:
+  OPERATION_ID: hotel-match-user-seen-tv-detail-saturation-1971-20260918-v2
+  EXPECTED_BASE: 1f7fa9d1f51625b6d4ec95139c0fc5de36530364
+  CLAIM_COMMENT_ID: '5730471311'
+  BUDGET_COMMENT_ID: '5730412113'
+
+concurrency:
+  group: match-tourvisor-test-account-20260918
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact saturation delta and budget
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_user_seen_tv_detail_saturation_v2.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-user-seen-tv-detail-saturation-v2.yml'
+          php -l scripts/diagnostics/hotel_match_user_seen_tv_detail_saturation_v2.php
+          php scripts/diagnostics/hotel_match_user_seen_tv_detail_saturation_v2.php --self-test
+          php -l app/integrations/anex-search-mapping-registry.php
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$BUDGET_COMMENT_ID" > budget.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json')); b=json.load(open('budget.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in c['body']
+          assert 'saved user-search tour_id' in c['body']
+          assert '270' in b['body'] and '300/day' in b['body']
+          assert '429' in b['body'] and ('stop' in b['body'].lower() or 'stops' in b['body'].lower())
+          PY
+
+      - name: Require dedicated Tourvisor token and SSH
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          TV_TOKEN: ${{ secrets.TOURVISOR_ANEX_JWT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"; test -n "$TV_TOKEN"
+
+      - name: Reserve and consume saved Tourvisor details once
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          TV_TOKEN: ${{ secrets.TOURVISOR_ANEX_JWT }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
+          remote="$SSH_USER@$SSH_HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          op=".anytour-match/operations/$OPERATION_ID"
+          set -e
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytour-match/operations\"; test ! -e \"\$HOME/$op\"; mkdir -m 700 \"\$HOME/$op\"; mkdir -m 700 \"\$HOME/$op/payload\""
+          python3 - <<'PY' > terminal/reservation.json
+          import json,os
+          print(json.dumps({
+            "operation":os.environ["OPERATION_ID"],"state":"reserved_before_provider_access",
+            "source_sha":os.environ["HEAD_SHA"],"provider":"tourvisor-test",
+            "owner_daily_limit":300,"known_prior_attempt_floor":25,"new_attempt_cap":270,
+            "one_http_attempt_per_detail":True,"stop_on_429":True,
+            "database_writes":0,"mapping_writes":0,"no_replay":True
+          },sort_keys=True))
+          PY
+          scp "${opts[@]}" terminal/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}"             scripts/diagnostics/hotel_match_user_seen_tv_detail_saturation_v2.php             app/integrations/anex-search-mapping-registry.php             "$remote:$op/payload/"
+          set +e
+          printf '%s\n' "$TV_TOKEN" | ssh "${opts[@]}" "$remote"             "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$op/payload/hotel_match_user_seen_tv_detail_saturation_v2.php\" > \"\$HOME/$op/result.json\""
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$rc" <<'REMOTE'
+          set -euo pipefail
+          op="$1"; rc="$2"; p="$HOME/.anytour-match/operations/$op"; result="$p/result.json"
+          if [ ! -s "$result" ]; then
+            printf '{"operation":"%s","state":"terminal_failed_no_replay","reason":"runtime_failure","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$op" > "$result"
+          fi
+          OP="$op" RC="$rc" RESULT="$result" RECEIPT="$p/receipt.json" php -r '
+            $raw=file_get_contents(getenv("RESULT"));$j=json_decode($raw,true);$sha=hash("sha256",$raw);
+            $state=is_array($j)?($j["state"]??"terminal_failed_no_replay"):"terminal_failed_no_replay";
+            file_put_contents(getenv("RECEIPT"),json_encode([
+              "operation"=>getenv("OP"),"state"=>$state,"remote_exit"=>(int)getenv("RC"),
+              "result_sha256"=>$sha,"provider_access"=>true,"http_attempts"=>(int)($j["http_attempts"]??0),
+              "rate_limited"=>(bool)($j["rate_limited"]??false),"database_writes"=>0,"mapping_writes"=>0,"no_replay"=>true
+            ],JSON_UNESCAPED_SLASHES).PHP_EOL);
+          '
+          REMOTE
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          python3 - <<'PY'
+          import tarfile,json,hashlib,pathlib
+          p=pathlib.Path('terminal');d=p/'server';d.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            for m in t.getmembers():
+              assert m.isfile() and m.size<100_000_000
+              (d/pathlib.Path(m.name).name).write_bytes(t.extractfile(m).read())
+          r=json.loads((d/'result.json').read_text());receipt=json.loads((d/'receipt.json').read_text())
+          sha=hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==sha
+          assert receipt['database_writes']==0 and receipt['mapping_writes']==0
+          assert receipt['http_attempts']<=270
+          if r.get('state') not in ['completed_read_only','completed_partial_rate_limited']:
+            raise SystemExit('terminal provider runtime failure: '+str(r.get('state')))
+          assert r['database_writes']==0 and r['mapping_writes']==0
+          summary={k:r.get(k) for k in [
+            'state','frontier_hotels_with_saved_tours','saved_seed_rows','scheduled_attempts','http_attempts',
+            'http_200','http_404','transport_or_shape_failures','rate_limited','binding_conflict','binding_missing',
+            'direct_link_rows','direct_native_links','unique_local_operator_native_pairs','native_conflict_groups',
+            'detail_family_counts','status_counts'
+          ]}
+          summary['result_sha256']=sha
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-detail-saturation-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
