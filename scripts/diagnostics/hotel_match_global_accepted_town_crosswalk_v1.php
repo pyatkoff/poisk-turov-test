@@ -50,7 +50,7 @@ function hmtc_town_keys(mixed $value): array {
             if(is_array($item))$walk($item);
         }
     };
-    $walk($value);return array_keys($out);
+    $walk($value);return array_values(array_map('strval',array_keys($out)));
 }
 
 if(in_array('--self-test',$argv??[],true)){
