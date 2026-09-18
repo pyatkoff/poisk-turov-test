@@ -11,7 +11,7 @@ function params_fixture():array{return[
 function dto_fixture(string $provider,int $legacy,string $salt,string $price,string $checkin='2026-10-05',int $nights=7):array{
  $now=1791309600;$operator=match($provider){'anex'=>'ANEX','andromeda'=>'FUN&SUN',default=>'Pegas Touristik'};$verified=$provider==='anex';
  return['schema_version'=>1,'provider'=>$provider,'operator'=>['raw'=>$operator,'canonical_name'=>$verified?'ANEX':null,'canonical_verified'=>$verified,'identity_source'=>$verified?'provider_fixed':'raw_label_only','filter_status'=>$provider==='tourvisor'?'verified':'unsupported','cross_provider_equivalence_verified'=>false,'supplier_code_exposed'=>false],
- 'local_hotel_id'=>$legacy,'identity'=>['search_ref_digest'=>hash('sha256','search:'.$provider.':'.$salt),'offer_ref_digest'=>hash('sha256','offer:'.$provider.':'.$salt),'provider_hotel_ref_digest'=>hash('sha256','hotel:'.$provider.':'.$salt)],
+ 'local_hotel_id'=>$legacy,'identity'=>['search_ref_digest'=>hash('sha256','search:'.$provider.':'.$salt),'offer_ref_digest'=>hash('sha256','offer:'.$provider.':'.$salt),'provider_hotel_ref_digest'=>$provider==='andromeda'?hash('sha256','andromeda_catalog:7001'):hash('sha256','hotel:'.$provider.':'.$salt)],
  'tour'=>['checkin'=>$checkin,'nights'=>$nights,'party'=>['adults'=>2,'children'=>1,'child_ages'=>[7]],'meal'=>['raw'=>'AI','family'=>'AI','qualifiers'=>['plus'=>false,'without_alcohol'=>false],'family_verified'=>true],'room'=>['raw'=>'STANDARD ROOM'],'placement'=>['raw'=>'2AD+1CHD'],'availability'=>['hotel'=>['raw'=>'available']],'flight_details'=>['state'=>'search_summary_only'],'observed_at'=>'2026-10-06T10:00:00Z'],
  'money'=>['search_price'=>['amount'=>$price,'currency'=>'RUB'],'search_price_with_surcharge'=>['amount'=>$price,'currency'=>'RUB']],
  'quote_state'=>'unknown','final_price_verified'=>false,'quote_evidence_digest'=>null,'context'=>['generation'=>1,'page'=>1,'issued_at'=>$now,'expires_at'=>$now+900,'current_context_verified'=>true],
@@ -33,13 +33,37 @@ $far=$narrow;$far['dateFrom']='2026-11-01';$far['dateTo']='2026-11-01';$farScope
 
 $dsn=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_DSN');$password=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_PASSWORD');if(!str_starts_with($dsn,'mysql:'))throw new RuntimeException('fixture DSN required');
 $pdo=new PDO($dsn,'root',$password,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
-$pdo->exec('SET FOREIGN_KEY_CHECKS=0');foreach(['anytour_offer_scopes','anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $t)$pdo->exec("DROP TABLE IF EXISTS `$t`");$pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+$pdo->exec('SET FOREIGN_KEY_CHECKS=0');foreach(['anytour_offer_scopes','anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','andromeda_hotel_identities','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $t)$pdo->exec("DROP TABLE IF EXISTS `$t`");$pdo->exec('SET FOREIGN_KEY_CHECKS=1');
 exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260916-anytour-canonical-catalog.sql');exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260916-anytour-offer-store.sql');
 $schema1Rejected=false;try{search3_local_results_build($pdo,$p,new DateTimeImmutable('2026-10-06T10:00:00Z'));}catch(RuntimeException $e){$schema1Rejected=str_contains($e->getMessage(),'Unsupported AnyTour offer-store schema');}need($schema1Rejected,'schema v1 read path retired fail closed');
 exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260917-anytour-offer-store-v2.sql');exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260917-anytour-offer-scope-index.sql');
+$pdo->exec("CREATE TABLE andromeda_hotel_identities (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ supplier_namespace VARCHAR(64) NOT NULL,
+ external_hotel_id VARCHAR(120) NOT NULL,
+ local_hotel_id BIGINT UNSIGNED NULL,
+ decision_status VARCHAR(32) NOT NULL,
+ KEY ix_external (external_hotel_id),
+ KEY ix_tuple (supplier_namespace,external_hotel_id,decision_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 $hotel=$pdo->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES(?,?,1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())');
 $bridge=$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',?,?,'fixture',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
-$owns=[];foreach([[101,'Первый AnyTour отель'],[202,'Второй AnyTour отель']] as[$legacy,$name]){$profile=json_encode(['name'=>$name,'description'=>'Собственное описание','images'=>['https://images.example.test/'.$legacy.'.jpg']],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$hotel->execute([$profile,hash('sha256',$profile)]);$own=(int)$pdo->lastInsertId();$owns[$legacy]=$own;$source=json_encode(['id'=>$legacy]);$bridge->execute([(string)$legacy,$own,$source,hash('sha256',$source)]);}
+$aliasBridge=$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('anytour_local_id',?,?,'canonical_local_alias_v1',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+$owns=[];foreach([[101,'Первый AnyTour отель'],[202,'Второй AnyTour отель']] as[$legacy,$name]){$profile=json_encode(['name'=>$name,'description'=>'Собственное описание','images'=>['https://images.example.test/'.$legacy.'.jpg']],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$hotel->execute([$profile,hash('sha256',$profile)]);$own=(int)$pdo->lastInsertId();$owns[$legacy]=$own;$source=json_encode(['id'=>$legacy]);$bridge->execute([(string)$legacy,$own,$source,hash('sha256',$source)]);
+$aliasData=[
+    'accepted_local_hotel_id'=>$legacy,'canonical_hotel_id'=>$own,
+    'derived_from_namespace'=>'legacy_catalog','derived_from_source_sha256'=>hash('sha256',$source),
+    'schema_version'=>1,
+];
+ksort($aliasData,SORT_STRING);
+$aliasSource=json_encode($aliasData,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+$aliasBridge->execute([(string)$legacy,$own,$aliasSource,hash('sha256',$aliasSource)]);}
+$pdo->prepare("INSERT INTO andromeda_hotel_identities
+ (supplier_namespace,external_hotel_id,local_hotel_id,decision_status)
+ VALUES('andromeda_catalog','7001',202,'accepted')")->execute();
+need(AnyTourProviderIdentityBridgeV1::allowsOffer(
+ $pdo,'andromeda',hash('sha256','andromeda_catalog:7001'),202,$owns[202]
+),'current Andromeda identity accepted');
 $at=new DateTimeImmutable('2026-10-06T10:00:00Z');$expires=$at->modify('+2 hours');
 need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$scope,$at),'narrow scope indexed');
 foreach([
@@ -72,9 +96,17 @@ need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$broadScope,$at->modify('+
 $token=AnyTourOfferStoreV1::beginRefresh($pdo,'tourvisor',$broadScope['digest'],$at->modify('+1 minute'));AnyTourOfferStoreV1::upsertReadyOffer($pdo,$token,$owns[101],dto_fixture('tourvisor',101,'tv-broad','130000'),$expires,$at->modify('+1 minute'));AnyTourOfferStoreV1::completeRefresh($pdo,$token,$at->modify('+1 minute'));
 $exactBroad=search3_local_results_build($pdo,$broad,$at->modify('+1 minute'));need($exactBroad['matchMode']==='exact'&&$exactBroad['partial']===false&&$exactBroad['storedOfferCount']===1&&$exactBroad['offerCount']===1,'visible exact cohort beats compatible fallback');need($exactBroad['hotels'][0]['offers'][0]['price']==='130000','exact broad price rendered without narrower merge');
 
-$deleteBridge=$pdo->prepare("DELETE FROM anytour_hotel_sources WHERE namespace='legacy_catalog' AND external_key=? AND anytour_hotel_id=?");$deleteBridge->execute(['101',$owns[101]]);need($deleteBridge->rowCount()===1,'accepted bridge revoked');
+$deleteBridge=$pdo->prepare("DELETE FROM anytour_hotel_sources WHERE namespace='anytour_local_id' AND external_key=? AND anytour_hotel_id=?");$deleteBridge->execute(['101',$owns[101]]);need($deleteBridge->rowCount()===1,'accepted bridge revoked');
 $revoked=search3_local_results_build($pdo,$p,$at);need($revoked['storedOfferCount']===1&&$revoked['withheldOfferCount']===1,'revoked identity offers fail closed before canonical grouping');need($revoked['hotelCount']===0&&$revoked['offerCount']===0,'revoked identity cannot render cached canonical card');
-$source=json_encode(['id'=>101]);$bridge->execute(['101',$owns[101],$source,hash('sha256',$source)]);
+$source=json_encode(['id'=>101]);
+$aliasData=[
+ 'accepted_local_hotel_id'=>101,'canonical_hotel_id'=>$owns[101],
+ 'derived_from_namespace'=>'legacy_catalog','derived_from_source_sha256'=>hash('sha256',$source),
+ 'schema_version'=>1,
+];
+ksort($aliasData,SORT_STRING);
+$aliasSource=json_encode($aliasData,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+$aliasBridge->execute(['101',$owns[101],$aliasSource,hash('sha256',$aliasSource)]);
 $restored=search3_local_results_build($pdo,$p,$at);need($restored['storedOfferCount']===3&&$restored['hotelCount']===1&&$restored['offerCount']===2,'restored accepted bridge restores cached visibility');
 need(is_object($none['providerOfferCounts'])&&count((array)$none['providerOfferCounts'])===0,'empty provider counts remain keyed map');need(str_contains((string)json_encode($none,JSON_UNESCAPED_SLASHES),'"providerOfferCounts":{}'),'empty provider counts serialize as JSON object');
 $pdo->exec("UPDATE anytour_offers SET payload_json='{}' WHERE provider='tourvisor'");$integrityFailed=false;try{search3_local_results_build($pdo,$p,$at);}catch(RuntimeException $e){$integrityFailed=str_contains($e->getMessage(),'PAYLOAD_INTEGRITY');}need($integrityFailed,'corrupt stored payload fails closed');

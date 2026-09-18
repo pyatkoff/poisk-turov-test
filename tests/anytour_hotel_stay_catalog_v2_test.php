@@ -95,6 +95,12 @@ hs_check($aMeals[0]['nameRu']==='Всё включено' && $bMeals[0]['nameRu'
 hs_check($aMeals[0]['facts']['concept']==='hotel-a-ai' && $bMeals[0]['facts']['concept']==='hotel-b-ai','same-label-different-concepts');
 hs_check($catalog->rooms($hotelA)[0]['facts']['view']==='pool','room-a-facts');
 hs_check($catalog->rooms($hotelB)[0]['facts']['view']==='garden','room-b-facts');
+$batchRooms=$catalog->roomsForHotels([$hotelB,$hotelA,$hotelA]);
+$batchMeals=$catalog->mealsForHotels([$hotelA,$hotelB]);
+hs_check(count($batchRooms)==2 && count($batchRooms[$hotelA])===1 && count($batchRooms[$hotelB])===1,'batch-rooms');
+hs_check(count($batchMeals)==2 && $batchMeals[$hotelA][0]['facts']['concept']==='hotel-a-ai'
+    && $batchMeals[$hotelB][0]['facts']['concept']==='hotel-b-ai','batch-meals');
+hs_expect(fn()=> $catalog->mealsForHotels(array_fill(0,1001,$hotelA)),'HOTEL_STAY_V2_HOTEL_BATCH','batch-limit');
 
 $scopeA=['namespace'=>'provider_ref_digest:test','hotelKey'=>'hotel-A','operatorKey'=>'op-5'];
 $mealRef=['kind'=>'meal','keyKind'=>'label','externalKey'=>'AI'];
