@@ -56,7 +56,7 @@ jobs:
           b=c.get('body','')
           assert 'hotel-match-user-seen-operator-dictionary-plan-1971-20260918-v2' in b
           assert 'READ-ONLY' in b
-          assert 'supplier/Tourvisor calls0' in b
+          assert 'No supplier/Tourvisor calls' in b
           assert 'no mappings/DB writes' in b
           PY
 
