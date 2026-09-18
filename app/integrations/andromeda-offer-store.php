@@ -52,7 +52,8 @@ final class AnyTourAndromedaOfferStore {
         if (($payload['PAGE']??null)!==($criteria['PAGE']??1)) throw new InvalidArgumentException('PAGE_MISMATCH');
         $projection=AnyTourAndromedaNormalizer::page($payload,$criteria,$searchRef,$generation);
         if ($resolver!==null) $projection=$resolver->apply($projection);
-        $rejected=array_fill_keys(array_column($projection['rejected'],'index'),true);
+        $rejectedRows=array_merge($projection['rejected'],$projection['excluded_rejected']??[]);
+        $rejected=array_fill_keys(array_column($rejectedRows,'index'),true);
         $raw=[]; $offerIndex=0;
         foreach ($payload['PRICES'] as $index=>$row) {
             if (isset($rejected[$index])) continue;
