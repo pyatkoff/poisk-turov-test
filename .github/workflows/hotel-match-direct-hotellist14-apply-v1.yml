@@ -1,0 +1,182 @@
+name: MATCH direct HOTELLIST14 guarded apply v1
+on:
+  push:
+    branches: [ops/match-direct-hotellist14-apply-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_direct_hotellist14_apply_v1.php
+      - .github/workflows/hotel-match-direct-hotellist14-apply-v1.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-direct-hotellist14-apply-1971-20260919-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-direct-hotellist14-apply-1971-20260919-v1
+jobs:
+  apply:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10571026944'
+          run-id: 35402327751
+          github-token: ${{ github.token }}
+          path: uae12
+          merge-multiple: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10570673363'
+          run-id: 35402610918
+          github-token: ${{ github.token }}
+          path: saved5
+          merge-multiple: true
+      - name: Build immutable 14-pair evidence plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          php -l scripts/diagnostics/hotel_match_direct_hotellist14_apply_v1.php
+          php scripts/diagnostics/hotel_match_direct_hotellist14_apply_v1.php --self-test
+          grep -Fq 'SET TRANSACTION ISOLATION LEVEL SERIALIZABLE' scripts/diagnostics/hotel_match_direct_hotellist14_apply_v1.php
+          grep -Fq 'INSERT INTO anex_hotel_search_mappings' scripts/diagnostics/hotel_match_direct_hotellist14_apply_v1.php
+          ! grep -Eiq '\b(UPDATE|REPLACE|DELETE|ALTER|DROP|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_direct_hotellist14_apply_v1.php
+          cp scripts/diagnostics/hotel_match_direct_hotellist14_apply_v1.php payload/apply.php
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,urllib.parse
+          def load(path): return json.loads(pathlib.Path(path).read_text())
+          def sha(path): return hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
+          def canonical(x): return json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          def positive_hotellist(url):
+              p=urllib.parse.urlparse(url)
+              assert p.scheme=='https' and p.hostname=='agent.anextour.ru' and p.path=='/search/tour'
+              q=urllib.parse.parse_qs(p.query,keep_blank_values=True)
+              assert len(q.get('HOTELLIST',[]))==1
+              vals=[]
+              for part in q['HOTELLIST'][0].replace(';',',').split(','):
+                  part=part.strip()
+                  if not part: continue
+                  assert part.lstrip('-').isdigit()
+                  vals.append(int(part))
+              pos=sorted(set(v for v in vals if v>0))
+              assert len(pos)==1
+              return pos[0]
+          ures='uae12/remote/result.json'; urec='uae12/remote/receipt.json'
+          assert sha(ures)=='247515ae8fbe431badbea6464b373c51044f3d2984ad10e976d6bc8ae4a38db2'
+          u=load(ures); ur=load(urec)
+          assert ur['result_sha256']==sha(ures) and ur['state']=='completed_read_only'
+          assert u['operation']=='hotel-match-anex-user-seen-uae12-direct-1971-20260919-v1'
+          assert u['state']=='completed_read_only' and u['operator_filter']==[13] and u['provider_source']=='direct_tourvisor' and u['holds']==[]
+          assert u['full_drain'] is True and u['drain_reason']=='zero_growth' and u['returned_target_hotels']==12 and len(u['anchors'])==12
+          pairs=[]
+          for a in u['anchors']:
+              assert len(a['native_ids'])==1
+              links=[x['url'] for x in a['operator_link_fields'] if x.get('key')=='operatorLink']
+              assert len(links)==1
+              aid=int(a['native_ids'][0]); lid=int(a['local_id']); assert positive_hotellist(links[0])==aid
+              ev={'authority':'fresh_direct_tourvisor_anex_operator13_hotellist','source_operation':u['operation'],'source_result_sha256':sha(ures),'anex_hotel_id':aid,'catalog_hotel_id':lid,'local_name':a['local_name'],'fresh_tour_id':str(a['fresh_tour_id']),'operator_link':links[0]}
+              pairs.append({'anex_hotel_id':aid,'catalog_hotel_id':lid,'expected_country_id':9,'evidence_sha256':hashlib.sha256(canonical(ev)).hexdigest(),'source_operation':u['operation'],'source_result_sha256':sha(ures),'evidence':ev})
+          sres='saved5/result.json'; srec='saved5/receipt.json'
+          assert sha(sres)=='60a577cdf06389045edddf60773a160458aa286ebaac1fc9e271e5511eeeefbe'
+          s=load(sres); sr=load(srec)
+          assert sr['result_sha256']==sha(sres) and sr['state']=='completed_read_only'
+          assert s['operation_id']=='hotel-match-tv30-anex-saved5-current-audit-1971-20260919-v2' and s['status']=='completed_read_only'
+          clean=[]
+          for d in s['dossiers']:
+              if d['route']!='needs_native_identity_review': continue
+              assert d['current_holds']==[] and d['effective_accepted_target'] is None
+              aid=int(d['anex_hotel_id']); lid=int(d['catalog_hotel_id']); assert (aid,lid) in {(15072,1244),(8365,1441)}
+              assert positive_hotellist(d['operator_link'])==aid
+              ev={'authority':'fresh_tourvisor_anex_operator13_hotellist_current_clean','source_operation':'hotel-match-tv30-anex-saved5-current-audit-1971-20260919-v2','source_result_sha256':sha(sres),'anex_hotel_id':aid,'catalog_hotel_id':lid,'local_name':d['tv_name'],'fresh_tour_id':str(d['saved_tour_id']),'operator_link':d['operator_link']}
+              clean.append({'anex_hotel_id':aid,'catalog_hotel_id':lid,'expected_country_id':4,'evidence_sha256':hashlib.sha256(canonical(ev)).hexdigest(),'source_operation':'hotel-match-tv30-anex-saved5-current-audit-1971-20260919-v2','source_result_sha256':sha(sres),'evidence':ev})
+          assert len(clean)==2
+          pairs.extend(clean)
+          assert len(pairs)==14 and len({x['anex_hotel_id'] for x in pairs})==14 and len({x['catalog_hotel_id'] for x in pairs})==14
+          forbidden={(43090,115349),(24940,9427),(35127,967)}
+          assert not forbidden.intersection({(x['anex_hotel_id'],x['catalog_hotel_id']) for x in pairs})
+          pairs=sorted(pairs,key=lambda x:(x['expected_country_id'],x['catalog_hotel_id'],x['anex_hotel_id']))
+          plan={'operation_id':os.environ['OPERATION_ID'],'version':1,'source_head':os.environ['GITHUB_SHA'],'input_results':[sha(ures),sha(sres)],'pairs':pairs}
+          raw=canonical(plan)+b'\n'; pathlib.Path('payload/plan.json').write_bytes(raw)
+          digest=hashlib.sha256(raw).hexdigest(); pathlib.Path('payload/plan.sha256').write_text(digest+'\n')
+          pathlib.Path('result/plan-summary.json').write_text(json.dumps({'pair_count':14,'uae_pairs':12,'turkey_pairs':2,'plan_sha256':digest,'excluded_conflict_pairs':sorted(forbidden)},indent=2)+'\n')
+          print(json.dumps({'plan_sha256':digest,'pair_count':len(pairs)}))
+          PY
+          PLAN_SHA=$(cat payload/plan.sha256)
+          MATCH_PLAN_PATH=payload/plan.json MATCH_PLAN_SHA256="$PLAN_SHA" OPERATION_ID="$OPERATION_ID" MATCH_SOURCE_SHA="$GITHUB_SHA" ANYTOUR_ROOT=/tmp php payload/apply.php --self-test
+          (cd payload && sha256sum apply.php plan.json > SHA256SUMS)
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('result/runner-reservation.json')
+          v={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_db_write','plan_sha256':pathlib.Path('payload/plan.sha256').read_text().strip(),'pair_count':14,'supplier_calls':0,'no_replay':True}
+          with p.open('x') as f:
+              json.dump(v,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-direct-hotellist14-reservation-${{ github.run_id }}
+          path: |
+            result/runner-reservation.json
+            result/plan-summary.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Run immutable guarded transaction and read back receipt
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/hd14-key"; known="$RUNNER_TEMP/hd14-known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null; test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; stage=".anytoour-match/staging/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytoour-match/staging\"; mkdir \"\$HOME/$stage\"" >result/stage.stdout 2>result/stage.stderr
+          scp "${opts[@]}" payload/apply.php payload/plan.json payload/SHA256SUMS "$remote:$stage/" >result/copy.stdout 2>result/copy.stderr
+          PLAN_SHA=$(cat payload/plan.sha256)
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$stage\" && sha256sum -c SHA256SUMS >/dev/null && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_PLAN_PATH=\"\$HOME/$stage/plan.json\" MATCH_PLAN_SHA256='$PLAN_SHA' ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php -d display_errors=0 -d log_errors=0 apply.php --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - ." >result/server-operation.tgz 2>result/readback.stderr
+          trc=$?
+          set -e
+          export RC="$rc" TRC="$trc" PLAN_SHA
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result'); p.joinpath('exit-codes.json').write_text(json.dumps({'remote':int(os.environ['RC']),'readback':int(os.environ['TRC'])})+'\n')
+          assert int(os.environ['TRC'])==0 and p.joinpath('server-operation.tgz').stat().st_size>0, 'server_readback_failed_no_replay'
+          out=p/'server';out.mkdir()
+          with tarfile.open(p/'server-operation.tgz') as t:
+              for m in t.getmembers():
+                  name=m.name.lstrip('./')
+                  assert name in {'reservation.json','precommit.json','result.json','receipt.json'} and m.isfile() and 0<=m.size<=5000000
+                  (out/name).write_bytes(t.extractfile(m).read())
+          r=json.loads((out/'result.json').read_text()); c=json.loads((out/'receipt.json').read_text()); q=json.loads((out/'reservation.json').read_text())
+          rh=hashlib.sha256((out/'result.json').read_bytes()).hexdigest()
+          for x in (r,c,q):
+              assert x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] and x['no_replay'] is True
+          assert q['plan_sha256']==os.environ['PLAN_SHA'] and c['plan_sha256']==os.environ['PLAN_SHA'] and r['plan_sha256']==os.environ['PLAN_SHA']
+          assert c['result_sha256']==rh and c['readback_verified'] is True
+          assert r['supplier_calls']==r['tourvisor_calls']==0
+          gate={'verified':r['status']=='completed' and int(os.environ['RC'])==0,'operation_id':r['operation_id'],'status':r['status'],'examined_count':r.get('examined_count'),'written_count':r['written_count'],'held_count':r['held_count'],'new_triple_count':r['new_triple_count'],'new_nontriple_count':r['new_nontriple_count'],'result_sha256':rh,'receipt_verified':True,'post_commit_readback_count':len(r.get('post_commit_readback') or []),'supplier_calls':0,'no_replay':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n');print(json.dumps(gate,sort_keys=True))
+          assert gate['verified'] and gate['post_commit_readback_count']==gate['written_count'] and r['database_writes']==r['mapping_writes']==r['written_count']
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-direct-hotellist14-apply-${{ github.run_id }}
+          path: result/
+          if-no-files-found: error
+          retention-days: 90
