@@ -88,11 +88,12 @@ async function run(engine, width, height) {
     if (width < 1025) await page.locator('.search3-mobile-filter-panel > summary').click();
     await page.getByRole('searchbox', { name: /Название отеля/ }).fill('Проверочный');
     if (width < 1025) await page.locator('.search3-mobile-filter-panel > summary').click();
+    // Mobile shows gallery controls when the existing hotel details are open.
+    await page.locator('.hotel-card').first().locator('.hotel-details > summary').click();
     const firstPhoto = page.locator('.hotel-card').first().locator('.hotel-gallery-main');
     const previousPhoto = await firstPhoto.getAttribute('src');
     await page.locator('.hotel-card').first().getByRole('button', { name: 'Поменять главное фото, миниатюра 1' }).click();
     assert.notEqual(await firstPhoto.getAttribute('src'), previousPhoto, 'gallery really switches the main photo');
-    await page.locator('.hotel-card').first().locator('.hotel-details > summary').click();
     const state = () => page.evaluate(() => ({ url: location.href, scroll: scrollY, filter: document.querySelector('input[placeholder="Введите название"]')?.value, sort: document.querySelector('#sortResults').value, photo: document.querySelector('.hotel-card .hotel-photo img')?.src, open: document.querySelector('.hotel-card .hotel-details')?.open, ids: [...document.querySelectorAll('.hotel-card')].map(n => n.dataset.hotelId) }));
     const children = [];
     for (let index = 0; index < 3; index++) {
@@ -123,6 +124,7 @@ async function run(engine, width, height) {
       const trip = await child.locator('#results > .results-state').innerText();
       assert.match(trip, /7–10 ноч\. · 2 взр\./, 'trip context remains visible in the hotel tab');
       if (width === 390) assert.match(trip, /Возраст детей: 0, 7, 17/);
+      assert.equal(await child.locator('.results-filter-rail').isVisible(), false, 'hotel detail starts without the search filter rail');
       assert.equal(await child.locator('#results a[target="_blank"]').count(), 0, 'internal hotel actions do not spawn more tabs');
     }
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1, 'three tabs reuse the original search');
@@ -149,6 +151,7 @@ async function run(engine, width, height) {
     for (const action of await child.locator('#results .direct-tour, #results .tour-list-more, #results .results-state a').all()) assert.ok((await action.boundingBox()).height >= 44);
     await child.locator('.hotel-card').scrollIntoViewIfNeeded();
     await child.screenshot({ path: path.join(output, `${engine}-${width}x${height}-detail.png`), fullPage: true, animations: 'disabled' });
+    assert.equal(await child.locator('.results-filter-rail').isVisible(), false, 'detail layout remains stable after screenshots and scroll');
     await page.screenshot({ path: path.join(output, `${engine}-${width}x${height}-results.png`), fullPage: true, animations: 'disabled' });
     await child.reload({ waitUntil: 'domcontentloaded' });
     await child.waitForSelector('#results .hotel-card .direct-tour');
