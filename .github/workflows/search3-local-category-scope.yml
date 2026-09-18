@@ -1,0 +1,34 @@
+name: Search3 LOCAL category scope
+
+on:
+  push:
+    branches: ['fix/local-db-first-category-proof-20260918']
+    paths:
+      - 'v2/data/anytour-search-scope-v1.php'
+      - 'v2/data/search3-local-results-read-v1.php'
+      - 'tests/search3-local-category-scope-test.php'
+      - '.github/workflows/search3-local-category-scope.yml'
+  pull_request:
+    paths:
+      - 'v2/data/anytour-search-scope-v1.php'
+      - 'v2/data/search3-local-results-read-v1.php'
+      - 'tests/search3-local-category-scope-test.php'
+      - '.github/workflows/search3-local-category-scope.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Syntax and category contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/anytour-search-scope-v1.php
+          php -l v2/data/search3-local-results-read-v1.php
+          php -l tests/search3-local-category-scope-test.php
+          php -d zend.assertions=1 -d assert.exception=1 tests/search3-local-category-scope-test.php

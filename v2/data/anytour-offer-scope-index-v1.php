@@ -55,7 +55,7 @@ final class AnyTourOfferScopeIndexV1
         $params=AnyTourSearchScopeV1::validateNormalized($params);$family=AnyTourSearchScopeV1::familyDigest($params);
         // Fetch a bounded recent hard-family cohort which has at least one currently
         // visible row in a latest completed provider snapshot. Range/filter
-        // compatibility is checked in PHP; concrete date/night truth is checked later.
+        // compatibility is checked in PHP; concrete date/night/category truth is checked later.
         $sql='SELECT x.scope_sha256,x.scope_version,x.family_sha256,x.params_json,x.params_sha256 '
             .'FROM anytour_offer_scopes x WHERE x.family_sha256=:family AND x.scope_sha256<>:current '
             .'AND EXISTS (SELECT 1 FROM anytour_offer_scope_state s JOIN anytour_offers o '
@@ -70,7 +70,7 @@ final class AnyTourOfferScopeIndexV1
             if((int)$row['scope_version']!==AnyTourSearchScopeV1::VERSION||!hash_equals($family,(string)$row['family_sha256'])||!hash_equals((string)$row['params_sha256'],hash('sha256',$json))||!hash_equals($savedDigest,hash('sha256',$json)))throw new RuntimeException('ANYTOUR_SCOPE_INDEX_INTEGRITY');
             try{$saved=json_decode($json,true,64,JSON_THROW_ON_ERROR);}catch(Throwable $e){throw new RuntimeException('ANYTOUR_SCOPE_INDEX_INTEGRITY',0,$e);}
             if(!is_array($saved))throw new RuntimeException('ANYTOUR_SCOPE_INDEX_INTEGRITY');
-            if(AnyTourSearchScopeV1::savedCanContributeToCurrent($saved,$params))$out[]=$savedDigest;
+            if(AnyTourSearchScopeV1::savedCanContributeWithCanonicalCategoryProof($saved,$params))$out[]=$savedDigest;
             if(count($out)>=$limit)break;
         }
         return $out;

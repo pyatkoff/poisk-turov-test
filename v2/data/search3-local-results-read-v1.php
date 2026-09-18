@@ -29,6 +29,16 @@ function search3_local_cached_offer_matches_scope(array $item,array $scope): boo
     return $ages===$scope['childs'];
 }
 
+/** Re-prove the minimum-stars request from the accepted canonical AnyTour profile. */
+function search3_local_profile_matches_scope(array $profile,array $scope): bool
+{
+    $required=$scope['hotelCategory']??'';
+    if($required==='')return true;
+    if(!is_string($required)||preg_match('/^[1-5]$/D',$required)!==1)return false;
+    $category=$profile['category']??null;
+    return is_int($category)&&$category>=1&&$category<=5&&$category>=(int)$required;
+}
+
 function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $now,int $limit=SEARCH3_LOCAL_RESULTS_MAX_OFFERS): array
 {
     if($limit<1||$limit>SEARCH3_LOCAL_RESULTS_MAX_OFFERS)throw new InvalidArgumentException('ANYTOUR_LOCAL_RESULTS_LIMIT');
@@ -58,10 +68,11 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             $read=$catalog->read($chunk);
             foreach($read['items'] as $profile)$profiles[(int)$profile['id']]=$profile;
         }
-        $groups=[];$withheld=0;
+        $groups=[];$withheld=0;$categoryFiltered=0;
         foreach($stored['items'] as $item){
             $own=(int)$item['anytourHotelId'];$profile=$profiles[$own]??null;
             if(!$profile){$withheld++;continue;}
+            if($mode==='compatible'&&!search3_local_profile_matches_scope($profile,$scope['params'])){$categoryFiltered++;continue;}
             if(!isset($groups[$own]))$groups[$own]=['anytourHotelId'=>$own,'hotel'=>$profile,'offers'=>[],'providers'=>[],'minPrice'=>null];
             $offer=[
                 'provider'=>$item['provider'],'legacyHotelId'=>$item['legacyHotelId'],'price'=>$item['price'],'currency'=>$item['currency'],
@@ -166,7 +177,8 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
             'matchMode'=>$mode,'partial'=>$mode==='compatible','sourceScopeDigests'=>$sourceScopes,
             'generatedAt'=>$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
             'hotelCount'=>count($hotels),'eligibleHotelCount'=>$eligibleHotelCount,'offerCount'=>array_sum($providerCounts),'storedOfferCount'=>count($stored['items']),
-            'withheldOfferCount'=>$withheld,'omittedHotelCount'=>$omittedHotelCount,'omittedOfferCount'=>$omittedOfferCount,
+            'withheldOfferCount'=>$withheld,'categoryFilteredOfferCount'=>$categoryFiltered,
+            'omittedHotelCount'=>$omittedHotelCount,'omittedOfferCount'=>$omittedOfferCount,
             'providerOfferCounts'=>(object)$providerCounts,'selectionAuthority'=>false,
             'stayCatalog'=>$stayMeta,'hotels'=>$hotels,
         ];

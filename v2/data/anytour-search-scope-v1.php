@@ -142,6 +142,14 @@ final class AnyTourSearchScopeV1
         if($current['priceTo']!==''&&($saved['priceTo']===''||self::cents($saved['priceTo'])>self::cents($current['priceTo'])))return false;
         return true;
     }
+    /** Broad saved category may be nominated only if the reader re-proves category per canonical profile. */
+    public static function savedCanContributeWithCanonicalCategoryProof(array $saved,array $current): bool
+    {
+        $saved=self::validateNormalized($saved);$current=self::validateNormalized($current);
+        if($current['hotelCategory']===''||$saved['hotelCategory']!=='')return self::savedCanContributeToCurrent($saved,$current);
+        $proved=$saved;$proved['hotelCategory']=$current['hotelCategory'];
+        return self::savedCanContributeToCurrent($proved,$current);
+    }
     /** Backward-compatible name retained for existing callers; concrete rows are filtered separately. */
     public static function savedSubsetOfCurrent(array $saved,array $current): bool
     {
