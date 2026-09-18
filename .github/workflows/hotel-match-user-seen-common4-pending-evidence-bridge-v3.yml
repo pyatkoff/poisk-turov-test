@@ -1,0 +1,103 @@
+name: MATCH common4 pending evidence bridge v3
+
+on:
+  push:
+    branches:
+      - match/user-seen-common4-pending-evidence-bridge-1971-20260918-v3
+    paths:
+      - scripts/diagnostics/hotel_match_user_seen_common4_pending_evidence_bridge_v3.php
+      - .github/workflows/hotel-match-user-seen-common4-pending-evidence-bridge-v3.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+env:
+  OPERATION_ID: hotel-match-user-seen-common4-pending-evidence-bridge-1971-20260918-v3
+  EXPECTED_BASE: 325ea3d8fc4752c95ddcc6bccf715dae24f7836a
+  CLAIM_COMMENT_ID: '5728746227'
+
+jobs:
+  scan:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.ref == 'refs/heads/match/user-seen-common4-pending-evidence-bridge-1971-20260918-v3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact delta and claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_user_seen_common4_pending_evidence_bridge_v3.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-user-seen-common4-pending-evidence-bridge-v3.yml'
+          php -l scripts/diagnostics/hotel_match_user_seen_common4_pending_evidence_bridge_v3.php
+          php scripts/diagnostics/hotel_match_user_seen_common4_pending_evidence_bridge_v3.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json')); b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          assert os.environ['OPERATION_ID'] in b and 'pending-evidence-bridge-1971-20260918-v3' in b
+          PY
+      - name: Require SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail; test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+      - name: Run CURRENT bridge
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"; op=".anytour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "test ! -e \"\$HOME/$op\"; rm -rf \"\$HOME/$stage\"; mkdir -p \"\$HOME/$stage\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_user_seen_common4_pending_evidence_bridge_v3.php app/integrations/anex-search-mapping-registry.php "$remote:$stage/"
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_MAPPING_REGISTRY_PATH=\"\$HOME/$stage/anex-search-mapping-registry.php\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$stage/hotel_match_user_seen_common4_pending_evidence_bridge_v3.php\"" > terminal/stdout.json 2> terminal/stderr.txt
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz
+          ssh "${opts[@]}" "$remote" "rm -rf \"\$HOME/$stage\"" || true
+      - name: Verify result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<20_000_000
+                  (s/pathlib.Path(m.name).name).write_bytes(t.extractfile(m).read())
+          r=json.loads((s/'result.json').read_text()); rec=json.loads((s/'receipt.json').read_text()); digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest(); assert rec['result_sha256']==digest
+          assert r['status']=='read_only_complete' and r['database_writes']==0 and r['mapping_writes']==0 and r['supplier_calls']==0 and r['tourvisor_calls']==0
+          keys=['current_unresolved_real','current_common4_residual','pending_examined','accepted_evidence_rows_examined','source_identity_route_counts','state_crosswalk_keys','state_crosswalk_conflicts','town_crosswalk_keys','town_crosswalk_conflicts','raw_candidate_count','safe_one_to_one_count','reason_counts']
+          summary={k:r.get(k) for k in keys}; summary['top_safe']=r.get('safe_candidates',[])[:50]; summary['result_sha256']=digest
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-common4-pending-evidence-bridge-v3-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
