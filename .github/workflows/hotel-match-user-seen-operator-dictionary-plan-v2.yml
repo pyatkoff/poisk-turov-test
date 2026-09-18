@@ -1,0 +1,151 @@
+name: MATCH user-seen operator dictionary plan v2
+
+on:
+  push:
+    branches:
+      - match/user-seen-operator-dictionary-plan-1971-20260918-v2
+    paths:
+      - .github/workflows/hotel-match-user-seen-operator-dictionary-plan-v2.yml
+
+permissions:
+  contents: read
+  issues: read
+  actions: read
+
+env:
+  OPERATION_ID: hotel-match-user-seen-operator-dictionary-plan-1971-20260918-v2
+  EXPECTED_BASE: d6a490ea55977cffbf346b84e6c5132eb4c5f36c
+  CLAIM_COMMENT_ID: '5727586871'
+
+jobs:
+  scan:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.ref == 'refs/heads/match/user-seen-operator-dictionary-plan-1971-20260918-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact read-only delta and claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_user_seen_operator_dictionary_plan_v2.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-user-seen-operator-dictionary-plan-v2.yml'
+          php -l scripts/diagnostics/hotel_match_user_seen_operator_dictionary_plan_v2.php
+          php scripts/diagnostics/hotel_match_user_seen_operator_dictionary_plan_v2.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json
+          c=json.load(open('claim.json'))
+          assert c.get('user',{}).get('id')==226193297
+          assert c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          b=c.get('body','')
+          assert 'hotel-match-user-seen-operator-dictionary-plan-1971-20260918-v2' in b
+          assert 'READ-ONLY' in b
+          assert 'supplier/Tourvisor calls0' in b
+          assert 'mappings/DB writes0' in b
+          PY
+
+      - name: Require existing SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          test -n "$HOST_VALUE"
+          test -n "$USER_VALUE"
+
+      - name: Run one current DB read-only operator dictionary audit
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"
+          stage=".anytour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          op=".anytour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; rm -rf \"\$HOME/$stage\"; mkdir -p \"\$HOME/$stage\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_user_seen_operator_dictionary_plan_v2.php "$remote:$stage/scan.php"
+          set +e
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php \"\$HOME/$stage/scan.php\"" > terminal/stdout.json 2> terminal/stderr.txt
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/exit.txt
+          ssh "${opts[@]}" "$remote" "p=\"\$HOME/$op\"; test -f \"\$p/reservation.json\"; test -f \"\$p/result.json\"; test -f \"\$p/receipt.json\"; tar -C \"\$p\" -czf - reservation.json result.json receipt.json" > terminal/server-operation.tgz
+          ssh "${opts[@]}" "$remote" "rm -rf \"\$HOME/$stage\"" || true
+          python3 - <<'PY'
+          import json, pathlib, tarfile, hashlib
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  assert m.isfile() and m.size < 10_000_000
+                  (s/pathlib.Path(m.name).name).write_bytes(t.extractfile(m).read())
+          result=json.loads((s/'result.json').read_text())
+          receipt=json.loads((s/'receipt.json').read_text())
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest
+          assert receipt['provider_access'] is False
+          assert result['database_writes']==0 and result['mapping_writes']==0
+          assert result['supplier_calls']==0 and result['tourvisor_calls']==0
+          summary={
+              'status':result['status'],
+              'frontier_count':result.get('frontier_count'),
+              'distinct_saved_tour_ids':result.get('distinct_saved_tour_ids'),
+              'hotel_operator_seed_count':result.get('hotel_operator_seed_count'),
+              'eligible_unique_local_hotels':result.get('eligible_unique_local_hotels'),
+              'operator_ids_in_frontier':result.get('operator_ids_in_frontier',[]),
+              'resolved_operator_dictionary':result.get('resolved_operator_dictionary',{}),
+              'ambiguous_operator_dictionary':result.get('ambiguous_operator_dictionary',{}),
+              'unresolved_operator_ids':result.get('unresolved_operator_ids',[]),
+              'common4_family_unique_hotels':result.get('common4_family_unique_hotels',{}),
+              'common4_unique_local_hotels':result.get('common4_unique_local_hotels'),
+              'common4_execution_tranche_count':result.get('common4_execution_tranche_count'),
+              'top_common4':result.get('common4_execution_tranche',[])[:30],
+              'relation_inventory':result.get('relation_inventory',{}),
+              'result_sha256':digest,
+          }
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-user-seen-operator-dictionary-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
