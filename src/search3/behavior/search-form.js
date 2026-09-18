@@ -17,13 +17,13 @@ if(adults!==null)facts.push(adults+' '+word(adults,'взрослый','взро�
 if(children)facts.push(children+' '+word(children,'ребёнок','ребёнка','детей'));
 trip.querySelector('[data-search3-trip-route]').textContent=route;trip.querySelector('[data-search3-trip-details]').textContent=facts.join(' · ');hasTrip=!!(route||facts.length);
 }
-function setEditor(open,focus){form.dataset.search3View=open?'editor':'summary';if(trip)trip.hidden=open||!hasTrip;if(edit){edit.setAttribute('aria-controls','tourSearch');edit.setAttribute('aria-expanded',String(open))}if(open&&focus){form.scrollIntoView({block:'start'});form.elements.from.focus({preventScroll:true})}}
+function setEditor(open,focus){form.dataset.search3View=open?'editor':'summary';if(trip)trip.hidden=open||!hasTrip;if(edit){const label=open?'Свернуть параметры':'Изменить поиск';edit.textContent=label;edit.setAttribute('aria-label',label);edit.setAttribute('aria-controls','tourSearch');edit.setAttribute('aria-expanded',String(open))}if(open&&focus){form.scrollIntoView({block:'start'});form.elements.from.focus({preventScroll:true})}}
 function hasHotels(){return!!results.querySelector('.hotel-card')}
 on('v2:search-started',()=>{captureTrip();editing=false;form.querySelectorAll('details[open]').forEach(node=>node.open=false);if(hasHotels())setEditor(false);busy('true')});
 on('v2:search-reset',()=>{editing=true;setEditor(true);busy('true')});
 on('v2:search-error',()=>{editing=true;setEditor(true);busy('false')});
 on('v2:results-rendered',()=>{if(hasHotels()&&!editing)setEditor(false);else if(!hasHotels())setEditor(true);busy('false')});
-document.addEventListener('click',event=>{if(event.target.closest('#resultsSearchEdit,.empty-edit-search')){editing=true;setEditor(true,true)}});
+document.addEventListener('click',event=>{const toggle=event.target.closest('#resultsSearchEdit');if(toggle){const open=toggle.getAttribute('aria-expanded')!=='true';if(open)editing=true;setEditor(open,open);return}if(event.target.closest('.empty-edit-search')){editing=true;setEditor(true,true)}});
 const lifecycle=window.V2SearchLifecycle;if(lifecycle){editing=!!lifecycle.dirty;if(Number(lifecycle.searchId)>0&&!editing)captureTrip()}
 setEditor(editing||!hasHotels());
 })();
