@@ -1,0 +1,245 @@
+name: MATCH Andromeda native ANEX mass bridge v8
+
+on:
+  push:
+    branches:
+      - ops/match-andromeda-native-anex-mass-1971-20260918-v8
+    paths:
+      - .github/workflows/hotel-match-andromeda-native-anex-mass-v8.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: match-andromeda-native-anex-mass-20260918
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-andromeda-native-anex-mass-1971-20260918-v8
+  EXPECTED_BASE: 4995160b39965b29c572c411d424d74b4e7d5f8c
+  CLAIM_COMMENT_ID: '5736318818'
+  PINNED_V3: d180f0a26aaaefc9daa667e9f626e84d222ad8ea
+  PINNED_V3_BLOB: b3a80de3ba562cb8dbcde6454314b34d6d4eb5d6
+  V5_PLAN_SHA256: 0c62debc1bee6d33511a72a9c09f2d53e199d50b2fd6bd47f0c4d21d05b9ba37
+
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate isolated delta, claim, and generate pinned v8 payload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 1
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-andromeda-native-anex-mass-v8.yml'
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json')); b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          assert os.environ['OPERATION_ID'] in b
+          assert os.environ['EXPECTED_BASE'] in b
+          assert 'v5 plan SHA' in b or 'sealed v5 plan SHA' in b
+          assert 'Tourvisor0' in b
+          PY
+          mkdir -p generated
+          meta="$(gh api "repos/$GITHUB_REPOSITORY/contents/scripts/diagnostics/hotel_match_andromeda_native_anex_mass_v3.php?ref=$PINNED_V3")"
+          test "$(printf '%s' "$meta" | jq -r .sha)" = "$PINNED_V3_BLOB"
+          printf '%s' "$meta" | jq -r .content | tr -d '\n' | base64 --decode > generated/hman_v8.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('generated/hman_v8.php'); s=p.read_text()
+          def one(old,new):
+              global s
+              n=s.count(old)
+              if n!=1: raise SystemExit(f'replace count {n}: {old[:120]}')
+              s=s.replace(old,new,1)
+          one("const HMAN_OP='hotel-match-andromeda-native-anex-mass-1971-20260918-v3';",
+              "const HMAN_OP='hotel-match-andromeda-native-anex-mass-1971-20260918-v8';")
+          one('function hman_pace(float &$last):void{', '''function hman_progress(string $path,array $v):void{\n    $raw=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\\n";\n    $f=@fopen($path,'ab');if(!$f)throw new RuntimeException('progress_open');\n    try{if(!flock($f,LOCK_EX))throw new RuntimeException('progress_lock');if(fwrite($f,$raw)!==strlen($raw)||!fflush($f))throw new RuntimeException('progress_write');if(function_exists('fsync')&&!fsync($f))throw new RuntimeException('progress_sync');flock($f,LOCK_UN);}finally{fclose($f);}\n}\nfunction hman_pace(float &$last):void{''')
+          one("SELECT hotel_id,departure_id,country_id,departure_date,nights,COUNT(*) obs FROM tour_price_observations WHERE source='user_search' AND operator_id=13 AND departure_date>=CURRENT_DATE AND adults=2 AND children_count=0 AND hotel_id IN ($ph) GROUP BY hotel_id,departure_id,country_id,departure_date,nights",
+              "SELECT hotel_id,departure_id,country_id,departure_date,nights,adults,COUNT(*) obs FROM tour_price_observations WHERE source='user_search' AND operator_id=13 AND departure_date>=CURRENT_DATE AND adults<>2 AND children_count=0 AND hotel_id IN ($ph) GROUP BY hotel_id,departure_id,country_id,departure_date,nights,adults")
+          one("$key=$dep.'|'.$cid.'|'.(string)$r['departure_date'].'|'.(int)$r['nights'];",
+              "$key=$dep.'|'.$cid.'|'.(string)$r['departure_date'].'|'.(int)$r['nights'].'|A'.(int)$r['adults'].'|C0';")
+          one("$ctx[$key]['nights']=(int)$r['nights'];$ctx[$key]['targets'][$lid]=true;",
+              "$ctx[$key]['nights']=(int)$r['nights'];$ctx[$key]['adults']=(int)$r['adults'];$ctx[$key]['targets'][$lid]=true;")
+          excl = [
+            '1|4|2026-10-26|7|A1|C0','5|4|2026-09-18|7|A1|C0','12|4|2026-09-28|9|A1|C0','10|4|2026-10-05|6|A1|C0',
+            '1|4|2026-09-20|8|A1|C0','9|4|2026-09-26|12|A3|C0','5|4|2026-10-02|7|A3|C0','10|4|2026-09-21|6|A1|C0',
+            '7|1|2026-09-29|10|A3|C0','10|1|2026-11-11|9|A4|C0','7|1|2026-09-29|13|A3|C0','7|9|2026-10-25|6|A1|C0',
+            '14|16|2026-12-27|11|A3|C0','1|1|2026-11-09|9|A3|C0','4|12|2026-12-16|11|A1|C0','16|16|2026-09-23|6|A1|C0',
+            '7|1|2026-10-09|10|A3|C0','1|16|2026-11-15|7|A1|C0','7|9|2026-10-25|7|A1|C0','1|9|2026-10-10|9|A4|C0'
+          ]
+          php_excl='['+','.join("%s=>true" % repr(x) for x in excl)+']'
+          one("$selected=[];$pairCap=[];$countryCap=[];",
+              "$excludeV5="+php_excl+";$selected=[];$pairCap=[];$countryCap=[];")
+          one("foreach($contexts as$c){$pair=$c['departure_id'].'|'.$c['country_id'];$cid=$c['country_id'];if(($pairCap[$pair]??0)>=4||($countryCap[$cid]??0)>=8)continue;$selected[]=$c;",
+              "foreach($contexts as$c){$pair=$c['departure_id'].'|'.$c['country_id'];$cid=$c['country_id'];$exact=$pair.'|'.$c['date'].'|'.$c['nights'].'|A'.$c['adults'].'|C0';if(isset($excludeV5[$exact]))continue;if(($pairCap[$pair]??0)>=4||($countryCap[$cid]??0)>=8)continue;$selected[]=$c;")
+          one("if(count($selected)<3)throw new RuntimeException('no_contexts');$skippedNoReplay=array_splice($selected,0,2);",
+              "if(!$selected)throw new RuntimeException('no_disjoint_contexts_after_v5');$skippedNoReplay=[];if(!is_dir($opDir.'/contexts')&&!mkdir($opDir.'/contexts',0700,true))throw new RuntimeException('context_dir');hman_durable($opDir.'/plan.json',['operation'=>HMAN_OP,'scope'=>'adult_party_not_2A0C_child0_excluding_v5','excluded_v5_plan_sha256'=>'0c62debc1bee6d33511a72a9c09f2d53e199d50b2fd6bd47f0c4d21d05b9ba37','selected'=>array_map(fn($x)=>['departure_id'=>$x['departure_id'],'country_id'=>$x['country_id'],'date'=>$x['date'],'nights'=>$x['nights'],'adults'=>$x['adults'],'children_count'=>0,'target_count'=>count($x['targets'])],$selected)]);")
+          one("$contextKey=$pair.'|'.$c['date'].'|'.$c['nights'];",
+              "$contextKey=$pair.'|'.$c['date'].'|'.$c['nights'].'|A'.$c['adults'].'|C0';if(isset($excludeV5[$contextKey]))throw new RuntimeException('v5_context_overlap');hman_progress($opDir.'/progress.jsonl',['event'=>'context_start','context_key'=>$contextKey,'calls_before'=>$calls]);")
+          one("'ADULT'=>2,'CHILD'=>0,",
+              "'ADULT'=>(int)$c['adults'],'CHILD'=>0,")
+          one("for($page=1;$page<=HMAN_MAX_PAGES_PER_CONTEXT;$page++){$reply=hman_price($session,$base+['PAGE'=>$page],$calls,$last);$pages=(int)$reply['PAGES_COUNT'];",
+              "for($page=1;$page<=HMAN_MAX_PAGES_PER_CONTEXT;$page++){hman_progress($opDir.'/progress.jsonl',['event'=>'page_start','context_key'=>$contextKey,'page'=>$page,'calls_before'=>$calls]);$reply=hman_price($session,$base+['PAGE'=>$page],$calls,$last);$pages=(int)$reply['PAGES_COUNT'];hman_progress($opDir.'/progress.jsonl',['event'=>'page_done','context_key'=>$contextKey,'page'=>$page,'pages_count'=>$pages,'calls_after'=>$calls]);")
+          one("$contextMeta[$contextKey]=['status'=>'drained','pages_count'=>$pages,'candidate_rows'=>count($ctxRows),'target_count'=>count($c['targets'])];foreach($ctxRows as$r)$raw[]=$r;",
+              "$contextMeta[$contextKey]=['status'=>'drained','pages_count'=>$pages,'candidate_rows'=>count($ctxRows),'target_count'=>count($c['targets'])];hman_durable($opDir.'/contexts/'.hash('sha256',$contextKey).'.json',['context_key'=>$contextKey,'meta'=>$contextMeta[$contextKey],'rows'=>$ctxRows]);hman_progress($opDir.'/progress.jsonl',['event'=>'context_complete','context_key'=>$contextKey,'pages_count'=>$pages,'candidate_rows'=>count($ctxRows),'calls_after'=>$calls]);foreach($ctxRows as$r)$raw[]=$r;")
+          one('MATCH_ANDROMEDA_NATIVE_ANEX_MASS_V3_SELFTEST_OK','MATCH_ANDROMEDA_NATIVE_ANEX_MASS_V8_SELFTEST_OK')
+          p.write_text(s)
+          PY
+          php -l generated/hman_v8.php
+          php generated/hman_v8.php --self-test
+          php -l app/integrations/andromeda-client.php
+          php -l app/integrations/andromeda-transport.php
+          php -l app/integrations/anex-search-mapping-registry.php
+
+      - name: Require credentials and create durable reservation
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          AND_USER: ${{ secrets.ANDROMEDA_USERNAME }}
+          AND_PASS: ${{ secrets.ANDROMEDA_PASSWORD }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"; test -n "$AND_USER"; test -n "$AND_PASS"
+          umask 077; mkdir -p terminal reservation
+          python3 - <<'PY' > reservation/reservation.json
+          import hashlib,json,os,pathlib
+          payload=pathlib.Path('generated/hman_v8.php').read_bytes()
+          print(json.dumps({
+            'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['HEAD_SHA'],
+            'provider':'andromeda','scope':'adult_party_not_2A0C_child0_excluding_v5','max_contexts':20,'max_provider_calls':250,'max_pages_per_context':40,
+            'excluded_v5_plan_sha256':os.environ['V5_PLAN_SHA256'],'generated_payload_sha256':hashlib.sha256(payload).hexdigest(),'pinned_v3':os.environ['PINNED_V3'],
+            'tourvisor_calls':0,'direct_anex_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True
+          },sort_keys=True))
+          PY
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null; test -s "$known"
+          remote="$SSH_USER@$SSH_HOST"; op=".anytour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -m 700 -p \"\$HOME/$op\" \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" generated/hman_v8.php "$remote:$op/payload/hman_v8.php"
+          scp "${opts[@]}" app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-andromeda-native-anex-v8-reservation-${{ github.run_id }}
+          path: reservation/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute disjoint CURRENT native bridge once
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          AND_USER: ${{ secrets.ANDROMEDA_USERNAME }}
+          AND_PASS: ${{ secrets.ANDROMEDA_PASSWORD }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$SSH_USER@$SSH_HOST"; op=".anytour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          set +e
+          printf '%s\n%s\n' "$AND_USER" "$AND_PASS" | ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_MAPPING_REGISTRY_PATH=\"\$HOME/$op/payload/anex-search-mapping-registry.php\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M \"\$HOME/$op/payload/hman_v8.php\" > \"\$HOME/$op/stdout.json\""
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+
+      - name: Fetch sealed operation directory
+        if: always()
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$SSH_USER@$SSH_HOST"; op=".anytour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          ssh "${opts[@]}" "$remote" "test -s \"\$HOME/$op/result.json\"; test -s \"\$HOME/$op/receipt.json\"; tar -C \"\$HOME/$op\" --exclude=payload -czf - ." > terminal/server-operation.tgz
+
+      - name: Verify and summarize
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('terminal'); d=p/'server'; d.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            for m in t.getmembers():
+              if not m.isfile(): continue
+              assert m.size < 100_000_000
+              q=d/pathlib.Path(m.name).name
+              q.write_bytes(t.extractfile(m).read())
+          r=json.loads((d/'result.json').read_text()); rec=json.loads((d/'receipt.json').read_text())
+          sha=hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+          assert rec['result_sha256']==sha and rec['database_writes']==0 and rec['mapping_writes']==0
+          assert rec['tourvisor_calls']==0 and rec['direct_anex_calls']==0 and r.get('andromeda_calls',0)<=250
+          plan=json.loads((d/'plan.json').read_text())
+          assert plan['excluded_v5_plan_sha256']=='0c62debc1bee6d33511a72a9c09f2d53e199d50b2fd6bd47f0c4d21d05b9ba37'
+          v5={'1|4|2026-10-26|7|A1|C0','5|4|2026-09-18|7|A1|C0','12|4|2026-09-28|9|A1|C0','10|4|2026-10-05|6|A1|C0','1|4|2026-09-20|8|A1|C0','9|4|2026-09-26|12|A3|C0','5|4|2026-10-02|7|A3|C0','10|4|2026-09-21|6|A1|C0','7|1|2026-09-29|10|A3|C0','10|1|2026-11-11|9|A4|C0','7|1|2026-09-29|13|A3|C0','7|9|2026-10-25|6|A1|C0','14|16|2026-12-27|11|A3|C0','1|1|2026-11-09|9|A3|C0','4|12|2026-12-16|11|A1|C0','16|16|2026-09-23|6|A1|C0','7|1|2026-10-09|10|A3|C0','1|16|2026-11-15|7|A1|C0','7|9|2026-10-25|7|A1|C0','1|9|2026-10-10|9|A4|C0'}
+          current={f"{x['departure_id']}|{x['country_id']}|{x['date']}|{x['nights']}|A{x['adults']}|C0" for x in plan['selected']}
+          assert not (current & v5)
+          progress=[]
+          if (d/'progress.jsonl').exists():
+            for line in (d/'progress.jsonl').read_text().splitlines():
+              if line.strip(): progress.append(json.loads(line))
+          complete=[x for x in progress if x.get('event')=='context_complete']
+          page_done=[x for x in progress if x.get('event')=='page_done']
+          summary={'state':r.get('state'),'reason':r.get('reason'),'andromeda_calls':r.get('andromeda_calls'),'safe_candidate_count':r.get('safe_candidate_count'),'raw_direct_bridge_rows':r.get('raw_direct_bridge_rows'),'selected_context_count':r.get('selected_context_count'),'completed_contexts_durable':len(complete),'completed_pages_durable':len(page_done),'result_sha256':sha}
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          if r.get('state')=='completed_read_only':
+            msg=(f"MATCH #1971 Andromeda native-ANEX v8 COMPLETE / READ ONLY / NO-REPLAY. "
+                 f"Disjoint post-v5 adult-only contexts {r.get('selected_context_count')}; PRICE rows {r.get('price_rows_seen')}; "
+                 f"raw bridges {r.get('raw_direct_bridge_rows')}; safe {r.get('safe_candidate_count')}; holds {r.get('hold_count')}. "
+                 f"Andromeda calls {r.get('andromeda_calls')}; Tourvisor/direct-ANEX0; DB/mapping writes0. Result SHA256 {sha}.")
+          else:
+            msg=(f"MATCH #1971 Andromeda native-ANEX v8 TERMINAL / NO-REPLAY. State {r.get('state')}; reason {r.get('reason')}; "
+                 f"Andromeda calls {r.get('andromeda_calls')}; durable completed contexts {len(complete)}, pages {len(page_done)}; "
+                 f"Tourvisor/direct-ANEX0; DB/mapping writes0. Result SHA256 {sha}.")
+          (p/'summary.md').write_text(msg+'\n'); print(msg)
+          if r.get('state')!='completed_read_only': raise SystemExit(2)
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-andromeda-native-anex-v8-result-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record MATCH terminal result
+        if: always() && hashFiles('terminal/summary.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file terminal/summary.md
+          gh issue comment 2530 --repo "$GITHUB_REPOSITORY" --body-file terminal/summary.md
