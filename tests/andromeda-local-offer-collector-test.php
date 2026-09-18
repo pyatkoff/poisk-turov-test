@@ -44,6 +44,55 @@ ok($captureCalls===2 && $result['surcharge_capture_attempts']===2,'capture bound
 ok($result['surcharge_ready']===1,'surcharge ready');
 ok($autosaveCalls===1 && $result['autosave_published']===true && $result['ready_offer_count']===1,'autosave');
 
+// Real multi-page orchestrator shape: all advertised pages were drained, but the
+// aggregate preserves the standalone page normalizer's `partial` label. The exact
+// structural proof is accepted; arbitrary partial results must remain fail-closed.
+$drainedCaptureCalls=0;$drainedAutosaveCalls=0;
+$drained=AnyTourAndromedaLocalOfferCollectorV1::collect(
+    $request,
+    static fn(array $r):array=>[
+        'provider'=>'andromeda','search_ref'=>str_repeat('f',64),
+        'page'=>3,'pages_count'=>3,'status'=>'partial','grouped'=>true,
+        'first_page_only'=>false,'external_search_pending'=>false,
+        'received_offers'=>5,'mapped_offers'=>5,
+    ],
+    $cohort,
+    static fn(array $selection,array $row):bool=>true,
+    static function(array $selection)use(&$drainedCaptureCalls):array{
+        ++$drainedCaptureCalls;
+        return ['status'=>'captured','surcharge'=>['status'=>'unavailable','fact'=>null]];
+    },
+    static function(array $r,string $ref,int $generation)use(&$drainedAutosaveCalls):array{
+        ++$drainedAutosaveCalls;
+        return ['published'=>false,'reason'=>'no_final_price_ready_resolved_offers','readyOfferCount'=>0];
+    },
+    1
+);
+ok($drained['pages']===3 && $drainedCaptureCalls===1 && $drainedAutosaveCalls===1,'drained partial aggregate accepted');
+
+foreach ([
+    ['page'=>2,'pages_count'=>3,'status'=>'partial','grouped'=>true,'first_page_only'=>false,'external_search_pending'=>false,'received_offers'=>5,'mapped_offers'=>5],
+    ['page'=>1,'pages_count'=>1,'status'=>'partial','grouped'=>true,'first_page_only'=>false,'external_search_pending'=>false,'received_offers'=>1,'mapped_offers'=>1],
+    ['page'=>3,'pages_count'=>3,'status'=>'partial','grouped'=>false,'first_page_only'=>false,'external_search_pending'=>false,'received_offers'=>5,'mapped_offers'=>5],
+    ['page'=>3,'pages_count'=>3,'status'=>'partial','grouped'=>true,'first_page_only'=>false,'external_search_pending'=>true,'received_offers'=>5,'mapped_offers'=>5],
+] as $shape) {
+    $partialThrown=false;$shape['provider']='andromeda';$shape['search_ref']=str_repeat('e',64);
+    try {
+        AnyTourAndromedaLocalOfferCollectorV1::collect(
+            $request,
+            static fn(array $r):array=>$shape,
+            static function(string $ref,int $generation):array{throw new RuntimeException('cohort_must_not_load');},
+            static fn(array $selection,array $row):bool=>true,
+            static function(array $selection):array{throw new RuntimeException('capture_must_not_run');},
+            static function(array $r,string $ref,int $generation):array{throw new RuntimeException('autosave_must_not_run');},
+            1
+        );
+    } catch (RuntimeException $error) {
+        $partialThrown=$error->getMessage()==='ANDROMEDA_LOCAL_COLLECTOR_SEARCH';
+    }
+    ok($partialThrown,'ambiguous partial aggregate must fail closed');
+}
+
 $priorityCohort=static fn(string $ref,int $generation):array=>[
     ['page'=>1,'offer'=>$offer('p-false','FUN&SUN',21,'21',false)],
     ['page'=>1,'offer'=>$offer('p-unknown','Библио-Глобус',22,'22',null)],
@@ -107,4 +156,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 priority=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 priority=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
