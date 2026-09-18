@@ -57,12 +57,13 @@ final class AnyTourOfferStoreV1
             $payload=self::json(self::listingProjection($dto)); $operator=self::json($dto['operator']); $party=self::json($dto['tour']['party']);
             $meal=self::json($dto['tour']['meal']); $room=self::json($dto['tour']['room']); $placement=self::json($dto['tour']['placement']);
             $identitySha=hash('sha256',self::json(['provider'=>$v['provider'],'identity'=>$dto['identity']]));
-            $sql='INSERT INTO anytour_offers(anytour_hotel_id,legacy_hotel_id,provider,scope_sha256,search_ref_digest,offer_ref_digest,provider_hotel_ref_digest,identity_sha256,operator_json,operator_sha256,checkin,nights,adults,children,child_ages_json,party_sha256,meal_json,room_json,placement_json,display_price,currency,final_price_ready,final_price_verified,payload_json,payload_sha256,observed_at,source_context_expires_at,last_refresh_token,last_seen_at,expires_at,is_active) VALUES(:own,:legacy,:p,:scope,:search,:offer,:photel,:identity,:operator,:operator_sha,:checkin,:nights,:adults,:children,:ages,:party_sha,:meal,:room,:placement,:price,\'RUB\',1,0,:payload,:payload_sha,:observed,:ctx_exp,:refresh,:seen,:expires,1) ON DUPLICATE KEY UPDATE anytour_hotel_id=VALUES(anytour_hotel_id),legacy_hotel_id=VALUES(legacy_hotel_id),operator_json=VALUES(operator_json),operator_sha256=VALUES(operator_sha256),checkin=VALUES(checkin),nights=VALUES(nights),adults=VALUES(adults),children=VALUES(children),child_ages_json=VALUES(child_ages_json),party_sha256=VALUES(party_sha256),meal_json=VALUES(meal_json),room_json=VALUES(room_json),placement_json=VALUES(placement_json),display_price=VALUES(display_price),currency=\'RUB\',final_price_ready=1,final_price_verified=0,payload_json=VALUES(payload_json),payload_sha256=VALUES(payload_sha256),observed_at=VALUES(observed_at),source_context_expires_at=VALUES(source_context_expires_at),last_refresh_token=VALUES(last_refresh_token),last_seen_at=VALUES(last_seen_at),expires_at=VALUES(expires_at),is_active=1';
+            $sql='INSERT INTO anytour_offers(anytour_hotel_id,legacy_hotel_id,provider,scope_sha256,search_ref_digest,offer_ref_digest,provider_hotel_ref_digest,identity_sha256,operator_json,operator_sha256,checkin,nights,adults,children,child_ages_json,party_sha256,meal_json,room_json,placement_json,display_price,currency,final_price_ready,final_price_verified,payload_json,payload_sha256,observed_at,source_context_expires_at,last_refresh_token,last_seen_at,expires_at,is_active) VALUES(:own,:legacy,:p,:scope,:search,:offer,:photel,:identity,:operator,:operator_sha,:checkin,:nights,:adults,:children,:ages,:party_sha,:meal,:room,:placement,:price,\'RUB\',:ready,:verified,:payload,:payload_sha,:observed,:ctx_exp,:refresh,:seen,:expires,1) ON DUPLICATE KEY UPDATE anytour_hotel_id=VALUES(anytour_hotel_id),legacy_hotel_id=VALUES(legacy_hotel_id),operator_json=VALUES(operator_json),operator_sha256=VALUES(operator_sha256),checkin=VALUES(checkin),nights=VALUES(nights),adults=VALUES(adults),children=VALUES(children),child_ages_json=VALUES(child_ages_json),party_sha256=VALUES(party_sha256),meal_json=VALUES(meal_json),room_json=VALUES(room_json),placement_json=VALUES(placement_json),display_price=VALUES(display_price),currency=\'RUB\',final_price_ready=VALUES(final_price_ready),final_price_verified=VALUES(final_price_verified),payload_json=VALUES(payload_json),payload_sha256=VALUES(payload_sha256),observed_at=VALUES(observed_at),source_context_expires_at=VALUES(source_context_expires_at),last_refresh_token=VALUES(last_refresh_token),last_seen_at=VALUES(last_seen_at),expires_at=VALUES(expires_at),is_active=1';
             $q=$db->prepare($sql); $q->execute([
                 'own'=>$ownHotelId,'legacy'=>$v['legacy_hotel_id'],'p'=>$v['provider'],'scope'=>$r['scope_sha256'],
                 'search'=>$dto['identity']['search_ref_digest'],'offer'=>$dto['identity']['offer_ref_digest'],'photel'=>$dto['identity']['provider_hotel_ref_digest'],'identity'=>$identitySha,
                 'operator'=>$operator,'operator_sha'=>hash('sha256',$operator),'checkin'=>$dto['tour']['checkin'],'nights'=>$dto['tour']['nights'],'adults'=>$dto['tour']['party']['adults'],'children'=>$dto['tour']['party']['children'],
                 'ages'=>self::json($dto['tour']['party']['child_ages']),'party_sha'=>hash('sha256',$party),'meal'=>$meal,'room'=>$room,'placement'=>$placement,'price'=>$v['price'],
+                'ready'=>$v['final_price_ready']?1:0,'verified'=>$v['final_price_verified']?1:0,
                 'payload'=>$payload,'payload_sha'=>hash('sha256',$payload),'observed'=>$v['observed_at'],'ctx_exp'=>$v['context_expires_at'],'refresh'=>$token,'seen'=>$seen,'expires'=>$expires,
             ]);
             return ['provider'=>$v['provider'],'anytourHotelId'=>$ownHotelId,'legacyHotelId'=>$v['legacy_hotel_id'],'scopeDigest'=>$r['scope_sha256'],'identitySha256'=>$identitySha,'payloadSha256'=>hash('sha256',$payload),'price'=>$v['price'],'currency'=>'RUB'];
@@ -103,7 +104,7 @@ final class AnyTourOfferStoreV1
     public static function readScope(PDO $db,string $scope,DateTimeImmutable $now,int $limit=1000):array
     {
         $scope=self::digest($scope,'ANYTOUR_OFFER_SCOPE'); if($limit<1||$limit>5000) throw new InvalidArgumentException('ANYTOUR_OFFER_READ_LIMIT');
-        $q=$db->prepare('SELECT anytour_hotel_id,legacy_hotel_id,provider,payload_json,payload_sha256,display_price,currency,observed_at,last_seen_at,expires_at FROM anytour_offers WHERE scope_sha256=:s AND is_active=1 AND final_price_ready=1 AND expires_at>:now ORDER BY display_price ASC,id ASC LIMIT '.$limit);
+        $q=$db->prepare('SELECT anytour_hotel_id,legacy_hotel_id,provider,payload_json,payload_sha256,display_price,currency,observed_at,last_seen_at,expires_at FROM anytour_offers WHERE scope_sha256=:s AND is_active=1 AND expires_at>:now ORDER BY display_price ASC,id ASC LIMIT '.$limit);
         $q->execute(['s'=>$scope,'now'=>self::sqlTime($now)]); $items=[];
         while($r=$q->fetch(PDO::FETCH_ASSOC)){
             $payload=json_decode((string)$r['payload_json'],true,512,JSON_THROW_ON_ERROR);
@@ -115,7 +116,18 @@ final class AnyTourOfferStoreV1
 
     private static function listingProjection(array $d):array
     {
-        return ['schema_version'=>1,'provider'=>$d['provider'],'operator'=>$d['operator'],'identity'=>$d['identity'],'tour'=>$d['tour'],'money'=>$d['money'],'listingPriceReady'=>true,'listingPrice'=>self::money($d['finalPrice']),'currency'=>'RUB','selection_state'=>'refresh_required','booking_enabled'=>false];
+        $v=self::validateDto($d);
+        return [
+            'schema_version'=>1,'provider'=>$d['provider'],'operator'=>$d['operator'],'identity'=>$d['identity'],
+            'tour'=>$d['tour'],'money'=>$d['money'],
+            'listingPriceState'=>$v['listing_price_state'],
+            'listingPriceReady'=>$v['final_price_ready'],
+            'priceConfirmationRequired'=>$v['listing_price_state']==='search_price_confirmation_required',
+            'listingPrice'=>$v['price'],'currency'=>'RUB',
+            'quoteState'=>$d['quote_state'],'finalPriceVerified'=>$d['final_price_verified'],
+            'quoteEvidenceDigest'=>$d['quote_evidence_digest'],
+            'selection_state'=>'refresh_required','booking_enabled'=>false
+        ];
     }
 
     private static function validateDto(array $d):array
@@ -129,9 +141,33 @@ final class AnyTourOfferStoreV1
         foreach(['meal','room','availability','flight_details'] as $k) if(!is_array($tour[$k]??null)) throw new InvalidArgumentException('ANYTOUR_OFFER_'.strtoupper($k));
         if($tour['placement']!==null&&!is_array($tour['placement'])) throw new InvalidArgumentException('ANYTOUR_OFFER_PLACEMENT'); $observed=self::utc($tour['observed_at']??null,'ANYTOUR_OFFER_OBSERVED');
         $c=$d['context']??null; if(!is_array($c)||!self::keys($c,self::CTX)||!is_int($c['generation'])||$c['generation']<1||!is_int($c['page'])||$c['page']<1||!is_int($c['issued_at'])||!is_int($c['expires_at'])||$c['expires_at']<=$c['issued_at']||$c['expires_at']-$c['issued_at']>900||$c['current_context_verified']!==true) throw new InvalidArgumentException('ANYTOUR_OFFER_CONTEXT');
-        if($d['finalPriceReady']!==true||$d['currency']!=='RUB'||$d['quote_state']!=='unknown'||$d['final_price_verified']!==false||$d['quote_evidence_digest']!==null||$d['selection_state']!=='disabled'||$d['booking_enabled']!==false) throw new InvalidArgumentException('ANYTOUR_OFFER_READINESS');
-        $price=self::money($d['finalPrice']??null); if(self::money($d['price']??null)!==$price) throw new InvalidArgumentException('ANYTOUR_OFFER_PRICE_MISMATCH'); if(!is_array($d['money']??null)) throw new InvalidArgumentException('ANYTOUR_OFFER_MONEY_FACTS');
-        return ['provider'=>$provider,'legacy_hotel_id'=>$d['local_hotel_id'],'price'=>$price,'observed_at'=>self::sqlTime($observed),'context_expires_at'=>gmdate('Y-m-d H:i:s',$c['expires_at'])];
+        if($d['currency']!=='RUB'||$d['selection_state']!=='disabled'||$d['booking_enabled']!==false
+            ||!is_array($d['money']??null)||!is_bool($d['finalPriceReady']??null)
+            ||!is_bool($d['final_price_verified']??null)) throw new InvalidArgumentException('ANYTOUR_OFFER_READINESS');
+        $quote=$d['quote_state']??null;$evidence=$d['quote_evidence_digest']??null;
+        $ready=$d['finalPriceReady'];$verified=$d['final_price_verified'];
+        if($quote==='verified'){
+            if(!$ready||!$verified||!is_string($evidence)||!preg_match('/\A[a-f0-9]{64}\z/D',$evidence)) throw new InvalidArgumentException('ANYTOUR_OFFER_READINESS');
+            $price=self::money($d['finalPrice']??null);
+            if(self::money($d['price']??null)!==$price) throw new InvalidArgumentException('ANYTOUR_OFFER_PRICE_MISMATCH');
+            $state='final_verified';
+        }elseif($quote==='unknown'){
+            if($verified||$evidence!==null) throw new InvalidArgumentException('ANYTOUR_OFFER_READINESS');
+            if($ready){
+                $price=self::money($d['finalPrice']??null);
+                if(self::money($d['price']??null)!==$price) throw new InvalidArgumentException('ANYTOUR_OFFER_PRICE_MISMATCH');
+                $state='final_ready_estimate';
+            }else{
+                if($d['finalPrice']!==null) throw new InvalidArgumentException('ANYTOUR_OFFER_READINESS');
+                $price=self::money($d['price']??null);
+                $search=$d['money']['search_price']??null;
+                if(!is_array($search)||($search['currency']??null)!=='RUB'||self::money($search['amount']??null)!==$price) throw new InvalidArgumentException('ANYTOUR_OFFER_CONFIRMATION_PRICE');
+                $state='search_price_confirmation_required';
+            }
+        }else throw new InvalidArgumentException('ANYTOUR_OFFER_READINESS');
+        return ['provider'=>$provider,'legacy_hotel_id'=>$d['local_hotel_id'],'price'=>$price,
+            'final_price_ready'=>$ready,'final_price_verified'=>$verified,'listing_price_state'=>$state,
+            'observed_at'=>self::sqlTime($observed),'context_expires_at'=>gmdate('Y-m-d H:i:s',$c['expires_at'])];
     }
 
     private static function operator(mixed $o):void

@@ -34,21 +34,57 @@ final class AnyTourOfferStoreReadV2
     {
         return self::time($value)->format('Y-m-d\TH:i:s\Z');
     }
-    private static function listing(array $payload,string $provider,string $price,string $currency): void
+    private static function listing(array $payload,string $provider,string $price,string $currency,int $ready,int $verified): void
     {
         $payloadPrice=$payload['listingPrice']??null;
         if(($payload['schema_version']??null)!==1
             ||!isset(self::PROVIDERS[$provider])
             ||($payload['provider']??null)!==$provider
-            ||($payload['listingPriceReady']??null)!==true
             ||!is_string($payloadPrice)
             ||self::decimal($payloadPrice)!==$price
             ||$currency!=='RUB'
             ||($payload['currency']??null)!=='RUB'
             ||($payload['selection_state']??null)!=='refresh_required'
-            ||($payload['booking_enabled']??null)!==false){
+            ||($payload['booking_enabled']??null)!==false
+            ||!in_array($ready,[0,1],true)||!in_array($verified,[0,1],true)){
             throw new RuntimeException('ANYTOUR_OFFER_LISTING_INTEGRITY');
         }
+        $state=$payload['listingPriceState']??null;
+        // Backward compatibility for already-persisted v1 ready-estimate payloads.
+        if($state===null){
+            if($ready!==1||$verified!==0||($payload['listingPriceReady']??null)!==true) {
+                throw new RuntimeException('ANYTOUR_OFFER_LISTING_INTEGRITY');
+            }
+            return;
+        }
+        if(!is_string($state)) throw new RuntimeException('ANYTOUR_OFFER_LISTING_INTEGRITY');
+        $confirmation=$payload['priceConfirmationRequired']??null;
+        $quote=$payload['quoteState']??null;
+        $finalVerified=$payload['finalPriceVerified']??null;
+        $evidence=$payload['quoteEvidenceDigest']??null;
+        if($state==='final_ready_estimate'){
+            if($ready!==1||$verified!==0||($payload['listingPriceReady']??null)!==true
+                ||$confirmation!==false||$quote!=='unknown'||$finalVerified!==false||$evidence!==null) {
+                throw new RuntimeException('ANYTOUR_OFFER_LISTING_INTEGRITY');
+            }
+            return;
+        }
+        if($state==='final_verified'){
+            if($ready!==1||$verified!==1||($payload['listingPriceReady']??null)!==true
+                ||$confirmation!==false||$quote!=='verified'||$finalVerified!==true
+                ||!is_string($evidence)||!preg_match('/\A[a-f0-9]{64}\z/D',$evidence)) {
+                throw new RuntimeException('ANYTOUR_OFFER_LISTING_INTEGRITY');
+            }
+            return;
+        }
+        if($state==='search_price_confirmation_required'){
+            if($ready!==0||$verified!==0||($payload['listingPriceReady']??null)!==false
+                ||$confirmation!==true||$quote!=='unknown'||$finalVerified!==false||$evidence!==null) {
+                throw new RuntimeException('ANYTOUR_OFFER_LISTING_INTEGRITY');
+            }
+            return;
+        }
+        throw new RuntimeException('ANYTOUR_OFFER_LISTING_INTEGRITY');
     }
     public static function readScope(PDO $db,string $scope,DateTimeImmutable $now,int $limit=self::MAX_SCOPE_OFFERS): array
     {
@@ -66,10 +102,10 @@ final class AnyTourOfferStoreReadV2
         // Read the bounded complete provider cohort before identity filtering. Applying
         // the caller's smaller limit in SQL could let stale/unresolved cheap rows hide
         // valid canonical offers that sort after them.
-        $sql='SELECT o.scope_sha256,o.anytour_hotel_id,o.legacy_hotel_id,o.provider,o.provider_hotel_ref_digest,o.offer_ref_digest,o.payload_json,o.payload_sha256,o.display_price,o.currency,o.observed_at,o.last_seen_at,o.expires_at '
+        $sql='SELECT o.scope_sha256,o.anytour_hotel_id,o.legacy_hotel_id,o.provider,o.provider_hotel_ref_digest,o.offer_ref_digest,o.payload_json,o.payload_sha256,o.display_price,o.currency,o.final_price_ready,o.final_price_verified,o.observed_at,o.last_seen_at,o.expires_at '
             .'FROM anytour_offers o JOIN anytour_offer_scope_state s ON s.provider=o.provider AND s.scope_sha256=o.scope_sha256 '
             .'AND s.latest_complete_refresh_token IS NOT NULL AND s.latest_complete_refresh_token=o.last_refresh_token '
-            .'WHERE o.scope_sha256 IN ('.implode(',',$slots).') AND o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now '
+            .'WHERE o.scope_sha256 IN ('.implode(',',$slots).') AND o.is_active=1 AND o.expires_at>:now '
             .'ORDER BY o.last_seen_at DESC,o.id DESC LIMIT '.self::MAX_SCOPE_OFFERS;
         $stmt=$db->prepare($sql);$stmt->execute($params);$rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
         $rows=AnyTourProviderIdentityBridgeV1::filterOfferRows($db,$rows);
@@ -80,7 +116,7 @@ final class AnyTourOfferStoreReadV2
             $raw=(string)$row['payload_json'];if(!hash_equals((string)$row['payload_sha256'],hash('sha256',$raw)))throw new RuntimeException('ANYTOUR_OFFER_PAYLOAD_INTEGRITY');
             try{$payload=json_decode($raw,true,512,JSON_THROW_ON_ERROR);}catch(Throwable $e){throw new RuntimeException('ANYTOUR_OFFER_PAYLOAD_INTEGRITY',0,$e);}
             if(!is_array($payload))throw new RuntimeException('ANYTOUR_OFFER_PAYLOAD_INTEGRITY');
-            $price=self::decimal((string)$row['display_price']);$currency=(string)$row['currency'];self::listing($payload,$provider,$price,$currency);
+            $price=self::decimal((string)$row['display_price']);$currency=(string)$row['currency'];self::listing($payload,$provider,$price,$currency,(int)$row['final_price_ready'],(int)$row['final_price_verified']);
             $lastSeen=self::time((string)$row['last_seen_at']);$expires=self::time((string)$row['expires_at']);
             $visibilitySeconds=$expires->getTimestamp()-$lastSeen->getTimestamp();
             if($visibilitySeconds<=0||$visibilitySeconds>self::MAX_LISTING_TTL_SECONDS)throw new RuntimeException('ANYTOUR_OFFER_TIME_INTEGRITY');
