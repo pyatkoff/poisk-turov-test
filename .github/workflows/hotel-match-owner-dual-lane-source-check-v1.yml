@@ -1,0 +1,36 @@
+name: MATCH owner dual-lane source check
+
+on:
+  push:
+    branches:
+      - ops/match-owner-dual-lane-1971-20260918-v1
+    paths:
+      - scripts/diagnostics/hotel_match_owner_dual_lane_common_v1.php
+      - scripts/diagnostics/hotel_match_owner_dual_lane_tv_v1.php
+      - scripts/diagnostics/hotel_match_owner_dual_lane_provider_v1.php
+      - scripts/diagnostics/hotel_match_owner_dual_lane_20260918_v1.php
+      - tests/hotel_match_owner_dual_lane_20260918_v1_test.php
+      - .github/workflows/hotel-match-owner-dual-lane-source-check-v1.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: PHP syntax and supplier-free tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in             scripts/diagnostics/hotel_match_owner_dual_lane_common_v1.php             scripts/diagnostics/hotel_match_owner_dual_lane_tv_v1.php             scripts/diagnostics/hotel_match_owner_dual_lane_provider_v1.php             scripts/diagnostics/hotel_match_owner_dual_lane_20260918_v1.php             tests/hotel_match_owner_dual_lane_20260918_v1_test.php
+          do
+            php -l "$f"
+          done
+          php scripts/diagnostics/hotel_match_owner_dual_lane_20260918_v1.php --self-test
+          php tests/hotel_match_owner_dual_lane_20260918_v1_test.php
