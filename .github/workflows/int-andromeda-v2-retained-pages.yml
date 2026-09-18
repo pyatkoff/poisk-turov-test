@@ -1,0 +1,65 @@
+name: INT inspect Andromeda v2 retained pages
+
+on:
+  push:
+    branches:
+      - 'ops/int-andromeda-local-db-seed-20260918-v2'
+    paths:
+      - '.github/workflows/int-andromeda-v2-retained-pages.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - name: Read retained page metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15 "$remote" 'python3 -' <<'PY'
+          import pathlib,json,re,hashlib
+          d=pathlib.Path.home()/'.anytoour-andromeda/searches'
+          candidates=[]
+          for p in d.glob('*-1.json'):
+              if p.is_symlink() or not p.is_file() or p.stat().st_size>3_000_000: continue
+              try:v=json.loads(p.read_text())
+              except Exception: continue
+              if v.get('generation')!=17171822: continue
+              store=v.get('store') if isinstance(v.get('store'),dict) else {}
+              snap=store.get('snapshot') if isinstance(store.get('snapshot'),dict) else {}
+              ref=v.get('search_ref')
+              if not isinstance(ref,str) or not re.fullmatch(r'[a-f0-9]{64}',ref): continue
+              created=store.get('created_at')
+              candidates.append((p,ref,created,v,store,snap))
+          out={'candidate_count':len(candidates),'searches':[],'supplier_calls':0,'db_reads':0,'writes':0,'replay':False}
+          for p,ref,created,v,store,snap in candidates:
+              row={'ref_sha256':hashlib.sha256(ref.encode()).hexdigest(),'first_status':v.get('status'),
+                   'first_page':snap.get('page'),'first_pages_count':snap.get('pages_count'),
+                   'first_offers':len(snap.get('offers',[])) if isinstance(snap.get('offers'),list) else None,
+                   'created_at':created,'expires_at':store.get('expires_at'),'pages':[]}
+              pattern=f'{ref}-{created}-*.json'
+              for q in d.glob(pattern):
+                  if q.is_symlink() or not q.is_file() or q.stat().st_size>3_000_000: continue
+                  name=q.name
+                  if any(x in name for x in ['-auth.json','-package','-surcharge','-quote','-anytour-offer-autosave']): continue
+                  try:x=json.loads(q.read_text())
+                  except Exception: continue
+                  ss=x.get('store',{}).get('snapshot',{}) if isinstance(x.get('store'),dict) else {}
+                  row['pages'].append({'page':ss.get('page'),'pages_count':ss.get('pages_count'),'status':x.get('status'),
+                    'offers':len(ss.get('offers',[])) if isinstance(ss.get('offers'),list) else None})
+              row['pages'].sort(key=lambda x:(x['page'] is None,x['page'] or 0))
+              out['searches'].append(row)
+          print(json.dumps(out,sort_keys=True))
+          PY
