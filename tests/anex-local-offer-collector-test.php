@@ -61,4 +61,41 @@ $result2=AnyTourAnexLocalOfferCollectorV1::collect($request,$state,$search,$expa
 ck($result2['expand_calls']===0,'zero-expand');
 ck($result2['apd_batch_items']===0,'no-charter-no-batch');
 
-echo "ANEX_LOCAL_OFFER_COLLECTOR_OK search=1 expand_bound=1 dedup=1 regular_observed=1 ready=1\n";
+
+$massState=[];
+$massBatchCalls=0;
+$massSearch=static function(array $request,array &$state):array{
+    $state=['mass'=>true];
+    $hotels=[];
+    for($i=1;$i<=15;++$i){
+        $hotels[]=['local_id'=>1000+$i,'tours'=>[
+            ['kind'=>'group_minimum','offer_ref'=>'anex_online:'.str_pad(dechex($i),64,'0',STR_PAD_LEFT),'flight_type'=>null],
+        ]];
+    }
+    return ['provider'=>'anex','search_ref'=>str_repeat('b',32),'hotels'=>$hotels];
+};
+$massExpand=static function(array $request,array &$state):array{
+    $tours=[];
+    for($j=1;$j<=4;++$j){
+        $seed=hash('sha256',$request['offer_ref'].':'.$j);
+        $tours[]=['kind'=>'concrete','offer_ref'=>'anex_online:'.$seed,'flight_type'=>'charter'];
+    }
+    return ['status'=>'expanded','hotels'=>[['local_id'=>$request['local_hotel_id'],'tours'=>$tours]]];
+};
+$massBatch=static function(array $request,array &$state)use(&$massBatchCalls):array{
+    ++$massBatchCalls;
+    ck(count($request['items'])>=1 && count($request['items'])<=6,'mass-chunk-size');
+    return ['status'=>'additional_prices_batch','offers'=>array_map(
+        static fn(array $item):array=>['status'=>'additional_prices','finalPriceReady'=>true,'retryable'=>false],
+        $request['items']
+    )];
+};
+$massRecord=static fn(array &$state):array=>['status'=>'complete'];
+$mass=AnyTourAnexLocalOfferCollectorV1::collect($request,$massState,$massSearch,$massExpand,$massRecord,$massBatch,15,60);
+ck($mass['expand_calls']===15,'mass-expands');
+ck($mass['charter_concrete_candidates']===60,'mass-charters');
+ck($mass['apd_batch_items']===60 && $mass['apd_batch_calls']===10,'mass-apd-chunks');
+ck($mass['final_price_ready_offers']===60,'mass-ready');
+ck($massBatchCalls===10,'mass-batch-call-count');
+
+echo "ANEX_LOCAL_OFFER_COLLECTOR_OK search=1 expand_bound=1 chunking=1 mass60=1 ready=1\n";
