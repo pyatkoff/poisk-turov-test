@@ -267,6 +267,7 @@ function anytour_andromeda_saved_package_surcharge(string $directory, string $pa
         $next = $reserved;
         $next['status'] = 'complete';
         $next['fact'] = AnyTourAndromedaSearchSurcharge::estimate($flights, $resolved['offer']['price']);
+        $next['transport_money_diagnostic'] = AnyTourAndromedaSearchSurcharge::diagnostic($flights);
         if (strlen(json_encode($next, JSON_THROW_ON_ERROR)) > 16384) {
             throw new RuntimeException('ANDROMEDA_SURCHARGE_CHECKPOINT_INVALID');
         }

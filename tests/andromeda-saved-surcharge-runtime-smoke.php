@@ -69,6 +69,17 @@ foreach (['estimated', 'zero', 'ambiguous', 'unknown', 'stale'] as $case) {
     $fact = anytour_andromeda_read_saved_surcharge($directory, $state, $created, $context, $allows, $now);
     $disk = json_decode(file_get_contents($path), true);
     surcharge_check(!str_contains(json_encode([$receipt, $fact, $disk]), 'private-'), 'sidecar and public result contain no raw claim or secrets');
+    if (in_array($case, ['estimated', 'zero', 'ambiguous'], true)) {
+        $diag = $disk['transport_money_diagnostic'] ?? null;
+        surcharge_check(is_array($diag) && ($diag['schema_version'] ?? null) === 1, 'private transport diagnostic retained');
+        surcharge_check(($diag['ttavia_option_count'] ?? null) === 2 && ($diag['transport_detail_count'] ?? null) === 2
+            && ($diag['markup_key_count'] ?? null) === 2, 'diagnostic counts get_flights transport shape');
+        surcharge_check(($diag['valid_markup_fact_count'] ?? null) === ($case === 'ambiguous' ? 2 : 1)
+            && ($diag['distinct_markup_count'] ?? null) === ($case === 'ambiguous' ? 2 : 1), 'diagnostic distinct markup facts');
+        surcharge_check(($diag['detail_currencies'] ?? null) === ['USD']
+            && ($diag['markup_currencies'] ?? null) === ['USD']
+            && ($diag['operator_rate_currencies'] ?? null) === ['RUB','USD'], 'diagnostic currencies bounded');
+    }
     if (in_array($case, ['estimated', 'zero'], true)) {
         surcharge_check($fact !== null && $fact['state'] === 'estimated' && $fact['final_price_verified'] === false, 'estimate not final quote');
         surcharge_check($fact['search_price_with_surcharge']['amount'] === ($case === 'zero' ? '83080.00' : '93080.00'), 'party markup added once, not per leg');
