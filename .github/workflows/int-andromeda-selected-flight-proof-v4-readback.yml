@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 4
+          fetch-depth: 6
           persist-credentials: false
 
       - name: Bind read-only scope
@@ -56,58 +56,66 @@ jobs:
           opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes \
             -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
           remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
-          ssh "${opts[@]}" "$remote" php -r '
-            $op=$argv[1]; $generation=(int)$argv[2];
-            $home=getenv("HOME");
-            $ledger=$home."/.anytour-ops/".$op;
-            $state=is_file($ledger."/state")?trim((string)file_get_contents($ledger."/state")):"missing";
-            $error=is_file($ledger."/error.log")?(string)file_get_contents($ledger."/error.log"):"";
-            $failure="unknown";
-            if(preg_match("/(ANDROMEDA_SELECTED_PROOF_[A-Z_]+)/",$error,$m)) $failure=$m[1];
-            elseif(str_contains($error,"anytour_andromeda_search3_mapping_allows")) $failure="missing_mapping_helper";
-            elseif(str_contains($error,"Failed opening required")||str_contains($error,"failed to open stream")) $failure="missing_runtime_dependency";
-            elseif(str_contains($error,"SQLSTATE")) $failure="database_exception";
-            elseif(str_contains($error,"TypeError")) $failure="type_error";
-            elseif(str_contains($error,"Fatal error")) $failure="other_fatal";
-            elseif($error==="") $failure="no_error_log";
+          ssh "${opts[@]}" "$remote" bash -s -- "$SOURCE_OPERATION" "$SOURCE_GENERATION" <<'REMOTE' | tee "$RUNNER_TEMP/readback.json"
+          set -euo pipefail
+          export READBACK_OPERATION="$1"
+          export READBACK_GENERATION="$2"
+          php <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $op=(string)getenv('READBACK_OPERATION');
+          $generation=(int)getenv('READBACK_GENERATION');
+          $home=(string)getenv('HOME');
+          $ledger=$home.'/.anytour-ops/'.$op;
+          $state=is_file($ledger.'/state')?trim((string)file_get_contents($ledger.'/state')):'missing';
+          $error=is_file($ledger.'/error.log')?(string)file_get_contents($ledger.'/error.log'):'';
+          $failure='unknown';
+          if(preg_match('/(ANDROMEDA_SELECTED_PROOF_[A-Z_]+)/',$error,$m)) $failure=$m[1];
+          elseif(str_contains($error,'anytour_andromeda_search3_mapping_allows')) $failure='missing_mapping_helper';
+          elseif(str_contains($error,'Failed opening required')||str_contains($error,'failed to open stream')) $failure='missing_runtime_dependency';
+          elseif(str_contains($error,'SQLSTATE')) $failure='database_exception';
+          elseif(str_contains($error,'TypeError')) $failure='type_error';
+          elseif(str_contains($error,'Fatal error')) $failure='other_fatal';
+          elseif($error==='') $failure='no_error_log';
 
-            $configPath=$home."/.anytoour-andromeda/search3-preview.php";
-            $searchFiles=0; $completeSearchFiles=0; $packageAttempts=0; $packages=0; $surcharges=0;
-            if(is_file($configPath)){
-              $cfg=require $configPath;
-              $catalog=is_array($cfg)?($cfg["catalog_path"]??null):null;
-              $dir=is_string($catalog)&&$catalog!==""?dirname($catalog)."/searches":null;
-              if(is_string($dir)&&is_dir($dir)&&!is_link($dir)){
-                foreach(glob($dir."/*.json")?:[] as $path){
-                  if(is_link($path)||!is_file($path)) continue;
-                  $size=filesize($path); if(!is_int($size)||$size<2||$size>3000000) continue;
-                  $raw=(string)file_get_contents($path);
-                  if(!preg_match("/\\\"generation\\\"\\s*:\\s*".$generation."(?:[^0-9]|$)/",$raw)) continue;
-                  $base=basename($path);
-                  if(str_ends_with($base,"-package-attempt-v2.json")) ++$packageAttempts;
-                  elseif(str_ends_with($base,"-package.json")) ++$packages;
-                  elseif(str_ends_with($base,"-surcharge-v1.json")) ++$surcharges;
-                  else {
-                    ++$searchFiles;
-                    try{$j=json_decode($raw,true,32,JSON_THROW_ON_ERROR);if(($j["status"]??null)==="complete")++$completeSearchFiles;}catch(Throwable){}
-                  }
+          $configPath=$home.'/.anytoour-andromeda/search3-preview.php';
+          $searchFiles=0; $completeSearchFiles=0; $packageAttempts=0; $packages=0; $surcharges=0;
+          if(is_file($configPath)){
+            $cfg=require $configPath;
+            $catalog=is_array($cfg)?($cfg['catalog_path']??null):null;
+            $dir=is_string($catalog)&&$catalog!==''?dirname($catalog).'/searches':null;
+            if(is_string($dir)&&is_dir($dir)&&!is_link($dir)){
+              foreach(glob($dir.'/*.json')?:[] as $path){
+                if(is_link($path)||!is_file($path)) continue;
+                $size=filesize($path); if(!is_int($size)||$size<2||$size>3000000) continue;
+                $raw=(string)file_get_contents($path);
+                if(!preg_match('/\"generation\"\s*:\s*'.$generation.'(?:[^0-9]|$)/',$raw)) continue;
+                $base=basename($path);
+                if(str_ends_with($base,'-package-attempt-v2.json')) ++$packageAttempts;
+                elseif(str_ends_with($base,'-package.json')) ++$packages;
+                elseif(str_ends_with($base,'-surcharge-v1.json')) ++$surcharges;
+                else {
+                  ++$searchFiles;
+                  try{$j=json_decode($raw,true,32,JSON_THROW_ON_ERROR);if(($j['status']??null)==='complete')++$completeSearchFiles;}catch(Throwable){}
                 }
               }
             }
-            echo json_encode([
-              "status"=>"readback_complete",
-              "source_operation_state"=>$state,
-              "failure_class"=>$failure,
-              "search_state_files"=>$searchFiles,
-              "complete_search_state_files"=>$completeSearchFiles,
-              "package_attempt_sidecars"=>$packageAttempts,
-              "package_sidecars"=>$packages,
-              "surcharge_sidecars"=>$surcharges,
-              "supplier_calls_performed_by_readback"=>0,
-              "db_writes"=>0,
-              "replay_performed"=>false
-            ],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
-          ' -- "$SOURCE_OPERATION" "$SOURCE_GENERATION" | tee "$RUNNER_TEMP/readback.json"
+          }
+          echo json_encode([
+            'status'=>'readback_complete',
+            'source_operation_state'=>$state,
+            'failure_class'=>$failure,
+            'search_state_files'=>$searchFiles,
+            'complete_search_state_files'=>$completeSearchFiles,
+            'package_attempt_sidecars'=>$packageAttempts,
+            'package_sidecars'=>$packages,
+            'surcharge_sidecars'=>$surcharges,
+            'supplier_calls_performed_by_readback'=>0,
+            'db_writes'=>0,
+            'replay_performed'=>false
+          ],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          PHP
+          REMOTE
 
       - name: Preserve sanitized readback
         uses: actions/upload-artifact@v4
