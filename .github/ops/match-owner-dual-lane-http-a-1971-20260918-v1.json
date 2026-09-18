@@ -1,0 +1,138 @@
+{
+  "operation": "hotel-match-owner-dual-lane-http-a-1971-20260918-v1",
+  "parent_operation": "hotel-match-owner-dual-lane-1971-20260918-v1",
+  "state": "reserved_before_provider_access",
+  "source_sha": "1b8d68864e84ee35a1bae7e2a07dbedc41a0b675",
+  "owner_supplemental_tourvisor_limit": 300,
+  "tourvisor_used_at_reservation": 0,
+  "transport": "existing AnyTour v2/api-v2.php GET gateway",
+  "scheme": "A",
+  "selection_source": "immutable direct-ANEX v5 artifact 10552567408 / source=user_search frontier; skip 2 hard >5km geo conflicts and 1 duplicate local id",
+  "rules": {
+    "tourvisor_dates_endpoint": false,
+    "fresh_search_only": true,
+    "fresh_tour_detail_only": true,
+    "full_drain_continue": true,
+    "detail_404_kill": "after >=8 fresh detail attempts, stop if 404 ratio >=25%",
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "no_replay_after_first_provider_access": true
+  },
+  "cohorts": [
+    {
+      "country_id": 8,
+      "country": "Мальдивы",
+      "departure_id": 1,
+      "departure": "Москва",
+      "date_from": "2026-10-10",
+      "date_to": "2026-10-16",
+      "nights_from": 5,
+      "nights_to": 7,
+      "hotel_ids": [
+        26043,
+        2444,
+        72602,
+        2445,
+        2476
+      ]
+    },
+    {
+      "country_id": 2,
+      "country": "Таиланд",
+      "departure_id": 1,
+      "departure": "Москва",
+      "date_from": "2026-09-27",
+      "date_to": "2026-10-03",
+      "nights_from": 7,
+      "nights_to": 8,
+      "hotel_ids": [
+        74218,
+        13114,
+        120840
+      ]
+    },
+    {
+      "country_id": 1,
+      "country": "Египет",
+      "departure_id": 1,
+      "departure": "Москва",
+      "date_from": "2026-09-30",
+      "date_to": "2026-10-06",
+      "nights_from": 8,
+      "nights_to": 9,
+      "hotel_ids": [
+        83106,
+        159
+      ]
+    },
+    {
+      "country_id": 16,
+      "country": "Вьетнам",
+      "departure_id": 1,
+      "departure": "Москва",
+      "date_from": "2026-09-25",
+      "date_to": "2026-10-01",
+      "nights_from": 7,
+      "nights_to": 9,
+      "hotel_ids": [
+        141976,
+        161982,
+        162479,
+        4041
+      ]
+    },
+    {
+      "country_id": 9,
+      "country": "ОАЭ",
+      "departure_id": 5,
+      "departure": "С.Петербург",
+      "date_from": "2026-10-07",
+      "date_to": "2026-10-13",
+      "nights_from": 7,
+      "nights_to": 9,
+      "hotel_ids": [
+        66290,
+        2634
+      ]
+    },
+    {
+      "country_id": 41,
+      "country": "Танзания",
+      "departure_id": 1,
+      "departure": "Москва",
+      "date_from": "2026-09-22",
+      "date_to": "2026-09-28",
+      "nights_from": 8,
+      "nights_to": 9,
+      "hotel_ids": [
+        80362,
+        107208,
+        110266,
+        131274,
+        132079,
+        145414,
+        156294,
+        37012,
+        27676,
+        157099,
+        27673
+      ]
+    },
+    {
+      "country_id": 79,
+      "country": "Катар",
+      "departure_id": 1,
+      "departure": "Москва",
+      "date_from": "2027-01-02",
+      "date_to": "2027-01-08",
+      "nights_from": 9,
+      "nights_to": 10,
+      "hotel_ids": [
+        74977,
+        60957,
+        127325
+      ]
+    }
+  ],
+  "cohort_canonical_sha256": "ba2307cbaad43b1dc6bf35af79131a90f01a4131a356c8d0548d28d1d1d71f90"
+}
