@@ -127,7 +127,8 @@ if(!$root||basename($root)!=='anytoour.ru'||!$private||!is_file($private)||!$opd
 $config=require $private;if(!is_array($config)||($config['enabled']??null)!==true||!is_string($config['catalog_path']??null))throw new RuntimeException('private_config');
 $directory=dirname($config['catalog_path']).'/searches';
 require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
-require_once $opdir.'/payload/anex-search-mapping-registry.php';
+$payloadDir=is_file($opdir.'/payload/anex-search-mapping-registry.php')?$opdir.'/payload':$opdir;
+require_once $payloadDir.'/anex-search-mapping-registry.php';
 
 $saved=hma682_load_generation($directory,HMA682_GENERATION);
 $offerRows=$saved['rows'];$sources=[];$offerRefs=[];$dateCounts=[];$operatorCounts=[];$namespaceCounts=[];
