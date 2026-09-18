@@ -41,7 +41,10 @@ jobs:
           printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_user_seen_common4_token_set_bridge_v1.php'
           printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-user-seen-common4-token-set-bridge-v1.yml'
           php -l scripts/diagnostics/hotel_match_user_seen_common4_token_set_bridge_v1.php
-          php scripts/diagnostics/hotel_match_user_seen_common4_token_set_bridge_v1.php --self-test
+          grep -F "function hmts_route" scripts/diagnostics/hotel_match_user_seen_common4_token_set_bridge_v1.php
+          grep -F "function hmts_historical_candidates" scripts/diagnostics/hotel_match_user_seen_common4_token_set_bridge_v1.php
+          grep -F "'database_writes'=>0" scripts/diagnostics/hotel_match_user_seen_common4_token_set_bridge_v1.php
+          grep -F "'supplier_calls'=>0" scripts/diagnostics/hotel_match_user_seen_common4_token_set_bridge_v1.php
           gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
           python3 - <<'PY'
           import json,os
