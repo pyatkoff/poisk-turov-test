@@ -67,7 +67,7 @@ function coverage(array $observed,array $anex,array $andr): array {
 if(PHP_SAPI!=='cli')exit(2);
 $root=realpath((string)getenv('ANYTOUR_ROOT'));
 $opdir=realpath((string)getenv('MATCH_OPERATION_DIR'));
-if(!$root||!$opdir||!is_file($root.'/app/integrations/anex-search-mapping-registry.php'))throw new RuntimeException('runtime_paths');
+if(!$root||!$opdir)throw new RuntimeException('runtime_paths');
 require_once $opdir.'/payload/anex-search-mapping-registry.php';
 $dbf=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';
 require_once $dbf;
