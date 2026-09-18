@@ -9,13 +9,25 @@ $search=static function(array $r)use(&$searchCalls):array{
     ++$searchCalls;
     return ['provider'=>'andromeda','search_ref'=>str_repeat('a',64),'pages_count'=>3,'status'=>'complete'];
 };
-$offer=static function(string $suffix,string $operator,int $local,string $opRef,?bool $freight=null,?string $program=null,?string $tour=null):array{
-    $row=['offer_ref'=>'offer_'.hash('sha256',$suffix),'operator'=>$operator,'operator_ref'=>$opRef,'local_hotel_id'=>$local];
-    if($freight!==null||$program!==null||$tour!==null){
+$offer=static function(string $suffix,string $operator,int $local,string $opRef,?bool $freight=null,?string $program=null,?string $tour=null,?string $spo=null):array{
+    $row=[
+        'offer_ref'=>'offer_'.hash('sha256',$suffix),
+        'provider'=>'andromeda',
+        'operator'=>$operator,
+        'operator_ref'=>$opRef,
+        'local_hotel_id'=>$local,
+        'check_in'=>'2026-10-30',
+        'nights'=>7,
+        'adults'=>2,
+        'children'=>0,
+        'price'=>['final'=>100000+$local,'currency'=>'RUB'],
+    ];
+    if($freight!==null||$program!==null||$tour!==null||$spo!==null){
         $row['transport_context']=[];
         if($freight!==null)$row['transport_context']['freight_external']=$freight;
         if($program!==null)$row['transport_context']['program_ref']=$program;
         if($tour!==null)$row['transport_context']['tour_ref']=$tour;
+        if($spo!==null)$row['transport_context']['spo_ref']=$spo;
     }
     return $row;
 };
@@ -101,10 +113,10 @@ foreach ([
 $priorityCohort=static fn(string $ref,int $generation):array=>[
     ['page'=>1,'offer'=>$offer('p-false','FUN&SUN',21,'21',false,'pf','tf')],
     ['page'=>1,'offer'=>$offer('p-unknown','Библио-Глобус',22,'22',null,'pu','tu')],
-    ['page'=>1,'offer'=>$offer('p-true-a','Интурист',23,'23',true,'p1','t1')],
-    ['page'=>1,'offer'=>$offer('p-true-b','Интурист',24,'23',true,'p1','t1')],
-    ['page'=>1,'offer'=>$offer('p-true-c','Интурист',25,'23',true,'p2','t2')],
-    ['page'=>1,'offer'=>$offer('p-true-d','FUN&SUN',26,'24',true,'p3','t3')],
+    ['page'=>1,'offer'=>$offer('p-true-a','Интурист',23,'23',true,'p1','t1','spo-a')],
+    ['page'=>1,'offer'=>$offer('p-true-b','Интурист',24,'23',true,'p1','t1','spo-b')],
+    ['page'=>1,'offer'=>$offer('p-true-c','Интурист',25,'23',true,'p2','t2','spo-c')],
+    ['page'=>1,'offer'=>$offer('p-true-d','FUN&SUN',26,'24',true,'p3','t3','spo-d')],
 ];
 $priorityOrder=[];
 $priorityCapture=static function(array $selection)use(&$priorityOrder):array{
@@ -118,10 +130,53 @@ $priorityResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
     static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('b',64),'pages_count'=>1,'status'=>'complete'],
     $priorityCohort,$allAllowed,$priorityCapture,$priorityAutosave,3
 );
-ok($priorityOrder===[23,25,26],'distinct external transport groups must consume capture budget before duplicate group/unknown/false');
+ok($priorityOrder===[23,25,26],'strict external surcharge groups must consume capture budget before same-group SPO duplicate');
 ok($priorityResult['surcharge_capture_attempts']===3,'priority capture bound');
 ok($priorityResult['eligible_offers']===6,'priority keeps all candidates eligible');
 
+// The evidence-backed key must not collapse materially different transport groups.
+$strictBase=$offer('strict-a','Интурист',30,'30',true,'p4','t4','spo-a');
+$strictSpo=$offer('strict-b','Интурист',31,'30',true,'p4','t4','spo-b');
+$strictNights=$offer('strict-c','Интурист',32,'30',true,'p4','t4','spo-c');$strictNights['nights']=8;
+$strictDate=$offer('strict-d','Интурист',33,'30',true,'p4','t4','spo-d');$strictDate['check_in']='2026-10-31';
+$strictCurrency=$offer('strict-e','Интурист',34,'30',true,'p4','t4','spo-e');$strictCurrency['price']['currency']='USD';
+$strictCohort=static fn(string $ref,int $generation):array=>[
+    ['page'=>1,'offer'=>$strictBase],['page'=>1,'offer'=>$strictSpo],
+    ['page'=>1,'offer'=>$strictNights],['page'=>1,'offer'=>$strictDate],['page'=>1,'offer'=>$strictCurrency],
+];
+$strictOrder=[];
+AnyTourAndromedaLocalOfferCollectorV1::collect(
+    $request,
+    static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('7',64),'pages_count'=>1,'status'=>'complete'],
+    $strictCohort,$allAllowed,
+    static function(array $selection)use(&$strictOrder):array{
+        $strictOrder[]=$selection['local_id'];
+        return ['status'=>'captured','surcharge'=>['status'=>'unavailable','fact'=>null]];
+    },
+    $priorityAutosave,4
+);
+ok($strictOrder===[30,32,33,34],'nights/date/currency differences must stay distinct while SPO-only duplicate defers');
+
+// Malformed explicit-external context must never share evidence. Two otherwise
+// identical unkeyable rows therefore each consume a first-pass unique-offer bucket.
+$malformedA=$offer('malformed-a','Интурист',40,'40',true,'p5','t5','spo-a');unset($malformedA['check_in']);
+$malformedB=$offer('malformed-b','Интурист',41,'40',true,'p5','t5','spo-b');unset($malformedB['check_in']);
+$malformedDistinct=$offer('malformed-c','Интурист',42,'40',true,'p6','t6','spo-c');
+$malformedCohort=static fn(string $ref,int $generation):array=>[
+    ['page'=>1,'offer'=>$malformedA],['page'=>1,'offer'=>$malformedB],['page'=>1,'offer'=>$malformedDistinct],
+];
+$malformedOrder=[];
+AnyTourAndromedaLocalOfferCollectorV1::collect(
+    $request,
+    static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('6',64),'pages_count'=>1,'status'=>'complete'],
+    $malformedCohort,$allAllowed,
+    static function(array $selection)use(&$malformedOrder):array{
+        $malformedOrder[]=$selection['local_id'];
+        return ['status'=>'captured','surcharge'=>['status'=>'unavailable','fact'=>null]];
+    },
+    $priorityAutosave,3
+);
+ok($malformedOrder===[40,41,42],'unkeyable external rows must remain unique fail-closed buckets');
 
 // Mass non-external mode must ignore external/unknown candidates entirely and allow
 // a background-scale capture budget above the historical diagnostic cap of six.
@@ -230,4 +285,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 program_diversity=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 strict_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
