@@ -35,7 +35,12 @@ function hmts_name_corroborated(string $detail,array $localNames):array{
   foreach($localNames as$local){if(!is_string($local)||trim($local)==='')continue;foreach(hmts_variants($local)as$lv){
     $dn=hmts_norm($detail);$ln=hmts_norm($lv);if($dn===''||$ln==='')continue;
     $dnums=hmts_nums($detail);$lnums=hmts_nums($lv);if($dnums&&$lnums&&$dnums!==$lnums){$hard='number_conflict';continue;}
-    $dq=hmts_quals($detail);$lq=hmts_quals($lv);if($dq&&$lq&&array_intersect($dq,$lq)===[]){$hard='qualifier_conflict';continue;}
+    $dq=hmts_quals($detail);$lq=hmts_quals($lv);
+    $dd=array_values(array_intersect($dq,['north','south']));$ld=array_values(array_intersect($lq,['north','south']));
+    if($dd&&$ld&&$dd!==$ld){$hard='direction_qualifier_conflict';continue;}
+    $da=array_values(array_intersect($dq,['adult']));$la=array_values(array_intersect($lq,['adult']));
+    if((bool)$da!==(bool)$la&&($da||$la)){$hard='adult_qualifier_conflict';continue;}
+    if($dq&&$lq&&array_intersect($dq,$lq)===[]){$hard='qualifier_conflict';continue;}
     if($dn===$ln)return['ok'=>true,'reason'=>'exact_normalized','score'=>1.0,'pair'=>[$lv,$detail]];
     $dc=hmts_compact($detail);$lc=hmts_compact($lv);
     if($dc!==''&&$lc!==''&&min(strlen($dc),strlen($lc))>=4&&($dc===$lc||str_contains($dc,$lc)||str_contains($lc,$dc))){
