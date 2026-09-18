@@ -1,0 +1,175 @@
+name: INT Andromeda selected-flight proof v5
+
+on:
+  push:
+    branches: ['ops/int-andromeda-selected-flight-proof-20260918-v5']
+    paths:
+      - 'scripts/ops/int_andromeda_selected_flight_proof_v5.php'
+      - '.github/workflows/int-andromeda-selected-flight-proof-v5.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-andromeda-selected-flight-proof-1717-20260918-v5
+  cancel-in-progress: false
+
+jobs:
+  proof:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_SHA: c9f2ded809a4edf7ae23086a0e5a34f873a862bc
+      RELEASE_DATA_SHA: 041de3812c93cb27760d1c7d7500a8156864111c
+      OPERATION_ID: int-andromeda-selected-flight-proof-1717-20260918-v5
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 8
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_DATA_SHA }}
+          path: release-data
+          persist-credentials: false
+
+      - name: Bind exact one-shot source and offline guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-andromeda-selected-flight-proof-v5.yml'
+          test "${changed[1]}" = 'scripts/ops/int_andromeda_selected_flight_proof_v5.php'
+
+          php -l scripts/ops/int_andromeda_selected_flight_proof_v5.php >/dev/null
+          php -l app/integrations/andromeda-package-capture.php >/dev/null
+          php -l app/integrations/andromeda-selected-offer.php >/dev/null
+          php -l app/integrations/andromeda-selected-quote.php >/dev/null
+          php -l app/integrations/andromeda-saved-package-runtime.php >/dev/null
+          php tests/andromeda-package-capture-smoke.php
+          php tests/andromeda-selected-quote-smoke.php
+
+          for path in \
+            app/integrations/andromeda-package-capture.php \
+            app/integrations/andromeda-selected-offer.php \
+            app/integrations/andromeda-selected-quote.php \
+            app/integrations/andromeda-saved-package-runtime.php \
+            app/integrations/andromeda-search-surcharge.php; do
+            test "$(git rev-parse "$BASE_SHA:$path")" = "$(git rev-parse "HEAD:$path")"
+          done
+          test "$(git -C release-data rev-parse HEAD)" = "$RELEASE_DATA_SHA"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY"
+          test -n "$ANYTOOUR_DEPLOY_HOST"
+          test -n "$ANYTOOUR_DEPLOY_USER"
+
+      - name: Prepare exact temporary INT runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+          stage="$RUNNER_TEMP/andromeda-selected-flight-proof-v5"
+          mkdir -p "$stage/app" "$stage/v2" "$stage/scripts/ops"
+          cp -a app/integrations "$stage/app/"
+          cp v2/api-anex-search3-preview.php v2/api-andromeda-search3-preview.php "$stage/v2/"
+          cp -a release-data/v2/data "$stage/v2/"
+          cp scripts/ops/int_andromeda_selected_flight_proof_v5.php "$stage/scripts/ops/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/andromeda-selected-flight-proof-v5.tar.gz" .
+
+      - name: Execute exactly one private selected-flight proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          archive="/tmp/${OPERATION_ID}.${GITHUB_RUN_ID}.tar.gz"
+
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/andromeda-selected-flight-proof-v5.tar.gz" "$remote:$archive"
+          set +e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$archive" "$BASE_SHA" <<'REMOTE'
+          set -euo pipefail
+          operation="$1"; archive="$2"; source="$3"
+          site="$HOME/www/anytoour.ru"
+          ledger="$HOME/.anytour-ops/$operation"
+
+          test -d "$site"
+          test -s "$site/config.php"
+          test -s "$HOME/.anytoour-andromeda/search3-preview.php"
+          test ! -e "$ledger"
+
+          mkdir -p "$HOME/.anytour-ops"
+          mkdir -m 700 "$ledger"
+          printf '%s\n' reserved > "$ledger/state"
+
+          work="$(mktemp -d "/tmp/${operation}.XXXXXX")"
+          trap 'rm -rf "$work"; rm -f "$archive"' EXIT
+          tar -C "$work" -xzf "$archive"
+
+          set +e
+          php "$work/scripts/ops/int_andromeda_selected_flight_proof_v5.php" "$site" "$source" \
+            > "$ledger/receipt.tmp" 2> "$ledger/error.log"
+          rc=$?
+          set -e
+
+          if [ -s "$ledger/receipt.tmp" ]; then
+            mv "$ledger/receipt.tmp" "$ledger/receipt.json"
+          else
+            rm -f "$ledger/receipt.tmp"
+            printf '%s\n' '{"status":"failed_terminal_no_replay","failure_class":"script_exception_or_abort","replay_allowed":false}' > "$ledger/receipt.json"
+          fi
+          chmod 600 "$ledger/receipt.json" "$ledger/error.log" || true
+          printf '%s\n' failed_terminal_no_replay > "$ledger/state"
+
+          if [ "$rc" -eq 0 ]; then
+            php -r '
+              $x=json_decode(file_get_contents($argv[1]),true,32,JSON_THROW_ON_ERROR);
+              if(($x["status"]??null)!=="completed"
+                ||($x["final_price_verified"]??false)!==true
+                ||($x["verified_positive_rub_final"]??false)!==true
+                ||($x["quote_state"]??null)!=="verified"
+                ||($x["actualization_state"]??null)!=="verified"
+                ||($x["package_capture_reused"]??true)!==false
+                ||($x["db_writes"]??-1)!==0
+                ||($x["booking_calls"]??-1)!==0
+                ||($x["autosave_calls"]??-1)!==0) exit(2);
+            ' "$ledger/receipt.json"
+            printf '%s\n' completed > "$ledger/state"
+          fi
+          exit "$rc"
+          REMOTE
+          rc=$?
+          set -e
+
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" \
+            > "$RUNNER_TEMP/receipt.json" || true
+          test -s "$RUNNER_TEMP/receipt.json"
+          cat "$RUNNER_TEMP/receipt.json"
+          if [ "$rc" -ne 0 ]; then exit "$rc"; fi
+
+      - name: Preserve sanitized selected-flight proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-andromeda-selected-flight-proof-v5-${{ github.run_id }}
+          path: ${{ runner.temp }}/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
