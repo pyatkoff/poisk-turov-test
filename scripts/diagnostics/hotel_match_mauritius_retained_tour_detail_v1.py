@@ -128,9 +128,10 @@ def http_detail(token,home,local_id,tour_id,progress):
     append_jsonl(progress,{'call':used,'accounted':accounted,'action':'retained_tour_detail','local_id':local_id,'tour_id':str(tour_id),'path':path})
     url=BASE+path+'?currency=RUB'
     cp=subprocess.run(['curl','--silent','--show-error','--http1.1','--compressed','--max-time','65','-H','Authorization: Bearer '+token,'-H','Accept: application/json','-w','\n%{http_code}',url],capture_output=True,text=True)
-    if '\n' not in cp.stdout: raise RuntimeError('transport_'+str(cp.returncode))
+    if cp.returncode!=0 or '\n' not in cp.stdout: raise RuntimeError('transport_'+str(cp.returncode))
     body,code_s=cp.stdout.rsplit('\n',1); code=int(code_s)
     if len(body.encode())>BODY_LIMIT: raise RuntimeError('body_limit')
+    if code==429: raise RuntimeError('http_429')
     return code,body
 
 
