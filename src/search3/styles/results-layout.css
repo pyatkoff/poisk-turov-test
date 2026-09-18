@@ -319,6 +319,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-card{border-radius:14px;box-shadow:none}
 & .hotel-main{display:flex;flex-direction:column}
 & .hotel-photo{flex:0 0 auto;width:100%;height:auto;min-height:0;aspect-ratio:16/9;max-height:260px}
+& .hotel-main:not(:has([open])) .hotel-gallery-thumbs{display:none}
 & .hotel-photo:has(.photo-placeholder){aspect-ratio:auto;max-height:none;padding:14px 18px 0}
 & .photo-placeholder{min-height:0}
 & .hotel-description-summary:has(+.hotel-details:not([open])){display:none}
