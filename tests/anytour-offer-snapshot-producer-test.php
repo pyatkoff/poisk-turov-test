@@ -49,7 +49,9 @@ function producer_raw(string $provider, int $local, int $adults, array $addition
 }
 function producer_entry(string $provider, int $legacy, ?int $own, int $adults, string $base, string $fuel, string $salt, int $issued): array
 {
-    $additional=[['kind'=>'fuel_adult','amount'=>$fuel,'currency'=>'RUB','source'=>$provider.'_additional']];
+    $additional = $provider === 'andromeda'
+        ? [['kind'=>'party_transport_surcharge','amount'=>$fuel,'currency'=>'RUB','source'=>'andromeda_additional']]
+        : [['kind'=>'fuel_adult','amount'=>$fuel,'currency'=>'RUB','source'=>$provider.'_additional']];
     $offer=AnyTourThreeProviderOfferContract::fromSearch(producer_raw($provider,$legacy,$adults,$additional,$base,$salt));
     $retained=AnyTourThreeProviderOfferContext::retain($offer,41,1,$issued,900);
     $current=['provider'=>$retained['provider'],'operator'=>$retained['operator'],'local_hotel_id'=>$retained['local_hotel_id'],
@@ -99,7 +101,7 @@ $andResult=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',producer_param
     'complete'=>true,'authoritative_empty'=>false,'offers'=>[$and],
 ],$now,$ingest);
 producer_check($andResult['published']===true && $andResult['readyOfferCount']===1,'andromeda-published');
-producer_check($ingestCalls[1]['rows'][0]['dto']['finalPrice']==='166346.80','andromeda-existing-arithmetic');
+producer_check($ingestCalls[1]['rows'][0]['dto']['finalPrice']==='151975.60','andromeda-existing-arithmetic');
 producer_check(count($ingestCalls)===2,'providers-independent-success');
 
 producer_check(count($ingestCalls)===2,'providers-independent-success');
