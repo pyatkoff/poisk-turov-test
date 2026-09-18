@@ -1,0 +1,42 @@
+name: LOCAL exact ANEX 4-star browser acceptance
+
+on:
+  push:
+    branches: ['ops/local-anex-exact-query-browser-20260918-v1']
+    paths:
+      - 'tests/local-anex-exact-query-live-browser.py'
+      - '.github/workflows/local-anex-exact-query-browser-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install isolated Chromium runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir 'playwright==1.55.0'
+          python -m playwright install --with-deps chromium
+      - name: Run exact live URL without supplier endpoints
+        env:
+          EVIDENCE_DIR: ${{ runner.temp }}/local-anex-browser-evidence
+        run: python -B tests/local-anex-exact-query-live-browser.py
+      - name: Retain screenshots and result
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: local-anex-exact-query-browser-${{ github.run_id }}
+          path: ${{ runner.temp }}/local-anex-browser-evidence
+          if-no-files-found: warn
+          retention-days: 30
