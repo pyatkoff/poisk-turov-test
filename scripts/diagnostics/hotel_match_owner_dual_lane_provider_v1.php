@@ -20,10 +20,81 @@ function hmd_collect_frontier(PDO $db):array{
 }
 function hmd_observations(PDO $db,array $front):array{if(!$front)return[];$out=[];foreach(array_chunk(array_keys($front),600)as$chunk){$ph=implode(',',array_fill(0,count($chunk),'?'));$out=array_merge($out,hmd_rows($db,"SELECT hotel_id,departure_id,country_id,departure_date,nights,COUNT(*) obs FROM tour_price_observations WHERE source='user_search' AND departure_date>=CURRENT_DATE AND adults=2 AND children_count=0 AND hotel_id IN ($ph) GROUP BY hotel_id,departure_id,country_id,departure_date,nights",$chunk));}return$out;}
 function hmd_plan_a(array $obs,array $front):array{$byRoute=[];foreach($obs as$r){$lid=(int)$r['hotel_id'];if(!isset($front[$lid]))continue;$k=(int)$r['departure_id'].'|'.(int)$r['country_id'];$byRoute[$k][]=$r;}$best=null;foreach($byRoute as$k=>$rows){$dates=array_values(array_unique(array_map(fn($r)=>(string)$r['departure_date'],$rows)));sort($dates,SORT_STRING);foreach($dates as$d){$from=new DateTimeImmutable($d);$to=$from->modify('+6 day');$hot=[];$weight=0;$slice=[];foreach($rows as$r){$rd=new DateTimeImmutable((string)$r['departure_date']);if($rd<$from||$rd>$to)continue;$lid=(int)$r['hotel_id'];$hot[$lid]=($hot[$lid]??0)+(int)$r['obs'];$weight+=(int)$r['obs'];$slice[]=$r;}if(!$hot)continue;$score=[count($hot),$weight];if($best===null||$score[0]>$best['score'][0]||($score[0]===$best['score'][0]&&$score[1]>$best['score'][1])){[$dep,$cid]=array_map('intval',explode('|',$k));arsort($hot,SORT_NUMERIC);$best=['departure_id'=>$dep,'country_id'=>$cid,'date_from'=>$from->format('Y-m-d'),'date_to'=>$to->format('Y-m-d'),'hotel_weights'=>$hot,'slice'=>$slice,'score'=>$score];}}}if(!$best)return[];$ids=array_slice(array_keys($best['hotel_weights']),0,HMD_A_BATCH_SIZE*HMD_A_MAX_BATCHES);$best['target_ids']=$ids;$best['mode_nights']=hmd_mode_nights($best['slice']);return$best;}
-function hmd_plan_b(array $obs,array $front):array{$g=[];foreach($obs as$r){$lid=(int)$r['hotel_id'];$h=$front[$lid]??null;if(!$h)continue;$region=(int)($h['region_id']??0);$star=(int)($h['category']??0);if($region<1||$star<3||$star>5)continue;$k=implode('|',[(int)$r['departure_id'],(int)$r['country_id'],$region,$star,(int)$r['nights'],(string)$r['departure_date']]);if(!isset($g[$k]))$g[$k]=['departure_id'=>(int)$r['departure_id'],'country_id'=>(int)$r['country_id'],'region_id'=>$region,'region_name'=>(string)($h['region_name']??''),'subregion_name'=>(string)($h['subregion_name']??''),'star'=>$star,'nights'=>(int)$r['nights'],'date'=>(string)$r['departure_date'],'hotels'=>[],'obs'=>0];$g[$k]['hotels'][$lid]=true;$g[$k]['obs']+=(int)$r['obs'];}foreach($g as&$x)$x['hotel_count']=count($x['hotels']);unset($x);$v=array_values($g);usort($v,fn($a,$b)=>$b['hotel_count']<=>$a['hotel_count']?:$b['obs']<=>$a['obs']?:strcmp($a['date'],$b['date']));return array_slice($v,0,12);}
+function hmd_plan_b(array $obs,array $front):array{
+  $g=[];
+  foreach($obs as$r){
+    $lid=(int)$r['hotel_id'];$h=$front[$lid]??null;if(!$h)continue;
+    $region=(int)($h['region_id']??0);$star=(int)($h['category']??0);if($region<1||$star<3||$star>5)continue;
+    $start=(string)$r['departure_date'];$from=new DateTimeImmutable($start);$to=$from->modify('+6 day');
+    $k=implode('|',[(int)$r['departure_id'],(int)$r['country_id'],$region,$star,(int)$r['nights'],$start]);
+    if(!isset($g[$k]))$g[$k]=[
+      'departure_id'=>(int)$r['departure_id'],'country_id'=>(int)$r['country_id'],'region_id'=>$region,
+      'region_name'=>(string)($h['region_name']??''),'subregion_name'=>(string)($h['subregion_name']??''),
+      'star'=>$star,'nights'=>(int)$r['nights'],'date_from'=>$from->format('Y-m-d'),'date_to'=>$to->format('Y-m-d'),
+      'hotels'=>[],'obs'=>0
+    ];
+    $g[$k]['hotels'][$lid]=true;$g[$k]['obs']+=(int)$r['obs'];
+  }
+  foreach($g as&$x)$x['hotel_count']=count($x['hotels']);unset($x);
+  $v=array_values($g);usort($v,fn($a,$b)=>$b['hotel_count']<=>$a['hotel_count']?:$b['obs']<=>$a['obs']?:strcmp($a['date_from'],$b['date_from']));
+  $out=[];$seen=[];
+  foreach($v as$x){$route=implode('|',[$x['departure_id'],$x['country_id'],$x['region_id'],$x['star'],$x['nights']]);if(($seen[$route]??0)>=2)continue;$seen[$route]=($seen[$route]??0)+1;$out[]=$x;if(count($out)>=12)break;}
+  return$out;
+}
 function hmd_anex_rows(mixed $r):array{if(is_array($r)&&is_array($r['prices']??null))return$r['prices'];if(is_array($r)&&array_is_list($r))return$r;return[];}
-function hmd_anex_search($cl,array $ctx,array $depNames,array $countryNames):array{$townfrom=$cl->request('SearchTour_TOWNFROMS',[]);$dep=hmd_dict_id(is_array($townfrom)?$townfrom:[],$depNames);if(!$dep)throw new RuntimeException('anex_departure_bind');$states=$cl->request('SearchTour_STATES',['TOWNFROMINC'=>$dep]);$state=hmd_dict_id(is_array($states)?$states:[],$countryNames);if(!$state)throw new RuntimeException('anex_country_bind');$towns=$cl->request('SearchTour_TOWNS',['TOWNFROMINC'=>$dep,'STATEINC'=>$state]);$town=hmd_dict_id(is_array($towns)?$towns:[],hmd_resort_aliases($ctx['region_name'],$ctx['subregion_name']));if(!$town)throw new RuntimeException('anex_town_bind');$stars=$cl->request('SearchTour_STARS',['TOWNFROMINC'=>$dep,'STATEINC'=>$state]);$star=hmd_star_id(is_array($stars)?$stars:[],$ctx['star']);if(!$star)throw new RuntimeException('anex_star_bind');$d=str_replace('-','',$ctx['date']);$curr=$cl->request('SearchTour_CURRENCIES',['TOWNFROMINC'=>$dep,'STATEINC'=>$state,'CHECKIN_BEG'=>$d,'CHECKIN_END'=>$d,'ADULT'=>2,'CHILD'=>0]);$rub=hmd_dict_id(is_array($curr)?$curr:[],['RUB','RUR','Рубль','Рубли','Руб']);if(!$rub)throw new RuntimeException('anex_rub_bind');$base=['TOWNFROMINC'=>$dep,'STATEINC'=>$state,'TOWNTOINC'=>$town,'STARS'=>$star,'CHECKIN_BEG'=>$d,'CHECKIN_END'=>$d,'NIGHTS_FROM'=>$ctx['nights'],'NIGHTS_TILL'=>$ctx['nights'],'ADULT'=>2,'CHILD'=>0,'CURRENCY'=>$rub,'FREIGHT'=>1,'FILTER'=>1,'PARTITION_PRICE'=>32,'SORT'=>'ASC','DYN_SEPARATE'=>1];$out=[];$pages=[];$seenRows=[];for($p=1;$p<=HMD_ANEX_MAX_PAGES;$p++){$raw=$cl->request('SearchTour_PRICES',$base+['PRICEPAGE'=>$p]);$rows=hmd_anex_rows($raw);$newRows=0;foreach($rows as$r){if(!is_array($r))continue;$rs=hash('sha256',hmd_json($r));if(!isset($seenRows[$rs])){$seenRows[$rs]=true;$newRows++;}$id=hmd_id($r['hotelKey']??null);if(!$id)continue;$room=hmd_text($r['room']??$r['roomName']??$r['roomType']??'',300);if(!isset($out[$id]))$out[$id]=['native_anex_id'=>$id,'name'=>hmd_text($r['hotel']??'',300),'town'=>hmd_text($r['town']??'',200),'star'=>hmd_star_value($r['star']??null),'rooms'=>[]];if($room!=='')$out[$id]['rooms'][hmd_room_key($room)]=['raw'=>$room,'key'=>hmd_room_key($room)];}$pages[]=['page'=>$p,'rows'=>count($rows),'new_rows'=>$newRows,'unique_hotels'=>count($out)];if(count($rows)===0||$newRows===0){foreach($out as&$x)$x['rooms']=array_values($x['rooms']);unset($x);return['hotels'=>$out,'pages'=>$pages,'fully_drained'=>true,'bindings'=>['townfrom'=>$dep,'state'=>$state,'town'=>$town,'star'=>$star]];}}throw new RuntimeException('anex_page_cap');}
-function hmd_and_search(AnyTourAndromedaClient $cl,array $ctx,array $depNames,array $countryNames):array{$townfrom=$cl->catalog('townfrom',[]);$dep=hmd_dict_id((array)($townfrom['TOWNFROM']??[]),$depNames);if(!$dep)throw new RuntimeException('and_departure_bind');$states=$cl->catalog('state',['TOWNFROMINC'=>$dep]);$state=hmd_dict_id((array)($states['STATE']??[]),$countryNames);if(!$state)throw new RuntimeException('and_country_bind');$all=$cl->catalog('all',['TOWNFROMINC'=>$dep,'STATEINC'=>$state]);$op=hmd_operator_id((array)($all['OPERATORS']??[]),'anex');if(!$op)throw new RuntimeException('and_anex_operator');$town=hmd_dict_id((array)($all['TOWNTO']??[]),hmd_resort_aliases($ctx['region_name'],$ctx['subregion_name']));if(!$town)throw new RuntimeException('and_town_bind');$star=hmd_star_id((array)($all['STARS']??[]),$ctx['star']);if(!$star)throw new RuntimeException('and_star_bind');$d=str_replace('-','',$ctx['date']);$base=['TOWNFROMINC'=>$dep,'STATEINC'=>$state,'TOWNTOINC'=>$town,'STARS'=>$star,'CHECKIN_BEG'=>$d,'CHECKIN_END'=>$d,'NIGHTS_FROM'=>$ctx['nights'],'NIGHTS_TILL'=>$ctx['nights'],'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>643,'OPERATORS'=>(string)$op,'PACKETTYPE'=>0,'GROUP_BY'=>32];$out=[];$meta=[];$pages=null;for($p=1;$p<=HMD_AND_MAX_PAGES;$p++){$reply=$cl->price($base+['PAGE'=>$p]);$pages=(int)($reply['PAGES_COUNT']??0);if($pages>HMD_AND_MAX_PAGES)throw new RuntimeException('and_page_cap');$rows=(array)($reply['PRICES']??[]);foreach($rows as$r){if(!is_array($r)||(string)($r['operatorKey']??'')!==(string)$op||!in_array($r['isOperatorHotelKey']??null,[0,'0'],true)||!is_array($r['original']??null))continue;$native=hmd_id($r['original']['hotelKey']??null);if(!$native)continue;$room=hmd_text($r['room']??$r['roomName']??$r['roomType']??'',300);if(!isset($out[$native]))$out[$native]=['native_anex_id'=>$native,'andromeda_hotel_id'=>hmd_text($r['hotelKey']??'',80),'name'=>hmd_text($r['hotel']??'',300),'town'=>hmd_text($r['town']??'',200),'rooms'=>[]];if($room!=='')$out[$native]['rooms'][hmd_room_key($room)]=['raw'=>$room,'key'=>hmd_room_key($room)];}$meta[]=['page'=>$p,'pages_count'=>$pages,'rows'=>count($rows),'unique_hotels'=>count($out)];if($pages===0&&$p===1&&count($rows)===0)return['hotels'=>[],'pages'=>$meta,'fully_drained'=>true,'bindings'=>['townfrom'=>$dep,'state'=>$state,'town'=>$town,'star'=>$star,'operator'=>$op]];if($p>=$pages)break;}if($pages===null||($pages>0&&count($meta)!==$pages))throw new RuntimeException('and_not_drained');foreach($out as&$x)$x['rooms']=array_values($x['rooms']);unset($x);return['hotels'=>$out,'pages'=>$meta,'fully_drained'=>true,'bindings'=>['townfrom'=>$dep,'state'=>$state,'town'=>$town,'star'=>$star,'operator'=>$op]];}
+function hmd_offer_date(mixed $v):?string{
+  if(!is_scalar($v))return null;$raw=trim((string)$v);
+  foreach(['!Y-m-d','!Ymd','!d.m.Y']as$fmt){$d=DateTimeImmutable::createFromFormat($fmt,$raw,new DateTimeZone('UTC'));$e=DateTimeImmutable::getLastErrors();if($d&&($e===false||(($e['warning_count']??0)===0&&($e['error_count']??0)===0)))return$d->format('Y-m-d');}
+  return null;
+}
+function hmd_anex_search($cl,array $ctx,array $depNames,array $countryNames):array{
+  $townfrom=$cl->request('SearchTour_TOWNFROMS',[]);$dep=hmd_dict_id(is_array($townfrom)?$townfrom:[],$depNames);if(!$dep)throw new RuntimeException('anex_departure_bind');
+  $states=$cl->request('SearchTour_STATES',['TOWNFROMINC'=>$dep]);$state=hmd_dict_id(is_array($states)?$states:[],$countryNames);if(!$state)throw new RuntimeException('anex_country_bind');
+  $towns=$cl->request('SearchTour_TOWNS',['TOWNFROMINC'=>$dep,'STATEINC'=>$state]);$town=hmd_dict_id(is_array($towns)?$towns:[],hmd_resort_aliases($ctx['region_name'],$ctx['subregion_name']));if(!$town)throw new RuntimeException('anex_town_bind');
+  $stars=$cl->request('SearchTour_STARS',['TOWNFROMINC'=>$dep,'STATEINC'=>$state]);$star=hmd_star_id(is_array($stars)?$stars:[],$ctx['star']);if(!$star)throw new RuntimeException('anex_star_bind');
+  $beg=str_replace('-','',$ctx['date_from']);$end=str_replace('-','',$ctx['date_to']);
+  $curr=$cl->request('SearchTour_CURRENCIES',['TOWNFROMINC'=>$dep,'STATEINC'=>$state,'CHECKIN_BEG'=>$beg,'CHECKIN_END'=>$end,'ADULT'=>2,'CHILD'=>0]);$rub=hmd_dict_id(is_array($curr)?$curr:[],['RUB','RUR','Рубль','Рубли','Руб']);if(!$rub)throw new RuntimeException('anex_rub_bind');
+  $base=['TOWNFROMINC'=>$dep,'STATEINC'=>$state,'TOWNTOINC'=>$town,'STARS'=>$star,'CHECKIN_BEG'=>$beg,'CHECKIN_END'=>$end,'NIGHTS_FROM'=>$ctx['nights'],'NIGHTS_TILL'=>$ctx['nights'],'ADULT'=>2,'CHILD'=>0,'CURRENCY'=>$rub,'FREIGHT'=>1,'FILTER'=>1,'PARTITION_PRICE'=>32,'SORT'=>'ASC','DYN_SEPARATE'=>1];
+  $out=[];$pages=[];$seenRows=[];
+  for($p=1;$p<=HMD_ANEX_MAX_PAGES;$p++){
+    $raw=$cl->request('SearchTour_PRICES',$base+['PRICEPAGE'=>$p]);$rows=hmd_anex_rows($raw);$newRows=0;
+    foreach($rows as$r){
+      if(!is_array($r))continue;$rs=hash('sha256',hmd_json($r));if(!isset($seenRows[$rs])){$seenRows[$rs]=true;$newRows++;}
+      $id=hmd_id($r['hotelKey']??null);$date=hmd_offer_date($r['checkIn']??null);if(!$id||$date===null||$date<$ctx['date_from']||$date>$ctx['date_to'])continue;
+      $key=$id.'|'.$date;$room=hmd_text($r['room']??$r['roomName']??$r['roomType']??'',300);
+      if(!isset($out[$key]))$out[$key]=['native_anex_id'=>$id,'check_in'=>$date,'name'=>hmd_text($r['hotel']??'',300),'town'=>hmd_text($r['town']??'',200),'star'=>hmd_star_value($r['star']??null),'rooms'=>[]];
+      if($room!=='')$out[$key]['rooms'][hmd_room_key($room)]=['raw'=>$room,'key'=>hmd_room_key($room)];
+    }
+    $pages[]=['page'=>$p,'rows'=>count($rows),'new_rows'=>$newRows,'unique_hotel_dates'=>count($out)];
+    if(count($rows)===0||$newRows===0){foreach($out as&$x)$x['rooms']=array_values($x['rooms']);unset($x);return['hotels'=>$out,'pages'=>$pages,'fully_drained'=>true,'bindings'=>['townfrom'=>$dep,'state'=>$state,'town'=>$town,'star'=>$star]];}
+  }
+  throw new RuntimeException('anex_page_cap');
+}
+function hmd_and_search(AnyTourAndromedaClient $cl,array $ctx,array $depNames,array $countryNames):array{
+  $townfrom=$cl->catalog('townfrom',[]);$dep=hmd_dict_id((array)($townfrom['TOWNFROM']??[]),$depNames);if(!$dep)throw new RuntimeException('and_departure_bind');
+  $states=$cl->catalog('state',['TOWNFROMINC'=>$dep]);$state=hmd_dict_id((array)($states['STATE']??[]),$countryNames);if(!$state)throw new RuntimeException('and_country_bind');
+  $all=$cl->catalog('all',['TOWNFROMINC'=>$dep,'STATEINC'=>$state]);$op=hmd_operator_id((array)($all['OPERATORS']??[]),'anex');if(!$op)throw new RuntimeException('and_anex_operator');
+  $town=hmd_dict_id((array)($all['TOWNTO']??[]),hmd_resort_aliases($ctx['region_name'],$ctx['subregion_name']));if(!$town)throw new RuntimeException('and_town_bind');
+  $star=hmd_star_id((array)($all['STARS']??[]),$ctx['star']);if(!$star)throw new RuntimeException('and_star_bind');
+  $base=['TOWNFROMINC'=>$dep,'STATEINC'=>$state,'TOWNTOINC'=>$town,'STARS'=>$star,'CHECKIN_BEG'=>str_replace('-','',$ctx['date_from']),'CHECKIN_END'=>str_replace('-','',$ctx['date_to']),'NIGHTS_FROM'=>$ctx['nights'],'NIGHTS_TILL'=>$ctx['nights'],'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>643,'OPERATORS'=>(string)$op,'PACKETTYPE'=>0,'GROUP_BY'=>32];
+  $out=[];$meta=[];$pages=null;
+  for($p=1;$p<=HMD_AND_MAX_PAGES;$p++){
+    $reply=$cl->price($base+['PAGE'=>$p]);$pages=(int)($reply['PAGES_COUNT']??0);if($pages>HMD_AND_MAX_PAGES)throw new RuntimeException('and_page_cap');$rows=(array)($reply['PRICES']??[]);
+    foreach($rows as$r){
+      if(!is_array($r)||(string)($r['operatorKey']??'')!==(string)$op||!in_array($r['isOperatorHotelKey']??null,[0,'0'],true)||!is_array($r['original']??null))continue;
+      $native=hmd_id($r['original']['hotelKey']??null);$date=hmd_offer_date($r['checkIn']??null);if(!$native||$date===null||$date<$ctx['date_from']||$date>$ctx['date_to'])continue;
+      $key=$native.'|'.$date;$room=hmd_text($r['room']??$r['roomName']??$r['roomType']??'',300);
+      if(!isset($out[$key]))$out[$key]=['native_anex_id'=>$native,'check_in'=>$date,'andromeda_hotel_id'=>hmd_text($r['hotelKey']??'',80),'name'=>hmd_text($r['hotel']??'',300),'town'=>hmd_text($r['town']??'',200),'rooms'=>[]];
+      if($room!=='')$out[$key]['rooms'][hmd_room_key($room)]=['raw'=>$room,'key'=>hmd_room_key($room)];
+    }
+    $meta[]=['page'=>$p,'pages_count'=>$pages,'rows'=>count($rows),'unique_hotel_dates'=>count($out)];
+    if($pages===0&&$p===1&&count($rows)===0)return['hotels'=>[],'pages'=>$meta,'fully_drained'=>true,'bindings'=>['townfrom'=>$dep,'state'=>$state,'town'=>$town,'star'=>$star,'operator'=>$op]];
+    if($p>=$pages)break;
+  }
+  if($pages===null||($pages>0&&count($meta)!==$pages))throw new RuntimeException('and_not_drained');
+  foreach($out as&$x)$x['rooms']=array_values($x['rooms']);unset($x);
+  return['hotels'=>$out,'pages'=>$meta,'fully_drained'=>true,'bindings'=>['townfrom'=>$dep,'state'=>$state,'town'=>$town,'star'=>$star,'operator'=>$op]];
+}
 function hmd_tv_fresh_anchors(string $tvToken,string $home,string $lane,array $rows,array $targetIds,array $front,array $occ,array $ex,array $protectedExt,int $detailLimit=50):array{
   $wanted=array_fill_keys(array_map('intval',$targetIds),true);$anchors=[];$holds=[];$details=0;$notFound=0;$kill=false;$room=[];
   foreach($rows as$h){
