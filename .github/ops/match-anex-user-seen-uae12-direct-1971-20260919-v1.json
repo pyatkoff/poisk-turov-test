@@ -1,0 +1,39 @@
+{
+  "operation": "hotel-match-anex-user-seen-uae12-direct-1971-20260919-v1",
+  "state": "reserved_before_provider_access",
+  "source_base": "813112d90682fc14dcdbbe204537c64b77502aa0",
+  "source_account": {
+    "endpoint": "https://api.tourvisor.ru/search/api/v1",
+    "token_source": "server TOURVISOR_JWT",
+    "operator_id": 13
+  },
+  "daily_accounting": {
+    "provider_timezone": "Europe/Moscow",
+    "provider_day": "2026-09-19",
+    "known_prior_attempt_floor": 102,
+    "daily_limit": 3000,
+    "operation_cap": 180
+  },
+  "target": {
+    "departure_id": 1,
+    "country_id": 9,
+    "date_from": "2026-12-10",
+    "date_to": "2026-12-16",
+    "nights_from": 7,
+    "nights_to": 10,
+    "adults": 2,
+    "children_count": 0,
+    "hotel_ids": [44669,74083,2590,32230,2522,73509,73055,2565,2582,133061,88323,54603]
+  },
+  "rules": {
+    "operator_filter": [13],
+    "no_dates_endpoint": true,
+    "fresh_search_only": true,
+    "initial_details_before_continue": true,
+    "full_drain": true,
+    "continue_400_requires_zero_growth": true,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "terminal_after_first_provider_access": true
+  }
+}
