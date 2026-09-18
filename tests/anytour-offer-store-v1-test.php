@@ -162,6 +162,20 @@ $source = json_encode(['fixture'=>true], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_
 $bridge = $pdo->prepare("INSERT INTO anytour_hotel_sources (namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES ('legacy_catalog',:legacy,:own,'test',:json,:sha,:first_seen,:last_seen)");
 $bridge->execute(['legacy'=>'101','own'=>$own1,'json'=>$source,'sha'=>hash('sha256',$source),'first_seen'=>$nowSql,'last_seen'=>$nowSql]);
 $bridge->execute(['legacy'=>'202','own'=>$own2,'json'=>$source,'sha'=>hash('sha256',$source),'first_seen'=>$nowSql,'last_seen'=>$nowSql]);
+$alias=$pdo->prepare("INSERT INTO anytour_hotel_sources (namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES ('anytour_local_id',:legacy,:own,'canonical_local_alias_v1',:json,:sha,:first_seen,:last_seen)");
+foreach ([101=>$own1,202=>$own2] as $legacy=>$own) {
+    $aliasSource=json_encode([
+        'schema_version'=>1,
+        'accepted_local_hotel_id'=>$legacy,
+        'canonical_hotel_id'=>$own,
+        'derived_from_namespace'=>'legacy_catalog',
+        'derived_from_source_sha256'=>hash('sha256',$source),
+    ],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+    $alias->execute([
+        'legacy'=>(string)$legacy,'own'=>$own,'json'=>$aliasSource,'sha'=>hash('sha256',$aliasSource),
+        'first_seen'=>$nowSql,'last_seen'=>$nowSql,
+    ]);
+}
 
 $at = new DateTimeImmutable('2026-09-16T18:00:00Z');
 $expires = $at->modify('+30 minutes');
