@@ -68,13 +68,29 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             ];
             if ($candidateAllowed($selection, $offer) !== true) continue;
             $key = $offerRef . ':' . $local;
-            $eligible[$key] = $selection;
+            $eligible[$key] = [
+                'selection' => $selection,
+                'freight_external' => self::freightExternal($offer),
+            ];
+        }
+
+        // get_flights is only meaningful when the supplier reports external freight.
+        // The search row is not authority to skip any mapped candidate, but it is useful
+        // for spending the deliberately small capture budget: true first, then unknown,
+        // then explicit false. Stable insertion order is preserved inside each bucket.
+        $captureQueue = [];
+        foreach ([true, null, false] as $priority) {
+            foreach ($eligible as $key => $candidate) {
+                if ($candidate['freight_external'] === $priority) {
+                    $captureQueue[$key] = $candidate['selection'];
+                }
+            }
         }
 
         $attempted = 0;
         $surchargeReady = 0;
         $captured = [];
-        foreach ($eligible as $key => $selection) {
+        foreach ($captureQueue as $key => $selection) {
             if ($attempted >= $maxCaptures) break;
             ++$attempted;
             $receipt = $captureSurcharge($selection);
@@ -122,5 +138,11 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             if (str_contains($compact, $other)) return false;
         }
         return true;
+    }
+
+    private static function freightExternal(array $offer): ?bool
+    {
+        $value = $offer['transport_context']['freight_external'] ?? null;
+        return is_bool($value) ? $value : null;
     }
 }
