@@ -143,7 +143,11 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
           assert.ok(adults && children && childAge, 'wide desktop exposes adults, children and hydrated child age');
           assert.ok(Math.max(adults.top, children.top, childAge.top) - Math.min(adults.top, children.top, childAge.top) <= 3, 'one child age aligns with adults and children');
           assert.ok(childAge.width <= Math.max(adults.width, children.width) + 1, 'child age remains a compact tourist control');
-          assert.ok(Math.max(...state.preferenceTops) - Math.min(...state.preferenceTops) <= 3, 'wide desktop keeps the six primary OTA preferences visually aligned on one row');
+          const preferenceNames = ['region', 'hotel', 'stars', 'food', 'price_from', 'price_till'];
+          const preferenceControls = state.controls.filter(item => preferenceNames.includes(item.name));
+          assert.deepEqual(preferenceControls.map(item => item.name), preferenceNames, 'wide desktop exposes all six primary OTA preference controls');
+          const controlTops = preferenceControls.map(item => item.top);
+          assert.ok(Math.max(...controlTops) - Math.min(...controlTops) <= 3, 'wide desktop aligns preference controls even when labels include budget guidance');
           assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[0] + 40, 'exact hotel gets the widest primary track');
           assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[2] + 100, 'hotel track stays materially wider than compact category');
           assert.ok(state.preferenceWidth >= state.form.width - 50);
