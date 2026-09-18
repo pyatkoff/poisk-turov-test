@@ -1,0 +1,158 @@
+name: INT Andromeda first local DB snapshot
+
+on:
+  push:
+    branches:
+      - 'ops/int-andromeda-local-db-seed-20260918-v1'
+    paths:
+      - 'scripts/ops/int_andromeda_local_db_seed.php'
+      - '.github/workflows/int-andromeda-local-db-seed.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-andromeda-local-db-seed-1717-20260918-v1
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_SHA: 2dc144c9179f07006bd7783077c0e03097a3d8fe
+      RELEASE_DATA_SHA: 4db48156a62b162339860de7c11c5778e3146f8a
+      OPERATION_ID: int-andromeda-local-db-seed-1717-20260918-v1
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 8
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_DATA_SHA }}
+          path: release-data
+          persist-credentials: false
+
+      - name: Bind exact one-shot sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-andromeda-local-db-seed.yml'
+          test "${changed[1]}" = 'scripts/ops/int_andromeda_local_db_seed.php'
+
+          php -l scripts/ops/int_andromeda_local_db_seed.php >/dev/null
+          php -l scripts/ops/andromeda_local_offer_collect.php >/dev/null
+          php -l app/integrations/andromeda-local-offer-collector.php >/dev/null
+          php tests/andromeda-local-offer-collector-test.php
+
+          test "$(git rev-parse "$BASE_SHA:app/integrations/andromeda-anytour-offer-autosave.php")" = "$(git rev-parse "HEAD:app/integrations/andromeda-anytour-offer-autosave.php")"
+          test "$(git rev-parse "$BASE_SHA:app/integrations/andromeda-saved-package-runtime.php")" = "$(git rev-parse "HEAD:app/integrations/andromeda-saved-package-runtime.php")"
+          test "$(git rev-parse "$BASE_SHA:v2/api-andromeda-search3-preview.php")" = "$(git rev-parse "HEAD:v2/api-andromeda-search3-preview.php")"
+
+          test "$(git -C release-data rev-parse HEAD)" = "$RELEASE_DATA_SHA"
+          test "$(git -C release-data hash-object v2/data/anytour-offer-snapshot-ingest-v1.php)" = '4b6b73c11a8de0401c05187982ba977e61a14354'
+          test "$(git -C release-data hash-object v2/data/anytour-offer-store-v1.php)" = 'f53751533977ba01e44c9f6a3adb4c7e89f6dc9b'
+
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY"
+          test -n "$ANYTOOUR_DEPLOY_HOST"
+          test -n "$ANYTOOUR_DEPLOY_USER"
+
+      - name: Prepare exact temporary INT runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+          stage="$RUNNER_TEMP/andromeda-local-db-runtime"
+          mkdir -p "$stage/app" "$stage/v2" "$stage/scripts/ops"
+          cp -a app/integrations "$stage/app/"
+          cp v2/api-anex-search3-preview.php "$stage/v2/"
+          cp v2/api-andromeda-search3-preview.php "$stage/v2/"
+          cp -a release-data/v2/data "$stage/v2/"
+          cp scripts/ops/andromeda_local_offer_collect.php "$stage/scripts/ops/"
+          cp scripts/ops/int_andromeda_local_db_seed.php "$stage/scripts/ops/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/andromeda-local-db-runtime.tar.gz" .
+          sha256sum "$RUNNER_TEMP/andromeda-local-db-runtime.tar.gz"
+
+      - name: Execute exactly one private Andromeda seed operation
+        id: seed
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/anytoour_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          archive="/tmp/${OPERATION_ID}.${GITHUB_RUN_ID}.tar.gz"
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/andromeda-local-db-runtime.tar.gz" "$remote:$archive"
+
+          set +e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$archive" "$BASE_SHA" <<'REMOTE'
+          set -euo pipefail
+          operation="$1"
+          archive="$2"
+          source="$3"
+          site="$HOME/www/anytoour.ru"
+          private="$HOME/.anytoour-andromeda"
+          ledger="$HOME/.anytour-ops/$operation"
+          test -d "$site"
+          test -s "$site/config.php"
+          test -s "$private/search3-preview.php"
+          test -d "$private/searches"
+          test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"
+          mkdir -m 700 "$ledger"
+          printf '%s\n' 'reserved' > "$ledger/state"
+
+          work="$(mktemp -d "/tmp/${operation}.XXXXXX")"
+          cleanup(){ rm -rf "$work"; rm -f "$archive"; }
+          trap cleanup EXIT
+          tar -C "$work" -xzf "$archive"
+          php -l "$work/scripts/ops/int_andromeda_local_db_seed.php" >/dev/null
+
+          set +e
+          php "$work/scripts/ops/int_andromeda_local_db_seed.php" "$site" "$source" > "$ledger/receipt.json" 2> "$ledger/error.log"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            printf '%s\n' 'failed_terminal_no_replay' > "$ledger/state"
+            exit "$rc"
+          fi
+          php -r '$x=json_decode(file_get_contents($argv[1]),true,32,JSON_THROW_ON_ERROR);if(($x["status"]??null)!=="completed"||($x["delta"]["andromeda_offers"]??0)<1||($x["collector"]["ready_offer_count"]??0)<1||($x["collector"]["autosave_published"]??false)!==true)exit(2);' "$ledger/receipt.json"
+          printf '%s\n' 'completed' > "$ledger/state"
+          REMOTE
+          rc=$?
+          set -e
+
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/receipt.json" || true
+          test -s "$RUNNER_TEMP/receipt.json"
+          cat "$RUNNER_TEMP/receipt.json"
+          if [ "$rc" -ne 0 ]; then exit "$rc"; fi
+          jq -e '.status == "completed" and .provider == "andromeda" and (.delta.andromeda_offers > 0) and (.delta.andromeda_active > 0) and (.collector.ready_offer_count > 0) and (.collector.autosave_published == true) and (.booking_calls == 0) and (.lead_calls == 0) and (.mapping_writes == 0) and (.search3_publication == 0) and (.production_webroot_writes == 0) and (.replay_allowed == false)' "$RUNNER_TEMP/receipt.json" >/dev/null
+
+      - name: Preserve sanitized Andromeda snapshot receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-andromeda-local-db-snapshot-${{ github.run_id }}
+          path: ${{ runner.temp }}/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
