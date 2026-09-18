@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/andromeda-surcharge-group-key.php';
+
 /**
  * INT-owned orchestration for a complete Andromeda cohort followed by a bounded
  * number of retained package/get_flights surcharge captures and canonical autosave.
@@ -94,20 +96,24 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             ];
             if ($candidateAllowed($selection, $offer) !== true) continue;
             $key = $offerRef . ':' . $local;
+            $freightExternal = self::freightExternal($offer);
             $eligible[$key] = [
                 'selection' => $selection,
-                'freight_external' => self::freightExternal($offer),
-                'transport_group' => self::transportGroup($offer, (string)$operatorRef, $key),
+                'freight_external' => $freightExternal,
+                'transport_group' => self::captureGroup(
+                    $offer, $request, (string)$operatorRef, $key, $freightExternal
+                ),
             ];
         }
 
         // get_flights is only meaningful when the supplier reports external freight.
         // The search row is not authority to skip any mapped candidate, but it is useful
         // for spending the deliberately small capture budget: true first, then unknown,
-        // then explicit false. Within each bucket, first sample distinct transport
-        // program/tour groups; only then spend budget on another offer from a group that
-        // was already attempted. This prevents a cheap hotel-order cluster from consuming
-        // the whole bounded supplier budget for one flight program.
+        // then explicit false. External-freight rows use the evidence-backed strict
+        // surcharge key, so route/date/nights/party/currency/tour differences cannot be
+        // collapsed merely because operator/program match. Ungroupable external rows are
+        // fail-closed into unique-offer buckets. Historical unknown/non-external ordering
+        // stays unchanged until its separate pricing contract is replaced.
         $captureQueue = [];
         $priorities = $captureMode === 'non_external_only' ? [false] : [true, null, false];
         foreach ($priorities as $priority) {
@@ -225,7 +231,21 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         return is_bool($value) ? $value : null;
     }
 
-    private static function transportGroup(array $offer, string $operatorRef, string $fallback): string
+    private static function captureGroup(
+        array $offer,
+        array $request,
+        string $operatorRef,
+        string $fallback,
+        ?bool $freightExternal
+    ): string {
+        if ($freightExternal === true) {
+            $strict = AndromedaSurchargeGroupKey::build($offer, $request);
+            return $strict ?? 'offer:' . $fallback;
+        }
+        return self::legacyTransportGroup($offer, $operatorRef, $fallback);
+    }
+
+    private static function legacyTransportGroup(array $offer, string $operatorRef, string $fallback): string
     {
         $context = is_array($offer['transport_context'] ?? null) ? $offer['transport_context'] : [];
         $program = $context['program_ref'] ?? null;
