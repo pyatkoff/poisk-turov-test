@@ -1,0 +1,86 @@
+name: INT inspect sealed Andromeda v9 package shape
+
+on:
+  push:
+    branches: ['ops/int-andromeda-v9-package-shape-diagnosis-20260918-v1']
+    paths: ['.github/workflows/int-andromeda-v9-package-shape-diagnosis-v1.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.ref == 'refs/heads/ops/int-andromeda-v9-package-shape-diagnosis-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect retained package shape only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          ssh -T -i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes             -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null             -o ConnectTimeout=15 "$REMOTE_USER@$HOST" 'php -d display_errors=0 -d log_errors=0' > "$RUNNER_TEMP/result/result.json" <<'PHP'
+          <?php
+          declare(strict_types=1); error_reporting(0);
+          $fail=static function(string $r):never{fwrite(STDERR,"SHAPE_FAIL ".preg_replace('/[^A-Za-z0-9_.:-]+/','_',$r)."\n");exit(2);};
+          $read=static function(string $p,int $max=3000000):?array{if(is_link($p)||!is_file($p))return null;$s=filesize($p);if(!is_int($s)||$s<2||$s>$max)return null;try{$v=json_decode((string)file_get_contents($p),true,64,JSON_THROW_ON_ERROR);return is_array($v)?$v:null;}catch(Throwable){return null;}};
+          $bump=static function(array &$a,string $k):void{$a[$k]=($a[$k]??0)+1;};
+          $flat=static function(array $root,string $outer,string $inner):array{$out=[];foreach(($root[$outer]??[]) as $b){if(!is_array($b)||!is_array($b[$inner]??null))continue;foreach($b[$inner] as $r)if(is_array($r))$out[]=$r;}return $out;};
+          $home=rtrim((string)getenv('HOME'),'/');$dir=$home.'/.anytoour-andromeda/searches';if($home===''||!is_dir($dir)||is_link($dir))$fail('search_dir');
+          $first=null;$inventory=0;
+          foreach(new DirectoryIterator($dir) as $e){if($e->isDot())continue;if(++$inventory>100000)$fail('inventory');if($e->isLink()||!$e->isFile()||!preg_match('/\A([a-f0-9]{64})-1\.json\z/D',$e->getFilename(),$m))continue;
+            $x=$read($e->getPathname());$c=is_array($x)?($x['criteria']??null):null;$st=is_array($x)?($x['store']??null):null;
+            if(!is_array($c)||!is_array($st)||($x['generation']??null)!==17171829||!is_int($st['created_at']??null))continue;
+            if((string)($c['CHECKIN_BEG']??'')==='20261017'&&(string)($c['CHECKIN_END']??'')==='20261017'&&(string)($c['NIGHTS_FROM']??'')==='7'&&(string)($c['NIGHTS_TILL']??'')==='7'&&(string)($c['ADULT']??'')==='2'&&(string)($c['CHILD']??'')==='0')
+              if($first===null||$st['created_at']>$first['created'])$first=['ref'=>$m[1],'created'=>$st['created_at']];
+          }
+          if($first===null)$fail('cohort');
+          $ref=$first['ref'];$created=$first['created'];$offers=[];
+          foreach(new DirectoryIterator($dir) as $e){if($e->isDot()||$e->isLink()||!$e->isFile())continue;$n=$e->getFilename();$page=null;
+            if($n===$ref.'-1.json')$page=1;elseif(preg_match('/\A'.preg_quote($ref,'/').'-'.preg_quote((string)$created,'/').'-(\d+)\.json\z/D',$n,$m))$page=(int)$m[1];if($page===null)continue;
+            $x=$read($e->getPathname());$snap=is_array($x)?($x['store']['snapshot']??null):null;if(!is_array($snap)||!is_array($snap['offers']??null))continue;
+            foreach($snap['offers'] as $o){if(!is_array($o)||!is_string($o['offer_ref']??null))continue;$f=$o['transport_context']['freight_external']??null;$offers[$o['offer_ref']]=$f===true?'true':($f===false?'false':'unknown');}
+          }
+          $out=['package_records'=>0,'search_freight_external'=>[],'claim_freight_external'=>[],'claim_condition'=>[],'claim_ttavia_selected_count'=>[],'claim_fuel_service_count'=>[],'claim_fuel_service_money_present'=>[],'buyer_money_rows'=>[],'variant_ttavia_rows'=>[],'variant_markup_rows'=>[],'surcharge_status'=>[]];
+          $prefix=$ref.'-'.$created.'-';
+          foreach(new DirectoryIterator($dir) as $e){if($e->isDot()||$e->isLink()||!$e->isFile())continue;$n=$e->getFilename();if(!str_starts_with($n,$prefix)||!str_ends_with($n,'-package.json'))continue;$env=$read($e->getPathname());$rec=is_array($env)?($env['record']??null):null;if(!is_array($rec)||($rec['status']??null)!=='captured'||!is_array($rec['private_package']??null))continue;
+            ++$out['package_records'];$ctx=$rec['context']??[];$or=is_array($ctx)&&is_string($ctx['offer_ref']??null)?$ctx['offer_ref']:'';$bump($out['search_freight_external'],$offers[$or]??'unknown');
+            $pkg=$rec['private_package'];$doc=is_array($pkg['claimDocument'][0]??null)?$pkg['claimDocument'][0]:[];
+            $f=$doc['freightExternal']??null;if(is_string($f)&&preg_match('/^[0-9]{1,6}$/D',$f))$f=(int)$f;$bump($out['claim_freight_external'],is_int($f)?($f>0?'nonzero':'zero'):'missing');
+            $cond=$doc['condition']??null;$bump($out['claim_condition'],is_string($cond)&&preg_match('/^[A-Za-z0-9_]{1,32}$/D',$cond)?$cond:'other');
+            $selected=0;foreach($flat($doc,'transports','transport') as $t)if(($t['type']??null)==='ttAvia')++$selected;$bump($out['claim_ttavia_selected_count'],(string)$selected);
+            $fuel=0;$fuelMoney=0;foreach($flat($doc,'services','service') as $s){if((string)($s['servicetype']??'')==='8'&&(string)($s['servicecategoryName']??'')==='Топливный сбор'){++$fuel;if((is_string($s['price']??null)||is_int($s['price']??null)||is_float($s['price']??null))&&is_string($s['currencyAlias']??null))++$fuelMoney;}}$bump($out['claim_fuel_service_count'],(string)$fuel);$bump($out['claim_fuel_service_money_present'],$fuelMoney>0?'true':'false');
+            $buyers=0;foreach(($doc['buyerMoneys']??[]) as $b)if(is_array($b)&&is_array($b['buyerClaimMoney']??null))$buyers+=count(array_filter($b['buyerClaimMoney'],'is_array'));$bump($out['buyer_money_rows'],(string)$buyers);
+            $vt=0;$vm=0;foreach(($pkg['variants']??[]) as $v){if(!is_array($v))continue;foreach($flat($v,'transports','transport') as $t){if(($t['type']??null)!=='ttAvia')continue;++$vt;foreach(($t['details']??[]) as $b){if(!is_array($b)||!is_array($b['detail']??null))continue;foreach($b['detail'] as $d)if(is_array($d)&&array_key_exists('markup',$d)&&array_key_exists('currency',$d))++$vm;}}}$bump($out['variant_ttavia_rows'],(string)$vt);$bump($out['variant_markup_rows'],(string)$vm);
+            $stem=substr($e->getPathname(),0,-strlen('-package.json'));$s=$read($stem.'-surcharge-v1.json',16384);$bump($out['surcharge_status'],is_array($s)&&is_string($s['status']??null)?$s['status']:'missing');
+          }
+          foreach($out as &$v)if(is_array($v))ksort($v,SORT_STRING);unset($v);
+          echo json_encode(['schema_version'=>1,'source'=>'andromeda-v9-package-shape-diagnosis-v1','cohort'=>['generation'=>17171829,'package_records'=>$out['package_records']],'facts'=>$out,'supplier_calls'=>0,'db_reads'=>0,'db_writes'=>0,'filesystem_writes'=>0,'booking_calls'=>0,'lead_calls'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          PHP
+          python3 - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'result','result.json');d=json.load(open(p,encoding='utf-8'))
+          assert d['source']=='andromeda-v9-package-shape-diagnosis-v1' and d['cohort']['package_records']==4
+          assert d['supplier_calls']==d['db_reads']==d['db_writes']==d['filesystem_writes']==d['booking_calls']==d['lead_calls']==0
+          print(json.dumps(d,ensure_ascii=False,sort_keys=True))
+          PY
+      - name: Upload sanitized shape diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-andromeda-v9-package-shape-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/result.json
+          if-no-files-found: error
+          retention-days: 14
