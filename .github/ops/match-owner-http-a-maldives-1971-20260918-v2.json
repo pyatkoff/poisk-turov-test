@@ -1,0 +1,40 @@
+{
+  "operation": "hotel-match-owner-dual-lane-http-a-1971-20260918-v2",
+  "parent_operation": "hotel-match-owner-dual-lane-http-a-1971-20260918-v1",
+  "state": "reserved_before_provider_access",
+  "source_sha": "1b8d68864e84ee35a1bae7e2a07dbedc41a0b675",
+  "transport": "curl HTTP/1.1 to existing local-candidate api-v2.php",
+  "tourvisor_operator_id": 13,
+  "tourvisor_operator_evidence": "immutable common4 v3 artifact 10525638655; TV ANEX=13",
+  "owner_additional_allowance_total": 300,
+  "supplemental_used_before_operation": 1,
+  "operation_cap": 25,
+  "effective_remaining_before_operation": 299,
+  "rules": {
+    "tourvisor_dates_endpoint": false,
+    "fresh_search_only": true,
+    "fresh_tour_detail_only": true,
+    "full_drain_continue": true,
+    "no_replay_after_first_provider_access": true,
+    "database_writes": 0,
+    "mapping_writes": 0
+  },
+  "cohort": {
+    "country_id": 8,
+    "country": "Мальдивы",
+    "departure_id": 1,
+    "departure": "Москва",
+    "date_from": "2026-10-10",
+    "date_to": "2026-10-16",
+    "nights_from": 5,
+    "nights_to": 7,
+    "hotel_ids": [
+      26043,
+      2444,
+      72602,
+      2445,
+      2476
+    ]
+  },
+  "canonical_sha256": "9061a75824305b8adafb4c993ea4877f675def0c4fd21d0cfb28c843cec400c6"
+}
