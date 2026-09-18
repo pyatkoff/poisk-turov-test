@@ -82,7 +82,7 @@ try {
     $hot=hd14_rows($db,"SELECT id,country_id,name,is_active,latitude,longitude FROM catalog_hotels WHERE id IN ($lph) FOR UPDATE",$lids);
     $and=[];
     if (hd14_table_exists($db,'andromeda_hotel_identities')) {
-        foreach(hd14_rows($db,"SELECT local_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IN ($lph) FOR SHARE",$lids) as $r) $and[(int)$r['local_hotel_id']]=true;
+        foreach(hd14_rows($db,"SELECT local_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IN ($lph)",$lids) as $r) $and[(int)$r['local_hotel_id']]=true;
     }
     $byA=[];$byL=[];$byH=[];$byD=[];$byE=[];
     foreach($maps as $r){$byA[(int)$r['anex_hotel_id']][]=$r;$byL[(int)$r['catalog_hotel_id']][]=$r;}
