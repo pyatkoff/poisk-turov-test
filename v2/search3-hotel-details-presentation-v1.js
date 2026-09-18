@@ -32,9 +32,53 @@ function normalizeAmbiguousRating(card){
  rating.setAttribute('aria-label','Каталожная оценка '+value+'. Источник, шкала и число отзывов не указаны.');
  return true;
 }
+// Reuse the canonical action URL; presentation never reconstructs search authority.
+function hotelTitleHref(card){
+ if(!active()||hotelUrlId()||!card||typeof card.querySelector!=='function'||window.V2SearchLifecycle?.dirty)return'';
+ const id=String(card.dataset&&card.dataset.anytourHotelId||''),action=card.querySelector('a.tour-more-toggle[target="_blank"]');
+ if(!/^[1-9][0-9]*$/.test(id)||!action)return'';
+ const href=String(action.getAttribute('href')||'');
+ try{
+  const current=new URL(window.location.href),url=new URL(href,current);
+  if(!/^https?:$/.test(url.protocol)||url.origin!==current.origin||url.pathname!==current.pathname||url.username||url.password)return'';
+  const hotels=url.searchParams.getAll('search3_hotel'),searches=url.searchParams.getAll('search3_search');
+  if(hotels.length!==1||hotels[0]!==id||searches.length!==1||!/^[1-9][0-9]*$/.test(searches[0]))return'';
+  return href;
+ }catch(error){return'';}
+}
+function unwrapTitleLink(link){
+ const parent=link&&link.parentNode;if(!parent)return false;
+ while(link.firstChild)parent.insertBefore(link.firstChild,link);
+ parent.removeChild(link);return true;
+}
+function normalizeHotelTitleLink(card){
+ if(!active()||!card||typeof card.querySelector!=='function')return false;
+ const title=card.querySelector('.hotel-title');if(!title||typeof title.querySelector!=='function')return false;
+ let link=title.querySelector('a.search3-hotel-title-link');
+ const href=hotelTitleHref(card);
+ if(!href)return unwrapTitleLink(link);
+ if(!link&&title.querySelector('a'))return false;
+ const name=text(title);if(!name)return false;
+ let changed=false;
+ if(!link){
+  link=document.createElement('a');link.className='search3-hotel-title-link';
+  while(title.firstChild)link.appendChild(title.firstChild);
+  title.appendChild(link);changed=true;
+ }
+ const attributes={href,target:'_blank',rel:'noopener','aria-label':name+' — откроется в новой вкладке'};
+ Object.keys(attributes).forEach(key=>{if(link.getAttribute(key)!==attributes[key]){link.setAttribute(key,attributes[key]);changed=true;}});
+ return changed;
+}
+function resetPresentation(){
+ if(!active())return;
+ restoreTitle();
+ const root=document.getElementById('results');
+ if(root&&typeof root.querySelectorAll==='function')root.querySelectorAll('.hotel-title a.search3-hotel-title-link').forEach(unwrapTitleLink);
+}
 function normalizeCard(card){
  if(!active()||!card||typeof card.querySelector!=='function')return false;
  let changed=normalizeAmbiguousRating(card);
+ if(normalizeHotelTitleLink(card))changed=true;
  const summary=card.querySelector('.hotel-description-summary'),details=card.querySelector('.hotel-details'),content=details&&details.querySelector('.hotel-details-content'),duplicate=content&&content.querySelector('.hotel-description');
  if(!summary||!details||!content||!duplicate||text(summary)!==text(duplicate))return changed;
  if(typeof duplicate.remove==='function')duplicate.remove();else if(duplicate.parentNode)duplicate.parentNode.removeChild(duplicate);
@@ -48,6 +92,6 @@ function normalize(root){
 }
 window.addEventListener('v2:results-rendered',event=>normalize(event.detail&&event.detail.results||document.getElementById('results')));
 window.addEventListener('v2:hotel-details-rendered',event=>{const root=document.getElementById('results'),id=String(event.detail&&event.detail.hotelId||'');if(!root||!id)return;const card=Array.from(root.querySelectorAll('.hotel-card')).find(node=>String(node.dataset&&node.dataset.hotelId||'')===id);if(card)normalizeCard(card);});
-['v2:search-started','v2:search-reset'].forEach(name=>window.addEventListener(name,restoreTitle));
-window.Search3HotelDetailsPresentationV1={active,syncHotelPageTitle,normalizeAmbiguousRating,normalizeCard,normalize,version:3};
+['v2:search-started','v2:search-reset'].forEach(name=>window.addEventListener(name,resetPresentation));
+window.Search3HotelDetailsPresentationV1={active,syncHotelPageTitle,normalizeAmbiguousRating,hotelTitleHref,normalizeHotelTitleLink,normalizeCard,normalize,version:4};
 })();
