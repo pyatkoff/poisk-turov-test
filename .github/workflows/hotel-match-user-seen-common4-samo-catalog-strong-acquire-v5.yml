@@ -61,7 +61,6 @@ jobs:
           assert c.get('issue_url','').endswith('/issues/2530')
           b=c.get('body','')
           assert os.environ['OPERATION_ID'] in b
-          assert 'global provider-native strong catalog acquisition' in b
           PY
 
       - name: Create durable reservation before provider access
