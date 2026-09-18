@@ -154,6 +154,41 @@ ok(!in_array(200,$nonExternalOrder,true)&&!in_array(201,$nonExternalOrder,true),
 ok($massResult['capture_mode']==='non_external_only'&&$massResult['capture_queue_offers']===12,'nonexternal queue metadata');
 ok($massResult['surcharge_ready']===12&&$massResult['ready_offer_count']===12,'verified calc counts as ready');
 
+// The optional wall-clock budget must stop starting new supplier candidates and
+// still run the existing single autosave. It is deliberately stricter than the
+// supplier-call count so already-verified 300s quote evidence can stay fresh.
+$budgetOrder=[];$budgetAutosaveCalls=0;$budgetTicks=[100.0,120.0,311.0];
+$budgetClock=static function()use(&$budgetTicks):float{
+    if($budgetTicks===[])throw new RuntimeException('unexpected_clock_read');
+    return array_shift($budgetTicks);
+};
+$budgetResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
+    $request,
+    static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('8',64),'pages_count'=>1,'status'=>'complete'],
+    $massCohort,$allAllowed,
+    static function(array $selection)use(&$budgetOrder):array{
+        $budgetOrder[]=$selection['local_id'];
+        return ['status'=>'captured','surcharge'=>['status'=>'complete','fact'=>null,'final_price_verified'=>true]];
+    },
+    static function(array $r,string $ref,int $generation)use(&$budgetAutosaveCalls):array{
+        ++$budgetAutosaveCalls;
+        return ['published'=>true,'reason'=>null,'readyOfferCount'=>2];
+    },
+    12,'non_external_only',210,$budgetClock
+);
+ok(count($budgetOrder)===2,'time budget must stop before third supplier candidate');
+ok($budgetAutosaveCalls===1,'time budget must still autosave once');
+ok($budgetResult['surcharge_capture_attempts']===2&&$budgetResult['surcharge_ready']===2,'time budget counts only attempted captures');
+ok($budgetResult['capture_time_budget_seconds']===210&&$budgetResult['capture_time_budget_exhausted']===true,'time budget metadata');
+
+$budgetInputThrown=false;
+try{
+    AnyTourAndromedaLocalOfferCollectorV1::collect(
+        $request,$search,$cohort,$allow,$capture,$autosave,2,'all',241
+    );
+}catch(InvalidArgumentException $error){$budgetInputThrown=$error->getMessage()==='ANDROMEDA_LOCAL_COLLECTOR_INPUT';}
+ok($budgetInputThrown,'time budget above freshness-safe CLI contract rejected');
+
 $terminalOrder=[];$terminalAutosaveCalls=0;
 $terminalCapture=static function(array $selection)use(&$terminalOrder):array{
     $terminalOrder[]=$selection['local_id'];
@@ -195,4 +230,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 program_diversity=1 nonexternal_mass=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 program_diversity=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
