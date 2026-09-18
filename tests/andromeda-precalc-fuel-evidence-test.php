@@ -52,11 +52,13 @@ $runPending = static function(array $reply) use ($resolved, $package): array {
         && $result['final_price_verified'] === false && $result['booking_enabled'] === false,
         'fuel_evidence_created_final_authority');
     fuel_need($result['calc_money_facts_reported'] === [], 'invented_calc_money');
-    fuel_need($result['search_price_estimate']['amount'] === $result['search_price']['amount'],
-        'fuel_was_added_to_flight_estimate');
-    fuel_need(!isset($result['fuel_total'], $result['price_with_fuel'])
-        && !array_key_exists('fuel_included', $result) && !array_key_exists('finalPriceReady', $result),
-        'invented_fuel_basis_or_readiness');
+    fuel_need($result['search_price'] === ['amount' => '119114', 'currency' => 'RUB']
+        && $result['search_price_estimate'] === [
+            'amount' => '119114.00', 'currency' => 'RUB', 'source' => 'derived_search_estimate',
+        ], 'fuel_was_added_to_flight_estimate');
+    foreach (['fuel_total', 'price_with_fuel', 'fuel_included', 'finalPriceReady'] as $unsupported) {
+        fuel_need(!array_key_exists($unsupported, $result), 'invented_fuel_basis_or_readiness');
+    }
     $encoded = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     foreach (['private_fuel_uid_', 'private_people_key', 'private_common', 'SID_precalc_fixture',
         'opaque-claiminc', 'catalog-reduced', 'out_two'] as $private) {
@@ -104,4 +106,4 @@ $wrongKind['claimDocument'][0]['services'] = [['service' => [$wrongService]]];
 fuel_need($runPending($wrongKind)['fuel_surcharges_reported'] === [], 'flight_markup_relabeled_as_fuel');
 fuel_need($runPending($pending)['fuel_surcharges_reported'] === [], 'missing_fuel_invented');
 
-print("ANDROMEDA_PRECALC_FUEL_EVIDENCE_OK checks={$fuelChecks} live_supplier_calls=0 calc_calls=0 db_writes=0\n");
+print("ANDROMEDA_PRECALC_FUEL_EVIDENCE_OK checks={$fuelChecks} live_supplier_calls=0 new_cases_calc_calls=0 live_db_writes=0\n");
