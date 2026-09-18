@@ -1,0 +1,142 @@
+name: MATCH Tourvisor quota recovery v1
+
+on:
+  push:
+    branches:
+      - ops/match-tv-quota-recovery-1971-20260918-v1
+    paths:
+      - .github/workflows/hotel-match-tv-quota-recovery-v1.yml
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: match-tv-quota-recovery-1971-20260918-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-tv-quota-recovery-1971-20260918-v1
+  EXPECTED_BASE: 2c712e70e9eb2df99270fc46e46c58f08dd10a11
+  CLAIM_COMMENT_ID: '5732193950'
+  TERMINAL_V3_OPERATION: hotel-match-user-seen-tv-detail-saturation-1971-20260918-v3
+  QUOTA_DAY: '2026-09-18'
+
+jobs:
+  recover:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate isolated read-only recovery claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          test "${#changed[@]}" -eq 1
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-tv-quota-recovery-v1.yml'
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json, os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          b=c['body']
+          assert os.environ['OPERATION_ID'] in b
+          assert os.environ['TERMINAL_V3_OPERATION'] in b
+          assert 'READ ONLY' in b and 'No Tourvisor' in b
+          assert '3000' in b and 'quota' in b.lower()
+          PY
+
+      - name: Recover durable quota ledger read-only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"
+          umask 077
+          mkdir -p recovery
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ConnectionAttempts=3)
+          ssh "${opts[@]}" "$SSH_USER@$SSH_HOST" python3 - "$QUOTA_DAY" "$TERMINAL_V3_OPERATION" <<'PY' > recovery/recovered.json
+          import hashlib, json, os, pathlib, sys
+          day, op = sys.argv[1], sys.argv[2]
+          home=pathlib.Path.home()
+          quota=home/'.anytour-match'/'provider-quotas'/f'tourvisor-test-{day}.json'
+          opdir=home/'.anytour-match'/'operations'/op
+          out={'operation':'hotel-match-tv-quota-recovery-1971-20260918-v1','mode':'read_only','remote_writes':0,'provider_calls':0,'database_writes':0,'mapping_writes':0,'quota_day':day,'terminal_operation':op}
+          if quota.is_file():
+              raw=quota.read_bytes()
+              out['quota_exists']=True
+              out['quota_sha256']=hashlib.sha256(raw).hexdigest()
+              try:
+                  q=json.loads(raw)
+              except Exception:
+                  q=None
+              out['quota_json']=q if isinstance(q,dict) else None
+          else:
+              out['quota_exists']=False
+              out['quota_sha256']=None
+              out['quota_json']=None
+          files={}
+          for name in ['reservation.json','result.json','receipt.json']:
+              p=opdir/name
+              row={'exists':p.is_file()}
+              if p.is_file():
+                  raw=p.read_bytes(); row['size']=len(raw); row['sha256']=hashlib.sha256(raw).hexdigest()
+                  try:
+                      j=json.loads(raw)
+                  except Exception:
+                      j=None
+                  if isinstance(j,dict):
+                      row['state']=j.get('state')
+                      row['http_attempts']=j.get('http_attempts')
+                      row['rate_limited']=j.get('rate_limited')
+              files[name]=row
+          out['terminal_operation_files']=files
+          print(json.dumps(out,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Verify and derive safe remaining budget
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib
+          p=pathlib.Path('recovery/recovered.json')
+          r=json.loads(p.read_text())
+          assert r['mode']=='read_only' and r['provider_calls']==0 and r['remote_writes']==0
+          q=r.get('quota_json')
+          if not r.get('quota_exists') or not isinstance(q,dict):
+              summary={'state':'quota_unknown_fail_closed','safe_remaining_requests':0,'owner_daily_limit':3000,'known_prior_attempt_floor':25,'provider_calls':0,'database_writes':0,'mapping_writes':0,'source_sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+          else:
+              new=int(q.get('match_new_attempts',-1)); floor=int(q.get('known_prior_attempt_floor',25)); limit=int(q.get('owner_daily_limit',3000))
+              assert 0 <= new <= 2975 and floor >= 25 and limit==3000
+              accounted=floor+new
+              assert accounted <= limit
+              summary={'state':'quota_recovered','match_new_attempts':new,'known_prior_attempt_floor':floor,'accounted_requests':accounted,'owner_daily_limit':limit,'safe_remaining_requests':limit-accounted,'quota_sha256':r['quota_sha256'],'terminal_operation_files':r['terminal_operation_files'],'provider_calls':0,'database_writes':0,'mapping_writes':0,'source_sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+          pathlib.Path('recovery/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-quota-recovery-${{ github.run_id }}
+          path: recovery/
+          if-no-files-found: error
+          retention-days: 90
