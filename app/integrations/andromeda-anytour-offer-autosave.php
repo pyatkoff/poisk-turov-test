@@ -26,6 +26,10 @@ final class AnyTourAndromedaOfferAutosaveV1
     private const MAX_OFFERS = 5000;
     private const CONTEXT_TTL = 900;
     private const CHECKPOINT_VERSION = 1;
+    private const REJECTION_REQUIRED_FIELDS = [
+        'id','hotelKey','operatorKey','isOperatorHotelKey','price','currency','currencyKey','checkIn','nights',
+        'hotel','operator','meal','mealKey','room','htplace','adult','child',
+    ];
 
     /**
      * @param callable(array):array $mappingReader current [namespace,external] -> legacy local map
@@ -69,7 +73,7 @@ final class AnyTourAndromedaOfferAutosaveV1
         if ($target < 0 || $target > self::MAX_PAGES) {
             return self::receipt(false, 'cohort_invalid', 0, 0, 0);
         }
-        if ($firstSnapshot['rejected'] !== []) {
+        if (!self::rejectionsSafeOutsideAndromeda($firstSnapshot['rejected'])) {
             return self::receipt(false, 'cohort_rejected_rows', 0, 0, 0);
         }
 
@@ -103,7 +107,7 @@ final class AnyTourAndromedaOfferAutosaveV1
             $state = self::readState($path, true);
             if ($state === null) return self::receipt(false, 'cohort_incomplete', 0, 0, 0);
             $snapshot = self::validateState($state, $searchRef, $generation, $page, $nowTs);
-            if ($snapshot['rejected'] !== []) {
+            if (!self::rejectionsSafeOutsideAndromeda($snapshot['rejected'])) {
                 return self::receipt(false, 'cohort_rejected_rows', 0, 0, 0);
             }
             try {
@@ -398,6 +402,25 @@ final class AnyTourAndromedaOfferAutosaveV1
             $out[] = $number;
         }
         return $out;
+    }
+
+    private static function rejectionsSafeOutsideAndromeda(array $rejected): bool
+    {
+        $seen = [];
+        foreach ($rejected as $row) {
+            if (!is_array($row)) return false;
+            $keys = array_keys($row);
+            sort($keys);
+            if ($keys !== ['index', 'missing_field', 'ownership_class', 'reason']) return false;
+            $index = $row['index'] ?? null;
+            if (!is_int($index) || $index < 0 || $index >= 2000 || isset($seen[$index])) return false;
+            $seen[$index] = true;
+            if (($row['reason'] ?? null) !== 'MISSING_FIELD'
+                || !is_string($row['missing_field'] ?? null)
+                || !in_array($row['missing_field'], self::REJECTION_REQUIRED_FIELDS, true)
+                || ($row['ownership_class'] ?? null) !== 'excluded_direct_or_tv') return false;
+        }
+        return true;
     }
 
     private static function andromedaOwnsOperator(string $raw): bool

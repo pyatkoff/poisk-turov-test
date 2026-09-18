@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/integrations/andromeda-anytour-offer-autosave.php';
+require_once dirname(__DIR__) . '/app/integrations/andromeda-normalizer.php';
 
 function aassert(bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
@@ -144,6 +145,31 @@ function callbacks(array &$ingests, ?array $surcharge = null, bool $mapping = tr
     return [$mappingReader, $canonicalResolver, $surchargeReader, $save, $ingest];
 }
 
+// Missing-field provenance is sanitized and records only ownership, never raw supplier text.
+$criteria = [
+    'TOWNFROMINC' => '1', 'STATEINC' => '4', 'CHECKIN_BEG' => '20261010', 'CHECKIN_END' => '20261010',
+    'ADULT' => '2', 'CHILD' => '1', 'NIGHTS_FROM' => '7', 'NIGHTS_TILL' => '7', 'CURRENCYINC' => '1',
+];
+$missingBase = [
+    'id' => 'x', 'hotelKey' => '100', 'operatorKey' => '1', 'isOperatorHotelKey' => '0',
+    'price' => '100000', 'currency' => 'RUB', 'currencyKey' => '1', 'checkIn' => '10.10.2026', 'nights' => '7',
+    'hotel' => 'Hotel', 'operator' => 'ANEX Secret Label', 'meal' => 'AI', 'room' => 'STD', 'htplace' => '2AD+1CH',
+    'adult' => '2', 'child' => '1',
+];
+$ownedMissing = $missingBase; $ownedMissing['operator'] = 'Biblio Globus';
+$unknownMissing = $missingBase; unset($unknownMissing['operator']); $unknownMissing['mealKey'] = '1';
+$normalizedMissing = AnyTourAndromedaNormalizer::page([
+    'PAGE' => 1, 'PAGES_COUNT' => 1, 'PRICES' => [$missingBase, $ownedMissing, $unknownMissing],
+], $criteria, 'rejection_contract', 1);
+aassert(($normalizedMissing['rejected'][0] ?? null) === [
+    'index' => 0, 'reason' => 'MISSING_FIELD', 'missing_field' => 'mealKey', 'ownership_class' => 'excluded_direct_or_tv',
+], 'excluded missing-field provenance mismatch');
+aassert(($normalizedMissing['rejected'][1]['ownership_class'] ?? null) === 'andromeda_owned', 'owned missing-field provenance mismatch');
+aassert(($normalizedMissing['rejected'][2] ?? null) === [
+    'index' => 2, 'reason' => 'MISSING_FIELD', 'missing_field' => 'operator', 'ownership_class' => 'unknown',
+], 'unknown missing-field provenance mismatch');
+aassert(!str_contains(json_encode($normalizedMissing['rejected'], JSON_THROW_ON_ERROR), 'Secret Label'), 'raw rejected operator leaked');
+
 // Andromeda/SAMO transport markup is already a whole-party fact: add exactly once.
 $andromeda = AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',
     ['amount' => '185125', 'currency' => 'RUB', 'source' => 'andromeda_search'], null, [[
@@ -271,6 +297,38 @@ try {
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
     aassert($result['published'] === true && count($ingests) === 1 && $ingests[0]['rows'] === [], 'excluded-only cohort not authoritative empty');
 } finally { cleanup_dir($dir); }
+
+// Sanitized MISSING_FIELD rows proven outside Andromeda ownership do not poison an otherwise authoritative cohort.
+$dir = temp_searches();
+try {
+    $ref = hash('sha256', 'safe-excluded-rejection'); $created = time() - 30; $ingests = [];
+    $safeRejected = [[
+        'index' => 1, 'reason' => 'MISSING_FIELD', 'missing_field' => 'mealKey', 'ownership_class' => 'excluded_direct_or_tv',
+    ]];
+    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 1, $created, [normalized_offer('safe-rejection')], $safeRejected));
+    [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
+    $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+        new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
+    aassert($result['published'] === true && count($ingests) === 1 && count($ingests[0]['rows']) === 1, 'safe excluded rejection blocked cohort');
+} finally { cleanup_dir($dir); }
+
+// Owned, unknown, legacy or payload-bearing rejected rows stay fail-closed.
+foreach ([
+    'owned' => [['index' => 1, 'reason' => 'MISSING_FIELD', 'missing_field' => 'mealKey', 'ownership_class' => 'andromeda_owned']],
+    'unknown' => [['index' => 1, 'reason' => 'MISSING_FIELD', 'missing_field' => 'operator', 'ownership_class' => 'unknown']],
+    'legacy' => [['index' => 1, 'reason' => 'MISSING_FIELD']],
+    'payload' => [['index' => 1, 'reason' => 'MISSING_FIELD', 'missing_field' => 'mealKey', 'ownership_class' => 'excluded_direct_or_tv', 'operator' => 'ANEX']],
+] as $case => $rejected) {
+    $dir = temp_searches();
+    try {
+        $ref = hash('sha256', 'unsafe-rejection-' . $case); $created = time() - 30; $ingests = [];
+        write_state($dir, $ref, $created, 1, state($ref, 1, 1, 1, $created, [normalized_offer('unsafe-' . $case)], $rejected));
+        [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
+        $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+            new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
+        aassert($result['published'] === false && $result['reason'] === 'cohort_rejected_rows' && $ingests === [], 'unsafe rejection accepted: ' . $case);
+    } finally { cleanup_dir($dir); }
+}
 
 // Duplicate supplier offer identity across pages is never authoritative.
 $dir = temp_searches();
