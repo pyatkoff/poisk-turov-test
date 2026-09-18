@@ -2,19 +2,23 @@ name: INT Andromeda surcharge cache runtime
 
 on:
   push:
-    branches: ['feat/int-andromeda-surcharge-cache-runtime-v1-20260918']
+    branches: ['feat/int-andromeda-surcharge-cache-runtime-v1-20260918', 'fix/int-andromeda-cache-cohort-order-20260919']
     paths:
+      - 'app/integrations/andromeda-anytour-offer-autosave.php'
       - 'app/integrations/andromeda-saved-pricing-evidence.php'
       - 'app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php'
       - 'scripts/ops/andromeda_local_offer_collect.php'
+      - 'tests/andromeda-cache-cohort-order-test.php'
       - 'tests/andromeda-saved-pricing-evidence-test.php'
       - 'tests/andromeda-surcharge-cache-autosave-test.php'
       - '.github/workflows/andromeda-surcharge-cache-runtime-check.yml'
   pull_request:
     paths:
+      - 'app/integrations/andromeda-anytour-offer-autosave.php'
       - 'app/integrations/andromeda-saved-pricing-evidence.php'
       - 'app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php'
       - 'scripts/ops/andromeda_local_offer_collect.php'
+      - 'tests/andromeda-cache-cohort-order-test.php'
       - 'tests/andromeda-saved-pricing-evidence-test.php'
       - 'tests/andromeda-surcharge-cache-autosave-test.php'
       - '.github/workflows/andromeda-surcharge-cache-runtime-check.yml'
@@ -32,16 +36,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          php -l app/integrations/andromeda-anytour-offer-autosave.php
           php -l app/integrations/andromeda-saved-pricing-evidence.php
           php -l app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php
           php -l scripts/ops/andromeda_local_offer_collect.php
           php -l tests/andromeda-saved-pricing-evidence-test.php
           php -l tests/andromeda-surcharge-cache-autosave-test.php
+          php -l tests/andromeda-cache-cohort-order-test.php
           tmp="$RUNNER_TEMP/saved-pricing-evidence"
           php -d zend.assertions=1 -d assert.exception=1 \
             tests/andromeda-saved-pricing-evidence-test.php "$GITHUB_WORKSPACE" "$tmp"
           php -d zend.assertions=1 -d assert.exception=1 \
             tests/andromeda-surcharge-cache-autosave-test.php
+          php -d zend.assertions=1 -d assert.exception=1 \
+            tests/andromeda-cache-cohort-order-test.php
           python3 - <<'PY'
           from pathlib import Path
           runtime=Path('app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php').read_text()
