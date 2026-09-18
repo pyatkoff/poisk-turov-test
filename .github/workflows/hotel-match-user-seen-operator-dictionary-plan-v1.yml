@@ -48,14 +48,16 @@ jobs:
           php scripts/diagnostics/hotel_match_user_seen_operator_dictionary_plan_v1.php --self-test
           gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
           python3 - <<'PY'
-          import json, os
+          import json
           c=json.load(open('claim.json'))
-          assert c['user']['id']==226193297
-          assert c['author_association']=='OWNER'
-          b=c['body']
-          assert os.environ['OPERATION_ID'] in b
-          assert 'READ-ONLY successor' in b
-          assert 'Tourvisor calls0' in b
+          assert c.get('user',{}).get('id')==226193297
+          assert c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          b=c.get('body','')
+          assert 'hotel-match-user-seen-operator-dictionary-plan-1971-20260918-v1' in b
+          assert 'READ-ONLY' in b
+          assert 'supplier/Tourvisor calls0' in b
+          assert 'DB/mapping writes0' in b
           PY
 
       - name: Require existing SSH credentials
