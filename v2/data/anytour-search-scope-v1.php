@@ -15,8 +15,7 @@ final class AnyTourSearchScopeV1
         'scopeVersion','departureId','countryId','adults','childs',
         'arrivalId','regionIds','subregionIds','currency','onlyCharter','onlyDirect',
     ];
-    // hotelCategory is re-proved from the accepted AnyTour canonical profile after hydration.
-    private const SCALAR_FILTER_KEYS = ['meal','hotelRating'];
+    private const SCALAR_FILTER_KEYS = ['meal','hotelCategory','hotelRating'];
     private const LIST_FILTER_KEYS = ['hotelTypes','hotelIds','hotelServices','operatorIds'];
 
     private static function exactKeys(array $value): void
@@ -142,6 +141,14 @@ final class AnyTourSearchScopeV1
         if($current['priceFrom']!==''&&($saved['priceFrom']===''||self::cents($saved['priceFrom'])<self::cents($current['priceFrom'])))return false;
         if($current['priceTo']!==''&&($saved['priceTo']===''||self::cents($saved['priceTo'])>self::cents($current['priceTo'])))return false;
         return true;
+    }
+    /** Broad saved category may be nominated only if the reader re-proves category per canonical profile. */
+    public static function savedCanContributeWithCanonicalCategoryProof(array $saved,array $current): bool
+    {
+        $saved=self::validateNormalized($saved);$current=self::validateNormalized($current);
+        if($current['hotelCategory']===''||$saved['hotelCategory']!=='')return self::savedCanContributeToCurrent($saved,$current);
+        $proved=$saved;$proved['hotelCategory']=$current['hotelCategory'];
+        return self::savedCanContributeToCurrent($proved,$current);
     }
     /** Backward-compatible name retained for existing callers; concrete rows are filtered separately. */
     public static function savedSubsetOfCurrent(array $saved,array $current): bool
