@@ -116,6 +116,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-tools>div:first-child>strong{font-size:22px}
 & #resultsSearchEdit{grid-column:1/-1;justify-self:stretch;width:100%}
 & .results-tools__actions>label{gap:0;font-size:0}
+& #sortResults{font-size:16px}
 & .search3-mobile-filter-panel:not([open]){grid-column:auto}
 & .search3-mobile-filter-panel:not([open]) span{display:none}
 & .search3-mobile-filter-panel__body{grid-template-columns:1fr}
