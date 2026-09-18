@@ -57,7 +57,7 @@ jobs:
           assert 'hotel-match-user-seen-operator-dictionary-plan-1971-20260918-v2' in b
           assert 'READ-ONLY' in b
           assert 'supplier/Tourvisor calls0' in b
-          assert 'mappings/DB writes0' in b
+          assert 'no mappings/DB writes' in b
           PY
 
       - name: Require existing SSH credentials
