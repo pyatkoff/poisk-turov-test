@@ -1,0 +1,53 @@
+name: Search3 reviewed hotel stay import V2
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/catalog/anytour_hotel_stay_reviewed_import_v2.php'
+      - 'tests/anytour_hotel_stay_reviewed_import_v2_test.php'
+      - '.github/workflows/search3-anytour-hotel-stay-reviewed-import-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reviewed-stay-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_stay_reviewed_import_v2_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Syntax and no-supplier/no-auto guards
+        run: |
+          set -euo pipefail
+          php -l scripts/catalog/anytour_hotel_stay_reviewed_import_v2.php
+          php -l tests/anytour_hotel_stay_reviewed_import_v2_test.php
+          ! grep -Fq 'curl_' scripts/catalog/anytour_hotel_stay_reviewed_import_v2.php
+          ! grep -Fq 'http://' scripts/catalog/anytour_hotel_stay_reviewed_import_v2.php
+          ! grep -Fq 'https://' scripts/catalog/anytour_hotel_stay_reviewed_import_v2.php
+          grep -Fq 'SERIALIZABLE' scripts/catalog/anytour_hotel_stay_reviewed_import_v2.php
+          grep -Fq 'PLAN_DRIFT' scripts/catalog/anytour_hotel_stay_reviewed_import_v2.php
+          grep -Fq "'automaticAccepts'=>0" scripts/catalog/anytour_hotel_stay_reviewed_import_v2.php
+      - name: Exercise reviewed exact plan/apply/readback against MySQL
+        env:
+          ANYTOUR_STAY_REVIEWED_IMPORT_V2_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_reviewed_import_v2_fixture;charset=utf8mb4'
+          ANYTOUR_STAY_REVIEWED_IMPORT_V2_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour_hotel_stay_reviewed_import_v2_test.php
