@@ -93,5 +93,52 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
  env=fakeRoot('/_preview/search3-local-candidate/poisk-turov/',async()=>({ok:false,json:async()=>({ok:false,error:'fixture_failure'})}));env.root.dispatchEvent(new env.root.CustomEvent('v2:search-reset',{detail:{generation:1}}));await tick();await tick();assert.deepEqual(env.ownerCalls.clear,['local-db']);assert.equal(env.ownerCalls.refreshes,1,'failed DB refresh removes stale local-db offers through canonical owner');assert.equal(env.renders.length,0);
 
+
+ // Identity-less legacy listings are unsupported rows, not authority for new IDs.
+ const legacy=stored('tourvisor',102,'b',100000);delete legacy.listing.identity;
+ const withLegacy=payload([legacy,stored('tourvisor',102,'d',120000),stored('anex',102,'e',125000),stored('andromeda',102,'f',126000)]);
+ const legacyOnlyGroup=structuredClone(withLegacy.hotels[0]);
+ legacyOnlyGroup.anytourHotelId=88;legacyOnlyGroup.hotel.id=88;legacyOnlyGroup.hotel.name='Unsupported legacy hotel';legacyOnlyGroup.offers=[structuredClone(legacy)];
+ withLegacy.hotels.push(legacyOnlyGroup);withLegacy.hotelCount=2;withLegacy.offerCount=5;withLegacy.storedOfferCount=7;withLegacy.withheldOfferCount=2;
+ const legacyBefore=JSON.stringify(withLegacy),supported=api.parse(withLegacy);
+ assert.ok(supported,'identity-less legacy row must not hide valid independent offers');
+ assert.equal(supported.hotels.length,1,'no empty legacy-only hotel is projected');
+ assert.equal(supported.offerCount,3,'only admitted rows are counted');
+ assert.equal(supported.withheldOfferCount,2,'unsupported legacy rows are counted separately');
+ assert.equal(JSON.stringify(withLegacy),legacyBefore,'legacy and supported source rows remain immutable');
+ assert.deepEqual(Array.from(supported.hotels[0].offers,item=>item.tour.provider),['tourvisor','anex','andromeda']);
+ for(const {tour} of supported.hotels[0].offers){assert.equal(tour.selectionEnabled,false);assert.equal(tour.quoteRequired,true);assert.notEqual(tour.price,100000,'legacy minimum never supplies displayed price');}
+ assert.equal(api.offerTour(legacy),null,'no identity is synthesized for the unsupported row');
+ assert.equal(api.parse(payload([legacy])).offerCount,0);
+ assert.equal(api.parse(payload([legacy])).hotels.length,0);
+ assert.equal(api.parse(payload([])).withheldOfferCount,0);
+ for(const identity of [null,{},[],{offer_ref_digest:'bad'}]){
+  const bad=structuredClone(legacy);bad.listing.identity=identity;
+  assert.equal(api.parse(payload([stored('anex',102,'e',125000),bad])),null,'present malformed identity is not treated as legacy');
+ }
+ for(const mutation of [{selection_state:'enabled'},{booking_enabled:true},{schema_version:9},{provider:'foreign'},{listingPriceReady:false},{listingPrice:99999}]){
+  const bad=structuredClone(legacy);Object.assign(bad.listing,mutation);
+  assert.equal(api.parse(payload([stored('anex',102,'e',125000),bad])),null,'legacy exception cannot bypass listing safety: '+JSON.stringify(mutation));
+ }
+ const wrongHotel=structuredClone(withLegacy);wrongHotel.hotels[1].hotel.id=999;
+ assert.equal(api.parse(wrongHotel),null,'canonical group identity remains mandatory even for a withheld-only group');
+ const atLimit=payload(Array(20000).fill(legacy));assert.ok(api.parse(atLimit),'row budget includes legacy rows');
+ atLimit.hotels[0].offers.push(legacy);assert.equal(api.parse(atLimit),null,'withholding does not bypass maximum scan budget');
+ const complete=[];
+ env=fakeRoot('/_preview/search3-local-candidate/poisk-turov/',async()=>({ok:true,json:async()=>({ok:true,data:withLegacy})}));
+ env.root.addEventListener('v2:provider-status',event=>complete.push(event.detail));
+ env.root.dispatchEvent(new env.root.CustomEvent('v2:search-reset',{detail:{generation:1}}));await tick();await tick();
+ assert.equal(env.ownerCalls.hotels.length,1);assert.equal(env.ownerCalls.offers.length,3);assert.equal(env.ownerCalls.refreshes,1,'admitted snapshot is applied once through existing owner');
+ assert.equal(complete.at(-1).status,'complete');assert.equal(complete.at(-1).hotels,1);assert.equal(complete.at(-1).offers,3);
+ assert.equal(complete.at(-1).storedOffers,7);assert.equal(complete.at(-1).withheldOffers,4,'server-withheld plus client-unsupported counts are explicit');
+ let resolveOld;
+ env=fakeRoot('/_preview/search3-local-candidate/poisk-turov/',()=>new Promise(resolve=>{resolveOld=resolve;}));
+ env.root.dispatchEvent(new env.root.CustomEvent('v2:search-reset',{detail:{generation:1}}));
+ env.root.V2SearchLifecycle.generation=2;env.root.V2SearchLifecycle.dirty=true;
+ env.root.dispatchEvent(new env.root.CustomEvent('v2:search-reset',{detail:{generation:2,dirty:true}}));
+ resolveOld({ok:true,json:async()=>({ok:true,data:withLegacy})});await tick();await tick();
+ assert.equal(env.ownerCalls.offers.length,0);assert.equal(env.ownerCalls.refreshes,0,'late legacy-containing response cannot repaint a dirty generation');
+ console.log('SEARCH3_LOCAL_LEGACY_ROW_ISOLATION_OK providers=3 withheld=2 malformed_rejected=1 truthful_counts=1 immutable=1 generation_guard=1');
+
  console.log('SEARCH3_LOCAL_DB_PROVIDER_OK parse=2 apply=1 lifecycle=1 empty_clear=1 error_clear=1 route_isolated=1 no_renderer_patch=1');
 })().catch(error=>{console.error(error);process.exit(1);});
