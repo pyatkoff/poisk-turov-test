@@ -1,0 +1,114 @@
+name: MATCH direct ANEX-only UAE12 v1
+
+on:
+  push:
+    branches:
+      - ops/match-anex-user-seen-uae12-direct-1971-20260919-v1
+    paths:
+      - .github/ops/match-anex-user-seen-uae12-direct-1971-20260919-v1.json
+      - scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_v1.py
+      - scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_runner_v1.py
+      - .github/workflows/hotel-match-anex-user-seen-uae12-direct-v1.yml
+
+permissions:
+  contents: read
+
+env:
+  OPERATION_ID: hotel-match-anex-user-seen-uae12-direct-1971-20260919-v1
+
+jobs:
+  live:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact reserved source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_v1.py scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_runner_v1.py
+          python3 scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_runner_v1.py --self-test
+          python3 - <<'PY'
+          import json
+          r=json.load(open('.github/ops/match-anex-user-seen-uae12-direct-1971-20260919-v1.json'))
+          assert r['operation']=='hotel-match-anex-user-seen-uae12-direct-1971-20260919-v1'
+          assert r['state']=='reserved_before_provider_access'
+          assert r['source_base']=='813112d90682fc14dcdbbe204537c64b77502aa0'
+          assert r['source_account']['endpoint']=='https://api.tourvisor.ru/search/api/v1'
+          assert r['source_account']['operator_id']==13
+          assert r['daily_accounting']=={'provider_timezone':'Europe/Moscow','provider_day':'2026-09-19','known_prior_attempt_floor':102,'daily_limit':3000,'operation_cap':180}
+          assert r['target']['hotel_ids']==[44669,74083,2590,32230,2522,73509,73055,2565,2582,133061,88323,54603]
+          assert r['rules']['operator_filter']==[13] and r['rules']['no_dates_endpoint'] is True and r['rules']['initial_details_before_continue'] is True
+          PY
+
+      - name: Require SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+
+      - name: Execute fresh direct ANEX-only acquisition
+        id: execute
+        continue-on-error: true
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          umask 077
+          mkdir -p result
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key" || exit 10
+          ssh-keygen -y -f "$key" >/dev/null || exit 11
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null || exit 12
+          test -s "$known" || exit 13
+          remote="$USER_VALUE@$HOST_VALUE"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr || exit 14
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_v1.py scripts/diagnostics/hotel_match_anex_user_seen_uae12_direct_runner_v1.py .github/ops/match-anex-user-seen-uae12-direct-1971-20260919-v1.json "$remote:$op/payload/" >result/scp.stdout 2>result/scp.stderr || exit 15
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/match-anex-user-seen-uae12-direct-1971-20260919-v1.json\" \"\$HOME/$op/payload/reservation.json\""
+          set +e
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" python3 \"\$HOME/$op/payload/hotel_match_anex_user_seen_uae12_direct_runner_v1.py\" --execute" >result/runner.stdout 2>result/runner.stderr
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > result/remote-exitcode.txt
+          scp -r "${opts[@]}" "$remote:$op/." result/remote/ >result/fetch.stdout 2>result/fetch.stderr || true
+          exit "$rc"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-anex-user-seen-uae12-direct-v1
+          path: result/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce completed read-only full drain
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('result/remote/result.json')
+          assert p.exists(), 'missing result'
+          d=json.load(open(p))
+          assert d['state']=='completed_read_only'
+          assert d['full_drain'] is True
+          assert d['operator_filter']==[13]
+          assert d['database_writes']==0 and d['mapping_writes']==0
+          assert d['provider_calls']<=180
+          print(json.dumps({'state':d['state'],'calls':d['provider_calls'],'anchors':len(d.get('anchors',[])),'holds':len(d.get('holds',[])),'returned':d.get('returned_target_hotels'),'drain_reason':d.get('drain_reason')},ensure_ascii=False))
+          PY
