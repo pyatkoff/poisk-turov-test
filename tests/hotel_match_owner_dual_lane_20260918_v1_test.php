@@ -3,7 +3,10 @@ declare(strict_types=1);
 require_once __DIR__.'/../scripts/diagnostics/hotel_match_owner_dual_lane_20260918_v1.php';
 
 function t(bool $ok,string $name):void{if(!$ok)throw new RuntimeException($name);}
-t(HMD_TV_EXTRA_CAP===300,'extra_cap');
+function qhome():string{$p=sys_get_temp_dir().'/hmd-quota-'.bin2hex(random_bytes(6));if(!mkdir($p,0700,true))throw new RuntimeException('quota_tmp');return$p;}
+function qclean(string $home):void{foreach([hmd_tv_operation_path($home),hmd_tv_daily_path($home)]as$p)if(is_file($p))unlink($p);$q=rtrim($home,'/').'/.anytour-match/provider-quotas';if(is_dir($q))rmdir($q);$m=rtrim($home,'/').'/.anytour-match';if(is_dir($m))rmdir($m);if(is_dir($home))rmdir($home);}
+t(HMD_TV_DAILY_LIMIT===3000,'daily_cap');
+t(HMD_TV_OPERATION_CAP===300&&HMD_TV_EXTRA_CAP===HMD_TV_OPERATION_CAP,'operation_cap');
 t(HMD_A_BATCH_SIZE===30,'batch30');
 t(HMD_B_MAX_CONTEXTS===3,'b_contexts');
 $x=hmd_detail_link(['operatorLink'=>'https://online.anextour.ru/x?HOTELLIST=5844']);
@@ -28,5 +31,6 @@ $provider=file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_owner_d
 $ab=substr($provider,strpos($provider,'function hmd_anex_search'),strpos($provider,'function hmd_and_search')-strpos($provider,'function hmd_anex_search'));
 t(!str_contains($ab,'SearchTour_TOWNS')&&!str_contains($ab,'SearchTour_STARS')&&!str_contains($ab,"'TOWNTOINC'")&&!str_contains($ab,"'STARS'"),'direct_anex_client_contract');
 t(str_contains($ab,"['checkIn']")&&str_contains($provider,"['checkIn']"),'provider_selected_checkin');
-echo "MATCH_OWNER_DUAL_LANE_TEST_OK
-";
+$q1=qhome();$p1=hmd_tv_daily_path($q1);file_put_contents($p1,hmd_json(['owner_daily_limit'=>3000,'known_prior_attempt_floor'=>25,'match_new_attempts'=>2975,'accounted_requests'=>3000])."\n");$blocked=false;try{hmd_tv_quota($q1,'T1');}catch(RuntimeException$e){$blocked=$e->getMessage()==='tv_daily_cap';}t($blocked&&hmd_tv_used($q1)===0,'hard_daily_cap_blocks_before_attempt');qclean($q1);
+$q2=qhome();$p2=hmd_tv_daily_path($q2);file_put_contents($p2,hmd_json(['owner_daily_limit'=>3000,'known_prior_attempt_floor'=>25,'match_new_attempts'=>2974,'accounted_requests'=>2999])."\n");t(hmd_tv_quota($q2,'T2')===1,'last_daily_slot_reserved');$j=json_decode((string)file_get_contents($p2),true);t(($j['match_new_attempts']??0)===2975&&($j['accounted_requests']??0)===3000&&(($j['operations'][HMD_OP]??0)===1),'daily_ledger_fsynced_before_http');$blocked=false;try{hmd_tv_quota($q2,'T2');}catch(RuntimeException$e){$blocked=$e->getMessage()==='tv_daily_cap';}t($blocked&&hmd_tv_used($q2)===1,'daily_cap_stays_closed');qclean($q2);
+echo "MATCH_OWNER_DUAL_LANE_TEST_OK\n";
