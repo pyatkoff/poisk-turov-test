@@ -20,12 +20,14 @@ jobs:
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '${{ github.sha }}', persist-credentials: false}
+        with: {ref: '${{ github.sha }}', fetch-depth: 3, persist-credentials: false}
       - name: Validate diagnostic-only shape
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git diff --name-only 4bb8fd96fab2ab31b7ed16957248d736164e18c3 HEAD)" = '.github/workflows/int-andromeda-v7-error-readback.yml'
+          base=4bb8fd96fab2ab31b7ed16957248d736164e18c3
+          git merge-base --is-ancestor "$base" HEAD
+          test "$(git diff --name-only "$base" HEAD)" = '.github/workflows/int-andromeda-v7-error-readback.yml'
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY"; test -n "$ANYTOOUR_DEPLOY_HOST"; test -n "$ANYTOOUR_DEPLOY_USER"
       - name: Read sealed v7 ledger without mutation
         shell: bash
@@ -40,8 +42,7 @@ jobs:
           set -euo pipefail
           operation="$1"; ledger="$HOME/.anytour-ops/$operation"
           test -d "$ledger"; test -f "$ledger/state"; test -f "$ledger/error.log"; test -f "$ledger/receipt.json"
-          state="$(tr -d '\r\n' < "$ledger/state")"
-          test "$state" = 'failed_terminal_no_replay'
+          state="$(tr -d '\r\n' < "$ledger/state")"; test "$state" = 'failed_terminal_no_replay'
           receipt_bytes="$(wc -c < "$ledger/receipt.json" | tr -d ' ')"
           error_bytes="$(wc -c < "$ledger/error.log" | tr -d ' ')"
           error_sha256="$(sha256sum "$ledger/error.log" | awk '{print $1}')"
@@ -51,35 +52,17 @@ jobs:
           REMOTE
           python3 - <<'PY'
           import json, os, pathlib, re
-          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'readback.env'
           data={}
-          for line in p.read_text().splitlines():
+          for line in (pathlib.Path(os.environ['RUNNER_TEMP'])/'readback.env').read_text().splitlines():
               k,v=line.split('=',1); data[k]=v
           assert data['state']=='failed_terminal_no_replay'
-          assert re.fullmatch(r'[0-9]+', data['receipt_bytes'])
-          assert re.fullmatch(r'[0-9]+', data['error_bytes'])
+          assert re.fullmatch(r'[0-9]+', data['receipt_bytes']) and re.fullmatch(r'[0-9]+', data['error_bytes'])
           assert re.fullmatch(r'[a-f0-9]{64}', data['error_sha256'])
-          allowed_code=re.compile(r'^(?:ANDROMEDA_[A-Z0-9_]+(?:,ANDROMEDA_[A-Z0-9_]+)*)?$')
-          allowed_class=re.compile(r'^(?:(?:RuntimeException|InvalidArgumentException|JsonException|PDOException|TypeError|ValueError|ErrorException)(?:,(?:RuntimeException|InvalidArgumentException|JsonException|PDOException|TypeError|ValueError|ErrorException))*)?$')
-          assert allowed_code.fullmatch(data['codes']) and allowed_class.fullmatch(data['classes'])
-          out={
-            'operation':'int-andromeda-local-db-seed-1717-20260918-v7',
-            'state':data['state'],
-            'receipt_bytes':int(data['receipt_bytes']),
-            'error_bytes':int(data['error_bytes']),
-            'error_sha256':data['error_sha256'],
-            'andromeda_codes':[x for x in data['codes'].split(',') if x],
-            'exception_classes':[x for x in data['classes'].split(',') if x],
-            'supplier_calls':0,'database_reads':0,'database_writes':0,'server_writes':0,
-            'booking_calls':0,'lead_calls':0,'mapping_writes':0,'operation_replayed':False,
-          }
-          q=pathlib.Path(os.environ['RUNNER_TEMP'])/'v7-readback.json'
-          q.write_text(json.dumps(out,sort_keys=True,separators=(',',':'))+'\n')
-          print(q.read_text(), end='')
+          assert re.fullmatch(r'^(?:ANDROMEDA_[A-Z0-9_]+(?:,ANDROMEDA_[A-Z0-9_]+)*)?$', data['codes'])
+          assert re.fullmatch(r'^(?:(?:RuntimeException|InvalidArgumentException|JsonException|PDOException|TypeError|ValueError|ErrorException)(?:,(?:RuntimeException|InvalidArgumentException|JsonException|PDOException|TypeError|ValueError|ErrorException))*)?$', data['classes'])
+          out={'operation':'int-andromeda-local-db-seed-1717-20260918-v7','state':data['state'],'receipt_bytes':int(data['receipt_bytes']),'error_bytes':int(data['error_bytes']),'error_sha256':data['error_sha256'],'andromeda_codes':[x for x in data['codes'].split(',') if x],'exception_classes':[x for x in data['classes'].split(',') if x],'supplier_calls':0,'database_reads':0,'database_writes':0,'server_writes':0,'booking_calls':0,'lead_calls':0,'mapping_writes':0,'operation_replayed':False}
+          q=pathlib.Path(os.environ['RUNNER_TEMP'])/'v7-readback.json'; q.write_text(json.dumps(out,sort_keys=True,separators=(',',':'))+'\n'); print(q.read_text(), end='')
           PY
       - name: Preserve sanitized readback
         uses: actions/upload-artifact@v4
-        with:
-          name: int-andromeda-v7-error-readback-${{ github.run_id }}
-          path: ${{ runner.temp }}/v7-readback.json
-          retention-days: 30
+        with: {name: 'int-andromeda-v7-error-readback-${{ github.run_id }}', path: '${{ runner.temp }}/v7-readback.json', retention-days: 30}
