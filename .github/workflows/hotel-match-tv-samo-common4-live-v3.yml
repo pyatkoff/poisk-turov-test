@@ -88,7 +88,7 @@ jobs:
             'app/integrations/andromeda-client.php',
             'app/integrations/andromeda-transport.php',
             'app/integrations/andromeda-network-transport-failure.php',
-            'v3/data/tourvisor-client-v1.php',
+            'v2/data/tourvisor-client-v1.php',
           ]
           r={
             'operation':os.environ['OPERATION_ID'],
@@ -155,7 +155,7 @@ jobs:
           op=".anytour-operations/$OPERATION_ID"
           opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
           ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytour-operations\"; test ! -e \"\$HOME/$op\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
-          scp "${opts[@]}"             reservation/reservation.json             scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v3.php             scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v1.php             scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php             app/integrations/anex-client.php             app/integrations/andromeda-client.php             app/integrations/andromeda-transport.php             app/integrations/andromeda-network-transport-failure.php             v3/data/tourvisor-client-v1.php             "$remote:$op/payload/"
+          scp "${opts[@]}"             reservation/reservation.json             scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v3.php             scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v1.php             scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php             app/integrations/anex-client.php             app/integrations/andromeda-client.php             app/integrations/andromeda-transport.php             app/integrations/andromeda-network-transport-failure.php             v2/data/tourvisor-client-v1.php             "$remote:$op/payload/"
           ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\"; chmod 600 \"\$HOME/$op/reservation.json\" \"\$HOME/$op/payload/\"*"
 
       - name: Run ANEX plus SAMO date first, then TV full drain
