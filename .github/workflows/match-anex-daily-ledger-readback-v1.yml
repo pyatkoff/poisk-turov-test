@@ -1,0 +1,142 @@
+name: MATCH ANEX daily ledger readback v1
+
+on:
+  push:
+    branches:
+      - match/anex-quota-readback-1971-20260918-v1
+    paths:
+      - .github/workflows/match-anex-daily-ledger-readback-v1.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: match-anex-daily-ledger-readback-1971-20260918-v1
+  cancel-in-progress: false
+
+jobs:
+  readback:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_BASE: 1f7fa9d1f51625b6d4ec95139c0fc5de36530364
+      SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate supplier-free isolated readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 1
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/match-anex-daily-ledger-readback-v1.yml'
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"
+
+      - name: Read server ledgers only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
+          remote="$SSH_USER@$SSH_HOST"
+          opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" python3 - > terminal/summary.json <<'PY'
+          import json, os, pathlib, re
+          home=pathlib.Path.home()
+          day='2026-09-18'
+          def load(path):
+              try:
+                  raw=path.read_text()
+                  return json.loads(raw), len(raw.encode())
+              except Exception:
+                  return None, path.stat().st_size if path.exists() else None
+          def numeric_digest(obj, prefix='', depth=0):
+              out={}
+              if depth>8: return out
+              if isinstance(obj, dict):
+                  for k,v in obj.items():
+                      kp=f'{prefix}.{k}' if prefix else str(k)
+                      lk=str(k).lower()
+                      if isinstance(v,(int,float,bool)) and re.search(r'(call|request|client|search|expand|apd|offer|hotel|ready|group|program|context|row|active|attempt|http)',lk):
+                          out[kp]=v
+                      elif isinstance(v,(dict,list)):
+                          out.update(numeric_digest(v,kp,depth+1))
+              elif isinstance(obj,list):
+                  for i,v in enumerate(obj[:50]):
+                      if isinstance(v,(dict,list)): out.update(numeric_digest(v,f'{prefix}[{i}]',depth+1))
+              return out
+
+          result={'date_utc':day,'provider_calls_made_by_readback':0,'db_calls_made_by_readback':0}
+
+          quota=home/'.anytour-match/provider-quotas'/f'anex-{day}.json'
+          q,qs=load(quota) if quota.exists() else (None,None)
+          result['match_quota_file']={'exists':quota.exists(),'size':qs,'data':q if isinstance(q,dict) else None}
+
+          matchop=home/'.anytour-match/operations/hotel-match-user-seen-anex-details-mass-1971-20260918-v1'
+          m={}
+          for name in ['reservation.json','result.json','receipt.json']:
+              p=matchop/name
+              data,size=load(p) if p.exists() else (None,None)
+              row={'exists':p.exists(),'size':size}
+              if isinstance(data,dict):
+                  row['state']=data.get('state')
+                  for k in ['anex_detail_calls','provider_calls','http_attempts','database_writes','mapping_writes','no_replay']:
+                      if k in data: row[k]=data[k]
+              m[name]=row
+          result['match_mass_v1']=m
+
+          roots=[home/'.anytour-ops', home/'.anytour-match/operations']
+          ops=[]
+          for root in roots:
+              if not root.exists(): continue
+              for p in sorted(root.iterdir()):
+                  if not p.is_dir(): continue
+                  n=p.name.lower()
+                  if 'anex' not in n or '20260918' not in n: continue
+                  state=None
+                  if (p/'state').exists():
+                      try: state=(p/'state').read_text().strip()[:120]
+                      except Exception: pass
+                  receipt=None; rsize=None
+                  for fn in ['receipt.json','result.json']:
+                      fp=p/fn
+                      if fp.exists() and fp.stat().st_size>0:
+                          d,s=load(fp)
+                          if isinstance(d,dict):
+                              receipt=d; rsize=s; break
+                  row={'root':root.name,'operation':p.name,'state_file':state,'receipt_size':rsize}
+                  if isinstance(receipt,dict):
+                      row['receipt_state']=receipt.get('status',receipt.get('state'))
+                      for k in ['nights','status','state','replay_allowed','provider_calls','anex_detail_calls','http_attempts','search_client_instances','apd_client_instances','database_writes','mapping_writes']:
+                          if k in receipt and isinstance(receipt[k],(str,int,float,bool,type(None))): row[k]=receipt[k]
+                      row['numeric_provider_related']=numeric_digest(receipt)
+                  ops.append(row)
+          result['same_day_anex_operations']=ops
+          result['same_day_anex_operation_count']=len(ops)
+          print(json.dumps(result,ensure_ascii=False,indent=2,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-anex-daily-ledger-readback-${{ github.run_id }}
+          path: terminal/summary.json
+          if-no-files-found: error
+          retention-days: 30
