@@ -87,7 +87,7 @@ try{
   $aliases=[];foreach(hma_rows($db,'SELECT hotel_id,alias FROM hotel_aliases')as$r)$aliases[(int)$r['hotel_id']][]=(string)$r['alias'];
   $manual=[];foreach(hma_rows($db,'SELECT anex_hotel_id FROM anex_hotel_decisions')as$r)$manual[(int)$r['anex_hotel_id']]=true;
   $mapped=[];$occupied=[];foreach(hma_rows($db,"SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_search_mappings WHERE enabled=1 AND scope='preview'")as$r){$mapped[(int)$r['anex_hotel_id']]=true;$occupied[(int)$r['catalog_hotel_id']][(int)$r['anex_hotel_id']]=true;}
-  $excluded=[];foreach(hma_rows($db,'SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')as$r)$excluded[(int)$r['anex_hotel_id'][(int)$r['catalog_hotel_id']]=true;
+  $excluded=[];foreach(hma_rows($db,'SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')as$r)$excluded[(int)$r['anex_hotel_id']][(int)$r['catalog_hotel_id']]=true;
   $sources=[];
   foreach(hma_rows($db,'SELECT * FROM anex_hotels')as$r){
     $aid=(int)($r['anex_hotel_id']??0);if($aid<1||isset($manual[$aid])||isset($mapped[$aid]))continue;
