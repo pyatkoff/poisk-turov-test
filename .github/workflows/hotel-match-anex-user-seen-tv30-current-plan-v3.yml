@@ -1,0 +1,85 @@
+name: MATCH current ANEX user-seen TV30 planner v3
+on:
+  push:
+    branches: [ops/match-anex-user-seen-tv30-current-plan-1971-20260919-v3]
+    paths:
+      - scripts/diagnostics/hotel_match_anex_user_seen_tv30_current_plan_v3.php
+      - .github/workflows/hotel-match-anex-user-seen-tv30-current-plan-v3.yml
+permissions:
+  contents: read
+concurrency:
+  group: match-anex-user-seen-tv30-current-plan-1971-20260919-v3
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-user-seen-tv30-current-plan-1971-20260919-v3
+jobs:
+  plan:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate supplier-free planner
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_user_seen_tv30_current_plan_v3.php
+          php scripts/diagnostics/hotel_match_anex_user_seen_tv30_current_plan_v3.php --self-test
+          php -l app/integrations/anex-search-mapping-registry.php
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          ! grep -Eiq '\b(INSERT|UPDATE|REPLACE|DELETE|ALTER|DROP|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_anex_user_seen_tv30_current_plan_v3.php
+      - name: Durable runner reservation before SSH DB read
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p result
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('result/runner-reservation.json')
+          with p.open('x') as f:
+              json.dump({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_db_read','read_only':True,'supplier_calls':0,'no_replay':True},f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-anex-user-seen-current-plan-v3-reservation-${{ github.run_id }}
+          path: result/runner-reservation.json
+          retention-days: 90
+      - name: CURRENT DB read only
+        id: current
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; rm -rf \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_user_seen_tv30_current_plan_v3.php app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/" >result/scp.stdout 2>result/scp.stderr
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php \"\$HOME/$op/payload/hotel_match_anex_user_seen_tv30_current_plan_v3.php\"" >result/result.json 2>result/remote.stderr
+          rm -f "$key" "$known"
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('result/result.json');d=json.loads(p.read_text())
+          assert d['operation']=='hotel-match-anex-user-seen-tv30-current-plan-1971-20260919-v3'
+          assert d['status']=='read_only_complete' and d['supplier_calls']==d['tourvisor_calls']==d['database_writes']==d['mapping_writes']==0
+          b=d.get('best_batch'); assert b and 1<=b['selected_count']<=30 and len(b['hotel_ids'])==b['selected_count']==len(set(b['hotel_ids']))
+          assert b['nights_from']==7 and b['nights_to']==10 and b['adults']==2 and b['children_count']==0
+          summary={'operation':d['operation'],'current_counts':d['current_counts'],'stats':d['stats'],'context_count':d['context_count'],'best_batch':b,'result_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'read_only':True,'no_replay':True}
+          pathlib.Path('result/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-anex-user-seen-tv30-current-plan-v3
+          path: result/
+          if-no-files-found: error
+          retention-days: 90
