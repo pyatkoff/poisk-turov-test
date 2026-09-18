@@ -27,7 +27,7 @@ const viewports = [
   const evidence = [];
   try {
     for (const viewport of viewports) {
-      const page = await browser.newPage({ viewportSize: viewport });
+      const page = await browser.newPage({ viewport });
       const searchStarts = [], hotelQueries = [], errors = [];
       page.on('pageerror', error => errors.push(String(error)));
       await page.route('**/*', route => {
