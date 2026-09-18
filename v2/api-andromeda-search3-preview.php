@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/api-anex-search3-preview.php';
 $andromedaApp=is_file(__DIR__.'/app/integrations/andromeda-client.php')?__DIR__.'/app/integrations':__DIR__.'/../app/integrations';
-foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';
+foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-pagination','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';
 $andromedaAutosave=$andromedaApp.'/andromeda-anytour-offer-autosave.php';
 if(is_file($andromedaAutosave)&&!is_link($andromedaAutosave))require_once $andromedaAutosave;
 
@@ -578,14 +578,24 @@ function anytour_andromeda_search3_run_pages(array $request,callable $runner): a
     if((array_key_exists('page',$request) && $request['page']!==1) || ($request['action']??null)!==null || isset($request['hotel_scope']))return $runner($request);
     $pages=[];$target=1;
     for($number=1;$number<=$target;++$number){
-        if($number>1000)throw new RuntimeException('andromeda_pages_exceeded');
+        if($number>AnyTourAndromedaPaginationV1::MAX_PAGES)throw new RuntimeException('andromeda_pages_exceeded');
         $next=$request;$next['page']=$number;$page=$runner($next);
         anytour_andromeda_search3_validate_projected_page($page,$number,$pages[0]??null);
         $advertised=(int)$page['pages_count'];
-        if($advertised<$number||$advertised>1000)throw new RuntimeException('andromeda_pages_invalid');
-        $pages[]=$page;$target=max($target,$advertised);
+        $items=is_array($page['hotels']??null)?count($page['hotels']):0;
+        $received=$page['received_offers']??null;
+        $mapped=$page['mapped_offers']??null;
+        $decision=AnyTourAndromedaPaginationV1::nextTarget(
+            $number,$advertised,$items,(string)($page['status']??''),0,$target
+        );
+        if(($decision['terminal']??false)===true){
+            if($received!==0||$mapped!==0)throw new RuntimeException('andromeda_pages_invalid');
+            if($number===1)return $page;
+            return anytour_andromeda_search3_merge_projected_pages($pages,true);
+        }
+        $pages[]=$page;$target=$decision['target'];
     }
-    return anytour_andromeda_search3_merge_projected_pages($pages);
+    return anytour_andromeda_search3_merge_projected_pages($pages,false);
 }
 function anytour_andromeda_search3_validate_projected_page(array $page,int $number,?array $first): void {
     if(($page['provider']??null)!=='andromeda'||($page['page']??null)!==$number||!is_int($page['pages_count']??null)
@@ -594,7 +604,7 @@ function anytour_andromeda_search3_validate_projected_page(array $page,int $numb
     if($first!==null && (($page['generation']??null)!==($first['generation']??null)||($page['search_ref']??null)!==($first['search_ref']??null)))
         throw new RuntimeException('andromeda_page_context_mismatch');
 }
-function anytour_andromeda_search3_merge_projected_pages(array $pages): array {
+function anytour_andromeda_search3_merge_projected_pages(array $pages,bool $terminalEmpty=false): array {
     if(!$pages)throw new InvalidArgumentException('andromeda_pages_empty');
     $first=$pages[0];$hotels=[];$order=[];$seen=[];$received=0;$mapped=0;$target=1;
     foreach($pages as $index=>$page){
@@ -612,9 +622,12 @@ function anytour_andromeda_search3_merge_projected_pages(array $pages): array {
             }
         }
     }
-    $last=$pages[count($pages)-1];if((int)$last['page']!==$target)throw new RuntimeException('andromeda_pages_incomplete');
+    $last=$pages[count($pages)-1];
+    if($terminalEmpty){
+        $target=(int)$last['page'];
+    }elseif((int)$last['page']!==$target)throw new RuntimeException('andromeda_pages_incomplete');
     $result=$first;$result['hotels']=array_values(array_map(static fn(int $id):array=>$hotels[$id],$order));
-    $result['page']=$target;$result['pages_count']=$target;$result['status']=$last['status']??$first['status']??'complete';
+    $result['page']=$target;$result['pages_count']=$target;$result['status']=$terminalEmpty?'complete':($last['status']??$first['status']??'complete');
     $result['external_search_pending']=false;$result['received_offers']=$received;$result['mapped_offers']=$mapped;$result['selection_enabled']=false;
     return $result;
 }
