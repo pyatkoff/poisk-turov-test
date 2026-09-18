@@ -120,6 +120,10 @@ vm.runInNewContext(source, {
   window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 999 } }));
   assert.equal(more, null, 'stale completion cannot overwrite canonical lifecycle identity');
 
+  window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: {} }));
+  assert.ok(more, 'legacy idless completion may expose continuation from canonical lifecycle state');
+  more.remove();
+
   window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 42 } }));
   assert.ok(more, 'matching canonical completion exposes continuation');
 
