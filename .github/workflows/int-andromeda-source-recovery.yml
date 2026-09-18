@@ -1,0 +1,45 @@
+name: INT recover installed Andromeda source dependencies
+
+on:
+  push:
+    branches:
+      - 'ops/int-andromeda-local-db-seed-20260918-v1'
+    paths:
+      - '.github/workflows/int-andromeda-source-recovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - name: Recover exact installed source files only
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          mkdir -p recovered
+          base="$HOME/www/anytoour.ru/_preview/search3-anex-candidate/app/integrations"
+          for f in andromeda-search.php andromeda-hotel-resolver.php andromeda-hotel-observations.php; do
+            ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15 "$remote" "set -eu; p=\"$base/\$f\"; test -f \"\$p\"; test ! -L \"\$p\"; n=\$(wc -c < \"\$p\"); test \"\$n\" -gt 0; test \"\$n\" -lt 300000; cat \"\$p\"" > "recovered/$f"
+          done
+          for f in recovered/*.php; do php -l "$f"; sha256sum "$f"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installed-andromeda-source-dependencies-${{ github.run_id }}
+          path: recovered/
+          retention-days: 14
