@@ -107,6 +107,10 @@ with sync_playwright() as p:
         check(page.evaluate('V2Results.state.items[0].seaDistance===undefined'),f'{width}: no unconfirmed supplier sea distance')
         check(page.evaluate('__projected.at(-1)[0].name')=='Наш тестовый отель 1',f'{width}: filter contract receives own metadata')
         if width<=760:
+            check(not page.locator('.hotel-description-summary').is_visible(),f'{width}: collapsed mobile card keeps the canonical description behind hotel details')
+        else:
+            check(page.locator('.hotel-description-summary').is_visible(),f'{width}: desktop card retains its canonical description summary')
+        if width<=760:
             geometry=page.locator('.hotel-offers-summary').evaluate('''node=>{
                 const button=node.querySelector('.tour-more-toggle'),price=node.querySelector('.hotel-price'),b=button.getBoundingClientRect(),p=price.getBoundingClientRect(),card=node.closest('.hotel-card').getBoundingClientRect();
                 return {buttonWidth:b.width,buttonHeight:b.height,cardWidth:card.width,buttonTop:b.top,priceBottom:p.bottom,priceColor:getComputedStyle(price).color,buttonColor:getComputedStyle(button).backgroundColor};
