@@ -51,9 +51,15 @@ need($inputs===serialize([$exactItem,$duplicate,$otherProvider,$invalid]),'union
 need(search3_local_results_union([$exactItem],[$otherProvider],$scope['params'],1)===[$exactItem],'one overall bound retains exact records');
 need(search3_local_results_union([],$invalid,$scope['params'],10)===[],'non-exact concrete date/nights/party proof remains mandatory');
 need(search3_local_results_union([],[$otherProvider],$scope['params'],10)===[$otherProvider],'empty exact still accepts a compatible record');
-$broken=$otherProvider;unset($broken['offer']['identity']['offer_ref_digest']);
+$legacy=$exactItem;unset($legacy['offer']['identity']);
+need(search3_local_results_union([$legacy],[],$scope['params'],10)===[$legacy],'already-deduplicated legacy exact records retain visibility');
+need(search3_local_results_union([$legacy],[$duplicate,$otherProvider],$scope['params'],10)===[$legacy,$otherProvider],'legacy exact rows cannot hide a different provider or gain guessed same-provider duplicates');
+$legacyCompatible=$duplicate;unset($legacyCompatible['offer']['identity']);
+need(search3_local_results_union([$exactItem],[$legacyCompatible],$scope['params'],10)===[$exactItem],'unproved same-provider cross-cohort duplicate stays excluded');
+need(search3_local_results_union([],[$legacyCompatible],$scope['params'],10)===[$legacyCompatible],'legacy compatible-only visibility remains store-deduplicated');
+$broken=$otherProvider;$broken['offer']['identity']['offer_ref_digest']='not-a-digest';
 $badIdentity=false;try{search3_local_results_union([],[$broken],$scope['params'],10);}catch(RuntimeException $e){$badIdentity=str_contains($e->getMessage(),'IDENTITY_INTEGRITY');}
-need($badIdentity,'missing immutable identity cannot be silently merged');
+need($badIdentity,'malformed immutable identity cannot be silently merged');
 echo "SEARCH3_LOCAL_SCOPE_UNION_PURE_OK exact_copy=1 provider_identity=1 concrete_scope=1 bounded=1 immutable=1\n";
 
 $dsn=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_DSN');$password=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_PASSWORD');if(!str_starts_with($dsn,'mysql:'))throw new RuntimeException('fixture DSN required');

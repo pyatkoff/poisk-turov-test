@@ -43,17 +43,27 @@ function search3_local_profile_matches_scope(array $profile,array $scope): bool
 function search3_local_results_union(array $exact,array $compatible,array $params,int $limit): array
 {
     if($limit<1||$limit>SEARCH3_LOCAL_RESULTS_MAX_OFFERS)throw new InvalidArgumentException('ANYTOUR_LOCAL_RESULTS_LIMIT');
-    $items=[];$seen=[];
+    $items=[];$seen=[];$exactProviders=[];$legacyExactProviders=[];
     foreach([$exact,$compatible] as $tier=>$cohort){
         foreach($cohort as $item){
             if(!is_array($item))throw new RuntimeException('ANYTOUR_OFFER_IDENTITY_INTEGRITY');
             if($tier===1&&!search3_local_cached_offer_matches_scope($item,$params))continue;
             $provider=$item['provider']??null;$digest=$item['offer']['identity']['offer_ref_digest']??null;
             if(!in_array($provider,['tourvisor','anex','andromeda'],true)
-                ||!is_string($digest)||preg_match('/^[0-9a-f]{64}$/D',$digest)!==1)throw new RuntimeException('ANYTOUR_OFFER_IDENTITY_INTEGRITY');
-            $key=$provider.':'.$digest;
-            if(isset($seen[$key]))continue;
-            $seen[$key]=true;$items[]=$item;
+                ||($digest!==null&&(!is_string($digest)||preg_match('/^[0-9a-f]{64}$/D',$digest)!==1)))throw new RuntimeException('ANYTOUR_OFFER_IDENTITY_INTEGRITY');
+            // The store already deduplicates each cohort by its DB offer identity.
+            // Legacy display payloads may omit that identity. Keep those exact rows;
+            // never guess cross-cohort uniqueness within the same provider.
+            if($tier===0){
+                $exactProviders[$provider]=true;
+                if($digest===null)$legacyExactProviders[$provider]=true;
+            }elseif(isset($legacyExactProviders[$provider])||($digest===null&&isset($exactProviders[$provider]))){continue;}
+            if($digest!==null){
+                $key=$provider.':'.$digest;
+                if(isset($seen[$key]))continue;
+                $seen[$key]=true;
+            }
+            $items[]=$item;
             if(count($items)>=$limit)return $items;
         }
     }
