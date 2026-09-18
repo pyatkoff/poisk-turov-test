@@ -3,50 +3,59 @@ declare(strict_types=1);
 
 final class AndromedaSurchargeGroupKey
 {
-    private const PREFIX = 'andromeda-surcharge-v1:';
+    private const PREFIX = 'andromeda-surcharge-v2:';
     private const ID_PATTERN = '/^[A-Za-z0-9_-]{1,128}$/';
     private const CURRENCY_PATTERN = '/^[A-Z]{3}$/';
 
     /**
-     * Build a fail-closed cache/group key for transport surcharge evidence.
+     * Build a fail-closed cache/group key for external-freight surcharge evidence.
      *
-     * The key deliberately excludes hotel/room/meal/offer/search-price fields:
-     * surcharge evidence may be reused only for the same supplier transport
-     * identity and exact route/date/nights/party/currency context.
+     * Money experiment v1 proved SPO-invariance for the observed supplier contract,
+     * so spo_ref is deliberately outside the key. Nights/tour/route/date/party are
+     * retained until isolated evidence proves that they can be removed safely.
+     * Hotel/room/meal/offer/search-price fields are presentation/package variants,
+     * not transport-group discriminators.
      *
      * @param array<string,mixed> $offer Normalized Andromeda PRICE offer.
-     * @param array<string,mixed> $request Public search context.
+     * @param array<string,mixed> $request Public search request or its params block.
      */
     public static function build(array $offer, array $request): ?string
     {
-        $operator = self::id($offer['operator_ref'] ?? null);
-        if ($operator === null) {
+        if (($offer['provider'] ?? null) !== 'andromeda') {
             return null;
         }
 
-        $refs = [];
-        foreach (['program_ref', 'tour_ref', 'spo_ref'] as $field) {
-            $raw = $offer[$field] ?? null;
-            if ($raw === null || $raw === '') {
-                $refs[$field] = null;
-                continue;
-            }
-            $refs[$field] = self::id($raw);
-            if ($refs[$field] === null) {
+        $operator = self::id($offer['operator_ref'] ?? null);
+        $transport = $offer['transport_context'] ?? null;
+        $price = $offer['price'] ?? null;
+        if ($operator === null || !is_array($transport) || !is_array($price)
+            || ($transport['freight_external'] ?? null) !== true) {
+            return null;
+        }
+
+        // Program identity is mandatory for reusable surcharge evidence.
+        $program = self::id($transport['program_ref'] ?? null);
+        if ($program === null) {
+            return null;
+        }
+
+        $tour = null;
+        if (array_key_exists('tour_ref', $transport)
+            && $transport['tour_ref'] !== null && $transport['tour_ref'] !== '') {
+            $tour = self::id($transport['tour_ref']);
+            if ($tour === null) {
                 return null;
             }
         }
-        if ($refs['program_ref'] === null && $refs['tour_ref'] === null && $refs['spo_ref'] === null) {
-            return null;
-        }
 
-        $departure = self::positiveInt($request['departureId'] ?? $request['departure_id'] ?? null);
-        $country = self::positiveInt($request['countryId'] ?? $request['country_id'] ?? null);
+        $scope = is_array($request['params'] ?? null) ? $request['params'] : $request;
+        $departure = self::positiveInt($scope['departureId'] ?? $scope['departure_id'] ?? null);
+        $country = self::positiveInt($scope['countryId'] ?? $scope['country_id'] ?? null);
         $date = self::date($offer['check_in'] ?? null);
         $nights = self::positiveInt($offer['nights'] ?? null);
         $adults = self::positiveInt($offer['adults'] ?? null);
         $children = self::nonNegativeInt($offer['children'] ?? null);
-        $currency = self::currency($offer['currency'] ?? null);
+        $currency = self::currency($price['currency'] ?? null);
 
         if ($departure === null || $country === null || $date === null || $nights === null
             || $adults === null || $children === null || $currency === null) {
@@ -55,9 +64,8 @@ final class AndromedaSurchargeGroupKey
 
         $canonical = [
             'operator' => $operator,
-            'program' => $refs['program_ref'],
-            'tour' => $refs['tour_ref'],
-            'spo' => $refs['spo_ref'],
+            'program' => $program,
+            'tour' => $tour,
             'departure' => $departure,
             'country' => $country,
             'date' => $date,
