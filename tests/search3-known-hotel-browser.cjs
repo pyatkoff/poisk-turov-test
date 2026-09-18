@@ -73,6 +73,8 @@ const viewports = [
       assert.match(await list.innerText(), /RIXOS SUNGATE[\s\S]*Кемер[\s\S]*Бельдиби[\s\S]*5★/);
       assert.equal(hotelQueries.length, 1);
       assert.deepEqual(hotelQueries[0], { q: 'Rixos', limit: '10', countryId: '4' }, 'lookup is country-scoped without requiring a resort');
+      assert.equal(await input.getAttribute('aria-activedescendant'), null, 'query starts without a misleading active option');
+      assert.deepEqual(await list.locator('[aria-selected="true"]').allTextContents(), []);
 
       const geometry = await page.evaluate(() => {
         const input = document.querySelector('[data-v2-hotel-query]');
@@ -86,10 +88,22 @@ const viewports = [
       assert.ok(geometry.options.every(item => item.y >= 0 && item.y + item.height <= geometry.viewportHeight + 1), 'suggestions stay inside the short viewport');
       assert.equal(geometry.overflow, false, 'lookup has no horizontal overflow');
 
+      await input.press('ArrowDown');
+      assert.equal(await input.getAttribute('aria-activedescendant'), 'hotelAutocompleteOption0');
+      assert.equal(await list.locator('[role="option"]').nth(0).getAttribute('aria-selected'), 'true');
+      assert.equal(await list.locator('[role="option"]').nth(0).evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(244, 247, 249)', 'keyboard-active option is visibly highlighted');
+      await input.press('ArrowDown');
+      assert.equal(await input.getAttribute('aria-activedescendant'), 'hotelAutocompleteOption1');
+      assert.equal(await list.locator('[role="option"]').nth(1).getAttribute('aria-selected'), 'true');
+      await input.press('ArrowDown');
+      assert.equal(await input.getAttribute('aria-activedescendant'), 'hotelAutocompleteOption0', 'ArrowDown wraps to the first option');
+      await input.press('ArrowUp');
+      assert.equal(await input.getAttribute('aria-activedescendant'), 'hotelAutocompleteOption1', 'ArrowUp wraps to the last option');
       await input.press('Enter');
-      assert.equal(await select.inputValue(), '41001', 'keyboard selection stores the exact canonical hotel ID');
-      assert.equal(await input.inputValue(), 'RIXOS PREMIUM BELEK');
+      assert.equal(await select.inputValue(), '41002', 'keyboard selection stores the active canonical hotel ID');
+      assert.equal(await input.inputValue(), 'RIXOS SUNGATE');
       assert.equal(await list.isVisible(), false);
+      assert.equal(await input.getAttribute('aria-activedescendant'), null);
       assert.deepEqual(searchStarts, [], 'typing/selecting a hotel does not start a supplier search');
 
       await form.locator('select[name="region"]').selectOption('402');
@@ -99,7 +113,19 @@ const viewports = [
 
       await input.fill('Rixos');
       await list.waitFor({ state: 'visible' });
+      await input.press('ArrowDown');
+      await input.press('Escape');
+      assert.equal(await list.isVisible(), false, 'Escape closes suggestions');
+      assert.equal(await input.inputValue(), 'Rixos', 'Escape keeps the visitor query');
+      assert.equal(await select.inputValue(), '');
+      assert.equal(await input.getAttribute('aria-activedescendant'), null);
+      await input.fill('Ri');
+      await input.fill('Rixos');
+      await list.waitFor({ state: 'visible' });
+      await input.press('ArrowDown');
       await page.screenshot({ path: path.join(output, `known-hotel-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+      await list.locator('[role="option"]').first().click();
+      assert.equal(await select.inputValue(), '41001', 'pointer selection keeps the exact canonical hotel ID');
       evidence.push({ viewport, geometry, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
       assert.deepEqual(errors, []);
       await page.close();
