@@ -11,6 +11,7 @@ require_once __DIR__ . '/three-provider-offer-contract.php';
 require_once __DIR__ . '/three-provider-offer-context.php';
 require_once __DIR__ . '/three-provider-search-handoff.php';
 require_once __DIR__ . '/anytour-offer-snapshot-producer.php';
+require_once __DIR__ . '/andromeda-pagination.php';
 
 /**
  * Supplier-free Andromeda/SAMO -> AnyTour offer-store bridge.
@@ -72,11 +73,24 @@ final class AnyTourAndromedaOfferAutosaveV1
             return self::receipt(false, 'cohort_rejected_rows', 0, 0, 0);
         }
 
-        $states = [1 => $first];
-        $snapshots = [1 => $firstSnapshot];
-        if ($target === 0 && $firstSnapshot['offers'] !== []) {
-            return self::receipt(false, 'cohort_invalid', 0, 0, 0);
+        $firstDecision = AnyTourAndromedaPaginationV1::nextTarget(
+            1,
+            $target,
+            count($firstSnapshot['offers']),
+            (string)($first['status'] ?? ''),
+            count($firstSnapshot['rejected']),
+            max(1, $target)
+        );
+        if (($firstDecision['terminal'] ?? false) === true) {
+            $states = [];
+            $snapshots = [];
+            $target = 0;
+        } else {
+            $states = [1 => $first];
+            $snapshots = [1 => $firstSnapshot];
+            $target = $firstDecision['target'];
         }
+
         for ($page = 2; $page <= $target; ++$page) {
             $path = $directory . '/' . $searchRef . '-' . $firstCreated . '-' . $page . '.json';
             $state = self::readState($path, true);
@@ -85,13 +99,28 @@ final class AnyTourAndromedaOfferAutosaveV1
             if ($snapshot['rejected'] !== []) {
                 return self::receipt(false, 'cohort_rejected_rows', 0, 0, 0);
             }
-            $count = $snapshot['pages_count'];
-            if ($count < $page || $count > self::MAX_PAGES) {
-                return self::receipt(false, 'cohort_invalid', 0, 0, 0);
+            try {
+                $decision = AnyTourAndromedaPaginationV1::nextTarget(
+                    $page,
+                    $snapshot['pages_count'],
+                    count($snapshot['offers']),
+                    (string)($state['status'] ?? ''),
+                    count($snapshot['rejected']),
+                    $target
+                );
+            } catch (RuntimeException $error) {
+                if ($error->getMessage() === 'andromeda_pages_invalid') {
+                    return self::receipt(false, 'cohort_invalid', 0, 0, 0);
+                }
+                throw $error;
+            }
+            if (($decision['terminal'] ?? false) === true) {
+                $target = $decision['target'];
+                break;
             }
             $states[$page] = $state;
             $snapshots[$page] = $snapshot;
-            $target = max($target, $count);
+            $target = $decision['target'];
         }
 
         $offers = [];
