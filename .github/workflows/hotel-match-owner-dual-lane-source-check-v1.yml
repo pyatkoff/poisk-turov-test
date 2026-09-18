@@ -3,7 +3,7 @@ name: MATCH owner dual-lane source check
 on:
   push:
     branches:
-      - ops/match-owner-dual-lane-1971-20260918-v1
+      - 'ops/match-owner-dual-lane-*'
     paths:
       - scripts/diagnostics/hotel_match_owner_dual_lane_common_v1.php
       - scripts/diagnostics/hotel_match_owner_dual_lane_tv_v1.php
