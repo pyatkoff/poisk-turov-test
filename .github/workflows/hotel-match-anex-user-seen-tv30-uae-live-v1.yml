@@ -1,0 +1,331 @@
+name: MATCH ANEX user-seen UAE live v1
+
+on:
+  push:
+    branches:
+      - ops/match-anex-user-seen-tv30-uae-live-1971-20260919-v1
+    paths:
+      - .github/ops/match-anex-user-seen-tv30-uae-live-1971-20260919-v1.json
+      - .github/workflows/hotel-match-anex-user-seen-tv30-uae-live-v1.yml
+
+permissions:
+  contents: read
+
+env:
+  OPERATION_ID: hotel-match-anex-user-seen-tv30-uae-live-1971-20260919-v1
+  RESERVATION: .github/ops/match-anex-user-seen-tv30-uae-live-1971-20260919-v1.json
+
+jobs:
+  live:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact reservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          r=json.load(open('.github/ops/match-anex-user-seen-tv30-uae-live-1971-20260919-v1.json'))
+          assert r['operation']=='hotel-match-anex-user-seen-tv30-uae-live-1971-20260919-v1'
+          assert r['state']=='reserved_before_provider_access'
+          assert r['source']['planner_run']==35401349877
+          assert r['source']['planner_result_sha256']=='6f17eaa81ecb6cd36b3a1beee946db72b2a24ec503d41afaeb6148180afbeee2'
+          t=r['target']; ids=t['hotel_ids']
+          assert t['departure_id']==1 and t['country_id']==9 and t['date_from']=='2026-12-10' and t['date_to']=='2026-12-16'
+          assert t['nights_from']==7 and t['nights_to']==10 and t['adults']==2 and t['children_count']==0
+          assert len(ids)==20 and len(set(ids))==20 and t['accepted_andromeda_count']==17
+          assert r['rules']['operator_filter'] is False and r['rules']['tourvisor_dates'] is False and r['rules']['full_drain'] is True
+          a=r['daily_accounting']; assert a['limit']==3000 and a['known_consumed_before']==91 and a['operation_max_calls']==300
+          PY
+
+      - name: Prepare durable daily ledger helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p terminal
+          cat > terminal/daily_ledger.py <<'PY'
+          import fcntl,json,os,pathlib,sys,time
+          mode,ledger_s,op=sys.argv[1:4]
+          ledger=pathlib.Path(ledger_s); ledger.parent.mkdir(parents=True,exist_ok=True)
+          lock=ledger.with_suffix(ledger.suffix+'.lock')
+          with lock.open('a+') as lf:
+            fcntl.flock(lf,fcntl.LOCK_EX)
+            events=[]
+            if ledger.exists():
+              for line in ledger.read_text().splitlines():
+                try: events.append(json.loads(line))
+                except: pass
+            def append(x):
+              with ledger.open('a') as f:
+                f.write(json.dumps(x,sort_keys=True)+'\n'); f.flush(); os.fsync(f.fileno())
+            if mode=='reserve':
+              known,limit,maximum=map(int,sys.argv[4:7])
+              if not any(e.get('type')=='baseline' for e in events):
+                append({'type':'baseline','date':ledger.stem,'consumed':known,'ts':int(time.time())}); events.append({'type':'baseline','consumed':known})
+              baseline=max([int(e.get('consumed',0)) for e in events if e.get('type')=='baseline'] or [known])
+              if any(e.get('operation')==op and e.get('type') in ('reserve','complete') for e in events):
+                raise SystemExit('operation_already_accounted')
+              ops={}
+              for e in events:
+                o=e.get('operation')
+                if not o: continue
+                ops.setdefault(o,{})[e.get('type','')]=e
+              charged=baseline
+              for o,s in ops.items():
+                if 'complete' in s: charged+=int(s['complete'].get('actual_calls',0))
+                elif 'reserve' in s: charged+=int(s['reserve'].get('max_calls',0))
+              if charged+maximum>limit: raise SystemExit(f'daily_limit:{charged}+{maximum}>{limit}')
+              rec={'type':'reserve','operation':op,'max_calls':maximum,'charged_before':charged,'limit':limit,'ts':int(time.time())}
+              append(rec); print(json.dumps(rec))
+            elif mode=='complete':
+              actual=int(sys.argv[4])
+              if not any(e.get('operation')==op and e.get('type')=='reserve' for e in events): raise SystemExit('missing_reservation')
+              if any(e.get('operation')==op and e.get('type')=='complete' for e in events): raise SystemExit('already_complete')
+              rec={'type':'complete','operation':op,'actual_calls':actual,'ts':int(time.time())}; append(rec); print(json.dumps(rec))
+            else: raise SystemExit('bad_mode')
+          PY
+
+      - name: Durable daily reservation before provider access
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          opdir=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; rm -rf \"\$HOME/$opdir\"; mkdir -p \"\$HOME/$opdir\" \"\$HOME/.anytour-operations/tourvisor-daily\""
+          scp "${opts[@]}" terminal/daily_ledger.py "$remote:$opdir/"
+          ssh "${opts[@]}" "$remote" "python3 \"\$HOME/$opdir/daily_ledger.py\" reserve \"\$HOME/.anytour-operations/tourvisor-daily/2026-09-19.ndjson\" \"$OPERATION_ID\" 91 3000 300" | tee terminal/daily-reservation.json
+          cp "$key" terminal/ssh-key.tmp; cp "$known" terminal/known-hosts.tmp
+
+      - name: Fresh ANEX-only TV search full drain
+        id: acquire
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,subprocess,urllib.parse,time,pathlib,re,os
+          R=json.load(open('.github/ops/match-anex-user-seen-tv30-uae-live-1971-20260919-v1.json'))
+          API='https://anytoour.ru/api-v2.php'; calls=0; CAP=R['daily_accounting']['operation_max_calls']
+          calllog=pathlib.Path('terminal/provider-ledger.ndjson')
+          def req(action,p=None,allow404=False):
+            global calls
+            if calls>=CAP: raise RuntimeError('operation_cap')
+            q=[('action',action)]
+            for k,v in (p or {}).items():
+              if isinstance(v,list): q.extend((k,str(x)) for x in v)
+              elif v is not None and v!='': q.append((k,str(v).lower() if isinstance(v,bool) else str(v)))
+            url=API+'?'+urllib.parse.urlencode(q); calls+=1
+            with calllog.open('a') as f:
+              f.write(json.dumps({'call':calls,'action':action,'url':url},ensure_ascii=False)+'\n'); f.flush(); os.fsync(f.fileno())
+            cp=subprocess.run(['curl','--silent','--show-error','--http1.1','--compressed','--max-time','55','-A','Mozilla/5.0','-H','Accept: application/json','-w','\n%{http_code}',url],text=True,capture_output=True)
+            if '\n' not in cp.stdout: raise RuntimeError('transport_'+str(cp.returncode))
+            body,code=cp.stdout.rsplit('\n',1); code=int(code)
+            if code==404 and allow404:return {'_404':True}
+            if code<200 or code>=300: raise RuntimeError('http_'+str(code))
+            return json.loads(body)
+          def sid(x):
+            if isinstance(x,dict):
+              for k in ('searchId','id'):
+                if str(x.get(k,'')).isdigit() and int(x[k])>0:return int(x[k])
+              for v in x.values():
+                z=sid(v)
+                if z:return z
+            elif isinstance(x,list):
+              for v in x:
+                z=sid(v)
+                if z:return z
+          def complete(x):
+            if isinstance(x,dict):
+              if isinstance(x.get('progress'),(int,float)) and x['progress']>=100:return True
+              if str(x.get('status','')).lower() in ('complete','completed','done','ready'):return True
+              return any(complete(v) for v in x.values() if isinstance(v,(dict,list)))
+            return isinstance(x,list) and any(complete(v) for v in x)
+          def request_count(x):
+            if isinstance(x,dict):
+              for k in ('requestCount','requestsCount','request_count'):
+                if str(x.get(k,'')).isdigit():return int(x[k])
+              for v in x.values():
+                if isinstance(v,(dict,list)):
+                  z=request_count(v)
+                  if z is not None:return z
+            elif isinstance(x,list):
+              for v in x:
+                z=request_count(v)
+                if z is not None:return z
+            return None
+          def rows(x):
+            if isinstance(x,list):return x
+            if isinstance(x,dict):
+              for k in ('hotels','results','items'):
+                if isinstance(x.get(k),list):return x[k]
+              for v in x.values():
+                if isinstance(v,dict):
+                  z=rows(v)
+                  if z:return z
+            return []
+          def tour_id(t): return str(t.get('id') or t.get('tourId') or '') if isinstance(t,dict) else ''
+          def merge(a,b):
+            d={}
+            for h in a+b:
+              if not isinstance(h,dict) or not str(h.get('id','')).isdigit():continue
+              i=int(h['id'])
+              if i not in d:
+                d[i]=dict(h); d[i]['tours']=list(h.get('tours') or []); continue
+              old=d[i]['tours']; seen={tour_id(t) for t in old if tour_id(t)}
+              for t in h.get('tours') or []:
+                k=tour_id(t)
+                if k and k not in seen: seen.add(k); old.append(t)
+            return list(d.values())
+          def is_anex(t):
+            if not isinstance(t,dict):return False
+            o=t.get('operator') or {}
+            oid=o.get('id') if isinstance(o,dict) else None
+            name=(o.get('name','') if isinstance(o,dict) else str(o))
+            return str(oid)=='13' or 'anex' in str(name).lower() or 'анекс' in str(name).lower()
+          def raw_rooms(v):
+            out=[]
+            def walk(x,k=''):
+              if isinstance(x,dict):
+                for a,b in x.items(): walk(b,str(a))
+              elif isinstance(x,list):
+                for b in x: walk(b,k)
+              elif isinstance(x,(str,int,float)) and 'room' in k.lower():
+                s=str(x).strip()
+                if s and not s.isdigit(): out.append(s)
+            walk(v); return sorted(set(out))
+          def parse_links(detail):
+            fields=[]; native=[]
+            def walk(v,k=''):
+              if isinstance(v,dict):
+                for a,b in v.items():walk(b,str(a))
+              elif isinstance(v,list):
+                for b in v:walk(b,k)
+              elif isinstance(v,str) and ('link' in k.lower() or 'url' in k.lower()) and '://' in v:
+                fields.append({'key':k,'url':v})
+                try:q=urllib.parse.parse_qs(urllib.parse.urlparse(v).query)
+                except:return
+                for a,vals in q.items():
+                  if a.lower() in ('hotellist','hotelcode','hotel_code','hotelid','hotel_id','hotelinc','hotel'):
+                    for z in vals:
+                      for y in re.split('[,;]',z):
+                        if y.strip().isdigit(): native.append(int(y.strip()))
+            walk(detail); return fields,sorted(set(native))
+          result={'operation':R['operation'],'state':'running','provider_calls':0,'anchors':[],'holds':[],'database_writes':0,'mapping_writes':0}
+          try:
+            t=R['target']
+            start=req('search_start',{'departureId':t['departure_id'],'countryId':t['country_id'],'dateFrom':t['date_from'],'dateTo':t['date_to'],'nightsFrom':t['nights_from'],'nightsTo':t['nights_to'],'adults':t['adults'],'currency':'RUB','onlyCharter':False,'hotelIds[]':t['hotel_ids']})
+            search_id=sid(start)
+            if not search_id:raise RuntimeError('no_search_id')
+            for _ in range(8):
+              time.sleep(2); st=req('search_status',{'searchId':search_id})
+              if complete(st):break
+            union=merge([],rows(req('search_results',{'searchId':search_id,'limit':100})))
+            pathlib.Path('terminal/partial-0.json').write_text(json.dumps(union,ensure_ascii=False,indent=2))
+            rounds=[]; drained=False
+            for r in range(1,80):
+              if calls+4+len(t['hotel_ids'])>CAP: raise RuntimeError('full_drain_not_reached_before_operation_cap')
+              co=req('search_continue',{'searchId':search_id}); rc=request_count(co)
+              if rc not in (0,None):
+                for _ in range(8):
+                  time.sleep(2); st=req('search_status',{'searchId':search_id})
+                  if complete(st):break
+              before=sum(len(h.get('tours') or []) for h in union)
+              union=merge(union,rows(req('search_results',{'searchId':search_id,'limit':100})))
+              after=sum(len(h.get('tours') or []) for h in union)
+              rounds.append({'round':r,'request_count':rc,'added_tours':after-before,'hotels':len(union),'tours':after})
+              pathlib.Path(f'terminal/partial-{r}.json').write_text(json.dumps(union,ensure_ascii=False,indent=2))
+              if rc==0 or after==before:
+                drained=True; break
+            if not drained: raise RuntimeError('full_drain_not_reached')
+            target=set(t['hotel_ids']); returned={int(h['id']):h for h in union if isinstance(h,dict) and str(h.get('id','')).isdigit() and int(h['id']) in target}
+            for hid in t['hotel_ids']:
+              h=returned.get(hid)
+              if not h:
+                result['holds'].append({'local_id':hid,'reason':'not_returned'}); continue
+              tours=[x for x in h.get('tours') or [] if isinstance(x,dict)]
+              anex=[x for x in tours if is_anex(x)]
+              tv_rooms=sorted(set(v for tr in anex for v in raw_rooms(tr)))
+              if not anex:
+                result['holds'].append({'local_id':hid,'local_name':h.get('name'),'reason':'no_fresh_anex_tour','fresh_tours':len(tours),'tv_room_raw':tv_rooms}); continue
+              tid=tour_id(anex[0]); d=req('tour',{'tourId':tid,'currency':'RUB'},True)
+              if d.get('_404'):
+                result['holds'].append({'local_id':hid,'local_name':h.get('name'),'reason':'fresh_anex_detail_404','tour_id':tid,'tv_room_raw':tv_rooms}); continue
+              fields,native=parse_links(d); detail_rooms=raw_rooms(d)
+              row={'local_id':hid,'local_name':h.get('name'),'fresh_anex_tours':len(anex),'fresh_anex_tour_id':tid,'operator_link_fields':fields,'native_ids':native,'tv_room_raw':tv_rooms,'detail_room_raw':detail_rooms}
+              if len(native)==1: result['anchors'].append(row)
+              else:
+                row['reason']='no_native_id' if not native else 'multiple_native_ids'; result['holds'].append(row)
+            result.update(state='completed_read_only',search_id=search_id,full_drain=True,returned_target_hotels=len(returned),rounds=rounds,provider_calls=calls)
+          except Exception as e:
+            result.update(state='terminal_failed_no_replay',reason=str(e),provider_calls=calls)
+          pathlib.Path('terminal/result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'state':result['state'],'calls':calls,'anchors':len(result.get('anchors',[])),'holds':len(result.get('holds',[]))},ensure_ascii=False))
+          PY
+
+      - name: Complete durable daily accounting
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=terminal/ssh-key.tmp; known=terminal/known-hosts.tmp
+          test -s "$key"; test -s "$known"
+          calls=$(wc -l < terminal/provider-ledger.ndjson 2>/dev/null || echo 0)
+          remote="$USER_VALUE@$HOST_VALUE"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          opdir=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "python3 \"\$HOME/$opdir/daily_ledger.py\" complete \"\$HOME/.anytour-operations/tourvisor-daily/2026-09-19.ndjson\" \"$OPERATION_ID\" \"$calls\"" | tee terminal/daily-complete.json
+          rm -f terminal/ssh-key.tmp terminal/known-hosts.tmp
+
+      - name: Seal receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,hashlib
+          p=pathlib.Path('terminal/result.json')
+          if not p.exists(): p.write_text('{"state":"missing_result","provider_calls":0}\n')
+          raw=p.read_bytes(); d=json.loads(raw)
+          actual=sum(1 for _ in open('terminal/provider-ledger.ndjson')) if pathlib.Path('terminal/provider-ledger.ndjson').exists() else 0
+          receipt={'operation':'hotel-match-anex-user-seen-tv30-uae-live-1971-20260919-v1','state':d.get('state'),'provider_calls':actual,'provider_accessed':actual>0,'full_drain':bool(d.get('full_drain')),'anchors':len(d.get('anchors',[])),'holds':len(d.get('holds',[])),'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':actual>0}
+          pathlib.Path('terminal/receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+          print(json.dumps(receipt))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-anex-user-seen-tv30-uae-live-v1
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce read-only success
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          d=json.load(open('terminal/result.json'))
+          assert d['state']=='completed_read_only' and d.get('full_drain') is True
+          assert d['database_writes']==0 and d['mapping_writes']==0
+          PY
