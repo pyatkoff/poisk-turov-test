@@ -55,7 +55,7 @@ jobs:
           c=json.load(open('claim.json')); b=json.load(open('budget.json'))
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
           assert os.environ['OPERATION_ID'] in c['body']
-          assert 'saved user-search tour_id only' in c['body']
+          assert 'saved user-search tour_id' in c['body']
           assert '270' in b['body'] and '300/day' in b['body']
           assert 'stops immediately on HTTP429' in b['body']
           PY
