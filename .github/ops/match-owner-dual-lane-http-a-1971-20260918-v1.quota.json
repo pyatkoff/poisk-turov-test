@@ -1,0 +1,14 @@
+{
+  "operation": "hotel-match-owner-dual-lane-http-a-1971-20260918-v1",
+  "state": "owner_quota_correction_before_provider_access",
+  "prior_accounted_tourvisor_calls": 3000,
+  "owner_additional_calls": 300,
+  "effective_today_max_calls": 3300,
+  "operation_cap": 300,
+  "supersedes_coordination_comments": [
+    5735063560,
+    5735104598
+  ],
+  "reason": "Owner explicitly granted +300 Tourvisor requests after the prior 3000/3000 was exhausted.",
+  "provider_access_before_this_correction": false
+}
