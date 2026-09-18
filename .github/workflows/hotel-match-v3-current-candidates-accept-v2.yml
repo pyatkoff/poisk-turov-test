@@ -1,0 +1,154 @@
+name: MATCH v3 current candidates guarded accept v2
+
+on:
+  push:
+    branches:
+      - match/v3-current-candidates-accept-1971-20260918-v2
+    paths:
+      - .github/workflows/hotel-match-v3-current-candidates-accept-v2.yml
+
+permissions:
+  contents: read
+  issues: read
+  actions: read
+
+env:
+  OPERATION_ID: hotel-match-v3-current-candidates-accept-1971-20260918-v2
+  EXPECTED_BASE: 2dc144c9179f07006bd7783077c0e03097a3d8fe
+  CLAIM_COMMENT_ID: '5723288829'
+
+jobs:
+  apply:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.ref == 'refs/heads/match/v3-current-candidates-accept-1971-20260918-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact writer delta and owner authorization
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_v3_current_candidates_accept_v2.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-v3-current-candidates-accept-v2.yml'
+
+          php -l scripts/diagnostics/hotel_match_v3_current_candidates_accept_v2.php
+          php scripts/diagnostics/hotel_match_v3_current_candidates_accept_v2.php --self-test
+
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json, os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297
+          assert c['author_association']=='OWNER'
+          b=c['body']
+          assert os.environ['OPERATION_ID'] in b
+          assert '14 immutable v3 TV↔SAMO hotel candidates' in b
+          assert 'room correspondences stored as evidence only' in b
+          PY
+
+      - name: Require existing SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          test -n "$HOST_VALUE"
+          test -n "$USER_VALUE"
+
+      - name: Execute one guarded DB transaction
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+
+          remote="$USER_VALUE@$HOST_VALUE"
+          stage=".anytour-operations/$OPERATION_ID-stage"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+
+          ssh "${opts[@]}" "$remote" "umask 077; rm -rf \"\$HOME/$stage\"; mkdir -p \"\$HOME/$stage\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_v3_current_candidates_accept_v2.php "$remote:$stage/writer.php"
+
+          set +e
+          ssh "${opts[@]}" "$remote"             "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" OPERATION_ID=\"$OPERATION_ID\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php \"\$HOME/$stage/writer.php\""             > terminal/stdout.json 2> terminal/stderr.txt
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/exit.txt
+
+          ssh "${opts[@]}" "$remote"             "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -f \"\$p/reservation.json\"; test -f \"\$p/result.json\"; test -f \"\$p/receipt.json\"; tar -C \"\$p\" -czf - reservation.json precommit.json result.json receipt.json 2>/dev/null || tar -C \"\$p\" -czf - reservation.json result.json receipt.json"             > terminal/server-operation.tgz
+
+          python3 - <<'PY'
+          import json, pathlib, tarfile, hashlib
+          p=pathlib.Path('terminal'); server=p/'server'; server.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  assert m.isfile() and m.size < 5_000_000
+                  (server/pathlib.Path(m.name).name).write_bytes(t.extractfile(m).read())
+          result=json.loads((server/'result.json').read_text())
+          receipt=json.loads((server/'receipt.json').read_text())
+          digest=hashlib.sha256((server/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['readback_verified'] is True
+          assert result['supplier_calls']==0 and result['tourvisor_calls']==0
+          assert result['planned_count']==14
+          assert result['written_count']+result['held_count']==14
+          assert result['database_writes']==result['written_count']
+          assert result['mapping_writes']==result['written_count']
+          assert result['committed'] is True and result['readback_verified'] is True
+          assert len(result['post_commit_readback'])==result['written_count']
+          summary={
+              'status':result['status'],
+              'planned_count':14,
+              'written_count':result['written_count'],
+              'held_count':result['held_count'],
+              'rooms_attached':result['rooms_attached'],
+              'held':result['held'],
+              'result_sha256':digest,
+              'database_writes':result['database_writes'],
+              'supplier_calls':0,'tourvisor_calls':0
+          }
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-v3-current-candidates-accept-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
