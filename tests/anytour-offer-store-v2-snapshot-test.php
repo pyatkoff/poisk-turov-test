@@ -29,6 +29,12 @@ sql_file_v2($pdo,__DIR__.'/../v2/data/migrations/20260916-anytour-canonical-cata
 need_v2((int)$pdo->query('SELECT schema_version FROM anytour_offer_store_control WHERE singleton_id=1')->fetchColumn()===2,'schema-v2');
 $profile=json_encode(['name'=>'Fixture AnyTour Hotel','description'=>'Own profile'],JSON_UNESCAPED_SLASHES);$pdo->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES(?,?,1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())')->execute([$profile,hash('sha256',$profile)]);$own=(int)$pdo->lastInsertId();
 $source=json_encode(['id'=>101]);$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog','101',?,'fixture',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())")->execute([$own,$source,hash('sha256',$source)]);
+$aliasSource=json_encode([
+    'schema_version'=>1,'accepted_local_hotel_id'=>101,'canonical_hotel_id'=>$own,
+    'derived_from_namespace'=>'legacy_catalog','derived_from_source_sha256'=>hash('sha256',$source),
+],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('anytour_local_id','101',?,'canonical_local_alias_v1',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())")
+    ->execute([$own,$aliasSource,hash('sha256',$aliasSource)]);
 $at=new DateTimeImmutable('2026-09-16T18:00:00Z');$expires=$at->modify('+2 hours');$params=params_v2();$scope=AnyTourSearchScopeV1::fromParams($params)['digest'];
 $first=AnyTourOfferStoreV1::beginRefresh($pdo,'anex',$scope,$at);AnyTourOfferStoreV1::upsertReadyOffer($pdo,$first,$own,dto_v2('199390'),$expires,$at);AnyTourOfferStoreV1::completeRefresh($pdo,$first,$at);
 $read=AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+1 minute'));need_v2(count($read['items'])===1&&$read['items'][0]['price']==='199390','first-complete-visible');
