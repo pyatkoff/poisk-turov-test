@@ -84,6 +84,12 @@ $hotelId=(int)$pdo->lastInsertId();$legacyId=701;
 $source='{}';
 $pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',?,?, 'fixture',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())")
     ->execute([(string)$legacyId,$hotelId,$source,hash('sha256',$source)]);
+$aliasSource=json_encode([
+    'schema_version'=>1,'accepted_local_hotel_id'=>$legacyId,'canonical_hotel_id'=>$hotelId,
+    'derived_from_namespace'=>'legacy_catalog','derived_from_source_sha256'=>hash('sha256',$source),
+],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('anytour_local_id',?,?,'canonical_local_alias_v1',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())")
+    ->execute([(string)$legacyId,$hotelId,$aliasSource,hash('sha256',$aliasSource)]);
 $pdo->prepare('INSERT INTO anytour_hotel_rooms(anytour_hotel_id,local_key,name_ru,category_code,facts_json,revision,is_active,created_at) VALUES(?,?,?,?,?,1,1,UTC_TIMESTAMP())')
     ->execute([$hotelId,'own:standard-sea','Стандарт · вид на море','standard',json_encode(['view'=>'Море'],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
 $pdo->prepare('INSERT INTO anytour_hotel_rooms(anytour_hotel_id,local_key,name_ru,category_code,facts_json,revision,is_active,created_at) VALUES(?,?,?,?,?,1,0,UTC_TIMESTAMP())')
