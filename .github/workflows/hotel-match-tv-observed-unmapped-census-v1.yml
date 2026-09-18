@@ -1,0 +1,117 @@
+name: MATCH Tourvisor observed-unmapped census v1
+
+on:
+  push:
+    branches:
+      - match/tv-observed-unmapped-census-1971-20260918-v1
+    paths:
+      - .github/workflows/hotel-match-tv-observed-unmapped-census-v1.yml
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  OPERATION_ID: hotel-match-tourvisor-observed-unmapped-census-1971-20260918-v1
+  EXPECTED_BASE: a204894c3d362b9961edd174c1930f626d220bb6
+
+jobs:
+  census:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.ref == 'refs/heads/match/tv-observed-unmapped-census-1971-20260918-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact read-only delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_tv_observed_unmapped_census_v1.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-tv-observed-unmapped-census-v1.yml'
+          php -l scripts/diagnostics/hotel_match_tv_observed_unmapped_census_v1.php
+          php -l app/integrations/anex-search-mapping-registry.php
+
+      - name: Require existing SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          test -n "$HOST_VALUE"
+          test -n "$USER_VALUE"
+
+      - name: Stage and run read-only census
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p result
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null
+          test -s "$known"
+
+          remote="$USER_VALUE@$HOST_VALUE"
+          op=".anytour-operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytour-operations\"; rm -rf \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}"             scripts/diagnostics/hotel_match_tv_observed_unmapped_census_v1.php             app/integrations/anex-search-mapping-registry.php             "$remote:$op/payload/"
+
+          ssh "${opts[@]}" "$remote"             "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php \"\$HOME/$op/payload/hotel_match_tv_observed_unmapped_census_v1.php\""             > result/result.json
+
+          python3 - <<'PY'
+          import json
+          p='result/result.json'
+          data=json.load(open(p))
+          assert data['status']=='read_only_complete'
+          assert data['database_writes']==0
+          assert data['supplier_calls']==0
+          assert data['tourvisor_calls']==0
+          for k in ['user_search_ever','user_search_last_30d','all_tourvisor_observations_ever','all_tourvisor_observations_last_30d']:
+              s=data['sets'][k]
+              assert s['observed_unique_hotels'] == s['mapped_any_unique_hotels'] + s['unmapped_by_both_unique_hotels']
+              assert s['mapped_both_unique_hotels'] <= s['mapped_anex_unique_hotels']
+              assert s['mapped_both_unique_hotels'] <= s['mapped_andromeda_unique_hotels']
+          print(json.dumps({
+              k:{
+                  'observed':v['observed_unique_hotels'],
+                  'mapped_any':v['mapped_any_unique_hotels'],
+                  'unmapped':v['unmapped_by_both_unique_hotels'],
+                  'coverage_percent':v['coverage_percent']
+              } for k,v in data['sets'].items()
+          },ensure_ascii=False,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-tv-observed-unmapped-census-${{ github.run_id }}
+          path: result/result.json
+          if-no-files-found: error
+          retention-days: 90
