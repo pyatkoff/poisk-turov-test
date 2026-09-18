@@ -1,0 +1,24 @@
+name: Andromeda package capture offline
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-package-capture.php'
+      - 'tests/andromeda-package-capture-smoke.php'
+      - '.github/workflows/andromeda-package-capture-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Lint package capture source and regression
+        run: |
+          php -l app/integrations/andromeda-package-capture.php
+          php -l tests/andromeda-package-capture-smoke.php
+      - name: Exercise terminal package capture without supplier access
+        run: php -d allow_url_fopen=0 tests/andromeda-package-capture-smoke.php
