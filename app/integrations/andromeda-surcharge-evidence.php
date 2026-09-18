@@ -21,7 +21,7 @@ final class AnyTourAndromedaSurchargeEvidenceV1
     public static function apply(array $offer,array $request,array $evidence,int $now):?array
     {
         $key=AndromedaSurchargeGroupKey::build($offer,$request);$price=self::price($offer);
-        if($key===null||$price===null||!self::evidenceValid($evidence)||$evidence['group_key']!==$key
+        if($key===null||$price===null||!self::valid($evidence)||$evidence['group_key']!==$key
             ||$now<$evidence['observed_at']||$now>=$evidence['expires_at'])return null;
         $party=$evidence['party_surcharge'];
         if($party['currency']!==$price['currency'])return null;
@@ -29,6 +29,16 @@ final class AnyTourAndromedaSurchargeEvidenceV1
         return ['schema_version'=>1,'provider'=>'andromeda','state'=>'estimated','search_price'=>$price,
             'party_surcharge'=>$party,'search_price_with_surcharge'=>['amount'=>$total,'currency'=>$price['currency'],'source'=>'derived_search_estimate'],
             'surcharge_scope'=>'party','arithmetic_applied'=>true,'final_price_verified'=>false];
+    }
+
+    public static function valid(array $e):bool
+    {
+        $party=$e['party_surcharge']??null;
+        return ($e['schema_version']??null)===1&&($e['provider']??null)==='andromeda'&&($e['state']??null)==='estimated'
+            &&is_string($e['group_key']??null)&&preg_match('/^andromeda-surcharge-v2:[a-f0-9]{64}$/D',$e['group_key'])===1
+            &&is_int($e['observed_at']??null)&&$e['observed_at']>0&&is_int($e['expires_at']??null)&&$e['expires_at']>$e['observed_at']
+            &&$e['expires_at']<=$e['observed_at']+300&&is_array($party)&&is_string($party['amount']??null)&&self::money($party['amount'],true)
+            &&is_string($party['currency']??null)&&preg_match('/^[A-Z]{3}$/D',$party['currency'])===1&&in_array($party['source']??null,self::SOURCES,true);
     }
 
     private static function price(array $offer):?array
@@ -50,16 +60,6 @@ final class AnyTourAndromedaSurchargeEvidenceV1
             ||($total['currency']??null)!==$price['currency']||($total['source']??null)!=='derived_search_estimate')return false;
         $expected=self::add($price['amount'],$party['amount']);
         return $expected!==null&&self::same($expected,$total['amount']);
-    }
-
-    private static function evidenceValid(array $e):bool
-    {
-        $party=$e['party_surcharge']??null;
-        return ($e['schema_version']??null)===1&&($e['provider']??null)==='andromeda'&&($e['state']??null)==='estimated'
-            &&is_string($e['group_key']??null)&&preg_match('/^andromeda-surcharge-v2:[a-f0-9]{64}$/D',$e['group_key'])===1
-            &&is_int($e['observed_at']??null)&&$e['observed_at']>0&&is_int($e['expires_at']??null)&&$e['expires_at']>$e['observed_at']
-            &&$e['expires_at']<=$e['observed_at']+300&&is_array($party)&&is_string($party['amount']??null)&&self::money($party['amount'],true)
-            &&is_string($party['currency']??null)&&preg_match('/^[A-Z]{3}$/D',$party['currency'])===1&&in_array($party['source']??null,self::SOURCES,true);
     }
 
     private static function add(string $a,string $b):?string

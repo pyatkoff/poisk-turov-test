@@ -5,10 +5,14 @@ on:
     paths:
       - 'app/integrations/andromeda-normalizer.php'
       - 'app/integrations/andromeda-anytour-offer-autosave.php'
+      - 'app/integrations/andromeda-surcharge-evidence.php'
+      - 'app/integrations/andromeda-surcharge-evidence-store.php'
       - 'app/integrations/three-provider-money-facts.php'
       - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-party-criteria-fallback-test.php'
       - 'tests/andromeda-anytour-offer-autosave-test.php'
+      - 'tests/andromeda-surcharge-evidence-test.php'
+      - 'tests/andromeda-surcharge-evidence-store-test.php'
       - 'tests/three-provider-money-facts-test.php'
       - 'tests/three-provider-final-price-readiness-test.php'
       - 'tests/three-provider-search-price-with-surcharge-smoke.php'
@@ -32,11 +36,17 @@ jobs:
           php -l app/integrations/andromeda-normalizer.php
           php -l app/integrations/three-provider-money-facts.php
           php -l app/integrations/andromeda-anytour-offer-autosave.php
+          php -l app/integrations/andromeda-surcharge-evidence.php
+          php -l app/integrations/andromeda-surcharge-evidence-store.php
           php -l v2/api-andromeda-search3-preview.php
           php -l tests/andromeda-party-criteria-fallback-test.php
           php -l tests/andromeda-anytour-offer-autosave-test.php
+          php -l tests/andromeda-surcharge-evidence-test.php
+          php -l tests/andromeda-surcharge-evidence-store-test.php
           php tests/andromeda-party-criteria-fallback-test.php
           php tests/andromeda-anytour-offer-autosave-test.php
+          php tests/andromeda-surcharge-evidence-test.php
+          php tests/andromeda-surcharge-evidence-store-test.php
       - name: Verify supplier-free persistence boundary
         run: |
           python3 - <<'PY'
@@ -44,9 +54,10 @@ jobs:
           autosave=Path('app/integrations/andromeda-anytour-offer-autosave.php').read_text()
           endpoint=Path('v2/api-andromeda-search3-preview.php').read_text()
           money=Path('app/integrations/three-provider-money-facts.php').read_text()
+          store=Path('app/integrations/andromeda-surcharge-evidence-store.php').read_text()
           for forbidden in ['AnyTourAndromedaTransport(', '->login(', '->price(', 'bron_ticket', 'broninit', 'gateway.samo.ru']:
-              if forbidden in autosave:
-                  raise SystemExit('autosave contains supplier action: '+forbidden)
+              if forbidden in autosave or forbidden in store:
+                  raise SystemExit('supplier action crossed autosave/evidence-store boundary: '+forbidden)
           required=[
               'AnyTourAndromedaOfferAutosaveV1',
               'replaceCompleteSnapshot',
