@@ -54,7 +54,7 @@ module.exports=async function checkOperatorCards(page,width,output){
     const collapsedComposition=[];
     if(width===375||width===1440){
       const viewport=page.viewportSize();
-      for(const inspectedWidth of width===375?[320,350,375,390,700]:[1199,1200,1440]){
+      for(const inspectedWidth of width===375?[320,350,375,390,430,700]:[1199,1200,1440]){
         await page.setViewportSize({...viewport,width:inspectedWidth});
         const geometry=await card.evaluate(node=>{
           const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
