@@ -40,7 +40,9 @@ jobs:
           set -euo pipefail
           php -l scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
           php -l tests/anytour_hotel_stay_offer_candidates_v2_test.php
-          ! grep -Eq 'curl_|file_get_contents\([[:space:]]*["'"']https?://' scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
+          ! grep -Fq 'curl_' scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
+          ! grep -Fq 'http://' scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
+          ! grep -Fq 'https://' scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
           grep -Fq 'SET TRANSACTION READ ONLY' scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
           grep -Fq "'automaticAccepts'=>0" scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
       - name: Exercise current-offer review inventory against MySQL
