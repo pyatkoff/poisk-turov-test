@@ -45,6 +45,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           runtime=Path('app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php').read_text()
+          cache=Path('app/integrations/andromeda-surcharge-cache-autosave.php').read_text()
           cli=Path('scripts/ops/andromeda_local_offer_collect.php').read_text()
           required=[
               'anytour_andromeda_read_saved_pricing_with_evidence',
@@ -52,7 +53,7 @@ jobs:
               "'final_price_verified' => false",
               "anytour_andromeda_anytour_offer_autosave_cache_runtime",
           ]
-          combined=runtime+'\n'+cli
+          combined=runtime+'\n'+cache+'\n'+cli
           for token in required:
               assert token in combined, token
           for token in ['action=calc','changeservice','booking_enabled=true','curl_init','curl_exec']:
