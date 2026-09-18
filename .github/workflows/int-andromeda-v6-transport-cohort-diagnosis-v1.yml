@@ -1,0 +1,182 @@
+name: INT Andromeda v6 transport cohort diagnosis v1
+
+on:
+  push:
+    branches: ['ops/int-andromeda-v6-transport-cohort-diagnosis-20260918-v1']
+    paths:
+      - '.github/workflows/int-andromeda-v6-transport-cohort-diagnosis-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-andromeda-v6-transport-cohort-diagnosis-1717-20260918-v1
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_SHA: 566c6ae6811f53cec18051f2c430fa9f931ad293
+      GENERATION: '17171835'
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Bind exact supplier-free diagnostic source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = '.github/workflows/int-andromeda-v6-transport-cohort-diagnosis-v1.yml'
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY"
+          test -n "$ANYTOOUR_DEPLOY_HOST"
+          test -n "$ANYTOOUR_DEPLOY_USER"
+          ! grep -Eq 'broninit|get_flights|search_tour|autosave|INSERT|UPDATE|DELETE|REPLACE' .github/workflows/int-andromeda-v6-transport-cohort-diagnosis-v1.yml
+
+      - name: Read retained v6 cohort only
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+
+          ssh "${opts[@]}" "$remote" php -- "$GENERATION" <<'PHP' > "$RUNNER_TEMP/receipt.json"
+          <?php
+          declare(strict_types=1);
+          if ($argc !== 2 || !preg_match('/^[1-9][0-9]{0,9}$/D', (string)$argv[1])) exit(2);
+          $generation=(int)$argv[1];
+          $site=realpath(getenv('HOME').'/www/anytoour.ru');
+          if ($site===false || basename($site)!=='anytoour.ru') exit(3);
+          $private=dirname($site,2).'/.anytoour-andromeda/search3-preview.php';
+          if (!is_file($private) || is_link($private)) exit(4);
+          $cfg=require $private;
+          if (!is_array($cfg) || !is_string($cfg['catalog_path']??null) || $cfg['catalog_path']==='') exit(5);
+          $dir=dirname($cfg['catalog_path']).'/searches';
+          if (!is_dir($dir) || is_link($dir) || basename($dir)!=='searches') exit(6);
+
+          $read=static function(string $path,int $max=3000000): ?array {
+              if(is_link($path)||!is_file($path)) return null;
+              $size=filesize($path); if(!is_int($size)||$size<2||$size>$max) return null;
+              try{$x=json_decode((string)file_get_contents($path),true,64,JSON_THROW_ON_ERROR);return is_array($x)?$x:null;}catch(Throwable){return null;}
+          };
+
+          $refs=[];
+          foreach(glob($dir.'/*-1.json')?:[] as $path){
+              $x=$read($path); $s=is_array($x)?($x['store']['snapshot']??null):null;
+              if(!is_array($s)||($s['provider']??null)!=='andromeda'||($s['generation']??null)!==$generation) continue;
+              $ref=$s['search_ref']??null;
+              if(is_string($ref)&&preg_match('/^[a-f0-9]{64}$/D',$ref)) $refs[$ref]=true;
+          }
+          if(count($refs)!==1) exit(7);
+          $ref=(string)array_key_first($refs);
+
+          $offers=[]; $packageCount=0;
+          foreach(glob($dir.'/'.$ref.'*.json')?:[] as $path){
+              if(str_ends_with($path,'-package.json')){++$packageCount;continue;}
+              $x=$read($path); $s=is_array($x)?($x['store']['snapshot']??null):null;
+              if(!is_array($s)||($s['provider']??null)!=='andromeda'||($s['generation']??null)!==$generation||($s['search_ref']??null)!==$ref) continue;
+              foreach($s['offers']??[] as $offer){
+                  if(!is_array($offer)) continue;
+                  $k=$offer['offer_ref']??null;
+                  if(is_string($k)&&preg_match('/^offer_[a-f0-9]{64}$/D',$k)) $offers[$k]=$offer;
+              }
+          }
+
+          $owned=static function(string $raw): bool {
+              $v=str_replace(['Ё','ё'],'е',trim($raw));
+              $v=function_exists('mb_strtolower')?mb_strtolower($v,'UTF-8'):strtolower($v);
+              $c=preg_replace('/[^\p{L}\p{N}]+/u','',$v)??'';
+              if($c==='') return false;
+              foreach(['anex','анекс','pegas','пегас','coral','корал','sunmar','санмар'] as $other) if(str_contains($c,$other)) return false;
+              return true;
+          };
+
+          $candidates=[]; $ids=[];
+          foreach($offers as $offer){
+              if(!$owned((string)($offer['operator']??''))) continue;
+              $local=$offer['local_hotel_id']??null; $ext=$offer['external_hotel_id']??null; $ns=$offer['supplier_namespace']??null;
+              if(!is_int($local)||$local<1||(!is_string($ext)&&!is_int($ext))||(string)$ext===''||!is_string($ns)||$ns==='') continue;
+              $candidates[]=$offer; $ids[(string)$ext]=true;
+          }
+
+          $dbFile=is_file($site.'/data/db-v1.php')?$site.'/data/db-v1.php':$site.'/v2/data/db-v1.php';
+          require_once $dbFile;
+          $dbc=v2_data_db_config();
+          if(!is_array($dbc)||($dbc['dsn']??'')===''||($dbc['user']??'')==='') exit(8);
+          $pdo=new PDO($dbc['dsn'],$dbc['user'],$dbc['password'],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_EMULATE_PREPARES=>false]);
+          try{$pdo->exec('SET SESSION TRANSACTION READ ONLY');}catch(Throwable){}
+
+          $current=[];
+          if($ids){
+              $q=$pdo->prepare("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? AND i.external_hotel_id IN (".implode(',',array_fill(0,count($ids),'?')).')');
+              $q->execute(array_merge([4],array_keys($ids)));
+              foreach($q->fetchAll() as $r){$k=json_encode([$r['supplier_namespace'],(string)$r['external_hotel_id']]);$current[$k]=array_key_exists($k,$current)?null:(int)$r['local_hotel_id'];}
+          }
+          $legacy=$pdo->prepare("SELECT COUNT(*) FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id WHERE s.namespace='legacy_catalog' AND s.external_key=? AND h.is_active=1");
+
+          $stats=[];
+          foreach(['true','false','unknown'] as $b)$stats[$b]=['offers'=>0,'operators'=>[],'programs'=>[],'tours'=>[],'groups'=>[]];
+          foreach($candidates as $o){
+              $key=json_encode([$o['supplier_namespace'],(string)$o['external_hotel_id']]);
+              if(($current[$key]??null)!==$o['local_hotel_id']) continue;
+              $legacy->execute([(string)$o['local_hotel_id']]); if((int)$legacy->fetchColumn()!==1) continue;
+              $f=$o['transport_context']['freight_external']??null; $bucket=$f===true?'true':($f===false?'false':'unknown');
+              ++$stats[$bucket]['offers'];
+              $op=(string)($o['operator_ref']??''); $ctx=is_array($o['transport_context']??null)?$o['transport_context']:[];
+              $program=(string)($ctx['program_ref']??''); $tour=(string)($ctx['tour_ref']??'');
+              if($op!=='')$stats[$bucket]['operators'][hash('sha256',$op)]=true;
+              if($program!=='')$stats[$bucket]['programs'][hash('sha256',$program)]=true;
+              if($tour!=='')$stats[$bucket]['tours'][hash('sha256',$tour)]=true;
+              $stats[$bucket]['groups'][hash('sha256',json_encode([$op,$program,$tour]))]=true;
+          }
+          foreach($stats as &$s){foreach(['operators','programs','tours','groups'] as $k)$s[$k]=count($s[$k]);} unset($s);
+          $mapped=array_sum(array_column($stats,'offers'));
+          echo json_encode([
+              'status'=>'complete','provider'=>'andromeda','generation'=>$generation,
+              'retained_offer_count'=>count($offers),'mapped_owned_offer_count'=>$mapped,
+              'freight_external'=>$stats,'package_sidecar_exists'=>$packageCount>0,'package_sidecar_count'=>$packageCount,
+              'supplier_calls'=>0,'db_writes'=>0,'server_filesystem_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'search3_publication'=>0,
+              'v6_replay_allowed'=>false
+          ],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          PHP
+
+          python3 - "$RUNNER_TEMP/receipt.json" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert r['status']=='complete' and r['provider']=='andromeda' and r['generation']==17171835
+          assert r['supplier_calls']==r['db_writes']==r['server_filesystem_writes']==0
+          assert r['v6_replay_allowed'] is False
+          for b in ('true','false','unknown'):
+              s=r['freight_external'][b]
+              for k in ('offers','operators','programs','tours','groups'):
+                  assert isinstance(s[k],int) and s[k]>=0
+          print(json.dumps(r,separators=(',',':')))
+          PY
+
+      - name: Preserve aggregate diagnosis
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-andromeda-v6-transport-cohort-diagnosis-${{ github.run_id }}
+          path: ${{ runner.temp }}/receipt.json
+          if-no-files-found: error
+          retention-days: 30
