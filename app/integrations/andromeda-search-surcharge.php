@@ -71,6 +71,87 @@ final class AnyTourAndromedaSearchSurcharge
         return $result;
     }
 
+    /**
+     * Private server-side strategy for a choice-dependent get_flights claim.
+     *
+     * This chooses the lowest safely comparable supplier-reported transport
+     * markup independently for the required outbound and return directions.
+     * The chosen markup is NOT a customer price. The caller must still apply
+     * both selections through changeservice and accept only supplier calc.
+     *
+     * @return array{selected:array<int,array>,candidate_counts:array<string,int>,target_currency:string}|null
+     */
+    public static function cheapestRequiredFlightSelection(array $claim, array $searchPrice): ?array
+    {
+        $base = self::money($searchPrice['amount'] ?? null, 2);
+        $targetCurrency = $searchPrice['currency'] ?? null;
+        if ($base === null || !is_string($targetCurrency)
+            || preg_match('/^[A-Z0-9_]{2,8}$/D', $targetCurrency) !== 1) {
+            throw new InvalidArgumentException('ANDROMEDA_SEARCH_SURCHARGE_PRICE');
+        }
+        $doc = self::document($claim);
+        $rates = self::rates($doc);
+        $required = [];
+        foreach (($claim['groups'] ?? []) as $block) {
+            if (!is_array($block) || !is_array($block['group'] ?? null)) continue;
+            foreach ($block['group'] as $group) {
+                if (!is_array($group)
+                    || (string)($group['required'] ?? '') !== 'true'
+                    || (string)($group['oneItem'] ?? '') !== 'true') continue;
+                $id = (string)($group['id'] ?? '');
+                if ($id !== '' && strlen($id) <= 128) $required[$id] = true;
+            }
+        }
+        if ($required === []) return null;
+
+        $options = ['0' => [], '1' => []];
+        foreach (($claim['variants'] ?? []) as $variant) {
+            if (!is_array($variant)) continue;
+            foreach (($variant['transports'] ?? []) as $block) {
+                if (!is_array($block) || !is_array($block['transport'] ?? null)) continue;
+                foreach ($block['transport'] as $item) {
+                    if (!is_array($item) || ($item['type'] ?? null) !== 'ttAvia') continue;
+                    $direction = (string)($item['direction'] ?? '');
+                    $groupId = (string)($item['groupId'] ?? '');
+                    $uid = $item['uid'] ?? null;
+                    if (!isset($options[$direction]) || !isset($required[$groupId])
+                        || !is_string($uid) || preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $uid) !== 1) {
+                        continue;
+                    }
+                    $markup = self::transportMarkupFact($item);
+                    if ($markup === null) continue;
+                    $converted = self::convert(
+                        $markup['amount'], $markup['currency'], $targetCurrency, $rates
+                    );
+                    if ($converted === null) continue;
+                    $units = self::units($converted, 2);
+                    if ($units === null) continue;
+                    $options[$direction][] = [
+                        'item' => $item,
+                        'converted_units' => $units,
+                    ];
+                }
+            }
+        }
+
+        $selected = [];
+        $counts = [];
+        foreach (['0', '1'] as $direction) {
+            $counts[$direction] = count($options[$direction]);
+            if ($options[$direction] === []) return null;
+            $best = $options[$direction][0];
+            foreach (array_slice($options[$direction], 1) as $candidate) {
+                if ($candidate['converted_units'] < $best['converted_units']) $best = $candidate;
+            }
+            $selected[(int)$direction] = $best['item'];
+        }
+        return [
+            'selected' => $selected,
+            'candidate_counts' => $counts,
+            'target_currency' => $targetCurrency,
+        ];
+    }
+
     public static function diagnostic(array $claim): array
     {
         $doc = self::document($claim);
@@ -132,6 +213,28 @@ final class AnyTourAndromedaSearchSurcharge
             throw new InvalidArgumentException('ANDROMEDA_SEARCH_SURCHARGE_CLAIM');
         }
         return $claim['claimDocument'][0];
+    }
+
+    private static function transportMarkupFact(array $transport): ?array
+    {
+        $facts = [];
+        foreach (($transport['details'] ?? []) as $block) {
+            if (!is_array($block) || !is_array($block['detail'] ?? null)) continue;
+            foreach ($block['detail'] as $detail) {
+                if (!is_array($detail)) continue;
+                $amount = self::money($detail['markup'] ?? null, 2, true);
+                $currency = $detail['currency'] ?? null;
+                if ($amount === null || !is_string($currency)
+                    || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1) continue;
+                $units = self::units($amount, 2);
+                if ($units === null) continue;
+                $facts[$currency . "\0" . $units] ??= [
+                    'amount' => $amount,
+                    'currency' => $currency,
+                ];
+            }
+        }
+        return count($facts) === 1 ? array_values($facts)[0] : null;
     }
 
     private static function markupFacts(array $claim): array

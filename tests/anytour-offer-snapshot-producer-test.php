@@ -49,7 +49,9 @@ function producer_raw(string $provider, int $local, int $adults, array $addition
 }
 function producer_entry(string $provider, int $legacy, ?int $own, int $adults, string $base, string $fuel, string $salt, int $issued): array
 {
-    $additional=[['kind'=>'fuel_adult','amount'=>$fuel,'currency'=>'RUB','source'=>$provider.'_additional']];
+    $additional = $provider === 'andromeda'
+        ? [['kind'=>'party_transport_surcharge','amount'=>$fuel,'currency'=>'RUB','source'=>'andromeda_additional']]
+        : [['kind'=>'fuel_adult','amount'=>$fuel,'currency'=>'RUB','source'=>$provider.'_additional']];
     $offer=AnyTourThreeProviderOfferContract::fromSearch(producer_raw($provider,$legacy,$adults,$additional,$base,$salt));
     $retained=AnyTourThreeProviderOfferContext::retain($offer,41,1,$issued,900);
     $current=['provider'=>$retained['provider'],'operator'=>$retained['operator'],'local_hotel_id'=>$retained['local_hotel_id'],
@@ -99,8 +101,56 @@ $andResult=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',producer_param
     'complete'=>true,'authoritative_empty'=>false,'offers'=>[$and],
 ],$now,$ingest);
 producer_check($andResult['published']===true && $andResult['readyOfferCount']===1,'andromeda-published');
-producer_check($ingestCalls[1]['rows'][0]['dto']['finalPrice']==='166346.80','andromeda-existing-arithmetic');
+producer_check($ingestCalls[1]['rows'][0]['dto']['finalPrice']==='151975.60','andromeda-existing-arithmetic');
 producer_check(count($ingestCalls)===2,'providers-independent-success');
+
+producer_check(count($ingestCalls)===2,'providers-independent-success');
+
+// Supplier-verified Andromeda calc can cross INT snapshot production without
+// reusing the estimated-money path. The LOCAL ingestor is mocked here until its
+// provider-neutral final_verified store state lands.
+$verified = producer_entry('andromeda', 4300, 778, 2, '144790', '1', 'and-verified', $issued);
+$verified['priced_money'] = null;
+$verified['verified_quote'] = [
+    'schema_version'=>1,
+    'provider'=>'andromeda',
+    'selection_enabled'=>true,
+    'booking_enabled'=>false,
+    'local_id'=>4300,
+    'operator'=>'ANEX',
+    'search_price'=>['amount'=>'144790','currency'=>'RUB'],
+    'package_price'=>['amount'=>'144790','currency'=>'RUB'],
+    'state'=>'quote_verified',
+    'quote_state'=>'verified',
+    'final_price'=>['amount'=>'166346.80','currency'=>'RUB'],
+    'final_price_verified'=>true,
+    'flight_selection_required'=>false,
+    'flights'=>[],
+];
+$verifiedResult=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',producer_params(),[
+    'complete'=>true,'authoritative_empty'=>false,'offers'=>[$verified],
+],$now,$ingest);
+producer_check($verifiedResult['published']===true && $verifiedResult['readyOfferCount']===1,'verified-published');
+$verifiedDto=$ingestCalls[2]['rows'][0]['dto'];
+producer_check($verifiedDto['quote_state']==='verified' && $verifiedDto['final_price_verified']===true,'verified-state');
+producer_check(is_string($verifiedDto['quote_evidence_digest'])
+    && preg_match('/^[a-f0-9]{64}$/D',$verifiedDto['quote_evidence_digest'])===1,'verified-evidence');
+producer_check($verifiedDto['finalPriceReady']===true
+    && $verifiedDto['finalPrice']==='166346.80'
+    && $verifiedDto['price']==='166346.80'
+    && $verifiedDto['currency']==='RUB','verified-final-rub');
+producer_check($verifiedDto['booking_enabled']===false
+    && $verifiedDto['selection_state']==='disabled','verified-no-selection-authority');
+
+$badVerified=$verified;
+$badVerified['verified_quote']['final_price']['currency']='EUR';
+$beforeVerified=count($ingestCalls);
+$notRub=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',producer_params(),[
+    'complete'=>true,'authoritative_empty'=>false,'offers'=>[$badVerified],
+],$now,$ingest);
+producer_check($notRub['published']===false
+    && $notRub['reason']==='no_final_price_ready_resolved_offers','verified-non-rub-not-listing-ready');
+producer_check(count($ingestCalls)===$beforeVerified,'verified-non-rub-no-ingest');
 
 $before=count($ingestCalls);
 producer_reject(static fn()=>AnyTourIntOfferSnapshotProducerV1::produce('anex',producer_params(),[

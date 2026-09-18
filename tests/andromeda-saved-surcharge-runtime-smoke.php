@@ -101,6 +101,99 @@ foreach (['estimated', 'zero', 'ambiguous', 'unknown', 'stale'] as $case) {
     }
 }
 
+// Choice-dependent get_flights money is actualized through exactly two
+// changeservice calls and supplier calc. The selected markup is never used as the
+// final price; calc is the only verified customer price authority.
+$actualDir = $root . '/actualized/searches'; mkdir($actualDir, 0700, true);
+anytour_andromeda_search3_save($actualDir . '/' . $ref . '-1.json', ['status'=>'complete','store'=>$state]);
+anytour_andromeda_search3_save($actualDir . '/' . $ref . '-auth.json', [
+    'created_at'=>$created,'session'=>['sid'=>'actual-fixture-session','expires'=>time()+1800]]);
+$actualPath = $actualDir . '/' . $ref . '-' . $created . '-1-' . $context['offer_ref'] . '-surcharge-v1.json';
+$actualBootstrapCalls = 0; $actualActions = []; $selectedUids = [];
+$actualAllows = static fn(array $offer): bool => $offer['local_hotel_id'] === 900;
+$actualBootstrap = static function($url) use (&$actualBootstrapCalls, $raw): array {
+    ++$actualBootstrapCalls;
+    return ['status'=>200,'body'=>json_encode($raw)];
+};
+$actualRequest = static function(string $url, string $post) use (&$actualActions, &$selectedUids): array {
+    parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+    parse_str($post, $params);
+    $action = $query['action'] ?? '';
+    $claim = json_decode($params['claim'] ?? '', true);
+    surcharge_check(is_array($claim), 'actualizer claim parsed');
+    $actualActions[] = $action;
+    if ($action === 'get_flights') {
+        $claim['claimDocument'][0]['condition'] = 'ccOffer';
+        $claim['claimDocument'][0]['buyerMoneys'] = [[ 'buyerClaimMoney' => [[
+            'net'=>'83080','currency'=>'RUB'
+        ]] ]];
+        $claim['claimDocument'][0]['moneys'] = [[ 'money' => [[
+            'currency'=>'RUB','rate'=>'1','isClaimCurrency'=>'true','price'=>'83080','net'=>'83080'
+        ]] ]];
+        $claim['groups'] = [[ 'group' => [
+            ['id'=>'g0','required'=>'true','oneItem'=>'true'],
+            ['id'=>'g1','required'=>'true','oneItem'=>'true'],
+        ] ]];
+        $claim['variants'] = [[ 'transports' => [[ 'transport' => [
+            ['type'=>'ttAvia','direction'=>'0','groupId'=>'g0','uid'=>'out-expensive','name'=>'OUT EXP',
+                'details'=>[[ 'detail'=>[['markup'=>'2000','currency'=>'RUB']] ]]],
+            ['type'=>'ttAvia','direction'=>'0','groupId'=>'g0','uid'=>'out-cheap','name'=>'OUT CHEAP',
+                'details'=>[[ 'detail'=>[['markup'=>'1000','currency'=>'RUB']] ]]],
+            ['type'=>'ttAvia','direction'=>'1','groupId'=>'g1','uid'=>'ret-expensive','name'=>'RET EXP',
+                'details'=>[[ 'detail'=>[['markup'=>'1500','currency'=>'RUB']] ]]],
+            ['type'=>'ttAvia','direction'=>'1','groupId'=>'g1','uid'=>'ret-cheap','name'=>'RET CHEAP',
+                'details'=>[[ 'detail'=>[['markup'=>'500','currency'=>'RUB']] ]]],
+        ]]] ]];
+    } elseif ($action === 'changeservice') {
+        surcharge_check(isset($query['NEW_UID']), 'changeservice has selected uid');
+        $selectedUids[] = $query['NEW_UID'];
+    } elseif ($action === 'calc') {
+        surcharge_check($selectedUids === ['out-cheap','ret-cheap'], 'cheapest options applied before calc');
+        $claim['claimDocument'][0]['buyerMoneys'] = [[ 'buyerClaimMoney' => [[
+            'net'=>'95000','currency'=>'RUB'
+        ]] ]];
+        $claim['claimDocument'][0]['moneys'] = [[ 'money' => [[
+            'currency'=>'RUB','rate'=>'1','isClaimCurrency'=>'true',
+            'price'=>'95000','net'=>'95000','priceForCommiss'=>'95000','sumCommission'=>'0'
+        ]] ]];
+    } else {
+        throw new RuntimeException('unexpected actualizer action: ' . $action);
+    }
+    return ['status'=>200,'body'=>json_encode($claim)];
+};
+anytour_andromeda_capture_saved_package(
+    $actualDir, $context, $source, $actualAllows, $actualBootstrap, true, $clock
+);
+$actualReceipt = anytour_andromeda_capture_saved_package(
+    $actualDir, $context, $source, $actualAllows, $actualBootstrap, true, $clock, true, $actualRequest
+);
+surcharge_check($actualBootstrapCalls === 1, 'actualizer reuses captured package');
+surcharge_check($actualActions === ['get_flights','changeservice','changeservice','calc'],
+    'actualizer exact four-action sequence');
+surcharge_check(($actualReceipt['surcharge']['final_price_verified'] ?? null) === true,
+    'actualizer receipt verified');
+surcharge_check(anytour_andromeda_read_saved_surcharge(
+    $actualDir, $state, $created, $context, $actualAllows, $now
+) === null, 'verified quote does not masquerade as estimate');
+$actualPricing = anytour_andromeda_read_saved_pricing(
+    $actualDir, $state, $created, $context, $actualAllows, $now
+);
+surcharge_check(is_array($actualPricing) && $actualPricing['state'] === 'verified',
+    'private verified pricing readable');
+surcharge_check(($actualPricing['verified_quote']['final_price'] ?? null)
+    === ['amount'=>'95000','currency'=>'RUB'], 'supplier calc final retained');
+surcharge_check(($actualPricing['verified_quote']['booking_enabled'] ?? null) === false,
+    'actualizer never enables booking');
+$actualDisk = json_decode(file_get_contents($actualPath), true);
+surcharge_check(($actualDisk['actualization']['state'] ?? null) === 'verified'
+    && ($actualDisk['actualization']['actions_used'] ?? null) === 4,
+    'actualization terminal evidence retained');
+surcharge_check(!str_contains(json_encode($actualDisk), 'actual-fixture-session'),
+    'session secret not retained in sidecar');
+$actualBudget = json_decode(file_get_contents(dirname($actualDir) . '/monthly-requests.json'), true);
+surcharge_check(($actualBudget['reserved_requests'] ?? null) === 5,
+    'broninit plus four actualization actions counted');
+
 // Real consumer regression: ordinary Search3 listing reads the already-completed
 // sidecar locally, uses base+surcharge only for list display, and leaves the retained
 // offer/selected DTO at the original base price for later authoritative actualization.

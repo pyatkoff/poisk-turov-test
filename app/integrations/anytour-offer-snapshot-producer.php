@@ -15,6 +15,9 @@ final class AnyTourIntOfferSnapshotProducerV1
     private const PROVIDERS = ['anex', 'andromeda', 'tourvisor'];
     private const REFRESH_KEYS = ['complete', 'authoritative_empty', 'offers'];
     private const OFFER_KEYS = ['anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money'];
+    private const VERIFIED_OFFER_KEYS = [
+        'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money', 'verified_quote'
+    ];
 
     /**
      * @param callable(string,array,array,DateTimeImmutable):array $ingest
@@ -53,16 +56,21 @@ final class AnyTourIntOfferSnapshotProducerV1
         $nowTs = $now->getTimestamp();
 
         foreach ($refresh['offers'] as $entry) {
-            if (!is_array($entry) || !self::exactKeys($entry, self::OFFER_KEYS)) {
+            $verifiedShape = is_array($entry) && self::exactKeys($entry, self::VERIFIED_OFFER_KEYS);
+            if (!is_array($entry)
+                || (!self::exactKeys($entry, self::OFFER_KEYS) && !$verifiedShape)) {
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_OFFER');
             }
             $offer = $entry['offer'];
             $retained = $entry['retained'];
             $current = $entry['current'];
             $pricedMoney = $entry['priced_money'];
+            $verifiedQuote = $verifiedShape ? $entry['verified_quote'] : null;
             if (!is_array($offer) || ($offer['provider'] ?? null) !== $provider
                 || !is_array($retained) || !is_array($current)
-                || ($pricedMoney !== null && !is_array($pricedMoney))) {
+                || ($pricedMoney !== null && !is_array($pricedMoney))
+                || ($verifiedShape && !is_array($verifiedQuote))
+                || ($verifiedShape && $pricedMoney !== null)) {
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_OFFER');
             }
 
@@ -75,13 +83,32 @@ final class AnyTourIntOfferSnapshotProducerV1
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_HOTEL');
             }
 
-            $dto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
-                $offer,
-                $retained,
-                $current,
-                $nowTs,
-                $pricedMoney
-            );
+            if ($verifiedQuote !== null) {
+                $dto = AnyTourThreeProviderSearchHandoff::fromVerifiedQuote(
+                    $offer,
+                    $retained,
+                    $current,
+                    $verifiedQuote,
+                    $nowTs
+                );
+                $verifiedAmount = self::readyRubAmount($verifiedQuote['final_price'] ?? null);
+                if ($verifiedAmount === null) {
+                    ++$notReady;
+                    continue;
+                }
+                $dto['finalPriceReady'] = true;
+                $dto['finalPrice'] = $verifiedAmount;
+                $dto['price'] = $verifiedAmount;
+                $dto['currency'] = 'RUB';
+            } else {
+                $dto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
+                    $offer,
+                    $retained,
+                    $current,
+                    $nowTs,
+                    $pricedMoney
+                );
+            }
             if (($dto['finalPriceReady'] ?? null) !== true
                 || !is_string($dto['finalPrice'] ?? null)
                 || ($dto['price'] ?? null) !== $dto['finalPrice']
@@ -146,6 +173,16 @@ final class AnyTourIntOfferSnapshotProducerV1
             'selectionAuthority' => false,
             'ingest' => $receipt,
         ];
+    }
+
+    private static function readyRubAmount(mixed $money): ?string
+    {
+        if (!is_array($money) || ($money['currency'] ?? null) !== 'RUB') return null;
+        $amount = $money['amount'] ?? null;
+        return is_string($amount)
+            && preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D', $amount)
+            && preg_match('/[1-9]/', $amount)
+            ? $amount : null;
     }
 
     private static function exactKeys(array $value, array $expected): bool
