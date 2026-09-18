@@ -1,0 +1,280 @@
+name: MATCH owner TV30 Qatar v1
+
+on:
+  push:
+    branches: [ops/match-owner-tv30-qatar-1971-20260918-v1]
+    paths: [.github/workflows/hotel-match-owner-tv30-qatar-1971-20260918-v1.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: match-owner-tv30-qatar-1971-20260918-v1
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-owner-tv30-qatar-1971-20260918-v1
+  RES: .github/ops/match-owner-tv30-qatar-1971-20260918-v1.json
+  API: https://anytoour.ru/api-v2.php
+  CAP: '40'
+
+jobs:
+  live:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {fetch-depth: 0, persist-credentials: false}
+
+      - name: Validate durable reservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$RES"
+          python3 - <<'PY'
+          import json,hashlib,os,pathlib
+          p=pathlib.Path(os.environ['RES']); r=json.loads(p.read_text())
+          x=dict(r); e=x.pop('canonical_sha256')
+          assert r['operation']==os.environ['OP']
+          assert r['state']=='reserved_before_provider_access'
+          assert r['supplemental_used_before_operation']==10
+          assert r['operation_cap']==40
+          assert r['rules']['operator_filter'] is False
+          assert r['rules']['php_array_hotel_ids'] is True
+          assert len(r['cohort']['hotel_ids'])==30
+          assert len(set(r['cohort']['hotel_ids']))==30
+          got=hashlib.sha256(json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          assert got==e
+          print('reservation ok',e)
+          PY
+
+      - name: Execute fresh 30-hotel search
+        id: acquire
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p terminal
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess,time,urllib.parse,re,hashlib
+          R=json.loads(pathlib.Path(os.environ['RES']).read_text())
+          API=os.environ['API']; CAP=int(os.environ['CAP']); calls=0
+          ledger=pathlib.Path('terminal/ledger.ndjson')
+
+          def req(action,p=None,allow404=False):
+              global calls
+              p=p or {}
+              if calls>=CAP: raise RuntimeError('operation_cap')
+              q=[('action',action)]
+              for k,v in p.items():
+                  if isinstance(v,list):
+                      key=k if k.endswith('[]') else k
+                      q.extend((key,str(x)) for x in v)
+                  elif v is not None and v!='':
+                      q.append((k,str(v).lower() if isinstance(v,bool) else str(v)))
+              qs=urllib.parse.urlencode(q)
+              url=API+'?'+qs
+              calls+=1
+              with ledger.open('a') as f:
+                  f.write(json.dumps({'call':calls,'action':action,'qsha256':hashlib.sha256(qs.encode()).hexdigest(),'at':int(time.time())},sort_keys=True)+'\n')
+                  f.flush(); os.fsync(f.fileno())
+              print(f'::notice::TV_CALL {calls}/{CAP} {action}',flush=True)
+              cp=subprocess.run(['curl','--silent','--show-error','--http1.1','--compressed','--max-time','55',
+                                 '-A','Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36',
+                                 '-H','Accept: application/json','-w','\n%{http_code}',url],text=True,capture_output=True)
+              out=cp.stdout
+              if '\n' not in out: raise RuntimeError('curl_no_status')
+              body,code=out.rsplit('\n',1); code=int(code)
+              if code==404 and allow404: return {'_404':True}
+              if code<200 or code>=300:
+                  pathlib.Path('terminal/last-http.txt').write_text(f'{code}\n'+body[:4000])
+                  try: msg=json.loads(body).get('error','')
+                  except: msg=''
+                  raise RuntimeError(f'gateway_{code}_{msg}')
+              try: return json.loads(body)
+              except Exception: raise RuntimeError('bad_json')
+
+          def rows(x):
+              if isinstance(x,list): return x
+              if isinstance(x,dict):
+                  for k in ('hotels','results','items'):
+                      if isinstance(x.get(k),list): return x[k]
+              return []
+
+          def sid(x):
+              if isinstance(x,dict):
+                  for k in ('searchId','id'):
+                      v=x.get(k)
+                      if str(v).isdigit() and int(v)>0: return int(v)
+                  for v in x.values():
+                      z=sid(v)
+                      if z:return z
+              elif isinstance(x,list):
+                  for v in x:
+                      z=sid(v)
+                      if z:return z
+
+          def complete(x):
+              if isinstance(x,dict):
+                  if isinstance(x.get('progress'),(int,float)) and x['progress']>=100:return True
+                  if str(x.get('status','')).lower() in ('complete','completed','done','ready'):return True
+                  return any(complete(v) for v in x.values() if isinstance(v,(dict,list)))
+              return isinstance(x,list) and any(complete(v) for v in x)
+
+          def rcount(x):
+              if isinstance(x,dict):
+                  for k in ('requestCount','requestsCount','request_count'):
+                      v=x.get(k)
+                      if str(v).isdigit():return int(v)
+                  for v in x.values():
+                      if isinstance(v,(dict,list)):
+                          n=rcount(v)
+                          if n:return n
+              elif isinstance(x,list):
+                  for v in x:
+                      n=rcount(v)
+                      if n:return n
+              return 0
+
+          def merge(a,b):
+              d={}
+              for h in a+b:
+                  if not isinstance(h,dict) or not str(h.get('id','')).isdigit(): continue
+                  i=int(h['id'])
+                  if i not in d:
+                      d[i]=dict(h); d[i]['tours']=list(h.get('tours') or [])
+                  else:
+                      seen={str(t.get('id') or t.get('tourId')) for t in d[i]['tours'] if isinstance(t,dict)}
+                      for t in h.get('tours') or []:
+                          k=str(t.get('id') or t.get('tourId')) if isinstance(t,dict) else ''
+                          if k and k not in seen:
+                              seen.add(k); d[i]['tours'].append(t)
+              return list(d.values())
+
+          def sig(hs):
+              H=set();T=set()
+              for h in hs:
+                  if not isinstance(h,dict) or not str(h.get('id','')).isdigit():continue
+                  i=int(h['id']); H.add(i)
+                  for t in h.get('tours') or []:
+                      if isinstance(t,dict) and (t.get('id') or t.get('tourId')):
+                          T.add((i,str(t.get('id') or t.get('tourId'))))
+              return len(H),len(T)
+
+          def wait(i):
+              for _ in range(12):
+                  st=req('search_status',{'searchId':i})
+                  if complete(st): return
+                  time.sleep(2)
+              raise RuntimeError('search_timeout')
+
+          def refs(x):
+              ids=set();urls=[]
+              def w(v,k=''):
+                  if isinstance(v,dict):
+                      for a,b in v.items(): w(b,str(a))
+                  elif isinstance(v,list):
+                      for b in v:w(b,k)
+                  elif isinstance(v,str) and ('link' in k.lower() or 'url' in k.lower()) and '://' in v:
+                      urls.append(v)
+                      try:q=urllib.parse.parse_qs(urllib.parse.urlparse(v).query)
+                      except:return
+                      for a,vals in q.items():
+                          if a.lower() not in ('hotellist','hotelcode','hotel_code','hotelid','hotel_id','hotelinc','hotel'):continue
+                          for z in vals:
+                              for y in re.split('[,;]',z):
+                                  y=y.strip()
+                                  if y.isdigit() and int(y)>0:ids.add(int(y))
+              w(x); return sorted(ids),urls[:12]
+
+          result={'operation':os.environ['OP'],'state':'running','tv_calls':0,'anchors':[],'holds':[],
+                  'database_writes':0,'mapping_writes':0,'no_replay':True}
+          try:
+              c=R['cohort']
+              p={'departureId':c['departure_id'],'countryId':c['country_id'],
+                 'dateFrom':c['date_from'],'dateTo':c['date_to'],
+                 'nightsFrom':c['nights_from'],'nightsTo':c['nights_to'],
+                 'adults':c['adults'],'currency':'RUB','onlyCharter':False,
+                 'hotelIds[]':c['hotel_ids']}
+              start=req('search_start',p)
+              i=sid(start)
+              if not i: raise RuntimeError('search_id_missing')
+              wait(i)
+              hs=rows(req('search_results',{'searchId':i,'limit':100}))
+              rounds=[{'round':0,'sig':sig(hs)}]
+              before=sig(hs)
+              for n in range(1,10):
+                  co=req('search_continue',{'searchId':i})
+                  rc=rcount(co)
+                  if rc>0: wait(i)
+                  hs=merge(hs,rows(req('search_results',{'searchId':i,'limit':100})))
+                  now=sig(hs); add=(now[0]-before[0])+(now[1]-before[1])
+                  rounds.append({'round':n,'request_count':rc,'sig':now,'added':add})
+                  if rc==0 or add==0: break
+                  before=now
+
+              target=set(c['hotel_ids'])
+              fresh=[h for h in hs if isinstance(h,dict) and str(h.get('id','')).isdigit() and int(h['id']) in target]
+              da=d404=0; kill=False
+              for h in fresh:
+                  lid=int(h['id']); ids,urls=refs(h)
+                  tours=[t for t in h.get('tours') or [] if isinstance(t,dict) and (t.get('id') or t.get('tourId'))]
+                  used=None
+                  if len(ids)!=1 and not kill:
+                      for t in tours[:2]:
+                          tid=str(t.get('id') or t.get('tourId')); da+=1
+                          d=req('tour',{'tourId':tid,'currency':'RUB'},True)
+                          if d.get('_404'):
+                              d404+=1
+                              if da>=8 and d404/da>=.25: kill=True
+                              continue
+                          i2,u2=refs(d); ids=sorted(set(ids+i2)); urls=(urls+u2)[:12]; used=tid
+                          if len(ids)==1: break
+                  if len(ids)==1:
+                      result['anchors'].append({'local_id':lid,'local_name':h.get('name'),
+                                                'native_anex_id':ids[0],
+                                                'fresh_tour_id':used or (str(tours[0].get('id') or tours[0].get('tourId')) if tours else None),
+                                                'urls':urls})
+                  else:
+                      result['holds'].append({'local_id':lid,'local_name':h.get('name'),'native_ids':ids,
+                                              'reason':'detail_404_kill' if kill else ('native_link_not_unique' if ids else 'native_link_missing')})
+              result.update(state='completed_read_only',search_id=i,rounds=rounds,fresh_hotels=len(fresh),
+                            tv_calls=calls,detail_attempts=da,detail_404=d404,detail_404_kill=kill,
+                            fresh_native_anchors=len(result['anchors']),requested_hotel_ids=len(c['hotel_ids']),
+                            operator_filter_used=False)
+          except Exception as e:
+              result.update(state='terminal_failed_no_replay',reason=str(e)[:200],tv_calls=calls)
+          pathlib.Path('terminal/result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(result,ensure_ascii=False,sort_keys=True))
+          if result['state']!='completed_read_only': raise SystemExit(2)
+          PY
+
+      - name: Seal receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('terminal');p.mkdir(exist_ok=True);r=p/'result.json'
+          if not r.exists():r.write_text(json.dumps({'operation':os.environ['OP'],'state':'terminal_failed_no_replay','reason':'live_step_failed'})+'\n')
+          raw=r.read_bytes(); j=json.loads(raw)
+          L=p/'ledger.ndjson'; n=sum(1 for _ in L.open()) if L.exists() else int(j.get('tv_calls',0) or 0)
+          x={'operation':os.environ['OP'],'state':j.get('state'),'result_sha256':hashlib.sha256(raw).hexdigest(),
+             'tv_calls':n,'provider_accessed':n>0,'database_writes':0,'mapping_writes':0,'no_replay':n>0}
+          (p/'receipt.json').write_text(json.dumps(x,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(x))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-owner-tv30-qatar-v1
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Fail after preservation
+        if: steps.acquire.outcome != 'success'
+        run: exit 1
