@@ -53,9 +53,42 @@ assert.equal(api.normalizeCard(mismatched.card), false, 'non-identical detail te
 assert.equal(mismatched.duplicateRemoved(), false);
 assert.equal(mismatched.detailsRemoved(), false);
 
+function ratingFixture(label, canonical = true) {
+  const classes = new Set(['hotel-decision-rating']);
+  const attributes = {};
+  const rating = {
+    textContent: label,
+    classList: { add(name) { classes.add(name); }, remove(name) { classes.delete(name); } },
+    setAttribute(name, value) { attributes[name] = value; },
+  };
+  const card = { dataset: canonical ? { anytourHotelId: '1' } : {}, querySelector(selector) { return selector === '.hotel-decision-rating' ? rating : null; } };
+  return { card, rating, classes, attributes };
+}
+
+const ambiguousRating = ratingFixture('Рейтинг 2.1');
+assert.equal(api.normalizeCard(ambiguousRating.card), true, 'ambiguous numeric rating is normalized');
+assert.equal(ambiguousRating.rating.textContent, 'Каталожная оценка 2,1 · шкала не указана');
+assert.equal(ambiguousRating.classes.has('hotel-decision-rating'), false, 'ambiguous rating cannot retain positive badge styling');
+assert.equal(ambiguousRating.classes.has('hotel-decision-rating-unscaled'), true, 'neutral unscaled state is explicit');
+assert.equal(ambiguousRating.attributes['data-rating-semantics'], 'unscaled');
+assert.equal(ambiguousRating.attributes['aria-label'], 'Каталожная оценка 2,1. Источник, шкала и число отзывов не указаны.');
+
+const structuredRating = ratingFixture('Оценка 8,6 из 10 · 120 отзывов');
+assert.equal(api.normalizeCard(structuredRating.card), false, 'future structured rating copy is never guessed or rewritten');
+assert.equal(structuredRating.rating.textContent, 'Оценка 8,6 из 10 · 120 отзывов');
+assert.equal(structuredRating.classes.has('hotel-decision-rating'), true);
+
+const nonCanonicalRating = ratingFixture('Рейтинг 4,8', false);
+assert.equal(api.normalizeCard(nonCanonicalRating.card), false, 'presentation correction requires accepted AnyTour identity');
+assert.equal(nonCanonicalRating.rating.textContent, 'Рейтинг 4,8');
+
 window.location.pathname = '/_preview/search3-site-candidate/poisk-turov/';
 const otherPreview = fixture({ extras: 0 });
 assert.equal(api.normalizeCard(otherPreview.card), false, 'owner is isolated to local-candidate');
 assert.equal(otherPreview.duplicateRemoved(), false);
 
-console.log('SEARCH3_CANONICAL_DESCRIPTION_DEDUPE_OK rich=1 description_only=1 mismatch_preserved=1 route_isolated=1');
+const otherPreviewRating = ratingFixture('Рейтинг 4,8');
+assert.equal(api.normalizeCard(otherPreviewRating.card), false, 'rating correction is isolated to local-candidate');
+assert.equal(otherPreviewRating.rating.textContent, 'Рейтинг 4,8');
+
+console.log('SEARCH3_CANONICAL_DESCRIPTION_DEDUPE_OK rich=1 description_only=1 rating_unscaled=1 structured_preserved=1 route_isolated=1');
