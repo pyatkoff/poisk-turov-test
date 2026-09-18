@@ -88,7 +88,11 @@ $searchRunner=static function(array $req,array &$collectorState)use($pdo,&$cache
     return anytour_anex_search3_run($req,$pdo,$makeClient(),$cache,$diagnostics,$observer,$collectorState,'all');
 };
 $expandRunner=static function(array $req,array &$collectorState)use($resolver,$metadata,$makeClient,$checkpoint,$makeAdditional):array{
-    return anytour_anex_search3_followup($req,$collectorState,$resolver,$makeClient,$metadata,null,$checkpoint,$makeAdditional);
+    // Background worker has its own explicit budget and uses AnyTourAnexClient's
+    // shared supplier pacing. Do not inherit the browser preview session cap.
+    return anytour_anex_search3_followup(
+        $req,$collectorState,$resolver,$makeClient,$metadata,null,$checkpoint,$makeAdditional,false
+    );
 };
 $programRecorder=static function(array &$collectorState)use($pdo):array{
     return AnyTourAnexProgramObservationRuntimeV1::record($pdo,$collectorState,new DateTimeImmutable('now',new DateTimeZone('UTC')));
