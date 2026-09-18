@@ -10,6 +10,7 @@ declare(strict_types=1);
 final class AnyTourHotelStayCatalogV2
 {
     public const BATCH_LIMIT = 100;
+    public const HOTEL_BATCH_LIMIT = 1000;
     private const TABLES = [
         'anytour_hotel_room_concepts_v2',
         'anytour_hotel_meal_concepts_v2',
@@ -114,26 +115,50 @@ final class AnyTourHotelStayCatalogV2
         ];
     }
 
-    private function concepts(string $kind, int $hotelId): array
+    private function conceptsForHotels(string $kind, array $hotelIds): array
     {
-        self::id($hotelId);
+        if (!array_is_list($hotelIds) || count($hotelIds)>self::HOTEL_BATCH_LIMIT) {
+            throw new InvalidArgumentException('HOTEL_STAY_V2_HOTEL_BATCH');
+        }
+        $ids=[];
+        foreach ($hotelIds as $hotelId) $ids[self::id($hotelId)]=true;
+        if ($ids===[]) return [];
+
+        $ids=array_keys($ids);
+        $result=[];
+        foreach ($ids as $hotelId) $result[$hotelId]=[];
         $table=$kind==='room'?'anytour_hotel_room_concepts_v2':'anytour_hotel_meal_concepts_v2';
+        $slots=implode(',',array_fill(0,count($ids),'?'));
         $stmt=$this->pdo->prepare(
             'SELECT c.* FROM '.$table.' c JOIN anytour_hotels h ON h.id=c.anytour_hotel_id
-             WHERE c.anytour_hotel_id=? AND c.is_active=1 AND h.is_active=1 ORDER BY c.id'
+             WHERE c.anytour_hotel_id IN ('.$slots.') AND c.is_active=1 AND h.is_active=1
+             ORDER BY c.anytour_hotel_id,c.id'
         );
-        $stmt->execute([$hotelId]);
-        return array_map(fn(array $row)=>self::conceptDto($row,$kind),$stmt->fetchAll(PDO::FETCH_ASSOC));
+        $stmt->execute($ids);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $result[(int)$row['anytour_hotel_id']][]=self::conceptDto($row,$kind);
+        }
+        return $result;
     }
 
     public function rooms(int $hotelId): array
     {
-        return $this->concepts('room',$hotelId);
+        return $this->roomsForHotels([$hotelId])[$hotelId] ?? [];
     }
 
     public function meals(int $hotelId): array
     {
-        return $this->concepts('meal',$hotelId);
+        return $this->mealsForHotels([$hotelId])[$hotelId] ?? [];
+    }
+
+    public function roomsForHotels(array $hotelIds): array
+    {
+        return $this->conceptsForHotels('room',$hotelIds);
+    }
+
+    public function mealsForHotels(array $hotelIds): array
+    {
+        return $this->conceptsForHotels('meal',$hotelIds);
     }
 
     public function createConcept(string $kind, int $hotelId, string $localKey, string $nameRu, array $facts): int
