@@ -141,6 +141,7 @@ try{
         foreach(['hotel_name','country_id','country_name','region_name'] as $x)if(isset($c[$x]))$select[]=$x;
         foreach(hmu_rows($pdo,'SELECT '.implode(',',$select).' FROM anex_search_hotel_observations') as $r){
             $id=(string)($r['anex_hotel_id']??'');if($id==='')continue;
+            if(!isset($anexNames[$id]))$anexNames[$id]=[];
             hmu_add_name($anexNames[$id],$r['hotel_name']??'');
             if(isset($r['country_id'])&&(int)$r['country_id']>0)$anexCountries[$id][(int)$r['country_id']]=true;
             if(isset($r['country_name'])){
@@ -154,6 +155,7 @@ try{
         foreach(['api_name','xml_name','xml_alternate_name','api_country'] as $x)if(isset($c[$x]))$select[]=$x;
         foreach(hmu_rows($pdo,'SELECT '.implode(',',$select).' FROM anex_hotels') as $r){
             $id=(string)($r['anex_hotel_id']??'');if($id==='')continue;
+            if(!isset($anexNames[$id]))$anexNames[$id]=[];
             foreach(['api_name','xml_name','xml_alternate_name'] as $x)hmu_add_name($anexNames[$id],$r[$x]??'');
             if(isset($r['api_country'])){
                 $n=hmu_country_name((string)$r['api_country']);
@@ -176,6 +178,7 @@ try{
         foreach(hmu_rows($pdo,'SELECT '.implode(',',$select).' FROM andromeda_search_hotel_observations') as $r){
             if(isset($r['supplier_namespace'])&&(string)$r['supplier_namespace']!=='andromeda_catalog')continue;
             $id=(string)($r['external_hotel_id']??'');if($id==='')continue;
+            if(!isset($andObsNames[$id]))$andObsNames[$id]=[];
             hmu_add_name($andObsNames[$id],$r['hotel_name']??'');
             if(isset($r['country_id'])&&(int)$r['country_id']>0)$andObsCountries[$id][(int)$r['country_id']]=true;
             if(isset($r['country_name'])){
