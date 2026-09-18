@@ -107,7 +107,7 @@ producer_check(count($ingestCalls)===2,'providers-independent-success');
 // Supplier-verified Andromeda calc can cross INT snapshot production without
 // reusing the estimated-money path. The LOCAL ingestor is mocked here until its
 // provider-neutral final_verified store state lands.
-$verified = producer_entry('andromeda', 4300, 778, 2, '144790', '0', 'and-verified', $issued);
+$verified = producer_entry('andromeda', 4300, 778, 2, '144790', '1', 'and-verified', $issued);
 $verified['priced_money'] = null;
 $verified['verified_quote'] = [
     'schema_version'=>1,
