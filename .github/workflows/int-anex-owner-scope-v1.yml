@@ -27,12 +27,12 @@ jobs:
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
     steps:
-      - uses: actions/checkout@owner scope v1
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 8
           persist-credentials: false
-      - uses: actions/checkout@owner scope v1
+      - uses: actions/checkout@v4
         with:
           ref: ${{ env.RELEASE_DATA_SHA }}
           path: release-data
