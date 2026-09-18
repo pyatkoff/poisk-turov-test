@@ -1,0 +1,148 @@
+name: MATCH Mauritius retained-tour detail v1
+on:
+  push:
+    branches: [ops/match-mauritius-retained-tour-detail-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_mauritius_retained_tour_detail_v1.py
+      - .github/workflows/hotel-match-mauritius-retained-tour-detail-v1.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-mauritius-retained-tour-detail-1971-20260919-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-mauritius-retained-tour-detail-1971-20260919-v1
+jobs:
+  recover:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10571338567'
+          run-id: 35403637042
+          github-token: ${{ github.token }}
+          path: retained
+          merge-multiple: true
+      - name: Build immutable one-detail-per-hotel plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 -m py_compile scripts/diagnostics/hotel_match_mauritius_retained_tour_detail_v1.py
+          python3 scripts/diagnostics/hotel_match_mauritius_retained_tour_detail_v1.py --self-test
+          mkdir -p payload result
+          cp scripts/diagnostics/hotel_match_mauritius_retained_tour_detail_v1.py payload/
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          op=os.environ['OPERATION_ID']; root=pathlib.Path('retained/remote')
+          result=root/'result.json'; receipt=root/'receipt.json'; partial=root/'partial-20.json'
+          assert result.exists() and receipt.exists() and partial.exists()
+          rh=hashlib.sha256(result.read_bytes()).hexdigest(); ph=hashlib.sha256(partial.read_bytes()).hexdigest()
+          assert rh=='a561a8efe62659a6ed556a8c3d8a06341d669f47714c0f1dd0be0a5ee09d67d8'
+          assert ph=='5876f3c7c5f095f945719363f287dd454c941425eefe77d917c12f1829087b7d'
+          r=json.loads(result.read_text()); c=json.loads(receipt.read_text()); rows=json.loads(partial.read_text())
+          assert r['operation']=='hotel-match-anex-user-seen-mauritius27-direct-1971-20260919-v2'
+          assert r['state']=='terminal_failed_no_replay' and r['reason']=='continue_cap' and r['provider_calls']==130
+          assert c['result_sha256']==rh and c['state']=='terminal_failed_no_replay'
+          expected={11745,11751,11754,11756,11758,11761,11769,11770,11775,11788,11789,11792,11802,11805,15788,15794,26841,26842,28452,35164,35170,44413,60234,64582,68977,106703}
+          tuples=[]
+          for h in rows:
+              if not isinstance(h,dict) or not str(h.get('id','')).isdigit(): continue
+              hid=int(h['id'])
+              if hid not in expected: continue
+              tours=[]
+              for t in h.get('tours') or []:
+                  if not isinstance(t,dict): continue
+                  oid=(t.get('operator') or {}).get('id') if isinstance(t.get('operator'),dict) else t.get('operatorId')
+                  tid=str(t.get('id') or t.get('tourId') or '')
+                  if str(oid)=='13' and tid.isdigit(): tours.append(tid)
+              assert tours, ('no_anex_tour',hid)
+              tuples.append({'local_id':hid,'local_name':str(h.get('name') or '')[:300],'tour_id':sorted(set(tours),key=int)[0]})
+          tuples=sorted(tuples,key=lambda x:x['local_id'])
+          assert len(tuples)==26 and {x['local_id'] for x in tuples}==expected and len({x['tour_id'] for x in tuples})==26
+          plan={'operation':op,'source_run_id':35403637042,'source_artifact_id':10571338567,'source_artifact_sha256':'8771463bba5a55b3e196a0f2502d9895e9da3334685d0d96b5c09ed0b34a16dd','source_result_sha256':rh,'source_partial20_sha256':ph,'tuples':tuples,'deferred_missing_local_ids':[11771],'provider_calls_planned_max':26,'search_calls_planned':0,'continue_calls_planned':0}
+          pathlib.Path('payload/plan.json').write_text(json.dumps(plan,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          reservation={'operation':op,'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'plan_sha256':hashlib.sha256(pathlib.Path('payload/plan.json').read_bytes()).hexdigest(),'target':{'hotel_count':26,'local_ids':[x['local_id'] for x in tuples]},'daily_accounting':{'provider_day':'2026-09-19','daily_limit':3000,'known_accounted_floor':396,'operation_cap':26},'no_search_start':True,'no_continue':True,'no_dates':True,'no_replay_after_first_http':True}
+          pathlib.Path('payload/reservation.json').write_text(json.dumps(reservation,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          pathlib.Path('result/runner-reservation.json').write_bytes(pathlib.Path('payload/reservation.json').read_bytes())
+          print(json.dumps({'planned_hotels':26,'planned_calls_max':26,'deferred':[11771],'plan_sha256':reservation['plan_sha256']}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-mauritius-retained-detail-reservation-${{ github.run_id }}
+          path: result/runner-reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Require SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+      - name: Execute at most one retained detail per hotel
+        id: execute
+        continue-on-error: true
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -u
+          umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key" || exit 10
+          ssh-keygen -y -f "$key" >/dev/null || exit 11
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null || exit 12
+          test -s "$known" || exit 13
+          remote="$USER_VALUE@$HOST_VALUE"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr || exit 14
+          scp "${opts[@]}" payload/hotel_match_mauritius_retained_tour_detail_v1.py payload/plan.json payload/reservation.json "$remote:$op/payload/" >result/scp.stdout 2>result/scp.stderr || exit 15
+          set +e
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" python3 \"\$HOME/$op/payload/hotel_match_mauritius_retained_tour_detail_v1.py\" --execute" >result/runner.stdout 2>result/runner.stderr
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > result/remote-exitcode.txt
+          scp -r "${opts[@]}" "$remote:$op/." result/remote/ >result/fetch.stdout 2>result/fetch.stderr || true
+          rm -f "$key" "$known"
+          exit "$rc"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-mauritius-retained-tour-detail-v1
+          path: result/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Enforce identity-efficient terminal receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('result/remote/result.json'); r=pathlib.Path('result/remote/receipt.json'); ledger=pathlib.Path('result/remote/provider-ledger.ndjson')
+          assert p.exists() and r.exists() and ledger.exists(), 'missing terminal evidence'
+          d=json.loads(p.read_text()); c=json.loads(r.read_text()); rh=hashlib.sha256(p.read_bytes()).hexdigest()
+          assert d['operation']=='hotel-match-mauritius-retained-tour-detail-1971-20260919-v1'
+          assert d['state']=='completed_read_only' and d['provider_calls']==26 and d['attempted_hotels']==26
+          assert d['no_search_start'] is True and d['no_continue'] is True and d['no_dates'] is True
+          assert d['database_writes']==0 and d['mapping_writes']==0 and d['deferred_missing_local_ids']==[11771]
+          assert len(d.get('anchors',[]))+len(d.get('holds',[]))==26
+          lines=[json.loads(x) for x in ledger.read_text().splitlines() if x.strip()]
+          assert len(lines)==26 and all(x.get('action')=='retained_tour_detail' for x in lines)
+          assert c['state']=='completed_read_only' and c['provider_calls']==26 and c['result_sha256']==rh and c['no_replay'] is True
+          print(json.dumps({'state':d['state'],'provider_calls':26,'anchors':len(d.get('anchors',[])),'holds':len(d.get('holds',[])),'deferred':[11771],'result_sha256':rh},ensure_ascii=False))
+          PY
