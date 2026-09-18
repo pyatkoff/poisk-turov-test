@@ -1,0 +1,24 @@
+name: INT Andromeda local DB collector
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-local-offer-collector.php'
+      - 'tests/andromeda-local-offer-collector-test.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
+      - '.github/workflows/int-andromeda-local-offer-collector.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - run: |
+          set -euo pipefail
+          php -l app/integrations/andromeda-local-offer-collector.php
+          php -l tests/andromeda-local-offer-collector-test.php
+          php -l scripts/ops/andromeda_local_offer_collect.php
+          php tests/andromeda-local-offer-collector-test.php
