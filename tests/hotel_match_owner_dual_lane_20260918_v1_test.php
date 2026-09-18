@@ -6,7 +6,8 @@ function t(bool $ok,string $name):void{if(!$ok)throw new RuntimeException($name)
 function qhome():string{$p=sys_get_temp_dir().'/hmd-quota-'.bin2hex(random_bytes(6));if(!mkdir($p,0700,true))throw new RuntimeException('quota_tmp');return$p;}
 function qclean(string $home):void{foreach([hmd_tv_operation_path($home),hmd_tv_daily_path($home)]as$p)if(is_file($p))unlink($p);$q=rtrim($home,'/').'/.anytour-match/provider-quotas';if(is_dir($q))rmdir($q);$m=rtrim($home,'/').'/.anytour-match';if(is_dir($m))rmdir($m);if(is_dir($home))rmdir($home);}
 t(HMD_TV_DAILY_LIMIT===3000,'daily_cap');
-t(HMD_TV_OPERATION_CAP===300&&HMD_TV_EXTRA_CAP===HMD_TV_OPERATION_CAP,'operation_cap');
+t(HMD_TV_OPERATION_CAP===300,'operation_cap');
+t(HMD_TV_EXTRA_CAP===0,'legacy_supplemental_disabled');
 t(HMD_A_BATCH_SIZE===30,'batch30');
 t(HMD_B_MAX_CONTEXTS===3,'b_contexts');
 $x=hmd_detail_link(['operatorLink'=>'https://online.anextour.ru/x?HOTELLIST=5844']);
