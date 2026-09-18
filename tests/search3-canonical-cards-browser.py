@@ -157,7 +157,7 @@ with sync_playwright() as p:
                 return{edit:box('#resultsSearchEdit'),sort:box('#sortResults'),filter:box('.search3-mobile-filter-panel'),summary:box('.search3-mobile-filter-panel summary'),countVisible:getComputedStyle(count).display!=='none'};
             }''')
             check(compact['edit']['y']<compact['sort']['y'],f'{width}: mobile edit action remains on its own first row')
-            check(abs(compact['sort']['y']-compact['filter']['y'])<2,f'{width}: closed sort and filters share one compact row: {compact}')
+            check(abs((compact['sort']['y']+compact['sort']['height'])-(compact['filter']['y']+compact['filter']['height']))<2,f'{width}: closed sort and filters share one compact row')
             check(abs(compact['sort']['width']-compact['filter']['width'])<3,f'{width}: closed sort and filters use balanced columns')
             check(compact['sort']['height']>=44 and compact['summary']['height']>=44,f'{width}: compact mobile toolbar keeps touch targets')
             check(not compact['countVisible'],f'{width}: closed filter count does not crowd the compact action')
