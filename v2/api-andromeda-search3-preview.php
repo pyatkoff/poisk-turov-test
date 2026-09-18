@@ -317,7 +317,6 @@ function anytour_andromeda_search3_budget(string $directory): void {
         ++$state['reserved_requests'];anytour_andromeda_search3_save($path,$state);
     }finally{flock($lock,LOCK_UN);fclose($lock);}
 }
-
 /**
  * Reuse a fully retained grouped search before spending another supplier request for one hotel.
  * The cached path is accepted only when every page advertised by the latest retained response
@@ -573,9 +572,9 @@ function anytour_andromeda_search3_record_response(array $data): array {
     }
 }
 
-/** Normal grouped HTTP search must consume the complete advertised page cohort on one persisted supplier session. */
+/** Explicit page requests stay single-page; omitted-page collectors drain the complete cohort on one persisted supplier session. */
 function anytour_andromeda_search3_run_pages(array $request,callable $runner): array {
-    if((array_key_exists('page',$request) && $request['page']!==1) || ($request['action']??null)!==null || isset($request['hotel_scope']))return $runner($request);
+    if(array_key_exists('page',$request) || ($request['action']??null)!==null || isset($request['hotel_scope']))return $runner($request);
     $pages=[];$target=1;
     for($number=1;$number<=$target;++$number){
         if($number>AnyTourAndromedaPaginationV1::MAX_PAGES)throw new RuntimeException('andromeda_pages_exceeded');
