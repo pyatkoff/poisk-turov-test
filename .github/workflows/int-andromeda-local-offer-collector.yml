@@ -22,3 +22,4 @@ jobs:
           php -l tests/andromeda-local-offer-collector-test.php
           php -l scripts/ops/andromeda_local_offer_collect.php
           php tests/andromeda-local-offer-collector-test.php
+          php -r '$s=file_get_contents("scripts/ops/andromeda_local_offer_collect.php"); if(!str_contains($s,"non_external_only")||!str_contains($s,"1,300")) exit(1);'
