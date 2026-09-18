@@ -60,6 +60,11 @@ async function checkSubmittedTripContext(page, width) {
   assert.ok(await collapse.evaluate(node => node.getBoundingClientRect().height >= 44), 'the close action remains a mobile touch target');
   assert.ok(await page.locator('#tourSearch > .search-section-title').evaluate(node => node.getBoundingClientRect().height <= 60), 'the form heading and result return action stay in one compact row');
   await page.locator('#tourSearch').screenshot({ path: path.join(output, `search-editor-open-${width}.png`), animations: 'disabled' });
+  if (width <= 700) {
+    await page.evaluate(() => { const form = document.getElementById('tourSearch'); scrollTo(0, form.offsetTop + form.offsetHeight / 2); });
+    assert.ok(await collapse.evaluate(node => { const rect = node.closest('.search-section-title').getBoundingClientRect(); return rect.top >= -1 && rect.top <= 1; }), 'the mobile result return remains pinned during deep form scroll');
+    await page.screenshot({ path: path.join(output, `search-editor-scrolled-${width}.png`), animations: 'disabled' });
+  }
   const formData = await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]);
   await collapse.click();
   assert.equal(await page.locator('#tourSearch').isVisible(), false, 'the in-form action returns to the compact result context');
