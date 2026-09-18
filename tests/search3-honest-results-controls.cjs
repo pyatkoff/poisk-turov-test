@@ -11,6 +11,11 @@ const renderer = fs.readFileSync(path.join(root, 'v2/results-renderer-v5.js'), '
 const localFilters = fs.readFileSync(path.join(root, 'src/search3/behavior/results/local-hotel-filter.js'), 'utf8');
 const priceCalendar = fs.readFileSync(path.join(root, 'v2/current-price-calendar-v1.js'), 'utf8');
 
+assert.match(page, /<\?php if\(!v2_search3_enabled\(\)\):\?><strong>Предложения<\/strong><\?php endif;\?><span id="resultSummary">/,
+  'Search3 uses the informative result count without a duplicate heading; legacy keeps its title');
+assert.match(page, /id="resultsTripContext"[^>]*aria-label="Параметры поиска"[\s\S]*?data-search3-trip-route[\s\S]*?data-search3-trip-details/,
+  'compact result header retains the canonical submitted route and trip details');
+
 const select = page.match(/<select id="sortResults">([\s\S]*?)<\/select>/);
 assert.ok(select, 'results sort remains available');
 assert.deepEqual(
