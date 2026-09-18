@@ -76,12 +76,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          src="$RUNNER_TEMP/source/server/result.json"
+          src="$RUNNER_TEMP/source/match-global-catalog-v2-result-35331022650/server/result.json"
           test -f "$src"
           test "$(sha256sum "$src" | awk '{print $1}')" = "$SOURCE_RESULT_SHA"
           python3 - <<'PY'
           import json, os
-          p=os.path.join(os.environ['RUNNER_TEMP'],'source','server','result.json')
+          p=os.path.join(os.environ['RUNNER_TEMP'],'source','match-global-catalog-v2-result-35331022650','server','result.json')
           d=json.load(open(p))
           assert d['operation']=='hotel-match-user-seen-common4-samo-catalog-acquire-1971-20260918-v2'
           assert d['state']=='completed_read_only' and d['no_replay'] is True
@@ -130,7 +130,7 @@ jobs:
           opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
           ssh "${opts[@]}" "$remote" "umask 077; test ! -e \"\$HOME/$op\"; rm -rf \"\$HOME/$stage\"; mkdir -p \"\$HOME/$stage\""
           scp "${opts[@]}" scripts/diagnostics/hotel_match_global_catalog_current_reconcile_v1.php "$remote:$stage/scan.php"
-          scp "${opts[@]}" "$RUNNER_TEMP/source/server/result.json" "$remote:$stage/source-result.json"
+          scp "${opts[@]}" "$RUNNER_TEMP/source/match-global-catalog-v2-result-35331022650/server/result.json" "$remote:$stage/source-result.json"
           set +e
           ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA=\"$HEAD_SHA\" php \"\$HOME/$stage/scan.php\" \"\$HOME/$stage/source-result.json\"" > terminal/stdout.json 2> terminal/stderr.txt
           rc=$?
