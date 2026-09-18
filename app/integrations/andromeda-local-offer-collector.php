@@ -24,13 +24,34 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         }
 
         $search = $searchComplete($request);
+        $status = is_array($search) ? ($search['status'] ?? null) : null;
+        // The page normalizer deliberately labels every standalone multi-page data page
+        // `partial`: one page cannot prove that its predecessors were drained. The grouped
+        // page orchestrator does provide that proof after it consumes the exact advertised
+        // range, but its legacy aggregate currently preserves the last page's `partial`
+        // label. Accept only that narrow aggregate shape; arbitrary partial/one-page/search-
+        // pending results remain fail-closed. Canonical autosave independently re-reads the
+        // retained cohort and rejects unsafe supplier rows before any publication.
+        $drainedPartial = is_array($search)
+            && $status === 'partial'
+            && is_int($search['page'] ?? null)
+            && is_int($search['pages_count'] ?? null)
+            && $search['pages_count'] > 1
+            && $search['page'] === $search['pages_count']
+            && ($search['grouped'] ?? null) === true
+            && ($search['first_page_only'] ?? null) === false
+            && ($search['external_search_pending'] ?? null) === false
+            && is_int($search['received_offers'] ?? null)
+            && $search['received_offers'] >= 0
+            && is_int($search['mapped_offers'] ?? null)
+            && $search['mapped_offers'] >= 0;
         if (!is_array($search)
             || ($search['provider'] ?? null) !== 'andromeda'
             || !is_string($search['search_ref'] ?? null)
             || !preg_match('/\A[a-f0-9]{64}\z/D', $search['search_ref'])
             || !is_int($search['pages_count'] ?? null)
             || $search['pages_count'] < 1
-            || ($search['status'] ?? null) !== 'complete') {
+            || ($status !== 'complete' && !$drainedPartial)) {
             throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_SEARCH');
         }
 
