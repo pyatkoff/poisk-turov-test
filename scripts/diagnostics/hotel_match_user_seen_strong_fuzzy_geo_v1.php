@@ -48,8 +48,8 @@ function hmfg_walk(mixed $v,array &$names,array &$places,array &$states,array &$
 }
 function hmfg_source(string $provider,string $external,array $names,array $places,array $countries,array $coords=[]): array {
     $countries=array_values(array_unique(array_filter(array_map('intval',$countries),fn($x)=>$x>0)));sort($countries,SORT_NUMERIC);
-    return ['provider'=>$provider,'external_id'=>$external,'names'=>array_values(array_keys($names)),
-      'places'=>array_values(array_keys($places)),'countries'=>$countries,
+    return ['provider'=>$provider,'external_id'=>$external,'names'=>array_values(array_map('strval',array_keys($names))),
+      'places'=>array_values(array_map('strval',array_keys($places))),'countries'=>$countries,
       'latitude'=>$coords['latitude']??null,'longitude'=>$coords['longitude']??null];
 }
 function hmfg_merge_target(array &$tokenIndex,array &$targetNames,int $country,int $local,array $names,array $wanted): bool {
