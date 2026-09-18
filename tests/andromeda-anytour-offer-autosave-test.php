@@ -207,6 +207,47 @@ try {
     aassert($again['reason'] === 'already_published' && count($ingests) === 1, 'identical cohort republished');
 } finally { cleanup_dir($dir); }
 
+// A saved supplier-verified calc quote is a separate pricing state. Autosave
+// forwards it through the INT verified-quote producer path without search-side arithmetic.
+$dir = temp_searches();
+try {
+    $ref = hash('sha256', 'verified-calc'); $created = time() - 30; $ingests = [];
+    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 1, $created, [
+        normalized_offer('verified', 'FUN&SUN', 101, '100', '185125')
+    ]));
+    $verifiedPricing = [
+        'state'=>'verified',
+        'fact'=>null,
+        'verified_quote'=>[
+            'schema_version'=>1,
+            'provider'=>'andromeda',
+            'selection_enabled'=>true,
+            'booking_enabled'=>false,
+            'local_id'=>101,
+            'operator'=>'FUN&SUN',
+            'search_price'=>['amount'=>'185125','currency'=>'RUB'],
+            'package_price'=>['amount'=>'185125','currency'=>'RUB'],
+            'state'=>'quote_verified',
+            'quote_state'=>'verified',
+            'final_price'=>['amount'=>'199390','currency'=>'RUB'],
+            'final_price_verified'=>true,
+            'flight_selection_required'=>false,
+            'flights'=>[],
+        ],
+    ];
+    [$mapping, $canonical, $pricing, $save, $ingest] = callbacks($ingests, $verifiedPricing);
+    $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+        new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $pricing, $save, $ingest);
+    aassert($result['published'] === true && $result['readyOfferCount'] === 1, 'verified cohort not published');
+    $dto = $ingests[0]['rows'][0]['dto'] ?? null;
+    aassert(is_array($dto) && $dto['quote_state'] === 'verified'
+        && $dto['final_price_verified'] === true, 'verified dto state lost');
+    aassert($dto['finalPriceReady'] === true && $dto['finalPrice'] === '199390'
+        && $dto['price'] === '199390' && $dto['currency'] === 'RUB', 'verified final price lost');
+    aassert($dto['booking_enabled'] === false && $dto['selection_state'] === 'disabled',
+        'verified cached row gained authority');
+} finally { cleanup_dir($dir); }
+
 // Real SAMO EOF: advertised page count may later terminate with an empty complete
 // page whose pages_count resets to zero. Preceding data pages form the complete cohort.
 $dir = temp_searches();
