@@ -29,13 +29,20 @@ const viewports = [
     for (const viewport of viewports) {
       const page = await browser.newPage({ viewport });
       const searchStarts = [], hotelQueries = [], errors = [];
+      let pauseLookup = null;
       page.on('pageerror', error => errors.push(String(error)));
-      await page.route('**/*', route => {
+      await page.route('**/*', async route => {
         const request = route.request();
         const url = new URL(request.url());
         if (url.pathname === '/data/hotel-search-v1.php') {
           hotelQueries.push(Object.fromEntries(url.searchParams));
-          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, source: 'anytour-catalog', items: hotels }) });
+          const pause = pauseLookup;
+          if (pause) { pauseLookup = null; pause.started(); await pause.wait; }
+          const items = url.searchParams.get('q') === 'Marriott' ? [{ ...hotels[0], id: 42001, name: 'MARRIOTT HOTEL' }] : hotels;
+          try {
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, source: 'anytour-catalog', items }) });
+          } finally { if (pause) pause.finished(); }
+          return;
         }
         if (url.pathname === '/data/departures-v1.php') {
           return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, items: [{ id: 1, name: 'Москва' }] }) });
@@ -126,6 +133,56 @@ const viewports = [
       await page.screenshot({ path: path.join(output, `known-hotel-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
       await list.locator('[role="option"]').first().click();
       assert.equal(await select.inputValue(), '41001', 'pointer selection keeps the exact canonical hotel ID');
+
+      await input.fill('Rixos');
+      await list.waitFor({ state: 'visible' });
+      await input.fill('Marriott');
+      await input.press('Enter');
+      assert.equal(await select.inputValue(), '', 'Enter during replacement query cannot select a previous Rixos hotel');
+      assert.equal(await input.inputValue(), 'Marriott');
+      await list.waitFor({ state: 'visible' });
+      assert.match(await list.innerText(), /MARRIOTT HOTEL/);
+      assert.doesNotMatch(await list.innerText(), /RIXOS/);
+      await input.press('Enter');
+      assert.equal(await select.inputValue(), '42001', 'new query selects its own canonical identity');
+
+      async function delayLookup(query) {
+        let started, release, finished;
+        const begun = new Promise(resolve => { started = resolve; });
+        const wait = new Promise(resolve => { release = resolve; });
+        const done = new Promise(resolve => { finished = resolve; });
+        pauseLookup = { started, wait, finished };
+        await input.fill(query);
+        await Promise.race([begun, new Promise((_, reject) => setTimeout(() => reject(new Error('catalog lookup did not start')), 3000))]);
+        return async () => { release(); await done; await page.waitForTimeout(100); };
+      }
+
+      const finishOld = await delayLookup('Rixos');
+      await input.fill('Marriott');
+      await list.waitFor({ state: 'visible' });
+      await finishOld();
+      assert.match(await list.innerText(), /MARRIOTT HOTEL/, 'late old response cannot overwrite the replacement query');
+      assert.doesNotMatch(await list.innerText(), /RIXOS/);
+
+      for (const dismissal of ['clear', 'escape', 'geography', 'blur']) {
+        const finish = await delayLookup('Rixos');
+        if (dismissal === 'clear') await input.fill('R');
+        if (dismissal === 'escape') await input.press('Escape');
+        if (dismissal === 'geography') await form.locator('select[name="region"]').selectOption('401');
+        if (dismissal === 'blur') await form.locator('input[name="price_from"]').focus();
+        await finish();
+        assert.equal(await list.isVisible(), false, dismissal + ' invalidates pending suggestions');
+        assert.equal(await select.inputValue(), '', dismissal + ' does not select an old hotel');
+        assert.equal(await input.getAttribute('aria-activedescendant'), null);
+        assert.equal(await input.inputValue(), dismissal === 'clear' ? 'R' : 'Rixos', 'dismissal keeps the current query');
+      }
+      const lookupsBeforeEscape = hotelQueries.length;
+      await input.fill('Marriott');
+      await input.press('Escape');
+      await page.waitForTimeout(250);
+      assert.equal(hotelQueries.length, lookupsBeforeEscape, 'Escape also cancels a lookup waiting for debounce');
+      assert.equal(await list.isVisible(), false);
+      assert.deepEqual(searchStarts, [], 'pending Enter and cancelled suggestions never start a broad supplier search');
       evidence.push({ viewport, geometry, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
       assert.deepEqual(errors, []);
       await page.close();
