@@ -143,7 +143,7 @@ async function checkOfferJourney(page,width){
         const mobileFilters=page.locator('.search3-mobile-filter-panel summary');
         if(await mobileFilters.isVisible())await mobileFilters.click();
       }
-      await meal.selectOption('meal:all-inclusive');
+      await meal.selectOption('meal:label:всё включено');
     };
     await selectMeal();
     const card=page.locator('#results .hotel-card[data-hotel-id="offer-hotel"]'),root=page.locator('#selectedTour');
