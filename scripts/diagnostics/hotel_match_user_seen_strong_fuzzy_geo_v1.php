@@ -54,10 +54,51 @@ function hmfg_source(string $provider,string $external,array $names,array $place
       'places'=>$placeList,'countries'=>$countries,
       'latitude'=>$coords['latitude']??null,'longitude'=>$coords['longitude']??null];
 }
+function hmfg_sets(array $names): array {
+    $out=[];
+    foreach($names as $name){
+        foreach(hmsb_keys((string)$name) as $rawKey){
+            $key=(string)$rawKey;
+            if($key===''||preg_match('/\\p{L}/u',$key)!==1)continue;
+            $tokens=array_values(array_filter(explode(' ',$key),static fn($x)=>$x!==''));
+            if($tokens)$out[$key]=$tokens;
+        }
+    }
+    return $out;
+}
+function hmfg_rank(array $sourceNames,int $country,array $tokenIndex,array $targetNames): array {
+    $sourceSets=hmfg_sets($sourceNames);if(!$sourceSets)return['status'=>'no_source_tokens'];
+    $candidates=[];$exact=false;
+    foreach($sourceSets as $sourceKey=>$tokens){
+        foreach($tokens as $token)foreach(array_keys($tokenIndex[$country][$token]??[]) as $local)$candidates[(int)$local]=true;
+        foreach($targetNames[$country]??[] as $local=>$sets)if(isset($sets[$sourceKey])){$exact=true;$candidates[(int)$local]=true;}
+    }
+    if($exact)return['status'=>'exact_key_skipped'];
+    if(!$candidates)return['status'=>'no_shared_token'];
+    $rank=[];
+    foreach(array_keys($candidates) as $local){
+        $best=null;$bestConflict=null;
+        foreach($sourceSets as $sourceKey=>$a)foreach($targetNames[$country][$local]??[] as $targetKey=>$b){
+            $m=hmsbf_metric($a,$b)+['source_key'=>$sourceKey,'target_key'=>$targetKey];
+            if($m['qualifier_conflict']){
+                if($bestConflict===null||$m['score']>$bestConflict['score'])$bestConflict=$m;
+                continue;
+            }
+            if($best===null||$m['score']>$best['score']||($m['score']===$best['score']&&$m['common']>$best['common']))$best=$m;
+        }
+        if($best!==null)$rank[]=['local_id'=>(int)$local]+$best;
+        elseif($bestConflict!==null)$rank[]=['local_id'=>(int)$local]+$bestConflict;
+    }
+    if(!$rank)return['status'=>'no_comparable_candidate'];
+    usort($rank,static fn($a,$b)=>$b['score']<=>$a['score']?:$b['common']<=>$a['common']?:$a['local_id']<=>$b['local_id']);
+    $best=$rank[0];$runner=$rank[1]??null;$margin=$best['score']-(int)($runner['score']??0);
+    return['status'=>'ranked','best'=>$best,'runner_up'=>$runner,'margin'=>$margin,'candidate_count'=>count($rank)];
+}
+
 function hmfg_merge_target(array &$tokenIndex,array &$targetNames,int $country,int $local,array $names,array $wanted): bool {
     $names=array_values(array_filter(array_map('strval',$names),fn($x)=>preg_match('/\\p{L}/u',$x)===1));
     if(!$names)return false;
-    $sets=hmsbf_sets($names);$kept=[];$hit=false;
+    $sets=hmfg_sets($names);$kept=[];$hit=false;
     foreach($sets as $key=>$tokens){
         $use=false;foreach($tokens as $token)if(isset($wanted[$country][$token])){$use=true;break;}
         if(!$use)continue;$hit=true;$kept[$key]=$tokens;
@@ -73,7 +114,7 @@ function hmfg_merge_target(array &$tokenIndex,array &$targetNames,int $country,i
 if(in_array('--self-test',$argv??[],true)){
     define('FC_LIBRARY_ONLY',true);
     require_once __DIR__.'/hotel_match_current_supplier_fuzzy_bridge.php';
-    $r=hmsbf_rank(['Grand Bagoz Hotel'],4,[4=>['grand'=>[1=>true],'bagoz'=>[1=>true]]],[4=>[1=>hmsbf_sets(['Grand Bagoz'])]]);
+    $r=hmfg_rank(['Grand Bagoz Hotel'],4,[4=>['grand'=>[1=>true],'bagoz'=>[1=>true]]],[4=>[1=>hmfg_sets(['Grand Bagoz'])]]);
     if(($r['status']??'')!=='exact_key_skipped')throw new RuntimeException('exact_skip');
     $m=hmsbf_metric(['alpha','beach','palace'],['alpha','beach','palace','antalya']);
     if($m['common']!==3||$m['symmetric']<0.74)throw new RuntimeException('metric');
@@ -190,7 +231,7 @@ try{
     // Build only tokens actually present in supplier source names.
     $wanted=[];
     foreach($sources as $src){
-        $cid=$src['countries'][0];foreach(hmsbf_sets($src['names']) as $tokens)foreach($tokens as $token)$wanted[$cid][$token]=true;
+        $cid=$src['countries'][0];foreach(hmfg_sets($src['names']) as $tokens)foreach($tokens as $token)$wanted[$cid][$token]=true;
     }
 
     $tokenIndex=[];$targetNames=[];$hotels=[];$activeCount=0;
@@ -226,7 +267,7 @@ try{
 
     $rows=[];$rankStats=[];$strong=0;$needs=0;
     foreach($sources as $src){
-        $cid=$src['countries'][0];$rank=hmsbf_rank($src['names'],$cid,$tokenIndex,$targetNames);
+        $cid=$src['countries'][0];$rank=hmfg_rank($src['names'],$cid,$tokenIndex,$targetNames);
         $status=(string)($rank['status']??'unknown');$rankStats[$status]=($rankStats[$status]??0)+1;
         if($status!=='ranked')continue;
         $target=hmsbf_target_row($rank,$hotels);if(!$target)continue;$local=(int)$target['id'];
