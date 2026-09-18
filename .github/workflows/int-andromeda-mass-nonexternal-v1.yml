@@ -51,7 +51,7 @@ jobs:
           php -l app/integrations/andromeda-selected-quote.php >/dev/null
           php -l app/integrations/andromeda-saved-package-runtime.php >/dev/null
           php tests/andromeda-local-offer-collector-test.php
-          php tests/andromeda-saved-surcharge-runtime-smoke.php "$(pwd)"
+          php tests/andromeda-saved-surcharge-runtime-smoke.php "$(pwd)" "$RUNNER_TEMP/andromeda-surcharge-smoke"
 
       - name: Prepare private exact runtime
         shell: bash
