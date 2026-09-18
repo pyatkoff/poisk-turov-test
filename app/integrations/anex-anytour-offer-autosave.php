@@ -203,7 +203,7 @@ final class AnyTourAnexOfferAutosaveV1
             ];
         }
 
-        if ($entries === []) return self::receipt(false, 'no_persistable_offers', 0, count($state['anytour_offer_autosave']['offers'] ?? []));
+        if ($entries === []) return self::receipt(false, 'no_final_price_ready', 0, count($state['anytour_offer_autosave']['offers'] ?? []));
         $auto = $state['anytour_offer_autosave'];
         $publishDigest = hash('sha256', json_encode(array_map(static function (array $entry): array {
             return [
