@@ -50,20 +50,22 @@ $to=$date($args['date-to']??$from);
 $nights=$int($need('nights'),1,28);
 $adults=$int($args['adults']??'2',1,6);
 $meal=$args['meal']??'';
-$maxExpands=$int($args['max-expands']??'2',0,10);
-$maxBatch=$int($args['max-apd']??'6',1,20);
+$maxExpands=$int($args['max-expands']??'60',0,120);
+$maxBatch=$int($args['max-apd']??'300',1,600);
 $generation=$int($args['generation']??'25061801',1,2147483647);
 
 $pdo=v2_data_db();
 $cache=[];$state=[];$searchRequests=0;$apdRequests=0;
-$makeClient=static function()use($apiToken,&$searchRequests):AnyTourAnexClient{
+$searchBudget=min(130,max(8,$maxExpands+2));
+$apdBudget=min(120,max(8,(int)ceil($maxBatch/6)*2));
+$makeClient=static function()use($apiToken,&$searchRequests,$searchBudget):AnyTourAnexClient{
     ++$searchRequests;
-    if($searchRequests>8)throw new RuntimeException('ANEX_COLLECTOR_SEARCH_BUDGET');
+    if($searchRequests>$searchBudget)throw new RuntimeException('ANEX_COLLECTOR_SEARCH_BUDGET');
     return new AnyTourAnexClient($apiToken);
 };
-$makeAdditional=static function()use($b2bToken,&$apdRequests):AnyTourAnexAdditionalPricesClient{
+$makeAdditional=static function()use($b2bToken,&$apdRequests,$apdBudget):AnyTourAnexAdditionalPricesClient{
     ++$apdRequests;
-    if($apdRequests>8)throw new RuntimeException('ANEX_COLLECTOR_APD_BUDGET');
+    if($apdRequests>$apdBudget)throw new RuntimeException('ANEX_COLLECTOR_APD_BUDGET');
     return new AnyTourAnexAdditionalPricesClient($b2bToken);
 };
 $resolver=AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver();
@@ -100,6 +102,8 @@ $result=AnyTourAnexLocalOfferCollectorV1::collect(
 );
 $result['search_client_instances']=$searchRequests;
 $result['apd_client_instances']=$apdRequests;
+$result['search_budget']=$searchBudget;
+$result['apd_budget']=$apdBudget;
 $result['supplier_calls_bounded']=true;
 $result['booking_calls']=0;
 $result['lead_calls']=0;
