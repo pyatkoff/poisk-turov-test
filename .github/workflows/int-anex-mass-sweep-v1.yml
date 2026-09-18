@@ -1,0 +1,109 @@
+name: INT ANEX mass sweep nights v1
+on:
+  push:
+    branches: ['ops/int-anex-mass-sweep-20260918-v1']
+    paths:
+      - 'scripts/ops/int_anex_mass_sweep_scope.php'
+      - '.github/workflows/int-anex-mass-sweep-v1.yml'
+permissions:
+  contents: read
+concurrency:
+  group: int-anex-mass-sweep-20260918-v1
+  cancel-in-progress: false
+jobs:
+  sweep:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SOURCE_SHA: 084b411e6d4832f0d9b0e3360abe2a33bba7679c
+      RELEASE_DATA_SHA: a85b0f061d6016bc258dccca4ee784c2d6ef7c27
+      SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 4
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_DATA_SHA }}
+          path: release-data
+          persist-credentials: false
+      - name: Bind exact source
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          php -l control/scripts/ops/int_anex_mass_sweep_scope.php
+          php -l source/scripts/ops/anex_local_offer_collect.php
+          php source/tests/anex-local-offer-collector-test.php
+          php source/tests/anex-anytour-offer-autosave-test.php
+          php source/tests/anex-background-gateway-limit-test.php
+          test "$(git -C release-data hash-object v2/data/anytour-offer-snapshot-ingest-v1.php)" = '4b6b73c11a8de0401c05187982ba977e61a14354'
+      - name: Prepare exact private runtime
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/runtime" "$RUNNER_TEMP/receipts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          mkdir -p "$RUNNER_TEMP/runtime/app" "$RUNNER_TEMP/runtime/v2" "$RUNNER_TEMP/runtime/scripts/ops"
+          cp -a source/app/integrations "$RUNNER_TEMP/runtime/app/"
+          cp source/v2/api-anex-search3-preview.php "$RUNNER_TEMP/runtime/v2/"
+          cp -a release-data/v2/data "$RUNNER_TEMP/runtime/v2/"
+          cp source/scripts/ops/anex_local_offer_collect.php "$RUNNER_TEMP/runtime/scripts/ops/"
+          cp control/scripts/ops/int_anex_mass_sweep_scope.php "$RUNNER_TEMP/runtime/scripts/ops/"
+          tar -C "$RUNNER_TEMP/runtime" -czf "$RUNNER_TEMP/runtime.tar.gz" .
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+      - name: Run serial disjoint night scopes
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$REMOTE_USER@$HOST"
+          archive="/tmp/int-anex-mass-sweep-v1.$GITHUB_RUN_ID.tar.gz"
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$remote:$archive"
+          ssh "${opts[@]}" "$remote" bash -s -- "$archive" <<'REMOTE'
+          set -euo pipefail
+          archive="$1"; site="$HOME/www/anytoour.ru"; root="$HOME/.anytour-ops"
+          mkdir -p "$root"; work="$(mktemp -d /tmp/int-anex-sweep.XXXXXX)"; trap 'rm -rf "$work"; rm -f "$archive"' EXIT
+          tar -C "$work" -xzf "$archive"
+          for pair in 6:25061836 8:25061838 9:25061839 10:25061840 11:25061841 12:25061842 13:25061843 14:25061844; do
+            n="${pair%%:*}"; gen="${pair##*:}"; op="int-anex-mass-sweep-2506-20260918-n${n}-v1"; ledger="$root/$op"
+            if test -e "$ledger"; then continue; fi
+            mkdir -m 700 "$ledger"; printf '%s\n' reserved > "$ledger/state"
+            set +e
+            php "$work/scripts/ops/int_anex_mass_sweep_scope.php" "$site" "$work" "$n" "$gen" > "$ledger/receipt.json" 2> "$ledger/error.log"
+            rc=$?
+            set -e
+            printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed || echo failed_terminal_no_replay)" > "$ledger/state"
+          done
+          REMOTE
+          for n in 6 8 9 10 11 12 13 14; do
+            op="int-anex-mass-sweep-2506-20260918-n${n}-v1"
+            ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$op/receipt.json\"" > "$RUNNER_TEMP/receipts/n${n}.json" || true
+          done
+          python3 - <<'PY'
+          import json,pathlib
+          rows=[]
+          for p in sorted(pathlib.Path(__import__('os').environ['RUNNER_TEMP'],'receipts').glob('n*.json')):
+              if not p.read_text().strip(): continue
+              r=json.loads(p.read_text()); rows.append(r)
+              assert r['status']=='completed' and r['replay_allowed'] is False
+          print(json.dumps({'completed_scopes':len(rows),'receipts':[{'nights':r['nights'],'delta_active':r['delta']['active'],'after_active':r['after']['active'],'ready':r['collector']['final_price_ready_offers']} for r in rows]},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: int-anex-mass-sweep-${{ github.run_id }}
+          path: ${{ runner.temp }}/receipts/
+          if-no-files-found: warn
+          retention-days: 30
