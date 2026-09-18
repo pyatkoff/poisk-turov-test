@@ -24,6 +24,11 @@ async function run(engine, width, height) {
   const browser = await ({ chromium, webkit }[engine]).launch();
   const context = await browser.newContext({ viewport: { width, height }, serviceWorkers: 'block' });
   const calls = [], failures = [], errors = [];
+  const scenarioQuery = new URLSearchParams(query);
+  if (width === 390) {
+    scenarioQuery.set('child_count', '3');
+    for (const age of ['0', '7', '17']) scenarioQuery.append('child_age[]', age);
+  }
   context.on('page', page => { page.setDefaultTimeout(15000); page.on('pageerror', error => errors.push(String(error))); });
   await context.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
@@ -70,7 +75,7 @@ async function run(engine, width, height) {
   });
   const page = await context.newPage();
   try {
-    await page.goto(entry + '?' + query, { waitUntil: 'domcontentloaded' });
+    await page.goto(entry + '?' + scenarioQuery, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#results .hotel-card:nth-of-type(3)');
     await page.waitForFunction(() => document.querySelectorAll('#results a[target="_blank"]').length === 3);
     await page.locator('#sortResults').selectOption('rating');
@@ -102,6 +107,8 @@ async function run(engine, width, height) {
       assert.equal(await child.evaluate(() => window.opener === null), true, 'detail has no opener dependency');
       assert.equal(new URL(child.url()).searchParams.get('search3_hotel'), String(901 + index));
       assert.equal(new URL(child.url()).searchParams.get('utm_source'), 'tabs-fixture');
+      assert.equal(new URL(child.url()).searchParams.get('child_count'), scenarioQuery.get('child_count'));
+      assert.deepEqual(new URL(child.url()).searchParams.getAll('child_age[]'), scenarioQuery.getAll('child_age[]'), 'all child ages survive a new tab, including 0 and 17');
       const after = await state();
       assert.ok(Math.abs(after.scroll - before.scroll) <= 2, 'opening hotel does not move original results');
       delete before.scroll; delete after.scroll;
@@ -123,7 +130,7 @@ async function run(engine, width, height) {
     assert.equal(calls.filter(c => c.page === child && c.action === 'tour').at(-1).params.tourId, exact);
     assert.equal(calls.filter(c => c.page === child && c.action === 'flights').at(-1).params.tourId, exact);
     assert.match(await child.locator('#selectedTour').innerText(), /Проверочный отель 1/);
-    await child.locator('#selectedTour .back-results').click();
+    await child.getByRole('button', { name: '← Вернуться к предложениям', exact: true }).click();
     await child.waitForFunction(() => document.querySelector('#selectedTour').hidden);
     assert.equal(child.url(), initialDetailUrl, 'working same-tab Back retains the addressable hotel');
     assert.equal(await child.locator('.direct-tour').count(), 4);
