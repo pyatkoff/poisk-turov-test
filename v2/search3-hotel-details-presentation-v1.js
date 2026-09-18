@@ -81,9 +81,10 @@ function normalizeCard(card){
  if(normalizeHotelTitleLink(card))changed=true;
  const summary=card.querySelector('.hotel-description-summary'),details=card.querySelector('.hotel-details'),content=details&&details.querySelector('.hotel-details-content'),duplicate=content&&content.querySelector('.hotel-description');
  if(!summary||!details||!content||!duplicate||text(summary)!==text(duplicate))return changed;
+ // A description-only disclosure is still needed: CSS swaps its teaser/full text
+ // and reveals mobile gallery controls on open. Deduplicate only rich details.
+ if(!content.children||!Array.from(content.children).some(node=>node!==duplicate))return changed;
  if(typeof duplicate.remove==='function')duplicate.remove();else if(duplicate.parentNode)duplicate.parentNode.removeChild(duplicate);
- const hasExtra=content.children?content.children.length>0:!!text(content);
- if(!hasExtra){if(typeof details.remove==='function')details.remove();else if(details.parentNode)details.parentNode.removeChild(details);}
  return true;
 }
 function normalize(root){
@@ -93,5 +94,5 @@ function normalize(root){
 window.addEventListener('v2:results-rendered',event=>normalize(event.detail&&event.detail.results||document.getElementById('results')));
 window.addEventListener('v2:hotel-details-rendered',event=>{const root=document.getElementById('results'),id=String(event.detail&&event.detail.hotelId||'');if(!root||!id)return;const card=Array.from(root.querySelectorAll('.hotel-card')).find(node=>String(node.dataset&&node.dataset.hotelId||'')===id);if(card)normalizeCard(card);});
 ['v2:search-started','v2:search-reset'].forEach(name=>window.addEventListener(name,resetPresentation));
-window.Search3HotelDetailsPresentationV1={active,syncHotelPageTitle,normalizeAmbiguousRating,hotelTitleHref,normalizeHotelTitleLink,normalizeCard,normalize,version:4};
+window.Search3HotelDetailsPresentationV1={active,syncHotelPageTitle,normalizeAmbiguousRating,hotelTitleHref,normalizeHotelTitleLink,normalizeCard,normalize,version:5};
 })();
