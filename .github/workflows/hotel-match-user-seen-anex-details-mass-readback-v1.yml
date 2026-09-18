@@ -1,0 +1,83 @@
+name: MATCH ANEX details mass v1 readback only
+
+on:
+  push:
+    branches:
+      - ops/match-user-seen-anex-details-mass-1971-20260918-v1
+    paths:
+      - .github/workflows/hotel-match-user-seen-anex-details-mass-readback-v1.yml
+
+permissions:
+  contents: read
+
+env:
+  OPERATION_ID: hotel-match-user-seen-anex-details-mass-1971-20260918-v1
+
+jobs:
+  readback:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Require SSH credentials
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"
+      - name: Read existing terminal state without provider access
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p terminal
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
+          remote="$SSH_USER@$SSH_HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" > terminal/state.tar.gz <<'REMOTE'
+          set -euo pipefail
+          op="$1"; p="$HOME/.anytour-match/operations/$op"
+          test -d "$p"
+          cd "$p"
+          files=()
+          for f in reservation.json result.json receipt.json; do [ -f "$f" ] && files+=("$f"); done
+          test "${#files[@]}" -ge 1
+          tar -czf - "${files[@]}"
+          REMOTE
+          python3 - <<'PY'
+          import tarfile,json,pathlib,hashlib
+          p=pathlib.Path('terminal'); d=p/'server'; d.mkdir(exist_ok=True)
+          with tarfile.open(p/'state.tar.gz','r:gz') as t:
+              for m in t.getmembers():
+                  assert m.isfile() and m.size < 50_000_000
+                  (d/pathlib.Path(m.name).name).write_bytes(t.extractfile(m).read())
+          out={'operation':'hotel-match-user-seen-anex-details-mass-1971-20260918-v1','provider_calls_from_readback':0}
+          for name in ['reservation.json','result.json','receipt.json']:
+              f=d/name
+              out[name.replace('.json','_present')]=f.exists()
+              if f.exists():
+                  try: out[name.replace('.json','')]=json.loads(f.read_text())
+                  except Exception: out[name.replace('.json','')+'_sha256']=hashlib.sha256(f.read_bytes()).hexdigest()
+          if (d/'result.json').exists():
+              out['result_sha256']=hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+          (p/'summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-anex-details-mass-v1-readback-${{ github.run_id }}
+          path: terminal/
+          if-no-files-found: error
+          retention-days: 90
