@@ -122,6 +122,38 @@ ok($priorityOrder===[23,25,26],'distinct external transport groups must consume 
 ok($priorityResult['surcharge_capture_attempts']===3,'priority capture bound');
 ok($priorityResult['eligible_offers']===6,'priority keeps all candidates eligible');
 
+
+// Mass non-external mode must ignore external/unknown candidates entirely and allow
+// a background-scale capture budget above the historical diagnostic cap of six.
+$nonExternalOrder=[];$nonExternalReady=0;
+$massCohort=static function(string $ref,int $generation)use($offer):array{
+    $rows=[];
+    for($i=1;$i<=12;++$i){
+        $rows[]=['page'=>1,'offer'=>$offer('mass-false-'.$i,'FUN&SUN',100+$i,'31',false,'pf'.($i%3),'tf'.($i%4))];
+    }
+    $rows[]=['page'=>1,'offer'=>$offer('mass-true','Интурист',200,'32',true,'px','tx')];
+    $rows[]=['page'=>1,'offer'=>$offer('mass-unknown','Библио-Глобус',201,'33',null,'pu','tu')];
+    return $rows;
+};
+$massCapture=static function(array $selection)use(&$nonExternalOrder,&$nonExternalReady):array{
+    $nonExternalOrder[]=$selection['local_id'];++$nonExternalReady;
+    return ['status'=>'captured','surcharge'=>[
+        'status'=>'complete','fact'=>null,'final_price_verified'=>true
+    ]];
+};
+$massAutosave=static fn(array $r,string $ref,int $generation):array=>[
+    'published'=>true,'reason'=>null,'readyOfferCount'=>12
+];
+$massResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
+    $request,
+    static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('9',64),'pages_count'=>1,'status'=>'complete'],
+    $massCohort,$allAllowed,$massCapture,$massAutosave,12,'non_external_only'
+);
+ok(count($nonExternalOrder)===12,'nonexternal mass captured all false rows');
+ok(!in_array(200,$nonExternalOrder,true)&&!in_array(201,$nonExternalOrder,true),'nonexternal mode excluded external and unknown');
+ok($massResult['capture_mode']==='non_external_only'&&$massResult['capture_queue_offers']===12,'nonexternal queue metadata');
+ok($massResult['surcharge_ready']===12&&$massResult['ready_offer_count']===12,'verified calc counts as ready');
+
 $terminalOrder=[];$terminalAutosaveCalls=0;
 $terminalCapture=static function(array $selection)use(&$terminalOrder):array{
     $terminalOrder[]=$selection['local_id'];
@@ -163,4 +195,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 program_diversity=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 program_diversity=1 nonexternal_mass=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
