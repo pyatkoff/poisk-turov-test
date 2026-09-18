@@ -1,0 +1,112 @@
+name: MATCH Tourvisor result recovery v1
+
+on:
+  push:
+    branches:
+      - ops/match-tv-result-recovery-1971-20260918-v1
+    paths:
+      - .github/workflows/hotel-match-tv-result-recovery-v1.yml
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: match-tv-result-recovery-1971-20260918-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-tv-result-recovery-1971-20260918-v1
+  SOURCE_OPERATION: hotel-match-user-seen-tv-detail-saturation-1971-20260918-v3
+  EXPECTED_BASE: 2c712e70e9eb2df99270fc46e46c58f08dd10a11
+  EXPECTED_RESULT_SHA: 9affa55e77a1d68341886001369cd0ec929e29d72e20ec42db9014dee0f39a0e
+  CLAIM_COMMENT_ID: '5732239760'
+
+jobs:
+  recover:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate isolated claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          test "${#changed[@]}" -eq 1
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-tv-result-recovery-v1.yml'
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          b=c['body']
+          assert os.environ['OPERATION_ID'] in b and os.environ['SOURCE_OPERATION'] in b
+          assert os.environ['EXPECTED_RESULT_SHA'] in b
+          assert 'No Tourvisor' in b and 'no DB/mapping writes' in b
+          PY
+
+      - name: Read exact persisted result without mutation
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"
+          umask 077; mkdir -p recovery
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ConnectionAttempts=3)
+          remote="$SSH_USER@$SSH_HOST"
+          path=".anytour-match/operations/$SOURCE_OPERATION/result.json"
+          ssh "${opts[@]}" "$remote" "test -f \"\$HOME/$path\"; cat \"\$HOME/$path\"" > recovery/source-result.json
+          test -s recovery/source-result.json
+
+      - name: Verify immutable source and summarize evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          got="$(sha256sum recovery/source-result.json | awk '{print $1}')"
+          test "$got" = "$EXPECTED_RESULT_SHA"
+          python3 - <<'PY'
+          import json, os, pathlib
+          p=pathlib.Path('recovery/source-result.json'); r=json.loads(p.read_text())
+          assert r.get('state')=='completed', r.get('state')
+          assert int(r.get('http_attempts',-1))==2705, r.get('http_attempts')
+          assert r.get('rate_limited') is False, r.get('rate_limited')
+          def shape(v):
+              if isinstance(v,list): return {'type':'list','count':len(v)}
+              if isinstance(v,dict): return {'type':'dict','count':len(v)}
+              if isinstance(v,(str,int,float,bool)) or v is None: return v
+              return type(v).__name__
+          summary={
+            'operation':'hotel-match-tv-result-recovery-1971-20260918-v1',
+            'source_operation':os.environ['SOURCE_OPERATION'],
+            'source_sha256':os.environ['EXPECTED_RESULT_SHA'],
+            'provider_calls':0,'database_writes':0,'mapping_writes':0,'remote_writes':0,
+            'top_level':{k:shape(v) for k,v in r.items()},
+          }
+          pathlib.Path('recovery/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-result-recovery-${{ github.run_id }}
+          path: recovery/
+          if-no-files-found: error
+          retention-days: 90
