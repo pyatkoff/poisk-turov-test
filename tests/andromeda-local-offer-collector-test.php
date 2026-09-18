@@ -9,9 +9,14 @@ $search=static function(array $r)use(&$searchCalls):array{
     ++$searchCalls;
     return ['provider'=>'andromeda','search_ref'=>str_repeat('a',64),'pages_count'=>3,'status'=>'complete'];
 };
-$offer=static function(string $suffix,string $operator,int $local,string $opRef,?bool $freight=null):array{
+$offer=static function(string $suffix,string $operator,int $local,string $opRef,?bool $freight=null,?string $program=null,?string $tour=null):array{
     $row=['offer_ref'=>'offer_'.hash('sha256',$suffix),'operator'=>$operator,'operator_ref'=>$opRef,'local_hotel_id'=>$local];
-    if($freight!==null)$row['transport_context']=['freight_external'=>$freight];
+    if($freight!==null||$program!==null||$tour!==null){
+        $row['transport_context']=[];
+        if($freight!==null)$row['transport_context']['freight_external']=$freight;
+        if($program!==null)$row['transport_context']['program_ref']=$program;
+        if($tour!==null)$row['transport_context']['tour_ref']=$tour;
+    }
     return $row;
 };
 $cohort=static fn(string $ref,int $generation):array=>[
@@ -94,10 +99,12 @@ foreach ([
 }
 
 $priorityCohort=static fn(string $ref,int $generation):array=>[
-    ['page'=>1,'offer'=>$offer('p-false','FUN&SUN',21,'21',false)],
-    ['page'=>1,'offer'=>$offer('p-unknown','Библио-Глобус',22,'22',null)],
-    ['page'=>1,'offer'=>$offer('p-true-a','Интурист',23,'23',true)],
-    ['page'=>1,'offer'=>$offer('p-true-b','FUN&SUN',24,'24',true)],
+    ['page'=>1,'offer'=>$offer('p-false','FUN&SUN',21,'21',false,'pf','tf')],
+    ['page'=>1,'offer'=>$offer('p-unknown','Библио-Глобус',22,'22',null,'pu','tu')],
+    ['page'=>1,'offer'=>$offer('p-true-a','Интурист',23,'23',true,'p1','t1')],
+    ['page'=>1,'offer'=>$offer('p-true-b','Интурист',24,'23',true,'p1','t1')],
+    ['page'=>1,'offer'=>$offer('p-true-c','Интурист',25,'23',true,'p2','t2')],
+    ['page'=>1,'offer'=>$offer('p-true-d','FUN&SUN',26,'24',true,'p3','t3')],
 ];
 $priorityOrder=[];
 $priorityCapture=static function(array $selection)use(&$priorityOrder):array{
@@ -111,9 +118,9 @@ $priorityResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
     static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('b',64),'pages_count'=>1,'status'=>'complete'],
     $priorityCohort,$allAllowed,$priorityCapture,$priorityAutosave,3
 );
-ok($priorityOrder===[23,24,22],'external freight must consume capture budget before unknown/false');
+ok($priorityOrder===[23,25,26],'distinct external transport groups must consume capture budget before duplicate group/unknown/false');
 ok($priorityResult['surcharge_capture_attempts']===3,'priority capture bound');
-ok($priorityResult['eligible_offers']===4,'priority keeps all candidates eligible');
+ok($priorityResult['eligible_offers']===6,'priority keeps all candidates eligible');
 
 $terminalOrder=[];$terminalAutosaveCalls=0;
 $terminalCapture=static function(array $selection)use(&$terminalOrder):array{
@@ -130,7 +137,7 @@ $terminalResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
     static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('c',64),'pages_count'=>1,'status'=>'complete'],
     $priorityCohort,$allAllowed,$terminalCapture,$terminalAutosave,3
 );
-ok($terminalOrder===[23,24,22],'sealed package outcome must continue with disjoint candidates');
+ok($terminalOrder===[23,25,26],'sealed package outcome must continue with distinct disjoint transport groups');
 ok($terminalResult['surcharge_capture_attempts']===3,'terminal package outcome still consumes capture budget');
 ok($terminalAutosaveCalls===1,'terminal per-offer package outcome must not skip autosave');
 
@@ -156,4 +163,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 priority=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 program_diversity=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
