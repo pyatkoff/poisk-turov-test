@@ -4,6 +4,7 @@ on:
     paths:
       - 'app/integrations/andromeda-local-offer-collector.php'
       - 'tests/andromeda-local-offer-collector-test.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
       - '.github/workflows/int-andromeda-local-offer-collector.yml'
 permissions:
   contents: read
@@ -19,4 +20,5 @@ jobs:
           set -euo pipefail
           php -l app/integrations/andromeda-local-offer-collector.php
           php -l tests/andromeda-local-offer-collector-test.php
+          php -l scripts/ops/andromeda_local_offer_collect.php
           php tests/andromeda-local-offer-collector-test.php
