@@ -60,23 +60,27 @@ jobs:
           assert '429' in b['body'] and ('stop' in b['body'].lower() or 'stops' in b['body'].lower())
           PY
 
-      - name: Require dedicated Tourvisor token and SSH
+      - name: Require SSH and verify server Tourvisor token
         env:
           SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          TV_TOKEN: ${{ secrets.TOURVISOR_ANEX_JWT }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"; test -n "$TV_TOKEN"
+          test -n "$SSH_KEY"; test -n "$SSH_HOST"; test -n "$SSH_USER"
+          key="$RUNNER_TEMP/key-pre"; known="$RUNNER_TEMP/known-pre"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$SSH_HOST" > "$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ConnectionAttempts=3)
+          ssh "${opts[@]}" "$SSH_USER@$SSH_HOST" 'php -r '\''$p=getenv("HOME")."/www/anytoour.ru/config.php"; require $p; if(!defined("TOURVISOR_JWT")||trim((string)TOURVISOR_JWT)==="") exit(2); echo "SERVER_TV_TOKEN_OK\n";'\'''
 
       - name: Reserve and consume saved Tourvisor details once
         env:
           SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          TV_TOKEN: ${{ secrets.TOURVISOR_ANEX_JWT }}
           HEAD_SHA: ${{ github.sha }}
         shell: bash
         run: |
@@ -104,7 +108,12 @@ jobs:
           scp "${opts[@]}" terminal/reservation.json "$remote:$op/reservation.json"
           scp "${opts[@]}"             scripts/diagnostics/hotel_match_user_seen_tv_detail_saturation_v2.php             app/integrations/anex-search-mapping-registry.php             "$remote:$op/payload/"
           set +e
-          printf '%s\n' "$TV_TOKEN" | ssh "${opts[@]}" "$remote"             "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$op/payload/hotel_match_user_seen_tv_detail_saturation_v2.php\" > \"\$HOME/$op/result.json\""
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" <<'REMOTE_RUN'
+          set -euo pipefail
+          op="$1"; root="$HOME/www/anytoour.ru"; p="$HOME/.anytour-match/operations/$op"
+          token="$(php -r '$p=$argv[1]; require $p; if(!defined("TOURVISOR_JWT")||trim((string)TOURVISOR_JWT)==="") exit(2); echo trim((string)TOURVISOR_JWT);' "$root/config.php")"
+          printf '%s\n' "$token" | ANYTOUR_ROOT="$root" MATCH_OPERATION_DIR="$p" php -d display_errors=0 -d log_errors=0 "$p/payload/hotel_match_user_seen_tv_detail_saturation_v2.php" > "$p/result.json"
+          REMOTE_RUN
           rc=$?
           set -e
           ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$rc" <<'REMOTE'
