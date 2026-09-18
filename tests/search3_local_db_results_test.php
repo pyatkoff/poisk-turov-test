@@ -39,7 +39,13 @@ $schema1Rejected=false;try{search3_local_results_build($pdo,$p,new DateTimeImmut
 exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260917-anytour-offer-store-v2.sql');exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260917-anytour-offer-scope-index.sql');
 $hotel=$pdo->prepare('INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES(?,?,1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())');
 $bridge=$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('legacy_catalog',?,?,'fixture',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
-$owns=[];foreach([[101,'Первый AnyTour отель'],[202,'Второй AnyTour отель']] as[$legacy,$name]){$profile=json_encode(['name'=>$name,'description'=>'Собственное описание','images'=>['https://images.example.test/'.$legacy.'.jpg']],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$hotel->execute([$profile,hash('sha256',$profile)]);$own=(int)$pdo->lastInsertId();$owns[$legacy]=$own;$source=json_encode(['id'=>$legacy]);$bridge->execute([(string)$legacy,$own,$source,hash('sha256',$source)]);}
+$aliasBridge=$pdo->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES('anytour_local_id',?,?,'canonical_local_alias_v1',?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+$owns=[];foreach([[101,'Первый AnyTour отель'],[202,'Второй AnyTour отель']] as[$legacy,$name]){$profile=json_encode(['name'=>$name,'description'=>'Собственное описание','images'=>['https://images.example.test/'.$legacy.'.jpg']],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$hotel->execute([$profile,hash('sha256',$profile)]);$own=(int)$pdo->lastInsertId();$owns[$legacy]=$own;$source=json_encode(['id'=>$legacy]);$bridge->execute([(string)$legacy,$own,$source,hash('sha256',$source)]);
+$aliasSource=json_encode([
+    'schema_version'=>1,'accepted_local_hotel_id'=>$legacy,'canonical_hotel_id'=>$own,
+    'derived_from_namespace'=>'legacy_catalog','derived_from_source_sha256'=>hash('sha256',$source),
+],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+$aliasBridge->execute([(string)$legacy,$own,$aliasSource,hash('sha256',$aliasSource)]);}
 $at=new DateTimeImmutable('2026-10-06T10:00:00Z');$expires=$at->modify('+2 hours');
 need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$scope,$at),'narrow scope indexed');
 foreach([
@@ -72,7 +78,7 @@ need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$broadScope,$at->modify('+
 $token=AnyTourOfferStoreV1::beginRefresh($pdo,'tourvisor',$broadScope['digest'],$at->modify('+1 minute'));AnyTourOfferStoreV1::upsertReadyOffer($pdo,$token,$owns[101],dto_fixture('tourvisor',101,'tv-broad','130000'),$expires,$at->modify('+1 minute'));AnyTourOfferStoreV1::completeRefresh($pdo,$token,$at->modify('+1 minute'));
 $exactBroad=search3_local_results_build($pdo,$broad,$at->modify('+1 minute'));need($exactBroad['matchMode']==='exact'&&$exactBroad['partial']===false&&$exactBroad['storedOfferCount']===1&&$exactBroad['offerCount']===1,'visible exact cohort beats compatible fallback');need($exactBroad['hotels'][0]['offers'][0]['price']==='130000','exact broad price rendered without narrower merge');
 
-$deleteBridge=$pdo->prepare("DELETE FROM anytour_hotel_sources WHERE namespace='legacy_catalog' AND external_key=? AND anytour_hotel_id=?");$deleteBridge->execute(['101',$owns[101]]);need($deleteBridge->rowCount()===1,'accepted bridge revoked');
+$deleteBridge=$pdo->prepare("DELETE FROM anytour_hotel_sources WHERE namespace='anytour_local_id' AND external_key=? AND anytour_hotel_id=?");$deleteBridge->execute(['101',$owns[101]]);need($deleteBridge->rowCount()===1,'accepted bridge revoked');
 $revoked=search3_local_results_build($pdo,$p,$at);need($revoked['storedOfferCount']===1&&$revoked['withheldOfferCount']===1,'revoked identity offers fail closed before canonical grouping');need($revoked['hotelCount']===0&&$revoked['offerCount']===0,'revoked identity cannot render cached canonical card');
 $source=json_encode(['id'=>101]);$bridge->execute(['101',$owns[101],$source,hash('sha256',$source)]);
 $restored=search3_local_results_build($pdo,$p,$at);need($restored['storedOfferCount']===3&&$restored['hotelCount']===1&&$restored['offerCount']===2,'restored accepted bridge restores cached visibility');
