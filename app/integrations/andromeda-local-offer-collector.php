@@ -15,11 +15,13 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         callable $candidateAllowed,
         callable $captureSurcharge,
         callable $autosave,
-        int $maxCaptures = 2
+        int $maxCaptures = 2,
+        string $captureMode = 'all'
     ): array {
         if (!is_int($request['generation'] ?? null) || $request['generation'] < 1
             || !is_array($request['params'] ?? null)
-            || $maxCaptures < 1 || $maxCaptures > 6) {
+            || $maxCaptures < 1 || $maxCaptures > 300
+            || !in_array($captureMode, ['all','non_external_only'], true)) {
             throw new InvalidArgumentException('ANDROMEDA_LOCAL_COLLECTOR_INPUT');
         }
 
@@ -104,7 +106,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         // was already attempted. This prevents a cheap hotel-order cluster from consuming
         // the whole bounded supplier budget for one flight program.
         $captureQueue = [];
-        foreach ([true, null, false] as $priority) {
+        $priorities = $captureMode === 'non_external_only' ? [false] : [true, null, false];
+        foreach ($priorities as $priority) {
             $groups = [];
             foreach ($eligible as $key => $candidate) {
                 if ($candidate['freight_external'] !== $priority) continue;
@@ -144,9 +147,11 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             }
             $surcharge = $receipt['surcharge'] ?? null;
             if (is_array($surcharge) && ($surcharge['status'] ?? null) === 'complete'
-                && is_array($surcharge['fact'] ?? null)) {
+                && (is_array($surcharge['fact'] ?? null)
+                    || ($surcharge['final_price_verified'] ?? null) === true)) {
                 ++$surchargeReady;
-                $captured[$key] = 'ready';
+                $captured[$key] = ($surcharge['final_price_verified'] ?? null) === true
+                    ? 'verified' : 'ready';
             } else {
                 $captured[$key] = 'not_ready';
             }
@@ -162,6 +167,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             'received_offers' => count($rows),
             'owned_operator_offers' => $owned,
             'eligible_offers' => count($eligible),
+            'capture_mode' => $captureMode,
+            'capture_queue_offers' => count($captureQueue),
             'surcharge_capture_attempts' => $attempted,
             'surcharge_ready' => $surchargeReady,
             'autosave_published' => ($save['published'] ?? false) === true,
