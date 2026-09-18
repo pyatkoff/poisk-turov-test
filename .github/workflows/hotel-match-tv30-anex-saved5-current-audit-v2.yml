@@ -1,0 +1,147 @@
+name: MATCH saved ANEX five-anchor CURRENT audit v2
+on:
+  push:
+    branches: [ops/match-tv30-anex-saved5-current-audit-1971-20260919-v2]
+    paths:
+      - .github/workflows/hotel-match-tv30-anex-saved5-current-audit-v2.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-tv30-anex-saved5-current-audit-1971-20260919-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-tv30-anex-saved5-current-audit-1971-20260919-v2
+jobs:
+  audit:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 3390b674b8f84c667e9af2ee5a9f9b10d03faf9c
+          path: immutable-receiver
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10569065212'
+          run-id: 35396953256
+          github-token: ${{ github.token }}
+          path: saved-turkey
+          merge-multiple: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10567354519'
+          run-id: 35396758315
+          github-token: ${{ github.token }}
+          path: saved-one
+          merge-multiple: true
+      - name: Verify immutable evidence and supplier-free receiver
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload/inputs result
+          cp immutable-receiver/scripts/diagnostics/hotel_match_tv30_anex_saved5_current_audit_v1.php payload/audit.php
+          test "$(git hash-object payload/audit.php)" = 618a7b92a6848547754967f1c0fcb050bba9efe3
+          python3 - <<'PYFIX'
+          import hashlib,pathlib
+          p=pathlib.Path('payload/audit.php');s=p.read_text()
+          changes={
+              'hotel-match-tv30-anex-saved5-current-audit-1971-20260919-v1':'hotel-match-tv30-anex-saved5-current-audit-1971-20260919-v2',
+              'SELECT CURRENT_TIMESTAMP db_time,UTC_TIMESTAMP utc_time,@@session.time_zone session_timezone':'SELECT CURRENT_TIMESTAMP AS db_timestamp,UTC_TIMESTAMP AS db_utc_timestamp,@@session.time_zone AS db_timezone'
+          }
+          for old,new in changes.items():
+              assert s.count(old)==1
+              s=s.replace(old,new)
+          assert hashlib.sha256(s.encode()).hexdigest()=='2a2704fdd4d206befe29422d60fcc3ff19fe69dd4d4871780dae6fc76b0ace5c'
+          p.write_text(s)
+          pathlib.Path('result/receiver-source-sha256.txt').write_text(hashlib.sha256(s.encode()).hexdigest()+'\n')
+          PYFIX
+          cp app/integrations/anex-search-mapping-registry.php payload/
+          test "$(git hash-object payload/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          cp saved-turkey/result.json payload/inputs/turkey-result.json
+          cp saved-turkey/partial-6.json payload/inputs/turkey-partial-6.json
+          cp saved-one/result.json payload/inputs/one-result.json
+          cp saved-one/fresh-results.json payload/inputs/one-fresh-results.json
+          cp saved-one/anex-tour-detail.json payload/inputs/one-anex-tour-detail.json
+          php -l payload/audit.php
+          php payload/audit.php --self-test payload/inputs
+          grep -Fq 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' payload/audit.php
+          test "$(grep -Eic 'curl_|https?://api\.|->request\(|INSERT INTO|UPDATE .* SET|DELETE FROM' payload/audit.php || true)" -eq 0
+          (cd payload && sha256sum audit.php anex-search-mapping-registry.php inputs/*.json > SHA256SUMS)
+          python3 - <<'PY'
+          import json, os, pathlib
+          p=pathlib.Path('result/runner-reservation.json')
+          with p.open('x') as f:
+              json.dump({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_ssh_db','supplier_calls':0,'database_writes':0,'no_replay':True},f,sort_keys=True)
+              f.write('\n'); f.flush(); os.fsync(f.fileno())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-saved5-current-reservation-${{ github.run_id }}
+          path: result/runner-reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute once READ ONLY and independently retrieve receipt
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/match-saved5-key"; known="$RUNNER_TEMP/match-saved5-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; stage=".anytoour-match/staging/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "umask 077; mkdir -p \"\$HOME/.anytoour-match/staging\"; mkdir \"\$HOME/$stage\"" >result/stage.stdout 2>result/stage.stderr
+          scp -r "${opts[@]}" payload/audit.php payload/anex-search-mapping-registry.php payload/SHA256SUMS payload/inputs "$remote:$stage/" >result/copy.stdout 2>result/copy.stderr
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$stage\" && sha256sum -c SHA256SUMS >/dev/null && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_PAYLOAD_DIR=\"\$HOME/$stage\" ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php -d display_errors=0 -d log_errors=0 audit.php --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > result/server-readback.tgz 2>result/readback.stderr
+          trc=$?
+          set -e
+          export RC="$rc" TRC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result'); expected={'reservation.json','result.json','receipt.json'}
+          (p/'exit-codes.json').write_text(json.dumps({'remote':int(os.environ['RC']),'readback':int(os.environ['TRC'])})+'\n')
+          assert int(os.environ['TRC'])==0, 'readback_failed_no_replay'
+          with tarfile.open(p/'server-readback.tgz') as t:
+              members=t.getmembers()
+              assert len(members)==3 and {m.name for m in members}==expected
+              assert all(m.isfile() and 0<=m.size<=20000000 for m in members)
+              for m in members:
+                  (p/m.name).write_bytes(t.extractfile(m).read())
+          d=json.loads((p/'result.json').read_text());r=json.loads((p/'receipt.json').read_text());s=json.loads((p/'reservation.json').read_text())
+          digest=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          for x in [d,r,s]:
+              assert x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] and x['no_replay'] is True
+          assert r['result_sha256']==digest and r['readback_verified'] is True
+          assert d['database_writes']==d['mapping_writes']==d['supplier_calls']==d['tourvisor_calls']==0
+          gate={'operation_id':d['operation_id'],'status':d['status'],'result_sha256':digest,'receipt_verified':True,'counts':d.get('counts'),'hotel_local_tv_room_evidence':d.get('hotel_local_tv_room_evidence'),'database_writes':0,'supplier_calls':0,'no_replay':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,indent=2)+'\n');print(json.dumps(gate))
+          assert int(os.environ['RC'])==0 and d['status']=='completed_read_only'
+          assert len(d['dossiers'])==5 and sum(d['counts'].values())==5
+          assert all(x['safe_to_write_now'] is False for x in d['dossiers'])
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-saved5-current-audit-${{ github.run_id }}
+          path: result/
+          if-no-files-found: error
+          retention-days: 90
