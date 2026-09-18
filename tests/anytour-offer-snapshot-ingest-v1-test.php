@@ -248,7 +248,44 @@ check_snapshot($empty['offerCount']===0 && $empty['hotelCount']===0, 'empty-comp
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+4 minutes'));
 check_snapshot(count($visible['items'])===1 && $visible['items'][0]['provider']==='tourvisor', 'empty-provider-isolated');
 
+// The complete-snapshot boundary allows exactly 5,000 rows. A later partial batch with
+// a genuinely new offer would need 5,001 rows to preserve every unseen current offer.
+// That must abort atomically rather than silently evict one old offer or overflow the
+// documented per-provider bound used by the 15,000-row three-provider reader.
+$capacityAt=$now->modify('+5 minutes');
+$capacityIssued=$capacityAt->getTimestamp();
+$capacityRows=[];
+for ($i=0; $i<5000; ++$i) {
+    $salt='capacity-'.$i;
+    $capacityRows[]=[
+        'anytour_hotel_id'=>$owns[101],
+        'dto'=>dto_snapshot('anex',101,$salt,(string)(300000+$i),$capacityIssued),
+        'expires_at'=>'2026-09-17T03:20:00Z',
+    ];
+}
+$capacityComplete=AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'anex',$params,$capacityRows,$capacityAt);
+check_snapshot($capacityComplete['offerCount']===5000, 'capacity-complete-boundary');
+$capacityToken=(string)$db->query("SELECT latest_complete_refresh_token FROM anytour_offer_scope_state WHERE provider='anex' AND scope_sha256=".$db->quote($scope))->fetchColumn();
+$capacityCount=$db->prepare("SELECT COUNT(*) FROM anytour_offers WHERE provider='anex' AND scope_sha256=:scope AND last_refresh_token=:token AND is_active=1");
+$capacityCount->execute(['scope'=>$scope,'token'=>$capacityToken]);
+check_snapshot((int)$capacityCount->fetchColumn()===5000, 'capacity-complete-physical-count');
+$capacityAbortBefore=(int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='aborted'")->fetchColumn();
+$capacityNew=[
+    'anytour_hotel_id'=>$owns[101],
+    'dto'=>dto_snapshot('anex',101,'capacity-new','400000',$capacityIssued+30),
+    'expires_at'=>'2026-09-17T03:20:30Z',
+];
+expect_snapshot_error(
+    fn()=>AnyTourOfferSnapshotIngestV1::mergePartialSnapshot($db,'anex',$params,[$capacityNew],$capacityAt->modify('+30 seconds')),
+    'ANYTOUR_OFFER_PARTIAL_CAPACITY','partial-capacity-failclosed'
+);
+$capacityLatestAfter=(string)$db->query("SELECT latest_complete_refresh_token FROM anytour_offer_scope_state WHERE provider='anex' AND scope_sha256=".$db->quote($scope))->fetchColumn();
+check_snapshot($capacityLatestAfter===$capacityToken, 'partial-capacity-keeps-complete-token');
+$capacityCount->execute(['scope'=>$scope,'token'=>$capacityLatestAfter]);
+check_snapshot((int)$capacityCount->fetchColumn()===5000, 'partial-capacity-keeps-all-old');
+check_snapshot((int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='aborted'")->fetchColumn()===$capacityAbortBefore+1, 'partial-capacity-aborted');
+
 $source=file_get_contents(__DIR__.'/../v2/data/anytour-offer-snapshot-ingest-v1.php');
 check_snapshot(is_string($source) && !preg_match('/\b(?:curl_|file_get_contents\s*\(\s*[\'\"]https?:|fsockopen|stream_socket_client)\b/i',$source), 'no-supplier-transport');
 
-echo "ANYTOUR_OFFER_SNAPSHOT_INGEST_OK complete_replace=2 partial_additive=2 aborted=1 providers=2 schema=2 cached_listing_ttl=86400\n";
+echo "ANYTOUR_OFFER_SNAPSHOT_INGEST_OK complete_replace=3 partial_additive=2 aborted=2 providers=2 schema=2 cached_listing_ttl=86400 partial_cap=5000\n";
