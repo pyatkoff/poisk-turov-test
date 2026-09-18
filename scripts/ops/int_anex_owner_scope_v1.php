@@ -43,7 +43,7 @@ $oldArgv=$argv;$oldArgc=$argc;
 $argv=[
     $collectorScript,'--departure=1','--country=4',
     '--date-from=2026-09-18','--date-to=2026-09-24',
-    '--nights-from=7','--nights-till=10','--adults=2','--meal=7',
+    '--nights=7','--adults=2','--meal=7',
     '--max-expands=120','--max-apd=600','--generation=25061861',
 ];
 $argc=count($argv);
@@ -63,7 +63,7 @@ if($after['anex_active_confirmation']!==$after['anex_active_confirmation_state']
 }
 $result=[
     'status'=>'completed','provider'=>'anex',
-    'scope'=>['departure_id'=>1,'country_id'=>4,'date_from'=>'2026-09-18','date_to'=>'2026-09-24','nights_from'=>7,'nights_till'=>10,'adults'=>2,'meal'=>'7'],
+    'scope'=>['departure_id'=>1,'country_id'=>4,'date_from'=>'2026-09-18','date_to'=>'2026-09-24','nights'=>7,'adults'=>2,'meal'=>'7'],
     'before'=>$before,'after'=>$after,'delta'=>$delta,'collector'=>$collector,
     'booking_calls'=>0,'lead_calls'=>0,'mapping_writes'=>0,'search3_publication'=>0,'production_webroot_writes'=>0,'replay_allowed'=>false,
 ];
