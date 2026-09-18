@@ -593,7 +593,8 @@ function anytour_anex_search3_additional_batch(array $request, array &$state, ca
 }
 
 function anytour_anex_search3_followup(array $request, array &$state, callable $resolver, callable $clientFactory,
-    callable $metadataReader, ?callable $clock = null, ?callable $checkpoint = null, ?callable $additionalFactory = null): array
+    callable $metadataReader, ?callable $clock = null, ?callable $checkpoint = null,
+    ?callable $additionalFactory = null, bool $enforceGatewayRateLimit = true): array
 {
     $keys = ['action', 'generation', 'search_ref', 'offer_ref', 'local_hotel_id'];
     if (count($request) !== count($keys) || array_diff($keys, array_keys($request))
@@ -676,7 +677,9 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         return array_replace($reply, ['status' => 'additional_prices',
             'additional_prices' => anytour_anex_search3_additional_application($evidence, $offer)]);
     }
-    $gateway = new AnyTourAnexPreviewGateway($clientFactory, $resolver, [], $clock);
+    $gateway = new AnyTourAnexPreviewGateway(
+        $clientFactory, $resolver, [], $clock, $enforceGatewayRateLimit
+    );
     if ($request['action'] === 'offer') {
         $result = $gateway->handle(['action' => 'offer', 'search_ref' => $request['search_ref'],
             'offer_key' => $key, 'local_hotel_id' => $local], $state['gateway']);
