@@ -73,8 +73,9 @@ $prepOnly=getenv('HMA_PREP_ONLY')==='1';
 $root=realpath((string)getenv('ANYTOUR_ROOT'));$opdir=(string)getenv('MATCH_OPERATION_DIR');$token=$prepOnly?'':trim((string)fgets(STDIN));
 if(!$root||$opdir===''||(!$prepOnly&&$token===''))throw new RuntimeException('runtime');
 require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
-require_once $opdir.'/payload/anex-client.php';
-require_once $opdir.'/payload/anex-search-mapping-registry.php';
+$payloadDir=is_file($opdir.'/payload/anex-client.php')?$opdir.'/payload':$opdir;
+require_once $payloadDir.'/anex-client.php';
+require_once $payloadDir.'/anex-search-mapping-registry.php';
 $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
 try{
   $registry=AnyTourAnexSearchMappingRegistry::fromPdo($db);$anexTargets=[];$ids=hma_rows($db,'SELECT anex_hotel_id FROM anex_hotel_search_mappings UNION SELECT anex_hotel_id FROM anex_hotel_decisions');
