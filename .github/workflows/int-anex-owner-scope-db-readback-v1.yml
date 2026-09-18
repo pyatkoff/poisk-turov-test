@@ -1,0 +1,110 @@
+name: INT ANEX owner-scope DB readback v1
+
+on:
+  push:
+    branches: ['ops/int-anex-owner-scope-db-readback-2506-20260918-v1']
+    paths:
+      - 'scripts/ops/int_anex_owner_scope_db_readback_v1.php'
+      - '.github/workflows/int-anex-owner-scope-db-readback-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-anex-owner-scope-db-readback-2506-20260918-v1
+  cancel-in-progress: false
+
+jobs:
+  readback:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_SHA: 542cce6203a973486d8d59d81055f513126ac277
+      RELEASE_DATA_SHA: a4c1568e38723c1b4c22809b0ebe5568e57f24b1
+      OPERATION_ID: int-anex-owner-scope-db-readback-2506-20260918-v1
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 8
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_DATA_SHA }}
+          path: release-data
+          persist-credentials: false
+      - name: Bind exact read-only source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD | LC_ALL=C sort)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = '.github/workflows/int-anex-owner-scope-db-readback-v1.yml'
+          test "${changed[1]}" = 'scripts/ops/int_anex_owner_scope_db_readback_v1.php'
+          php -l scripts/ops/int_anex_owner_scope_db_readback_v1.php
+          test "$(git -C release-data rev-parse HEAD)" = "$RELEASE_DATA_SHA"
+          test "$(git -C release-data hash-object v2/data/db-v1.php)" = 'c7e13f41be4a317087fc063da0db6f5dcf769e29'
+          test "$(git -C release-data hash-object v2/data/anytour-search-scope-v1.php)" = '1a2cd3481d4238f20cad5f224ccfb0cb4edef56d'
+          test "$(git -C release-data hash-object v2/data/anytour-offer-scope-index-v1.php)" = '82c62f78e30a19efea1df6ce89f943194c8c0ee7'
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY"; test -n "$ANYTOOUR_DEPLOY_HOST"; test -n "$ANYTOOUR_DEPLOY_USER"
+      - name: Prepare read-only runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          stage="$RUNNER_TEMP/runtime"; mkdir -p "$stage/v2/data" "$stage/scripts/ops"
+          cp release-data/v2/data/db-v1.php "$stage/v2/data/"
+          cp release-data/v2/data/anytour-search-scope-v1.php "$stage/v2/data/"
+          cp release-data/v2/data/anytour-offer-scope-index-v1.php "$stage/v2/data/"
+          cp scripts/ops/int_anex_owner_scope_db_readback_v1.php "$stage/scripts/ops/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/runtime.tar.gz" .
+          ssh-keyscan -T 15 -t ed25519 "$ANYTOOUR_DEPLOY_HOST" > "$RUNNER_TEMP/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+      - name: Execute one supplier-free readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-T -i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          scp_opts=(-i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"; archive="/tmp/${OPERATION_ID}.${GITHUB_RUN_ID}.tar.gz"
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$remote:$archive"
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$archive" <<'REMOTE'
+          set -euo pipefail
+          op="$1"; archive="$2"; site="$HOME/www/anytoour.ru"; ledger="$HOME/.anytour-ops/$op"
+          test -d "$site"; test -s "$site/config.php"; test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d "/tmp/${op}.XXXXXX")"; trap 'rm -rf "$work"; rm -f "$archive"' EXIT; tar -C "$work" -xzf "$archive"
+          set +e; php "$work/scripts/ops/int_anex_owner_scope_db_readback_v1.php" "$site" > "$ledger/receipt.json" 2> "$ledger/error.log"; rc=$?; set -e
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed_read_only || echo failed_terminal_no_replay)" > "$ledger/state"; exit "$rc"
+          REMOTE
+          mkdir -p "$RUNNER_TEMP/result"
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/receipt.json"
+          cat "$RUNNER_TEMP/result/receipt.json"
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['RUNNER_TEMP']+'/result/receipt.json'))
+          assert d['status']=='completed_read_only' and d['provider']=='anex'
+          assert d['supplier_calls']==0 and d['db_writes']==0 and d['search3_publication']==0 and d['replay_allowed'] is False
+          assert d['compatibleDigestCount'] >= 4, d
+          assert d['providerOfferCounts'].get('anex',0) > 0, d
+          assert d['hotelCount'] > 0 and d['visibleRows'] > 0, d
+          for n in ('7','8','9','10'): assert d['nightCounts'].get(n,0) > 0, (n,d)
+          assert d['finalPriceReadyCount'] > 0, d
+          assert d['listingPriceStateCounts'].get('search_price_confirmation_required',0) > 0, d
+          print(json.dumps(d,sort_keys=True))
+          PY
+      - name: Preserve readback receipt
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: int-anex-owner-scope-db-readback-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
