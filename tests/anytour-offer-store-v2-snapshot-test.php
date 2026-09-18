@@ -78,6 +78,33 @@ error_v2(fn()=>AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 mi
 $pdo->prepare('UPDATE anytour_offers SET payload_json=?,payload_sha256=? WHERE id=?')->execute([$stored['payload_json'],$stored['payload_sha256'],$id]);
 $read=AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+6 minutes'));need_v2(count($read['items'])===1&&$read['items'][0]['price']==='188000','integrity-restored');
 
+$regular=dto_v2('185125');$regular['finalPriceReady']=false;$regular['finalPrice']=null;$regular['price']='185125';
+$fourth=AnyTourOfferStoreV1::beginRefresh($pdo,'anex',$scope,$at->modify('+7 minutes'));
+AnyTourOfferStoreV1::upsertReadyOffer($pdo,$fourth,$own,$regular,$expires,$at->modify('+7 minutes'));
+AnyTourOfferStoreV1::completeRefresh($pdo,$fourth,$at->modify('+7 minutes'));
+$read=AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+8 minutes'));
+need_v2(count($read['items'])===1&&$read['items'][0]['price']==='185125','regular-visible');
+$regularListing=$read['items'][0]['offer'];
+need_v2(($regularListing['listingPriceState']??null)==='search_price_confirmation_required'
+    &&($regularListing['listingPriceReady']??null)===false
+    &&($regularListing['priceConfirmationRequired']??null)===true
+    &&($regularListing['selection_state']??null)==='refresh_required'
+    &&($regularListing['booking_enabled']??null)===false,'regular-state-safe');
+
+$verified=dto_v2('199900');$verified['quote_state']='verified';$verified['final_price_verified']=true;$verified['quote_evidence_digest']=hash('sha256','v2-verified-quote');
+$fifth=AnyTourOfferStoreV1::beginRefresh($pdo,'anex',$scope,$at->modify('+9 minutes'));
+AnyTourOfferStoreV1::upsertReadyOffer($pdo,$fifth,$own,$verified,$expires,$at->modify('+9 minutes'));
+AnyTourOfferStoreV1::completeRefresh($pdo,$fifth,$at->modify('+9 minutes'));
+$read=AnyTourOfferStoreReadV2::readScope($pdo,$scope,$at->modify('+10 minutes'));
+need_v2(count($read['items'])===1&&$read['items'][0]['price']==='199900','verified-visible');
+$verifiedListing=$read['items'][0]['offer'];
+need_v2(($verifiedListing['listingPriceState']??null)==='final_verified'
+    &&($verifiedListing['listingPriceReady']??null)===true
+    &&($verifiedListing['finalPriceVerified']??null)===true
+    &&($verifiedListing['quoteEvidenceDigest']??null)===$verified['quote_evidence_digest']
+    &&($verifiedListing['selection_state']??null)==='refresh_required'
+    &&($verifiedListing['booking_enabled']??null)===false,'verified-state-safe');
+
 // Multi-provider capacity regression: the old global 5,000-row default could hide a later provider completely.
 $tvToken=hash('sha256','tourvisor:bulk:complete');$bulkSeen='2026-09-16 18:10:00';$bulkExpires='2026-09-16 20:10:00';
 $pdo->prepare("INSERT INTO anytour_offer_scope_state(provider,scope_sha256,active_refresh_token,latest_complete_refresh_token,revision,updated_at) VALUES('tourvisor',?,NULL,?,1,?)")->execute([$scope,$tvToken,$bulkSeen]);
