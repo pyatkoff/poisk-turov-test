@@ -57,7 +57,7 @@ $registrySha=hash_file('sha256',$registryPath);if(!is_string($registrySha)||!pre
 if(is_dir($opDir)||!mkdir($opDir,0700,true))throw new RuntimeException('operation_exists');
 hmop_durable($opDir.'/reservation.json',['operation'=>HMOP_OPERATION,'source_sha'=>$sourceSha,'state'=>'reserved_before_db_read','provider_access'=>false,'mapping_registry_sha256'=>$registrySha,'no_replay'=>true]);
 
-require_once $opDir.'/payload/anex-search-mapping-registry.php';
+require_once $registryPath;
 $dbf=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';require_once $dbf;
 $pdo=v2_data_db();$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 foreach(['tour_price_observations','catalog_hotels','anex_hotel_search_mappings','anex_hotel_decisions','andromeda_hotel_identities','tour_operator_identity_observations'] as $t)if(!hmop_table($pdo,$t))throw new RuntimeException('missing_'.$t);
