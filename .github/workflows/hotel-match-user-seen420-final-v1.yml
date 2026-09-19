@@ -1,0 +1,128 @@
+name: MATCH user-seen420 final CURRENT plan v1
+on:
+  push:
+    branches: [ops/match-user-seen420-final-1971-20260919-v1]
+    paths: [.github/workflows/hotel-match-user-seen420-final-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-user-seen420-final-plan-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-user-seen420-final-plan-1971-20260919-v1
+jobs:
+  plan:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {artifact-ids: '10574345894', run-id: 35410069502, github-token: '${{ github.token }}', path: acquisition, merge-multiple: true}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {artifact-ids: '10574360037', run-id: 35409538421, github-token: '${{ github.token }}', path: guard, merge-multiple: true}
+      - name: Build exact one-pair audit and reserve read
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          cp app/integrations/anex-search-mapping-registry.php payload/
+          test "$(sha256sum guard/remote/payload/hotel_match_rolling38_final_v2.php | awk '{print $1}')" = c23219e93f98a7f75060de1cbe5d849b3e9eff0e0cbde8d5f9e582184e9e84f9
+          (cd guard/remote/payload && sha256sum -c SHA256SUMS)
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,urllib.parse
+          acq=pathlib.Path('acquisition/remote');guard=pathlib.Path('guard/remote/payload');out=pathlib.Path('payload')
+          raw=(acq/'result.json').read_bytes();digest=hashlib.sha256(raw).hexdigest()
+          assert digest=='6649068a52ac7684b273fc5a7b9bedccd720b6548bac7f9bc1514bad4920bd34'
+          d=json.loads(raw);r=json.loads((acq/'receipt.json').read_text());e=json.loads((acq/'evidence.json').read_text())
+          assert d['state']==r['state']=='completed_anchor' and r['result_sha256']==digest and r['no_replay'] is True
+          assert d['provider_calls']==1 and d['mapping_writes']==0 and d['database_writes']==0
+          assert e['local_id']==e['returned_hotel_id']==420 and e['native_anex_id']==835 and e['operator_id']==13 and e['signed_native_tokens']==[835]
+          detail_raw=(acq/'detail-420.raw').read_text();detail_sha=hashlib.sha256(detail_raw.encode()).hexdigest()
+          assert detail_sha==e['detail_sha256']=='163ee6effc0043c77764386e575dd501e9ff501da518e0f76ba6ebd3ed3f2623'
+          t=json.loads(detail_raw);assert str(t['id'])==e['tour_id']=='13271979542549' and t['operator']['id']==13
+          h=t['hotel'];assert h['id']==420 and h['name']=='SHAMS ALAM RESORT' and h['country']['id']==1
+          u=t['operatorLink'];p=urllib.parse.urlsplit(u)
+          assert p.scheme=='https' and p.hostname=='agent.anextour.ru' and p.path in ('/search/tour','/search/without-flight') and not p.username and not p.password and p.port is None and not p.fragment
+          q=urllib.parse.parse_qsl(p.query,keep_blank_values=True);assert not any(re.search(r'token|password|auth|secret|session',k,re.I) for k,_ in q)
+          vals=[v for k,v in q if k.upper()=='HOTELLIST'];assert vals==['835']
+          common=h.get('common') or {}
+          tv={'id':420,'name':h['name'],'country':h['country'],'region':h.get('region'),'subRegion':h.get('subRegion'),'category':h.get('category'),'latitude':common.get('latitude'),'longitude':common.get('longitude')}
+          cur={'id':420,'name':h['name'],'country_id':1,'country_name':h['country']['name'],'region_name':(h.get('region') or {}).get('name') or '','subregion_name':(h.get('subRegion') or {}).get('name') or '','category':h.get('category'),'latitude':common.get('latitude'),'longitude':common.get('longitude'),'is_active':1}
+          pair={'hotel_id':420,'country_id':1,'hotel_name':h['name'],'operator_id':13,'tour_id':e['tour_id'],'native_anex_id':835,'operator_link':u,'raw_signed_tokens':['835'],'raw_hotellist_values':['835'],'safe_to_write_now':False,'tv_hotel':tv,'current_local':cur,'route':'unoccupied_needs_identity_review','holds':[],'detail_response_sha256':detail_sha,'retained_detail_only':True,'evidence_link_path':p.path,'source_generation':'user_seen420_retained_detail_v1'}
+          audit={'state':'completed_read_only','mapping_writes':0,'database_writes':0,'supplier_calls':0,'dossiers':[pair],'source_result_sha256':digest,'provenance':[{'source':'retained_detail','tour_id':e['tour_id'],'hotel_id':420,'native_anex_id':835,'detail_sha256':detail_sha,'link_path':p.path}]}
+          (out/'audit.json').write_text(json.dumps(audit,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          audit_sha=hashlib.sha256((out/'audit.json').read_bytes()).hexdigest();(out/'audit-sha.txt').write_text(audit_sha+'\n')
+          guard_raw=(pathlib.Path('guard/remote/result.json')).read_bytes();guard_digest=hashlib.sha256(guard_raw).hexdigest();gr=json.loads((pathlib.Path('guard/remote/receipt.json')).read_text());gd=json.loads(guard_raw)
+          assert guard_digest=='678ba78b19600d5c071683e9cfe0c6ebc08cbe480e28fa8e85a463d290ebd1ef' and gr['result_sha256']==guard_digest and gr['readback_verified'] is True and gd['state']=='planned_read_only' and gd['mapping_writes']==0
+          src=(guard/'hotel_match_rolling38_final_v2.php').read_text()
+          repl={
+            "const R54_PLAN_OP = 'hotel-match-rolling38-final-plan-1971-20260919-v2';":"const R54_PLAN_OP = 'hotel-match-user-seen420-final-plan-1971-20260919-v1';",
+            "const R54_APPLY_OP = 'hotel-match-rolling38-final-apply-1971-20260919-v2';":"const R54_APPLY_OP = 'hotel-match-user-seen420-final-apply-1971-20260919-v1';",
+            "const R54_AUDIT_SHA = 'acf67aae87aaa0f6fbc28372945d7609a68d1df420e56d6d7837c40f3b626b71';":"const R54_AUDIT_SHA = '"+audit_sha+"';",
+            "count($a['dossiers']??[])!==38":"count($a['dossiers']??[])!==1",
+            "count($pairs)!==38||count(array_unique(array_column($pairs,'native_anex_id')))!==38||count(array_unique(array_column($pairs,'hotel_id')))!==38":"count($pairs)!==1||count(array_unique(array_column($pairs,'native_anex_id')))!==1||count(array_unique(array_column($pairs,'hotel_id')))!==1",
+            "foreach(['detail_response_sha256','results_response_sha256'] as $k)if(!preg_match('/^[0-9a-f]{64}$/D',$p[$k]??''))throw new RuntimeException('raw_provenance');":"if(!preg_match('/^[0-9a-f]{64}$/D',$p['detail_response_sha256']??'')||($p['retained_detail_only']??false)!==true)throw new RuntimeException('raw_provenance');",
+            "$ok(count($ps)===38);":"$ok(count($ps)===1);",
+            "count($plan['dossiers']??[])!==38":"count($plan['dossiers']??[])!==1",
+            "ROLLING38_FINAL_SELFTEST_OK":"USERSEEN420_FINAL_SELFTEST_OK",
+          }
+          for old,new in repl.items():assert src.count(old)==1,(old,src.count(old));src=src.replace(old,new)
+          (out/'hotel_match_user_seen420_final_v1.php').write_text(src)
+          res={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db','source_sha':os.environ['GITHUB_SHA'],'audit_sha256':audit_sha,'pair_count':1,'read_only':True,'supplier_calls':0,'mapping_writes':0,'no_replay':True,'acquisition_result_sha256':digest,'guard_result_sha256':guard_digest}
+          with pathlib.Path('result/reservation.json').open('x') as f:json.dump(res,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+          php -l payload/hotel_match_user_seen420_final_v1.php
+          php payload/hotel_match_user_seen420_final_v1.php --self-test payload/audit.json
+          (cd payload && sha256sum *.php audit.json audit-sha.txt > SHA256SUMS)
+      - name: Require exact-head Security before SSH
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(60):
+            req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(req,timeout=30) as f:r=json.load(f)['workflow_runs']
+            r=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+            if r:
+              x=max(r,key=lambda x:x['id'])
+              if x['status']=='completed':assert x['conclusion']=='success';print('SECURITY_OK',x['id']);break
+            time.sleep(5)
+          else:raise SystemExit('exact_security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-user-seen420-plan-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute CURRENT one-pair read once
+        shell: bash
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/m420-key";known="$RUNNER_TEMP/m420-known";trap 'rm -f "$key" "$known"' EXIT
+          test -n "$KEY";test -n "$HOST";test -n "$USER"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null;test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15);remote="$USER@$HOST";op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytour-operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${opts[@]}" result/reservation.json "$remote:$op/" >result/reserve.stdout 2>result/reserve.stderr
+          scp "${opts[@]}" payload/* "$remote:$op/payload/" >result/copy.stdout 2>result/copy.stderr
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op/payload\" && sha256sum -c SHA256SUMS >/dev/null && umask 077 && ANYTOOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=0 hotel_match_user_seen420_final_v1.php --plan" >result/remote.stdout 2>result/remote.stderr
+          rc=$?;scp -r "${opts[@]}" "$remote:$op/." result/remote/ >result/readback.stdout 2>result/readback.stderr;trc=$?;set -e
+          printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('result/remote');d=json.loads((p/'result.json').read_bytes());r=json.loads((p/'receipt.json').read_bytes());digest=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert d['operation']==r['operation']==os.environ['OPERATION_ID'] and d['source_sha']==os.environ['GITHUB_SHA'] and r['result_sha256']==digest and r['readback_verified'] is True and r['no_replay'] is True
+          assert d['state']=='planned_read_only' and d['supplier_calls']==d['database_writes']==d['mapping_writes']==0
+          assert d['eligible_count']+d['held_count']==1 and len(d['dossiers'])==1
+          x=d['dossiers'][0];assert x['native_anex_id']==835 and x['hotel_id']==420 and x['country_id']==1 and x['hotel_name']=='SHAMS ALAM RESORT'
+          assert x['eligible_for_guarded_append']==(d['eligible_count']==1)
+          summary={k:d.get(k) for k in ['state','captured_at_utc','eligible_count','held_count','potential_triples','mapping_writes']};summary['holds']=x['holds'];summary['warnings']=x['warnings'];summary['result_sha256']=digest
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-user-seen420-final-plan-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
