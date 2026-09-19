@@ -138,6 +138,32 @@ $check(($row['dto']['money']['search_price']['amount'] ?? null) === '100000'
     && ($row['dto']['money']['search_price_with_surcharge']['amount'] ?? null) === '110000', 'money-provenance');
 $check(is_string($state['anytour_offer_autosave']['last_published_digest'] ?? null), 'publish-digest-retained');
 
+$formatState = $state;
+$formatState['anytour_offer_autosave']['last_published_digest'] = null;
+$formatIngest = [];
+$formatResult = AnyTourAnexOfferAutosaveV1::consume(
+    $db, $plan, $formatState, $terminal, $now,
+    static function (): array {
+        return [
+            'application_state' => 'applied',
+            'search_price' => ['amount' => '100000', 'currency' => 'RUB', 'source' => 'direct_anex_search'],
+            // APD application canonicalizes presentation; protected money keeps the selected 2-decimal scale.
+            'search_plus_additional' => ['amount' => '110000', 'currency' => 'RUB'],
+            'rates' => ['adult' => ['amount' => '5000.00', 'currency' => 'RUB'], 'child' => null],
+        ];
+    },
+    $resolver,
+    static function (string $provider, array $searchParams, array $rows, DateTimeImmutable $at) use (&$formatIngest): array {
+        $formatIngest[] = compact('provider', 'searchParams', 'rows', 'at');
+        return ['provider' => $provider, 'offerCount' => count($rows), 'selectionAuthority' => false];
+    }
+);
+$check($formatResult['published'] === true && $formatResult['readyOfferCount'] === 1,
+    'equal-decimal-formatting-does-not-trip-protected-price');
+$check(count($formatIngest) === 1
+    && ($formatIngest[0]['rows'][0]['dto']['finalPrice'] ?? null) === '110000.00',
+    'protected-money-scale-preserved-after-semantic-equality');
+
 $again = AnyTourAnexOfferAutosaveV1::consume($db, $plan, $state, $terminal, $now, $apply, $resolver, $ingest);
 $check($again['published'] === false && $again['reason'] === 'already_published', 'idempotent-same-cohort');
 $check(count($ingestCalls) === 1, 'no-duplicate-ingest');

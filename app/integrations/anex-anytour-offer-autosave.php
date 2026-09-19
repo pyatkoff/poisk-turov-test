@@ -188,9 +188,11 @@ final class AnyTourAnexOfferAutosaveV1
                 (int)$party['children']
             );
             $existingFinal = $application['search_plus_additional']['amount'] ?? null;
+            $protectedFinal = $priced['search_price_with_surcharge']['amount'] ?? null;
             if (!is_string($existingFinal)
                 || ($application['search_plus_additional']['currency'] ?? null) !== 'RUB'
-                || ($priced['search_price_with_surcharge']['amount'] ?? null) !== $existingFinal
+                || !is_string($protectedFinal)
+                || !self::sameDecimalAmount($protectedFinal, $existingFinal)
                 || ($priced['search_price_with_surcharge']['currency'] ?? null) !== 'RUB') {
                 return self::receipt(false, 'protected_price_mismatch', 0, count($auto['offers']));
             }
@@ -316,6 +318,20 @@ final class AnyTourAnexOfferAutosaveV1
             $facts[] = ['kind' => 'fuel_child', 'amount' => $child['amount'], 'currency' => 'RUB', 'source' => 'anex_additional'];
         }
         return $facts;
+    }
+
+    /** Compare exact monetary value, not harmless decimal presentation (e.g. 110000 vs 110000.00). */
+    private static function sameDecimalAmount(string $left, string $right): bool
+    {
+        $units = static function (string $value): ?int {
+            if (!preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D', $value)) return null;
+            $parts = explode('.', $value, 2);
+            $fraction = str_pad($parts[1] ?? '', 2, '0');
+            return ((int)$parts[0] * 100) + (int)$fraction;
+        };
+        $a = $units($left);
+        $b = $units($right);
+        return $a !== null && $b !== null && $a === $b;
     }
 
     private static function ownHotelId(PDO $db, int $legacyId): ?int
