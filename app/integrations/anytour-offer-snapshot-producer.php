@@ -123,6 +123,14 @@ final class AnyTourIntOfferSnapshotProducerV1
                     $nowTs,
                     $pricedMoney
                 );
+                // The current Andromeda estimate contract proves flight markup,
+                // not fuel inclusion. Validate it above, but do not persist it as
+                // a full customer price. Verified totals and explicit confirmation
+                // rows use their separate, unchanged branches.
+                if ($provider === 'andromeda') {
+                    ++$notReady;
+                    continue;
+                }
             }
             $ready = ($dto['finalPriceReady'] ?? null) === true
                 && is_string($dto['finalPrice'] ?? null)

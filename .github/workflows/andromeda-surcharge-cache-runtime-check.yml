@@ -5,20 +5,26 @@ on:
     branches: ['feat/int-andromeda-surcharge-cache-runtime-v1-20260918', 'fix/int-andromeda-cache-cohort-order-20260919']
     paths:
       - 'app/integrations/andromeda-anytour-offer-autosave.php'
+      - 'app/integrations/anytour-offer-snapshot-producer.php'
       - 'app/integrations/andromeda-saved-pricing-evidence.php'
       - 'app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php'
       - 'scripts/ops/andromeda_local_offer_collect.php'
       - 'tests/andromeda-cache-cohort-order-test.php'
+      - 'tests/anytour-offer-snapshot-producer-test.php'
+      - 'tests/andromeda-anytour-offer-autosave-test.php'
       - 'tests/andromeda-saved-pricing-evidence-test.php'
       - 'tests/andromeda-surcharge-cache-autosave-test.php'
       - '.github/workflows/andromeda-surcharge-cache-runtime-check.yml'
   pull_request:
     paths:
       - 'app/integrations/andromeda-anytour-offer-autosave.php'
+      - 'app/integrations/anytour-offer-snapshot-producer.php'
       - 'app/integrations/andromeda-saved-pricing-evidence.php'
       - 'app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php'
       - 'scripts/ops/andromeda_local_offer_collect.php'
       - 'tests/andromeda-cache-cohort-order-test.php'
+      - 'tests/anytour-offer-snapshot-producer-test.php'
+      - 'tests/andromeda-anytour-offer-autosave-test.php'
       - 'tests/andromeda-saved-pricing-evidence-test.php'
       - 'tests/andromeda-surcharge-cache-autosave-test.php'
       - '.github/workflows/andromeda-surcharge-cache-runtime-check.yml'
@@ -32,17 +38,23 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Syntax, contracts and supplier-free boundary
         shell: bash
         run: |
           set -euo pipefail
           php -l app/integrations/andromeda-anytour-offer-autosave.php
+          php -l app/integrations/anytour-offer-snapshot-producer.php
           php -l app/integrations/andromeda-saved-pricing-evidence.php
           php -l app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php
           php -l scripts/ops/andromeda_local_offer_collect.php
           php -l tests/andromeda-saved-pricing-evidence-test.php
           php -l tests/andromeda-surcharge-cache-autosave-test.php
           php -l tests/andromeda-cache-cohort-order-test.php
+          php -d allow_url_fopen=0 tests/anytour-offer-snapshot-producer-test.php
+          php -d allow_url_fopen=0 tests/three-provider-final-price-readiness-test.php
           tmp="$RUNNER_TEMP/saved-pricing-evidence"
           php -d zend.assertions=1 -d assert.exception=1 \
             tests/andromeda-saved-pricing-evidence-test.php "$GITHUB_WORKSPACE" "$tmp"

@@ -170,7 +170,7 @@ aassert(($normalizedMissing['rejected'][2] ?? null) === [
 ], 'unknown missing-field provenance mismatch');
 aassert(!str_contains(json_encode($normalizedMissing['rejected'], JSON_THROW_ON_ERROR), 'Secret Label'), 'raw rejected operator leaked');
 
-// Andromeda/SAMO transport markup is already a whole-party fact: add exactly once.
+// Synthetic flight estimate arithmetic remains available; this is not fuel proof.
 $andromeda = AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',
     ['amount' => '185125', 'currency' => 'RUB', 'source' => 'andromeda_search'], null, [[
         'kind' => 'party_transport_surcharge', 'amount' => '14265', 'currency' => 'RUB',
@@ -188,7 +188,8 @@ $anex = AnyTourThreeProviderMoneyFacts::fromSearch('anex',
 $anexPriced = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($anex, 2, 1);
 aassert($anexPriced['search_price_with_surcharge']['amount'] === '102500', 'ANEX per-passenger arithmetic regressed');
 
-// Complete two-page cohort publishes once and preserves raw room/placement.
+// Complete pages plus flight-only estimates cannot publish a false full-price
+// snapshot or write a completion checkpoint that suppresses later fuel evidence.
 $dir = temp_searches();
 try {
     $ref = hash('sha256', 'complete-two-page'); $created = time() - 30; $ingests = [];
@@ -197,23 +198,21 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === true, 'complete cohort not published');
-    aassert(count($ingests) === 1 && count($ingests[0]['rows']) === 2, 'complete cohort row count');
-    aassert($ingests[0]['rows'][0]['dto']['price'] === '199390', 'protected final price mismatch');
-    aassert($ingests[0]['rows'][0]['dto']['tour']['room']['raw'] === 'Deluxe Sea View', 'raw room lost');
-    aassert($ingests[0]['rows'][0]['dto']['tour']['placement']['raw'] === '2AD+1CH', 'raw placement lost');
-    $again = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
-        new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($again['reason'] === 'already_published' && count($ingests) === 1, 'identical cohort republished');
+    aassert($result['published'] === false && $result['reason'] === 'no_final_price_ready_resolved_offers', 'flight-only cohort marked full-price');
+    aassert($result['receivedOfferCount'] === 2 && $result['ownedOfferCount'] === 2 && $ingests === [], 'flight-only cohort ingest');
+    aassert(!file_exists($dir . '/' . $ref . '-' . $created . '-anytour-offer-autosave-v1.json'), 'held cohort checkpoint written');
 } finally { cleanup_dir($dir); }
 
-// A saved supplier-verified calc quote is a separate pricing state. Autosave
-// forwards it through the INT verified-quote producer path without search-side arithmetic.
+// Saved independently verified totals still publish a complete two-page cohort,
+// preserve raw room/placement and the existing checkpoint idempotency.
 $dir = temp_searches();
 try {
     $ref = hash('sha256', 'verified-calc'); $created = time() - 30; $ingests = [];
-    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 1, $created, [
+    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 2, $created, [
         normalized_offer('verified', 'FUN&SUN', 101, '100', '185125')
+    ]));
+    write_state($dir, $ref, $created, 2, state($ref, 1, 2, 2, $created, [
+        normalized_offer('verified-page2', 'FUN&SUN', 101, '100', '185125')
     ]));
     $verifiedPricing = [
         'state'=>'verified',
@@ -238,7 +237,7 @@ try {
     [$mapping, $canonical, $pricing, $save, $ingest] = callbacks($ingests, $verifiedPricing);
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $pricing, $save, $ingest);
-    aassert($result['published'] === true && $result['readyOfferCount'] === 1, 'verified cohort not published');
+    aassert($result['published'] === true && $result['readyOfferCount'] === 2 && count($ingests[0]['rows']) === 2, 'verified cohort not published');
     $dto = $ingests[0]['rows'][0]['dto'] ?? null;
     aassert(is_array($dto) && $dto['quote_state'] === 'verified'
         && $dto['final_price_verified'] === true, 'verified dto state lost');
@@ -246,10 +245,15 @@ try {
         && $dto['price'] === '199390' && $dto['currency'] === 'RUB', 'verified final price lost');
     aassert($dto['booking_enabled'] === false && $dto['selection_state'] === 'disabled',
         'verified cached row gained authority');
+    aassert($dto['tour']['room']['raw'] === 'Deluxe Sea View', 'raw room lost');
+    aassert($dto['tour']['placement']['raw'] === '2AD+1CH', 'raw placement lost');
+    $again = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+        new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $pricing, $save, $ingest);
+    aassert($again['reason'] === 'already_published' && count($ingests) === 1, 'identical verified cohort republished');
 } finally { cleanup_dir($dir); }
 
-// Real SAMO EOF: advertised page count may later terminate with an empty complete
-// page whose pages_count resets to zero. Preceding data pages form the complete cohort.
+// EOF completion still recognizes preceding data pages. Completeness alone is
+// not evidence that their flight-only prices include fuel.
 $dir = temp_searches();
 try {
     $ref = hash('sha256', 'terminal-empty-eof'); $created = time() - 30; $ingests = [];
@@ -261,8 +265,8 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === true, 'terminal empty cohort not published');
-    aassert(count($ingests) === 1 && count($ingests[0]['rows']) === 2, 'terminal empty data pages lost');
+    aassert($result['published'] === false && $result['reason'] === 'no_final_price_ready_resolved_offers', 'terminal flight-only cohort published');
+    aassert($result['receivedOfferCount'] === 2 && $result['ownedOfferCount'] === 2 && $ingests === [], 'terminal data pages lost or ingested');
 } finally { cleanup_dir($dir); }
 
 // A zero pages_count page with offers is not EOF and must fail closed.
@@ -339,7 +343,7 @@ try {
     aassert($result['published'] === true && count($ingests) === 1 && $ingests[0]['rows'] === [], 'excluded-only cohort not authoritative empty');
 } finally { cleanup_dir($dir); }
 
-// Sanitized MISSING_FIELD rows proven outside Andromeda ownership do not poison an otherwise authoritative cohort.
+// Safe excluded rejections do not poison the cohort, but do not prove its fuel.
 $dir = temp_searches();
 try {
     $ref = hash('sha256', 'safe-excluded-rejection'); $created = time() - 30; $ingests = [];
@@ -350,7 +354,8 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === true && count($ingests) === 1 && count($ingests[0]['rows']) === 1, 'safe excluded rejection blocked cohort');
+    aassert($result['published'] === false && $result['reason'] === 'no_final_price_ready_resolved_offers'
+        && $result['ownedOfferCount'] === 1 && $ingests === [], 'safe rejection changed completeness or fuel guard');
 } finally { cleanup_dir($dir); }
 
 // Owned, unknown, legacy or payload-bearing rejected rows stay fail-closed.

@@ -44,10 +44,10 @@ function producer_sql_raw(string $provider,int $legacy,int $adults,array $additi
         'search_price'=>['amount'=>$base,'currency'=>'RUB','source'=>$provider.'_search'],'fuel_charge_reported'=>null,
         'additional_prices_reported'=>$additional,'observed_at'=>'2026-09-17T06:00:00Z'];
 }
-function producer_sql_entry(string $provider,int $legacy,int $own,int $adults,string $base,string $fuel,string $salt,int $issued):array{
+function producer_sql_entry(string $provider,int $legacy,int $own,int $adults,string $base,string $supplement,string $salt,int $issued):array{
     $additional = $provider === 'andromeda'
-        ? [['kind'=>'party_transport_surcharge','amount'=>$fuel,'currency'=>'RUB','source'=>'andromeda_additional']]
-        : [['kind'=>'fuel_adult','amount'=>$fuel,'currency'=>'RUB','source'=>$provider.'_additional']];
+        ? [['kind'=>'party_transport_surcharge','amount'=>$supplement,'currency'=>'RUB','source'=>'andromeda_additional']]
+        : [['kind'=>'fuel_adult','amount'=>$supplement,'currency'=>'RUB','source'=>$provider.'_additional']];
     $offer=AnyTourThreeProviderOfferContract::fromSearch(
         producer_sql_raw($provider,$legacy,$adults,$additional,$base,$salt)
     );
@@ -60,10 +60,12 @@ function producer_sql_entry(string $provider,int $legacy,int $own,int $adults,st
 
 $dsn=trim((string)getenv('ANYTOUR_OFFER_TEST_DSN'));
 if($dsn===''){echo "ANYTOUR_INT_SNAPSHOT_MYSQL_NOT_RUN reason=no_test_dsn\n";exit(0);}
+producer_sql_check($dsn==='mysql:host=127.0.0.1;port=3306;dbname=anytour_int_snapshot_test;charset=utf8mb4','disposable_dsn_only');
 producer_sql_check(in_array('mysql',PDO::getAvailableDrivers(),true),'pdo_mysql');
 $db=new PDO($dsn,(string)getenv('ANYTOUR_OFFER_TEST_USER'),(string)getenv('ANYTOUR_OFFER_TEST_PASSWORD'),[
     PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,
     PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_STRINGIFY_FETCHES=>false]);
+producer_sql_check($db->query('SELECT DATABASE()')->fetchColumn()==='anytour_int_snapshot_test','disposable_database_only');
 foreach(['anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $table)$db->exec('DROP TABLE IF EXISTS '.$table);
 producer_sql_file($db,$releaseRoot.'/v2/data/migrations/20260916-anytour-canonical-catalog.sql');
 producer_sql_file($db,$releaseRoot.'/v2/data/migrations/20260916-anytour-offer-store.sql');
@@ -102,12 +104,44 @@ producer_sql_check($preserved['published']===false,'not-ready-no-publish');
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+1 minute'));
 producer_sql_check(count($visible['items'])===1&&$visible['items'][0]['price']==='110000','previous-complete-preserved');
 
-$and=producer_sql_entry('andromeda',4200,$owns[4200],3,'144790','7185.60','sql-and',$issued+60);
-AnyTourIntOfferSnapshotProducerV1::produce('andromeda',$params,['complete'=>true,'authoritative_empty'=>false,'offers'=>[$and]],$now->modify('+1 minute'),$ingest);
-$visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+1 minute'));
-$providers=array_count_values(array_column($visible['items'],'provider'));
-producer_sql_check(count($visible['items'])===2&&($providers['anex']??0)===1&&($providers['andromeda']??0)===1,'providers-isolated');
-producer_sql_check(in_array('151975.6',array_column($visible['items'],'price'),true),'andromeda-final-price');
-producer_sql_check((int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='completed'")->fetchColumn()===2,'two-complete-refreshes');
+$and=producer_sql_entry('andromeda',4200,$owns[4200],2,'144790','7185.60','sql-and',$issued+60);
+$held=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',$params,['complete'=>true,'authoritative_empty'=>false,'offers'=>[$and]],$now->modify('+1 minute'),$ingest);
+producer_sql_check($held['published']===false&&$held['readyOfferCount']===0&&$held['notReadyCount']===1,'flight-only-held');
+producer_sql_check((int)$db->query("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda'")->fetchColumn()===0,'flight-only-not-inserted');
+producer_sql_check((int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE provider='andromeda'")->fetchColumn()===0,'held-no-refresh');
 
-echo "ANYTOUR_INT_SNAPSHOT_MYSQL_OK providers=2 offers=2 preserved_not_ready=1\n";
+// SYNTHETIC HISTORY FIXTURE ONLY: emulate a row written before this producer guard
+// through the deliberately pinned legacy LOCAL contract. This is NOT a newly
+// approved complete price, nor a production backfill or current fuel evidence.
+// The guard must not rewrite, delete or refresh this existing row as a side effect.
+$legacyDto=AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
+    $and['offer'],$and['retained'],$and['current'],$now->modify('+1 minute')->getTimestamp(),$and['priced_money']);
+AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'andromeda',$params,[
+    ['anytour_hotel_id'=>$owns[4200],'dto'=>$legacyDto,'expires_at'=>gmdate('Y-m-d\TH:i:s\Z',$and['retained']['expires_at'])],
+],$now->modify('+1 minute'));
+$prior=[];
+foreach(['anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes'] as $table){
+    $prior[$table]=$db->query("SELECT * FROM ".$table." WHERE provider='andromeda'")->fetchAll();
+    producer_sql_check(count($prior[$table])===1,'legacy-fixture-'.$table);
+}
+$zero=producer_sql_entry('andromeda',4200,$owns[4200],2,'150000','0','sql-and-zero',$issued+60);
+$mustNotIngest=static function(string $provider,array $search,array $rows,DateTimeImmutable $at):array{
+    throw new RuntimeException('FLIGHT_ONLY_REACHED_INGEST');
+};
+foreach([$and,$zero] as $flightOnly){
+    $held=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',$params,
+        ['complete'=>true,'authoritative_empty'=>false,'offers'=>[$flightOnly]],$now->modify('+2 minutes'),$mustNotIngest);
+    producer_sql_check($held['published']===false&&$held['readyOfferCount']===0&&$held['notReadyCount']===1,'existing-cohort-held');
+    foreach($prior as $table=>$rows){
+        producer_sql_check($db->query("SELECT * FROM ".$table." WHERE provider='andromeda'")->fetchAll()===$rows,'exact-prior-state-preserved-'.$table);
+    }
+}
+$visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+2 minutes'));
+$providers=array_count_values(array_column($visible['items'],'provider'));
+producer_sql_check(count($visible['items'])===2&&($providers['anex']??0)===1&&($providers['andromeda']??0)===1,'anex-and-historical-fixture-isolated');
+producer_sql_check(in_array('151975.6',array_column($visible['items'],'price'),true),'historical-fixture-not-repriced');
+producer_sql_check((int)$db->query("SELECT COUNT(*) FROM anytour_offer_refreshes WHERE status='completed'")->fetchColumn()===2,'no-added-complete-refresh');
+
+// Verified-quote admission is exercised by the producer/complete-cohort offline
+// tests; this pinned legacy LOCAL test does not claim current verified DTO support.
+echo "ANYTOUR_INT_SNAPSHOT_MYSQL_OK anex_ready=1 legacy_fixture_preserved=1 flight_only_held=3 no_extra_refresh=1\n";

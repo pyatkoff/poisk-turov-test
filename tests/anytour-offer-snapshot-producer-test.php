@@ -47,11 +47,11 @@ function producer_raw(string $provider, int $local, int $adults, array $addition
         'observed_at'=>'2026-09-17T06:00:00Z',
     ];
 }
-function producer_entry(string $provider, int $legacy, ?int $own, int $adults, string $base, string $fuel, string $salt, int $issued): array
+function producer_entry(string $provider, int $legacy, ?int $own, int $adults, string $base, string $surcharge, string $salt, int $issued): array
 {
     $additional = $provider === 'andromeda'
-        ? [['kind'=>'party_transport_surcharge','amount'=>$fuel,'currency'=>'RUB','source'=>'andromeda_additional']]
-        : [['kind'=>'fuel_adult','amount'=>$fuel,'currency'=>'RUB','source'=>$provider.'_additional']];
+        ? [['kind'=>'party_transport_surcharge','amount'=>$surcharge,'currency'=>'RUB','source'=>'andromeda_additional']]
+        : [['kind'=>'fuel_adult','amount'=>$surcharge,'currency'=>'RUB','source'=>$provider.'_additional']];
     $offer=AnyTourThreeProviderOfferContract::fromSearch(producer_raw($provider,$legacy,$adults,$additional,$base,$salt));
     $retained=AnyTourThreeProviderOfferContext::retain($offer,41,1,$issued,900);
     $current=['provider'=>$retained['provider'],'operator'=>$retained['operator'],'local_hotel_id'=>$retained['local_hotel_id'],
@@ -67,6 +67,7 @@ function producer_params(): array
         'operatorIds'=>[],'priceFrom'=>'','priceTo'=>'','currency'=>'RUB','onlyCharter'=>false,'onlyDirect'=>false];
 }
 
+// All amounts and supplier envelopes in this file are synthetic offline fixtures.
 $now=new DateTimeImmutable('2026-09-17T06:05:00Z');
 $issued=$now->getTimestamp()-60;
 $ingestCalls=[];
@@ -96,19 +97,31 @@ producer_check($row['dto']['money']['search_price']['amount']==='100000'
 producer_check($row['expires_at']===gmdate('Y-m-d\TH:i:s\Z',$anex['retained']['expires_at']),'retained-expiry');
 producer_check(!str_contains(json_encode($row['dto'],JSON_THROW_ON_ERROR),'private-anex'),'browser-safe-dto');
 
+// A known flight supplement, including explicit zero, is NOT evidence that fuel
+// is included. Hold these nonempty cohorts without expiring an existing snapshot.
 $and=producer_entry('andromeda',4200,777,3,'144790','7185.60','and-a',$issued);
-$andResult=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',producer_params(),[
-    'complete'=>true,'authoritative_empty'=>false,'offers'=>[$and],
-],$now,$ingest);
-producer_check($andResult['published']===true && $andResult['readyOfferCount']===1,'andromeda-published');
-producer_check($ingestCalls[1]['rows'][0]['dto']['finalPrice']==='151975.60','andromeda-existing-arithmetic');
-producer_check(count($ingestCalls)===2,'providers-independent-success');
+$andBefore=$and;
+$andZero=producer_entry('andromeda',4201,779,3,'144790','0','and-zero',$issued);
+foreach ([$and,$andZero] as $flightOnly) {
+    $before=count($ingestCalls);
+    $andResult=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',producer_params(),[
+        'complete'=>true,'authoritative_empty'=>false,'offers'=>[$flightOnly],
+    ],$now,$ingest);
+    producer_check($andResult['published']===false && $andResult['readyOfferCount']===0,
+        'ANDROMEDA_FLIGHT_ONLY_MUST_NOT_BE_FULL_PRICE');
+    producer_check($andResult['notReadyCount']===1 && $andResult['reason']==='no_final_price_ready_resolved_offers',
+        'flight-only-not-ready-receipt');
+    producer_check(count($ingestCalls)===$before,'flight-only-no-ingest-preserves-prior-snapshot');
+}
+producer_check($and===$andBefore && $and['priced_money']['search_price_with_surcharge']['amount']==='151975.60',
+    'partial-flight-arithmetic-preserved');
+$tamperedAnd=$and;$tamperedAnd['priced_money']['search_price_with_surcharge']['amount']='1';
+producer_reject(static fn()=>AnyTourIntOfferSnapshotProducerV1::produce('andromeda',producer_params(),[
+    'complete'=>true,'authoritative_empty'=>false,'offers'=>[$tamperedAnd],
+],$now,$ingest),'THREE_PROVIDER_HANDOFF_PRICE','flight-only-still-validates-original-money');
 
-producer_check(count($ingestCalls)===2,'providers-independent-success');
-
-// Supplier-verified Andromeda calc can cross INT snapshot production without
-// reusing the estimated-money path. The LOCAL ingestor is mocked here until its
-// provider-neutral final_verified store state lands.
+// Independently supplier-verified total remains publishable. No repeated calc is
+// performed; a transport estimate cannot replace this quote.
 $verified = producer_entry('andromeda', 4300, 778, 2, '144790', '1', 'and-verified', $issued);
 $verified['priced_money'] = null;
 $verified['verified_quote'] = [
@@ -128,10 +141,12 @@ $verified['verified_quote'] = [
     'flights'=>[],
 ];
 $verifiedResult=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',producer_params(),[
-    'complete'=>true,'authoritative_empty'=>false,'offers'=>[$verified],
+    'complete'=>true,'authoritative_empty'=>false,'offers'=>[$verified,$and,$andZero],
 ],$now,$ingest);
-producer_check($verifiedResult['published']===true && $verifiedResult['readyOfferCount']===1,'verified-published');
-$verifiedDto=$ingestCalls[2]['rows'][0]['dto'];
+producer_check($verifiedResult['published']===true && $verifiedResult['readyOfferCount']===1
+    && $verifiedResult['notReadyCount']===2,'verified-only-published-from-mixed-cohort');
+producer_check(count($ingestCalls)===2 && count($ingestCalls[1]['rows'])===1,'only-verified-enters-store');
+$verifiedDto=$ingestCalls[1]['rows'][0]['dto'];
 producer_check($verifiedDto['quote_state']==='verified' && $verifiedDto['final_price_verified']===true,'verified-state');
 producer_check(is_string($verifiedDto['quote_evidence_digest'])
     && preg_match('/^[a-f0-9]{64}$/D',$verifiedDto['quote_evidence_digest'])===1,'verified-evidence');
