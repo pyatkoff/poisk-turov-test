@@ -115,6 +115,17 @@ final class AnyTourIntOfferSnapshotProducerV1
                     $current,
                     $nowTs
                 );
+            } elseif ($provider === 'andromeda' && $pricedMoney === null) {
+                // A complete Andromeda PRICE cohort is useful even before final supplier
+                // repricing. Persist only the supplier search price as confirmation-required:
+                // no fuel/flight estimate is promoted, and selection/booking stay disabled.
+                $dto = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
+                    $offer,
+                    $retained,
+                    $current,
+                    $nowTs
+                );
+                $confirmationRequired = true;
             } else {
                 $dto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
                     $offer,
