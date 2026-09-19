@@ -1,0 +1,31 @@
+name: INT ANEX demand queue
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'app/integrations/anex-local-offer-demand.php'
+      - 'scripts/ops/anex_local_offer_demand_queue.php'
+      - 'tests/anex-local-offer-demand-queue-test.php'
+      - '.github/workflows/int-anex-demand-queue.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate supplier-free demand queue
+        run: |
+          set -euo pipefail
+          php -l app/integrations/anex-local-offer-demand.php
+          php -l scripts/ops/anex_local_offer_demand_queue.php
+          php -l tests/anex-local-offer-demand-queue-test.php
+          php tests/anex-local-offer-demand-queue-test.php
+          ! grep -Eq 'curl_|fsockopen|stream_socket_client|AnyTourAnexClient|AdditionalPrices' scripts/ops/anex_local_offer_demand_queue.php
+          grep -q "source='user_search'" scripts/ops/anex_local_offer_demand_queue.php
+          grep -q 'SET TRANSACTION READ ONLY' scripts/ops/anex_local_offer_demand_queue.php
+          echo 'ANEX_DEMAND_QUEUE_OK supplier_calls=0 writes=0'
