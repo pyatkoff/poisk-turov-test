@@ -1,0 +1,52 @@
+name: INT ANEX page2 sealed ledger readback v1
+on:
+  push:
+    branches: ['ops/int-anex-hotel15851-current-20260919-v1']
+    paths: ['.github/workflows/int-anex-page2-ledger-readback-v1.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SOURCE_SHA: d31df10a753658a2a0d283525347cc4f97d9e037
+      SECURITY_RUN: '35453252222'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: d31df10a753658a2a0d283525347cc4f97d9e037
+          persist-credentials: false
+      - name: Verify and read
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SECURITY_RUN" | jq -e --arg s "$SOURCE_SHA" '.head_sha==$s and .conclusion=="success"' >/dev/null
+          php -l scripts/diagnostics/anex_page2_ledger_readback_v1.php
+          install -d -m 700 "$RUNNER_TEMP/ssh"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          scp "${opts[@]}" scripts/diagnostics/anex_page2_ledger_readback_v1.php "$REMOTE_USER@$HOST:/tmp/anex-page2-ledger.$GITHUB_RUN_ID.php"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" "php -d display_errors=0 /tmp/anex-page2-ledger.$GITHUB_RUN_ID.php; rc=\$?; rm -f /tmp/anex-page2-ledger.$GITHUB_RUN_ID.php; exit \$rc" | tee "$RUNNER_TEMP/receipt.json"
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['RUNNER_TEMP']+'/receipt.json'))
+          assert d['db_writes']==d['runtime_writes']==0
+          print('ANEX_PAGE2_LEDGER '+json.dumps(d,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-anex-page2-ledger-readback-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
