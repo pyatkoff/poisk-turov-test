@@ -1,0 +1,106 @@
+name: INT ANEX DB fill region20 Sep19-22 v3
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths: ['.github/workflows/int-anex-db-fill-region20-sep19-22-v3.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  fill:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.head.ref == 'ops/int-anex-db-fill-region20-sep19-22-20260919-v3' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      SOURCE_SHA: 9c196b86b33f22f96195db732143d547903420ac
+      SOURCE_SECURITY_RUN: '35457591442'
+      OPERATION_ID: int-anex-db-fill-region20-sep19-22-20260919-v3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 9c196b86b33f22f96195db732143d547903420ac
+          persist-credentials: false
+      - name: Verify exact checked source and assemble private runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_SECURITY_RUN" | jq -e --arg s "$SOURCE_SHA" '.head_sha==$s and .conclusion=="success"' >/dev/null
+          php -l scripts/ops/anex_local_offer_collect.php
+          php -l app/integrations/anex-search.php
+          php -l app/integrations/anex-additional-prices-client.php
+          php -l v2/api-anex-search3-preview.php
+          mkdir -p "$RUNNER_TEMP/payload"
+          tar -czf "$RUNNER_TEMP/payload/source.tgz" app/integrations v2/api-anex-search3-preview.php v2/data/hotel-details-v1.php scripts/ops/anex_local_offer_collect.php
+          sha256sum "$RUNNER_TEMP/payload/source.tgz" > "$RUNNER_TEMP/payload/source.sha256"
+      - name: Fill exact owner scope in background
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_B2B_TOKEN: ${{ secrets.ANEX_B2B_TOKEN }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=5)
+          remote="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.tgz"
+          api_file="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.api"; b2b_file="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.b2b"
+          install -d -m 700 "$RUNNER_TEMP/secrets"
+          printf '%s' "$ANEX_API_TOKEN" > "$RUNNER_TEMP/secrets/api"; printf '%s' "$ANEX_B2B_TOKEN" > "$RUNNER_TEMP/secrets/b2b"; chmod 600 "$RUNNER_TEMP/secrets/"*
+          test -s "$RUNNER_TEMP/secrets/api" && test -s "$RUNNER_TEMP/secrets/b2b"
+          scp "${opts[@]}" "$RUNNER_TEMP/payload/source.tgz" "$REMOTE_USER@$HOST:$remote"
+          scp "${opts[@]}" "$RUNNER_TEMP/secrets/api" "$REMOTE_USER@$HOST:$api_file"
+          scp "${opts[@]}" "$RUNNER_TEMP/secrets/b2b" "$REMOTE_USER@$HOST:$b2b_file"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$OPERATION_ID" "$remote" "$SOURCE_SHA" "$api_file" "$b2b_file" > "$RUNNER_TEMP/result/receipt.json" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          op="$1"; archive="$2"; source="$3"; api_file="$4"; b2b_file="$5"; ledger="$HOME/.anytour-ops/$op"; work="/tmp/$op.$"
+          test ! -e "$ledger"; mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; mkdir -m 700 "$work"
+          test -f "$api_file" -a ! -L "$api_file" -a -s "$api_file"; test -f "$b2b_file" -a ! -L "$b2b_file" -a -s "$b2b_file"
+          chmod 600 "$api_file" "$b2b_file"
+          trap 'rm -rf "$work" "$archive" "$api_file" "$b2b_file"' EXIT
+          printf '{"operation":"%s","source":"%s","state":"reserved","replay_allowed":false}\n' "$op" "$source" > "$ledger/reservation.json"
+          tar -xzf "$archive" -C "$work"
+          site=$(realpath "$HOME/www/anytoour.ru"); test "$(basename "$site")" = anytoour.ru
+          ingest=$(realpath "$site/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php")
+          test -f "$ingest"
+          export ANYTOUR_PROJECT_ROOT="$site"
+          export ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE="$ingest"
+          export ANEX_API_TOKEN="$(cat "$api_file")"
+          export ANEX_B2B_TOKEN="$(cat "$b2b_file")"
+          test -n "$ANEX_API_TOKEN" -a -n "$ANEX_B2B_TOKEN"
+          before=$(php -r 'require $argv[1]."/config.php";require (is_file($argv[1]."/data/db-v1.php")?$argv[1]."/data/db-v1.php":$argv[1]."/v2/data/db-v1.php");$d=v2_data_db();$q=$d->query("SELECT COUNT(*) n,SUM(is_active=1 AND expires_at>UTC_TIMESTAMP()) cur,MAX(last_seen_at) seen FROM anytour_offers WHERE provider=\"anex\"");echo json_encode($q->fetch(PDO::FETCH_ASSOC));' "$site")
+          results=()
+          for nights in 7 8 9 10; do
+            out="$ledger/night-$nights.json"
+            php -d display_errors=0 "$work/scripts/ops/anex_local_offer_collect.php"               --departure=1 --country=4 --date-from=2026-09-19 --date-to=2026-09-22 --nights="$nights"               --adults=2 --region=20 --max-expands=600 --max-apd=600 --generation="$((26091900+nights))" > "$out"
+            php -r '$d=json_decode(file_get_contents($argv[1]),true,64,JSON_THROW_ON_ERROR);if(($d["booking_calls"]??-1)!==0||($d["lead_calls"]??-1)!==0||($d["db_only_customer_results"]??false)!==true)exit(2);' "$out"
+          done
+          after=$(php -r 'require $argv[1]."/config.php";require (is_file($argv[1]."/data/db-v1.php")?$argv[1]."/data/db-v1.php":$argv[1]."/v2/data/db-v1.php");$d=v2_data_db();$q=$d->query("SELECT COUNT(*) n,SUM(is_active=1 AND expires_at>UTC_TIMESTAMP()) cur,MAX(last_seen_at) seen FROM anytour_offers WHERE provider=\"anex\"");echo json_encode($q->fetch(PDO::FETCH_ASSOC));' "$site")
+          php -r '
+            $before=json_decode($argv[1],true,16,JSON_THROW_ON_ERROR);$after=json_decode($argv[2],true,16,JSON_THROW_ON_ERROR);$dir=$argv[3];$out=[];
+            foreach([7,8,9,10] as $n){$d=json_decode(file_get_contents("$dir/night-$n.json"),true,64,JSON_THROW_ON_ERROR);$out[(string)$n]=[
+              "pages_read"=>$d["pages_read"]??null,"initial_hotels"=>$d["initial_hotels"]??null,"grouped_candidates"=>$d["grouped_candidates"]??null,
+              "expand_calls"=>$d["expand_calls"]??null,"charter_concrete_candidates"=>$d["charter_concrete_candidates"]??null,
+              "apd_batch_items"=>$d["apd_batch_items"]??null,"final_price_ready_offers"=>$d["final_price_ready_offers"]??null,
+              "retryable_offers"=>$d["retryable_offers"]??null,"discovered_set_drained"=>$d["discovered_set_drained"]??null,
+              "search_client_instances"=>$d["search_client_instances"]??null,"apd_client_instances"=>$d["apd_client_instances"]??null,
+              "snapshot_finalize"=>$d["snapshot_finalize"]??null];}
+            $r=["operation"=>"int-anex-db-fill-region20-sep19-22-20260919-v3","source"=>$argv[4],"scope"=>["departureId"=>1,"countryId"=>4,"regionId"=>20,"dateFrom"=>"2026-09-19","dateTo"=>"2026-09-22","nights"=>[7,8,9,10],"adults"=>2,"children"=>0],"before"=>$before,"after"=>$after,"nights"=>$out,"browser_supplier_calls"=>0,"booking_calls"=>0,"lead_calls"=>0,"replay_allowed"=>false];
+            file_put_contents("$dir/receipt.json",json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n");echo json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          ' "$before" "$after" "$ledger" "$source"
+          REMOTE
+          jq -e '.browser_supplier_calls==0 and .booking_calls==0 and .lead_calls==0 and .replay_allowed==false' "$RUNNER_TEMP/result/receipt.json" >/dev/null
+          jq -c '{operation,scope,before,after,nights,browser_supplier_calls,booking_calls,lead_calls,replay_allowed}' "$RUNNER_TEMP/result/receipt.json"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-anex-db-fill-region20-sep19-22-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
