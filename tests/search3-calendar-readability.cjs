@@ -283,6 +283,123 @@ async function checkDateSelection(page, width, output) {
     await emit('v2:search-reset', []);
   }
 }
+async function checkNavigation(page, width, output) {
+  const calendar = page.locator('#currentPriceCalendar');
+  const tours = Array.from({ length: 21 }, (_, i) => ({ date: `2099-09-${String(i + 1).padStart(2, '0')}`, price: i === 20 ? 118900 : 140000 + i * 1000 }));
+  const emit = (name, values) => page.evaluate(({ name, values }) => {
+    window.dispatchEvent(new CustomEvent(name, { detail: { items: [{ tours: values }] } }));
+  }, { name, values });
+  await page.evaluate(() => {
+    window.__calendarNavigation = { submit: window.V2SearchLifecycle.submit, api: window.V2Runtime.api, submits: 0, calls: 0 };
+    window.V2SearchLifecycle.submit = () => { window.__calendarNavigation.submits++; };
+    window.V2Runtime.api = () => { window.__calendarNavigation.calls++; throw new Error('Calendar navigation must not request supplier data'); };
+  });
+  const snapshot = () => page.evaluate(() => ({ form: [...new FormData(document.getElementById('tourSearch'))], url: location.href, results: document.getElementById('results').innerHTML, submits: window.__calendarNavigation.submits, calls: window.__calendarNavigation.calls }));
+  const nav = calendar.locator('.current-price-calendar__navigation');
+  const previous = nav.locator('[data-calendar-move="previous"]');
+  const next = nav.locator('[data-calendar-move="next"]');
+  const best = nav.locator('[data-calendar-best]');
+  const scroll = () => calendar.locator('.current-price-calendar__days').evaluate(node => node.scrollLeft);
+  const visibleDate = async date => {
+    await page.waitForFunction(date => {
+      const tile = document.querySelector(`[data-calendar-date="${date}"]`), strip = tile.parentElement;
+      const a = tile.getBoundingClientRect(), b = strip.getBoundingClientRect();
+      return a.left - 5 >= b.left - 1 && a.right + 5 <= b.right + 1;
+    }, date);
+  };
+  try {
+    await emit('v2:search-started', []);
+    await emit('v2:search-complete', tours);
+    const initial = await snapshot();
+    if (width > 640) {
+      assert.equal(await nav.isVisible(), false, 'desktop grid does not display redundant strip navigation');
+      assert.equal(await calendar.locator('[data-calendar-date]').count(), 21);
+      assert.deepEqual(await snapshot(), initial);
+      return { desktopGrid: true, navigationHidden: true, dates: 21, submits: 0, calls: 0 };
+    }
+    await best.waitFor({ state: 'visible' });
+    const targets = await nav.locator('button').evaluateAll(nodes => nodes.map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })));
+    assert.ok(targets.every(rect => rect.width >= 44 && rect.height >= 44), 'all mobile navigation controls have full touch targets');
+    assert.equal(await previous.getAttribute('aria-disabled'), 'true');
+    assert.equal(await next.getAttribute('aria-disabled'), 'false');
+    assert.match(await best.innerText(), /21 сент/);
+    assert.ok((await best.getAttribute('aria-label')).includes(new Intl.NumberFormat('ru-RU').format(118900)), 'shortcut announces an actual found minimum');
+    await next.click();
+    await page.waitForFunction(() => document.querySelector('.current-price-calendar__days').scrollLeft > 10);
+    const forward = await scroll();
+    assert.equal(await next.evaluate(node => node === document.activeElement), true, 'paging retains button focus');
+    await previous.click();
+    await page.waitForFunction(() => document.querySelector('.current-price-calendar__days').scrollLeft <= 1);
+    await calendar.screenshot({ path: path.join(output, `calendar-navigation-${width}-start.png`) });
+    await best.click();
+    await visibleDate('2099-09-21');
+    assert.equal(await calendar.locator('[data-calendar-date="2099-09-21"]').evaluate(node => node === document.activeElement), true, 'minimum shortcut reveals and focuses the late date');
+    assert.equal(await calendar.locator('[aria-pressed="true"]').count(), 0, 'navigation does not select a date');
+    assert.equal(await calendar.locator('[data-calendar-apply]').isVisible(), false);
+    assert.equal(await next.getAttribute('aria-disabled'), 'true');
+    const end = await scroll();
+    await next.focus();
+    await next.press('Enter');
+    assert.equal(await scroll(), end, 'end-of-strip navigation is inert');
+    assert.equal(await next.evaluate(node => node === document.activeElement), true, 'an unavailable boundary keeps keyboard focus');
+    assert.deepEqual(await snapshot(), initial, 'paging and minimum reveal leave form, URL, results and supplier calls untouched');
+    await best.click();
+    await calendar.locator('[data-calendar-date="2099-09-21"]').press('Enter');
+    assert.equal(await calendar.locator('[data-calendar-date="2099-09-21"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await calendar.locator('[data-calendar-apply]').isVisible(), true, 'selection still requires the existing separate confirmation');
+    await calendar.screenshot({ path: path.join(output, `calendar-navigation-${width}-minimum.png`) });
+    await previous.focus();
+    const updated = tours.map((tour, i) => ({ ...tour, price: i === 4 ? 110000 : tour.price }));
+    await emit('v2:search-continued', updated);
+    assert.equal(await previous.evaluate(node => node === document.activeElement), true, 'progressive rerender retains navigation focus');
+    assert.equal(await calendar.locator('[data-calendar-date="2099-09-21"]').getAttribute('aria-pressed'), 'true', 'a new lower price does not replace the user choice');
+    assert.match(await best.innerText(), /5 сент/);
+    await best.click();
+    await visibleDate('2099-09-05');
+    assert.equal(await calendar.locator('[data-calendar-date="2099-09-21"]').getAttribute('aria-pressed'), 'true', 'revealing another minimum keeps the selected date');
+    await emit('search3:local-results-filtered', tours.slice(0, 3));
+    assert.equal(await calendar.locator('[data-calendar-apply]').isVisible(), false, 'filtered-out date is no longer actionable');
+    assert.match(await best.innerText(), /1 сент/);
+    assert.equal(await calendar.locator('summary').evaluate(node => node === document.activeElement), true, 'removing the focused minimum restores the calendar heading');
+
+    await emit('v2:search-started', []);
+    await emit('v2:search-complete', tours.slice(0, 2));
+    assert.equal(await nav.isVisible(), false, 'two fully visible mobile dates need no strip navigation');
+    await emit('v2:search-started', []);
+    await emit('v2:search-complete', tours.map(tour => ({ ...tour, price: 120000 })));
+    assert.match(await best.innerText(), /1 сент/, 'equal minima use the earliest date deterministically');
+    await calendar.locator('summary').click();
+    await calendar.locator('summary').click();
+    await best.waitFor({ state: 'visible' });
+    const viewport = page.viewportSize();
+    await next.focus();
+    await page.setViewportSize({ width: 1024, height: viewport.height });
+    await page.waitForFunction(() => document.querySelector('.current-price-calendar__navigation').hidden);
+    assert.equal(await calendar.locator('summary').evaluate(node => node === document.activeElement), true, 'hiding navigation on desktop restores visible focus');
+    await page.setViewportSize({ width: 320, height: 500 });
+    await best.waitFor({ state: 'visible' });
+    await emit('v2:search-continued', tours);
+    await best.click();
+    await visibleDate('2099-09-21');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'navigation fits a short 320px viewport');
+    if (width === 375) await calendar.screenshot({ path: path.join(output, 'calendar-navigation-320-minimum.png') });
+    await page.setViewportSize(viewport);
+    await best.waitFor({ state: 'visible' });
+    const final = await snapshot();
+    assert.deepEqual(final.form, initial.form);
+    assert.equal(final.url, initial.url);
+    assert.equal(final.submits, 0);
+    assert.equal(final.calls, 0);
+    return { targets, forward, minimumScroll: end, minimumDate: '2099-09-21', selectionPreserved: true, filteredMinimumRecomputed: true, rerenderFocus: true, resize: [1024, 320, width], submits: 0, calls: 0 };
+  } finally {
+    await page.evaluate(() => {
+      window.V2SearchLifecycle.submit = window.__calendarNavigation.submit;
+      window.V2Runtime.api = window.__calendarNavigation.api;
+      delete window.__calendarNavigation;
+    });
+    await emit('v2:search-reset', []);
+  }
+}
 module.exports = async function calendarReadability(page, width, output) {
   const calendar = page.locator('#currentPriceCalendar');
   const disclosure = await checkDisclosureState(page, width, output);
@@ -367,6 +484,7 @@ module.exports = async function calendarReadability(page, width, output) {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
   const dateIntegrity = await checkDateIntegrity(page, width, output);
   const selection = await checkDateSelection(page, width, output);
-  fs.writeFileSync(path.join(output, `calendar-readable-${width}.json`), JSON.stringify({ width, records, focus, dateIntegrity, disclosure, rerenderFocus, selection, fixture: true, supplier_requests: 0, leads: 0 }, null, 2) + '\n');
+  const navigation = await checkNavigation(page, width, output);
+  fs.writeFileSync(path.join(output, `calendar-readable-${width}.json`), JSON.stringify({ width, records, focus, dateIntegrity, disclosure, rerenderFocus, selection, navigation, fixture: true, supplier_requests: 0, leads: 0 }, null, 2) + '\n');
   await page.evaluate(() => window.V2CurrentPriceCalendar.clear());
 };
