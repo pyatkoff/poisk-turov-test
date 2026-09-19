@@ -12,7 +12,7 @@ function hotelDetailNotice(results,detail,items){
  if(!detail)return;
  const notice=document.createElement('div'),p=window.V2SearchLifecycle.snapshot;
  const trip=p?formatTourDate(p.dateFrom)+(p.dateTo!==p.dateFrom?' — '+formatTourDate(p.dateTo):'')+' · '+p.nightsFrom+(p.nightsTo!==p.nightsFrom?'–'+p.nightsTo:'')+' ноч. · '+p.adults+' взр.'+(p.childs.length?' · Возраст детей: '+p.childs.join(', '):''):'';
- const copy=items.length?'Поисковая цена. Проверим при выборе.':results.querySelector('.canonical-catalog-status')?'Загружаем отель…':'Отель недоступен. Измените параметры поиска.';
+ const copy=items.length&&!detail.profileOnly?'Поисковая цена. Проверим при выборе.':results.querySelector('.canonical-catalog-status')?'Загружаем отель…':'Нет туров. Обновите поиск.';
  notice.className='results-state';notice.innerHTML='<div class="results-state-copy"><strong>'+esc(trip)+'</strong><span>'+esc(copy)+'</span></div>'+(detail.returnUrl?'<a class="secondary tour-more-toggle" href="'+esc(detail.returnUrl)+'" aria-label="Изменить параметры поиска">Изменить</a>':'');
  results.prepend(notice);
 }
