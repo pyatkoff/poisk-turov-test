@@ -23,6 +23,7 @@ function create(refresh){
  const pathname=String(root.location&&root.location.pathname||'');
  if(pathname!==path.slice(0,-1)&&!pathname.startsWith(path))return null;
  if(typeof refresh!=='function')throw new TypeError('Renderer callback required');
+ let lifecycleGeneration=0;
  let epoch=0,raw=[],options={},links=new Map(),profiles=new Map(),anchors=new Map(),storedOffers=new Map(),legacyOffers=new Map(),legacyStates=new Map(),missing=new Set(),failed=new Set(),pending=new Set(),workers=new Set();
  function reset(){epoch++;workers.forEach(task=>task.controller.abort());workers=new Set();pending=new Set();links=new Map();profiles=new Map();anchors=new Map();storedOffers=new Map();legacyOffers=new Map();legacyStates=new Map();missing=new Set();failed=new Set();raw=[];options={};}
  function putProfile(rawProfile){const p=profile(rawProfile),key=id(p.id),previous=profiles.get(key);if(previous&&p.revision===previous.revision&&JSON.stringify(p)!==JSON.stringify(previous))throw new Error('Conflicting profile revision');if(!previous||p.revision>=previous.revision)profiles.set(key,p);return profiles.get(key);}
@@ -85,7 +86,17 @@ function create(refresh){
   results.prepend(node);
  }
  function requestRefresh(patch){if(!patch||typeof patch!=='object'||Array.isArray(patch))return refresh();const previous=options;options=Object.assign({},options,patch);try{return refresh();}finally{options=previous;}}
- root.addEventListener('v2:search-started',reset);root.addEventListener('v2:search-reset',reset);
+ // Preparing a search already invalidates the previous generation. Its slower
+ // started notification must not erase offers or profile work that arrived first.
+ function resetForSearch(event){
+  const generation=event&&event.detail&&event.detail.generation;
+  if(!Number.isSafeInteger(generation)||generation<1){reset();return;}
+  const current=root.V2SearchLifecycle&&root.V2SearchLifecycle.generation;
+  if(generation<lifecycleGeneration||Number.isSafeInteger(current)&&generation<current)return;
+  if(event.type==='v2:search-started'&&generation===lifecycleGeneration)return;
+  lifecycleGeneration=generation;reset();
+ }
+ root.addEventListener('v2:search-started',resetForSearch);root.addEventListener('v2:search-reset',resetForSearch);
  const api={read(list,opts){raw=list.slice();options=Object.assign({},opts);pump();return project();},source:()=>raw,options:()=>options,details:h=>profiles.get(id(h&&h.anytourHotelId))||null,status,reset,upsertHotel:putProfile,upsertOffer,upsertLegacyOffer,setLegacyHotelState,clearOffers,refresh:requestRefresh};activeOwner=api;return api;
 }
 root.Search3CanonicalProfilesV1=Object.freeze({create,current:()=>activeOwner});
