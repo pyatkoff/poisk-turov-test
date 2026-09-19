@@ -45,7 +45,9 @@ final class AnyTourAndromedaSelectedQuote
                     'final_price_verified' => false,
                     'flight_selection_required' => true,
                     'flights' => $public,
-                    'fuel_surcharges_reported' => [],
+                    // Current fuel services are evidence even before calc; neither
+                    // their presence nor flight markup proves a complete total.
+                    'fuel_surcharges_reported' => self::fuelSurcharges($claim),
                     'operator_currency_rates_reported' => self::operatorCurrencyRates($claim),
                     'calc_money_facts_reported' => [],
                     'booking_enabled' => false,
