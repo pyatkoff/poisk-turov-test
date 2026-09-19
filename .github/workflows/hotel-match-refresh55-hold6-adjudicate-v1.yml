@@ -1,0 +1,93 @@
+name: MATCH refresh55 hold6 adjudication v1
+on:
+  push:
+    branches: [ops/match-refresh55-hold6-adjudicate-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_refresh55_hold6_adjudicate_v1.php
+      - .github/workflows/hotel-match-refresh55-hold6-adjudicate-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-refresh55-hold6-adjudicate-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-refresh55-hold6-adjudicate-1971-20260919-v1
+  BASE_SHA: 93915088f169716d89e2e6426d6d8700dbcf0416
+  CLAIM: '5745051423'
+jobs:
+  review:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate scope, claim and immutable hold input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | sort)" = "$(printf '%s\n' '.github/workflows/hotel-match-refresh55-hold6-adjudicate-v1.yml' 'scripts/diagnostics/hotel_match_refresh55_hold6_adjudicate_v1.php' | sort)"
+          php -l scripts/diagnostics/hotel_match_refresh55_hold6_adjudicate_v1.php
+          php scripts/diagnostics/hotel_match_refresh55_hold6_adjudicate_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body'];assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in b and '10591517115' in b and 'six held' in b and 'Provider calls0' in b
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10591517115/zip >input/current.zip
+          python3 - <<'PY'
+          import zipfile,hashlib,json,pathlib
+          p=pathlib.Path('input/current.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='389b97a73c9e668fd36bf41d23bd62f0eb990faa1db79c2cad82a64203f171f7'
+          with zipfile.ZipFile(p) as z:b=z.read('result.json')
+          assert hashlib.sha256(b).hexdigest()=='3144fbbfe9a886bb94954d8a12147119172f570285ae7622edf2ffb8ed16657a'
+          r=json.loads(b);assert r['state_counts']=={'safe_candidate':26,'hold':6};pathlib.Path('input/current.json').write_bytes(b)
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs and max(xs,key=lambda z:z['id'])['status']=='completed':assert max(xs,key=lambda z:z['id'])['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit(2)
+          PY
+      - name: Execute READ ONLY current adjudication
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" input/current.json scripts/diagnostics/hotel_match_refresh55_hold6_adjudicate_v1.php "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/current.json\" MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=1 \"\$HOME/$op/payload/hotel_match_refresh55_hold6_adjudicate_v1.php\"" >terminal/stdout.json 2>terminal/stderr.txt
+          ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' >terminal/server.tgz
+      - name: Verify review result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+           for n in ['result.json','receipt.json']:pathlib.Path('terminal',n).write_bytes(t.extractfile(n).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only' and r['provider_calls']==r['database_writes']==r['mapping_writes']==0
+          assert sum(r['state_counts'].values())==6 and all(x['safe_to_write_now'] is False for x in r['rows'])
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          print(json.dumps({'state_counts':r['state_counts'],'result_sha256':q['result_sha256']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-refresh55-hold6-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
