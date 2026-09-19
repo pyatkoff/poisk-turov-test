@@ -1106,7 +1106,14 @@ async function run(browser, width, previous) {
     if (!(await calendarDisclosure.evaluate(node => node.open))) await calendar.locator('summary').click();
     await calendar.locator('[data-calendar-date="2026-09-14"]').focus();
     await calendar.locator('[data-calendar-date="2026-09-14"]').press('Enter');
-    assert.equal(await page.evaluate(() => window.__calendarSubmits), 1, 'calendar date submits through the canonical lifecycle exactly once');
+    assert.equal(await page.evaluate(() => window.__calendarSubmits), 0, 'choosing a date does not silently restart the search');
+    assert.equal(await calendar.isVisible(), true, 'pending date keeps the current calendar available');
+    assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), primaryParameters, 'pending date does not mutate the current trip');
+    const confirmDate = calendar.locator('[data-calendar-apply]');
+    assert.equal(await confirmDate.isVisible(), true, 'the pending date has an explicit confirmation action');
+    await confirmDate.focus();
+    await confirmDate.press('Enter');
+    assert.equal(await page.evaluate(() => window.__calendarSubmits), 1, 'calendar confirmation submits through the canonical lifecycle exactly once');
     assert.equal(await calendar.isVisible(), false, 'calendar clears when the replacement search starts');
     assert.equal(await page.locator('#resultsSearchEdit').evaluate(node => node === document.activeElement), true, 'keyboard calendar selection restores focus before removing its date button');
     await page.evaluate(() => {

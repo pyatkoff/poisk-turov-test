@@ -201,6 +201,7 @@ with sync_playwright() as playwright:
             with context.expect_page() as opened:
                 photo_link.click(modifiers=['Control'])
             popup = opened.value
+            popup.wait_for_url(main.get_attribute('src'))
             popup.wait_for_load_state('domcontentloaded')
             assert popup.url == main.get_attribute('src')
             popup.close()
