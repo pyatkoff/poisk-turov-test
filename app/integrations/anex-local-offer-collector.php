@@ -15,13 +15,13 @@ final class AnyTourAnexLocalOfferCollectorV1
         callable $expand,
         callable $recordPrograms,
         callable $additionalBatch,
-        int $maxExpands = 60,
-        int $maxBatchItems = 300
+        int $maxExpands = 600,
+        int $maxBatchItems = 600
     ): array {
         if (($searchRequest['action'] ?? null) !== 'search'
             || !is_int($searchRequest['generation'] ?? null)
             || !is_array($searchRequest['params'] ?? null)
-            || $maxExpands < 0 || $maxExpands > 120
+            || $maxExpands < 0 || $maxExpands > 600
             || $maxBatchItems < 1 || $maxBatchItems > 600) {
             throw new InvalidArgumentException('ANEX_LOCAL_COLLECTOR_INPUT');
         }
@@ -81,6 +81,8 @@ final class AnyTourAnexLocalOfferCollectorV1
             }
         }
 
+        $groupedDrained = $expanded >= count($grouped);
+        $concreteDrained = count($charters) <= $maxBatchItems;
         return [
             'source' => 'anex-local-offer-collector-v1',
             'status' => 'complete',
@@ -94,6 +96,9 @@ final class AnyTourAnexLocalOfferCollectorV1
             'apd_complete_offers' => $complete,
             'final_price_ready_offers' => $ready,
             'retryable_offers' => $retryable,
+            'grouped_drained' => $groupedDrained,
+            'concrete_drained' => $concreteDrained,
+            'discovered_set_drained' => $groupedDrained && $concreteDrained,
             'selection_authority' => false,
         ];
     }
