@@ -37,7 +37,8 @@ $andromedaIndex = array_search('andromeda-provider-v1.js', $search3Js, true);
 $anexIndex = array_search('anex-final-price-provider-v1.js', $search3Js, true);
 if ($lifecycleIndex === false || $dbIndex === false || $andromedaShimIndex === false || $andromedaIndex === false || $anexIndex === false
     || $lifecycleIndex + 1 !== $dbIndex || $dbIndex + 1 !== $andromedaShimIndex || $andromedaShimIndex + 1 !== $andromedaIndex || $andromedaIndex + 1 !== $anexIndex) lean_bundle_fail('Search3 DB/provider dependencies are out of order');
-if ($search3Css !== ['design-system-v2.css', 'site-header-v2.css', 'hotel-autocomplete-v1.css', 'site-footer-v1.css', 'current-price-calendar-v1.css']) lean_bundle_fail('Search3 must load the shared shell, known-hotel lookup and current price calendar CSS');
+if ($search3Css !== ['design-system-v2.css', 'site-header-v2.css', 'hotel-autocomplete-v1.css', 'site-footer-v1.css', 'current-price-calendar-v1.css', 'hotel-photo-viewer-v1.css']) lean_bundle_fail('Search3 must load exactly the shared shell, lookup, calendar and photo viewer CSS');
+if (in_array('hotel-photo-viewer-v1.css', $fullCss, true)) lean_bundle_fail('Search3 photo viewer styles leaked into legacy');
 if (count(array_keys($search3Js, 'hotel-autocomplete-v1.js', true)) !== 1) lean_bundle_fail('Search3 known-hotel owner is not exact');
 if (count(array_keys($search3Css, 'hotel-autocomplete-v1.css', true)) !== 1) lean_bundle_fail('Search3 known-hotel styles are not exact');
 if (count(array_keys($search3Css, 'site-header-v2.css', true)) !== 1) lean_bundle_fail('canonical shared header owner is not exact');

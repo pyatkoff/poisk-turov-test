@@ -34,7 +34,13 @@ async function checkPrimaryForm(page, state, visible = false) {
   assert.equal(await form.isVisible(), visible, state + ': canonical editor visibility follows the results state');
   for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill', 'count_people', 'child_count', 'region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
     assert.equal(await form.locator(`[name="${name}"]`).count(), 1, state + ': primary control ' + name + ' remains owned by the canonical form');
-    if (visible) assert.equal(await form.locator(`[name="${name}"]`).isVisible(), true, state + ': primary control ' + name + ' is editable');
+    if (visible) {
+      const editor = name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
+      assert.equal(await editor.count(), 1, state + ': one visible editor for ' + name);
+      assert.equal(await editor.isVisible(), true, state + ': primary control ' + name + ' is editable');
+      assert.equal(await editor.isEnabled(), true, state + ': primary editor ' + name + ' is enabled');
+      if (name === 'hotel') assert.equal(await form.locator('[name="hotel"]').isVisible(), false, state + ': canonical hotel ID stays in the hidden transport owner');
+    }
   }
   if (visible) assert.equal(await form.locator('[name=operator]').isVisible(), false, state + ': supplier operator remains secondary');
 }
@@ -1106,7 +1112,14 @@ async function run(browser, width, previous) {
     if (!(await calendarDisclosure.evaluate(node => node.open))) await calendar.locator('summary').click();
     await calendar.locator('[data-calendar-date="2026-09-14"]').focus();
     await calendar.locator('[data-calendar-date="2026-09-14"]').press('Enter');
-    assert.equal(await page.evaluate(() => window.__calendarSubmits), 1, 'calendar date submits through the canonical lifecycle exactly once');
+    assert.equal(await page.evaluate(() => window.__calendarSubmits), 0, 'choosing a date does not silently restart the search');
+    assert.equal(await calendar.isVisible(), true, 'pending date keeps the current calendar available');
+    assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), primaryParameters, 'pending date does not mutate the current trip');
+    const confirmDate = calendar.locator('[data-calendar-apply]');
+    assert.equal(await confirmDate.isVisible(), true, 'the pending date has an explicit confirmation action');
+    await confirmDate.focus();
+    await confirmDate.press('Enter');
+    assert.equal(await page.evaluate(() => window.__calendarSubmits), 1, 'calendar confirmation submits through the canonical lifecycle exactly once');
     assert.equal(await calendar.isVisible(), false, 'calendar clears when the replacement search starts');
     assert.equal(await page.locator('#resultsSearchEdit').evaluate(node => node === document.activeElement), true, 'keyboard calendar selection restores focus before removing its date button');
     await page.evaluate(() => {

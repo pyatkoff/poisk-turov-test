@@ -213,6 +213,14 @@ assert.equal(photo.link().getAttribute('rel'), 'noopener noreferrer');
 assert.equal(photo.link().getAttribute('aria-label'), 'Фото отеля Тестовый & <отель> — открыть в новой вкладке');
 assert.equal(photo.gallery.firstChild, photo.main, 'original image and thumbnail owner are not replaced');
 assert.equal(api.normalizeHotelPhotoLink(photo.card), false, 'photo normalization is idempotent');
+window.HTMLDialogElement = function() {};
+window.HTMLDialogElement.prototype.showModal = function() {};
+assert.equal(api.normalizeHotelPhotoLink(photo.card), true, 'native dialog support advertises the in-page viewer');
+assert.equal(photo.link().getAttribute('aria-haspopup'), 'dialog');
+assert.equal(photo.link().getAttribute('aria-label'), 'Фото отеля Тестовый & <отель> — смотреть фотографии');
+assert.equal(photo.link().getAttribute('href'), photo.main.getAttribute('src'), 'enhancement preserves the exact native fallback URL');
+delete window.HTMLDialogElement;
+assert.equal(api.normalizeHotelPhotoLink(photo.card), true, 'unsupported browsers retain original-image navigation');
 const photoAnchor = photo.link();
 for (const event of ['click', 'auxclick', 'contextmenu', 'focusin']) {
   const next = 'https://images.example/hotel/' + event + '.jpg?size=original';

@@ -91,7 +91,7 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
             preferenceLabels: [...preferences.querySelectorAll('.search-preference>span')].map(node => node.textContent.trim()),
             preferenceWidths: [...preferences.children].map(node => box(node).width),
             labels: visible(form.querySelectorAll('.field>span')).map(box),
-            controls: visible(form.querySelectorAll('.field :is(input:not([type=checkbox]),select)')).map(node => ({ ...box(node), name: node.name, appearance: getComputedStyle(node).appearance, tag: node.tagName })),
+            controls: visible(form.querySelectorAll('.field :is(input:not([type=checkbox]),select)')).map(node => ({ ...box(node), name: node.name, editor: node.hasAttribute('data-v2-hotel-query') ? 'hotel' : node.name, appearance: getComputedStyle(node).appearance, tag: node.tagName })),
             dateControls: [...form.querySelectorAll('.search-group--dates input')].map(box),
             partyBox: box(partyGroup), childAgesBox: box(childAges), childAgesInsideParty: childAges.parentElement === partyGroup,
             submit: box(form.querySelector('.search-submit')), extras: box(form.querySelector('.extras')),
@@ -104,7 +104,13 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
         assert.equal(state.hero.position, 'absolute', 'semantic hero stays outside visual flow');
         assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, 'hero adds no blank form header');
         assert.ok(state.labels.every(item => item.fontSize >= 12), 'visible labels stay readable');
-        assert.equal(state.controls.length, 15, 'all fourteen primary native controls plus the hydrated child age are visible');
+        assert.equal(state.controls.length, 15, 'all fourteen primary editors plus the hydrated child age are visible');
+        const hotelQuery = page.getByRole('searchbox', { name: 'Конкретный отель', exact: true });
+        assert.equal(await hotelQuery.count(), 1, 'one accessible known-hotel editor');
+        assert.equal(await hotelQuery.isVisible(), true);
+        assert.equal(await hotelQuery.isEnabled(), true);
+        assert.equal(await page.locator('#tourSearch [name=hotel]').count(), 1, 'one canonical hotel ID owner');
+        assert.equal(await page.locator('#tourSearch [name=hotel]').isVisible(), false, 'exact ID is submitted through its hidden native owner');
         assert.ok(state.controls.every(item => item.height >= 43.5 && item.height <= 44.5 && item.fontSize >= 16), 'all primary selects, dates, numbers and child ages share the same readable 44px box');
         assert.ok(state.controls.filter(item => item.tag === 'SELECT').every(item => item.appearance === 'none'), 'select rendering uses the canonical box while native selection behavior remains intact');
         assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, 'primary action remains readable');
@@ -149,8 +155,8 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
           assert.ok(Math.max(adults.top, children.top, childAge.top) - Math.min(adults.top, children.top, childAge.top) <= 3, 'one child age aligns with adults and children');
           assert.ok(childAge.width <= Math.max(adults.width, children.width) + 1, 'child age remains a compact tourist control');
           const preferenceNames = ['region', 'hotel', 'stars', 'food', 'price_from', 'price_till'];
-          const preferenceControls = state.controls.filter(item => preferenceNames.includes(item.name));
-          assert.deepEqual(preferenceControls.map(item => item.name), preferenceNames, 'wide desktop exposes all six primary OTA preference controls');
+          const preferenceControls = state.controls.filter(item => preferenceNames.includes(item.editor));
+          assert.deepEqual(preferenceControls.map(item => item.editor), preferenceNames, 'wide desktop exposes all six primary OTA preference editors');
           const controlTops = preferenceControls.map(item => item.top);
           assert.ok(Math.max(...controlTops) - Math.min(...controlTops) <= 3, 'wide desktop aligns preference controls even when labels include budget guidance');
           assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[0] + 40, 'exact hotel gets the widest primary track');
