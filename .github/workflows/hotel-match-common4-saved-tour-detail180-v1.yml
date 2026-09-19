@@ -1,0 +1,107 @@
+name: MATCH COMMON4 saved-tour detail180 v1
+on:
+  push:
+    branches: [ops/match-common4-saved-tour-detail180-1971-20260919-v1]
+    paths:
+      - reports/hotel-match-common4-saved-tour-detail180-20260919.json
+      - scripts/diagnostics/hotel_match_common4_saved_tour_detail180_v1.py
+      - .github/workflows/hotel-match-common4-saved-tour-detail180-v1.yml
+permissions: {contents: read, actions: read}
+concurrency:
+  group: hotel-match-common4-saved-tour-detail180-1971-20260919-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-common4-saved-tour-detail180-1971-20260919-v1
+jobs:
+  detail:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - name: Validate exact cohort and reserve before provider access
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p result payload
+          cp scripts/diagnostics/hotel_match_common4_saved_tour_detail180_v1.py payload/collector.py
+          cp reports/hotel-match-common4-saved-tour-detail180-20260919.json payload/cohort.json
+          python3 -m py_compile payload/collector.py
+          python3 payload/collector.py --self-test
+          python3 - <<'PY'
+          import base64,gzip,hashlib,json,os,pathlib
+          w=json.loads(pathlib.Path('payload/cohort.json').read_text())
+          gz=base64.b64decode(w['gzip_base64'],validate=True); assert hashlib.sha256(gz).hexdigest()==w['gzip_sha256']
+          raw=gzip.decompress(gz); assert hashlib.sha256(raw).hexdigest()==w['raw_json_sha256']
+          x=json.loads(raw); rows=x['rows']; assert len(rows)==180 and len({str(r['t']) for r in rows})==180
+          counts={n:sum(r['n']==n for r in rows) for n in ['anex','funsun','biblio_globus','intourist']}; assert counts=={'anex':52,'funsun':26,'biblio_globus':76,'intourist':26}
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'cohort_raw_sha256':w['raw_json_sha256'],'cohort_rows':180,'physical_http_cap':180,'tourvisor_daily_limit':3000,'search_calls':0,'database_writes':0,'mapping_writes':0,'no_replay_after_first_provider_access':True}
+          rawr=json.dumps(r,sort_keys=True)+'\n'
+          with pathlib.Path('result/reservation.json').open('x') as f:f.write(rawr);f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security success before server access
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(120):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed':
+                if r['conclusion']!='success':raise SystemExit('security_not_green')
+                print('EXACT_SECURITY_GREEN',r['id']);break
+            time.sleep(5)
+          else:raise SystemExit('security_not_available_no_provider_access')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'common4-detail180-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute accounted detail-first cohort
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null;test -s "$known"
+          o=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=20 -o ServerAliveCountMax=3); remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"
+          ssh "${o[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${o[@]}" result/reservation.json "$remote:$op/reservation.json" >result/reserve.stdout 2>result/reserve.stderr
+          scp "${o[@]}" payload/collector.py payload/cohort.json "$remote:$op/payload/" >result/copy.stdout 2>result/copy.stderr
+          set +e
+          ssh "${o[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && python3 \"\$HOME/$op/payload/collector.py\" --execute \"\$HOME/www/anytoour.ru\" \"\$HOME/$op\"" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${o[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - --exclude=payload ." >result/server-operation.tgz 2>>result/remote.stderr; trc=$?
+          set -e; printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json; test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            for m in t.getmembers():
+              assert not m.issym() and not m.islnk() and m.size<=20_000_000
+              if m.isfile():
+                q=s/pathlib.Path(m.name).name if '/' not in m.name.strip('./') else s/pathlib.Path(m.name)
+                q.parent.mkdir(parents=True,exist_ok=True);q.write_bytes(t.extractfile(m).read())
+          # Locate by basename because tar contains ./ prefix.
+          files=list(s.rglob('result.json')); assert len(files)==1
+          r=json.loads(files[0].read_bytes()); rec=list(s.rglob('receipt.json')); assert len(rec)==1; q=json.loads(rec[0].read_bytes())
+          digest=hashlib.sha256(files[0].read_bytes()).hexdigest(); assert q['result_sha256']==digest
+          assert r['database_writes']==r['mapping_writes']==r['search_calls']==r['status_calls']==r['results_calls']==r['dates_calls']==r['continue_calls']==r['samo_calls']==0
+          assert r['provider_calls']==r['attempted'] and r['provider_calls']<=180
+          summary={k:r[k] for k in ['state','reason','cohort_rows','attempted','provider_calls','state_counts','link_state_counts','by_operator']};summary['result_sha256']=digest
+          (p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          if r['state'] not in ('completed_read_only','terminal_failed_no_replay'):raise SystemExit('unexpected_state')
+          PY
+          # A provider-accessed operation is terminal/no-replay regardless of remote rc; keep partial evidence.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'common4-detail180-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
