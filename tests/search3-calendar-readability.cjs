@@ -173,7 +173,8 @@ async function checkRerenderFocus(page, width, output) {
   assert.equal(await calendar.locator('summary').evaluate(node => node === document.activeElement), true, 'removed focused date falls back to the existing calendar heading');
   assert.equal(await calendar.locator('details').evaluate(node => node.open), true);
 
-  const outside = page.locator('#tourSearch [name="dateFrom"]');
+  const mobileDate=page.locator('#searchParameterDates');
+  const outside = await mobileDate.isVisible()?mobileDate:page.locator('#tourSearch [name="dateFrom"]');
   await outside.focus();
   await emit('search3:local-results-filtered', items);
   assert.equal(await outside.evaluate(node => node === document.activeElement), true, 'background calendar updates never steal outside focus');
@@ -181,7 +182,7 @@ async function checkRerenderFocus(page, width, output) {
     await last.focus();
     const expected = await page.evaluate(() => {
       const form = document.getElementById('tourSearch');
-      const target = [document.getElementById('resultsSearchEdit'), form.elements.dateFrom].find(node => node && node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
+      const target = [document.getElementById('resultsSearchEdit'), document.getElementById('searchParameterDates'), form.elements.dateFrom].find(node => node && node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
       return target.id || target.name;
     });
     await emit('search3:local-results-filtered', [{ tours: items[0].tours.slice(0, count) }]);
