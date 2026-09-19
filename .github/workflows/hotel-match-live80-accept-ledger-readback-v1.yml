@@ -1,0 +1,41 @@
+name: MATCH live80 accept ledger readback v1
+on:
+  push:
+    branches: [ops/match-live80-accept-ledger-readback-1971-20260919-v1]
+    paths: [.github/workflows/hotel-match-live80-accept-ledger-readback-v1.yml]
+permissions: {contents: read, issues: read}
+env: {OPERATION_ID: hotel-match-live80-accept-ledger-readback-1971-20260919-v1, CLAIM: '5743561175'}
+jobs:
+  readback:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - name: Validate owner claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail;mkdir out
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >out/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('out/claim.json'));assert c['user']['id']==226193297 and c['author_association']=='OWNER' and os.environ['OPERATION_ID'] in c['body']
+          PY
+      - name: Read sealed bootstrap log only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          remote="$USER@$HOST";old=".anytoour-match/operations/hotel-match-live80-direct-accept-1971-20260919-v1"
+          ssh "${opts[@]}" "$remote" 'set -eu;d="$HOME/'"$old"'";test -d "$d";printf "FILES\n";find "$d" -maxdepth 1 -type f -printf "%f %s\n" | sort;printf "ERROR\n";test -f "$d/bootstrap-errors.log" && tail -n 80 "$d/bootstrap-errors.log" || true' >out/raw.txt
+          sed -E 's#(/[^ ]*)/\.anytoour-match#<HOME>/.anytoour-match#g;s#(/[^ ]*)/www/anytoour\.ru#<ROOT>#g' out/raw.txt >out/readback.txt
+          rm -f out/raw.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-live80-ledger-readback-${{ github.run_id }}', path: out/readback.txt, retention-days: 30, if-no-files-found: error}
+      - name: Remove credential files
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
