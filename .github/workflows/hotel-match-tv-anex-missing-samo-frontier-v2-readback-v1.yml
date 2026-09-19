@@ -1,0 +1,139 @@
+name: MATCH missing-SAMO v2 readback
+on:
+  push:
+    branches: [ops/match-tv-anex-missing-samo-frontier-v2-readback-1971-20260919-v1]
+    paths:
+      - .github/workflows/hotel-match-tv-anex-missing-samo-frontier-v2-readback-v1.yml
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: hotel-match-tv-anex-missing-samo-frontier-v2-readback-1971-20260919-v1
+  cancel-in-progress: false
+env:
+  READBACK_OPERATION_ID: hotel-match-tv-anex-missing-samo-frontier-v2-readback-1971-20260919-v1
+  TARGET_OPERATION_ID: hotel-match-tv-anex-missing-samo-frontier-1971-20260919-v2
+  TARGET_SOURCE_SHA: 6a16a5ca437faf59c2115a11d85010b6f082a8ff
+  CLAIM_COMMENT_ID: '5740337528'
+jobs:
+  readback:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.sha }}'
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate claim and target Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('claim.json')); b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert os.environ['READBACK_OPERATION_ID'] in b and os.environ['TARGET_OPERATION_ID'] in b
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['TARGET_SOURCE_SHA']+'&per_page=100'
+          for _ in range(24):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['TARGET_SOURCE_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed':
+                assert r['conclusion']=='success'; print('TARGET_SECURITY_OK',r['id']); break
+            time.sleep(5)
+          else: raise SystemExit('target_security_not_available')
+          PY
+      - name: Read existing target operation only
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          found=0
+          for i in $(seq 1 60); do
+            if ssh "${opts[@]}" "$remote" "p=\"\$HOME/.anytoour-match/operations/$TARGET_OPERATION_ID\"; test -f \"\$p/reservation.json\" -a -f \"\$p/result.json\" -a -f \"\$p/receipt.json\""; then found=1; break; fi
+            sleep 5
+          done
+          test "$found" -eq 1
+          ssh "${opts[@]}" "$remote" "p=\"\$HOME/.anytoour-match/operations/$TARGET_OPERATION_ID\"; tar -C \"\$p\" -czf - reservation.json result.json receipt.json" > operation.tgz
+      - name: Verify and prepare sanitized summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir server
+          tar -C server -xzf operation.tgz
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('server')
+          res=json.loads((p/'reservation.json').read_bytes())
+          r=json.loads((p/'result.json').read_bytes())
+          q=json.loads((p/'receipt.json').read_bytes())
+          raw=(p/'result.json').read_bytes(); sha=hashlib.sha256(raw).hexdigest()
+          assert res['operation_id']==os.environ['TARGET_OPERATION_ID']
+          assert res['source_sha']==os.environ['TARGET_SOURCE_SHA']
+          assert q['result_sha256']==sha and q['readback_verified'] is True
+          for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_calls','andromeda_calls','direct_anex_calls']:
+            assert r.get(k)==0 and q.get(k)==0
+          out={'operation_id':os.environ['TARGET_OPERATION_ID'],'source_sha':os.environ['TARGET_SOURCE_SHA'],'state':r.get('state'),'reason':r.get('reason'),'result_sha256':sha}
+          if r.get('state')=='completed_read_only':
+            out.update({
+              'read_at_utc':r.get('read_at_utc'),
+              'coverage_global':r.get('coverage_global'),
+              'physical_active_nonexcluded_frontier':r.get('physical_active_nonexcluded_frontier'),
+              'excluded_from_executable_frontier':r.get('excluded_from_executable_frontier'),
+              'route_counts':r.get('route_counts'),
+              'by_country':r.get('by_country'),
+              'user_seen_frontier_count':r.get('user_seen_frontier_count'),
+              'query_ready_future_anex_context_count':r.get('query_ready_future_anex_context_count'),
+              'saved_direct_bridge_review_count':r.get('saved_direct_bridge_review_count'),
+              'context_group_count':r.get('context_group_count'),
+              'top_future_anex_context_groups':(r.get('top_future_anex_context_groups') or [])[:10],
+            })
+          pathlib.Path('summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+      - name: Post verified reconciliation to MATCH queue
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > comment.md
+          import json
+          s=json.load(open('summary.json'))
+          if s['state']=='completed_read_only':
+            c=s['coverage_global']; rc=s.get('route_counts') or {}
+            print('MATCH TV+ANEX→missing-SAMO frontier v2 COMPLETE / READBACK VERIFIED / NO-REPLAY.')
+            print()
+            print(f"Exact target source {s['source_sha']}; result {s['result_sha256']}. Supplier/Tourvisor/SAMO/Andromeda/direct-ANEX calls0; DB/mapping writes0.")
+            print()
+            print(f"CURRENT coverage: TV+ANEX {c['tv_anex_unique_local']}, TV+SAMO {c['tv_samo_unique_local']}, all-three {c['tv_anex_samo_triple']}, TV+ANEX missing SAMO {c['tv_anex_missing_samo']}, TV+SAMO missing ANEX {c['tv_samo_missing_anex']}.")
+            print(f"Executable active/nonexcluded missing-SAMO frontier: {s['physical_active_nonexcluded_frontier']}; user-seen: {s['user_seen_frontier_count']}; future exact ANEX-context ready: {s['query_ready_future_anex_context_count']}; saved direct bridge review: {s['saved_direct_bridge_review_count']}; exact future context groups: {s['context_group_count']}.")
+            print('Route counts: '+json.dumps(rc,ensure_ascii=False,sort_keys=True)+'.')
+            print('Country split: '+json.dumps(s.get('by_country') or {},ensure_ascii=False,sort_keys=True)+'.')
+            print()
+            print('This is CURRENT routing evidence only. Next provider operation must consume saved direct bridges first, then bounded Andromeda operator=ANEX on the highest-yield retained contexts; no Tourvisor reacquisition and no mapping write from this census.')
+          else:
+            print('MATCH TV+ANEX→missing-SAMO frontier v2 reconciliation BLOCKED / NO-REPLAY.')
+            print()
+            print(f"Exact target source {s['source_sha']}; state {s['state']}; reason {s.get('reason')}; result {s['result_sha256']}. Zero supplier/DB/mapping activity verified. Do not replay; diagnose from this receipt before any successor.")
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/issues/1971/comments -f body="$(cat comment.md)"
