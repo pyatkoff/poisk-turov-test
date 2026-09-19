@@ -1,0 +1,121 @@
+name: INT September original transport v1
+on:
+  push:
+    branches: ['ops/int-september-original-transport-20260919-v1']
+    paths: ['.github/workflows/int-september-original-transport-v1.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1 &&
+      github.ref == 'refs/heads/ops/int-september-original-transport-20260919-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SOURCE_SHA: 66f28204eecfe08029e3debb88e424e5cd7c5879
+      SCANNER_SHA: 3b2a5b12107b8aabbba2da380a16d70ff9e65ab1
+      OPERATION_ID: int-september-original-transport-1717-20260919-v1
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 66f28204eecfe08029e3debb88e424e5cd7c5879
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          ref: 3b2a5b12107b8aabbba2da380a16d70ff9e65ab1
+          path: scanner
+          persist-credentials: false
+      - name: Verify exact source, parser and action limits
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git -C scanner rev-parse HEAD)" = "$SCANNER_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35437820967" > "$RUNNER_TEMP/check.json"
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/check.json'))
+          assert r['head_sha']==os.environ['SOURCE_SHA'] and r['name']=='Security guard' and r['conclusion']=='success'
+          PY
+          echo 'b0d1fdf0080d91fd395876749470ebad0eafe9ae69964e07ecdc77096a12c8a7  source/scripts/ops/andromeda_september_original_transport_v1.php' | sha256sum -c -
+          echo '17247ad7817b81a40d584b1cadfac8fd03a636012c8e70ec347ac1e3fed9d0f8  scanner/scripts/ops/andromeda_original_markup_discovery_v3.php' | sha256sum -c -
+          php -l source/scripts/ops/andromeda_september_original_transport_v1.php
+          php source/scripts/ops/andromeda_september_original_transport_v1.php --self-test
+          php source/tests/andromeda-original-transport-facts-test.php
+          php scanner/tests/andromeda-original-markup-discovery-v3-test.php
+          ! grep -E -- '(getFlights|changeService|->calc|->book)[[:space:]]*\(' source/scripts/ops/andromeda_september_original_transport_v1.php
+          stage="$RUNNER_TEMP/stage"
+          mkdir -p "$stage/app" "$stage/v2/data" "$stage/scripts/ops" "$stage/scripts/diagnostics"
+          cp -a source/app/integrations "$stage/app/"
+          cp source/v2/api-anex-search3-preview.php source/v2/api-andromeda-search3-preview.php "$stage/v2/"
+          cp source/v2/data/hotel-details-v1.php "$stage/v2/data/"
+          cp source/scripts/ops/andromeda_september_original_transport_v1.php "$stage/scripts/ops/"
+          cp scanner/scripts/ops/andromeda_original_markup_discovery_v3.php "$stage/scripts/ops/"
+          cp source/scripts/diagnostics/andromeda_original_transport_facts.php "$stage/scripts/diagnostics/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/runtime.tar.gz" .
+      - name: Capture current original responses only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=20)
+          archive="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.tar.gz"; archive_sha=$(sha256sum "$RUNNER_TEMP/runtime.tar.gz" | awk '{print $1}')
+          scp "${opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$REMOTE_USER@$HOST:$archive"
+          set +e
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$OPERATION_ID" "$archive" "$archive_sha" "$SOURCE_SHA" > "$RUNNER_TEMP/result/receipt.json" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          operation="$1"; archive="$2"; archive_sha="$3"; source="$4"
+          test "$(sha256sum "$archive" | awk '{print $1}')" = "$archive_sha"
+          site=$(realpath "$HOME/www/anytoour.ru")
+          ledger="$HOME/.anytour-ops/$operation"; test ! -e "$ledger"
+          test -s "$HOME/.anytoour-andromeda/search3-preview.php"; test -s "$site/config.php"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d /tmp/anytour-september-original.XXXXXX)"
+          trap 'rm -rf "$work"; rm -f "$archive"' EXIT
+          tar -C "$work" -xzf "$archive"
+          set +e
+          php -d display_errors=0 -d zend.exception_ignore_args=1 "$work/scripts/ops/andromeda_september_original_transport_v1.php" "$site" "$HOME/.anytoour-andromeda/search3-preview.php" "$ledger" > "$ledger/stdout.json" 2> "$ledger/error.log"
+          rc=$?; set -e
+          RC="$rc" php -r '$p=$argv[1];$v=is_file($p)&&filesize($p)>0?json_decode(file_get_contents($p),true,64):null;$r=["operation"=>$argv[2],"source"=>$argv[3],"status"=>(int)getenv("RC")===0?"completed_terminal":"failed_terminal","result_sha256"=>is_file($p)?hash_file("sha256",$p):null,"result"=>$v,"replay_allowed"=>false];file_put_contents($argv[4],json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL);' "$ledger/result.json" "$operation" "$source" "$ledger/receipt.json"
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed_terminal || echo failed_terminal)" > "$ledger/state"
+          cat "$ledger/receipt.json"; exit "$rc"
+          REMOTE
+          rc=$?; set -e
+          test -s "$RUNNER_TEMP/result/receipt.json"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/readback.json"
+          cmp "$RUNNER_TEMP/result/receipt.json" "$RUNNER_TEMP/result/readback.json"
+          python3 - <<'PY'
+          import json,os,collections
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/result/receipt.json'))
+          assert r['source']==os.environ['SOURCE_SHA']
+          d=r.get('result')
+          if not isinstance(d,dict):raise SystemExit('SEPTEMBER_NO_RESULT')
+          for k in ['db_writes','autosave_calls','get_flights_calls','changeservice_calls','calc_calls','booking_calls']:assert d[k]==0
+          assert set(d['counts'])=={'login','price','broninit'} and sum(d['counts'].values())<=33
+          summary={k:d.get(k) for k in ['status','failure_class','scope','counts','price_rows','raw_operator_rows','raw_tourKeys','price_pagination_complete','selected_count']}
+          print('SEPTEMBER_SUMMARY '+json.dumps(summary,ensure_ascii=False))
+          for s in d['specimens']:
+              f=s.get('facts',{});types=collections.Counter(t['type'] for t in f.get('transports',[]));details=collections.Counter(t['details_state'] for t in f.get('transports',[]))
+              print('SEPTEMBER_ORIGINAL '+json.dumps({'context':s['context'],'base_price':s['base_price'],'status':s['status'],'failure_class':s.get('failure_class'),'supplier_error':s.get('supplier_error'),'parser_error':s.get('parser_error'),'transport_count':f.get('transport_count'),'transport_types':dict(types),'details_states':dict(details),'shape_complete':f.get('shape_complete'),'original_scan':s.get('scan'),'price_scan':s.get('price_scan')},ensure_ascii=False))
+          PY
+          test "$rc" = 0
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-september-original-transport-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
