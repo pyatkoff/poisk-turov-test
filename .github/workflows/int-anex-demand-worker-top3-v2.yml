@@ -1,0 +1,97 @@
+name: INT ANEX demand worker top3 v2
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths: ['.github/workflows/int-anex-demand-worker-top3-v2.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  fill:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.head.ref == 'ops/int-anex-demand-worker-top3-20260919-v2' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SOURCE_SHA: 956bebf5892c49c934788844eb5e0ca02535366f
+      SOURCE_SECURITY_RUN: '35461650991'
+      OPERATION_ID: int-anex-demand-worker-top3-20260919-v2
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 956bebf5892c49c934788844eb5e0ca02535366f
+          persist-credentials: false
+      - name: Verify exact checked source and assemble private runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_SECURITY_RUN" | jq -e --arg s "$SOURCE_SHA" '.head_sha==$s and .conclusion=="success"' >/dev/null
+          php -l scripts/ops/anex_local_offer_demand_queue.php
+          php -l scripts/ops/anex_local_offer_demand_fill.php
+          php -l scripts/ops/anex_local_offer_collect.php
+          php tests/anex-local-offer-demand-queue-test.php
+          php tests/anex-local-offer-demand-fill-test.php
+          mkdir -p "$RUNNER_TEMP/payload"
+          tar -czf "$RUNNER_TEMP/payload/source.tgz" app/integrations v2/api-anex-search3-preview.php v2/data/hotel-details-v1.php scripts/ops/anex_local_offer_collect.php scripts/ops/anex_local_offer_demand_queue.php scripts/ops/anex_local_offer_demand_fill.php
+      - name: Fill next three uncovered real-demand scopes
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_B2B_TOKEN: ${{ secrets.ANEX_B2B_TOKEN }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result" "$RUNNER_TEMP/secrets"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=5)
+          printf '%s' "$ANEX_API_TOKEN" > "$RUNNER_TEMP/secrets/api"; printf '%s' "$ANEX_B2B_TOKEN" > "$RUNNER_TEMP/secrets/b2b"; chmod 600 "$RUNNER_TEMP/secrets/"*
+          test -s "$RUNNER_TEMP/secrets/api" && test -s "$RUNNER_TEMP/secrets/b2b"
+          archive="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.tgz"; api_file="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.api"; b2b_file="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.b2b"
+          scp "${opts[@]}" "$RUNNER_TEMP/payload/source.tgz" "$REMOTE_USER@$HOST:$archive"
+          scp "${opts[@]}" "$RUNNER_TEMP/secrets/api" "$REMOTE_USER@$HOST:$api_file"
+          scp "${opts[@]}" "$RUNNER_TEMP/secrets/b2b" "$REMOTE_USER@$HOST:$b2b_file"
+          set +e
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$OPERATION_ID" "$archive" "$SOURCE_SHA" "$api_file" "$b2b_file" > "$RUNNER_TEMP/result/receipt.json" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          op="$1"; archive="$2"; source="$3"; api_file="$4"; b2b_file="$5"; ledger="$HOME/.anytour-ops/$op"; work="/tmp/$op.$$"
+          test ! -e "$ledger"; mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; mkdir -m 700 "$work"
+          trap 'rm -rf "$work" "$archive" "$api_file" "$b2b_file"' EXIT
+          printf '{"operation":"%s","source":"%s","state":"reserved","replay_allowed":false}\n' "$op" "$source" > "$ledger/reservation.json"
+          tar -xzf "$archive" -C "$work"
+          site=$(realpath "$HOME/www/anytoour.ru"); test "$(basename "$site")" = anytoour.ru
+          ingest=$(realpath "$site/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php"); test -f "$ingest"
+          export ANYTOUR_PROJECT_ROOT="$site" ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE="$ingest"
+          export ANEX_API_TOKEN="$(cat "$api_file")" ANEX_B2B_TOKEN="$(cat "$b2b_file")"; test -n "$ANEX_API_TOKEN" -a -n "$ANEX_B2B_TOKEN"
+          dbstate(){ php -r 'require $argv[1]."/config.php";require (is_file($argv[1]."/data/db-v1.php")?$argv[1]."/data/db-v1.php":$argv[1]."/v2/data/db-v1.php");$d=v2_data_db();$q=$d->query("SELECT COUNT(*) n,SUM(is_active=1 AND expires_at>UTC_TIMESTAMP()) cur,MAX(last_seen_at) seen FROM anytour_offers WHERE provider=\"anex\"");echo json_encode($q->fetch(PDO::FETCH_ASSOC));' "$site"; }
+          before=$(dbstate)
+          set +e
+          php -d display_errors=0 "$work/scripts/ops/anex_local_offer_demand_fill.php" --limit=3 --lookback-hours=168 --horizon-days=21 --generation-base=262000000 > "$ledger/worker.json" 2> "$ledger/error.log"
+          rc=$?
+          set -e
+          after=$(dbstate)
+          RC="$rc" SOURCE="$source" BEFORE="$before" AFTER="$after" php -r '
+            $w=is_file($argv[1])?json_decode(file_get_contents($argv[1]),true,64):null;
+            if(!is_array($w))$w=["source"=>"anex-local-offer-demand-fill-v1","status"=>"failed_before_receipt","error"=>["message"=>"worker_no_json"]];
+            $r=["operation"=>"int-anex-demand-worker-top3-20260919-v2","source"=>getenv("SOURCE"),"exitCode"=>(int)getenv("RC"),"before"=>json_decode(getenv("BEFORE"),true),"after"=>json_decode(getenv("AFTER"),true),"worker"=>$w,"browserSupplierCalls"=>0,"bookingCalls"=>0,"leadCalls"=>0,"replayAllowed"=>false];
+            file_put_contents($argv[2],json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n");echo json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          ' "$ledger/worker.json" "$ledger/receipt.json"
+          exit "$rc"
+          REMOTE
+          rc=$?
+          set -e
+          test -s "$RUNNER_TEMP/result/receipt.json"
+          jq -e '.browserSupplierCalls==0 and .bookingCalls==0 and .leadCalls==0 and .replayAllowed==false' "$RUNNER_TEMP/result/receipt.json" >/dev/null
+          jq -c '{operation,exitCode,before,after,worker:{status:.worker.status,requestedScopes:.worker.requestedScopes,completedScopes:.worker.completedScopes,readyOffersAcrossScopes:.worker.readyOffersAcrossScopes,results:.worker.results,error:.worker.error},replayAllowed}' "$RUNNER_TEMP/result/receipt.json"
+          test "$rc" = 0
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-anex-demand-worker-top3-v2-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
