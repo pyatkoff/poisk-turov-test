@@ -1,4 +1,5 @@
 /* Native photo dialog; no changes to result-card or legacy-route presentation. */
+.search3-hotel-photo-link{-webkit-tap-highlight-color:transparent}
 html.hotel-photo-viewer-open{overflow:hidden}
 .hotel-photo-viewer{box-sizing:border-box;width:min(1100px,calc(100% - 32px));height:min(800px,calc(100vh - 32px));height:min(800px,calc(100dvh - 32px));max-width:none;max-height:none;margin:auto;padding:0;border:0;border-radius:24px;background:#fff;color:#202a40;font:inherit;box-shadow:0 24px 80px #0c153a40;overflow:hidden}
 .hotel-photo-viewer[open]{display:grid;grid-template-rows:auto minmax(0,1fr) auto}
