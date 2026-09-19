@@ -94,15 +94,31 @@ async function checkDateIntegrity(page, width, output) {
       for (const date of ['2096-02-30', '31.04.2096', '2096-13-01']) { button.dataset.calendarDate = date; button.click(); }
       const invalid = { unchanged: JSON.stringify([...new FormData(form)]) === JSON.stringify(initial), events: events.slice(), submits };
       document.querySelector('[data-calendar-date="2096-02-29"]').click();
+      const selected = { unchanged: JSON.stringify([...new FormData(form)]) === JSON.stringify(initial), events: events.slice(), submits };
+      document.querySelector('[data-calendar-apply]').click();
       const after = [...new FormData(form)];
-      return { invalid, valid: { dates: [from.value, to.value], events: events.slice(), submits, othersUnchanged: JSON.stringify(after.filter(([key]) => !['dateFrom', 'dateTo'].includes(key))) === JSON.stringify(initial.filter(([key]) => !['dateFrom', 'dateTo'].includes(key))) } };
+      const valid = { dates: [from.value, to.value], events: events.slice(), submits, othersUnchanged: JSON.stringify(after.filter(([key]) => !['dateFrom', 'dateTo'].includes(key))) === JSON.stringify(initial.filter(([key]) => !['dateFrom', 'dateTo'].includes(key))) };
+      const candidate = document.body.classList.contains('search3-candidate');
+      let legacy;
+      try {
+        document.body.classList.remove('search3-candidate');
+        window.V2CurrentPriceCalendar.render([{ tours: [{ date: '2096-03-01', price: 120000 }, { date: '2096-03-02', price: 125000 }] }]);
+        const previousSubmits = submits;
+        document.querySelector('[data-calendar-date="2096-03-02"]').click();
+        legacy = { dates: [from.value, to.value], submits: submits - previousSubmits, confirmation: !!document.querySelector('[data-calendar-apply]') };
+      } finally {
+        if (candidate) document.body.classList.add('search3-candidate');
+      }
+      return { invalid, selected, valid, legacy };
     } finally {
       lifecycle.submit = originalSubmit; form.removeEventListener('input', input); button.remove();
       [from.value, to.value] = before;
     }
   });
   assert.deepEqual(action.invalid, { unchanged: true, events: [], submits: 0 }, 'invalid clicked dates cannot mutate the form or submit');
+  assert.deepEqual(action.selected, { unchanged: true, events: [], submits: 0 }, 'selecting a valid date leaves search conditions untouched until confirmation');
   assert.deepEqual(action.valid, { dates: ['2096-02-29', '2096-02-29'], events: ['dateFrom', 'dateTo'], submits: 1, othersUnchanged: true }, 'valid leap day keeps the original single-submit and non-date field contract');
+  assert.deepEqual(action.legacy, { dates: ['2096-03-02', '2096-03-02'], submits: 1, confirmation: false }, 'legacy calendar keeps its immediate single-submit behavior');
   return { cases: cases.length, ...integrity, action };
 }
 async function checkRerenderFocus(page, width, output) {
@@ -177,6 +193,95 @@ async function checkRerenderFocus(page, width, output) {
   assert.deepEqual(await formData(), initial, 'calendar focus/scroll recovery never rewrites search conditions');
   await emit('v2:search-reset', []);
   return { sameDate: true, updatedPrice: 160500, closedSummary: true, removedDateFallback: true, hiddenCounts: [0, 1], outsideFocusPreserved: true, formDataUnchanged: true, before, after };
+}
+async function checkDateSelection(page, width, output) {
+  const calendar = page.locator('#currentPriceCalendar');
+  const items = [{ tours: [
+    { date: '2099-09-01', price: 150000 },
+    { date: '2099-09-02', price: 140000 },
+    { date: '2099-09-03', price: 145000 },
+  ] }];
+  const emit = (name, values) => page.evaluate(({ name, values }) => {
+    window.dispatchEvent(new CustomEvent(name, { detail: { items: values } }));
+  }, { name, values });
+  const snapshot = () => page.evaluate(() => ({
+    form: [...new FormData(document.getElementById('tourSearch'))],
+    url: location.href, results: document.getElementById('results').innerHTML,
+    submits: window.__dateSelectionSubmits,
+  }));
+  await page.evaluate(() => {
+    window.__dateSelectionSubmits = 0;
+    window.__dateSelectionOriginal = window.V2SearchLifecycle.submit;
+    window.V2SearchLifecycle.submit = () => window.__dateSelectionSubmits++;
+  });
+  try {
+    await emit('v2:search-started', []);
+    await emit('v2:search-complete', items);
+    const before = await snapshot();
+    const second = calendar.locator('[data-calendar-date="2099-09-02"]');
+    const third = calendar.locator('[data-calendar-date="2099-09-03"]');
+    const apply = calendar.locator('[data-calendar-apply]');
+    assert.equal(await apply.isVisible(), false, 'no apply action before a date is chosen');
+    await second.click();
+    assert.equal(await second.getAttribute('aria-pressed'), 'true');
+    assert.equal(await apply.isVisible(), true);
+    assert.ok((await apply.innerText()).includes('2 сент'), 'confirm action names the selected departure date');
+    await third.focus();
+    await third.press('Space');
+    assert.equal(await second.getAttribute('aria-pressed'), 'false');
+    assert.equal(await third.getAttribute('aria-pressed'), 'true');
+    assert.equal(await calendar.locator('[aria-pressed="true"]').count(), 1);
+    assert.deepEqual(await snapshot(), before, 'comparing dates never changes FormData, URL, results or submits');
+    const colors = await third.evaluate(node => ({ selected: getComputedStyle(node).backgroundColor, best: getComputedStyle(node.parentElement.querySelector('.is-best')).backgroundColor }));
+    assert.notEqual(colors.selected, colors.best, 'selected date is visually distinct from cheapest date');
+    await apply.focus();
+    await emit('v2:search-continued', [{ tours: items[0].tours.map(tour => ({ ...tour, price: tour.price + 1000 })) }]);
+    assert.equal(await third.getAttribute('aria-pressed'), 'true', 'available selection survives progressive refresh');
+    assert.equal(await apply.evaluate(node => node === document.activeElement), true, 'refresh retains focus on the confirm button');
+    assert.ok((await calendar.locator('[role="status"]').innerText()).includes(new Intl.NumberFormat('ru-RU').format(146000)), 'selected price refreshes with actual results');
+    assert.deepEqual(await snapshot(), before);
+    if ([375, 768, 1440].includes(width)) await calendar.screenshot({ path: path.join(output, `calendar-selected-${width}.png`) });
+
+    await emit('search3:local-results-filtered', [{ tours: items[0].tours.slice(0, 2) }]);
+    assert.equal(await apply.isVisible(), false, 'removed date cannot be confirmed');
+    assert.equal(await calendar.locator('summary').evaluate(node => node === document.activeElement), true, 'removing a focused apply action restores the calendar heading');
+    await emit('search3:local-results-filtered', items);
+    assert.equal(await apply.isVisible(), false, 'a removed choice does not silently revive');
+    await second.click();
+    await calendar.locator('summary').click();
+    await calendar.locator('summary').press('Enter');
+    assert.equal(await second.getAttribute('aria-pressed'), 'true', 'disclosure preserves an explicit choice');
+    await apply.press('Enter');
+    const after = await snapshot();
+    assert.equal(after.submits, 1, 'one confirmation makes exactly one canonical submit');
+    assert.equal(new Map(after.form).get('dateFrom'), '2099-09-02');
+    assert.equal(new Map(after.form).get('dateTo'), '2099-09-02');
+    assert.deepEqual(after.form.filter(([key]) => !['dateFrom', 'dateTo'].includes(key)), before.form.filter(([key]) => !['dateFrom', 'dateTo'].includes(key)), 'party, nights, hotel and every non-date condition survive');
+    assert.equal(after.url, before.url, 'calendar does not own URL mutation');
+    assert.equal(after.results, before.results, 'calendar does not own result clearing');
+    await page.evaluate(() => {
+      const button = document.querySelector('[data-calendar-apply]');
+      if (button) button.click();
+    });
+    assert.equal((await snapshot()).submits, 1, 'rapid repeat confirmation cannot submit twice');
+
+    await emit('v2:search-started', []);
+    await emit('v2:search-complete', items);
+    assert.equal(await apply.isVisible(), false, 'a new search invalidates the previous date choice');
+    await second.click();
+    await emit('search3:local-results-filtered', [{ tours: items[0].tours.slice(0, 1) }]);
+    await emit('search3:local-results-filtered', items);
+    assert.equal(await apply.isVisible(), false, 'one-date hiding clears the stale choice');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+    return { selectWithoutSearch: true, keyboard: true, updatedPrice: 146000, removedDateCleared: true, nonDateConditionsPreserved: true, singleSubmit: true, newSearchCleared: true };
+  } finally {
+    await page.evaluate(() => {
+      window.V2SearchLifecycle.submit = window.__dateSelectionOriginal;
+      delete window.__dateSelectionOriginal;
+      delete window.__dateSelectionSubmits;
+    });
+    await emit('v2:search-reset', []);
+  }
 }
 module.exports = async function calendarReadability(page, width, output) {
   const calendar = page.locator('#currentPriceCalendar');
@@ -261,6 +366,7 @@ module.exports = async function calendarReadability(page, width, output) {
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
   const dateIntegrity = await checkDateIntegrity(page, width, output);
-  fs.writeFileSync(path.join(output, `calendar-readable-${width}.json`), JSON.stringify({ width, records, focus, dateIntegrity, disclosure, rerenderFocus, fixture: true, supplier_requests: 0, leads: 0 }, null, 2) + '\n');
+  const selection = await checkDateSelection(page, width, output);
+  fs.writeFileSync(path.join(output, `calendar-readable-${width}.json`), JSON.stringify({ width, records, focus, dateIntegrity, disclosure, rerenderFocus, selection, fixture: true, supplier_requests: 0, leads: 0 }, null, 2) + '\n');
   await page.evaluate(() => window.V2CurrentPriceCalendar.clear());
 };

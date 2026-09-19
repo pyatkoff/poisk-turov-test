@@ -538,12 +538,14 @@ async function run(browser, width, servicesOnly = false) {
       window.V2SearchLifecycle.submit = () => window.__calendarSubmitCount++;
     });
     await calendar.locator('[data-calendar-date="2026-09-13"]').click();
+    assert.equal(await page.evaluate(() => window.__calendarSubmitCount), 0, 'choosing a calendar date waits for confirmation');
+    await calendar.locator('[data-calendar-apply]').click();
     const calendarAction = await page.evaluate(() => {
       const form = document.getElementById('tourSearch');
       window.V2SearchLifecycle.submit = window.__calendarOriginalSubmit;
       return [form.elements.dateFrom.value, form.elements.dateTo.value, window.__calendarSubmitCount];
     });
-    assert.deepEqual(calendarAction, ['2026-09-13', '2026-09-13', 1], 'date action retains one canonical submit with exact dates');
+    assert.deepEqual(calendarAction, ['2026-09-13', '2026-09-13', 1], 'confirming the date retains one canonical submit with exact dates');
     await page.evaluate(() => window.V2CurrentPriceCalendar.render([{ tours: [{ date: '2026-09-13', price: 118900 }] }]));
     assert.equal(await calendar.isVisible(), false, 'one date does not invent a price comparison');
     await require('./search3-calendar-readability.cjs')(page, width, output);
