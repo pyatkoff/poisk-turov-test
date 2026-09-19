@@ -175,6 +175,13 @@ const viewports = [
       }, 'Pointer return coalesces focus and click');
       await checkReopen(() => viewport.width < 768 ? input.tap() : input.click(), 'Click on an already focused dismissed query');
       await checkReopen(() => input.press('Enter'), 'Enter after Escape reopens instead of submitting');
+      await input.press('ArrowUp');
+      await waitForOptions();
+      await input.press('ArrowUp');
+      assert.equal(await input.getAttribute('aria-activedescendant'), 'hotelAutocompleteOption1', 'first ArrowUp from no active option chooses the last suggestion');
+      assert.equal(await select.inputValue(), '', 'arrow navigation alone cannot select a canonical hotel');
+      assert.deepEqual(searchStarts, []);
+      await input.press('Escape');
 
       const beforeShortQuery = hotelQueries.length;
       await input.fill('R');
