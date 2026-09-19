@@ -1,0 +1,67 @@
+name: INT local DB natural search v1
+on:
+  push:
+    branches: ['ops/int-anex-hotel15851-current-20260919-v1']
+    paths: ['.github/workflows/int-local-db-natural-search-v1.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  acceptance:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      SOURCE_SHA: 227bde6d8acbaa8d288bea0912405920f55fc987
+      SECURITY_RUN: '35451368803'
+      OPERATION_ID: int-local-db-natural-search-20260919-v1
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 227bde6d8acbaa8d288bea0912405920f55fc987
+          persist-credentials: false
+      - name: Verify source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SECURITY_RUN" | jq -e --arg s "$SOURCE_SHA" '.head_sha==$s and .conclusion=="success"' >/dev/null
+          php -l scripts/diagnostics/local_db_natural_search_v1.php
+          cp scripts/diagnostics/local_db_natural_search_v1.php "$RUNNER_TEMP/probe.php"
+      - name: Run one natural search and read DB
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30)
+          remote="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.php"; scp "${opts[@]}" "$RUNNER_TEMP/probe.php" "$REMOTE_USER@$HOST:$remote"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$OPERATION_ID" "$remote" > "$RUNNER_TEMP/result/receipt.json" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          operation="$1"; probe="$2"; ledger="$HOME/.anytour-ops/$operation"; test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; trap 'rm -f "$probe"' EXIT
+          site=$(realpath "$HOME/www/anytoour.ru")
+          php -d display_errors=0 -d zend.exception_ignore_args=1 "$probe" "$site" "$ledger" > "$ledger/stdout.json" 2> "$ledger/error.log"
+          php -r '$d=json_decode(file_get_contents($argv[1]),true,64,JSON_THROW_ON_ERROR);$safe=["operation"=>$d["operation"],"api_path"=>$d["api_path"],"before"=>$d["before"],"start"=>$d["start"],"polls"=>$d["polls"],"results"=>$d["results"],"after"=>$d["after"],"tourvisor_calls"=>$d["tourvisor_calls"],"diagnostic_db_writes"=>$d["diagnostic_db_writes"],"lead_calls"=>$d["lead_calls"],"tour_detail_calls"=>$d["tour_detail_calls"],"flight_calls"=>$d["flight_calls"],"booking_calls"=>$d["booking_calls"],"private_result_sha256"=>hash_file("sha256",$argv[1]),"replay_allowed"=>false];file_put_contents($argv[2],json_encode($safe,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n");' "$ledger/result.json" "$ledger/receipt.json"
+          cat "$ledger/receipt.json"
+          REMOTE
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['RUNNER_TEMP']+'/result/receipt.json'))
+          assert d['tourvisor_calls']<=14 and d['diagnostic_db_writes']==d['lead_calls']==d['tour_detail_calls']==d['flight_calls']==d['booking_calls']==0
+          print('LOCAL_DB_NATURAL '+json.dumps(d,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-local-db-natural-search-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
