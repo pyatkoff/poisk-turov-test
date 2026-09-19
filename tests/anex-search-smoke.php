@@ -92,6 +92,29 @@ search_check(count($batchCalls) === 1, '31-hotel batch reached supplier');
 $batchSearch->search(array_replace($criteria, ['hotel_ids' => ['469', 469, '470']]));
 search_check($batchCalls[1]['HOTELS'] === '469,470', 'duplicate hotel ids were not normalized');
 
+$pageCalls=[];
+$pageClient=new AnyTourAnexClient('page-secret',static function(string $url)use(&$pageCalls,$baseRow):array{
+    parse_str((string)parse_url($url,PHP_URL_QUERY),$params);$page=(int)($params['PRICEPAGE']??0);$pageCalls[]=$page;
+    $count=$page===1?300:($page===2?2:0);$rows=[];
+    for($i=0;$i<$count;++$i)$rows[]=array_replace($baseRow,['id'=>'page-'.$page.'-'.$i]);
+    return ['status'=>200,'body'=>json_encode(['SearchTour_PRICES'=>['prices'=>$rows]])];
+});
+$pageSearch=new AnyTourAnexSearch($pageClient,static fn(string $provider,string $id):?int=>$id==='469'?245:null,['page-secret']);
+$paged=$pageSearch->search($criteria);
+search_check($pageCalls===[1,2],'pagination did not stop on short second page');
+search_check(count($paged['offers'])===302&&$paged['pages_read']===2&&$paged['first_page_only']===false,'pagination did not retain all page offers');
+search_check(count($pageSearch->snapshot()['offers'])===302,'pagination session lost offers after page1');
+
+$repeatCalls=[];
+$repeatClient=new AnyTourAnexClient('repeat-secret',static function(string $url)use(&$repeatCalls,$baseRow):array{
+    parse_str((string)parse_url($url,PHP_URL_QUERY),$params);$page=(int)($params['PRICEPAGE']??0);$repeatCalls[]=$page;$rows=[];
+    for($i=0;$i<300;++$i)$rows[]=array_replace($baseRow,['id'=>'repeat-'.$i]);
+    return ['status'=>200,'body'=>json_encode(['SearchTour_PRICES'=>['prices'=>$rows]])];
+});
+$repeatSearch=new AnyTourAnexSearch($repeatClient,null,['repeat-secret']);
+$repeated=$repeatSearch->search($criteria);
+search_check($repeatCalls===[1,2]&&count($repeated['offers'])===300&&$repeated['pages_read']===1,'repeated page was not bounded');
+
 $clock = 1000;
 $gatewayCalls = [];
 $gatewayFactory = static function () use (&$gatewayCalls, $baseRow): AnyTourAnexClient {
@@ -178,7 +201,7 @@ search_check($rateCalls === 10, 'burst limit reached supplier');
 $rateGateway->handle(['action' => 'search', 'criteria' => $criteria], $rateSession);
 search_check($rateCalls === 11, 'burst window did not reopen');
 
-echo "ANEX_SEARCH_SMOKE_OK search/expand/flights/stale-state/source-identity/30-hotels/rate-limit\n";
+echo "ANEX_SEARCH_SMOKE_OK search/expand/flights/pagination/repeat-stop/stale-state/source-identity/30-hotels/rate-limit\n";
 
 // Existing gateway -> saved response -> canonical offer, across request instances.
 // Synthetic supplier transport only. The reader factory throws on construction.
