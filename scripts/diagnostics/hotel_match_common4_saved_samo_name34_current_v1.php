@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 const S34_OP='hotel-match-common4-saved-samo-name34-current-1971-20260919-v1';
-const S34_INPUT_SHA='8e1c8525c2417291684f9f3cacdf81337b47672afdb1b967ab998304382054e5';
+const S34_INPUT_SHA='75331e97a1d677e3b57e15d475d98a77aafeab16889377805dcee6daed00e372';
 const S34_RESULT_SHA='fd0fcf1a6d6c8db5a1b0d3cb95b91c53c62c683e845c3eca6470ff70c9d9c0a4';
 const S34_NS=['funsun'=>'operator_315','intourist'=>'operator_342'];
 function s34_req(bool $x,string $m):void{if(!$x)throw new RuntimeException($m);}
