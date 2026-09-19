@@ -69,6 +69,27 @@ function normalizeHotelTitleLink(card){
  Object.keys(attributes).forEach(key=>{if(link.getAttribute(key)!==attributes[key]){link.setAttribute(key,attributes[key]);changed=true;}});
  return changed;
 }
+// Link only the already displayed image; do not invent a larger supplier URL.
+function normalizeHotelPhotoLink(card){
+ if(!active()||!card||typeof card.querySelector!=='function'||!/^[1-9][0-9]*$/.test(String(card.dataset&&card.dataset.anytourHotelId||'')))return false;
+ const gallery=card.querySelector('.hotel-gallery'),main=gallery&&gallery.querySelector('img.hotel-gallery-main');
+ if(!gallery)return false;
+ let link=gallery.querySelector('a.search3-hotel-photo-link');
+ const href=String(main&&main.getAttribute('src')||'');
+ let safe=false;
+ try{const url=new URL(href);safe=/^https:\/\//i.test(href)&&!/[\s\u0000-\u001f\u007f]/.test(href)&&url.protocol==='https:'&&!url.username&&!url.password;}catch(error){}
+ if(!safe){if(link){link.parentNode.removeChild(link);return true;}return false;}
+ let changed=false;
+ if(!link){
+  link=document.createElement('a');link.className='search3-hotel-photo-link';
+  // Cover the existing photo without moving its image or the z-index:2 thumbnails.
+  link.setAttribute('style','position:absolute;inset:0;z-index:1;outline-offset:-3px');
+  gallery.appendChild(link);changed=true;
+ }
+ const attributes={href,target:'_blank',rel:'noopener noreferrer','aria-label':String(main.getAttribute('alt')||'Фото отеля')+' — открыть в новой вкладке',title:'Открыть фото в новой вкладке'};
+ Object.keys(attributes).forEach(key=>{if(link.getAttribute(key)!==attributes[key]){link.setAttribute(key,attributes[key]);changed=true;}});
+ return changed;
+}
 function resetPresentation(){
  if(!active())return;
  restoreTitle();
@@ -79,6 +100,7 @@ function normalizeCard(card){
  if(!active()||!card||typeof card.querySelector!=='function')return false;
  let changed=normalizeAmbiguousRating(card);
  if(normalizeHotelTitleLink(card))changed=true;
+ if(normalizeHotelPhotoLink(card))changed=true;
  const summary=card.querySelector('.hotel-description-summary'),details=card.querySelector('.hotel-details'),content=details&&details.querySelector('.hotel-details-content'),duplicate=content&&content.querySelector('.hotel-description');
  if(!summary||!details||!content||!duplicate||text(summary)!==text(duplicate))return changed;
  // A description-only disclosure is still needed: CSS swaps its teaser/full text
@@ -93,6 +115,11 @@ function normalize(root){
 }
 window.addEventListener('v2:results-rendered',event=>normalize(event.detail&&event.detail.results||document.getElementById('results')));
 window.addEventListener('v2:hotel-details-rendered',event=>{const root=document.getElementById('results'),id=String(event.detail&&event.detail.hotelId||'');if(!root||!id)return;const card=Array.from(root.querySelectorAll('.hotel-card')).find(node=>String(node.dataset&&node.dataset.hotelId||'')===id);if(card)normalizeCard(card);});
+// Bubble after the renderer's capture-phase thumbnail swap, before native navigation.
+['click','auxclick','contextmenu','focusin'].forEach(name=>window.addEventListener(name,event=>{
+ const target=event.target,gallery=target&&typeof target.closest==='function'&&target.closest('#results .hotel-gallery');
+ if(gallery)normalizeHotelPhotoLink(gallery.closest('.hotel-card'));
+}));
 ['v2:search-started','v2:search-reset'].forEach(name=>window.addEventListener(name,resetPresentation));
-window.Search3HotelDetailsPresentationV1={active,syncHotelPageTitle,normalizeAmbiguousRating,hotelTitleHref,normalizeHotelTitleLink,normalizeCard,normalize,version:5};
+window.Search3HotelDetailsPresentationV1={active,syncHotelPageTitle,normalizeAmbiguousRating,hotelTitleHref,normalizeHotelTitleLink,normalizeHotelPhotoLink,normalizeCard,normalize,version:6};
 })();
