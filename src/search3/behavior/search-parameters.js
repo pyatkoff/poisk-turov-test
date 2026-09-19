@@ -80,11 +80,14 @@ function open(kind,trigger){
 }
 function commit(){
  const issue=valid();if(issue){showError(issue);if(active==='party')body.querySelector('select[data-age]:has(option:checked[value=""])')?.focus();return}
+ // A canonical change can synchronously reset the previous search and close
+ // this dialog. Keep the accepted values before dispatching any change event.
+ const next=draft,kind=active;close();
  const set=(name,next)=>{const node=field(name);if(node&&node.value!==String(next)){node.value=String(next);node.dispatchEvent(new Event('change',{bubbles:true}))}};
- if(active==='dates'){set('dateFrom',draft.from);set('dateTo',draft.to)}
- else if(active==='nights'){set('daysFrom',draft.from);set('daysTill',draft.to)}
- else{set('count_people',draft.adults);set('child_count',draft.ages.length);Array.from(form.querySelectorAll('[name="child_age[]"]')).forEach((node,i)=>{if(node.value!==draft.ages[i]){node.value=draft.ages[i];node.dispatchEvent(new Event('change',{bubbles:true}))}})}
- summaries();close();
+ if(kind==='dates'){set('dateFrom',next.from);set('dateTo',next.to)}
+ else if(kind==='nights'){set('daysFrom',next.from);set('daysTill',next.to)}
+ else{set('count_people',next.adults);set('child_count',next.ages.length);Array.from(form.querySelectorAll('[name="child_age[]"]')).forEach((node,i)=>{if(node.value!==next.ages[i]){node.value=next.ages[i];node.dispatchEvent(new Event('change',{bubbles:true}))}})}
+ summaries();
 }
 triggers.forEach(button=>button.addEventListener('click',()=>open(button.dataset.search3Parameter,button)));
 dialog.addEventListener('cancel',event=>{event.preventDefault();close()});

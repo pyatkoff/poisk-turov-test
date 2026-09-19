@@ -469,7 +469,9 @@ async function checkSearchRecovery(browser, width) {
     assert.equal(await editSearch.getAttribute('aria-expanded'), 'false', 'the disclosure control collapses the open search editor');
     assert.equal(await editSearch.textContent(), 'Изменить поиск');
     await editSearch.click();
-    await setParty(page,3,['0','17']);
+    await setParty(page,3,['1','16','6']);
+    assert.deepEqual(await page.locator('#tourSearch').evaluate(form=>{const data=new FormData(form);return [data.get('count_people'),data.get('child_count'),...data.getAll('child_age[]')]}),['3','3','1','16','6'],'Apply completes every accepted party field even when the first change resets an existing search');
+    assert.equal(await page.evaluate(()=>window.V2SearchLifecycle.searchId),0,'editing retires the old search without starting another');
     await openComparison(page, width);
     const restore = page.locator('.search3-shortlist-restore');
     assert.equal(await restore.textContent(), 'Восстановить поиск');
