@@ -1,0 +1,134 @@
+name: INT Andromeda tourKey fuel service v3
+
+on:
+  push:
+    branches: ['ops/int-andromeda-tourkey-fuel-service-20260919-v3']
+    paths: ['.github/workflows/int-andromeda-tourkey-fuel-service-v3.yml']
+
+permissions: {contents: read}
+concurrency:
+  group: int-andromeda-tourkey-fuel-service-1717-20260919-v3
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE_SHA: 46675ab4db978da044edc50b5e017065b3512c53
+      PRIOR_OPS_SHA: 8fd4bbfcc08e39b19a9e8ec8f941d2c9de56f749
+      OPERATION_ID: int-andromeda-tourkey-fuel-service-1717-20260919-v3
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with: {ref: '${{ env.BASE_SHA }}', path: source, persist-credentials: false}
+      - uses: actions/checkout@v5
+        with: {ref: '${{ env.PRIOR_OPS_SHA }}', path: prior, persist-credentials: false}
+      - uses: actions/checkout@v5
+        with: {ref: '${{ github.sha }}', path: control, persist-credentials: false}
+
+      - name: Derive exact v3 runtime from sealed v2 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$BASE_SHA"
+          test "$(git -C prior rev-parse HEAD)" = "$PRIOR_OPS_SHA"
+          test "$(git -C control rev-parse HEAD)" = "$GITHUB_SHA"
+          mkdir -p "$RUNNER_TEMP/derived"
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('prior/scripts/ops/andromeda_tourkey_fuel_shape_v2.php').read_text()
+          reps=[
+            ("count($candidates[$tour]??[])<3", "count($candidates[$tour]??[])<4"),
+            ("ANDROMEDA_FUEL_SHAPE_THIRD_NOT_FOUND", "ANDROMEDA_FUEL_SERVICE_FOURTH_NOT_FOUND"),
+            ("$selected[$tour]=$candidates[$tour][2];", "$selected[$tour]=$candidates[$tour][3];"),
+            ("foreach(['category','type','name','title','route','required','packet','common'] as $k)", "foreach(['servicetype','servicecategoryName','category','type','name','title','route','routeIndex','required','packet','common','currencyAlias'] as $k)"),
+            ("foreach(['price','amount','currency'] as $k)", "foreach(['price','amount','currency','currencyAlias'] as $k)"),
+            ("foreach(['category','type','name','title'] as $k)", "foreach(['servicetype','servicecategoryName','category','type','name','title'] as $k)"),
+            ("$entry['current_service_count']=count($services);$entry['current_transport_count']=count($transports);", "$entry['current_service_count']=count($services);$entry['services']=array_map($serviceFact,array_slice($services,0,20));$entry['current_transport_count']=count($transports);"),
+            ("'version'=>2", "'version'=>3"),
+          ]
+          for old,new in reps:
+              if src.count(old)!=1: raise SystemExit(f'transform mismatch: {old!r} count={src.count(old)}')
+              src=src.replace(old,new)
+          dst=Path(__import__('os').environ['RUNNER_TEMP'])/'derived'/'andromeda_tourkey_fuel_service_v3.php'
+          dst.write_text(src)
+          PY
+          php -l "$RUNNER_TEMP/derived/andromeda_tourkey_fuel_service_v3.php"
+          grep -Fq 'servicecategoryName' "$RUNNER_TEMP/derived/andromeda_tourkey_fuel_service_v3.php"
+          grep -Fq 'servicetype' "$RUNNER_TEMP/derived/andromeda_tourkey_fuel_service_v3.php"
+          grep -Fq 'currencyAlias' "$RUNNER_TEMP/derived/andromeda_tourkey_fuel_service_v3.php"
+          grep -Fq 'ANDROMEDA_FUEL_SERVICE_FOURTH_NOT_FOUND' "$RUNNER_TEMP/derived/andromeda_tourkey_fuel_service_v3.php"
+          ! grep -Eq -- '(getFlights|->calc|->changeService)[[:space:]]*\(' "$RUNNER_TEMP/derived/andromeda_tourkey_fuel_service_v3.php"
+
+      - name: Prepare exact runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          stage="$RUNNER_TEMP/runtime"; mkdir -p "$stage/app" "$stage/v2/data" "$stage/scripts/ops"
+          cp -a source/app/integrations "$stage/app/"
+          cp source/v2/api-anex-search3-preview.php source/v2/api-andromeda-search3-preview.php "$stage/v2/"
+          cp source/v2/data/hotel-details-v1.php "$stage/v2/data/"
+          cp "$RUNNER_TEMP/derived/andromeda_tourkey_fuel_service_v3.php" "$stage/scripts/ops/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/runtime.tar.gz" .
+          ssh-keyscan -T 15 -t ed25519 "$ANYTOOUR_DEPLOY_HOST" > "$RUNNER_TEMP/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+
+      - name: Execute fourth-offer service classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/result"
+          opts=(-T -i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=30)
+          scp_opts=(-i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"; archive="/tmp/${OPERATION_ID}.${GITHUB_RUN_ID}.tar.gz"
+          scp "${scp_opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$remote:$archive"
+          set +e
+          ssh "${opts[@]}" "$remote" bash -s -- "$OPERATION_ID" "$archive" "$BASE_SHA" <<'REMOTE'
+          set -euo pipefail
+          operation="$1"; archive="$2"; source="$3"; site="$HOME/www/anytoour.ru"; private="$HOME/.anytoour-andromeda"; ledger="$HOME/.anytour-ops/$operation"
+          test -d "$site"; test -s "$site/config.php"; test -s "$private/search3-preview.php"; test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d "/tmp/${operation}.XXXXXX")"; trap 'rm -rf "$work"; rm -f "$archive"' EXIT; tar -C "$work" -xzf "$archive"
+          snapshot(){ php -d display_errors=0 <<'PHP'
+          <?php declare(strict_types=1); error_reporting(0); $root=rtrim((string)getenv('HOME'),'/').'/www/anytoour.ru'; require_once $root.'/config.php'; require_once (is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php'); $db=v2_data_db(); $db->exec('START TRANSACTION READ ONLY'); $c=static fn(string $sql):int=>(int)$db->query($sql)->fetchColumn(); echo json_encode(['all_offers'=>$c('SELECT COUNT(*) FROM anytour_offers'),'andromeda_offers'=>$c("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda'"),'identities'=>$c('SELECT COUNT(*) FROM andromeda_hotel_identities')],JSON_THROW_ON_ERROR); $db->rollBack();
+          PHP
+          }
+          snapshot > "$ledger/before.json"
+          set +e
+          php "$work/scripts/ops/andromeda_tourkey_fuel_service_v3.php" --site-root="$site" --private-config="$private/search3-preview.php" --source-sha="$source" --operation-id="$operation" --tour-keys=110211811,110183689,110183696 --departure=1 --country=4 --date-from=2026-09-19 --date-to=2026-09-22 --nights-from=7 --nights-to=10 --adults=2 --fixed-checkin=2026-09-19 --fixed-nights=7 --generation=17171905 > "$ledger/result.json" 2> "$ledger/error.log"
+          rc=$?; set -e; snapshot > "$ledger/after.json"; if cmp -s "$ledger/before.json" "$ledger/after.json"; then db_same=true; else db_same=false; fi
+          RC="$rc" DB_SAME="$db_same" php -r '$r=is_file($argv[1])&&filesize($argv[1])?json_decode(file_get_contents($argv[1]),true,64,JSON_THROW_ON_ERROR):null;$out=["status"=>(int)getenv("RC")===0?"completed_terminal_no_replay":"failed_terminal_no_replay","operation"=>$argv[2],"source"=>$argv[3],"db_unchanged"=>getenv("DB_SAME")==="true","result"=>$r,"replay_allowed"=>false];file_put_contents($argv[4],json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL);' "$ledger/result.json" "$operation" "$source" "$ledger/receipt.json"
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed_terminal_no_replay || echo failed_terminal_no_replay)" > "$ledger/state"; cat "$ledger/receipt.json"; exit "$rc"
+          REMOTE
+          rc=$?; set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/receipt.json" || true
+          test -s "$RUNNER_TEMP/result/receipt.json"; cat "$RUNNER_TEMP/result/receipt.json"; test "$rc" = 0
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.path.join(os.environ['RUNNER_TEMP'],'result','receipt.json'),encoding='utf-8'))
+          assert d['status']=='completed_terminal_no_replay' and d['replay_allowed'] is False and d['db_unchanged'] is True,d
+          r=d['result']; assert r['version']==3 and r['get_flights_calls']==0 and r['calc_calls']==0 and r['db_writes']==0,r
+          assert len(r['specimens'])==3 and r['broninit_calls']==3,r
+          for s in r['specimens']:
+              assert 'services' in s and s['current_service_count']==len(s['services']),s
+              for row in s['services']:
+                  assert not any(k in row for k in ['uid','externalOfferId','claiminc','sid']),row
+          print(json.dumps({'price_rows':r['price_rows'],'specimens':r['specimens']},ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Preserve sanitized terminal receipt
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: int-andromeda-tourkey-fuel-service-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
