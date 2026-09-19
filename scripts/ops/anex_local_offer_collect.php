@@ -49,6 +49,15 @@ $from=$date($need('date-from'));
 $to=$date($args['date-to']??$from);
 $nights=$int($need('nights'),1,28);
 $adults=$int($args['adults']??'2',1,6);
+$childAges=[];
+$childRaw=$args['child-ages']??'';
+if(!is_string($childRaw))throw new InvalidArgumentException('ANEX_COLLECTOR_CHILD_AGES');
+if($childRaw!==''){
+    $parts=explode(',',$childRaw);
+    if(count($parts)>3)throw new InvalidArgumentException('ANEX_COLLECTOR_CHILD_AGES');
+    foreach($parts as $part)$childAges[]=$int($part,0,17);
+    sort($childAges,SORT_NUMERIC);
+}
 $meal=$args['meal']??'';
 $maxExpands=$int($args['max-expands']??'600',0,600);
 $maxBatch=$int($args['max-apd']??'600',1,600);
@@ -77,7 +86,7 @@ $checkpoint=static function(array &$unused):void{};
 $params=[
     'departureId'=>(string)$departure,'countryId'=>(string)$country,
     'dateFrom'=>$from,'dateTo'=>$to,'nightsFrom'=>$nights,'nightsTo'=>$nights,
-    'adults'=>$adults,'childs'=>[],'meal'=>$meal,'hotelCategory'=>'','hotelRating'=>'',
+    'adults'=>$adults,'childs'=>$childAges,'meal'=>$meal,'hotelCategory'=>'','hotelRating'=>'',
     'hotelTypes'=>[],'hotelIds'=>[],'hotelServices'=>[],'arrivalId'=>'','regionIds'=>$region===null?[]:[(string)$region],
     'subregionIds'=>[],'operatorIds'=>[],'priceFrom'=>'','priceTo'=>'','currency'=>'RUB',
     'onlyCharter'=>false,'onlyDirect'=>false,
