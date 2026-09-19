@@ -1,0 +1,148 @@
+name: MATCH COMMON4 stale31 exact search v1
+on:
+  push:
+    branches: [ops/match-common4-stale31-search-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_common4_stale31_current_v1.php
+      - scripts/diagnostics/hotel_match_common4_stale31_search_v1.py
+      - .github/workflows/hotel-match-common4-stale31-search-v1.yml
+permissions: {contents: read, actions: read}
+concurrency:
+  group: hotel-match-common4-stale31-search-1971-20260919-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-common4-stale31-search-1971-20260919-v1
+jobs:
+  acquire:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10577689146'
+          run-id: 35421889041
+          github-token: ${{ github.token }}
+          path: prior
+          merge-multiple: true
+      - name: Seal exact terminal-404 cohort and reserve
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          cp scripts/diagnostics/hotel_match_common4_stale31_current_v1.php payload/
+          cp scripts/diagnostics/hotel_match_common4_stale31_search_v1.py payload/
+          php -l payload/hotel_match_common4_stale31_current_v1.php
+          php payload/hotel_match_common4_stale31_current_v1.php --self-test
+          python3 -m py_compile payload/hotel_match_common4_stale31_search_v1.py
+          python3 payload/hotel_match_common4_stale31_search_v1.py --self-test
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('prior')
+          raw=(p/'server/result.json').read_bytes(); d=json.loads(raw)
+          assert hashlib.sha256(raw).hexdigest()=='63f64b9d8c6eb2ac28fc7a1102432ea76eda97bb40e4efcf3d8d2bbc2651a5e4'
+          assert d['state']=='completed_read_only' and d['attempted']==180 and d['provider_calls']==180
+          routes={13:('anex','operator_5'),18:('biblio_globus','operator_115'),25:('funsun','operator_315'),43:('intourist','operator_342')}
+          rows=[]; seen=set()
+          for fn in sorted((p/'server').glob('edge-*.json')):
+              e=json.loads(fn.read_bytes())
+              if e.get('state')!='detail_404': continue
+              hid=int(e['tv_hotel_id']); op=int(e['operator_id']); key=(op,hid)
+              assert op in routes and key not in seen; seen.add(key)
+              assert str(e['operator'])==routes[op][0] and str(e['target_supplier_namespace'])==routes[op][1]
+              tid=str(e['tour_id']); assert tid.isdigit() and not tid.startswith('0')
+              rows.append({'tv_hotel_id':hid,'hotel_name':str(e['hotel_name']),'operator_id':op,'operator':routes[op][0],'target_supplier_namespace':routes[op][1],'stale_tour_id':tid})
+          rows.sort(key=lambda e:(e['operator_id'],e['tv_hotel_id']))
+          assert len(rows)==31
+          out=(json.dumps(rows,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+          assert hashlib.sha256(out).hexdigest()=='29c124239b56ff154f98a5277edd5b3799012bf688831c5de2bc88099b80455b'
+          pathlib.Path('payload/stale31.json').write_bytes(out)
+          hashes={x.name:hashlib.sha256(x.read_bytes()).hexdigest() for x in pathlib.Path('payload').iterdir() if x.is_file()}
+          pathlib.Path('payload/source-hashes.json').write_text(json.dumps(hashes,sort_keys=True)+'\n')
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db_provider','source_sha':os.environ['GITHUB_SHA'],'input_sha256':hashlib.sha256(out).hexdigest(),'input_count':31,'daily_limit':3000,'known_daily_floor':980,'operation_http_cap':180,'no_continue':True,'no_dates':True,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          with pathlib.Path('result/reservation.json').open('x') as f:
+              json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security before server or provider access
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+              if xs:
+                  r=max(xs,key=lambda x:x['id'])
+                  if r['status']=='completed':
+                      if r['conclusion']!='success': raise SystemExit('security_not_green')
+                      print('EXACT_SECURITY_GREEN',r['id']); break
+              time.sleep(5)
+          else: raise SystemExit('security_not_available_no_server_access')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'common4-stale31-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute CURRENT preflight and bounded exact-ID acquisition once
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" >"$known" 2>/dev/null; test -s "$known"
+          o=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=20 -o ServerAliveCountMax=3)
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"
+          ssh "${o[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${o[@]}" result/reservation.json "$remote:$op/reservation.json" >result/reserve.stdout 2>result/reserve.stderr
+          scp "${o[@]}" payload/* "$remote:$op/payload/" >result/copy.stdout 2>result/copy.stderr
+          set +e
+          ssh "${o[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" python3 \"\$HOME/$op/payload/hotel_match_common4_stale31_search_v1.py\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          scp -r "${o[@]}" "$remote:$op/." result/server/ >result/readback.stdout 2>result/readback.stderr
+          trc=$?
+          set -e
+          printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc" >result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import collections,hashlib,json,pathlib
+          p=pathlib.Path('result/server')
+          results=list(p.rglob('result.json')); receipts=list(p.rglob('receipt.json'))
+          assert len(results)==1 and len(receipts)==1,'missing_terminal_result_or_receipt'
+          r=json.loads(results[0].read_bytes()); q=json.loads(receipts[0].read_bytes())
+          digest=hashlib.sha256(results[0].read_bytes()).hexdigest()
+          assert q['result_sha256']==digest and q['operation']==r['operation']==__import__('os').environ['OPERATION_ID'] and q['no_replay'] is True
+          reqs=[json.loads(x.read_bytes()) for x in sorted(p.rglob('request-*.json'))]
+          assert len(reqs)==r['provider_calls']<=180
+          assert collections.Counter(x['action'] for x in reqs)==r['call_counts']
+          assert not any('/continue' in x['path'] or '/dates' in x['path'] for x in reqs)
+          assert r['continue_calls']==r['dates_calls']==r['samo_calls']==r['database_writes']==r['mapping_writes']==0
+          assert r['input_count']==31
+          skipped=r.get('current_skipped') or []
+          assert int(r['eligible_edges'])+len(skipped)==31
+          assert len(r['captured_edges'])+len(r['remaining_not_returned'])==int(r['eligible_edges'])
+          stale={str(e['stale_tour_id']) for e in json.loads((p/'payload/stale31.json').read_bytes())} if (p/'payload/stale31.json').is_file() else set()
+          detail_paths=[x['path'].rsplit('/',1)[-1] for x in reqs if x['action']=='tour_detail']
+          assert not stale.intersection(detail_paths),'terminal_stale_tour_retried'
+          assert all(e.get('safe_to_write_now') is False for e in r['captured_edges'])
+          summary={k:r.get(k) for k in ['state','reason','eligible_edges','fresh_detail_attempts','provider_calls','call_counts','daily_accounted_after','search_calls','status_calls','results_calls','detail_calls']}
+          summary.update(captured=len(r['captured_edges']),remaining=len(r['remaining_not_returned']),result_sha256=digest)
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False))
+          assert r['state']=='completed_read_only','terminal_failure_no_replay'
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'common4-stale31-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
