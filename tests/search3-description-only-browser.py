@@ -239,6 +239,8 @@ with sync_playwright() as playwright:
             expect(thumbs).not_to_be_visible()
         else:
             expect(teaser).to_be_visible()
+        assert page.evaluate('__catalogCalls') == 1
+        assert not errors, errors
         REPORT.append({'width': width, 'native_disclosure': True, 'full_text': True,
                        'single_visible_description': True, 'gallery': True,
                        'photo_dialog': True, 'original_photo_tab': True, 'current_thumbnail_photo': True,

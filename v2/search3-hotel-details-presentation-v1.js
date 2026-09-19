@@ -74,7 +74,13 @@ function safePhotoUrl(href){
 }
 function supportsPhotoDialog(){return typeof window.HTMLDialogElement==='function'&&typeof window.HTMLDialogElement.prototype.showModal==='function';}
 let photoViewer=null,photoSession=null;
-function closePhotoViewer(){if(photoViewer&&photoViewer.open)photoViewer.close();}
+function finishPhotoViewer(){
+ const session=photoSession;photoSession=null;
+ document.documentElement.classList.remove('hotel-photo-viewer-open');
+ const image=photoViewer.querySelector('img');image.onload=null;image.onerror=null;image.removeAttribute('src');
+ if(session&&session.link.isConnected)session.link.focus({preventScroll:true});
+}
+function closePhotoViewer(){if(photoViewer&&photoViewer.open){photoViewer.close();finishPhotoViewer();}}
 function showPhoto(index){
  if(!photoSession)return;
  const session=photoSession;
@@ -112,12 +118,9 @@ function createPhotoViewer(){
   if(Math.abs(dx)>=50&&Math.abs(dx)>Math.abs(dy)*1.5)showPhoto(photoSession.index+(dx<0?1:-1));
  });
  dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closePhotoViewer();}});
- dialog.addEventListener('close',()=>{
-  const session=photoSession;photoSession=null;gesture=null;
-  document.documentElement.classList.remove('hotel-photo-viewer-open');
-  const image=dialog.querySelector('img');image.onload=null;image.onerror=null;image.removeAttribute('src');
-  if(session&&session.link.isConnected)session.link.focus({preventScroll:true});
- });
+ dialog.addEventListener('cancel',event=>{event.preventDefault();closePhotoViewer();});
+ // Native close is queued. Do not let an older close event clear a reopened viewer.
+ dialog.addEventListener('close',()=>{if(!dialog.open){gesture=null;finishPhotoViewer();}});
  document.body.appendChild(dialog);return dialog;
 }
 function openPhotoViewer(link,gallery){
