@@ -119,32 +119,18 @@ final class AnyTourTourvisorOfferAutosaveV1
         $catalog = new AnyTourCanonicalCatalog($db);
         $targets = $catalog->legacyTargets(array_values($legacyIds));
 
-        $entries = [];
-        $observedAt = $now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+        $observedAt = $now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\\TH:i:s\\Z');
         $adults = (int)$scope['adults'];
         $childAges = array_map('intval', $scope['childs']);
         $children = count($childAges);
-
-        foreach ($response as $hotel) {
-            $legacyId = (int)$hotel['id'];
-            $ownId = $targets[$legacyId] ?? null;
-            foreach ($hotel['tours'] as $tour) {
-                $entry = self::entryFromTour(
-                    $searchId,
-                    $legacyId,
-                    is_int($ownId) ? $ownId : null,
-                    $tour,
-                    $adults,
-                    $children,
-                    $childAges,
-                    $observedAt,
-                    $now
-                );
-                if ($entry === null) return self::receipt(false, 'tour_contract_incomplete');
-                $entries[] = $entry;
-            }
+        [$entries, $skippedIncompleteOfferCount] = self::compileEntries(
+            $response, $targets, $searchId, $adults, $children, $childAges, $observedAt, $now
+        );
+        if ($entries === []) {
+            return self::receipt(false, 'no_contract_rows', [
+                'skippedIncompleteOfferCount' => $skippedIncompleteOfferCount,
+            ]);
         }
-        if ($entries === []) return self::receipt(false, 'no_contract_rows');
 
         $result = AnyTourIntOfferSnapshotProducerV1::produce(
             'tourvisor',
@@ -160,7 +146,45 @@ final class AnyTourTourvisorOfferAutosaveV1
             $state['saved_at'] = $now->getTimestamp();
             self::writeState($searchId, $state);
         }
+        $result['skippedIncompleteOfferCount'] = $skippedIncompleteOfferCount;
         return $result;
+    }
+
+    private static function compileEntries(
+        array $response,
+        array $targets,
+        int $searchId,
+        int $adults,
+        int $children,
+        array $childAges,
+        string $observedAt,
+        DateTimeImmutable $now
+    ): array {
+        $entries = [];
+        $skipped = 0;
+        foreach ($response as $hotel) {
+            $legacyId = (int)$hotel['id'];
+            $ownId = $targets[$legacyId] ?? null;
+            foreach ($hotel['tours'] as $tour) {
+                $entry = self::entryFromTour(
+                    $searchId,
+                    $legacyId,
+                    is_int($ownId) ? $ownId : null,
+                    $tour,
+                    $adults,
+                    $children,
+                    $childAges,
+                    $observedAt,
+                    $now
+                );
+                if ($entry === null) {
+                    ++$skipped;
+                    continue;
+                }
+                $entries[] = $entry;
+            }
+        }
+        return [$entries, $skipped];
     }
 
     private static function entryFromTour(
