@@ -54,12 +54,14 @@ ck($batchCalls===1,'batch-once');
 ck($result['charter_concrete_candidates']===2,'charter-per-hotel-identity');
 ck($result['regular_concrete_candidates']===3,'regular-observed');
 ck($result['final_price_ready_offers']===2,'ready-count');
+ck($result['grouped_drained']===true && $result['concrete_drained']===true && $result['discovered_set_drained']===true,'small-drained');
 
 $state=[];
 $expandCalls=0;
 $result2=AnyTourAnexLocalOfferCollectorV1::collect($request,$state,$search,$expand,$record,$batch,0,6);
 ck($result2['expand_calls']===0,'zero-expand');
 ck($result2['apd_batch_items']===0,'no-charter-no-batch');
+ck($result2['grouped_drained']===false && $result2['discovered_set_drained']===false,'zero-expand-not-drained');
 
 
 $massState=[];
@@ -97,5 +99,28 @@ ck($mass['charter_concrete_candidates']===60,'mass-charters');
 ck($mass['apd_batch_items']===60 && $mass['apd_batch_calls']===10,'mass-apd-chunks');
 ck($mass['final_price_ready_offers']===60,'mass-ready');
 ck($massBatchCalls===10,'mass-batch-call-count');
+ck($mass['discovered_set_drained']===true,'mass-drained');
 
-echo "ANEX_LOCAL_OFFER_COLLECTOR_OK search=1 expand_bound=1 chunking=1 mass60=1 ready=1\n";
+$defaultState=[];$defaultBatchCalls=0;
+$defaultSearch=static function(array $request,array &$state):array{
+    $state=['default'=>true];$hotels=[];
+    for($i=1;$i<=130;++$i)$hotels[]=['local_id'=>2000+$i,'tours'=>[[
+        'kind'=>'group_minimum','offer_ref'=>'anex_online:'.hash('sha256','group:'.$i),'flight_type'=>null,
+    ]]];
+    return ['provider'=>'anex','search_ref'=>str_repeat('c',32),'hotels'=>$hotels];
+};
+$defaultExpand=static function(array $request,array &$state):array{
+    return ['status'=>'expanded','hotels'=>[['local_id'=>$request['local_hotel_id'],'tours'=>[[
+        'kind'=>'concrete','offer_ref'=>'anex_online:'.hash('sha256','concrete:'.$request['offer_ref']),'flight_type'=>'charter',
+    ]]]]];
+};
+$defaultBatch=static function(array $request,array &$state)use(&$defaultBatchCalls):array{
+    ++$defaultBatchCalls;return ['status'=>'additional_prices_batch','offers'=>array_map(
+        static fn(array $item):array=>['status'=>'additional_prices','finalPriceReady'=>true,'retryable'=>false],$request['items'])];
+};
+$default=AnyTourAnexLocalOfferCollectorV1::collect($request,$defaultState,$defaultSearch,$defaultExpand,$massRecord,$defaultBatch);
+ck($default['expand_calls']===130 && $default['apd_batch_items']===130,'default-not-old-60-300-cap');
+ck($default['discovered_set_drained']===true,'default-drains-retained-set');
+ck($defaultBatchCalls===22,'default-chunks');
+
+echo "ANEX_LOCAL_OFFER_COLLECTOR_OK search=1 explicit_bound=1 chunking=1 mass60=1 default130_drained=1 ready=1\n";
