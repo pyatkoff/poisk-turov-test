@@ -83,6 +83,9 @@ const btn=e.target&&e.target.closest&&e.target.closest('[data-calendar-date],[da
 if(!btn)return;const box=btn.closest('#currentPriceCalendar');if(!box||box.hidden)return;
 if(btn.hasAttribute('data-calendar-apply')){
 if(btn.disabled||!availableDays.some(day=>day.date===selectedDate))return;
+// Disabling a focused button moves focus to body before clear() can capture it.
+// Retain the existing immediate/terminal recovery across this explicit submit.
+if(box.contains(document.activeElement)){pendingFocus=true;focusFallback();}
 e.preventDefault();btn.disabled=true;submitDate(selectedDate);return;
 }
 const date=dateValue(btn.dataset.calendarDate);if(!date||!availableDays.some(day=>day.date===date))return;
