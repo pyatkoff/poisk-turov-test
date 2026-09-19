@@ -285,15 +285,18 @@ function anytour_anex_search3_week(array $criteria): array
     return $criteria;
 }
 
-function anytour_anex_search3_prices($client, callable $resolver, array $criteria, ?array &$session = null, ?callable $clock = null): array
+function anytour_anex_search3_prices($client, callable $resolver, array $criteria, ?array &$session = null, ?callable $clock = null,
+    bool $backgroundCollection = false): array
 {
     if ($session === null) return (new AnyTourAnexSearch($client, $resolver))->search(anytour_anex_search3_week($criteria));
-    $gateway = new AnyTourAnexPreviewGateway(static function () use ($client) { return $client; }, $resolver, [], $clock);
+    $gateway = new AnyTourAnexPreviewGateway(
+        static function () use ($client) { return $client; }, $resolver, [], $clock, !$backgroundCollection
+    );
     return $gateway->handle(['action' => 'search', 'criteria' => anytour_anex_search3_week($criteria)], $session);
 }
 
 function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cache, ?array &$diagnostics = null, ?callable $observer = null,
-    ?array &$state = null, ?string $operatorScope = null): array
+    ?array &$state = null, ?string $operatorScope = null, bool $backgroundCollection = false): array
 {
     if ($state !== null) $state = [];
     if (!is_int($request['generation'] ?? null) || $request['generation'] < 1 || $request['generation'] > 2147483647
@@ -307,7 +310,7 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
     if ($operatorScope === 'exclude') {
         return ['generation' => $request['generation'], 'provider' => 'anex',
             'date_range' => ['from' => $criteria['checkin_begin'], 'to' => $criteria['checkin_end']], 'hotels' => [],
-            'external_search_pending' => false, 'first_page_only' => true];
+            'external_search_pending' => false, 'pages_read' => 0, 'first_page_only' => true];
     }
     $lookup = $pdo->prepare('SELECT d.name AS departure_name,c.name AS country_name FROM catalog_departures d'
         . ' CROSS JOIN catalog_countries c WHERE d.id=? AND c.id=? AND d.is_active=1 AND c.is_active=1 LIMIT 1');
@@ -330,7 +333,7 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
     $hotelIds = $registry->previewHotelIds($params['hotelIds'] ?? []);
     if ($hotelIds !== []) $criteria['hotel_ids'] = $hotelIds;
     $session = $state === null ? null : [];
-    $result = anytour_anex_search3_prices($client, $resolver, $criteria, $session);
+    $result = anytour_anex_search3_prices($client, $resolver, $criteria, $session, null, $backgroundCollection);
     usort($result['offers'], static function ($a, $b) {
         $amount = static function ($offer) {
             $price = ($offer['price']['currency'] ?? '') === 'RUB' ? $offer['price'] : ($offer['converted_price'] ?? []);
@@ -338,7 +341,7 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
         };
         return $amount($a) <=> $amount($b);
     });
-    $result['offers'] = array_slice($result['offers'], 0, 300);
+    if (!$backgroundCollection) $result['offers'] = array_slice($result['offers'], 0, 300);
     if ($diagnostics !== null) {
         $diagnostics = ['supplier_offers' => count($result['offers']), 'mapped_offers' => 0,
             'rejected_count' => $result['rejected_count'], 'external_search_pending' => $result['external_search_pending'],
@@ -371,7 +374,9 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
     }
     $data = ['generation' => $request['generation'], 'provider' => 'anex',
         'date_range' => ['from' => $criteria['checkin_begin'], 'to' => $criteria['checkin_end']], 'hotels' => $projected,
-        'external_search_pending' => $result['external_search_pending'], 'first_page_only' => true];
+        'external_search_pending' => $result['external_search_pending'],
+        'pages_read' => (int)($result['pages_read'] ?? 1),
+        'first_page_only' => ($result['first_page_only'] ?? true) === true];
     if ($state !== null) {
         $state = ['generation' => $request['generation'], 'params' => $params, 'gateway' => $session,
             'expansions' => [], 'additional_prices' => []];
