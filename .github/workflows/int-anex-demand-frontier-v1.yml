@@ -1,0 +1,53 @@
+name: INT ANEX demand frontier v1
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths: ['.github/workflows/int-anex-demand-frontier-v1.yml']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Read recent real search demand without supplier calls
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/out"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" 'php -d display_errors=0 -r '"'"'
+            $root=realpath(getenv("HOME")."/www/anytoour.ru");if(!$root||basename($root)!=="anytoour.ru")exit(2);
+            require $root."/config.php";require (is_file($root."/data/db-v1.php")?$root."/data/db-v1.php":$root."/v2/data/db-v1.php");
+            $db=v2_data_db();$db->exec("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");$db->exec("SET TRANSACTION READ ONLY");$db->beginTransaction();
+            $sql="SELECT departure_id,country_id,region_id,departure_date,nights,adults,children_count,child_ages_signature,"
+                ."COUNT(DISTINCT search_id) searches,COUNT(*) observations,MAX(observed_at) last_seen "
+                ."FROM tour_price_observations WHERE source=\"user_search\" AND observed_at>=UTC_TIMESTAMP()-INTERVAL 7 DAY "
+                ."AND departure_date>=UTC_DATE() AND departure_date<=UTC_DATE()+INTERVAL 21 DAY "
+                ."GROUP BY departure_id,country_id,region_id,departure_date,nights,adults,children_count,child_ages_signature "
+                ."ORDER BY searches DESC,last_seen DESC,observations DESC LIMIT 100";
+            $rows=$db->query($sql)->fetchAll(PDO::FETCH_ASSOC);$db->commit();
+            $out=[];foreach($rows as $r){$out[]=[
+              "departureId"=>(int)$r["departure_id"],"countryId"=>(int)$r["country_id"],"regionId"=>$r["region_id"]===null?null:(int)$r["region_id"],
+              "date"=>(string)$r["departure_date"],"nights"=>(int)$r["nights"],"adults"=>(int)$r["adults"],"children"=>(int)$r["children_count"],
+              "childAges"=>(string)$r["child_ages_signature"],"searches"=>(int)$r["searches"],"observations"=>(int)$r["observations"],"lastSeen"=>(string)$r["last_seen"]];}
+            echo json_encode(["source"=>"tour_price_observations:user_search","lookbackDays"=>7,"horizonDays"=>21,"count"=>count($out),"scopes"=>$out],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          '"'"'' > "$RUNNER_TEMP/out/frontier.json"
+          jq -e '.source=="tour_price_observations:user_search" and .count>=1 and (.scopes|length)==.count' "$RUNNER_TEMP/out/frontier.json" >/dev/null
+          jq -c '{count,top20:(.scopes[0:20]),twoAdultNoChild:([.scopes[]|select(.adults==2 and .children==0)]|length),withChildren:([.scopes[]|select(.children>0)]|length),departures:([.scopes[].departureId]|unique),countries:([.scopes[].countryId]|unique)}' "$RUNNER_TEMP/out/frontier.json"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: int-anex-demand-frontier-${{ github.run_id }}
+          path: ${{ runner.temp }}/out/frontier.json
+          if-no-files-found: error
+          retention-days: 30
