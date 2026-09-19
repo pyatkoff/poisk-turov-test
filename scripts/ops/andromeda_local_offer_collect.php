@@ -43,7 +43,9 @@ require_once $dbFile;
 $pdo=v2_data_db();
 $pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 
-putenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE='.$runtime.'/v2/data/anytour-offer-snapshot-ingest-v1.php');
+$localIngest=$site.'/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php';
+if(!is_file($localIngest)||is_link($localIngest))throw new RuntimeException('ANDROMEDA_COLLECTOR_LOCAL_INGEST');
+putenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE='.$localIngest);
 
 $departure=$int($args['departure']??'1',1,999999999);
 $country=$int($args['country']??'4',1,999999999);
