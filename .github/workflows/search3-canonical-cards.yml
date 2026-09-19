@@ -116,7 +116,7 @@ jobs:
           python3 -B scripts/build/search3_assets.py --check
           node scripts/build/search3-js/shared-runtime.cjs --write
           node scripts/build/search3-js/shared-runtime.cjs --check
-          printf '%s\n' v2/search3-shared-runtime.json v2/search3-results-filters-v1.js docs/project/search3-production-import.json > /tmp/generated-files.txt
+          printf '%s\n' v2/search3-shared-runtime.json v2/search3-results-filters-v1.js v2/search3-results-filters-v1.css docs/project/search3-production-import.json > /tmp/generated-files.txt
           sha256sum $(cat /tmp/generated-files.txt)
       - uses: actions/upload-artifact@v4
         with:
@@ -124,5 +124,6 @@ jobs:
           path: |
             v2/search3-shared-runtime.json
             v2/search3-results-filters-v1.js
+            v2/search3-results-filters-v1.css
             docs/project/search3-production-import.json
           retention-days: 2

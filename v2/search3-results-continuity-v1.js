@@ -111,7 +111,7 @@ function restoreRendererView(view){
  const node=resultsNode();if(!node)return;(view.expanded||[]).forEach(id=>{const card=cardById(node,id),toggle=card&&card.querySelector('button.tour-more-toggle[aria-expanded="false"]');if(toggle)toggle.click();const wanted=(view.limits||[]).find(pair=>pair[0]===id)?.[1]||0;let more=card&&card.querySelector('.tour-list-more'),guard=0;while(more&&card.querySelectorAll('.tour-row').length<wanted&&guard++<200){more.click();more=card.querySelector('.tour-list-more');}});
 }
 function captureView(old){
- const r=window.V2Results,node=resultsNode();if(!node||node.hidden)return old&&old.view||null;
+ const r=window.V2Results,node=resultsNode();if(!node||node.hidden)return old&&old.view||null;sampleAnchor(node);
  const filters={};filterSelectors.forEach(selector=>{const field=document.querySelector(selector);if(!field)return;let value=bounded(String(field.value||''),200);if(selector==='.search3-budget-max'&&Number(value)>=Number(field.max))value='';if(value)filters[selector]=value;});
  return{renderer:captureRendererView(),details:Array.from(openDetails),anchor:anchorState&&Object.assign({},anchorState),scrollY:Math.max(0,Number(window.scrollY)||0),filters};
 }

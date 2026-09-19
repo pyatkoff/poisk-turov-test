@@ -128,6 +128,7 @@ with sync_playwright() as pw:
         expect(page.locator('#resultsTripContext')).to_be_visible()
         assert page.locator('.search3-hotel-filter input').input_value()=='отель 2'
         expect(page.locator('.hotel-card:not([hidden])')).to_have_count(1)
+        expect(page.locator('.hotel-card:visible')).to_have_count(1)
         assert page.evaluate('V2SearchLifecycle.snapshot.childs')==[0,17]
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'), 'no overflow'
         page.screenshot(path=str(OUT/f'resume-{width}.png'),full_page=True)
@@ -137,6 +138,7 @@ with sync_playwright() as pw:
         assert page.evaluate('Search3ResultsContinuityV1.captureSnapshot()')
         page=open_page(BASE+'?'+QUERY)
         expect(page.locator('.hotel-card:not([hidden])')).to_have_count(1)
+        expect(page.locator('.hotel-card:visible')).to_have_count(1)
         assert page.locator('.search3-hotel-filter input').input_value()=='отель 3'
         assert page.evaluate('__calls')==[]
         unchanged=page.evaluate('JSON.parse(sessionStorage.getItem('+json.dumps(KEY)+'))')
