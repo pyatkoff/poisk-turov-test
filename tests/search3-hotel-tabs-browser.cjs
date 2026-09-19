@@ -329,7 +329,58 @@ async function run(engine, width, height) {
     assert.match((await direct.locator('.hotel-card').first().locator('.hotel-price').innerText()).replace(/\s/g,''),/125000/,'Fresh offer price returns only with the new search');
     assert.deepEqual(failures, [], 'manual recovery adds no lead/booking/unknown writes');
     assert.deepEqual(errors, [], 'manual recovery has no browser exceptions');
-    reports.push({ engine, width, height, sourceSha, passed: true, photoViewer: true, photoContextPreserved: true, photoErrorRecovery: true, photoSlowResponseRecovery: true, photoFocusContainment: true, searchStarts: 2, detailTabs: 3, directReload: true, expiredManualRecovery: true, expiredCanonicalProfile:true, expiredPhotoViewer:true, pastDateProfile:true, missingProfileRecovery:true, explicitRefresh:true, exactOffer: exact });
+    // Real same-origin pages share storage; each keeps its own offer authority.
+    // No app-state injection or synthetic storage event supplies synchronization.
+    const storageKey='anytour.search3.shortlist.v1', sibling=children[1], thirdTab=children[2], beforeSyncCalls=calls.length;
+    for(const current of [page,...children])await current.evaluate(key=>{
+      window.__shortlistWrites=[];window.__shortlistStorageEvents=[];
+      for(const method of ['setItem','removeItem']){const original=Storage.prototype[method];Storage.prototype[method]=function(name,...args){if(this===localStorage&&name===key)window.__shortlistWrites.push(method);return original.call(this,name,...args);};}
+      window.addEventListener('storage',event=>window.__shortlistStorageEvents.push({key:event.key,value:event.newValue}));
+    },storageKey);
+    const waitCount=(current,count)=>current.waitForFunction(n=>document.querySelectorAll('.search3-shortlist-item').length===n,count);
+    const savedRows=current=>current.locator('.search3-shortlist-item').evaluateAll(nodes=>nodes.map(item=>({offer:item.dataset.offerId,search:item.dataset.searchId,price:item.querySelector('.search3-shortlist-item__price strong').textContent.replace(/\s/g,'')})));
+    await waitCount(page,1);
+    await page.locator('#sortResults').focus();
+    await sibling.locator('.search3-shortlist-toggle').first().click();
+    for(const current of [page,...children])await waitCount(current,2);
+    assert.equal(await page.locator('#sortResults').evaluate(el=>el===document.activeElement),true,'remote comparison update never steals focus outside its controls');
+    assert.deepEqual(await savedRows(page),[{offer:'hotel-1-offer-0',search:'42',price:'125000₽'},{offer:'hotel-2-offer-0',search:'42',price:'135000₽'}],'original results receive both exact saved offers and historical prices');
+    assert.deepEqual(await child.evaluate(()=>window.__shortlistWrites),[],'receiving a storage update does not echo-write');
+    assert.deepEqual(await page.evaluate(()=>window.__shortlistWrites),[]);
+    assert.deepEqual(await sibling.evaluate(()=>window.__shortlistWrites),['setItem']);
+    if(width<=600)await page.locator('.search3-shortlist-disclosure').click();
+    await page.locator('.search3-shortlist').scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(output,`${engine}-${width}x${height}-comparison-synced.png`),fullPage:true,animations:'disabled'});
+    if(width<=600)await child.locator('.search3-shortlist-disclosure').click();
+    await child.locator('.search3-shortlist-remove').first().focus();
+    await thirdTab.locator('.search3-shortlist-toggle').first().click();
+    for(const current of [page,...children])await waitCount(current,3);
+    await child.waitForFunction(()=>document.activeElement?.classList.contains('search3-shortlist-remove')&&document.activeElement.closest('.search3-shortlist-item').dataset.offerId==='hotel-1-offer-0');
+    assert.equal(await sibling.locator('.search3-shortlist-item[data-offer-id="hotel-1-offer-0"] .search3-shortlist-restore').count(),1,'a sibling snapshot does not gain selection authority from matching storage alone');
+    // A write in this page deliberately leaves its in-memory view stale until
+    // the next user action, exercising the pending-notification write boundary.
+    await child.evaluate(key=>localStorage.setItem(key,JSON.stringify(JSON.parse(localStorage.getItem(key)).filter(item=>item.offerId!=='hotel-3-offer-0'))),storageKey);
+    await child.locator('.search3-shortlist-toggle[data-offer-id="hotel-1-offer-1"]').click();
+    for(const current of [page,...children])await waitCount(current,3);
+    await page.waitForFunction(()=>!!document.querySelector('.search3-shortlist-item[data-offer-id="hotel-1-offer-1"]'));
+    assert.deepEqual((await savedRows(page)).map(item=>item.offer),['hotel-1-offer-0','hotel-2-offer-0','hotel-1-offer-1'],'mutation re-reads current storage; removed sibling offer is not resurrected or overwritten');
+    const valid=await child.evaluate(key=>localStorage.getItem(key),storageKey);
+    await sibling.evaluate(key=>localStorage.setItem(key,'{"invalid":true}'),storageKey);
+    await page.waitForFunction(()=>window.__shortlistStorageEvents.some(event=>event.value==='{"invalid":true}'));
+    assert.equal(await page.locator('.search3-shortlist-item').count(),3,'invalid remote storage cannot replace validated in-memory snapshots');
+    assert.equal(await page.evaluate(key=>localStorage.getItem(key),storageKey),'{"invalid":true}','receiving malformed storage does not delete or rewrite another tab');
+    await sibling.evaluate(({key,valid})=>{localStorage.setItem(key,valid);localStorage.setItem('search3.fixture.unrelated','1');},{key:storageKey,valid});
+    await page.waitForFunction(()=>window.__shortlistStorageEvents.some(event=>event.key==='search3.fixture.unrelated'));
+    assert.deepEqual(await savedRows(page),await savedRows(child),'unrelated storage keys preserve the comparison');
+    if(width<=600)await sibling.locator('.search3-shortlist-disclosure').click();
+    await sibling.locator('.search3-shortlist-item[data-offer-id="hotel-1-offer-0"] .search3-shortlist-remove').click();
+    for(const current of [page,...children])await waitCount(current,2);
+    assert.equal(await child.locator('.search3-shortlist-toggle[data-offer-id="hotel-1-offer-0"]').getAttribute('aria-pressed'),'false','remote removal updates the original offer button');
+    await sibling.locator('.search3-shortlist-clear').click();
+    for(const current of [page,...children]){await waitCount(current,0);assert.equal(await current.locator('.search3-shortlist').isVisible(),false,'clearing comparison propagates without stale status or resurrection');}
+    assert.equal(calls.length,beforeSyncCalls,'cross-tab comparison never searches, selects a tour or contacts a supplier');
+    assert.deepEqual(failures,[]);assert.deepEqual(errors,[]);
+    reports.push({ engine, width, height, sourceSha, passed: true, photoViewer: true, photoContextPreserved: true, photoErrorRecovery: true, photoSlowResponseRecovery: true, photoFocusContainment: true, searchStarts: 2, detailTabs: 3, directReload: true, expiredManualRecovery: true, expiredCanonicalProfile:true, expiredPhotoViewer:true, pastDateProfile:true, missingProfileRecovery:true, explicitRefresh:true, shortlistCrossTab:true, shortlistStorageValidation:true, shortlistFocusPreserved:true, exactOffer: exact });
   } catch (error) {
     for (const [index, current] of context.pages().entries()) {
       await current.screenshot({ path: path.join(output, `${engine}-${width}-failure-${index}.png`), fullPage: true }).catch(() => {});
