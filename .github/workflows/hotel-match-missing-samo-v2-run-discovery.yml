@@ -1,0 +1,39 @@
+name: MATCH missing-SAMO v2 run discovery
+on:
+  pull_request:
+    paths:
+      - .github/workflows/hotel-match-missing-samo-v2-run-discovery.yml
+permissions:
+  contents: read
+  actions: read
+env:
+  TARGET_SHA: 79322fe01cd87940db92b7a1f9808937dbac8962
+jobs:
+  discover:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - name: List exact-head workflow runs
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        run: |
+          set -euo pipefail
+          mkdir -p result
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$TARGET_SHA&per_page=100" > result/runs.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          x=json.load(open('result/runs.json'))
+          rows=[{k:r.get(k) for k in ['id','name','event','status','conclusion','run_number','workflow_id','head_sha','created_at','updated_at']} for r in x.get('workflow_runs',[]) if r.get('head_sha')==os.environ['TARGET_SHA']]
+          pathlib.Path('result/summary.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(rows,ensure_ascii=False))
+          assert rows, 'no_target_runs'
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'missing-samo-v2-run-discovery-${{ github.run_id }}'
+          path: result/
+          retention-days: 30
+          if-no-files-found: error
