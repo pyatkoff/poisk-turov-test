@@ -59,6 +59,17 @@ PROVIDER=(PAYLOAD/'andromeda-provider-v1.js').read_text()
 OUT=Path(os.environ.get('SEARCH3_EVIDENCE_DIR',str(ROOT/'canonical-card-evidence')));OUT.mkdir(parents=True,exist_ok=True)
 HTML='''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Поиск туров онлайн — AnyTour</title><style>'''+CSS+'''</style></head><body class="search3-candidate"><main class="v2-shell"><p>Компонентный тест · вымышленные отели и предложения</p><form id="tourSearch" hidden></form><section id="status" class="status" hidden></section><section id="resultsTools" class="results-tools results-tools--ds2"><div><span id="resultSummary">Актуальные варианты</span><p id="resultsTripContext" class="search3-trip-context" aria-label="Параметры поиска" hidden><strong data-search3-trip-route></strong><span data-search3-trip-details></span></p></div><div class="results-tools__actions"><button type="button" id="resultsSearchEdit">Изменить поиск</button><label>Сортировка <select id="sortResults"><option value="price">По цене</option><option value="rating">По рейтингу</option></select></label></div></section><div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results" aria-busy="false"></section></div><section id="selectedTour" class="selected-tour" hidden tabindex="-1"></section></main></body></html>'''
 
+def fixture_script(page,code,path='/_preview/search3-local-candidate/poisk-turov/'):
+    # Every route-scoped owner receives the same explicit location fixture.
+    page.evaluate("""({code,path})=>{
+      const fixtureLocation=new URL(path,'https://fixture.invalid/');
+      const fixtureWindow=new Proxy(window,{
+        get(target,key){if(key==='location')return fixtureLocation;const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;},
+        set(target,key,value){target[key]=value;return true;}
+      });
+      new Function('window',code)(fixtureWindow);
+    }""",{'code':code,'path':path})
+
 def boot(browser,path='/_preview/search3-local-candidate/poisk-turov/',width=1440,original=False):
     context=browser.new_context(viewport={'width':width,'height':980},device_scale_factor=1)
     context.route('**/*',lambda route:route.abort())
@@ -67,14 +78,7 @@ def boot(browser,path='/_preview/search3-local-candidate/poisk-turov/',width=144
     # Render local HTML in about:blank; only the location dependency is an explicit fixture.
     page.set_content(HTML)
     page.add_script_tag(content=SETUP)
-    page.evaluate("""({code,path})=>{
-      const fixtureLocation=new URL(path,'https://fixture.invalid/');
-      const fixtureWindow=new Proxy(window,{
-        get(target,key){if(key==='location')return fixtureLocation;const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;},
-        set(target,key,value){target[key]=value;return true;}
-      });
-      new Function('window',code)(fixtureWindow);
-    }""",{'code':ORIGINAL if original else CODE,'path':path})
+    fixture_script(page,ORIGINAL if original else CODE,path)
     return context,page,errors
 
 def render(page,items):
@@ -157,7 +161,7 @@ with sync_playwright() as p:
 
     for width in [375,430,768,1440]:
         c,page,errors=boot(browser,width=width)
-        page.add_script_tag(content=FILTER)
+        fixture_script(page,FILTER)
         page.evaluate("delete window.__projected;")
         items=[hotel(102),hotel(106,'anex'),hotel(108)]
         for h,meal,price in zip(items,['BB','AI','AI'],[100000,200000,300000]):
@@ -270,7 +274,7 @@ with sync_playwright() as p:
     # the renderer's validated facts, while raw profiles and exact offers survive.
     for width in [375,1440]:
         c,page,errors=boot(browser,width=width)
-        page.add_script_tag(content=FILTER)
+        fixture_script(page,FILTER)
         scores=[3.9,4,4.5,5,None,0,5.1,9.6]
         items=[hotel(1001+i) for i in range(len(scores))]
         render(page,items)
@@ -307,7 +311,7 @@ with sync_playwright() as p:
         check(not errors,f'{width}: five-point acceptance has no browser exceptions')
         c.close()
 
-    c,page,errors=boot(browser,width=1440);page.add_script_tag(content=FILTER)
+    c,page,errors=boot(browser,width=1440);fixture_script(page,FILTER)
     render(page,[hotel(3001+i) for i in range(42)])
     resolve(page,0,{3001+i:i+1 for i in range(42)},profiles=[dict(profile(i+1),rating=4.5 if i<38 else None) for i in range(42)])
     check(page.locator('.search3-rating-filter').is_visible(),'38/42 known scores: useful rating thresholds are not hidden by the former 95-percent rule')
