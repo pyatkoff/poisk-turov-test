@@ -1,0 +1,139 @@
+name: MATCH rolling11 accepted-rival append v1
+on:
+  push:
+    branches: [ops/match-rolling11-rival-reconcile-1971-20260919-v1]
+    paths: [.github/workflows/hotel-match-rolling11-rival-reconcile-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-rolling11-rival-reconcile-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-rolling11-rival-reconcile-1971-20260919-v1
+jobs:
+  apply:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10574360037'
+          run-id: 35409538421
+          github-token: ${{ github.token }}
+          path: retained
+          merge-multiple: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10574032362'
+          run-id: 35410592590
+          github-token: ${{ github.token }}
+          path: related
+          merge-multiple: true
+      - name: Verify exact eleven direct and rival bindings before reservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          cp scripts/diagnostics/hotel_match_rolling11_rival_reconcile_v1.php payload/
+          test "$(git hash-object payload/hotel_match_rolling11_rival_reconcile_v1.php)" = 6481b972c0583b67739f32dccb5705456f3b1eed
+          cp app/integrations/anex-search-mapping-registry.php payload/
+          test "$(git hash-object payload/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          test "$(git hash-object retained/remote/payload/hotel_match_rolling38_final_v2.php)" = 352789962070e773654a62d0099c12aa1d74ae7d
+          cp retained/remote/payload/audit.json payload/audit.json
+          cp retained/remote/result.json payload/plan.json
+          cp related/remote/result.json payload/related.json
+          python3 - <<'PYVERIFY'
+          import hashlib,json,os,pathlib
+          old=pathlib.Path('retained/remote/payload/hotel_match_rolling38_final_v2.php').read_text()
+          marker="if(($argv[1]??'')==='--self-test')"
+          assert old.count(marker)==1
+          library=old.split(marker)[0]
+          assert hashlib.sha256(library.encode()).hexdigest()=='5e3875e9835a8de388317e0bd6ef41d76b56531596ed7fab99ea286b66a96878'
+          pathlib.Path('payload/guard-library.php').write_text(library)
+          expected=[('retained','678ba78b19600d5c071683e9cfe0c6ebc08cbe480e28fa8e85a463d290ebd1ef','planned_read_only'),('related','f795bd5b9020cb05906a704f9ec2aa1efca14ea0c7c8df7b08fad09c50ea27c2','completed_read_only')]
+          for directory,digest,state in expected:
+              p=pathlib.Path(directory)/'remote';raw=(p/'result.json').read_bytes();d=json.loads(raw);r=json.loads((p/'receipt.json').read_bytes())
+              assert hashlib.sha256(raw).hexdigest()==digest==r['result_sha256']
+              assert d['state']==r['state']==state and r['readback_verified'] is True and d['mapping_writes']==0
+          audit_sha=hashlib.sha256(pathlib.Path('payload/audit.json').read_bytes()).hexdigest()
+          assert audit_sha=='acf67aae87aaa0f6fbc28372945d7609a68d1df420e56d6d7837c40f3b626b71'
+          res={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db_write','source_sha':os.environ['GITHUB_SHA'],'audit_sha256':audit_sha,'plan_sha256':expected[0][1],'related_sha256':expected[1][1],'max_mapping_writes':11,'supplier_calls':0,'no_replay':True}
+          with pathlib.Path('result/reservation.json').open('x') as f:
+              json.dump(res,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PYVERIFY
+          php -l payload/guard-library.php
+          php -l payload/hotel_match_rolling11_rival_reconcile_v1.php
+          php payload/hotel_match_rolling11_rival_reconcile_v1.php --self-test payload
+          (cd payload && sha256sum *.php *.json > SHA256SUMS)
+      - name: Require exact-head Security before SSH
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for n in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:r=json.load(f)['workflow_runs']
+              r=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+              if r:
+                  x=max(r,key=lambda x:x['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success';print('SECURITY_OK',x['id']);break
+              time.sleep(5)
+          else:raise SystemExit('exact_security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-rolling11-rival-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Reconfirm exact accepted rival identities before append
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/r11-key"; known="$RUNNER_TEMP/r11-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null; test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "set -e; umask 077; mkdir -p \"\$HOME/.anytour-operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${opts[@]}" result/reservation.json "$remote:$op/" >result/reserve.stdout 2>result/reserve.stderr
+          scp "${opts[@]}" payload/* "$remote:$op/payload/" >result/copy.stdout 2>result/copy.stderr
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op/payload\" && sha256sum -c SHA256SUMS >/dev/null && umask 077 && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=0 hotel_match_rolling11_rival_reconcile_v1.php --apply" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          scp -r "${opts[@]}" "$remote:$op/." result/remote/ >result/readback.stdout 2>result/readback.stderr
+          trc=$?
+          set -e
+          printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc" >result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('result/remote');d=json.loads((p/'result.json').read_bytes());r=json.loads((p/'receipt.json').read_bytes())
+          digest=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert d['operation']==r['operation']==os.environ['OPERATION_ID'] and d['source_sha']==os.environ['GITHUB_SHA']
+          assert r['result_sha256']==digest and r['readback_verified'] is True and r['no_replay'] is True
+          summary={k:d.get(k) for k in ['state','written_count','held_count','triple_increment','reason','sqlstate','driver_code','mapping_writes']};summary['result_sha256']=digest
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          assert d['state']=='committed_verified' and d['supplier_calls']==0
+          n=d['written_count'];assert 0<=n<=11 and n==d['database_writes']==d['mapping_writes']==len(d['post_commit_readback'])==len(d['written'])
+          assert n+d['held_count']==11 and r['mapping_writes']==n
+          allowed={(5580,4054),(7938,2536),(13495,50869),(13838,69521),(15132,1143),(19706,61606),(20720,60156),(22930,63190),(35319,1346),(35437,1599),(41303,118906)}
+          seen=set();written={(int(x['anex_hotel_id']),int(x['catalog_hotel_id'])):x for x in d['written']}
+          for row in d['post_commit_readback']:
+              pair=(int(row['anex_hotel_id']),int(row['catalog_hotel_id']))
+              assert pair in allowed and pair not in seen and pair in written;seen.add(pair)
+              assert row['scope']=='preview' and row['match_class']=='strong_candidate' and row['approval_policy']=='owner_exact_and_strong_20260908' and int(row['enabled'])==1
+              assert row['source_row_digest']==written[pair]['source_row_digest'] and row['mapping_digest']==written[pair]['mapping_digest']
+          assert len(seen)==n
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-rolling11-rival-append-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
