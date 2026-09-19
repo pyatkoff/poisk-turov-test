@@ -8,6 +8,7 @@ if(!is_dir($root)||is_link($root)||basename($root)!=='anytoour.ru')throw new Run
 require_once dirname(__DIR__,2).'/app/integrations/anex-local-offer-demand.php';
 $config=$root.'/config.php';if(!is_file($config)||is_link($config))throw new RuntimeException('ANEX_DEMAND_CONFIG');require_once $config;
 $dbFile=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';require_once $dbFile;
+$scopeFile=$root.'/v2/data/anytour-search-scope-v1.php';if(!is_file($scopeFile)||is_link($scopeFile))throw new RuntimeException('ANEX_DEMAND_SCOPE_SOURCE');require_once $scopeFile;
 
 $args=[];foreach(array_slice($argv,1) as $arg){
     if(!str_starts_with($arg,'--')||!str_contains($arg,'='))throw new InvalidArgumentException('ANEX_DEMAND_ARG');
@@ -38,12 +39,26 @@ try{
         .'GROUP BY departure_id,country_id,region_id,departure_date,nights,adults,children_count,child_ages_signature '
         .'ORDER BY searches DESC,last_seen DESC,observations DESC LIMIT 100';
     $stmt=$db->prepare($sql);$stmt->execute(['since'=>$since,'today'=>$today,'until'=>$until]);
-    $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);$db->commit();
+    $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
+    $ranked=AnyTourAnexLocalOfferDemandV1::normalizeRows($rows,100);
+    $fresh=$db->prepare(
+        'SELECT COUNT(*) FROM anytour_offer_scope_state s JOIN anytour_offers o '
+        .'ON o.provider=s.provider AND o.scope_sha256=s.scope_sha256 AND o.last_refresh_token=s.latest_complete_refresh_token '
+        .'WHERE s.provider=\'anex\' AND s.scope_sha256=:scope AND s.latest_complete_refresh_token IS NOT NULL '
+        .'AND o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now LIMIT 1'
+    );
+    $freshCount=0;
+    $scopes=AnyTourAnexLocalOfferDemandV1::withoutFreshScopes($ranked,static function(array $scope)use($fresh,$now,&$freshCount):bool{
+        $canonical=AnyTourSearchScopeV1::fromParams(AnyTourAnexLocalOfferDemandV1::searchParams($scope));
+        $fresh->execute(['scope'=>$canonical['digest'],'now'=>$now->format('Y-m-d H:i:s')]);
+        $yes=(int)$fresh->fetchColumn()>0;if($yes)++$freshCount;return $yes;
+    },$limit);
+    $db->commit();
 }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 
-$scopes=AnyTourAnexLocalOfferDemandV1::normalizeRows($rows,$limit);
 echo json_encode([
     'source'=>'tour_price_observations:user_search','generatedAt'=>$now->format('Y-m-d\TH:i:s\Z'),
-    'lookbackHours'=>$lookback,'horizonDays'=>$horizon,'scopeCount'=>count($scopes),'scopes'=>$scopes,
+    'lookbackHours'=>$lookback,'horizonDays'=>$horizon,'rankedScopeCount'=>count($ranked),
+    'freshScopesSkipped'=>$freshCount,'scopeCount'=>count($scopes),'scopes'=>$scopes,
     'supplierCalls'=>0,'databaseWrites'=>0,
 ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
