@@ -382,6 +382,8 @@ async function checkNavigation(page, width, output) {
     await best.click();
     await visibleDate('2099-09-21');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'navigation fits a short 320px viewport');
+    assert.equal(await best.evaluate(node => node.getBoundingClientRect().height), 44, 'minimum shortcut keeps the date on one line at 320px');
+    assert.ok(await next.evaluate(node => parseFloat(getComputedStyle(node).fontSize) >= 24), 'direction icons remain readable at the narrowest viewport');
     if (width === 375) await calendar.screenshot({ path: path.join(output, 'calendar-navigation-320-minimum.png') });
     await page.setViewportSize(viewport);
     await best.waitFor({ state: 'visible' });
