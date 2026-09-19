@@ -233,6 +233,7 @@ const viewports = [
         assert.notEqual(await retry.evaluate(node => getComputedStyle(node).outlineStyle), 'none', 'keyboard retry has a visible focus indicator');
         const retryBox = await retry.boundingBox();
         assert.ok(retryBox.height >= 44 && retryBox.y >= 0 && retryBox.y + retryBox.height <= viewport.height + 1, 'retry is touch-sized and reachable in the short viewport');
+        assert.ok(await retry.evaluate(node => parseFloat(getComputedStyle(node).fontSize) >= 14), 'recovery action stays readable and does not inherit small helper text');
         if (index === 0) await page.screenshot({ path: path.join(output, `known-hotel-error-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
         if (index === 1) {
           const beforeEscape = hotelQueries.length;
@@ -281,6 +282,7 @@ const viewports = [
       assert.equal(await list.locator('[role="option"]').count(), 0, 'an empty canonical lookup cannot expose a selectable hotel');
       const recoveryButtonBox = await searchAll.boundingBox();
       assert.ok(recoveryButtonBox.height >= 44, 'all-hotels recovery is a full touch target');
+      assert.ok(await searchAll.evaluate(node => parseFloat(getComputedStyle(node).fontSize) >= 14), 'empty recovery action remains readable');
       assert.ok(recoveryButtonBox.y >= 0 && recoveryButtonBox.y + recoveryButtonBox.height <= viewport.height + 1, 'all-hotels recovery remains reachable in the short viewport');
       assert.equal(await recovery.evaluate(node => node.scrollWidth > node.clientWidth + 1), false, 'empty recovery does not overflow its lookup panel');
       await input.press('Enter');
