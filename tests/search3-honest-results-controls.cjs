@@ -64,7 +64,16 @@ assert.ok(localFilters.includes("'Рейтинг указан у '+r.k+' из '+
 
 {
   const listeners = new Map();
-  const strip = { scrollLeft: 0 };
+  const strip = { scrollLeft: 0, scrollWidth: 300, clientWidth: 300, addEventListener() {} };
+  const navigation = {
+    hidden: true,
+    contains() { return false; },
+    querySelector(selector) {
+      assert.ok(['[data-calendar-move="previous"]', '[data-calendar-move="next"]'].includes(selector));
+      return { setAttribute(name, value) { assert.equal(name, 'aria-disabled'); assert.ok(['true', 'false'].includes(value)); } };
+    }
+  };
+  const actions = { hidden: true };
   let details = null, markup = '';
   const box = {
     hidden: true,
@@ -72,10 +81,13 @@ assert.ok(localFilters.includes("'Рейтинг указан у '+r.k+' из '+
     querySelector(selector) {
       if (selector === 'details') return details;
       if (selector === '.current-price-calendar__days') return markup.includes('current-price-calendar__days') ? strip : null;
+      if (selector === '.current-price-calendar__actions') return markup.includes('current-price-calendar__actions') ? actions : null;
+      if (selector === '.current-price-calendar__navigation') return markup.includes('current-price-calendar__navigation') ? navigation : null;
       assert.fail(`unexpected calendar selector: ${selector}`);
     },
+    querySelectorAll(selector) { assert.equal(selector, '[data-calendar-date]'); return []; },
     get innerHTML() { return markup; },
-    set innerHTML(value) { markup = value; details = value.includes('<details') ? { open: value.includes('<details open>') } : null; }
+    set innerHTML(value) { markup = value; details = value.includes('<details') ? { open: value.includes('<details open>'), addEventListener() {} } : null; }
   };
   const window = { addEventListener(name, fn) { listeners.set(name, fn); }, matchMedia() { return { matches: false }; } };
   const document = { activeElement: null, getElementById(id) { assert.equal(id, 'currentPriceCalendar'); return box; }, body: { classList: { contains() { return true; } } }, addEventListener() {} };
@@ -84,6 +96,7 @@ assert.ok(localFilters.includes("'Рейтинг указан у '+r.k+' из '+
   const items = [{ tours: [{ date: '2099-09-01', price: 150000 }, { date: '2099-09-02', price: 140000 }, { date: '2099-09-03', price: 145000 }] }];
   listeners.get('v2:search-complete')({ detail: { items } });
   assert.equal(details.open, true);
+  assert.equal(actions.hidden, true, 'confirmation stays hidden until the user chooses a date');
   for (const open of [false, true]) {
     details.open = open;
     for (const filtered of [[], [{ tours: items[0].tours.slice(0, 1) }]]) {
@@ -104,8 +117,8 @@ assert.ok(localFilters.includes("'Рейтинг указан у '+r.k+' из '+
 }
 assert.ok(priceCalendar.includes("head=compact?'summary':'div'"),
   'Search3 keeps one native disclosure owner instead of creating a second mobile calendar UI');
-assert.ok(priceCalendar.includes('window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:3}'),
-  'price calendar public presentation contract is versioned with the Search3 visibility change');
+assert.ok(priceCalendar.includes('window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:4}'),
+  'price calendar public presentation contract is versioned with explicit date confirmation');
 
 for (const forbidden of ['fetch(', 'XMLHttpRequest', 'V2SearchLifecycle', 'startSearch(']) {
   assert.ok(!localFilters.includes(forbidden), `local result facets do not start supplier transport: ${forbidden}`);

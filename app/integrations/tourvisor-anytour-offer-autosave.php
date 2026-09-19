@@ -23,8 +23,9 @@ require_once dirname(__DIR__, 2) . '/v2/data/anytour-offer-snapshot-ingest-v1.ph
  * supplier search amount. Presence of Tourvisor fuelCharge is only a readiness gate;
  * the protected finalPriceReady handoff remains the sole listing-price authority.
  *
- * Persistence is intentionally source-routed: Tourvisor owns only PEGAS, Coral and
- * Sunmar offers. ANEX is direct-ANEX-owned; other operators remain SAMO/Andromeda-owned.
+ * Retain eligible offers from every operator returned by Tourvisor. Future source
+ * specialization must not discard observed offers before direct-provider coverage.
+ * Provider identity remains Tourvisor; the original operator label is kept separately.
  */
 final class AnyTourTourvisorOfferAutosaveV1
 {
@@ -99,7 +100,7 @@ final class AnyTourTourvisorOfferAutosaveV1
             foreach ($tours as $tour) {
                 if (!is_array($tour)) return self::receipt(false, 'malformed_tour');
                 $operatorRaw = self::firstText($tour, ['operatorName', 'operator']);
-                if (self::ownedOperatorFamily($operatorRaw) === null) continue;
+                if ($operatorRaw === '') continue;
                 $routedTours[] = $tour;
                 ++$rawOfferCount;
                 if ($rawOfferCount > self::MAX_OFFERS) return self::receipt(false, 'too_many_offers');
@@ -118,32 +119,18 @@ final class AnyTourTourvisorOfferAutosaveV1
         $catalog = new AnyTourCanonicalCatalog($db);
         $targets = $catalog->legacyTargets(array_values($legacyIds));
 
-        $entries = [];
-        $observedAt = $now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+        $observedAt = $now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\\TH:i:s\\Z');
         $adults = (int)$scope['adults'];
         $childAges = array_map('intval', $scope['childs']);
         $children = count($childAges);
-
-        foreach ($response as $hotel) {
-            $legacyId = (int)$hotel['id'];
-            $ownId = $targets[$legacyId] ?? null;
-            foreach ($hotel['tours'] as $tour) {
-                $entry = self::entryFromTour(
-                    $searchId,
-                    $legacyId,
-                    is_int($ownId) ? $ownId : null,
-                    $tour,
-                    $adults,
-                    $children,
-                    $childAges,
-                    $observedAt,
-                    $now
-                );
-                if ($entry === null) return self::receipt(false, 'tour_contract_incomplete');
-                $entries[] = $entry;
-            }
+        [$entries, $skippedIncompleteOfferCount] = self::compileEntries(
+            $response, $targets, $searchId, $adults, $children, $childAges, $observedAt, $now
+        );
+        if ($entries === []) {
+            return self::receipt(false, 'no_contract_rows', [
+                'skippedIncompleteOfferCount' => $skippedIncompleteOfferCount,
+            ]);
         }
-        if ($entries === []) return self::receipt(false, 'no_contract_rows');
 
         $result = AnyTourIntOfferSnapshotProducerV1::produce(
             'tourvisor',
@@ -159,7 +146,45 @@ final class AnyTourTourvisorOfferAutosaveV1
             $state['saved_at'] = $now->getTimestamp();
             self::writeState($searchId, $state);
         }
+        $result['skippedIncompleteOfferCount'] = $skippedIncompleteOfferCount;
         return $result;
+    }
+
+    private static function compileEntries(
+        array $response,
+        array $targets,
+        int $searchId,
+        int $adults,
+        int $children,
+        array $childAges,
+        string $observedAt,
+        DateTimeImmutable $now
+    ): array {
+        $entries = [];
+        $skipped = 0;
+        foreach ($response as $hotel) {
+            $legacyId = (int)$hotel['id'];
+            $ownId = $targets[$legacyId] ?? null;
+            foreach ($hotel['tours'] as $tour) {
+                $entry = self::entryFromTour(
+                    $searchId,
+                    $legacyId,
+                    is_int($ownId) ? $ownId : null,
+                    $tour,
+                    $adults,
+                    $children,
+                    $childAges,
+                    $observedAt,
+                    $now
+                );
+                if ($entry === null) {
+                    ++$skipped;
+                    continue;
+                }
+                $entries[] = $entry;
+            }
+        }
+        return [$entries, $skipped];
     }
 
     private static function entryFromTour(
@@ -189,7 +214,7 @@ final class AnyTourTourvisorOfferAutosaveV1
         }
 
         $operatorRaw = self::firstText($tour, ['operatorName', 'operator']);
-        if (self::ownedOperatorFamily($operatorRaw) === null) return null;
+        if ($operatorRaw === '') return null;
 
         $fuel = null;
         if (array_key_exists('fuelCharge', $tour)) {
@@ -258,24 +283,6 @@ final class AnyTourTourvisorOfferAutosaveV1
         } catch (Throwable $error) {
             return null;
         }
-    }
-
-    private static function ownedOperatorFamily(string $raw): ?string
-    {
-        $value = trim($raw);
-        if ($value === '') return null;
-        $value = mb_strtolower(str_replace('ё', 'е', $value), 'UTF-8');
-        $compact = preg_replace('/[^\p{L}\p{N}]+/u', '', $value) ?? '';
-        if (in_array($compact, ['pegas', 'pegastouristik', 'pegastouristic', 'пегас', 'пегастуристик'], true)) {
-            return 'pegas';
-        }
-        if (in_array($compact, ['coral', 'coraltravel', 'корал', 'коралтревел'], true)) {
-            return 'coral';
-        }
-        if (in_array($compact, ['sunmar', 'sunmartour', 'sunmartravel', 'санмар', 'санмартур'], true)) {
-            return 'sunmar';
-        }
-        return null;
     }
 
     private static function extractSearchId(array $response): ?int

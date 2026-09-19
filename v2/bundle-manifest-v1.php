@@ -31,6 +31,7 @@ function v2_bundle_files(string $type, string $scope = 'full'): array
         'js' => ['header-current-site.js', 'search3-room-normalizer-v1.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'hotel-actions-v3.js', 'room-details-v3.js', 'selected-tour-return-v1.js', 'selected-tour-description-v1.js', 'checkout-experience-v1.js', 'price-confidence-v1.js', 'search-filters-ux-v1.js', 'search-params-filter-rail-v1.js', 'results-depth-v1.js', 'results-local-filters-v1.js', 'results-filter-autorefresh-v1.js', 'mobile-results-filters-v1.js', 'primary-meal-ux-v1.js', 'search-progress-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'mobile-search-summary-v1.js', 'ds2-results-filters.js', 'search-redesign-v2.js', 'accessibility.js'],
     ];
     $files = array_values(array_diff($manifest[$type], $excluded[$type]));
+    if ($type === 'css') $files[] = 'hotel-photo-viewer-v1.css';
     if ($type === 'js') {
         $index = array_search('results-renderer-v5.js', $files, true);
         if ($index === false) throw new LogicException('Missing renderer dependency');

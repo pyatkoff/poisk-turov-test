@@ -104,11 +104,11 @@ function savedRenderer(raw){
  return{expanded,limits,sort:bounded(view.sort,40)||'price'};
 }
 function captureRendererView(){
- const node=resultsNode(),expanded=[],limits=[];if(node)node.querySelectorAll('.hotel-card').forEach(card=>{const id=hotelId(card),toggle=card.querySelector('button.tour-more-toggle[aria-expanded="true"]');if(!id||!toggle)return;expanded.push(id);limits.push([id,card.querySelectorAll('.direct-tour').length]);});
+ const node=resultsNode(),expanded=[],limits=[];if(node)node.querySelectorAll('.hotel-card').forEach(card=>{const id=hotelId(card),toggle=card.querySelector('button.tour-more-toggle[aria-expanded="true"]');if(!id||!toggle)return;expanded.push(id);limits.push([id,card.querySelectorAll('.tour-row').length]);});
  return{expanded,limits,sort:document.getElementById('sortResults')?.value||'price'};
 }
 function restoreRendererView(view){
- const node=resultsNode();if(!node)return;(view.expanded||[]).forEach(id=>{const card=cardById(node,id),toggle=card&&card.querySelector('button.tour-more-toggle[aria-expanded="false"]');if(toggle)toggle.click();const wanted=(view.limits||[]).find(pair=>pair[0]===id)?.[1]||0;let more=card&&card.querySelector('.tour-list-more'),guard=0;while(more&&card.querySelectorAll('.direct-tour').length<wanted&&guard++<200){more.click();more=card.querySelector('.tour-list-more');}});
+ const node=resultsNode();if(!node)return;(view.expanded||[]).forEach(id=>{const card=cardById(node,id),toggle=card&&card.querySelector('button.tour-more-toggle[aria-expanded="false"]');if(toggle)toggle.click();const wanted=(view.limits||[]).find(pair=>pair[0]===id)?.[1]||0;let more=card&&card.querySelector('.tour-list-more'),guard=0;while(more&&card.querySelectorAll('.tour-row').length<wanted&&guard++<200){more.click();more=card.querySelector('.tour-list-more');}});
 }
 function captureView(old){
  const r=window.V2Results,node=resultsNode();if(!node||node.hidden)return old&&old.view||null;

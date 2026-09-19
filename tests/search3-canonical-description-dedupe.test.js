@@ -192,3 +192,61 @@ for (const event of ['v2:search-reset', 'v2:search-started']) {
 window.location.pathname = '/_preview/search3-site-candidate/poisk-turov/';
 assert.equal(api.normalizeHotelTitleLink(linkFixture().card), false, 'title links cannot leak into another preview');
 console.log('SEARCH3_HOTEL_NAME_LINK_OK exact_url=1 native_anchor=1 idempotent=1 invalidation=1 route_isolated=1');
+
+// Main-image navigation is independent of tour/search/price authority.
+window.location = new URL('https://fixture.invalid' + path);
+function photoFixture(src = 'https://images.example/hotel/a.jpg', id = '3217') {
+  const gallery = new TitleNode('div'), main = new TitleNode('img');
+  main.setAttribute('src', src); main.setAttribute('alt', 'Фото отеля Тестовый & <отель>');
+  gallery.appendChild(main);
+  gallery.querySelector = selector => selector === 'img.hotel-gallery-main' ? main
+    : gallery.children.find(node => node.className === 'search3-hotel-photo-link') || null;
+  const card = {dataset: {anytourHotelId:id}, querySelector: selector => selector === '.hotel-gallery' ? gallery : null};
+  gallery.closest = () => card;
+  return {card, gallery, main, link: () => gallery.querySelector('a.search3-hotel-photo-link')};
+}
+const photo = photoFixture();
+assert.equal(api.normalizeHotelPhotoLink(photo.card), true);
+assert.equal(photo.link().getAttribute('href'), photo.main.getAttribute('src'), 'exact displayed image URL is linked');
+assert.equal(photo.link().getAttribute('target'), '_blank', 'search page remains open');
+assert.equal(photo.link().getAttribute('rel'), 'noopener noreferrer');
+assert.equal(photo.link().getAttribute('aria-label'), 'Фото отеля Тестовый & <отель> — открыть в новой вкладке');
+assert.equal(photo.gallery.firstChild, photo.main, 'original image and thumbnail owner are not replaced');
+assert.equal(api.normalizeHotelPhotoLink(photo.card), false, 'photo normalization is idempotent');
+window.HTMLDialogElement = function() {};
+window.HTMLDialogElement.prototype.showModal = function() {};
+assert.equal(api.normalizeHotelPhotoLink(photo.card), true, 'native dialog support advertises the in-page viewer');
+assert.equal(photo.link().getAttribute('aria-haspopup'), 'dialog');
+assert.equal(photo.link().getAttribute('aria-label'), 'Фото отеля Тестовый & <отель> — смотреть фотографии');
+assert.equal(photo.link().getAttribute('href'), photo.main.getAttribute('src'), 'enhancement preserves the exact native fallback URL');
+delete window.HTMLDialogElement;
+assert.equal(api.normalizeHotelPhotoLink(photo.card), true, 'unsupported browsers retain original-image navigation');
+const photoAnchor = photo.link();
+for (const event of ['click', 'auxclick', 'contextmenu', 'focusin']) {
+  const next = 'https://images.example/hotel/' + event + '.jpg?size=original';
+  photo.main.setAttribute('src', next);
+  listeners.get(event)({target:{closest: selector => selector === '#results .hotel-gallery' ? photo.gallery : null}});
+  assert.equal(photo.link(), photoAnchor, event + ' updates the single existing anchor');
+  assert.equal(photo.link().getAttribute('href'), next, event + ' follows the current image without URL rewriting');
+}
+for (const src of ['', 'javascript:alert(1)', 'data:image/svg+xml,<svg/>', 'http://images.example/a.jpg',
+  '//images.example/a.jpg', '/a.jpg', 'https://user:password@images.example/a.jpg',
+  'https://images.example/a.jpg\n', 'https://images.example/a b.jpg', 'https://images.example/\u0000.jpg']) {
+  const item = photoFixture(src);
+  assert.equal(api.normalizeHotelPhotoLink(item.card), false, 'unsupported navigation source is not linked: ' + JSON.stringify(src));
+  assert.equal(item.link(), null);
+}
+photo.main.setAttribute('src', 'data:image/png;base64,AAAA');
+assert.equal(api.normalizeHotelPhotoLink(photo.card), true, 'a changed unsupported source revokes the previous link');
+assert.equal(photo.link(), null, 'old image navigation cannot remain attached');
+for (const id of ['', '0', '-1', 'abc']) assert.equal(api.normalizeHotelPhotoLink(photoFixture(undefined, id).card), false);
+window.V2SearchLifecycle = {dirty:true};
+assert.equal(api.normalizeHotelPhotoLink(photoFixture().card), true, 'viewing an existing hotel photo grants no tour selection authority');
+delete window.V2SearchLifecycle;
+window.location.search = '?search3_hotel=3217&search3_search=731';
+assert.equal(api.normalizeHotelPhotoLink(photoFixture().card), true, 'photo also opens in the direct hotel view');
+for (const pathname of ['/poisk-turov/', '/_preview/search3-site-candidate/poisk-turov/']) {
+  window.location.pathname = pathname;
+  assert.equal(api.normalizeHotelPhotoLink(photoFixture().card), false, 'photo behavior stays inside the local candidate');
+}
+console.log('SEARCH3_HOTEL_PHOTO_LINK_OK current_image=1 native_anchor=1 unsupported_source_rejected=1 route_isolated=1');

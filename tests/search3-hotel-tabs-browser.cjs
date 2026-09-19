@@ -22,7 +22,7 @@ const hotels = profiles.map((hotel, i) => ({ id: 101 + i, name: 'Supplier label 
 const reports = [];
 async function run(engine, width, height) {
   const browser = await ({ chromium, webkit }[engine]).launch();
-  const context = await browser.newContext({ viewport: { width, height }, serviceWorkers: 'block' });
+  const context = await browser.newContext({ viewport: { width, height }, hasTouch: width < 768, serviceWorkers: 'block' });
   const calls = [], failures = [], errors = [];
   const scenarioQuery = new URLSearchParams(query);
   if (width === 390) {
@@ -83,7 +83,7 @@ async function run(engine, width, height) {
   try {
     await page.goto(entry + '?' + scenarioQuery, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#results .hotel-card:nth-of-type(3)');
-    await page.waitForFunction(() => document.querySelectorAll('#results a[target="_blank"]').length === 3);
+    await page.waitForFunction(() => document.querySelectorAll('#results a.tour-more-toggle[target="_blank"]').length === 3);
     await page.locator('#sortResults').selectOption('rating');
     if (width < 1025) await page.locator('.search3-mobile-filter-panel > summary').click();
     await page.getByRole('searchbox', { name: /Название отеля/ }).fill('Проверочный');
@@ -95,6 +95,32 @@ async function run(engine, width, height) {
     await page.locator('.hotel-card').first().getByRole('button', { name: 'Поменять главное фото, миниатюра 1' }).click();
     assert.notEqual(await firstPhoto.getAttribute('src'), previousPhoto, 'gallery really switches the main photo');
     const state = () => page.evaluate(() => ({ url: location.href, scroll: scrollY, filter: document.querySelector('input[placeholder="Введите название"]')?.value, sort: document.querySelector('#sortResults').value, photo: document.querySelector('.hotel-card .hotel-photo img')?.src, open: document.querySelector('.hotel-card .hotel-details')?.open, ids: [...document.querySelectorAll('.hotel-card')].map(n => n.dataset.hotelId) }));
+    const photoLink = page.locator('.hotel-card').first().locator('.search3-hotel-photo-link');
+    await photoLink.scrollIntoViewIfNeeded();
+    const beforeViewer = await state(), beforeCalls = calls.length;
+    if (width < 768) await photoLink.tap(); else await photoLink.click();
+    const viewer = page.getByRole('dialog', { name: profiles[0].name, exact: true });
+    await viewer.waitFor({ state: 'visible' });
+    assert.equal(await viewer.locator('img').getAttribute('src'), beforeViewer.photo, 'dialog starts from the currently displayed thumbnail');
+    await viewer.getByRole('button', { name: 'Следующее фото', exact: true }).click();
+    assert.equal(await viewer.locator('img').getAttribute('src'), previousPhoto, 'dialog uses the actual second rendered photo');
+    assert.equal(await viewer.locator('.hotel-photo-viewer__counter').innerText(), 'Фото 2 из 2');
+    await page.keyboard.press('ArrowLeft');
+    assert.equal(await viewer.locator('img').getAttribute('src'), beforeViewer.photo);
+    await viewer.locator('img').waitFor({ state: 'visible' });
+    for (const action of await viewer.locator('button:visible, a:visible').all()) {
+      const box = await action.boundingBox();
+      assert.ok(box.height >= 44 && box.x >= 0 && box.y >= 0 && box.x + box.width <= width && box.y + box.height <= height, 'photo actions remain reachable on this viewport');
+    }
+    await page.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photos.png`), animations: 'disabled' });
+    await page.keyboard.press('Escape');
+    await viewer.waitFor({ state: 'hidden' });
+    await page.waitForFunction(() => document.activeElement?.classList.contains('search3-hotel-photo-link'));
+    const afterViewer = await state();
+    assert.ok(Math.abs(afterViewer.scroll - beforeViewer.scroll) <= 2, 'photo close restores the same scroll position');
+    delete beforeViewer.scroll; delete afterViewer.scroll;
+    assert.deepEqual(afterViewer, beforeViewer, 'photo viewing preserves URL/filter/sort/current thumbnail/expanded result');
+    assert.equal(calls.length, beforeCalls, 'photos do not trigger search/tour/observation calls');
     const children = [];
     for (let index = 0; index < 3; index++) {
       const action = page.locator('.hotel-card').nth(index).locator('a.tour-more-toggle');
@@ -125,7 +151,7 @@ async function run(engine, width, height) {
       assert.match(trip, /7–10 ноч\. · 2 взр\./, 'trip context remains visible in the hotel tab');
       if (width === 390) assert.match(trip, /Возраст детей: 0, 7, 17/);
       assert.equal(await child.locator('.results-filter-rail').isVisible(), false, 'hotel detail starts without the search filter rail');
-      assert.equal(await child.locator('#results a[target="_blank"]').count(), 0, 'internal hotel actions do not spawn more tabs');
+      assert.equal(await child.locator('#results a.tour-more-toggle[target="_blank"]').count(), 0, 'internal hotel actions do not spawn more tabs');
     }
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1, 'three tabs reuse the original search');
     const child = children[0], initialDetailUrl = child.url();
@@ -168,7 +194,7 @@ async function run(engine, width, height) {
     await direct.screenshot({ path: path.join(output, `${engine}-${width}x${height}-expired.png`), fullPage: true, animations: 'disabled' });
     assert.deepEqual(failures, [], 'no lead/booking/unknown writes');
     assert.deepEqual(errors, [], 'no browser exceptions');
-    reports.push({ engine, width, height, sourceSha, passed: true, searchStarts: 1, detailTabs: 3, directReload: true, expiredManualRecovery: true, exactOffer: exact });
+    reports.push({ engine, width, height, sourceSha, passed: true, photoViewer: true, photoContextPreserved: true, searchStarts: 1, detailTabs: 3, directReload: true, expiredManualRecovery: true, exactOffer: exact });
   } catch (error) {
     for (const [index, current] of context.pages().entries()) {
       await current.screenshot({ path: path.join(output, `${engine}-${width}-failure-${index}.png`), fullPage: true }).catch(() => {});

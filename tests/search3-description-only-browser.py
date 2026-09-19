@@ -42,10 +42,12 @@ def image(label):
     return 'data:image/svg+xml;base64,' + base64.b64encode(svg.encode()).decode()
 
 
+PHOTOS = {'https://fixture.invalid/photos/a.svg': image('A'),
+          'https://fixture.invalid/photos/b.svg': image('B')}
 PROFILE = {'id': 1, 'catalog': 'anytour', 'revision': 1,
            'name': 'Тестовый отель с подробным описанием', 'description': DESCRIPTION,
-           'detailsAvailable': True, 'category': 5, 'primaryImage': image('A'),
-           'images': [image('A'), image('B')], 'hotelInformation': {}}
+           'detailsAvailable': True, 'category': 5, 'primaryImage': next(iter(PHOTOS)),
+           'images': list(PHOTOS), 'hotelInformation': {}}
 HOTEL = {'id': '102', 'provider': 'tourvisor', 'name': 'НЕЛЬЗЯ: имя поставщика',
          'price': 125000, 'tours': [{'id': '731', 'provider': 'tourvisor', 'price': 125000,
          'date': '2026-10-05', 'nights': 7, 'meal': {'name': 'AI'}, 'roomType': 'Standard',
@@ -59,8 +61,16 @@ with sync_playwright() as playwright:
     browser = playwright.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or None,
                                          headless=True, args=['--no-sandbox'])
     for width in [375, 768, 1440]:
-        context = browser.new_context(viewport={'width': width, 'height': 1000})
-        context.route('**/*', lambda route: route.abort())
+        context = browser.new_context(viewport={'width': width, 'height': 1000},
+                                      is_mobile=width <= 760, has_touch=width <= 760)
+        def fixture_route(route):
+            photo = PHOTOS.get(route.request.url)
+            if photo:
+                route.fulfill(status=200, content_type='image/svg+xml',
+                              body=base64.b64decode(photo.split(',', 1)[1]))
+            else:
+                route.abort()
+        context.route('**/*', fixture_route)
         page = context.new_page()
         page.set_default_timeout(3000)
         errors = []
@@ -79,6 +89,7 @@ with sync_playwright() as playwright:
           const location = new URL('https://fixture.invalid/_preview/search3-local-candidate/poisk-turov/');
           const fixtureWindow = new Proxy(window, {
             get(target, key) {if(key==='location') return location;
+              if(key==='HTMLDialogElement') return target[key];
               const value=Reflect.get(target,key,target);
               return typeof value==='function' ? value.bind(target) : value;},
             set(target,key,value) {target[key]=value; return true;}
@@ -105,6 +116,65 @@ with sync_playwright() as playwright:
         else:
             expect(teaser).to_be_visible()
             assert teaser.evaluate('node => node.clientHeight < node.scrollHeight')
+        photo_link = page.get_by_role('link', name='Фото отеля Тестовый отель с подробным описанием — смотреть фотографии', exact=True)
+        expect(photo_link).to_have_count(1)
+        expect(photo_link).to_have_attribute('href', PROFILE['primaryImage'])
+        expect(photo_link).to_have_attribute('target', '_blank')
+        expect(photo_link).to_have_attribute('rel', 'noopener noreferrer')
+        image_box = page.locator('.hotel-gallery-main').bounding_box()
+        link_box = photo_link.bounding_box()
+        assert all(abs(image_box[key] - link_box[key]) <= 1 for key in ['x', 'y', 'width', 'height'])
+        original_url = page.url
+        photo_link.scroll_into_view_if_needed()
+        original_scroll = page.evaluate('scrollY')
+        if width <= 760:
+            photo_link.tap()
+        else:
+            photo_link.click()
+        viewer = page.get_by_role('dialog', name=PROFILE['name'], exact=True)
+        expect(viewer).to_be_visible()
+        close = viewer.get_by_role('button', name='Закрыть фотографии', exact=True)
+        expect(close).to_be_focused()
+        page.keyboard.press('Shift+Tab')
+        expect(viewer.get_by_role('link', name='Открыть оригинал')).to_be_focused()
+        page.keyboard.press('Tab')
+        expect(close).to_be_focused()
+        expect(viewer.locator('img')).to_be_visible()
+        expect(viewer.locator('img')).to_have_attribute('src', PROFILE['primaryImage'])
+        expect(viewer.get_by_text('Фото 1 из 2', exact=True)).to_be_visible()
+        viewer.get_by_role('button', name='Следующее фото', exact=True).click()
+        expect(viewer.locator('img')).to_have_attribute('src', list(PHOTOS)[1])
+        page.keyboard.press('ArrowLeft')
+        expect(viewer.locator('img')).to_have_attribute('src', PROFILE['primaryImage'])
+        if width <= 760:
+            # Chromium's real touch input exercises pointer cancellation/direction;
+            # this is browser emulation, not a claim about a physical device.
+            box = viewer.locator('.hotel-photo-viewer__stage').bounding_box()
+            y = box['y'] + box['height'] / 2
+            x = box['x'] + box['width'] * .8
+            session = context.new_cdp_session(page)
+            session.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': x, 'y': y}]})
+            session.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [{'x': x - 100, 'y': y}]})
+            session.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+            session.detach()
+            expect(viewer.get_by_text('Фото 2 из 2', exact=True)).to_be_visible()
+            viewer.get_by_role('button', name='Предыдущее фото', exact=True).click()
+        for action in viewer.locator('button:visible, a:visible').all():
+            box = action.bounding_box()
+            assert box['height'] >= 44 and box['x'] >= 0 and box['x'] + box['width'] <= width
+        page.screenshot(path=str(OUT / f'photo-viewer-{width}.png'), full_page=False)
+        with page.expect_popup() as opened:
+            viewer.get_by_role('link', name='Открыть оригинал').click()
+        popup = opened.value
+        popup.wait_for_load_state('domcontentloaded')
+        assert popup.url == PROFILE['primaryImage']
+        popup.close()
+        page.keyboard.press('Escape')
+        expect(viewer).not_to_be_visible()
+        expect(photo_link).to_be_focused()
+        assert abs(page.evaluate('scrollY') - original_scroll) <= 2
+        assert page.url == original_url
+        expect(details).not_to_have_attribute('open', '')
         page.screenshot(path=str(OUT / f'description-only-closed-{width}.png'), full_page=True)
         details.locator('summary').focus()
         page.keyboard.press('Enter')
@@ -118,6 +188,25 @@ with sync_playwright() as playwright:
         first_image = main.get_attribute('src')
         thumbs.locator('button').first.click()
         assert main.get_attribute('src') != first_image
+        expect(photo_link).to_have_attribute('href', main.get_attribute('src'))
+        photo_link.focus()
+        page.keyboard.press('Enter')
+        expect(viewer).to_be_visible()
+        expect(viewer.locator('img')).to_have_attribute('src', main.get_attribute('src'))
+        close.click()
+        expect(viewer).not_to_be_visible()
+        expect(photo_link).to_be_focused()
+        if width > 760:
+            # Desktop modified clicks can open a background tab without an opener.
+            with context.expect_page() as opened:
+                photo_link.click(modifiers=['Control'])
+            popup = opened.value
+            popup.wait_for_url(main.get_attribute('src'))
+            popup.wait_for_load_state('domcontentloaded')
+            assert popup.url == main.get_attribute('src')
+            popup.close()
+        expect(viewer).not_to_be_visible()
+        assert page.url == original_url
         assert page.evaluate('Search3HotelDetailsPresentationV1.normalize(document.getElementById("results"))') == 0
         expect(details).to_have_attribute('open', '')
         assert page.evaluate('JSON.stringify(__hotel)===__before')
@@ -125,6 +214,24 @@ with sync_playwright() as playwright:
         assert not page.evaluate('document.documentElement.scrollWidth > innerWidth + 1')
         assert not errors, errors
         page.screenshot(path=str(OUT / f'description-only-open-{width}.png'), full_page=True)
+        # Image failure stays recoverable without losing results or making API calls.
+        failed_photo = main.get_attribute('src')
+        context.route(failed_photo, lambda route: route.fulfill(status=404, body='missing'))
+        photo_link.click()
+        expect(viewer.get_by_text('Не удалось загрузить фото.', exact=False)).to_be_visible()
+        viewer.get_by_role('button', name='Следующее фото', exact=True).click()
+        expect(viewer.locator('img')).to_be_visible()
+        close.click()
+        context.unroute(failed_photo)
+        # A single unique rendered source has no misleading navigation.
+        page.evaluate('''() => document.querySelector('.hotel-gallery-thumb img').src =
+          document.querySelector('.hotel-gallery-main').src''')
+        photo_link.click()
+        expect(viewer.get_by_text('Фото 1 из 1', exact=True)).to_be_visible()
+        expect(viewer.get_by_role('button', name='Следующее фото', exact=True)).not_to_be_visible()
+        page.evaluate("dispatchEvent(new CustomEvent('v2:search-reset'))")
+        expect(viewer).not_to_be_visible()
+        assert not page.evaluate("document.documentElement.classList.contains('hotel-photo-viewer-open')")
         details.locator('summary').focus()
         page.keyboard.press('Space')
         expect(details.locator('.hotel-description')).not_to_be_visible()
@@ -133,9 +240,14 @@ with sync_playwright() as playwright:
             expect(thumbs).not_to_be_visible()
         else:
             expect(teaser).to_be_visible()
+        assert page.evaluate('__catalogCalls') == 1
+        assert not errors, errors
         REPORT.append({'width': width, 'native_disclosure': True, 'full_text': True,
                        'single_visible_description': True, 'gallery': True,
-                       'keyboard': True, 'no_extra_catalog_calls': True, 'overflow': False})
+                       'photo_dialog': True, 'original_photo_tab': True, 'current_thumbnail_photo': True,
+                       'image_error_recovery': True, 'single_photo': True, 'reset_closes': True,
+                       'touch_photo': width <= 760, 'keyboard': True,
+                       'no_extra_catalog_calls': True, 'overflow': False})
         context.close()
     browser.close()
 

@@ -1,37 +1,296 @@
 # AnyTour MATCH — автономное сопоставление отелей
 
-Дата выделения направления: 2026-09-11. Issue: #1971. Координация: #996.
+Направление выделено 2026-09-11. Исполняемая очередь: **#1971**.
+Каноническая координация: **#2530**; #996 и #1759 — только history/no-replay.
+Постоянная логика уточнена владельцем 2026-09-19:
+[поручение и границы](https://github.com/pyatkoff/poisk-turov-test/issues/2530#issuecomment-5738102955).
+Состав Tourvisor расширен владельцем в тот же день до **ANEX, FUN&SUN,
+Библио-Глобус и Интурист**:
+[уточнение доступа](https://github.com/pyatkoff/poisk-turov-test/issues/2530#issuecomment-5738174091).
 
-MATCH — отдельная очередь автопилота. Это **не INT** и не продолжение INT #1717.
+MATCH — отдельное направление, не INT #1717 и не SEARCH. Этот документ задаёт
+алгоритм и границы, но не доказывает, что все его режимы уже реализованы или запущены.
+Текущие source/CI/execution/DB receipts и active claims находятся в #1971/#2530.
+Изменение документа или задания автопилота не равно запуску постоянного серверного worker.
 
-## Миссия
+## Миссия и приоритет
 
-Максимально быстро повышать покрытие hotel identity между Tourvisor, ANEX и Andromeda для продаваемых AnyTour направлений, записывая в реестры только доказанные связи и сводя manual review к последнему хвосту.
+Постоянно закрывать отсутствующие связи Tourvisor ↔ ANEX ↔ SAMO/Andromeda,
+начиная с отелей, реально появившихся в поисковой выдаче. Единица работы —
+**несопоставленный отель и конкретная отсутствующая provider-связь**, а не все его туры.
 
-Работа идёт массовыми delta-пакетами. Если безопасно разобрать сотни или тысячи строк, не дробить их искусственно на пакеты по несколько отелей. После одного PR не останавливаться, если в текущем запуске есть следующий безопасный независимый шаг.
+Сначала обрабатывать `source=user_search` и недостающие связи реально виденных
+туристами отелей, затем новые несопоставленные ANEX/SAMO observations и остальной
+CURRENT unresolved catalog. Использовать уже сохранённые ссылки, справочники и
+ответы прежде дополнительных вызовов. Полный повтор каталога ради счётчика не нужен.
+Безопасные независимые строки обрабатывать сотнями/тысячами; лимит30 относится
+к совместимой поисковой пачке, а не к размеру всей работы или одному PR на отель.
 
 ## Старт каждого запуска
 
-1. Прочитать свежие `AGENTS.md`, `docs/project/anytour-development.md`, эту страницу и #1971.
-2. Прочитать свежие сообщения #996, heads, открытые MATCH PR, CI и завершённые receipts.
-3. Не исполнять historical `next_action`, если после него изменились данные, алгоритм или owner decision.
-4. Не replay завершённые/unknown operation IDs. Потеря receipt — блокер, а не повод повторить запись.
-5. Claim в #996: issue, branch/PR, exact owned paths, входной snapshot и следующий write boundary.
+1. Прочитать свежие `AGENTS.md`, scoped инструкции затрагиваемых файлов,
+   `docs/project/anytour-development.md`, этот документ и #1971/#2530.
+   Организационные документы читать на свежей release, если их нет на feature.
+2. Проверить fresh head `feature/anex-search-adapter-20260907`, открытые PR,
+   CI/actions, active claims, завершённые receipts и фактический доступ к execution.
+   Документация MATCH живёт на release; это не разрешение менять SEARCH runtime.
+3. Не исполнять старый `next_action`/snapshot как новую очередь. Состояние данных,
+   owner decisions и закрытые операции перепроверять перед новой работой.
+4. Claim в #2530: #1971, branch/PR, exact owned paths, входное evidence,
+   граница provider/DB access. Не дублировать active operation или чужой shared writer.
+5. Terminal/unknown operations не replay. Потеря receipt требует отдельной
+   reconciliation, а не повтора. Отказ security/tool gate нельзя обходить новым
+   именем, workflow, исполнителем, транспортом или использованием секретов.
 
-## Текущая authoritative live-база
+## Постоянный цикл наблюдение → доказательство → соответствие
 
-Последний подтверждённый application DB readback: POST-CORE8 DELTA V2, operation `hotel-full-catalog-delta-1759-20260911-v2`, run `34542325717`, +72 mappings (+27 ANEX, +45 Andromeda), `supplier_calls=0`, с per-row post-COMMIT readback.
+Повторные наблюдения одного отеля объединяются в текущем MATCH-процессе, а не
+создают повторные поиски. Сохраняются source namespace/ID, наблюдавшийся ТО,
+страна, конкретный город/курорт, дата, вылет, ночи, состав туристов и доступные
+search/tour IDs. Новое полезное наблюдение дополняет досье отсутствующей связи.
 
-- ANEX accepted links: **13,623**; unique local/Tourvisor: **11,667**.
-- Andromeda registry: **7,119 accepted / 2,865 pending / 12 conflict**; unique local/Tourvisor: **6,929**.
-- Triple ANEX + Tourvisor + Andromeda: **3,417**.
-- ANEX + Tourvisor only: **8,250**.
-- Andromeda + Tourvisor only: **3,512**.
-- Exactly-two only: **11,762**; at least-two including triple: **15,179**.
+Разделять состояния: нужна ссылка/ID; доказательство уже получено и проверяется;
+соответствие принято; на конкретную дату отель не найден; конфликт/ручной разбор;
+нужный ТО недоступен в учётке. Полученная, но неоднозначная ссылка не отправляет
+отель обратно в тот же поиск. Принятый ANEX mapping закрывает ANEX-связь, но не
+теряет ещё отсутствующую SAMO-связь этого отеля.
 
-Эти числа — registry/mapping coverage, а не наличие туров в публичной выдаче. Исторические intake-counts не являются текущим хвостом: первоначальные 2,764 pending шестистранового batch уже частично разрешены последующими операциями.
+Не приравнивать экспериментальный срез будущих дат/2A/7–10 ночей к полному
+user-seen frontier. Для новой операции брать пригодные реальные параметры
+наблюдения в пределах проверенного API-контракта. Историческое identity evidence
+не является утверждением о текущей цене или доступности тура.
 
-### Минимальный известный no-replay set
+### A. Несопоставленный Tourvisor hotel → нужный ТО
+
+1. Использовать **реальный Tourvisor hotel ID** и ТО/дату из наблюдения.
+   Наличие отеля у другого ТО само по себе не доказывает продажи ANEX.
+2. Проверить сохранённый `operatorLink`. Если его нет, сначала конкретизировать
+   пригодный сохранённый `tour_id` одним detail: новый поиск часто не нужен.
+3. Только при отсутствии пригодного тура искать этот TV hotel ID у нужного
+   доступного ТО на найденную дату с совместимым контекстом. Дождаться исходной
+   выдачи, выбрать один пригодный тур нужного оператора, получить detail.
+4. Сразу сохранить raw `operatorLink`, извлечённый native hotel ID, namespaces,
+   ТО и точную связь search → hotel → tour → detail → operatorLink.
+5. Передать доказательство в CURRENT-проверку и защищённую запись. Не собирать
+   новые варианты цен/ночей/номеров того же отеля ради уже найденного hotel ID.
+
+После расширения до common4 приоритет получают и ранее отложенные из-за доступа
+связи FUN&SUN, Библио-Глобуса и Интуриста. Не ограничивать frontier оператором ANEX.
+История закрывается по конкретной hotel/provider/operator-связи и контексту:
+старый ANEX-only miss не означает отсутствие отеля у другого ТО, но уже полученную
+ANEX-ссылку или terminal/unknown операцию повторять нельзя.
+
+Четыре доступных ТО не означают четыре поиска/detail на каждый отель. Сначала
+проверять релевантного оператора исходного наблюдения; других — только для ещё
+недостающей связи или разрешения неоднозначности. OperatorLink каждого ТО хранится
+в его собственном пространстве ID; не требовать от всех ANEX `HOTELLIST` и не
+объявлять операторский hotel ID автоматически SAMO/Andromeda ID. Неизвестный формат
+ссылки сохранять как evidence для разбора, а не превращать в принятую связь.
+
+### B. Несопоставленный ANEX/SAMO hotel → Tourvisor
+
+1. Найти TV-кандидатов в справочнике той же страны по полному названию/сохранённому
+   alias; при необходимости — по самому редкому информативному слову названия.
+   Сначала использовать уже сохранённый TV-каталог. Редкость слова оценивается
+   среди отелей, а не по числу туров; generic `HOTEL` не является полезным ключом.
+2. Получить **TV hotel IDs** найденных кандидатов. Имя/слово — способ получить
+   кандидатов, не mapping и не повод выдумывать неподдерживаемый параметр API.
+   ANEX ID, SAMO ID и независимый AnyTour local ID не передаются как TV ID.
+3. Ранжировать по имени, стране, конкретной географии/координатам и релевантному
+   общему ТО. Поиск/конкретизацию проводить на известную supplier дату/контекст.
+   Проверять лучшего кандидата, затем следующих правдоподобных, если первого
+   недостаточно. Не объявлять первый похожий результат соответствием.
+4. Сопоставить полученный operatorLink/native ID с исходным ANEX/SAMO отелем.
+   При доказанной уникальной связи дальнейшие кандидаты не расходуют запросы;
+   неразрешённая конкуренция, другая страна или конфликт остаются явными.
+
+### C. Несопоставленные ANEX ↔ SAMO/Andromeda напрямую
+
+Искать в SAMO/Andromeda по **ТО ANEX**, известному отелю, дате и географии;
+прежде нового запроса использовать уже сохранённые ответы/принятые связки.
+Получить фактический SAMO hotel ID вместе с namespace и operator fingerprint,
+связать его с независимым native ANEX anchor/прямой ссылкой и hotel-level фактами.
+Не гонять отель через Tourvisor повторно, когда прямая связь доказуема без него.
+
+Числа ID разных API и одно похожее имя не доказывают совпадение. Даже если в
+SAMO-ответе оператор ANEX, его hotel ID не становится автоматически ANEX Online ID.
+При недостаточной идентификации сохранять кандидата, а не принимать догадку.
+Сохранять все реально прочитанные страницы; дополнительные страницы нужны только
+для ещё не закрытой задачи, а не для повторного накопления цен уже найденного отеля.
+
+## Экономная пачка identity-only
+
+Совместимые TV IDs группируются **до30 одним массивом**. Конкретный wire-формат
+(`hotelIds[]` у соответствующего шлюза или повторяющийся `hotelIds` у прямого API)
+должен быть подтверждён для используемого endpoint; эти варианты не подменять вслепую.
+Операторы и их числовые ID также привязываются к конкретному API/учётке.
+
+Пример: отправлено30 отелей, пришли20 → по одному нужному detail на каждый →
+эти20 исключены из этой acquisition-задачи → оставшиеся10 +20 новых совместимых
+в следующем поиске. Страна, вылет, пригодная дата/окно и остальные обязательные
+параметры должны быть совместимы. Не ждать наполнения до30 и не добавлять
+неподходящие отели только ради размера пачки.
+
+**В identity-only нет `/continue` и требования full-drain.** Ограниченные проверки
+готовности исходного поиска и получение результата учитываются как HTTP-вызовы.
+Найденный hotel ID — повод завершить acquisition для этой связи; прирост числа
+туров не является причиной продолжать поиск. Raw response/detail/link сохраняются
+сразу после получения, а не только в конце операции.
+
+Для ненайденных хранить прежние попытки. В неизменном контексте — не более одной
+переносной попытки с новыми совместимыми IDs; не запускать бесконечный residual-only
+повтор. Новое реальное наблюдение/пригодная дата/новое доказательство может создать
+обоснованную новую задачу, но новый op ID или очередной час сам по себе — нет.
+Не найден на дату не означает отсутствует в каталоге. Полученные operatorLinks,
+в том числе HOLD, не запрашиваются заново для получения тех же ID.
+
+### Отдельная явно назначенная resort/star coverage lane
+
+Это не постоянный identity lookup. Для нового измерения покрытия явно задаётся
+общий ТО из актуального TV∩SAMO состава. Сначала supplier evidence (для ANEX —
+прямой ANEX source) и SAMO/Andromeda подтверждают общую дату и **конкретные
+hotel/town/resort identities**, затем подключается Tourvisor. Не выбирать дату
+через TV `/dates`. Green transport или один `TOWNTOINC` сами по себе не доказывают
+географию. Ранее завершённые ANEX-only coverage операции не переигрываются.
+
+В этой отдельной задаче сохраняется full-drain TV initial + все `/continue` до
+завершения/нулевого прироста и SAMO PAGE1..PAGES_COUNT/явного exhaustion с union
+всех прочитанных страниц. Не переносить этот coverage-протокол на поиск одного
+hotel ID. Незавершённое покрытие не выдавать за исчерпание источника.
+
+## Лимиты и доступные операторы
+
+**2026-09-19 владелец сообщил о включении FUN&SUN, Библио-Глобуса и Интуриста**
+в ту же выделенную учётку Tourvisor. Текущий заявленный состав — **common4:
+ANEX + FUN&SUN + Библио-Глобус + Интурист**. Прежнее ограничение ANEX-only и
+ожидание исчерпания ANEX перед работой с этими тремя ТО больше не действуют.
+Это owner-reported доступ, не доказательство уже проверенной новой выдачи.
+
+Перед массовым использованием привязать фактические operator IDs/names/namespaces
+к текущей учётке TV и независимо к SAMO по актуальному сохранённому справочнику
+или подтверждённому ответу. При необходимости выполнить один разрешённый учтённый
+справочный запрос, не угадывать исторические numeric IDs. Проверять account binding:
+оператор результата не доказывает, какой учёткой сделан запрос. Старый сборщик с
+жёстким operator13 и ANEX-only parser не становится common4 от снятия проверок;
+нужна подтверждённая operator-specific обработка без изменения INT transport/auth.
+Иные недоступные ТО отложить, не объявляя их отели отсутствующими.
+
+Лимит этой учётки **остаётся3000 HTTP/сутки суммарно на все четыре ТО**,
+не3000 на каждого. Durable daily accounting продолжается в существующем ledger
+по реальной учётке и её суткам: резервирование и учёт **каждого физического запроса
+до HTTP**, включая dictionaries/start/status/results/detail, ошибки и неизвестные
+исходы. Параллельные операции используют общий защищённый ledger. Добавление ТО
+не обнуляет уже потраченные/unknown запросы; не обходить3000/day новым именем
+операции, файла счётчика или четырьмя отдельными бюджетами.
+Прямой ANEX API имеет отдельный лимит60 запросов/мин; Andromeda —5000000/месяц.
+Эти бюджеты не суммируются и не подменяют друг друга; сохранять прочие provider limits.
+
+Не просить повторно включать уже добавленные FUN&SUN/Библио-Глобус/Интурист.
+Устаревшее наблюдение «когда добавить ТО к ANEX-only» снимается, а не считается
+доказательством исчерпания ANEX. Других ТО предлагать только после разумного
+систематического неизбыточного покрытия текущего common4, переставшего давать
+полезные новые IDs/identity evidence, user-seen связи или hotel-local room evidence.
+Один пустой прогон, временный blocker либо пустой узкий future-date срез не
+доказывают исчерпания источника. Включение ТО не отменяет отказ execution/security gate.
+
+## Проверка identity и нормализация
+
+Native ANEX ID/прямая ссылка — сильный независимый anchor. Для сопоставления
+между TV и SAMO использовать полный operator fingerprint по **реально общим
+TV∩SAMO операторам**, не предполагать их наличие или одинаковые numeric IDs.
+
+- Сохранять raw names, полный raw operatorLink/HOTELLIST (включая signed/multiple
+  tokens), provider namespaces и контекст происхождения. Не отбрасывать токены
+  для искусственной однозначности; их семантику подтверждать отдельно.
+- `EX.`/former-name markers допустимо не учитывать, если текущая часть совпадает.
+  Generic `HOTEL` можно исключать из identity key. `ANNEX`, `BEACH`, `GARDEN`,
+  `RED`, корпуса и прочие значимые qualifiers не удалять blanket-правилом.
+- Сверять страну, конкретную географию и координаты, когда они доступны;
+  отсутствующие независимые координаты — unknown, не подтверждённая география.
+  Существующий >5km conflict не ослаблять. Близость координат сама не снимает occupancy.
+- Числовой `starKey` не считать количеством звёзд без saved dictionary/label.
+- `pending`, manual/conflict/exclusion и неоднозначные targets не являются accepted.
+  Старое fuzzy-предположение не равно принятой связи, но спор разрешается фактами,
+  а не игнорированием guard. При нескольких неразрешённых targets не принимать.
+
+Manual — последний этап после автоматического evidence ladder. Досье сохраняет
+обе стороны, причины, ссылки, географию и кандидатов; уже найденную ссылку не
+искать заново вместо разбора. При protected occupancy нужна отдельная identity/cluster
+проверка, не перезапись принятого target ради новой ссылки.
+
+## Write protocol
+
+Каждая операция изменения registry/DB:
+
+1. Новый уникальный operation ID и durable reservation до supplier/DB access.
+2. Capture с provenance/canonical hash; plan с причинами и immutable target set.
+3. Перед write повторить CURRENT conflict/manual/exclusion/source+target occupancy,
+   active/country/geo и остальные действующие saved-evidence guards.
+4. Transactional append/delta в существующие реестры; ошибка откатывает пакет.
+   Сохранить durable pre-COMMIT checkpoint. Не обновлять existing accepted/manual
+   строки для удобства без отдельного явного допуска владельца.
+5. После COMMIT прочитать каждую записанную строку, сверить digests/policy/enabled
+   и effective canonical resolver. COMMIT без readback не объявлять verified.
+6. Сохранить result/receipt/artifact digest/exact source SHA/run. Commit-unknown
+   или отсутствующий receipt не replay и не выдавать за ноль записей;
+   сначала отдельная разрешённая readback/reconciliation.
+
+Получение ссылки и принятие соответствия — разные стадии. Первая не требует
+повторного provider запроса для второй. Документ не меняет действующие политики
+приёмки, транзакционные защиты, разрешённый execution-контур или security gates.
+
+## Room correspondences и границы владения
+
+Room matching только внутри уже принятой конкретной hotel-пары/cluster:
+TV room ↔ SAMO room ↔ direct ANEX room. Raw names сохранять; убирать только generic
+`ROOM`/`НОМЕР`/`КОМНАТА`, не терять `FAMILY`/`SEA VIEW`/`DELUXE`/`SUITE`.
+Не создавать глобальный room dictionary. Уже полученные room facts использовать
+повторно; отдельная room-задача не оправдывает бесконечный hotel identity поиск.
+
+MATCH владеет matching/evidence diagnostics, cross-provider bridge tooling,
+operatorLink/hotelCode extraction, review datasets/reason taxonomy, bounded
+registry-delta importer/manifest, coverage reports и hotel-local correspondences.
+Shared registry runtime-файл — только после exact-path claim в #2530, один writer.
+
+Не менять INT supplier auth/transport/search/package/price/fuel, SEARCH renderer/UI,
+LOCAL presentation, SITE/SEO, Metrika/goals, lead delivery/booking/manager routing,
+protected public API payloads, main/production или соседние проекты.
+Россия и Абхазия не входят в приоритет: AnyTour их не продаёт.
+
+## Критерий результата и следующий шаг
+
+В #1971 фиксировать examined/accepted/pending/conflict, новые уникальные local
+и provider targets, закрытые missing edges, прирост triple, CURRENT остаток с
+точным фильтром и reason codes, supplier call count и exact source/PR/CI/run/receipt.
+Отдельно указывать source prepared, CI checked, live DB written, post-COMMIT verified.
+CI fixture не называть live readback; ссылки/число туров/число PR не заменяют accepted.
+Когортные числа не складывать в global frontier без дедупликации и CURRENT recount.
+
+Следующий шаг выбирается из свежих #1971/#2530 по текущим новым наблюдениям и
+недостающим provider-связям согласно A/B/C. Сначала закончить полезную проверку
+сохранённого evidence, затем выполнять только необходимые новые queries.
+Не зацикливаться на одном HOLD: другие независимые строки продолжаются.
+Не останавливаться после одного безопасного PR/evidence-pass, когда есть следующий
+доступный шаг. Пользователю сообщать только существенный новый результат или
+конкретный blocker; неизменившиеся почасовые отчёты не нужны.
+
+## Историческая база 2026-09-11 — не CURRENT очередь
+
+POST-CORE8 DELTA V2: operation `hotel-full-catalog-delta-1759-20260911-v2`,
+run `34542325717`, +72 mappings (+27 ANEX,+45 Andromeda), supplier_calls=0,
+per-row post-COMMIT readback. На тот момент:
+
+- ANEX accepted links13623; unique local/Tourvisor11667.
+- Andromeda7119 accepted/2865 pending/12 conflict; unique local/Tourvisor6929.
+- Triple3417; ANEX+TV only8250; Andromeda+TV only3512.
+- Exactly-two only11762; at least-two including triple15179.
+
+Это историческое registry coverage, не свежая продаваемость и не текущий остаток.
+Прежние2865 pending (включая51 category-review),193 ambiguous staging,
+214 observed/no-staging и13 hard geo conflicts не являются готовой новой очередью:
+многие уже обработаны. Не replay первоначальные каталоги/планы по этим числам.
+
+Минимальный исторический no-replay set (не полный журнал):
 
 - `andromeda-1759-country6-20260910-v1`;
 - `andromeda-1759-country6-pending-20260910-v1`;
@@ -39,108 +298,6 @@ MATCH — отдельная очередь автопилота. Это **не 
 - `hotel-full-catalog-1759-20260911-v1`;
 - `hotel-full-catalog-delta-1759-20260911-v2`.
 
-Это не заменяет CURRENT DB/receipt check перед write: новая операция всегда вычисляет delta от текущего состояния и не полагается на исторический список пар.
-
-## Приоритет очереди
-
-### M1 — bridge в triple без новых catalogue calls
-
-Использовать текущие accepted связи и сохранённые evidence, чтобы превращать **8,250 ANEX+TV only** и **3,512 Andromeda+TV only** в triple. Сначала работать с существующими snapshot/DB registry; не скачивать заново завершённые каталоги ради отчёта.
-
-### M2 — current Andromeda pending
-
-Разобрать **2,865 current pending** по registry. В последнем pass 51 строка была заблокирована как category-conflict: перед любым решением проверять реальные сохранённые star labels/dictionaries и не считать числовой `starKey` автоматически количеством звёзд. Остальные строки ранжировать через accepted cross-provider bridge, exact/alias identity, saved geography и достаточный name winner margin, не превращая blind fuzzy в accepted.
-
-### M3 — ANEX unresolved + Tourvisor → ANEX operator page → hotelCode
-
-После последнего core8 pass известный остаток включает 193 ambiguous staging, 214 ambiguous observed/no-staging и 13 hard >5km conflicts. Guards >5km/manual/exclusion не ослаблять.
-
-Для unresolved ANEX автоматически пройти цепочку доказательств до manual:
-
-1. Найти точный local/Tourvisor hotel.
-2. Использовать сохранённую ссылку Tourvisor/оператора, если она есть.
-3. Перейти к странице ANEX оператора.
-4. Извлечь `HOTELLIST`, `hotelCode`/`hotelcode` из URL, параметров страницы либо прямой media/photo URL, если значение наблюдается как прямое доказательство.
-5. Сопоставить этот ANEX ID с текущим ANEX catalog/Online evidence.
-6. Проверить country + однозначность имени/alias + geography/coordinates, если доступны.
-7. Сохранить provenance и только после этого готовить delta acceptance.
-
-Manual review разрешён только после прохождения этого автоматического ladder.
-
-### M4 — остаточный manual
-
-На manual отправляются только ambiguous/conflict/недостаточно доказанные строки с уже собранным досье: обе стороны, причины отказа автоматики, ссылки, координаты/география и предлагаемые кандидаты.
-
-## Правила нормализации
-
-- `EX.` / former-name markers разрешено не учитывать при сравнении, если текущая часть имени совпадает.
-- Generic слово `HOTEL` можно исключать из identity key.
-- Значимые qualifiers (`ANNEX`, `BEACH`, `GARDEN`, корпус/бренд и т.п.) не удалять blanket-правилом.
-- Совпадение числовых ID разных API ничего не доказывает.
-- `pending`, geography conflict, category conflict, ambiguous name и pair exclusion не являются accepted.
-- При нескольких возможных local targets автоматическое принятие запрещено.
-
-## Write protocol
-
-Каждая операция, изменяющая registry/DB:
-
-1. Новый уникальный operation id.
-2. Durable reservation до supplier/DB access.
-3. Capture + canonical hash.
-4. Plan + reason counters + immutable target set.
-5. Перед write — повторная проверка current rows и preservation existing accepted/manual/conflict/exclusions.
-6. Transactional apply; ошибка откатывает весь пакет.
-7. Post-COMMIT readback каждой вставленной/изменённой строки.
-8. Result + receipt + artifact digest + exact source SHA/run.
-9. `unknown` не replay; сначала отдельная readback/reconciliation.
-
-Mass acceptance не должен обновлять существующие identities «для удобства»: только доказанный append/delta, если отдельный owner decision явно не разрешил update.
-
-## Владение и границы
-
-MATCH владеет:
-- matching/evidence diagnostics;
-- cross-provider bridge tooling;
-- Tourvisor→ANEX operator-link/hotelCode evidence extraction;
-- review datasets и reason taxonomy;
-- bounded registry-delta importer/operation manifests;
-- отчётами coverage и остаточного хвоста.
-
-MATCH не владеет:
-- supplier transport/auth/search/package/price — INT;
-- Search3 UI/results/selection — SEARCH;
-- site shell/pages — SITE;
-- SEO/indexation — SEO.
-
-Если для delta нужен общий registry runtime-файл, MATCH сначала claim-ит exact path в #996. Один активный writer на shared path.
-
-Не менять Metrika/goals, lead delivery, manager routing, price arithmetic, protected public API payloads, production/main или соседние проекты.
-
-Россия и Абхазия не входят в приоритет массового сопоставления: AnyTour их не продаёт.
-
-## Критерий результата итерации
-
-В #1971 после каждого законченного пакета фиксировать:
-- examined / accepted / pending / conflict;
-- новые unique local targets;
-- прирост triple;
-- остаток по reason codes;
-- supplier/API call count;
-- exact source SHA, PR, CI/run, operation id, artifact/receipt;
-- отдельно: `source prepared` / `CI checked` / `live DB written` / `post-COMMIT verified`.
-
-CI fixture никогда не называть live DB readback.
-
-## Следующий безопасный пакет
-
-Построить **новый read-only bridge review от CURRENT DB после delta-v2**, без повторных supplier catalogue calls:
-
-- 2,865 current Andromeda pending;
-- 8,250 ANEX+TV-only и 3,512 Andromeda+TV-only accepted targets для cross-provider bridge;
-- current local/Tourvisor identities и aliases;
-- сохранённые ANEX Online/TV links/evidence;
-- 51 Andromeda category-conflict rows с реальными saved star labels/dictionaries;
-- 193 ambiguous ANEX staging + 214 ambiguous observed/no-staging;
-- Tourvisor→ANEX operator link→`HOTELLIST`/`hotelCode` candidates.
-
-Выход — массовый delta-plan с группами `auto_accept`, `needs_extra_evidence`, `hard_conflict`, `manual_last`, без DB write. После проверки plan — отдельная новая acceptance operation только для однозначного `auto_accept`.
+Все более поздние terminal/unknown операции также сохраняют no-replay статус.
+Проверять актуальные receipts/claims/ledger; этот список и датированные снимки
+не заменяют CURRENT DB/operation check и не дают разрешения повторять запись.

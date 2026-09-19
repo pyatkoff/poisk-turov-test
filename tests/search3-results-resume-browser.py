@@ -27,7 +27,7 @@ CODE+='\n'+FORM+'\n'+(V2/'tour-controller-v4.js').read_text()
 HOTELS=[]
 for i in range(1,5):
     tours=[]
-    for j,provider in enumerate(['tourvisor','anex','andromeda']):
+    for j,provider in enumerate(['tourvisor','anex','andromeda']*3):
         tours.append({'id':str(700+i*10+j),'provider':provider,'price':120000+i*1000+j*100,'date':'2030-10-05','nights':7,'adults':2,'childs':2,'meal':{'name':'AI'},'roomType':'STANDARD ROOM','operator':{'name':'Coral Travel'},'placement':'2AD+2CHD','selectionEnabled':provider=='tourvisor','offerRef':'PRIVATE-OFFER-REF' if provider!='tourvisor' else None,'context':{'secret':'PRIVATE-CONTEXT'},'quoteToken':'PRIVATE-QUOTE'})
     HOTELS.append({'id':100+i,'provider':'tourvisor','mappingStatus':'resolved','tours':tours})
 PROFILES=[{'id':9000+i,'catalog':'anytour','revision':1,'detailsAvailable':True,'name':'Тестовый отель '+str(i),'description':'Вымышленное подробное описание отеля. '*12,'category':5,'rating':4.5,'country':{'name':'Тестовая страна'},'region':{'name':'Тестовый регион'},'hotelInformation':{'services':['Бассейн']},'images':[],'phone':'PRIVATE-PHONE'} for i in range(1,5)]
@@ -36,7 +36,7 @@ BOOT=r'''window.__calls=[];window.__events=[];
 window.__hotels=HOTELS;window.__profiles=PROFILES;
 window.V2Runtime={setSearchId(id){this.searchId=id},api:async(action,params)=>{
  __calls.push({action,params});
- if(action==='search_start')return{searchId:731};
+ if(action==='search_start')return window.__holdStart?new Promise(resolve=>window.__releaseStart=resolve):{searchId:731};
  if(action==='search_status')return{status:'complete',progress:100};
  if(action==='search_results')return __hotels;
  if(action==='tour')throw new Error('Fixture exact-tour revalidation reached');
@@ -91,18 +91,26 @@ with sync_playwright() as pw:
         # Desktop presents this field through its separate sort controls.
         page.locator('#sortResults').evaluate("n=>{n.value='name';n.dispatchEvent(new Event('change',{bubbles:true}))}")
         page.locator('.hotel-details > summary').nth(1).click()
+        expanded=page.locator('.hotel-card').nth(1)
+        expanded.locator('.tour-more-toggle').click()
+        expanded.locator('.tour-list-more').click()
+        expect(expanded.locator('.tour-row')).to_have_count(6)
         page.evaluate('window.scrollTo(0,400)')
         page.wait_for_timeout(150)
         page.evaluate('Search3ResultsContinuityV1.captureSnapshot()')
         snapshot=page.evaluate('JSON.parse(sessionStorage.getItem('+json.dumps(KEY)+'))')
         assert snapshot['view']['renderer']['sort']=='name'
+        assert ['102',6] in snapshot['view']['renderer']['limits'], 'remember all displayed offers, including providers without selection buttons'
         initial_created=snapshot['createdAt'];original_query=snapshot['query']
         # Existing LOCAL controls keep ownership of predicates; resume sends the
         # same input event as a user edit instead of implementing another filter.
         page.locator('.search3-hotel-filter input').evaluate("n=>{n.value='отель 2';n.dispatchEvent(new Event('input',{bubbles:true}))}")
         page.wait_for_timeout(150)
         page.evaluate('Search3ResultsContinuityV1.captureSnapshot()')
-        page=open_page(page.evaluate('__fakeLocation.href') if offline else page.url)
+        if offline:
+            page=open_page(page.evaluate('__fakeLocation.href'))
+        else:
+            page.reload()
         expect(page.locator('.hotel-card')).to_have_count(4)
         assert page.evaluate('__calls')==[], 'reload must not start/status/results/profile-fetch a new search'
         assert page.evaluate('__events')==['v2:search-resumed'], 'no fake provider lifecycle events'
@@ -110,6 +118,11 @@ with sync_playwright() as pw:
         assert page.evaluate('V2SearchLifecycle.restoredAt')==initial_created
         assert page.locator('#sortResults').input_value()=='name'
         expect(page.locator('.hotel-details').nth(1)).to_have_attribute('open','')
+        expect(page.locator('.hotel-card').nth(1).locator('.tour-row')).to_have_count(6)
+        assert 'сохранённая выдача' in page.locator('#resultSummary').inner_text()
+        assert 'цены из текущего поиска' not in page.locator('#resultSummary').inner_text()
+        assert set(page.locator('.hotel-card').nth(1).locator('.tour-action > small').all_text_contents())=={'Цена из поиска'}, 'restored rows cannot claim a current total'
+        assert page.locator('.provider-detail-toggle').count()==0, 'no saved provider context becomes selection authority'
         page.wait_for_function('(key)=>{const v=JSON.parse(sessionStorage.getItem(key)).view;if(!v.anchor)return Math.abs(scrollY-v.scrollY)<5;const card=[...document.querySelectorAll(".hotel-card")].find(c=>c.dataset.hotelId===v.anchor.hotel);return card&&Math.abs(card.getBoundingClientRect().top-v.anchor.top)<5}',arg=KEY)
         assert 'Выдача восстановлена' in page.locator('#status').inner_text()
         expect(page.locator('#resultsTripContext')).to_be_visible()
@@ -141,6 +154,12 @@ with sync_playwright() as pw:
         expect(page.locator('.hotel-card')).to_have_count(4)
         assert page.evaluate('__calls')==[]
         assert page.evaluate('V2SearchLifecycle.restoredAt')==initial_created, 'restore must not extend the TTL'
+        if not offline:
+            page.goto(BASE.replace('/poisk-turov/','/resume-return-fixture/'))
+            page.go_back()
+            expect(page.locator('.hotel-card')).to_have_count(4)
+            assert page.evaluate('__calls')==[], 'native browser Back cannot restart supplier search'
+            assert page.evaluate('V2SearchLifecycle.restoredAt')==initial_created
         # Bare re-entry hydrates the saved form instead of starting a search.
         page=open_page(BASE)
         expect(page.locator('.hotel-card')).to_have_count(4)
@@ -194,8 +213,32 @@ with sync_playwright() as pw:
         starts=[c for c in page.evaluate('__calls') if c['action']=='search_start']
         assert len(starts)==1 and starts[0]['params']['countryId']=='9','other query cannot reuse saved results'
         assert page.evaluate('V2SearchLifecycle.restoredAt')==0
+        # Expired bare re-entry stays in the editable form and never invents a
+        # current result or automatically buys another supplier search.
+        page.evaluate('({key,valid})=>{const d=JSON.parse(valid);d.createdAt=Date.now()-1800001;sessionStorage.setItem(key,JSON.stringify(d))}',{'key':KEY,'valid':valid})
+        page=open_page(BASE)
+        page.wait_for_function('!!window.V2SearchLifecycle')
+        expect(page.locator('.hotel-card')).to_have_count(0)
+        assert page.evaluate('__calls')==[]
+        assert page.evaluate('V2SearchLifecycle.restoredAt')==0
+        expect(page.locator('#tourSearch')).to_be_visible()
+        # LOCAL data can arrive before the same generation receives its remote
+        # search id. Its visible in-page offers must stay usable in that interval.
+        page.evaluate('()=>{window.__holdStart=true;void V2SearchLifecycle.submit()}')
+        page.wait_for_function('typeof window.__releaseStart==="function"')
+        transient=page.evaluate('''async()=>{
+          const owner=Search3CanonicalProfilesV1.current();
+          owner.upsertHotel(__profiles[0]);
+          __hotels[0].tours.slice(0,2).forEach((t,i)=>owner.upsertOffer(9001,{...t,id:'cached:'+i,cachedListing:true,selectionEnabled:false},{source:'local-db',legacyHotelId:'101'}));
+          owner.refresh();
+          const before=V2Results.state.items.length;
+          __releaseStart({searchId:732});await Promise.resolve();await Promise.resolve();
+          document.querySelector('button.tour-more-toggle').click();
+          return {before,after:V2Results.state.items.length,rows:document.querySelectorAll('.tour-row').length};
+        }''')
+        assert transient=={'before':1,'after':1,'rows':2}, transient
         assert not errors,errors
-        REPORT.append({'width':width,'document_mode':'in-memory document reconstruction' if offline else 'browser navigation','reload_no_search':True,'same_tab_reentry':True,'query_and_ages':True,'sort_and_details':True,'fresh_tv_selection':True,'privacy':True,'non_sliding_ttl':True,'updated_view':True,'storage_failure':True,'overflow':False})
+        REPORT.append({'width':width,'document_mode':'in-memory document reconstruction' if offline else 'native reload and Back','reload_no_search':True,'native_back':not offline,'same_tab_reentry':True,'query_and_ages':True,'sort_and_details':True,'expanded_mixed_offers':6,'saved_price_wording':True,'expired_bare_form':True,'fresh_tv_selection':True,'privacy':True,'non_sliding_ttl':True,'updated_view':True,'storage_failure':True,'overflow':False})
         ctx.close()
     browser.close()
 (OUT/'resume-report.json').write_text(json.dumps(REPORT,ensure_ascii=False,indent=2)+'\n')
