@@ -1,0 +1,126 @@
+name: MATCH live80 direct acceptance v2
+on:
+  push:
+    branches: [ops/match-live80-direct-accept-1971-20260919-v2]
+    paths:
+      - scripts/diagnostics/hotel_match_live80_direct_accept_v2.php
+      - scripts/diagnostics/hotel_match_live80_direct_accept_helpers_v2.php
+      - .github/workflows/hotel-match-live80-direct-accept-v2.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-live80-direct-accept-1971-20260919-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-live80-direct-accept-1971-20260919-v2
+  BASE_SHA: e9d7bf349bfb601dff04b7fc47088c1eff38b369
+  CLAIM: '5743570078'
+  CLAIM_EXT: '5743539449'
+jobs:
+  accept:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact scope, claims and immutable evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/catalogs reservation terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA";mapfile -t changed < <(git diff --name-only "$BASE_SHA..HEAD");test "${#changed[@]}" -eq 3
+          php -l scripts/diagnostics/hotel_match_live80_direct_accept_helpers_v2.php;php -l scripts/diagnostics/hotel_match_live80_direct_accept_v2.php;php scripts/diagnostics/hotel_match_live80_direct_accept_v2.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_EXT" >input/claim-ext.json
+          python3 - <<'PY'
+          import json,os
+          a=json.load(open('input/claim.json'));b=a['body']
+          assert a['user']['id']==226193297 and a['author_association']=='OWNER' and a['issue_url'].endswith('/issues/2530')
+          assert os.environ['OPERATION_ID'] in b and 'undefined function l80_need' in b and 'Expected max80 writes' in b
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588531189/zip >input/current.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588361321/zip >input/live.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,tarfile,io,pathlib,json
+          p=pathlib.Path('input/current.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='10c772ef97964ae7d249593e8ee1ef43c748ff3f805d4e0b0bae8d4a1fd227a9'
+          with zipfile.ZipFile(p) as z:b=z.read('result.json')
+          assert hashlib.sha256(b).hexdigest()=='c14ef2ad9650c85ccf3f98749e2bd4ddaa3c27532034d298c1384f1a22c16ddd';pathlib.Path('input/current.json').write_bytes(b)
+          p=pathlib.Path('input/live.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='783aa1d3e7748c5d65414e6de23800164ccd59847ddaa12253b5e0a0cb9fbb8c'
+          with zipfile.ZipFile(p) as z:tb=z.read('server-operation.tgz')
+          with tarfile.open(fileobj=io.BytesIO(tb),mode='r:gz') as t:
+           b=t.extractfile(t.getmember('result.json')).read();assert hashlib.sha256(b).hexdigest()=='05ff5be9057a1485f07ee0f3a0ac12e2e8f74b21a81ed2f3d5556ba61e84bd47';pathlib.Path('input/live.json').write_bytes(b)
+           man=json.loads(t.extractfile(t.getmember('raw-manifest.json')).read());ledger={x['file']:x for x in man['files']}
+           cats=[n for n in ledger if n.startswith('raw-catalog-') and n not in ['raw-catalog-townfrom.json','raw-catalog-state.json']];assert len(cats)==9
+           for n in cats:
+            b=t.extractfile(t.getmember(n)).read();assert len(b)==ledger[n]['bytes'] and hashlib.sha256(b).hexdigest()==ledger[n]['sha256'];pathlib.Path('input/catalogs',n).write_bytes(b)
+          PY
+      - name: Create durable pre-write reservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,datetime
+          r={'operation':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_provider_access','reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'current_sha256':'c14ef2ad9650c85ccf3f98749e2bd4ddaa3c27532034d298c1384f1a22c16ddd','live_sha256':'05ff5be9057a1485f07ee0f3a0ac12e2e8f74b21a81ed2f3d5556ba61e84bd47','max_mapping_writes':80,'provider_calls':0,'no_replay':True}
+          open('reservation/reservation.json','x').write(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs and max(xs,key=lambda z:z['id'])['status']=='completed':assert max(xs,key=lambda z:z['id'])['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'live80-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute one guarded SERIALIZABLE transaction
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/catalogs\""
+          scp "${opts[@]}" reservation/reservation.json input/current.json input/live.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          scp "${opts[@]}" input/catalogs/*.json "$remote:$op/payload/catalogs/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_live80_direct_accept_v2.php scripts/diagnostics/hotel_match_live80_direct_accept_helpers_v2.php app/integrations/andromeda-hotel-resolver.php app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_CURRENT_PATH=\"\$HOME/$op/payload/current.json\" MATCH_LIVE_PATH=\"\$HOME/$op/payload/live.json\" MATCH_CATALOG_DIR=\"\$HOME/$op/payload/catalogs\" MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" \"\$HOME/$op/payload/hotel_match_live80_direct_accept_v2.php\"" >terminal/stdout.json 2>terminal/stderr.txt
+          rc=$?;printf '%s\n' "$rc">terminal/remote-exit.txt
+          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json;for f in capture.json plan.json pre-commit.json result.json receipt.json;do test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >terminal/server.tgz 2>>terminal/stderr.txt
+          trc=$?;printf '%s\n' "$trc">terminal/tar-exit.txt;set -e;test "$rc" -eq 0;test "$trc" -eq 0
+      - name: Verify committed mass delta
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib,os
+          p=pathlib.Path('terminal');s=p/'server';s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server.tgz','r:gz') as t:
+           seen=set()
+           for m in t.getmembers():assert m.isfile() and m.name not in seen and m.size<64000000;seen.add(m.name);(s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open(s/'result.json'));q=json.load(open(s/'receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID'] and r['state']==q['state']=='committed_verified' and r['readback_verified'] is True
+          assert q['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert 0<r['written_count']<=80 and r['database_writes']==r['mapping_writes']==r['accepted_delta']==r['triple_delta']==r['written_count']
+          assert r['written_count']+r['skipped_count']==80
+          print(json.dumps({k:r[k] for k in ['written_count','skipped_count','accepted_delta','triple_delta','prior_identities_preserved']},ensure_ascii=False))
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0;test "$(cat terminal/tar-exit.txt)" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-live80-accept-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
+      - name: Remove runner credential files
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
