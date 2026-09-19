@@ -35,6 +35,39 @@ final class AnyTourAnexLocalOfferDemandV1
         return $out;
     }
 
+    public static function searchParams(array $scope): array
+    {
+        $required=['departureId','countryId','regionId','dateFrom','dateTo','nights','adults','childAges'];
+        foreach($required as $key)if(!array_key_exists($key,$scope))throw new InvalidArgumentException('ANEX_DEMAND_SCOPE');
+        if(!is_array($scope['childAges'])||!array_is_list($scope['childAges']))throw new InvalidArgumentException('ANEX_DEMAND_SCOPE');
+        return [
+            'departureId'=>(string)self::id($scope['departureId']),
+            'countryId'=>(string)self::id($scope['countryId']),
+            'dateFrom'=>self::date($scope['dateFrom']),
+            'dateTo'=>self::date($scope['dateTo']),
+            'nightsFrom'=>self::integer($scope['nights'],1,28),
+            'nightsTo'=>self::integer($scope['nights'],1,28),
+            'adults'=>self::integer($scope['adults'],1,6),
+            'childs'=>array_map(static fn($age):int=>self::integer($age,0,17),$scope['childAges']),
+            'meal'=>'','hotelCategory'=>'','hotelRating'=>'','hotelTypes'=>[],'hotelIds'=>[],'hotelServices'=>[],
+            'arrivalId'=>'','regionIds'=>$scope['regionId']===null?[]:[(string)self::id($scope['regionId'])],
+            'subregionIds'=>[],'operatorIds'=>[],'priceFrom'=>'','priceTo'=>'','currency'=>'RUB',
+            'onlyCharter'=>false,'onlyDirect'=>false,
+        ];
+    }
+
+    public static function withoutFreshScopes(array $scopes, callable $isFresh, int $limit): array
+    {
+        if($limit<1||$limit>100||!array_is_list($scopes))throw new InvalidArgumentException('ANEX_DEMAND_LIMIT');
+        $out=[];
+        foreach($scopes as $scope){
+            if(!is_array($scope))throw new InvalidArgumentException('ANEX_DEMAND_SCOPE');
+            if($isFresh($scope)!==true)$out[]=$scope;
+            if(count($out)>=$limit)break;
+        }
+        return $out;
+    }
+
     private static function id(mixed $value): int
     {
         return self::integer($value,1,999999999);
