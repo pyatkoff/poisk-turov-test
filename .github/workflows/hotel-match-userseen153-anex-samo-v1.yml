@@ -1,0 +1,117 @@
+name: MATCH userseen153 ANEX to SAMO v1
+on:
+  push:
+    branches: [ops/match-userseen153-anex-samo-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_userseen153_anex_samo_v1.php
+      - scripts/diagnostics/hotel_match_userseen153_anex_samo_helpers_v1.php
+      - scripts/diagnostics/hotel_match_userseen153_anex_samo_core_v1.php
+      - .github/workflows/hotel-match-userseen153-anex-samo-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-userseen153-anex-samo-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-userseen153-anex-samo-1971-20260919-v1
+  BASE_SHA: e9d7bf349bfb601dff04b7fc47088c1eff38b369
+  CLAIM: '5743732236'
+  CLAIM_EXT: '5743734389'
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate scope, claims and router input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input reservation terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA";test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 4
+          php -l scripts/diagnostics/hotel_match_userseen153_anex_samo_helpers_v1.php;php -l scripts/diagnostics/hotel_match_userseen153_anex_samo_core_v1.php;php -l scripts/diagnostics/hotel_match_userseen153_anex_samo_v1.php;php scripts/diagnostics/hotel_match_userseen153_anex_samo_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json;gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_EXT" >input/claim-ext.json
+          python3 - <<'PY'
+          import json,os
+          a=json.load(open('input/claim.json'));b=json.load(open('input/claim-ext.json'));assert a['user']['id']==b['user']['id']==226193297 and a['author_association']==b['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in a['body'] and '10588343448' in a['body'] and 'Provider cap180' in a['body'] and 'hotel_match_userseen153_anex_samo_core_v1.php' in b['body']
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588343448/zip >input/router.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,pathlib
+          p=pathlib.Path('input/router.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='5aeeb43241fdaeb22ca072f19580b70d450c63b9ad5c7810490c541c1e4d14bd'
+          with zipfile.ZipFile(p) as z:b=z.read('result.json')
+          assert hashlib.sha256(b).hexdigest()=='d69b80d4c47dc1406b50184ff811bb8665bafda6a6e64bc407c1c130e874bb1e';pathlib.Path('input/router.json').write_bytes(b)
+          PY
+      - name: Reserve before provider access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,datetime
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'router_artifact':10588343448,'input_routed153':153,'provider_call_cap':180,'price_call_cap':150,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True}
+          open('reservation/reservation.json','x').write(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs and max(xs,key=lambda z:z['id'])['status']=='completed':assert max(xs,key=lambda z:z['id'])['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'userseen153-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Stage exclusive acquisition
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json input/router.json "$remote:$op/payload/";ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_userseen153_anex_samo_v1.php scripts/diagnostics/hotel_match_userseen153_anex_samo_helpers_v1.php scripts/diagnostics/hotel_match_userseen153_anex_samo_core_v1.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php "$remote:$op/payload/"
+      - name: Execute mass routed153 acquisition once
+        env:
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          AU: '${{ secrets.ANDROMEDA_USERNAME }}'
+          AP: '${{ secrets.ANDROMEDA_PASSWORD }}'
+        run: |
+          set -uo pipefail;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          set +e
+          printf '%s\n%s\n' "$AU" "$AP" | ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_ROUTER_PATH=\"\$HOME/$op/payload/router.json\" MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" -d memory_limit=1024M \"\$HOME/$op/payload/hotel_match_userseen153_anex_samo_v1.php\"" >terminal/stdout.json 2>terminal/stderr.txt
+          rc=$?;printf '%s\n' "$rc">terminal/remote-exit.txt
+          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json;for f in result.json receipt.json provider-calls.jsonl raw-manifest.json bootstrap-errors.log;do test ! -f "$f" || set -- "$@" "$f";done;for f in raw-*.json;do test "$f" = raw-manifest.json && continue;test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >terminal/server.tgz 2>>terminal/stderr.txt
+          trc=$?;printf '%s\n' "$trc">terminal/tar-exit.txt;set -e;test "$rc" -eq 0;test "$trc" -eq 0
+      - name: Verify terminal mass result
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib,os
+          p=pathlib.Path('terminal');s=p/'server';s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server.tgz','r:gz') as t:
+           seen=set()
+           for m in t.getmembers():assert m.isfile() and m.name not in seen and m.size<128_000_000;seen.add(m.name);(s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open(s/'result.json'));q=json.load(open(s/'receipt.json'));assert r['operation']==q['operation']==os.environ['OPERATION_ID'] and r['state']==q['state']=='completed_read_only'
+          assert r['input_routed153']==153 and r['current_active_targets']+r['current_skipped']==153 and r['provider_calls']==q['provider_calls']<=180 and r['price_calls']==q['price_calls']<=150
+          assert r['tourvisor_calls']==0 and r['database_writes']==r['mapping_writes']==0 and q['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest() and all(x['safe_to_write_now'] is False for x in r['dossiers'])
+          m=json.load(open(s/'raw-manifest.json'));assert q['raw_manifest_sha256']==hashlib.sha256((s/'raw-manifest.json').read_bytes()).hexdigest()
+          for x in m['files']:
+           b=(s/x['file']).read_bytes();assert len(b)==x['bytes'] and hashlib.sha256(b).hexdigest()==x['sha256']
+          print(json.dumps({k:r[k] for k in ['current_active_targets','current_skipped','departure_count','pair_count','unavailable_pairs','group_count','provider_calls','price_calls','state_counts']},ensure_ascii=False))
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0;test "$(cat terminal/tar-exit.txt)" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-userseen153-anex-samo-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
