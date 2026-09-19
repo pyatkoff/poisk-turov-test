@@ -1,0 +1,68 @@
+name: MATCH refresh55 partial reconciliation v1
+on:
+  push:
+    branches: [ops/match-refresh55-partial-reconcile-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_refresh55_partial_reconcile_v1.py
+      - tests/hotel_match_refresh55_partial_reconcile_v1_test.py
+      - .github/workflows/hotel-match-refresh55-partial-reconcile-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-refresh55-partial-reconcile-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-refresh55-partial-reconcile-1971-20260919-v1
+  CLAIM: '5744651818'
+  BASE_SHA: '93915088f169716d89e2e6426d6d8700dbcf0416'
+jobs:
+  reconcile:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate isolated source and claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          mkdir -p input output
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | sort)" = "$(printf '%s\n' '.github/workflows/hotel-match-refresh55-partial-reconcile-v1.yml' 'scripts/diagnostics/hotel_match_refresh55_partial_reconcile_v1.py' 'tests/hotel_match_refresh55_partial_reconcile_v1_test.py' | sort)"
+          python3 -m py_compile scripts/diagnostics/hotel_match_refresh55_partial_reconcile_v1.py tests/hotel_match_refresh55_partial_reconcile_v1_test.py
+          python3 scripts/diagnostics/hotel_match_refresh55_partial_reconcile_v1.py --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in b and '10588765891' in b and '10588343448' in b and '120' in b and 'touched_incomplete' in b
+          PY
+      - name: Download immutable source artifacts
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588765891/zip > input/failed.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588343448/zip > input/router.zip
+          sha256sum input/failed.zip input/router.zip
+      - name: Reconcile and verify real evidence
+        run: |
+          set -euo pipefail
+          python3 tests/hotel_match_refresh55_partial_reconcile_v1_test.py --source scripts/diagnostics/hotel_match_refresh55_partial_reconcile_v1.py --failed-zip input/failed.zip --router-zip input/router.zip
+          python3 scripts/diagnostics/hotel_match_refresh55_partial_reconcile_v1.py --failed-zip input/failed.zip --router-zip input/router.zip --output output/result.json --receipt output/receipt.json
+          python3 - <<'PY'
+          import hashlib,json
+          r=json.load(open('output/result.json'));q=json.load(open('output/receipt.json'))
+          assert r['operation']==q['operation']=='hotel-match-refresh55-partial-reconcile-1971-20260919-v1'
+          assert r['state']==q['state']=='completed_offline_reconciliation'
+          assert q['result_sha256']==hashlib.sha256(open('output/result.json','rb').read()).hexdigest()
+          assert r['tourvisor_calls_accounted']==q['source_tourvisor_calls_accounted']==120
+          assert (r['completed_context_count'],r['completed_not_returned_count'],r['touched_incomplete_count'],r['unissued_count'])==(46,5,2,2)
+          assert r['provider_calls']==q['provider_calls']==0 and r['database_writes']==q['database_writes']==0 and r['mapping_writes']==q['mapping_writes']==0
+          assert r['no_replay_source_operation'] is q['no_replay_source_operation'] is True
+          print(json.dumps({'contexts':46,'completed_misses':5,'touched_incomplete':2,'unissued':2,'source_tv_calls_accounted':120,'result_sha256':q['result_sha256']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-refresh55-partial-reconcile-${{ github.run_id }}
+          path: output/
+          retention-days: 90
+          if-no-files-found: error
