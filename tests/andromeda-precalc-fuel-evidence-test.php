@@ -97,10 +97,17 @@ fuel_need($runPending($zero)['fuel_surcharges_reported'] === [$fact('0', 'USD', 
 $unknownRoute = $pending;
 $unknownRoute['claimDocument'][0]['services'] = [['service' => [$service('9', 'USD', 'unknown')]]];
 fuel_need($runPending($unknownRoute)['fuel_surcharges_reported'] === [$fact('9', 'USD', null)], 'route_was_invented');
+
+// Real retained packages use multiple supplier service types for the exact fuel category.
+$observedKind = $pending;
+$observedService = $service('17', 'USD', '0'); $observedService['servicetype'] = '9';
+$observedKind['claimDocument'][0]['services'] = [['service' => [$observedService]]];
+fuel_need($runPending($observedKind)['fuel_surcharges_reported'] === [[
+    'amount' => '17', 'currency' => 'USD', 'route_index' => '0',
+    'source' => 'andromeda_claim_service', 'service_type' => '9',
+]], 'observed_fuel_service_type_lost');
+
 $wrongKind = $pending;
-$wrongService = $service('17', 'USD', '0'); $wrongService['servicetype'] = '9';
-$wrongKind['claimDocument'][0]['services'] = [['service' => [$wrongService]]];
-fuel_need($runPending($wrongKind)['fuel_surcharges_reported'] === [], 'wrong_service_type_admitted');
 $wrongService = $service('17', 'USD', '0'); $wrongService['servicecategoryName'] = 'Доплата за рейс';
 $wrongKind['claimDocument'][0]['services'] = [['service' => [$wrongService]]];
 fuel_need($runPending($wrongKind)['fuel_surcharges_reported'] === [], 'flight_markup_relabeled_as_fuel');
