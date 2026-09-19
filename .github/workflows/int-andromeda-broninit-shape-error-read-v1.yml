@@ -52,32 +52,36 @@ jobs:
           opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
           mkdir -p "$RUNNER_TEMP/result"
-          ssh "${opts[@]}" "$remote" php -r '
-            $op=$argv[1]; $source=$argv[2];
-            if(!preg_match("/\\A[a-z0-9][a-z0-9._-]{20,160}\\z/D",$op)||!preg_match("/\\A[a-f0-9]{40}\\z/D",$source)) exit(2);
-            $base=rtrim((string)getenv("HOME"),"/")."/.anytour-ops/".$op;
-            $state=@file_get_contents($base."/state"); $receipt=@file_get_contents($base."/receipt.json"); $err=@file_get_contents($base."/error.log");
-            if(!is_string($state)||trim($state)!=="failed_terminal_no_replay"||!is_string($receipt)||!is_string($err)) exit(3);
-            $r=json_decode($receipt,true,32,JSON_THROW_ON_ERROR);
-            if(($r["operation"]??null)!==$op||($r["source"]??null)!==$source||($r["replay_allowed"]??null)!==false) exit(4);
-            if(strlen($err)>65536) exit(5);
-            $flags=[];
-            $patterns=[
-              "undefined_secretEcho"=>"/Undefined variable \\$secretEcho/i",
-              "null_not_callable"=>"/(?:null|value of type null).{0,40}(?:callable|function)/i",
-              "second_offer_not_found"=>"/ANDROMEDA_BRON_SHAPE_SECOND_NOT_FOUND/",
-              "supplier_or_http"=>"/ANDROMEDA_(?:SUPPLIER|HTTP|TRANSPORT|NETWORK)/",
-              "json_or_shape"=>"/ANDROMEDA_BRON_SHAPE_(?:JSON|HTTP|SECRET_ECHO)/",
-              "php_type_error"=>"/TypeError|ArgumentCountError|ValueError/",
-              "php_fatal"=>"/Fatal error|Uncaught/i",
-              "timeout"=>"/timed out|timeout/i"
-            ];
-            foreach($patterns as $k=>$rx)$flags[$k]=preg_match($rx,$err)===1;
-            preg_match_all("/ANDROMEDA_[A-Z0-9_:-]{3,96}/",$err,$m);
-            $codes=array_values(array_unique(array_slice($m[0]??[],0,12)));
-            $out=["version"=>1,"operation"=>$argv[3],"target_operation"=>$op,"target_source"=>$source,"target_state"=>trim($state),"receipt_status"=>$r["status"]??null,"result_is_null"=>($r["result"]??null)===null,"error_bytes"=>strlen($err),"error_lines"=>$err===""?0:substr_count($err,"\n")+1,"error_sha256"=>hash("sha256",$err),"flags"=>$flags,"codes"=>$codes,"supplier_calls"=>0,"db_access"=>0,"replay"=>false];
-            echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
-          ' "$TARGET_OPERATION" "$TARGET_SOURCE" "$OPERATION_ID" > "$RUNNER_TEMP/result/result.json"
+          ssh "${opts[@]}" "$remote" bash -s -- "$TARGET_OPERATION" "$TARGET_SOURCE" "$OPERATION_ID" <<'REMOTE' > "$RUNNER_TEMP/result/result.json"
+          set -euo pipefail
+          target_operation="$1"; target_source="$2"; read_operation="$3"
+          TARGET_OPERATION="$target_operation" TARGET_SOURCE="$target_source" READ_OPERATION="$read_operation" php <<'PHP'
+          <?php
+declare(strict_types=1);
+          $op=(string)getenv('TARGET_OPERATION'); $source=(string)getenv('TARGET_SOURCE'); $read=(string)getenv('READ_OPERATION');
+          if(!preg_match('/\A[a-z0-9][a-z0-9._-]{20,160}\z/D',$op)||!preg_match('/\A[a-f0-9]{40}\z/D',$source)||!preg_match('/\A[a-z0-9][a-z0-9._-]{20,160}\z/D',$read)) exit(2);
+          $base=rtrim((string)getenv('HOME'),'/').'/.anytour-ops/'.$op;
+          $state=@file_get_contents($base.'/state'); $receipt=@file_get_contents($base.'/receipt.json'); $err=@file_get_contents($base.'/error.log');
+          if(!is_string($state)||trim($state)!=='failed_terminal_no_replay'||!is_string($receipt)||!is_string($err)) exit(3);
+          $r=json_decode($receipt,true,32,JSON_THROW_ON_ERROR);
+          if(($r['operation']??null)!==$op||($r['source']??null)!==$source||($r['replay_allowed']??null)!==false) exit(4);
+          if(strlen($err)>65536) exit(5);
+          $patterns=[
+            'undefined_secretEcho'=>'/Undefined variable \$secretEcho/i',
+            'null_not_callable'=>'/(?:null|value of type null).{0,40}(?:callable|function)/i',
+            'second_offer_not_found'=>'/ANDROMEDA_BRON_SHAPE_SECOND_NOT_FOUND/',
+            'supplier_or_http'=>'/ANDROMEDA_(?:SUPPLIER|HTTP|TRANSPORT|NETWORK)/',
+            'json_or_shape'=>'/ANDROMEDA_BRON_SHAPE_(?:JSON|HTTP|SECRET_ECHO)/',
+            'php_type_error'=>'/TypeError|ArgumentCountError|ValueError/',
+            'php_fatal'=>'/Fatal error|Uncaught/i',
+            'timeout'=>'/timed out|timeout/i'
+          ];
+          $flags=[]; foreach($patterns as $k=>$rx)$flags[$k]=preg_match($rx,$err)===1;
+          preg_match_all('/ANDROMEDA_[A-Z0-9_:-]{3,96}/',$err,$m); $codes=array_values(array_unique(array_slice($m[0]??[],0,12)));
+          $out=['version'=>1,'operation'=>$read,'target_operation'=>$op,'target_source'=>$source,'target_state'=>trim($state),'receipt_status'=>$r['status']??null,'result_is_null'=>($r['result']??null)===null,'error_bytes'=>strlen($err),'error_lines'=>$err===''?0:substr_count($err,"\n")+1,'error_sha256'=>hash('sha256',$err),'flags'=>$flags,'codes'=>$codes,'supplier_calls'=>0,'db_access'=>0,'replay'=>false];
+          echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          PHP
+          REMOTE
           python3 - <<'PY'
           import json,os
           p=os.path.join(os.environ['RUNNER_TEMP'],'result','result.json')
