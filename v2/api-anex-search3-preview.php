@@ -212,27 +212,31 @@ function anytour_anex_search3_catalog_hydrate(PDO $pdo, array $metadata): array
     return $metadata;
 }
 
-function anytour_anex_search3_metadata(PDO $pdo, array $offers): array
+function anytour_anex_search3_metadata(PDO $pdo, array $offers, int $limit = 300): array
 {
+    if ($limit < 1 || $limit > 4800) throw new InvalidArgumentException('ANEX_INVALID_METADATA_LIMIT');
     $ids = [];
-    foreach (array_slice($offers, 0, 300) as $offer) {
+    foreach (array_slice($offers, 0, $limit) as $offer) {
         $id = $offer['hotel']['local_id'] ?? null;
         if (is_int($id) && $id > 0) $ids[$id] = true;
     }
     if (!$ids) return [];
-    $hydrate = $pdo->prepare('SELECT id,name,country_id,country_name,region_id,region_name,subregion_id,subregion_name,category,rating'
-        . ' FROM catalog_hotels WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ') AND is_active=1 LIMIT 300');
-    $hydrate->execute(array_keys($ids));
     $metadata = [];
-    foreach ($hydrate->fetchAll(PDO::FETCH_ASSOC) as $row) $metadata[(int) $row['id']] = $row;
+    foreach (array_chunk(array_keys($ids), 300) as $chunk) {
+        $hydrate = $pdo->prepare('SELECT id,name,country_id,country_name,region_id,region_name,subregion_id,subregion_name,category,rating'
+            . ' FROM catalog_hotels WHERE id IN (' . implode(',', array_fill(0, count($chunk), '?')) . ') AND is_active=1 LIMIT 300');
+        $hydrate->execute($chunk);
+        foreach ($hydrate->fetchAll(PDO::FETCH_ASSOC) as $row) $metadata[(int) $row['id']] = $row;
+    }
     return anytour_anex_search3_catalog_hydrate($pdo, $metadata);
 }
 
-function anytour_anex_search3_project(array $offers, array $metadata, array $params, ?string $searchRef = null): array
+function anytour_anex_search3_project(array $offers, array $metadata, array $params, ?string $searchRef = null, int $limit = 300): array
 {
     if ($searchRef !== null && !preg_match('/\A[a-f0-9]{32}\z/D', $searchRef)) throw new InvalidArgumentException('ANEX_INVALID_SESSION');
+    if ($limit < 1 || $limit > 4800) throw new InvalidArgumentException('ANEX_INVALID_PROJECT_LIMIT');
     $hotels = [];
-    foreach (array_slice($offers, 0, 300) as $offer) {
+    foreach (array_slice($offers, 0, $limit) as $offer) {
         $id = $offer['hotel']['local_id'] ?? null;
         $row = is_int($id) && $id > 0 ? ($metadata[$id] ?? null) : null;
         if (!$row || (int) ($row['id'] ?? 0) !== $id || ($offer['hotel']['mapping_status'] ?? '') !== 'resolved'
@@ -358,9 +362,10 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
         }
         $diagnostics['unmapped_hotel_ids'] = array_keys($unmapped);
     }
-    $metadata = anytour_anex_search3_metadata($pdo, $result['offers']);
+    $projectionLimit = $backgroundCollection ? 4800 : 300;
+    $metadata = anytour_anex_search3_metadata($pdo, $result['offers'], $projectionLimit);
     $searchRef = $session === null ? null : $result['search_ref'];
-    $projected = anytour_anex_search3_project($result['offers'], $metadata, $params, $searchRef);
+    $projected = anytour_anex_search3_project($result['offers'], $metadata, $params, $searchRef, $projectionLimit);
     if ($observer !== null) {
         try {
             $observation = $observer($result['offers'], ['country_id' => (int)$params['countryId'],

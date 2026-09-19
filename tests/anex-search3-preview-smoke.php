@@ -165,6 +165,13 @@ search3_check($fullHotel[0]['tours'][0]['price']['amount'] === '11000'
     && $fullHotel[0]['tours'][5]['meal'] === 'AI-WITHOUT ALCOHOL', 'minimum and sixth matching offer preserved');
 $boundedHotel = anytour_anex_search3_project(array_fill(0, 301, $cheapHb), $metadata, array_replace($params, ['meal' => '']));
 search3_check(count($boundedHotel[0]['tours']) === 300, 'existing total received-offer bound preserved');
+$backgroundOffers=[];$backgroundMetadata=[];
+for($i=1;$i<=301;++$i){
+    $o=$cheapHb;$o['hotel']['local_id']=10000+$i;$o['hotel']['external_id']=(string)(20000+$i);$o['offer_key']='anex_online:'.hash('sha256','bg-projection-'.$i);$backgroundOffers[]=$o;
+    $backgroundMetadata[10000+$i]=['id'=>10000+$i,'name'=>'BG '.$i,'country_id'=>(int)$params['countryId'],'country_name'=>'Country','region_id'=>20,'region_name'=>'Region','subregion_id'=>null,'subregion_name'=>null,'category'=>5,'rating'=>5.0,'primary_image_url'=>null,'description'=>null,'address'=>null];
+}
+$backgroundProjected=anytour_anex_search3_project($backgroundOffers,$backgroundMetadata,array_replace($params,['meal'=>'']),null,4800);
+search3_check(count($backgroundProjected)===301,'background projection still truncated at browser300');
 
 $calls = 0;
 $fake = new class($calls) {
