@@ -1,0 +1,108 @@
+name: MATCH unseen native acquisition frontier v1
+on:
+  push:
+    branches: [ops/match-unseen-native-frontier-1971-20260916-v1]
+    paths: [.github/workflows/hotel-match-unseen-native-frontier-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-unseen-native-frontier-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-unseen-native-frontier-1971-20260916-v1
+jobs:
+  frontier:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}', fetch-depth: 1}
+      - name: Check full scope and immutable exclusion input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -d allow_url_fopen=0 tests/hotel_match_unseen_native_frontier_test.php
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,re,subprocess
+          root=pathlib.Path('.');temp=pathlib.Path(os.environ['RUNNER_TEMP'])
+          src=root/'scripts/diagnostics/hotel_match_unseen_native_frontier.php';test=root/'tests/hotel_match_unseen_native_frontier_test.php'
+          assert hashlib.sha256(src.read_bytes()).hexdigest()=='3483dd8a7d7e78e747feaeda7caec0739c036f3244d61eea56af60da378ee9a6'
+          assert hashlib.sha256(test.read_bytes()).hexdigest()=='8c60ae762f431a2760fea1483d6b990eb5431a656d751eaa4b760d6c8fafa769'
+          endpoint='repos/pyatkoff/poisk-turov-test/contents/reports/hotel-match-received-union-current-20260915.json?ref=6e2e9f06ee0d82390a76c112a53334b5d3aa6200'
+          response=subprocess.run(['gh','api',endpoint],capture_output=True,check=True,timeout=90)
+          raw=base64.b64decode(json.loads(response.stdout)['content'],validate=False)
+          assert hashlib.sha256(raw).hexdigest()=='d9a9a9cbbb8b4d3f77600c309fac8aa4334ebcb0812888725504c580bbdba8c6'
+          report=json.loads(raw);excluded=sorted({str(x['fact']['andromeda_hotel_id']) for key in ['candidates','unresolved_anchors'] for x in report[key]})
+          assert len(excluded)==179 and all(re.fullmatch('[1-9][0-9]{0,19}',x) for x in excluded)
+          text=src.read_text();needle='declare(strict_types=1);';assert text.count(needle)==1
+          text=text.replace(needle,needle+'\nconst HMNF_EXCLUDED = '+json.dumps(excluded,separators=(',',':'))+';',1)
+          assert 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' in text
+          assert not re.search(r'(?<![$\w])(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\s',text,re.I)
+          (temp/'frontier.php').write_text(text)
+          out=temp/os.environ['OPERATION_ID'];out.mkdir(mode=0o700)
+          reservation={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'claim_comment_id':5697525470,'coordination_issue':2530,'queue_issue':1971,'state':'reserved_before_ssh_db_access','bundle_sha256':hashlib.sha256(text.encode()).hexdigest(),'retained_foreign_claim_ids':179,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          with (out/'runner-reservation.json').open('x') as f:json.dump(reservation,f,sort_keys=True)
+          with (out/'excluded.json').open('x') as f:json.dump(excluded,f)
+          PY
+          php -l "$RUNNER_TEMP/frontier.php"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-unseen-native-frontier-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-unseen-native-frontier-1971-20260916-v1/runner-reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: One CURRENT read then independent saved-result readback
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID";key="$RUNNER_TEMP/frontier-key";known="$RUNNER_TEMP/frontier-known";err="$RUNNER_TEMP/frontier-stderr"
+          trap 'rm -f "$key" "$known" "$err"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20)
+          set +e
+          ssh "${opts[@]}" "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < "$RUNNER_TEMP/frontier.php" > "$out/remote-summary.json" 2>"$err";rc=$?
+          ssh "${opts[@]}" "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > "$out/server-operation.tgz" 2>>"$err";trc=$?
+          set -e
+          export REMOTE_RC="$rc" READBACK_RC="$trc"
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,tarfile
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];op=os.environ['OPERATION_ID'];sha=os.environ['GITHUB_SHA']
+          gate={'operation_id':op,'source_sha':sha,'remote_exit':int(os.environ['REMOTE_RC']),'readback_exit':int(os.environ['READBACK_RC']),'verified':False,'no_replay':True,'database_writes':0,'supplier_calls':0}
+          try:
+              files={}
+              with tarfile.open(p/'server-operation.tgz','r:gz') as archive:
+                  for member in archive.getmembers():
+                      assert member.name in ('reservation.json','result.json','receipt.json') and member.isfile() and member.size<64000000 and member.name not in files
+                      files[member.name]=archive.extractfile(member).read()
+              assert set(files)=={'reservation.json','result.json','receipt.json'}
+              r=json.loads(files['result.json']);receipt=json.loads(files['receipt.json']);reservation=json.loads(files['reservation.json'])
+              digest=hashlib.sha256(files['result.json']).hexdigest()
+              assert all(x['operation_id']==op and x['source_sha']==sha and x['no_replay'] is True for x in (r,receipt,reservation))
+              assert receipt['result_sha256']==digest and receipt['readback_verified'] is True
+              assert r['state']=='completed_read_only' and receipt['state']==r['state'] and reservation['state']=='reserved_before_db_access'
+              assert all(r[k]==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls','booking_calls'))
+              assert r['safe_to_write_now'] is False and r['queue_count']==len(r['queue'])
+              excluded=set(json.loads((p/'excluded.json').read_text()))|{'366230','402863'}
+              assert not excluded.intersection(str(x['andromeda_hotel_id']) for x in r['queue'])
+              assert len({x['andromeda_hotel_id'] for x in r['queue']})==len(r['queue'])
+              assert sum(r['route_counts'].values())==r['current_pending_total']
+              assert gate['remote_exit']==gate['readback_exit']==0
+              s=p/'server';s.mkdir()
+              for name,data in files.items():(s/name).write_bytes(data)
+              gate.update(verified=True,state=r['state'],result_sha256=digest,queue_count=r['queue_count'],current_pending_total=r['current_pending_total'],route_counts=r['route_counts'],known_frequency_rows=r['known_frequency_rows'],unknown_frequency_rows=r['unknown_frequency_rows'],known_frequency_sum=r['known_frequency_sum'],first_page_requests_all_operators=r['first_page_requests_all_operators'])
+          except Exception as exc:
+              gate['error_type']=type(exc).__name__
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n');print(json.dumps(gate,sort_keys=True))
+          raise SystemExit(0 if gate['verified'] else 2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-unseen-native-frontier-v1-result
+          path: ${{ runner.temp }}/hotel-match-unseen-native-frontier-1971-20260916-v1/
+          if-no-files-found: warn
+          retention-days: 90
