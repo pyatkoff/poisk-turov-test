@@ -28,6 +28,26 @@ hm_common4_test($r['samo']['biblio_globus']['provider_operator_id']==='BG9', 'sa
 hm_common4_test($r['samo']['intourist']['provider_operator_name']==='NTK Intourist', 'raw name');
 hm_common4_test($r['tourvisor']['anex']['namespace']==='tourvisor' && $r['samo']['anex']['namespace']==='samo', 'namespaces');
 
+$currentTv = ['operators'=>[
+    ['id'=>13,'name'=>'Anex','fullName'=>'Anex Tour','russianName'=>'Анекс Тур'],
+    ['id'=>25,'name'=>'Fun&Sun (RU)','fullName'=>'Fun&Sun (RU)','russianName'=>'Fun&Sun (RU)'],
+    ['id'=>18,'name'=>'Biblioglobus','fullName'=>'Библио-Глобус','russianName'=>'Библио Глобус'],
+    ['id'=>43,'name'=>'Интурист','fullName'=>'Интурист','russianName'=>'Интурист'],
+]];
+$current = hm_common4_resolve($currentTv, 'tourvisor');
+hm_common4_test($current['anex']['provider_operator_id']==='13', 'current tv anex');
+hm_common4_test($current['funsun']['provider_operator_id']==='25', 'current tv funsun');
+hm_common4_test($current['biblio_globus']['provider_operator_id']==='18', 'current tv biblio');
+hm_common4_test($current['intourist']['provider_operator_id']==='43', 'current tv intourist');
+hm_common4_test($current['biblio_globus']['provider_operator_name']==='Biblioglobus', 'current biblio raw name');
+hm_common4_test($current['biblio_globus']['provider_operator_full_name']==='Библио-Глобус', 'current biblio full name');
+hm_common4_test($current['biblio_globus']['provider_operator_russian_name']==='Библио Глобус', 'current biblio russian name');
+
+$fallback = hm_common4_resolve(['operators'=>[
+    ['id'=>18,'name'=>'','fullName'=>'Библио-Глобус','russianName'=>'Библио Глобус'],
+]], 'tourvisor', ['biblio_globus']);
+hm_common4_test($fallback['biblio_globus']['provider_operator_id']==='18', 'fullName fallback');
+
 $one = hm_common4_resolve($tv, 'tourvisor', ['biblio_globus']);
 hm_common4_test(array_keys($one)===['biblio_globus'], 'subset');
 
@@ -72,4 +92,5 @@ try {
 }
 
 hm_common4_test(hm_common4_normalize_name(' FUN&SUN ')==='fun and sun', 'ampersand');
+hm_common4_test(hm_common4_normalize_name('Fun&Sun (RU)')==='fun and sun ru', 'current funsun normalization');
 echo "hotel-match-common4-operator-binding-v1: PASS\n";
