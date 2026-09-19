@@ -1,0 +1,103 @@
+name: MATCH ANEX user-seen frontier read v1
+on:
+  push:
+    branches: [ops/match-anex-user-seen-frontier-1971-20260919-v1]
+    paths: [.github/workflows/hotel-match-anex-user-seen-frontier-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-anex-user-seen-frontier-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-anex-user-seen-frontier-1971-20260919-v1
+jobs:
+  read:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - name: Build exact read-only planner with v6 terminal history
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          test "$(git hash-object scripts/diagnostics/hotel_match_anex_rolling30_current_v3.php)" = e8c5c7628637b43672f40fdc4ee37e4d3e5878f3
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          python3 - <<'PY'
+          from pathlib import Path
+          import ast,json,re
+          src=Path('scripts/diagnostics/hotel_match_anex_rolling30_current_v3.php').read_text()
+          hist=Path('.github/workflows/hotel-match-anex-rolling30-v6.yml').read_text()
+          m1=re.search(r'^\s*excluded=(\[[^\n]+\])$',hist,re.M);m2=re.search(r'^\s*residual=(\[[^\n]+\])$',hist,re.M)
+          assert m1 and m2
+          excluded=ast.literal_eval(m1.group(1));residual=ast.literal_eval(m2.group(1))
+          assert len(excluded)==229 and len(set(excluded))==229 and len(residual)==18 and len(set(residual))==18
+          captured=[1599,184,61606,64774,69450,81349,81729,118906,66150]
+          exhausted=[9442]
+          excluded=excluded+captured+exhausted
+          residual=[x for x in residual if x not in set(captured+exhausted)]
+          assert len(excluded)==239 and len(set(excluded))==239 and len(residual)==16 and not set(excluded)&set(residual)
+          old='hotel-match-anex-rolling30-1971-20260919-v3';new='hotel-match-anex-user-seen-frontier-1971-20260919-v1'
+          assert src.count(old)==1
+          src=src.replace(old,new).replace('ROLLING30_V3_PLANNER_SELFTEST_OK','USER_SEEN_FRONTIER_V1_SELFTEST_OK')
+          src,n1=re.subn(r'const R30_EXCLUDED = \[[^\n]*\];','const R30_EXCLUDED = ['+','.join(map(str,excluded))+'];',src,count=1)
+          src,n2=re.subn(r'const R30_PRIOR_RESIDUAL = \[[^\n]*\];','const R30_PRIOR_RESIDUAL = ['+','.join(map(str,residual))+'];',src,count=1)
+          assert n1==1 and n2==1
+          src=src.replace('count(R30_EXCLUDED)!==184','count(R30_EXCLUDED)!==239').replace('count(R30_PRIOR_RESIDUAL)!==14','count(R30_PRIOR_RESIDUAL)!==16')
+          Path('payload/frontier.php').write_text(src)
+          Path('payload/anex-search-mapping-registry.php').write_bytes(Path('app/integrations/anex-search-mapping-registry.php').read_bytes())
+          Path('payload/history.json').write_text(json.dumps({'excluded_closed_ids':excluded,'prior_attempt1_residual_ids':residual,'v6_captured_ids':captured,'v6_exhausted_ids':exhausted},sort_keys=True)+'\n')
+          PY
+          php -l payload/frontier.php
+          php payload/frontier.php --self-test
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload'); hashes={x.name:hashlib.sha256(x.read_bytes()).hexdigest() for x in p.iterdir() if x.is_file()};(p/'SHA256SUMS.json').write_text(json.dumps(hashes,sort_keys=True)+'\n')
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db_provider','source_sha':os.environ['GITHUB_SHA'],'read_only':True,'supplier_calls':0,'database_writes':0,'mapping_writes':0,'excluded_count':239,'prior_residual_count':16,'fresh_feature_sha_checked':'f2c468230b645187ae2921ee2baa52ef7c5ed4ad','fresh_resolver_blob_checked':'cc135a95d2a6e0f73ce50be2141c9b8a26fddc58','no_replay':True}
+          with pathlib.Path('result/reservation.json').open('x') as f:json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security before SSH
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(60):
+            req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(req,timeout=30) as f:r=json.load(f)['workflow_runs']
+            r=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+            if r:
+              x=max(r,key=lambda x:x['id'])
+              if x['status']=='completed':assert x['conclusion']=='success';print('SECURITY_OK',x['id']);break
+            time.sleep(5)
+          else:raise SystemExit('exact_security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-user-seen-frontier-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute one CURRENT read-only frontier snapshot
+        shell: bash
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/frontier-key";known="$RUNNER_TEMP/frontier-known";trap 'rm -f "$key" "$known"' EXIT
+          test -n "$KEY";test -n "$HOST";test -n "$USER";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null;test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15);remote="$USER@$HOST";op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytour-operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${opts[@]}" result/reservation.json "$remote:$op/" >result/reserve.stdout 2>result/reserve.stderr;scp "${opts[@]}" payload/* "$remote:$op/payload/" >result/copy.stdout 2>result/copy.stderr
+          set +e;ssh "${opts[@]}" "$remote" "set -e;umask 077;ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=0 \"\$HOME/$op/payload/frontier.php\" --execute > \"\$HOME/$op/result.json\";sync" >result/remote.stdout 2>result/remote.stderr;rc=$?;scp -r "${opts[@]}" "$remote:$op/." result/remote/ >result/readback.stdout 2>result/readback.stderr;trc=$?;set -e
+          printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0;test "$rc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('result/remote/result.json');d=json.loads(p.read_text());digest=hashlib.sha256(p.read_bytes()).hexdigest()
+          assert d['state']=='current_read_only_complete' and d['supplier_calls']==d['database_writes']==d['mapping_writes']==0 and len(d['excluded_ids'])==239 and len(d['prior_residual_ids'])==16
+          assert d['frontier_unique']==len({h['hotel_id'] for c in d['contexts'] for h in c['hotels']})
+          ctx=[]
+          for c in d['contexts'][:20]:ctx.append({'departure_id':c['departure_id'],'country_id':c['country_id'],'country_name':c['country_name'],'date_from':c['date_from'],'date_to':c['date_to'],'hotel_count':len(c['hotels']),'residual_count':c['residual_count'],'bridge_count':c['bridge_count'],'hotel_ids':[h['hotel_id'] for h in c['hotels']]})
+          s={'state':d['state'],'frontier_unique':d['frontier_unique'],'stats':d['stats'],'top_contexts':ctx,'result_sha256':digest}
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps(s,ensure_ascii=False,indent=2)+'\n');pathlib.Path('result/receipt.json').write_text(json.dumps({'operation':d['operation'],'state':d['state'],'result_sha256':digest,'frontier_unique':d['frontier_unique'],'supplier_calls':0,'mapping_writes':0,'no_replay':True},sort_keys=True)+'\n');print(json.dumps(s,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-user-seen-frontier-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
