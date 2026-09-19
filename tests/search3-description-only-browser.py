@@ -196,12 +196,14 @@ with sync_playwright() as playwright:
         close.click()
         expect(viewer).not_to_be_visible()
         expect(photo_link).to_be_focused()
-        with page.expect_popup() as opened:
-            photo_link.click(modifiers=['Control'])
-        popup = opened.value
-        popup.wait_for_load_state('domcontentloaded')
-        assert popup.url == main.get_attribute('src')
-        popup.close()
+        if width > 760:
+            # Desktop modified clicks can open a background tab without an opener.
+            with context.expect_page() as opened:
+                photo_link.click(modifiers=['Control'])
+            popup = opened.value
+            popup.wait_for_load_state('domcontentloaded')
+            assert popup.url == main.get_attribute('src')
+            popup.close()
         expect(viewer).not_to_be_visible()
         assert page.url == original_url
         assert page.evaluate('Search3HotelDetailsPresentationV1.normalize(document.getElementById("results"))') == 0
