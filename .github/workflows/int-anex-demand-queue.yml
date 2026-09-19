@@ -30,4 +30,5 @@ jobs:
           grep -q 'SET TRANSACTION READ ONLY' scripts/ops/anex_local_offer_demand_queue.php
           grep -q "s.provider=.*anex" scripts/ops/anex_local_offer_demand_queue.php
           grep -q 'o.expires_at>:now' scripts/ops/anex_local_offer_demand_queue.php
+          grep -q '_preview/search3-local-candidate/data/anytour-search-scope-v1.php' scripts/ops/anex_local_offer_demand_queue.php
           echo 'ANEX_DEMAND_QUEUE_OK supplier_calls=0 writes=0 fresh_scopes_skipped=1'

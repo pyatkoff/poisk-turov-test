@@ -8,7 +8,17 @@ if(!is_dir($root)||is_link($root)||basename($root)!=='anytoour.ru')throw new Run
 require_once dirname(__DIR__,2).'/app/integrations/anex-local-offer-demand.php';
 $config=$root.'/config.php';if(!is_file($config)||is_link($config))throw new RuntimeException('ANEX_DEMAND_CONFIG');require_once $config;
 $dbFile=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';require_once $dbFile;
-$scopeFile=$root.'/v2/data/anytour-search-scope-v1.php';if(!is_file($scopeFile)||is_link($scopeFile))throw new RuntimeException('ANEX_DEMAND_SCOPE_SOURCE');require_once $scopeFile;
+$scopeOverride=getenv('ANYTOUR_LOCAL_SCOPE_FILE');
+$scopeCandidates=[];
+if(is_string($scopeOverride)&&$scopeOverride!=='')$scopeCandidates[]=$scopeOverride;
+$scopeCandidates[]=$root.'/_preview/search3-local-candidate/data/anytour-search-scope-v1.php';
+$scopeCandidates[]=$root.'/v2/data/anytour-search-scope-v1.php';
+$scopeFile=null;
+foreach($scopeCandidates as $candidate){
+    if(is_file($candidate)&&!is_link($candidate)){$scopeFile=realpath($candidate);break;}
+}
+if(!is_string($scopeFile)||$scopeFile==='')throw new RuntimeException('ANEX_DEMAND_SCOPE_SOURCE');
+require_once $scopeFile;
 
 $args=[];foreach(array_slice($argv,1) as $arg){
     if(!str_starts_with($arg,'--')||!str_contains($arg,'='))throw new InvalidArgumentException('ANEX_DEMAND_ARG');
