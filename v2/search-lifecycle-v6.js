@@ -24,12 +24,22 @@ async function openHotelDetail(query){
  const id=detailId(query.get('search3_search')),hotel=detailId(query.get('search3_hotel'));
  hotelDetail={hotelId:hotel,returnUrl:restorationUrl(captureRestoreQuery())};
  const issue=validationIssue(params());
- if(!id||!hotel||query.getAll('search3_hotel').length!==1||query.getAll('search3_search').length!==1||issue){show('Ссылка на отель устарела или содержит неверные параметры. Проверьте условия и нажмите «Найти туры».');return true;}
+ if(!id||!hotel||query.getAll('search3_hotel').length!==1||query.getAll('search3_search').length!==1){show('Ссылка на отель устарела или содержит неверные параметры. Проверьте условия и нажмите «Найти туры».');return true;}
  const run=++generation;searchId=Number(id);searchSnapshot=cloneSnapshot(params());searchRestoreQuery=captureRestoreQuery();rt.setSearchId(searchId);
+ if(issue){await recoverHotelProfile(hotel,run,id,issue.message+' Проверьте условия и нажмите «Найти туры», чтобы обновить предложения.');return true;}
  show('Открываем отель из выбранного поиска…');
- try{await loadResults(searchId,run,100,true);if(isCurrent(run,id)&&renderer.hideSearchStatus)renderer.hideSearchStatus();}
- catch(error){if(isCurrent(run,id))show('Этот поиск больше недоступен. Проверьте параметры и нажмите «Найти туры», чтобы обновить предложения.');}
+ try{const items=await loadResults(searchId,run,100,true);if(isCurrent(run,id)){if(!items.length)await recoverHotelProfile(hotel,run,id,'В этом поиске нет доступных предложений. Проверьте параметры и нажмите «Найти туры», чтобы обновить предложения.');else if(renderer.hideSearchStatus)renderer.hideSearchStatus();}}
+ catch(error){if(isCurrent(run,id))await recoverHotelProfile(hotel,run,id,'Этот поиск больше недоступен. Проверьте параметры и нажмите «Найти туры», чтобы обновить предложения.');}
  return true;
+}
+async function recoverHotelProfile(hotel,run,id,message){
+ if(!isCurrent(run,id))return;
+ hotelDetail.profileOnly=true;show(message);
+ const owner=window.Search3CanonicalProfilesV1?.current();
+ try{if(!owner||typeof owner.readProfile!=='function')throw new Error('Hotel profile reader unavailable');await owner.readProfile(hotel);}
+ catch(error){message+=' Описание отеля сейчас недоступно.';}
+ if(!isCurrent(run,id))return;
+ renderer.render([],{empty:true});show(message);
 }
 const urlFields=['from','country','dateFrom','dateTo','daysFrom','daysTill','count_people','child_count','child_age[]','arrival','region','subregion','hotel','hotel_type','stars','rating','food','price_from','price_till','onlyDirect','onlyCharter','hotel_service[]'];
 const api=(action,params,options)=>rt.api(action,params,options),moneyFormatter=new Intl.NumberFormat('ru-RU');
@@ -101,3 +111,4 @@ window.addEventListener('popstate',()=>{if(!(document.body&&document.body.classL
 window.V2SearchLifecycle={submit,params,validate,markDirty,hydrateUrlState,normalizeRestoreQuery,restorationUrl,hotelDetailUrl,get restoredAt(){return restoredAt;},get hotelDetail(){return hotelDetail&&Object.assign({},hotelDetail);},get restoreQuery(){return searchId&&searchSnapshot&&!dirty?searchRestoreQuery:'';},get searchId(){return searchId;},get generation(){return generation;},get dirty(){return dirty;},get pending(){return searchPending;},get snapshot(){return cloneSnapshot(searchSnapshot);},version:6};
 boot();
 })();
+

@@ -9,7 +9,7 @@ function setup(route='/_preview/search3-local-candidate/poisk-turov/'){
  root.fetch=(url,options)=>new Promise((resolve,reject)=>calls.push({url,options,resolve,reject}));
  vm.runInNewContext(source,{window:root,URLSearchParams,AbortController,setTimeout,clearTimeout});
  const owner=root.Search3CanonicalProfilesV1.create(()=>changes++);
- return{owner,calls,events,get changes(){return changes;}};
+ return{owner,root,calls,events,get changes(){return changes;}};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const h=(key,provider='tourvisor')=>({id:key,provider,mappingStatus:'resolved',name:'Supplier text',tours:[{id:provider+':offer:'+key,price:100000,provider}]});
@@ -50,5 +50,30 @@ async function reply(ctx,index,value,status=200){ctx.calls[index].resolve({ok:st
  ctx=setup();ctx.owner.read([h(102)],{});await tick();await reply(ctx,0,response([102],{102:1}));ctx.owner.read([h(102),h(106)],{});await tick();
  await reply(ctx,1,response([106],{106:1},[],[{...p(1),name:'Conflicting same revision'}]));
  check(ctx.owner.read([h(102),h(106)],{}).length===1&&ctx.owner.read([h(102),h(106)],{})[0].tours.length===1,'Same-revision drift rejects new linkage');ctx.owner.reset();
+ ctx=setup();let pending=ctx.owner.readProfile(901);
+ check(ctx.calls.length===1,'A standalone profile uses one local read');
+ const ownQuery=new URL(ctx.calls[0].url,'https://fixture.invalid').searchParams;
+ check(ownQuery.toString()==='catalog=anytour&anytourHotelId=901','Own ID never enters the legacy namespace');
+ check(ctx.calls[0].options.cache==='no-store'&&ctx.calls[0].options.credentials==='same-origin','Standalone read keeps local isolation');
+ await reply(ctx,0,{ok:true,catalog:'anytour',source:'anytour-canonical-catalog',item:p(901)});await pending;
+ check(ctx.owner.read([],{}).length===0,'A profile alone never becomes an ordinary search result');
+ const stale={id:'old-exact-offer',provider:'tourvisor',price:125000};
+ ctx.owner.upsertOffer(901,stale,{legacyHotelId:101,source:'tourvisor'});
+ ctx.root.V2SearchLifecycle={hotelDetail:{hotelId:'901',profileOnly:true}};
+ const standalone=ctx.owner.read([],{});
+ check(standalone.length===1&&standalone[0].name==='Own 901'&&standalone[0].images[0]==='https://fixture.invalid/a.jpg','Own name and media survive without the search');
+ check(standalone[0].tours.length===0&&standalone[0].price===0&&!standalone[0].canonicalOfferLinks.length&&!standalone[0].canonicalLegacyIds.length&&!standalone[0].providers.length,'Profile-only view has no historical price, offers or supplier authority');
+ check(stale.price===125000&&ctx.calls.length===1,'Historical offer remains unchanged and no supplier lookup is launched');ctx.owner.reset();
+ for(const alter of [r=>({...r,source:'tourvisor'}),r=>({...r,catalog:'tourvisor'}),r=>({...r,item:p(902)}),r=>({...r,item:p(901,0)}),r=>({...r,item:null})]){
+  ctx=setup();const rejected=assert.rejects(ctx.owner.readProfile(901));
+  await reply(ctx,0,alter({ok:true,catalog:'anytour',source:'anytour-canonical-catalog',item:p(901)}));await rejected;
+  check(ctx.owner.details({anytourHotelId:901})===null&&ctx.calls.length===1,'Wrong identity/source cannot create a card or retry loop');ctx.owner.reset();
+ }
+ for(const status of [404,503]){ctx=setup();const rejected=assert.rejects(ctx.owner.readProfile(901));await reply(ctx,0,{ok:false},status);await rejected;check(ctx.owner.details({anytourHotelId:901})===null,'Unavailable local profile is not invented');ctx.owner.reset();}
+ ctx=setup();pending=ctx.owner.readProfile(901);ctx.owner.reset();await reply(ctx,0,{ok:true,catalog:'anytour',source:'anytour-canonical-catalog',item:p(901)});
+ check(await pending===null&&ctx.calls[0].options.signal.aborted&&ctx.owner.details({anytourHotelId:901})===null,'Late profile cannot survive a search reset');
+ for(const invalid of ['0901','0','javascript:901',Number.MAX_SAFE_INTEGER+1])await assert.rejects(ctx.owner.readProfile(invalid));
+ check(ctx.calls.length===1,'Invalid own IDs make no request');
  console.log('SEARCH3_CANONICAL_PROFILES_OK checks='+checks+' supplier_calls=0 db_writes=0');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+

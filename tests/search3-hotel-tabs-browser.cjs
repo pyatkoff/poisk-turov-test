@@ -48,6 +48,14 @@ async function run(engine, width, height) {
     }
     if (/^\/fixture-\d-[ab]\.svg$/.test(url.pathname)) return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: svg(url.pathname.endsWith('b.svg') ? '#dfc5a8' : '#badbea') });
     if (url.pathname.endsWith('/data/hotel-details-read-v1.php')) {
+      const ownId=url.searchParams.get('anytourHotelId');
+      if(ownId!==null){
+        calls.push({page:request.frame().page(),action:'own-profile',anytourHotelId:ownId});
+        assert.equal(url.searchParams.get('catalog'),'anytour');
+        assert.equal(url.searchParams.has('hotelId')||url.searchParams.has('legacyHotelIds[]'),false,'Canonical identity never enters the supplier namespace');
+        const item=profiles.find(profile=>String(profile.id)===ownId);
+        return item?json({ok:true,catalog:'anytour',source:'anytour-canonical-catalog',item}):json({ok:false,error:'Hotel not found'},404);
+      }
       const ids = url.searchParams.getAll('legacyHotelIds[]');
       const recovery = new URL(request.frame().page().url()).searchParams.get('utm_source') === 'photo-recovery-fixture';
       const items = ids.map(id => { const profile = profiles[Number(id) - 101]; return recovery && profile.id === 901 ? { ...profile, images: [profile.primaryImage, recoveryImages.missing, recoveryImages.slow, recoveryImages.good] } : profile; });
@@ -203,9 +211,42 @@ async function run(engine, width, height) {
     const expiredUrl = new URL(initialDetailUrl); expiredUrl.searchParams.set('search3_search', '43');
     await direct.goto(expiredUrl.href, { waitUntil: 'domcontentloaded' });
     await direct.getByText('Этот поиск больше недоступен.', { exact: false }).waitFor();
+    await direct.waitForSelector('#results .hotel-card .hotel-gallery-main');
+    assert.equal(await direct.locator('#results .hotel-card').count(),1);
+    assert.equal(await direct.locator('#results .hotel-card h3').innerText(),profiles[0].name,'Expired search preserves the canonical hotel');
+    assert.equal(await direct.locator('#results .hotel-description-summary').innerText(),profiles[0].description);
+    assert.equal(await direct.locator('#results .direct-tour, #results .hotel-price, #results .search3-shortlist-toggle').count(),0,'No stale price, offer selection or shortlist authority');
+    assert.doesNotMatch(await direct.locator('#results > .results-state').innerText(),/Поисковая цена/,'Profile-only mode does not claim a current search price');
+    assert.equal(await direct.locator('.hotel-gallery-main').getAttribute('src'),profiles[0].primaryImage);
+    assert.equal(calls.filter(c=>c.page===direct&&c.action==='own-profile').length,1,'One explicit canonical read');
     assert.equal(await direct.locator('#tourSearch').isVisible(), true, 'expired search keeps explicit recovery available');
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1, 'expiry never silently launches a full search');
+    await direct.locator('.hotel-details > summary').click();
+    const beforeExpiredPhotos=calls.length;
+    await direct.locator('.search3-hotel-photo-link').click();
+    const expiredViewer=direct.getByRole('dialog',{name:profiles[0].name,exact:true});
+    await expiredViewer.waitFor({state:'visible'});
+    await expiredViewer.getByRole('button',{name:'Следующее фото',exact:true}).click();
+    assert.equal(await expiredViewer.locator('img').getAttribute('src'),profiles[0].images[1]);
+    await direct.keyboard.press('Escape');
+    assert.equal(calls.length,beforeExpiredPhotos,'Expired hotel gallery does not refresh offers or call a supplier');
+    assert.equal(await direct.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     await direct.screenshot({ path: path.join(output, `${engine}-${width}x${height}-expired.png`), fullPage: true, animations: 'disabled' });
+    const pastUrl=new URL(expiredUrl),pastDate=new Date(Date.now()-86400000).toISOString().slice(0,10);
+    pastUrl.searchParams.set('dateFrom',pastDate);pastUrl.searchParams.set('dateTo',pastDate);
+    const resultsBeforePast=calls.filter(c=>c.action==='search_results').length;
+    await direct.goto(pastUrl.href,{waitUntil:'domcontentloaded'});
+    await direct.waitForSelector('#results .hotel-card .hotel-gallery-main');
+    assert.equal(calls.filter(c=>c.action==='search_results').length,resultsBeforePast,'Past dates read the hotel without querying old offers');
+    assert.equal(await direct.locator('#results .direct-tour, #results .hotel-price').count(),0);
+    const missingUrl=new URL(expiredUrl);missingUrl.searchParams.set('search3_hotel','999');
+    await direct.goto(missingUrl.href,{waitUntil:'domcontentloaded'});
+    await direct.getByText('Описание отеля сейчас недоступно.',{exact:false}).waitFor();
+    assert.equal(await direct.locator('#results .hotel-card').count(),0,'Missing profile is not invented');
+    assert.equal(await direct.locator('#tourSearch').isVisible(),true);
+    assert.equal(calls.filter(c=>c.action==='search_start').length,1,'All recovery remains manual');
+    assert.deepEqual(failures, [], 'no lead/booking/unknown writes');
+    assert.deepEqual(errors, [], 'no browser exceptions');
 
     // A separate existing-search hotel tab exercises image transport failures.
     // Delay actual image responses; do not stub the viewer or dispatch load events.
@@ -275,7 +316,19 @@ async function run(engine, width, height) {
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1);
     assert.deepEqual(failures, [], 'no lead/booking/unknown writes');
     assert.deepEqual(errors, [], 'no browser exceptions');
-    reports.push({ engine, width, height, sourceSha, passed: true, photoViewer: true, photoContextPreserved: true, photoErrorRecovery: true, photoSlowResponseRecovery: true, photoFocusContainment: true, searchStarts: 1, detailTabs: 3, directReload: true, expiredManualRecovery: true, exactOffer: exact });
+    await direct.goto(expiredUrl.href, { waitUntil: 'domcontentloaded' });
+    await direct.waitForSelector('#results .hotel-card .hotel-gallery-main');
+    const profileReadsBeforeRefresh=calls.filter(c=>c.action==='own-profile').length;
+    await direct.locator('#tourSearch button.primary').click();
+    await direct.waitForSelector('#results .hotel-card:nth-of-type(3)');
+    assert.equal(calls.filter(c=>c.action==='search_start').length,2,'Explicit refresh starts exactly one new search');
+    assert.equal(calls.filter(c=>c.action==='own-profile').length,profileReadsBeforeRefresh,'New search does not repeat the old profile read');
+    assert.equal(new URL(direct.url()).searchParams.has('search3_hotel'),false,'Manual refresh leaves the expired hotel URL');
+    assert.equal(await direct.locator('#results a.tour-more-toggle[target="_blank"]').count(),3,'Fresh exact hotel offers are reachable again');
+    assert.match((await direct.locator('.hotel-card').first().locator('.hotel-price').innerText()).replace(/\s/g,''),/125000/,'Fresh offer price returns only with the new search');
+    assert.deepEqual(failures, [], 'manual recovery adds no lead/booking/unknown writes');
+    assert.deepEqual(errors, [], 'manual recovery has no browser exceptions');
+    reports.push({ engine, width, height, sourceSha, passed: true, photoViewer: true, photoContextPreserved: true, photoErrorRecovery: true, photoSlowResponseRecovery: true, photoFocusContainment: true, searchStarts: 2, detailTabs: 3, directReload: true, expiredManualRecovery: true, expiredCanonicalProfile:true, expiredPhotoViewer:true, pastDateProfile:true, missingProfileRecovery:true, explicitRefresh:true, exactOffer: exact });
   } catch (error) {
     for (const [index, current] of context.pages().entries()) {
       await current.screenshot({ path: path.join(output, `${engine}-${width}-failure-${index}.png`), fullPage: true }).catch(() => {});
