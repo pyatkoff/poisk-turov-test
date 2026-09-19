@@ -1,0 +1,96 @@
+name: INT Andromeda broninit shape terminal error read v1
+
+on:
+  push:
+    branches: ['ops/int-andromeda-broninit-shape-error-read-20260919-v1']
+    paths: ['.github/workflows/int-andromeda-broninit-shape-error-read-v1.yml']
+
+permissions: {contents: read}
+concurrency:
+  group: int-andromeda-broninit-shape-error-read-1717-20260919-v1
+  cancel-in-progress: false
+
+jobs:
+  read:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPERATION_ID: int-andromeda-broninit-shape-error-read-1717-20260919-v1
+      TARGET_OPERATION: int-andromeda-tourkey-broninit-shape-1717-20260919-v1
+      TARGET_SOURCE: 46675ab4db978da044edc50b5e017065b3512c53
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+
+      - name: Bind supplier-free read-only contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = 'ops/int-andromeda-broninit-shape-error-read-20260919-v1'
+          grep -Fq 'TARGET_OPERATION: int-andromeda-tourkey-broninit-shape-1717-20260919-v1' .github/workflows/int-andromeda-broninit-shape-error-read-v1.yml
+          ! grep -Eq 'gateway\.samo\.ru|curl_init|curl_exec|broninit|action=price|INSERT INTO|UPDATE anytour_|DELETE FROM' .github/workflows/int-andromeda-broninit-shape-error-read-v1.yml
+
+      - name: Read and sanitize exact terminal ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$ANYTOOUR_DEPLOY_HOST" > "$RUNNER_TEMP/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          mkdir -p "$RUNNER_TEMP/result"
+          ssh "${opts[@]}" "$remote" php -r '
+            $op=$argv[1]; $source=$argv[2];
+            if(!preg_match("/\\A[a-z0-9][a-z0-9._-]{20,160}\\z/D",$op)||!preg_match("/\\A[a-f0-9]{40}\\z/D",$source)) exit(2);
+            $base=rtrim((string)getenv("HOME"),"/")."/.anytour-ops/".$op;
+            $state=@file_get_contents($base."/state"); $receipt=@file_get_contents($base."/receipt.json"); $err=@file_get_contents($base."/error.log");
+            if(!is_string($state)||trim($state)!=="failed_terminal_no_replay"||!is_string($receipt)||!is_string($err)) exit(3);
+            $r=json_decode($receipt,true,32,JSON_THROW_ON_ERROR);
+            if(($r["operation"]??null)!==$op||($r["source"]??null)!==$source||($r["replay_allowed"]??null)!==false) exit(4);
+            if(strlen($err)>65536) exit(5);
+            $flags=[];
+            $patterns=[
+              "undefined_secretEcho"=>"/Undefined variable \\$secretEcho/i",
+              "null_not_callable"=>"/(?:null|value of type null).{0,40}(?:callable|function)/i",
+              "second_offer_not_found"=>"/ANDROMEDA_BRON_SHAPE_SECOND_NOT_FOUND/",
+              "supplier_or_http"=>"/ANDROMEDA_(?:SUPPLIER|HTTP|TRANSPORT|NETWORK)/",
+              "json_or_shape"=>"/ANDROMEDA_BRON_SHAPE_(?:JSON|HTTP|SECRET_ECHO)/",
+              "php_type_error"=>"/TypeError|ArgumentCountError|ValueError/",
+              "php_fatal"=>"/Fatal error|Uncaught/i",
+              "timeout"=>"/timed out|timeout/i"
+            ];
+            foreach($patterns as $k=>$rx)$flags[$k]=preg_match($rx,$err)===1;
+            preg_match_all("/ANDROMEDA_[A-Z0-9_:-]{3,96}/",$err,$m);
+            $codes=array_values(array_unique(array_slice($m[0]??[],0,12)));
+            $out=["version"=>1,"operation"=>$argv[3],"target_operation"=>$op,"target_source"=>$source,"target_state"=>trim($state),"receipt_status"=>$r["status"]??null,"result_is_null"=>($r["result"]??null)===null,"error_bytes"=>strlen($err),"error_lines"=>$err===""?0:substr_count($err,"\n")+1,"error_sha256"=>hash("sha256",$err),"flags"=>$flags,"codes"=>$codes,"supplier_calls"=>0,"db_access"=>0,"replay"=>false];
+            echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          ' "$TARGET_OPERATION" "$TARGET_SOURCE" "$OPERATION_ID" > "$RUNNER_TEMP/result/result.json"
+          python3 - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'result','result.json')
+          d=json.load(open(p,encoding='utf-8'))
+          assert d['target_state']=='failed_terminal_no_replay' and d['receipt_status']=='failed_terminal_no_replay'
+          assert d['result_is_null'] is True and d['replay'] is False and d['supplier_calls']==0 and d['db_access']==0
+          print(json.dumps(d,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Preserve sanitized readback
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: int-andromeda-broninit-shape-error-read-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/result.json
+          if-no-files-found: warn
+          retention-days: 30
