@@ -53,6 +53,7 @@ $meal=$args['meal']??'';
 $maxExpands=$int($args['max-expands']??'600',0,600);
 $maxBatch=$int($args['max-apd']??'600',1,600);
 $generation=$int($args['generation']??'25061801',1,2147483647);
+$region=isset($args['region'])?$int($args['region'],1,999999999):null;
 
 $pdo=v2_data_db();
 $cache=[];$state=[];$searchRequests=0;$apdRequests=0;
@@ -77,7 +78,7 @@ $params=[
     'departureId'=>(string)$departure,'countryId'=>(string)$country,
     'dateFrom'=>$from,'dateTo'=>$to,'nightsFrom'=>$nights,'nightsTo'=>$nights,
     'adults'=>$adults,'childs'=>[],'meal'=>$meal,'hotelCategory'=>'','hotelRating'=>'',
-    'hotelTypes'=>[],'hotelIds'=>[],'hotelServices'=>[],'arrivalId'=>'','regionIds'=>[],
+    'hotelTypes'=>[],'hotelIds'=>[],'hotelServices'=>[],'arrivalId'=>'','regionIds'=>$region===null?[]:[(string)$region],
     'subregionIds'=>[],'operatorIds'=>[],'priceFrom'=>'','priceTo'=>'','currency'=>'RUB',
     'onlyCharter'=>false,'onlyDirect'=>false,
 ];
