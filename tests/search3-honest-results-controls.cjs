@@ -64,7 +64,15 @@ assert.ok(localFilters.includes("'Рейтинг указан у '+r.k+' из '+
 
 {
   const listeners = new Map();
-  const strip = { scrollLeft: 0 };
+  const strip = { scrollLeft: 0, scrollWidth: 300, clientWidth: 300, addEventListener() {} };
+  const navigation = {
+    hidden: true,
+    contains() { return false; },
+    querySelector(selector) {
+      assert.ok(['[data-calendar-move="previous"]', '[data-calendar-move="next"]'].includes(selector));
+      return { setAttribute(name, value) { assert.equal(name, 'aria-disabled'); assert.ok(['true', 'false'].includes(value)); } };
+    }
+  };
   const actions = { hidden: true };
   let details = null, markup = '';
   const box = {
@@ -74,11 +82,12 @@ assert.ok(localFilters.includes("'Рейтинг указан у '+r.k+' из '+
       if (selector === 'details') return details;
       if (selector === '.current-price-calendar__days') return markup.includes('current-price-calendar__days') ? strip : null;
       if (selector === '.current-price-calendar__actions') return markup.includes('current-price-calendar__actions') ? actions : null;
+      if (selector === '.current-price-calendar__navigation') return markup.includes('current-price-calendar__navigation') ? navigation : null;
       assert.fail(`unexpected calendar selector: ${selector}`);
     },
     querySelectorAll(selector) { assert.equal(selector, '[data-calendar-date]'); return []; },
     get innerHTML() { return markup; },
-    set innerHTML(value) { markup = value; details = value.includes('<details') ? { open: value.includes('<details open>') } : null; }
+    set innerHTML(value) { markup = value; details = value.includes('<details') ? { open: value.includes('<details open>'), addEventListener() {} } : null; }
   };
   const window = { addEventListener(name, fn) { listeners.set(name, fn); }, matchMedia() { return { matches: false }; } };
   const document = { activeElement: null, getElementById(id) { assert.equal(id, 'currentPriceCalendar'); return box; }, body: { classList: { contains() { return true; } } }, addEventListener() {} };
