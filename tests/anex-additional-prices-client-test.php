@@ -158,4 +158,20 @@ $expect('ANEX_B2B_TOKEN_REQUIRED', static function (): void {
     new AnyTourAnexAdditionalPricesClient('bad token');
 });
 
+$rateDir=sys_get_temp_dir().'/anex-b2b-rate-test-'.bin2hex(random_bytes(6));
+mkdir($rateDir,0700,true);
+try{
+    $paced=new AnyTourAnexAdditionalPricesClient('pace-token',static function (): array{return ['status'=>200,'body'=>'{}'];},null,null,$rateDir);
+    $method=new ReflectionMethod(AnyTourAnexAdditionalPricesClient::class,'rateSlot');
+    $assert($method->invoke($paced,microtime(true)+2.0)===true,'rate-block-written');
+    $started=microtime(true);
+    $assert($method->invoke($paced)===false,'blocked-rate-fails-fast');
+    $assert(microtime(true)-$started<0.5,'blocked-rate-does-not-sleep');
+    $files=glob($rateDir.'/*');
+    $assert(is_array($files)&&count($files)===1,'one-shared-rate-file');
+}finally{
+    foreach(glob($rateDir.'/*')?:[] as $file)@unlink($file);
+    @rmdir($rateDir);
+}
+
 fwrite(STDOUT, "ANEX AdditionalPricesDaily client/context: {$checks} checks passed; network=0.\n");
