@@ -35,6 +35,13 @@ jobs:
             jq -e '.ok==true and .data.source=="anytour-db-first-results-v1" and .data.selectionAuthority==false and (.data.providerOfferCounts.anex//0)>0' "$RUNNER_TEMP/local-anex/$scope-response.json" >/dev/null
             jq -e '. as $root | ([.data.hotels[].offers[]|select(.provider=="anex")]|length) == ($root.data.providerOfferCounts.anex//0)' "$RUNNER_TEMP/local-anex/$scope-response.json" >/dev/null
             jq -e '[.data.hotels[].offers[]|select(.provider=="anex")|.listing|select(.selection_state!="refresh_required" or .booking_enabled!=false or .listingPriceReady!=true or .listingPriceState!="final_ready_estimate")]|length==0' "$RUNNER_TEMP/local-anex/$scope-response.json" >/dev/null
+            node - "$RUNNER_TEMP/local-anex/$scope-response.json" <<'NODE'
+            const fs=require('fs');require('./v2/search3-local-db-provider-v1.js');
+            const payload=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+            const parsed=globalThis.AnyTourLocalDbProviderV1.parse(payload.data);
+            if(!parsed||parsed.offerCount!==(payload.data.providerOfferCounts.anex||0)||parsed.withheldOfferCount!==0)process.exit(2);
+            console.log(JSON.stringify({jsParseOffers:parsed.offerCount,jsParseHotels:parsed.hotels.length,jsWithheld:parsed.withheldOfferCount}));
+            NODE
             jq -c '{scope:"'"$scope"'",matchMode:.data.matchMode,partial:.data.partial,hotelCount:.data.hotelCount,offerCount:.data.offerCount,storedOfferCount:.data.storedOfferCount,providerOfferCounts:.data.providerOfferCounts,withheldOfferCount:.data.withheldOfferCount,categoryFilteredOfferCount:.data.categoryFilteredOfferCount,selectionAuthority:.data.selectionAuthority,anexSample:([.data.hotels[].offers[]|select(.provider=="anex")|{price,currency,legacyHotelId,listingPriceState:.listing.listingPriceState,checkin:.listing.tour.checkin,nights:.listing.tour.nights}]|.[0:3])}' "$RUNNER_TEMP/local-anex/$scope-response.json"
           done
       - name: Preserve sanitized acceptance
