@@ -16,6 +16,29 @@ const form=document.getElementById('tourSearch');
 const target=[document.getElementById('resultsSearchEdit'),form&&form.elements.dateFrom].find(node=>node&&node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden');
 if(target)target.focus({preventScroll:true});
 }
+function updateNavigation(box){
+const strip=box&&box.querySelector('.current-price-calendar__days'),nav=box&&box.querySelector('.current-price-calendar__navigation');
+if(!strip||!nav)return;
+const end=strip.scrollWidth-strip.clientWidth;
+nav.hidden=strip.clientWidth===0||end<=1;
+nav.querySelector('[data-calendar-move="previous"]').setAttribute('aria-disabled',String(strip.scrollLeft<=1));
+nav.querySelector('[data-calendar-move="next"]').setAttribute('aria-disabled',String(strip.scrollLeft>=end-1));
+if(nav.hidden&&nav.contains(document.activeElement))box.querySelector('summary').focus({preventScroll:true});
+}
+function navigate(box,button){
+const strip=box.querySelector('.current-price-calendar__days');if(!strip||button.getAttribute('aria-disabled')==='true')return;
+if(button.hasAttribute('data-calendar-best')){
+const best=availableDays.reduce((lowest,day)=>!lowest||day.price<lowest.price?day:lowest,null);
+const target=best&&Array.from(strip.children).find(node=>node.dataset.calendarDate===best.date);
+if(target){target.focus({preventScroll:true});strip.scrollLeft+=target.getBoundingClientRect().left-strip.getBoundingClientRect().left-5;}
+}else{
+const first=strip.firstElementChild;if(!first)return;
+const tile=first.getBoundingClientRect().width+(parseFloat(getComputedStyle(strip).columnGap)||0);
+const step=tile*Math.max(1,Math.floor((strip.clientWidth-10)/tile));
+strip.scrollLeft+=(button.dataset.calendarMove==='previous'?-1:1)*step;
+}
+updateNavigation(box);
+}
 function updateSelection(box){
 const selected=availableDays.find(day=>day.date===selectedDate),actions=box.querySelector('.current-price-calendar__actions');
 if(!actions)return;
@@ -42,6 +65,8 @@ const compact=document.body.classList.contains('search3-candidate'),active=docum
 const focused=compact&&box.contains(active)?active:null;
 const focusedDate=focused?dateValue(focused.getAttribute('data-calendar-date')):'';
 const focusedApply=focused&&focused.hasAttribute('data-calendar-apply');
+const focusedMove=focused&&focused.getAttribute('data-calendar-move');
+const focusedBest=focused&&focused.hasAttribute('data-calendar-best');
 const previousDays=box.querySelector('.current-price-calendar__days'),scrollLeft=previousDays?previousDays.scrollLeft:0;
 const previous=box.querySelector('details');if(previous)disclosureOpen=previous.open;
 const days=collect(items);
@@ -53,20 +78,27 @@ if(focused)focusFallback();
 return days;
 }
 const best=Math.min.apply(null,days.map(x=>x.price));
+const bestDay=days.find(day=>day.price===best),bestLabel=dateLabel(bestDay.date);
 const expanded=disclosureOpen===null?(compact||window.matchMedia('(min-width:701px)').matches):disclosureOpen,head=compact?'summary':'div';
-box.innerHTML=(compact?'<details'+(expanded?' open':'')+'>':'')+'<'+head+' class="current-price-calendar__head"><span class="current-price-calendar__heading"><span>Цены по датам</span><strong id="currentPriceCalendarTitle">'+(compact?'Календарь цен':'Когда дешевле вылететь')+'</strong></span><small>Минимум среди найденных сейчас туров</small></'+head+'><div class="current-price-calendar__days">'+days.map(x=>{const label=dateLabel(x.date),price=money.format(x.price),fullDate=x.date.split('-').reverse().join('.');return '<button type="button" class="current-price-calendar__day'+(x.price===best?' is-best':'')+'" data-calendar-date="'+x.date+'"'+(compact?' aria-pressed="false"':'')+' aria-label="'+label+' ('+fullDate+'), от '+price+' ₽ за весь тур, '+(x.price===best?'самая низкая среди найденных туров':compact?'выбрать дату':'проверить дату')+'"><span>'+label+'</span><strong>'+price+' ₽</strong>'+(x.price===best?'<small>самая низкая</small>':'<small>'+(compact?'за весь тур':'проверить дату')+'</small>')+'</button>';}).join('')+'</div>'+(compact?'<div class="current-price-calendar__actions" hidden><p role="status" aria-live="polite" aria-atomic="true"></p><button type="button" data-calendar-apply></button></div>':'')+'<p class="current-price-calendar__note">'+(compact?'Цены «от» по найденным турам. Выберите дату и подтвердите новый поиск — остальные условия поездки сохранятся. Цена может измениться.':'Это текущие цены из уже выполненного поиска, а не история. Нажмите дату, чтобы перепроверить предложения именно на неё.')+'</p>'+(compact?'</details>':'');box.hidden=false;
+box.innerHTML=(compact?'<details'+(expanded?' open':'')+'>':'')+'<'+head+' class="current-price-calendar__head"><span class="current-price-calendar__heading"><span>Цены по датам</span><strong id="currentPriceCalendarTitle">'+(compact?'Календарь цен':'Когда дешевле вылететь')+'</strong></span><small>Минимум среди найденных туров</small></'+head+'>'+(compact?'<div class="current-price-calendar__navigation" role="group" aria-label="Просмотр дат" hidden><button type="button" data-calendar-best aria-label="Показать минимальную найденную цену: '+money.format(best)+' ₽, '+bestLabel+'">К минимуму · '+bestLabel.replace(/^.*?,\s*/,'')+'</button><button type="button" data-calendar-move="previous" aria-label="Предыдущие даты"><span aria-hidden="true">‹</span></button><button type="button" data-calendar-move="next" aria-label="Следующие даты"><span aria-hidden="true">›</span></button></div>':'')+'<div class="current-price-calendar__days">'+days.map(x=>{const label=dateLabel(x.date),price=money.format(x.price),fullDate=x.date.split('-').reverse().join('.');return '<button type="button" class="current-price-calendar__day'+(x.price===best?' is-best':'')+'" data-calendar-date="'+x.date+'"'+(compact?' aria-pressed="false"':'')+' aria-label="'+label+' ('+fullDate+'), от '+price+' ₽ за весь тур, '+(x.price===best?'самая низкая среди найденных туров':compact?'выбрать дату':'проверить дату')+'"><span>'+label+'</span><strong>'+price+' ₽</strong>'+(x.price===best?'<small>самая низкая</small>':'<small>'+(compact?'за весь тур':'проверить дату')+'</small>')+'</button>';}).join('')+'</div>'+(compact?'<div class="current-price-calendar__actions" hidden><p role="status" aria-live="polite" aria-atomic="true"></p><button type="button" data-calendar-apply></button></div>':'')+'<p class="current-price-calendar__note">'+(compact?'Цены «от» по найденным турам. Выберите дату и подтвердите новый поиск — остальные условия поездки сохранятся. Цена может измениться.':'Это текущие цены из уже выполненного поиска, а не история. Нажмите дату, чтобы перепроверить предложения именно на неё.')+'</p>'+(compact?'</details>':'');box.hidden=false;
 if(compact){
 updateSelection(box);
 const strip=box.querySelector('.current-price-calendar__days');strip.scrollLeft=scrollLeft;
+strip.addEventListener('scroll',()=>updateNavigation(box),{passive:true});
+box.querySelector('details').addEventListener('toggle',()=>updateNavigation(box));
+updateNavigation(box);
 if(focused){
 const day=expanded&&focusedDate?Array.from(strip.children).find(node=>node.dataset.calendarDate===focusedDate):null;
-const target=day||(expanded&&focusedApply&&selectedDate?box.querySelector('[data-calendar-apply]'):null)||box.querySelector('summary');
+const nav=box.querySelector('.current-price-calendar__navigation');
+const control=expanded&&!nav.hidden?(focusedBest?nav.querySelector('[data-calendar-best]'):Array.from(nav.querySelectorAll('[data-calendar-move]')).find(node=>node.dataset.calendarMove===focusedMove)):null;
+const target=day||control||(expanded&&focusedApply&&selectedDate?box.querySelector('[data-calendar-apply]'):null)||box.querySelector('summary');
 if(target)target.focus({preventScroll:true});
 if(day){
 const rect=day.getBoundingClientRect(),viewport=strip.getBoundingClientRect();
 if(rect.left-5<viewport.left)strip.scrollLeft-=viewport.left-rect.left+5;
 else if(rect.right+5>viewport.right)strip.scrollLeft+=rect.right+5-viewport.right;
 }
+updateNavigation(box);
 }
 }
 return days;}
@@ -78,9 +110,11 @@ window.addEventListener('v2:search-continued',complete);
 window.addEventListener('search3:local-results-filtered',e=>{filteredItems=e&&e.detail&&e.detail.items;if(terminal)render(filteredItems);});
 window.addEventListener('v2:search-started',reset);
 window.addEventListener('v2:search-reset',reset);
+window.addEventListener('resize',()=>updateNavigation(document.getElementById('currentPriceCalendar')),{passive:true});
 document.addEventListener('click',e=>{
-const btn=e.target&&e.target.closest&&e.target.closest('[data-calendar-date],[data-calendar-apply]');
+const btn=e.target&&e.target.closest&&e.target.closest('[data-calendar-date],[data-calendar-apply],[data-calendar-move],[data-calendar-best]');
 if(!btn)return;const box=btn.closest('#currentPriceCalendar');if(!box||box.hidden)return;
+if(btn.hasAttribute('data-calendar-move')||btn.hasAttribute('data-calendar-best')){e.preventDefault();navigate(box,btn);return;}
 if(btn.hasAttribute('data-calendar-apply')){
 if(btn.disabled||!availableDays.some(day=>day.date===selectedDate))return;
 // Disabling a focused button moves focus to body before clear() can capture it.
