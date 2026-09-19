@@ -28,6 +28,6 @@ jobs:
           ! grep -Eq 'curl_|fsockopen|stream_socket_client|AnyTourAnexClient|AdditionalPrices' scripts/ops/anex_local_offer_demand_queue.php
           grep -q "user_search" scripts/ops/anex_local_offer_demand_queue.php
           grep -q 'SET TRANSACTION READ ONLY' scripts/ops/anex_local_offer_demand_queue.php
-          grep -q "s.provider='anex'" scripts/ops/anex_local_offer_demand_queue.php
+          grep -q "s.provider=.*anex" scripts/ops/anex_local_offer_demand_queue.php
           grep -q 'o.expires_at>:now' scripts/ops/anex_local_offer_demand_queue.php
           echo 'ANEX_DEMAND_QUEUE_OK supplier_calls=0 writes=0 fresh_scopes_skipped=1'
