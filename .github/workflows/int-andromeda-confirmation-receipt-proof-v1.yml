@@ -31,14 +31,14 @@ jobs:
           from pathlib import Path
           p=Path('app/integrations/andromeda-anytour-offer-autosave.php')
           s=p.read_text()
-          old="""            'readyOfferCount' => (int)($result['readyOfferCount'] ?? 0),
-            'ownedOfferCount' => $owned,"""
-          new="""            'readyOfferCount' => (int)($result['readyOfferCount'] ?? 0),
-            'confirmationRequiredOfferCount' => (int)($result['confirmationRequiredOfferCount'] ?? 0),
-            'ownedOfferCount' => $owned,"""
-          if s.count(old) != 1:
-              raise SystemExit(f'PATCH_TARGET_COUNT={s.count(old)}')
-          p.write_text(s.replace(old,new))
+          start=s.index('private static function producerReceipt')
+          end=s.index('private static function receipt',start)
+          block=s[start:end]
+          needle="'readyOfferCount' => (int)($result['readyOfferCount'] ?? 0),"
+          if block.count(needle) != 1:
+              raise SystemExit(f'RECEIPT_NEEDLE_COUNT={block.count(needle)}')
+          replacement=needle+"\n            'confirmationRequiredOfferCount' => (int)($result['confirmationRequiredOfferCount'] ?? 0),"
+          p.write_text(s[:start]+block.replace(needle,replacement)+s[end:])
           PY
           git diff --check
           git diff -- app/integrations/andromeda-anytour-offer-autosave.php
