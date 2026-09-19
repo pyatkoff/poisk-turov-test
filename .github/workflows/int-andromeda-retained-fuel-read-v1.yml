@@ -1,0 +1,272 @@
+name: INT Andromeda retained fuel service read v1
+
+on:
+  push:
+    branches: ['ops/int-andromeda-retained-fuel-read-20260919-v1']
+    paths:
+      - '.github/workflows/int-andromeda-retained-fuel-read-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: int-andromeda-retained-fuel-read-1717-20260919-v1
+  cancel-in-progress: false
+
+jobs:
+  read:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_SHA: 93915088f169716d89e2e6426d6d8700dbcf0416
+      OPERATION_ID: int-andromeda-retained-fuel-read-1717-20260919-v1
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.BASE_SHA }}
+          persist-credentials: false
+
+      - name: Bind exact source and SSH host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$BASE_SHA"
+          key="$RUNNER_TEMP/key"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$ANYTOOUR_DEPLOY_HOST" > "$RUNNER_TEMP/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+
+      - name: Read retained package fuel facts without supplier calls or writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/result"
+          opts=(-T -i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST"
+          ssh "${opts[@]}" "$remote" php -d display_errors=0 > "$RUNNER_TEMP/result/receipt.json" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          error_reporting(0);
+
+          $home=rtrim((string)getenv('HOME'),'/');
+          $site=$home.'/www/anytoour.ru';
+          $searches=$home.'/.anytoour-andromeda/searches';
+          if(!is_dir($site)||!is_file($site.'/config.php')||!is_dir($searches)||is_link($searches)){
+              throw new RuntimeException('ANDROMEDA_RETAINED_READ_ROOT');
+          }
+
+          require_once $site.'/config.php';
+          $dbFile=is_file($site.'/data/db-v1.php')?$site.'/data/db-v1.php':$site.'/v2/data/db-v1.php';
+          require_once $dbFile;
+          $db=v2_data_db();
+          $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $db->exec('START TRANSACTION READ ONLY');
+          $count=static function(string $sql)use($db):int{return (int)$db->query($sql)->fetchColumn();};
+          $seen=$db->query("SELECT MAX(last_seen_at) FROM anytour_offers WHERE provider='andromeda'")->fetchColumn();
+          $dbState=[
+              'rows'=>$count("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda'"),
+              'current'=>$count("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND is_active=1 AND expires_at>UTC_TIMESTAMP()"),
+              'current_ready'=>$count("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND is_active=1 AND expires_at>UTC_TIMESTAMP() AND final_price_ready=1"),
+              'current_verified'=>$count("SELECT COUNT(*) FROM anytour_offers WHERE provider='andromeda' AND is_active=1 AND expires_at>UTC_TIMESTAMP() AND final_price_verified=1"),
+              'last_seen_at'=>is_string($seen)?$seen:null,
+          ];
+          $db->rollBack();
+
+          $readJson=static function(string $path,int $limit):?array{
+              if(is_link($path)||!is_file($path))return null;
+              $size=filesize($path);if(!is_int($size)||$size<2||$size>$limit)return null;
+              try{$v=json_decode((string)file_get_contents($path),true,64,JSON_THROW_ON_ERROR);}catch(Throwable $e){return null;}
+              return is_array($v)?$v:null;
+          };
+          $safeText=static function(mixed $v,int $max=120):?string{
+              if(!is_string($v)||$v===''||strlen($v)>$max||!preg_match('//u',$v)||preg_match('/[\x00-\x1f\x7f]/',$v))return null;
+              return $v;
+          };
+          $safeMoney=static function(mixed $v):?string{
+              if(is_int($v)||(is_float($v)&&is_finite($v)))$v=(string)$v;
+              if(!is_string($v)||!preg_match('/^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,4})?$/D',$v))return null;
+              return $v;
+          };
+          $safeCurrency=static function(mixed $v):?string{
+              return is_string($v)&&preg_match('/^[A-Z0-9_]{2,8}$/D',$v)?$v:null;
+          };
+          $boolish=static function(mixed $v):?bool{
+              if(is_bool($v))return $v;
+              if(is_int($v)&&($v===0||$v===1))return $v===1;
+              if(!is_string($v))return null;
+              $x=strtolower(trim($v));
+              if(in_array($x,['1','true','y','yes'],true))return true;
+              if(in_array($x,['0','false','n','no'],true))return false;
+              return null;
+          };
+          $moneyKey=static function(?string $v):?string{
+              if($v===null)return null;
+              $negative=str_starts_with($v,'-');if($negative)$v=substr($v,1);
+              [$a,$b]=array_pad(explode('.',$v,2),2,'');
+              $b=str_pad(substr($b,0,4),4,'0');
+              $a=ltrim($a,'0');if($a==='')$a='0';
+              return ($negative?'-':'').$a.'.'.$b;
+          };
+          $clientCount=static function(array $service):?int{
+              foreach(['clients','client','tourists','paxes'] as $key){
+                  if(!array_key_exists($key,$service)||!is_array($service[$key]))continue;
+                  $v=$service[$key];
+                  if(array_is_list($v))return count($v);
+                  foreach(['client','clients','tourist','tourists','pax','paxes'] as $inner){
+                      if(isset($v[$inner])&&is_array($v[$inner]))return count($v[$inner]);
+                  }
+                  return count($v);
+              }
+              return null;
+          };
+          $serviceRows=static function(mixed $blocks):array{
+              $rows=[];if(!is_array($blocks))return $rows;
+              foreach($blocks as $block){
+                  if(!is_array($block))continue;
+                  $list=$block['service']??null;
+                  if(!is_array($list))continue;
+                  foreach($list as $service)if(is_array($service))$rows[]=$service;
+              }
+              return $rows;
+          };
+          $fuelFacts=static function(array $services,string $scope)use($safeText,$safeMoney,$safeCurrency,$boolish,$clientCount):array{
+              $out=[];
+              foreach($services as $service){
+                  $type=(string)($service['servicetype']??'');
+                  $category=$safeText($service['servicecategoryName']??null,120);
+                  $categoryLower=$category!==null?(function_exists('mb_strtolower')?mb_strtolower($category,'UTF-8'):strtolower($category)):'';
+                  if($type!=='8'&&!str_contains($categoryLower,'топлив'))continue;
+                  $price=$safeMoney($service['price']??null);
+                  $currency=$safeCurrency($service['currencyAlias']??($service['currency']??null));
+                  $route=(string)($service['routeIndex']??'');
+                  $fact=[
+                      'scope'=>$scope,
+                      'service_type'=>$type!==''&&strlen($type)<=24?$type:null,
+                      'category'=>$category,
+                      'price'=>$price,
+                      'currency'=>$currency,
+                      'route_index'=>in_array($route,['0','1'],true)?$route:null,
+                      'required'=>$boolish($service['required']??null),
+                      'packet'=>$boolish($service['packet']??null),
+                      'clients_common'=>$boolish($service['clientsCommon']??null),
+                      'client_count'=>$clientCount($service),
+                      'quantity'=>$safeMoney($service['quantity']??null),
+                      'unit_hint'=>$safeText($service['unit']??null,40),
+                      'per_person_hint'=>$boolish($service['perPerson']??($service['perTourist']??($service['perPax']??null))),
+                      'included_hint'=>$boolish($service['included']??($service['isIncluded']??($service['priceIncluded']??null))),
+                  ];
+                  $out[]=$fact;
+              }
+              return $out;
+          };
+
+          $files=glob($searches.'/*-package.json')?:[];
+          $files=array_values(array_filter($files,static fn(string $p):bool=>is_file($p)&&!is_link($p)));
+          usort($files,static fn(string $a,string $b):int=>(filemtime($b)?:0)<=>(filemtime($a)?:0));
+          $specimens=[];$capturedSeen=0;
+          foreach($files as $path){
+              if(count($specimens)>=3)break;
+              $envelope=$readJson($path,3000000);if($envelope===null)continue;
+              $record=$envelope['record']??null;
+              if(!is_array($record)||($record['status']??null)!=='captured'||!is_array($record['private_package']??null))continue;
+              ++$capturedSeen;
+              $base=basename($path);
+              if(!preg_match('/^([a-f0-9]{64})-([1-9][0-9]*)-([1-9][0-9]*)-(offer_[a-f0-9]{64})-package\.json$/D',$base,$m))continue;
+              $ref=$m[1];$created=(int)$m[2];$page=(int)$m[3];$offerRef=$m[4];
+              $pagePath=$page===1?$searches.'/'.$ref.'-1.json':$searches.'/'.$ref.'-'.$created.'-'.$page.'.json';
+              $pageState=$readJson($pagePath,3000000);
+              $searchPrice=null;
+              if(is_array($pageState)){
+                  foreach(($pageState['store']['snapshot']['offers']??[]) as $offer){
+                      if(!is_array($offer)||($offer['offer_ref']??null)!==$offerRef)continue;
+                      $amount=$safeMoney($offer['price']['amount']??null);
+                      $currency=$safeCurrency($offer['price']['currency']??null);
+                      if($amount!==null&&$currency!==null)$searchPrice=['amount'=>$amount,'currency'=>$currency];
+                      break;
+                  }
+              }
+              $package=$record['private_package'];
+              $doc=is_array($package['claimDocument']??null)&&isset($package['claimDocument'][0])&&is_array($package['claimDocument'][0])?$package['claimDocument'][0]:null;
+              if(!is_array($doc))continue;
+              $claimServices=$serviceRows($doc['services']??[]);
+              $claimFuel=$fuelFacts($claimServices,'claim_document');
+              $variantFuel=[];$variantServiceCount=0;
+              foreach(($package['variants']??[]) as $variant){
+                  if(!is_array($variant))continue;
+                  $rows=$serviceRows($variant['services']??[]);$variantServiceCount+=count($rows);
+                  foreach($fuelFacts($rows,'variant') as $f)$variantFuel[]=$f;
+              }
+              $buyer=[];
+              foreach(($doc['buyerMoneys']??[]) as $block){
+                  if(!is_array($block)||!is_array($block['buyerClaimMoney']??null))continue;
+                  foreach($block['buyerClaimMoney'] as $money){
+                      if(!is_array($money))continue;
+                      $amount=$safeMoney($money['net']??null);$currency=$safeCurrency($money['currency']??null);
+                      if($amount!==null&&$currency!==null)$buyer[]=['amount'=>$amount,'currency'=>$currency];
+                  }
+              }
+              $buyerPrice=count($buyer)===1?$buyer[0]:null;
+              $same=null;
+              if($searchPrice!==null&&$buyerPrice!==null&&$searchPrice['currency']===$buyerPrice['currency']){
+                  $same=$moneyKey($searchPrice['amount'])===$moneyKey($buyerPrice['amount']);
+              }
+              $allFuel=array_merge($claimFuel,$variantFuel);
+              $explicitIncluded=array_values(array_filter(array_column($allFuel,'included_hint'),static fn($v)=>$v!==null));
+              $unitSignals=0;
+              foreach($allFuel as $f){if($f['unit_hint']!==null||$f['per_person_hint']!==null||$f['clients_common']!==null||$f['client_count']!==null||$f['quantity']!==null)++$unitSignals;}
+              $specimens[]=[
+                  'captured_at'=>is_int($record['created_at']??null)?gmdate('c',$record['created_at']):null,
+                  'search_price'=>$searchPrice,
+                  'buyer_price'=>$buyerPrice,
+                  'search_equals_buyer_price'=>$same,
+                  'claim_service_count'=>count($claimServices),
+                  'variant_service_count'=>$variantServiceCount,
+                  'claim_fuel_candidates'=>$claimFuel,
+                  'variant_fuel_candidates'=>$variantFuel,
+                  'fuel_candidate_count'=>count($allFuel),
+                  'unit_signal_count'=>$unitSignals,
+                  'explicit_included_hints'=>$explicitIncluded,
+                  'unit_state'=>'unknown',
+                  'price_inclusion_state'=>'unknown',
+              ];
+          }
+
+          $out=[
+              'operation'=>'int-andromeda-retained-fuel-read-1717-20260919-v1',
+              'status'=>count($specimens)>0?'completed':'no_retained_captured_package',
+              'supplier_calls'=>0,'db_writes'=>0,'server_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'search3_publication'=>0,
+              'provider_db'=>$dbState,
+              'package_files_seen'=>count($files),
+              'captured_candidates_seen'=>$capturedSeen,
+              'specimen_count'=>count($specimens),
+              'specimens'=>$specimens,
+              'raw_claim_exported'=>false,
+              'unit_defaulted'=>false,
+              'price_inclusion_defaulted'=>false,
+              'replay_allowed'=>false,
+          ];
+          echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+          PHP
+          test -s "$RUNNER_TEMP/result/receipt.json"
+          jq -e '.supplier_calls==0 and .db_writes==0 and .server_writes==0 and .raw_claim_exported==false and .unit_defaulted==false and .price_inclusion_defaulted==false and .replay_allowed==false and (.specimen_count>=0 and .specimen_count<=3)' "$RUNNER_TEMP/result/receipt.json" >/dev/null
+          jq -c '{operation,status,provider_db,package_files_seen,captured_candidates_seen,specimen_count,specimens,supplier_calls,db_writes,server_writes,replay_allowed}' "$RUNNER_TEMP/result/receipt.json"
+
+      - name: Preserve sanitized read-only receipt
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: int-andromeda-retained-fuel-read-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
