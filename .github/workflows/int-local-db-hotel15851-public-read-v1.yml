@@ -1,0 +1,52 @@
+name: INT LOCAL public hotel15851 DB read v1
+on:
+  push:
+    branches: ['ops/int-local-db-hotel15851-public-read-20260919-v1']
+    paths: ['.github/workflows/int-local-db-hotel15851-public-read-v1.yml']
+permissions:
+  contents: read
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read exact LOCAL DB-first scope once
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/request.json" <<'JSON'
+          {"params":{"departureId":1,"countryId":4,"dateFrom":"2026-09-19","dateTo":"2026-09-22","nightsFrom":7,"nightsTo":10,"adults":2,"childs":[],"meal":"","hotelCategory":"","hotelRating":"","hotelTypes":[],"hotelIds":[],"hotelServices":[],"arrivalId":null,"regionIds":["20"],"subregionIds":[],"operatorIds":[],"priceFrom":null,"priceTo":null,"currency":"RUB","onlyCharter":false,"onlyDirect":false}}
+          JSON
+          code=$(curl --fail-with-body --silent --show-error --connect-timeout 15 --max-time 60             -o "$RUNNER_TEMP/response.json" -w '%{http_code}'             -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'X-Requested-With: AnyTourSearch3'             --data-binary "@$RUNNER_TEMP/request.json"             'https://anytoour.ru/_preview/search3-local-candidate/data/search3-local-results-read-v1.php')
+          test "$code" = 200
+          jq -e '.ok==true and .data.source=="anytour-db-first-results-v1" and .data.selectionAuthority==false' "$RUNNER_TEMP/response.json" >/dev/null
+          jq -e '[.data.hotels[]|select(.anytourHotelId==15851)]|length==1' "$RUNNER_TEMP/response.json" >/dev/null
+          jq -c '{
+            operation:"int-local-db-hotel15851-public-read-20260919-v1",
+            http:200,
+            scopeDigest:.data.scopeDigest,
+            matchMode:.data.matchMode,
+            partial:.data.partial,
+            totalHotels:.data.hotelCount,
+            totalOffers:.data.offerCount,
+            providerOfferCounts:.data.providerOfferCounts,
+            target:(.data.hotels[]|select(.anytourHotelId==15851)|{
+              anytourHotelId,
+              name:.hotel.name,
+              minPrice,
+              providers,
+              offerCount:(.offers|length),
+              offersByProvider:(.offers|group_by(.provider)|map({provider:.[0].provider,count:length,minPrice:(map(.price|tonumber)|min)}))
+            }),
+            supplierCalls:0,
+            dbWrites:0,
+            selectionAuthority:.data.selectionAuthority,
+            replayAllowed:false
+          }' "$RUNNER_TEMP/response.json" | tee "$RUNNER_TEMP/receipt.json"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-local-db-hotel15851-public-read-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
