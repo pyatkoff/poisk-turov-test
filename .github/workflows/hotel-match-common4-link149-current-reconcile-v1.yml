@@ -1,0 +1,136 @@
+name: MATCH COMMON4 link149 CURRENT reconcile v1
+on:
+  push:
+    branches: [ops/match-common4-link149-current-reconcile-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_common4_link149_current_reconcile_v1.php
+      - .github/workflows/hotel-match-common4-link149-current-reconcile-v1.yml
+permissions: {contents: read, actions: read}
+concurrency:
+  group: hotel-match-common4-link149-current-reconcile-1971-20260919-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-common4-link149-current-reconcile-1971-20260919-v1
+jobs:
+  current:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10577689146'
+          run-id: 35421889041
+          github-token: ${{ github.token }}
+          path: prior
+          merge-multiple: true
+      - name: Verify sealed detail acquisition and build exact link evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          cp scripts/diagnostics/hotel_match_common4_link149_current_reconcile_v1.php payload/reconcile.php
+          php -l payload/reconcile.php
+          php payload/reconcile.php --self-test
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,urllib.parse
+          root=pathlib.Path('prior/server')
+          expected='63f64b9d8c6eb2ac28fc7a1102432ea76eda97bb40e4efcf3d8d2bbc2651a5e4'
+          raw=(root/'result.json').read_bytes(); result=json.loads(raw); receipt=json.loads((root/'receipt.json').read_bytes())
+          assert hashlib.sha256(raw).hexdigest()==expected==receipt['result_sha256']
+          assert result['state']==receipt['state']=='completed_read_only'
+          assert result['operation']=='hotel-match-common4-saved-tour-detail180-1971-20260919-v1'
+          assert result['provider_calls']==180 and result['database_writes']==result['mapping_writes']==0
+          edges=[]
+          for p in sorted(root.glob('edge-*.json')):
+              d=json.loads(p.read_bytes())
+              if d.get('state')!='detail_identity_verified' or d.get('link_state')!='captured': continue
+              op=d['operator']; candidates=[]; semantics='unresolved'
+              if op=='anex':
+                  candidates=[int(x) for x in d.get('positive_hotellist_ids',[]) if int(x)>0]; semantics='anex_hotellist'
+              elif op in ('funsun','intourist'):
+                  q=urllib.parse.parse_qs(urllib.parse.urlsplit(d['operator_link']).query); vals=[]
+                  for v in q.get('HOTELS',[]): vals += [x.strip() for x in v.replace(';',',').split(',') if x.strip()]
+                  candidates=[int(x) for x in vals if x.isdigit() and int(x)>0]; semantics='operator_hotels_token'
+              elif op=='biblio_globus': semantics='biblio_link_no_proven_hotel_id_semantics'
+              edges.append({'index':d['index'],'tv_hotel_id':int(d['tv_hotel_id']),'hotel_name':d['hotel_name'],'operator':op,'operator_id':int(d['operator_id']),'target_supplier_namespace':d['target_supplier_namespace'],'tour_id':str(d['tour_id']),'host':d['host'],'operator_link_sha256':d['operator_link_sha256'],'response_sha256':d['response_sha256'],'token_semantics':semantics,'candidate_external_hotel_ids':candidates,'candidate_count':len(candidates),'observation_rows':int(d.get('observation_rows',0))})
+          out={'schema':'hotel-match-common4-link149-evidence/1','source_pr':3016,'source_head':'12b34c2e9089f88bd3654af4e898b5a7682ed07c','source_run':35421889041,'source_artifact_id':10577689146,'source_artifact_digest':'sha256:a274fa78bca8c2f798596ebeb8655dfdadeb669843e1c79316fdabf6171e344a','source_result_sha256':expected,'captured_edges':len(edges),'edges':edges}
+          data=(json.dumps(out,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); digest=hashlib.sha256(data).hexdigest()
+          assert len(edges)==149 and digest=='e49986e7ab22664cc0973723c9d2c6abb8022d25a7b018eb4410f7702e5dc6a7'
+          pathlib.Path('payload/evidence.json').write_bytes(data)
+          res={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','input_artifact_id':10577689146,'input_result_sha256':expected,'evidence_sha256':digest,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_calls':0,'no_replay':True}
+          r=(json.dumps(res,sort_keys=True)+'\n').encode()
+          with pathlib.Path('result/reservation.json').open('xb') as f:f.write(r);f.flush();os.fsync(f.fileno())
+          PY
+          (cd payload && sha256sum reconcile.php evidence.json > SHA256SUMS)
+      - name: Require exact-head Security before SSH DB access
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed':
+                if r['conclusion']!='success':raise SystemExit('security_not_green')
+                print('EXACT_SECURITY_GREEN',r['id']);break
+            time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'common4-link149-current-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute CURRENT read-only reconciliation
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null; test -s "$known"
+          o=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"
+          ssh "${o[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${o[@]}" result/reservation.json "$remote:$op/reservation.json" >result/reserve.stdout 2>result/reserve.stderr
+          scp "${o[@]}" payload/reconcile.php payload/evidence.json payload/SHA256SUMS "$remote:$op/" >result/copy.stdout 2>result/copy.stderr
+          set +e
+          ssh "${o[@]}" "$remote" "cd \"\$HOME/$op\" && sha256sum -c SHA256SUMS >/dev/null && cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M \"\$HOME/$op/reconcile.php\"" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${o[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json evidence.json result.json receipt.json" >result/server-operation.tgz 2>>result/remote.stderr; trc=$?
+          set -e
+          printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('result'); s=p/'server'; s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            assert sorted(t.getnames())==['evidence.json','receipt.json','reservation.json','result.json']
+            for m in t.getmembers():
+              assert m.isfile() and m.size<=50_000_000; (s/m.name).write_bytes(t.extractfile(m).read())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          assert hashlib.sha256((s/'evidence.json').read_bytes()).hexdigest()=='e49986e7ab22664cc0973723c9d2c6abb8022d25a7b018eb4410f7702e5dc6a7'
+          r=json.loads((s/'result.json').read_bytes()); q=json.loads((s/'receipt.json').read_bytes()); d=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==d and q['readback_verified'] is True
+          assert r['state']=='completed_read_only' and r['input_edge_count']==149 and len(r['dossiers'])==149
+          assert r['database_writes']==r['mapping_writes']==r['supplier_calls']==r['tourvisor_calls']==r['samo_calls']==0
+          assert sum(r['classification_counts'].values())==149 and all(x['safe_to_write_now'] is False for x in r['dossiers'])
+          summary={'read_at_utc':r['read_at_utc'],'classification_counts':r['classification_counts'],'by_operator':r['by_operator'],'result_sha256':d}
+          (p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n'); print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'common4-link149-current-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
