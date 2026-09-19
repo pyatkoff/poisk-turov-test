@@ -1,0 +1,61 @@
+name: MATCH refresh46 retained common4 v1
+on:
+  push:
+    branches: [ops/match-refresh46-common4-retained-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_refresh46_common4_retained_v1.py
+      - .github/workflows/hotel-match-refresh46-common4-retained-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-refresh46-common4-retained-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-refresh46-common4-retained-1971-20260919-v1
+  CLAIM: '5744684920'
+  BASE_SHA: '93915088f169716d89e2e6426d6d8700dbcf0416'
+jobs:
+  extract:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate isolated source and claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail;mkdir -p input output
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | sort)" = "$(printf '%s\n' '.github/workflows/hotel-match-refresh46-common4-retained-v1.yml' 'scripts/diagnostics/hotel_match_refresh46_common4_retained_v1.py' | sort)"
+          python3 -m py_compile scripts/diagnostics/hotel_match_refresh46_common4_retained_v1.py
+          python3 scripts/diagnostics/hotel_match_refresh46_common4_retained_v1.py --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in b and '10588765891' in b and '10590198805' in b and '82' in b
+          PY
+      - name: Download immutable evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588765891/zip > input/failed.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10590198805/zip > input/recon.zip
+      - name: Extract and verify retained common4 pairs
+        run: |
+          set -euo pipefail
+          python3 scripts/diagnostics/hotel_match_refresh46_common4_retained_v1.py --failed input/failed.zip --recon input/recon.zip --output output/result.json --receipt output/receipt.json
+          python3 - <<'PY'
+          import hashlib,json
+          r=json.load(open('output/result.json'));q=json.load(open('output/receipt.json'))
+          assert r['operation']==q['operation']=='hotel-match-refresh46-common4-retained-1971-20260919-v1'
+          assert r['state']==q['state']=='completed_offline_retained_common4'
+          assert q['result_sha256']==hashlib.sha256(open('output/result.json','rb').read()).hexdigest()
+          assert r['pair_count']==82 and r['hotels_with_common4']==44 and r['hotels_without_common4']==2
+          assert r['operator_pair_counts']=={'13':37,'18':5,'25':15,'43':25}
+          assert r['tv_operator_bindings']=={'13':'Anex','18':'Biblioglobus','25':'Fun&Sun (RU)','43':'Интурист'}
+          assert r['provider_calls']==r['database_writes']==r['mapping_writes']==0
+          assert len({(x['tv_hotel_id'],x['tv_operator_id']) for x in r['pairs']})==82 and all(x['safe_to_write_now'] is False for x in r['pairs'])
+          print(json.dumps({'pairs':82,'hotels':44,'operator_pair_counts':r['operator_pair_counts'],'result_sha256':q['result_sha256']},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-refresh46-common4-retained-${{ github.run_id }}', path: output/, retention-days: 90, if-no-files-found: error}
