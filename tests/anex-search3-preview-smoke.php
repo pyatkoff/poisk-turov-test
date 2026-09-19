@@ -170,7 +170,7 @@ for($i=1;$i<=301;++$i){
     $o=$cheapHb;$o['hotel']['local_id']=10000+$i;$o['hotel']['external_id']=(string)(20000+$i);$o['offer_key']='anex_online:'.hash('sha256','bg-projection-'.$i);$backgroundOffers[]=$o;
     $backgroundMetadata[10000+$i]=['id'=>10000+$i,'name'=>'BG '.$i,'country_id'=>(int)$params['countryId'],'country_name'=>'Country','region_id'=>20,'region_name'=>'Region','subregion_id'=>null,'subregion_name'=>null,'category'=>5,'rating'=>5.0,'primary_image_url'=>null,'description'=>null,'address'=>null];
 }
-$backgroundProjected=anytour_anex_search3_project($backgroundOffers,$backgroundMetadata,$params,null,4800);
+$backgroundProjected=anytour_anex_search3_project($backgroundOffers,$backgroundMetadata,array_replace($params,['meal'=>'']),null,4800);
 search3_check(count($backgroundProjected)===301,'background projection still truncated at browser300');
 
 $calls = 0;
