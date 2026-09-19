@@ -102,7 +102,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn("setAttribute('aria-expanded'", form)
         self.assertNotIn('search3-editing-search', form + results + compiled)
         self.assertNotIn('search3-editing-search', (ROOT / 'v2/results-renderer-v5.js').read_text())
-        self.assertIn('&.search3-selected-open :is(#tourSearch,.results-tools,.results-layout){display:none!important}', results)
+        self.assertIn('&.search3-selected-open :is(.v2-product-hero,#tourSearch,.results-tools,.results-layout,.search3-shortlist){display:none!important}', results)
         self.assertIn(':has(#results>*)', results)
         self.assertNotIn('search3-results-active', compiled)
         self.assertNotIn('search3-has-results', compiled)
@@ -143,7 +143,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertNotIn('search3-direct-control', native)
         for marker in ('.results-layout', '.direct-tour', '[hidden]'):
             self.assertIn(marker, results)
-        self.assertIn('&.search3-selected-open .v2-product-hero{display:none!important}', results)
+        self.assertIn('&.search3-selected-open :is(.v2-product-hero,#tourSearch,.results-tools,.results-layout,.search3-shortlist){display:none!important}', results)
         self.assertIn('& .v2-shell a{', results)
         self.assertIn('& .v2-shell :focus-visible{', results)
         self.assertNotIn('.at-global-header', results)
