@@ -24,6 +24,9 @@ async function run(engine, width, height) {
   const browser = await ({ chromium, webkit }[engine]).launch();
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: width < 768, serviceWorkers: 'block' });
   const calls = [], failures = [], errors = [];
+  const recoveryImages = { missing: origin + '/fixture-gallery-missing.svg', slow: origin + '/fixture-gallery-slow.svg', good: origin + '/fixture-gallery-good.svg' };
+  let releaseSlowPhoto, slowRequests = 0;
+  const slowPhotoGate = new Promise(resolve => { releaseSlowPhoto = resolve; }), slowReplies = [];
   const scenarioQuery = new URLSearchParams(query);
   if (width === 390) {
     scenarioQuery.set('child_count', '3');
@@ -34,10 +37,20 @@ async function run(engine, width, height) {
     const request = route.request(), url = new URL(request.url());
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (url.origin !== origin) return route.abort();
+    if (url.href === recoveryImages.missing) return route.fulfill({ status: 404, body: 'Missing fictional photo' });
+    if (url.href === recoveryImages.good) return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: svg('#c7dfb5') });
+    if (url.href === recoveryImages.slow) {
+      slowRequests++;
+      const reply = slowPhotoGate.then(() => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: svg('#edd0e5') }));
+      slowReplies.push(reply);
+      return reply;
+    }
     if (/^\/fixture-\d-[ab]\.svg$/.test(url.pathname)) return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: svg(url.pathname.endsWith('b.svg') ? '#dfc5a8' : '#badbea') });
     if (url.pathname.endsWith('/data/hotel-details-read-v1.php')) {
       const ids = url.searchParams.getAll('legacyHotelIds[]');
-      return json({ ok: true, source: 'anytour-canonical-catalog', catalog: 'anytour', requestedLegacyIds: ids, items: ids.map(id => profiles[Number(id) - 101]), links: ids.map(id => ({ legacyHotelId: id, anytourHotelId: Number(id) + 800 })), missingLegacyIds: [] });
+      const recovery = new URL(request.frame().page().url()).searchParams.get('utm_source') === 'photo-recovery-fixture';
+      const items = ids.map(id => { const profile = profiles[Number(id) - 101]; return recovery && profile.id === 901 ? { ...profile, images: [profile.primaryImage, recoveryImages.missing, recoveryImages.slow, recoveryImages.good] } : profile; });
+      return json({ ok: true, source: 'anytour-canonical-catalog', catalog: 'anytour', requestedLegacyIds: ids, items, links: ids.map(id => ({ legacyHotelId: id, anytourHotelId: Number(id) + 800 })), missingLegacyIds: [] });
     }
     if (url.pathname.endsWith('/data/departures-v1.php')) return json({ ok: true, items: [{ id: 1, russianName: 'Москва' }] });
     if (url.pathname === '/data/observe-search-v1.php' && request.method() === 'POST') {
@@ -192,9 +205,71 @@ async function run(engine, width, height) {
     assert.equal(await direct.locator('#tourSearch').isVisible(), true, 'expired search keeps explicit recovery available');
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1, 'expiry never silently launches a full search');
     await direct.screenshot({ path: path.join(output, `${engine}-${width}x${height}-expired.png`), fullPage: true, animations: 'disabled' });
+
+    // A separate existing-search hotel tab exercises image transport failures.
+    // Delay actual image responses; do not stub the viewer or dispatch load events.
+    const recovery = await context.newPage(), recoveryUrl = new URL(initialDetailUrl);
+    recoveryUrl.searchParams.set('utm_source', 'photo-recovery-fixture');
+    await recovery.goto(recoveryUrl.href, { waitUntil: 'domcontentloaded' });
+    await recovery.waitForSelector('#results .hotel-card .direct-tour');
+    await recovery.locator('.hotel-details > summary').click();
+    const recoveryLink = recovery.locator('.search3-hotel-photo-link');
+    await recoveryLink.scrollIntoViewIfNeeded();
+    const recoveryState = () => recovery.evaluate(() => ({ url: location.href, scroll: scrollY, hotel: document.querySelector('.hotel-card')?.dataset.anytourHotelId, offers: [...document.querySelectorAll('.direct-tour')].map(el => el.dataset.tid), prices: [...document.querySelectorAll('.hotel-price')].map(el => el.textContent), photo: document.querySelector('.hotel-gallery-main')?.getAttribute('src'), expanded: document.querySelector('.hotel-details')?.open }));
+    const beforeRecovery = await recoveryState(), beforeRecoveryCalls = calls.length;
+    await recoveryLink.click();
+    const recoveryViewer = recovery.getByRole('dialog', { name: profiles[0].name, exact: true });
+    const recoveryImage = recoveryViewer.locator('img'), recoveryStatus = recoveryViewer.locator('.hotel-photo-viewer__status');
+    const closePhotos = recoveryViewer.getByRole('button', { name: 'Закрыть фотографии', exact: true });
+    const nextPhoto = recoveryViewer.getByRole('button', { name: 'Следующее фото', exact: true });
+    const originalPhoto = recoveryViewer.getByRole('link', { name: 'Открыть оригинал' });
+    await recoveryImage.waitFor({ state: 'visible' });
+    await closePhotos.focus();
+    await recovery.keyboard.press('Shift+Tab');
+    assert.equal(await originalPhoto.evaluate(el => el === document.activeElement), true, 'reverse Tab stays inside the photo dialog');
+    await recovery.keyboard.press('Tab');
+    assert.equal(await closePhotos.evaluate(el => el === document.activeElement), true, 'forward Tab wraps to the dialog close action');
+    await nextPhoto.click();
+    await recoveryStatus.getByText('Не удалось загрузить фото.', { exact: false }).waitFor();
+    assert.equal(await recoveryImage.isVisible(), false, 'a failed photo does not leave a misleading old image');
+    assert.equal(await originalPhoto.getAttribute('href'), recoveryImages.missing, 'original link belongs to the failed current image');
+    for (const action of await recoveryViewer.locator('button:visible, a:visible').all()) {
+      const box = await action.boundingBox();
+      assert.ok(box.height >= 44 && box.x >= 0 && box.y >= 0 && box.x + box.width <= width && box.y + box.height <= height, 'photo recovery actions remain reachable');
+    }
+    await recovery.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photo-error.png`), animations: 'disabled' });
+    await nextPhoto.click();
+    assert.equal(await recoveryStatus.innerText(), 'Загружаем фото…');
+    assert.equal(await recoveryImage.isVisible(), false);
+    await nextPhoto.click();
+    await recoveryImage.waitFor({ state: 'visible' });
+    assert.equal(await recoveryImage.getAttribute('src'), recoveryImages.good, 'a slow photo never blocks moving to another image');
+    assert.equal(await recoveryViewer.locator('.hotel-photo-viewer__counter').innerText(), 'Фото 4 из 4');
+    assert.ok(slowRequests > 0, 'the image delay was actually exercised');
+    await closePhotos.click();
+    await recoveryViewer.waitFor({ state: 'hidden' });
+    assert.equal(await recoveryLink.evaluate(el => el === document.activeElement), true, 'recovery close returns focus to the same hotel');
+    await recoveryLink.click();
+    await recoveryImage.waitFor({ state: 'visible' });
+    releaseSlowPhoto();
+    await Promise.all(slowReplies);
+    await recovery.waitForFunction(url => [...document.querySelectorAll('.hotel-gallery-thumb img')].some(img => img.getAttribute('src') === url && img.complete && img.naturalWidth > 0), recoveryImages.slow);
+    assert.equal(await recoveryImage.getAttribute('src'), beforeRecovery.photo, 'late response cannot replace the image in a reopened dialog');
+    assert.equal(await recoveryImage.isVisible(), true);
+    assert.equal(await recoveryStatus.isVisible(), false);
+    assert.equal(await recoveryViewer.locator('.hotel-photo-viewer__counter').innerText(), 'Фото 1 из 4');
+    await recovery.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photo-recovered.png`), animations: 'disabled' });
+    await recovery.keyboard.press('Escape');
+    await recoveryViewer.waitFor({ state: 'hidden' });
+    const afterRecovery = await recoveryState();
+    assert.ok(Math.abs(afterRecovery.scroll - beforeRecovery.scroll) <= 2);
+    delete beforeRecovery.scroll; delete afterRecovery.scroll;
+    assert.deepEqual(afterRecovery, beforeRecovery, 'image errors and late responses preserve exact hotel/offers/prices/URL');
+    assert.equal(calls.length, beforeRecoveryCalls, 'image recovery never starts search/tour/observation calls');
+    assert.equal(calls.filter(c => c.action === 'search_start').length, 1);
     assert.deepEqual(failures, [], 'no lead/booking/unknown writes');
     assert.deepEqual(errors, [], 'no browser exceptions');
-    reports.push({ engine, width, height, sourceSha, passed: true, photoViewer: true, photoContextPreserved: true, searchStarts: 1, detailTabs: 3, directReload: true, expiredManualRecovery: true, exactOffer: exact });
+    reports.push({ engine, width, height, sourceSha, passed: true, photoViewer: true, photoContextPreserved: true, photoErrorRecovery: true, photoSlowResponseRecovery: true, photoFocusContainment: true, searchStarts: 1, detailTabs: 3, directReload: true, expiredManualRecovery: true, exactOffer: exact });
   } catch (error) {
     for (const [index, current] of context.pages().entries()) {
       await current.screenshot({ path: path.join(output, `${engine}-${width}-failure-${index}.png`), fullPage: true }).catch(() => {});
@@ -202,7 +277,7 @@ async function run(engine, width, height) {
     }
     fs.writeFileSync(path.join(output, `${engine}-${width}-failure.json`), JSON.stringify({ error: String(error), errors, failures, calls: calls.map(({ page: _, ...call }) => call) }, null, 2));
     throw error;
-  } finally { await browser.close(); }
+  } finally { releaseSlowPhoto(); await Promise.allSettled(slowReplies); await browser.close(); }
 }
 (async () => {
   for (const width of [1440, 375, 390, 430]) await run('chromium', width, width === 390 ? 500 : 900);
