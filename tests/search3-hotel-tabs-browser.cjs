@@ -25,7 +25,7 @@ async function run(engine, width, height) {
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: width < 768, serviceWorkers: 'block' });
   const calls = [], failures = [], errors = [];
   const recoveryImages = { missing: origin + '/fixture-gallery-missing.svg', slow: origin + '/fixture-gallery-slow.svg', good: origin + '/fixture-gallery-good.svg' };
-  let releaseSlowPhoto, slowRequests = 0;
+  let releaseSlowPhoto, slowRequests = 0, slowPhotoTimer, slowPhotoExpired = false;
   const slowPhotoGate = new Promise(resolve => { releaseSlowPhoto = resolve; }), slowReplies = [];
   const scenarioQuery = new URLSearchParams(query);
   if (width === 390) {
@@ -41,6 +41,7 @@ async function run(engine, width, height) {
     if (url.href === recoveryImages.good) return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: svg('#c7dfb5') });
     if (url.href === recoveryImages.slow) {
       slowRequests++;
+      if (!slowPhotoTimer) slowPhotoTimer = setTimeout(() => { slowPhotoExpired = true; releaseSlowPhoto(); }, 20000);
       const reply = slowPhotoGate.then(() => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: svg('#edd0e5') }));
       slowReplies.push(reply);
       return reply;
@@ -237,7 +238,6 @@ async function run(engine, width, height) {
       const box = await action.boundingBox();
       assert.ok(box.height >= 44 && box.x >= 0 && box.y >= 0 && box.x + box.width <= width && box.y + box.height <= height, 'photo recovery actions remain reachable');
     }
-    await recovery.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photo-error.png`), animations: 'disabled' });
     await nextPhoto.click();
     assert.equal(await recoveryStatus.innerText(), 'Загружаем фото…');
     assert.equal(await recoveryImage.isVisible(), false);
@@ -251,7 +251,8 @@ async function run(engine, width, height) {
     assert.equal(await recoveryLink.evaluate(el => el === document.activeElement), true, 'recovery close returns focus to the same hotel');
     await recoveryLink.click();
     await recoveryImage.waitFor({ state: 'visible' });
-    releaseSlowPhoto();
+    assert.equal(slowPhotoExpired, false, 'the controlled delay must be released by the scenario, not its watchdog');
+    clearTimeout(slowPhotoTimer);releaseSlowPhoto();
     await Promise.all(slowReplies);
     await recovery.waitForFunction(url => [...document.querySelectorAll('.hotel-gallery-thumb img')].some(img => img.getAttribute('src') === url && img.complete && img.naturalWidth > 0), recoveryImages.slow);
     assert.equal(await recoveryImage.getAttribute('src'), beforeRecovery.photo, 'late response cannot replace the image in a reopened dialog');
@@ -259,6 +260,11 @@ async function run(engine, width, height) {
     assert.equal(await recoveryStatus.isVisible(), false);
     assert.equal(await recoveryViewer.locator('.hotel-photo-viewer__counter').innerText(), 'Фото 1 из 4');
     await recovery.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photo-recovered.png`), animations: 'disabled' });
+    // Capture the error after releasing all held image requests, so screenshot
+    // readiness cannot become part of the controlled network delay.
+    await nextPhoto.click();
+    await recoveryStatus.getByText('Не удалось загрузить фото.', { exact: false }).waitFor();
+    await recovery.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photo-error.png`), animations: 'disabled' });
     await recovery.keyboard.press('Escape');
     await recoveryViewer.waitFor({ state: 'hidden' });
     const afterRecovery = await recoveryState();
@@ -277,7 +283,7 @@ async function run(engine, width, height) {
     }
     fs.writeFileSync(path.join(output, `${engine}-${width}-failure.json`), JSON.stringify({ error: String(error), errors, failures, calls: calls.map(({ page: _, ...call }) => call) }, null, 2));
     throw error;
-  } finally { releaseSlowPhoto(); await Promise.allSettled(slowReplies); await browser.close(); }
+  } finally { clearTimeout(slowPhotoTimer); releaseSlowPhoto(); await browser.close(); }
 }
 (async () => {
   for (const width of [1440, 375, 390, 430]) await run('chromium', width, width === 390 ? 500 : 900);
