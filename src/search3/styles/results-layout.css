@@ -205,7 +205,7 @@ margin:0;background:#f5f7fb;color:#17233b;
  * Photos, factual badges and offer rows share this owner; no retired overlays. */
 .search3-candidate #results{
 & .hotel-card{background:#fff;border:1px solid var(--at-line,#e1e7f3);border-radius:20px;overflow:hidden;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
-& :is(.hotel-card,.tour-row)[hidden]{display:none!important}
+& :is(.hotel-card,.tour-row)[hidden]{display:none}
 & .hotel-main{display:grid;grid-template-columns:minmax(220px,30%) minmax(0,1fr)}
 & .hotel-photo{position:relative;min-height:164px;overflow:hidden;background:#e8edf5}
 & .hotel-photo img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}

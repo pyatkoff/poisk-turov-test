@@ -2,7 +2,7 @@
 """Offline same-tab reload/re-entry acceptance. All offers and transports fictional."""
 from pathlib import Path
 from urllib.parse import urlencode
-import json, os, subprocess
+import json, os, re, subprocess
 from playwright.sync_api import sync_playwright, expect
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -13,7 +13,8 @@ KEY='anytour:search3:completed:v1'
 BASE='https://anytoour.ru/_preview/search3-local-candidate/poisk-turov/'
 QUERY=urlencode([('from','1'),('country','4'),('dateFrom','2030-10-05'),('dateTo','2030-10-07'),('daysFrom','7'),('daysTill','9'),('count_people','2'),('child_count','2'),('child_age[]','0'),('child_age[]','17')])
 CSS_FILES=json.loads(subprocess.check_output(['php','-r','require '+json.dumps(str(V2/'bundle-manifest-v1.php'))+'; echo json_encode(v2_bundle_files("css","search3"));'],text=True))
-CSS='\n'.join((V2/f).read_text() for f in CSS_FILES+['search3-entry-v1.css','search3-results-cards-v2.css','search3-results-filters-v1.css','search3-selected-flow-v2.css'])
+PAGE_STYLE=re.search(r'<style>(.*?)</style>',(V2/'index.php').read_text(),re.S).group(1)
+CSS=PAGE_STYLE+'\n'+'\n'.join((V2/f).read_text() for f in CSS_FILES+['search3-entry-v1.css','search3-results-cards-v2.css','search3-results-filters-v1.css','search3-selected-flow-v2.css'])
 SOURCE_FILES=['search3-canonical-profiles-v1.js','results-renderer-v5.js','current-price-calendar-v1.js','search-lifecycle-v6.js','search3-results-continuity-v1.js','search3-hotel-details-presentation-v1.js']
 CODE='\n'.join((V2/f).read_text() for f in SOURCE_FILES)
 FORM=(V2/'search3-results-filters-v1.js').read_text()
