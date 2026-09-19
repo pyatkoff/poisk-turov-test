@@ -92,22 +92,6 @@ $nested = AnyTourTourvisorOfferAutosaveV1::captureSearchStart(
 );
 tv_autosave_check(($nested['ok'] ?? null) === true && ($nested['searchId'] ?? null) === $nestedId, 'nested_search_id');
 
-$routingMethod = new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class, 'ownedOperatorFamily');
-$allowedLabels = [
-    'PEGAS Touristik' => 'pegas',
-    'Пегас Туристик' => 'pegas',
-    'Coral Travel' => 'coral',
-    'Корал Тревел' => 'coral',
-    'Sunmar' => 'sunmar',
-    'Санмар' => 'sunmar',
-];
-foreach ($allowedLabels as $label => $family) {
-    tv_autosave_check($routingMethod->invoke(null, $label) === $family, 'routing_allowed_' . $family);
-}
-foreach (['ANEX', 'FUN&SUN', 'Библио-Глобус', 'Интурист', '', 'Pegasus Holidays'] as $label) {
-    tv_autosave_check($routingMethod->invoke(null, $label) === null, 'routing_rejected_' . ($label === '' ? 'missing' : $label));
-}
-
 // Exercise the exact Tourvisor row -> protected finalPriceReady path without DB or supplier I/O.
 $entryMethod = new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class, 'entryFromTour');
 $baseTour = [
@@ -164,13 +148,83 @@ tv_autosave_check(
     'missing_fuel_no_base_fallback'
 );
 
-$anexTour = $baseTour;
-$anexTour['id'] = 'TV-OFFER-ANEX';
-$anexTour['operator'] = ['id' => 2, 'name' => 'ANEX'];
-tv_autosave_check(
-    $entryMethod->invoke(null, $searchId, 3417, 77, $anexTour, 2, 0, [], '2026-09-17T09:30:00Z', $now) === null,
-    'anex_never_persisted_via_tourvisor'
-);
+// Operator specialization is deferred: retain all valid returned labels without
+// relabeling Tourvisor observations as direct ANEX or Andromeda observations.
+$labels = ['PEGAS Touristik', 'Пегас Туристик', 'Coral Travel', 'Корал Тревел',
+    'Sunmar', 'Санмар', 'ANEX', 'FUN&SUN', 'Библио-Глобус', 'Интурист',
+    'Pegasus Holidays', 'Новый оператор'];
+foreach ($labels as $index => $label) {
+    $tour = $baseTour;
+    $tour['id'] = 'TV-ALL-OPERATORS-' . $index;
+    $tour['operator'] = ['id' => $index + 1, 'name' => $label];
+    $before = $tour;
+    $allEntry = $entryMethod->invoke(null, $searchId, 3417, 77, $tour, 2, 0, [], '2026-09-17T09:30:00Z', $now);
+    tv_autosave_check(is_array($allEntry), 'every_returned_operator_admitted_' . $index);
+    tv_autosave_check($tour === $before, 'input_tour_unchanged_' . $index);
+    tv_autosave_check($allEntry['offer']['provider'] === 'tourvisor'
+        && $allEntry['offer']['operator']['raw'] === $label, 'provider_operator_separate_' . $index);
+    tv_autosave_check($allEntry['offer']['identity'] === [
+        'search_ref_digest' => hash('sha256', 'tourvisor:search:' . $searchId),
+        'offer_ref_digest' => hash('sha256', 'tourvisor:tour:' . $tour['id']),
+        'provider_hotel_ref_digest' => hash('sha256', 'tourvisor:hotel:3417'),
+    ], 'source_identity_retained_' . $index);
+    $allDto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
+        $allEntry['offer'], $allEntry['retained'], $allEntry['current'], $now->getTimestamp(), $allEntry['priced_money']
+    );
+    tv_autosave_check($allDto['finalPriceReady'] === true && $allDto['price'] === '150824', 'same_price_contract_' . $index);
+    tv_autosave_check($allEntry['offer']['final_price_verified'] === false
+        && $allEntry['offer']['selection_state'] === 'disabled', 'no_quote_authority_' . $index);
+}
+
+// A 99-offer cohort must not collapse to the 26 offers from the former allowlist.
+// Exercise the real producer with an in-memory ingest callback, not a live DB.
+$mixed = [];
+for ($i = 0; $i < 99; ++$i) {
+    $tour = $baseTour;
+    $tour['id'] = 'TV-MIXED-' . $i;
+    $tour['operator'] = $i < 26 ? 'PEGAS Touristik' : $labels[6 + (($i - 26) % 6)];
+    $mixed[] = $entryMethod->invoke(null, $searchId, 4000 + $i, 8000 + $i,
+        $tour, 2, 0, [], '2026-09-17T09:30:00Z', $now);
+}
+$mixedBefore = $mixed;
+$storedRows = null;
+$ingestCalls = 0;
+$ingest = static function (string $provider, array $params, array $rows, DateTimeImmutable $at)
+    use (&$storedRows, &$ingestCalls, $scope, $now): array {
+    ++$ingestCalls;
+    tv_autosave_check($provider === 'tourvisor' && $params === $scope, 'original_provider_and_scope_to_ingest');
+    tv_autosave_check($at == $now, 'original_observation_time_to_ingest');
+    $storedRows = $rows;
+    return ['test_only' => true];
+};
+$produced = AnyTourIntOfferSnapshotProducerV1::produce('tourvisor', $scope,
+    ['complete' => true, 'authoritative_empty' => false, 'offers' => $mixed], $now, $ingest);
+tv_autosave_check($ingestCalls === 1 && count($storedRows) === 99, 'all_99_reach_ingest_once');
+tv_autosave_check($produced['inputOfferCount'] === 99 && $produced['readyOfferCount'] === 99,
+    '99_input_99_ready_not_26');
+tv_autosave_check(count(array_unique(array_column($storedRows, 'anytour_hotel_id'))) === 99,
+    '99_distinct_hotels_retained');
+tv_autosave_check($produced['selectionAuthority'] === false && $mixed === $mixedBefore,
+    'no_authority_or_input_mutation');
+foreach ($storedRows as $index => $row) {
+    tv_autosave_check($row['anytour_hotel_id'] === 8000 + $index
+        && $row['dto']['provider'] === 'tourvisor'
+        && $row['dto']['price'] === '150824'
+        && $row['expires_at'] === '2026-09-17T09:45:00Z', 'mixed_row_identity_price_ttl_' . $index);
+}
+
+// New operators still obey the unchanged price and hotel-identity contracts.
+$notReady = $mixed[26];
+$notReady['offer']['money'] = $unknownEntry['offer']['money'];
+$notReady['priced_money'] = $unknownEntry['priced_money'];
+$unresolved = $mixed[27];
+$unresolved['anytour_hotel_id'] = null;
+$guarded = AnyTourIntOfferSnapshotProducerV1::produce('tourvisor', $scope,
+    ['complete' => true, 'authoritative_empty' => false, 'offers' => [$mixed[28], $notReady, $unresolved]],
+    $now, $ingest);
+tv_autosave_check(count($storedRows) === 1 && $guarded['notReadyCount'] === 1
+    && $guarded['unresolvedHotelCount'] === 1, 'no_price_or_identity_guard_bypass');
+
 $missingOperatorTour = $baseTour;
 $missingOperatorTour['id'] = 'TV-OFFER-NO-OP';
 unset($missingOperatorTour['operator']);
@@ -188,7 +242,8 @@ tv_autosave_check(strpos($helperSource, "'authoritative_empty' => false") !== fa
 tv_autosave_check(strpos($helperSource, 'withSearchSurchargeEstimate') === false, 'no_new_surcharge_arithmetic');
 tv_autosave_check(strpos($helperSource, 'search_plus_additional') === false, 'no_shadow_price_path');
 tv_autosave_check(strpos($helperSource, 'v2_data_tv_get(') === false && strpos($helperSource, 'curl_') === false, 'no_supplier_io');
-tv_autosave_check(strpos($helperSource, "'no_routed_offers'") !== false, 'routing_fail_closed');
+tv_autosave_check(strpos($helperSource, 'ownedOperatorFamily') === false, 'no_operator_allowlist_in_either_stage');
+tv_autosave_check(strpos($helperSource, "'no_routed_offers'") !== false, 'empty_cohort_receipt_compatible');
 
 tv_autosave_check(strpos($apiSource, "tourvisor_autosave_start(\$searchParams, \$data);") !== false, 'start_hook');
 tv_autosave_check(strpos($apiSource, 'tourvisor_autosave_status($id, $data);') !== false, 'status_hook');
