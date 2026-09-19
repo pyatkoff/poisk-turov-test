@@ -1,0 +1,58 @@
+name: INT Andromeda confirmation receipt proof v1
+
+on:
+  push:
+    branches: ['ops/int-andromeda-confirmation-receipt-proof-20260919-v1']
+    paths: ['.github/workflows/int-andromeda-confirmation-receipt-proof-v1.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: 18246c9a014fe110362274691e1dcab1f9b91e50
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Apply ephemeral receipt-only patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/integrations/andromeda-anytour-offer-autosave.php')
+          s=p.read_text()
+          old="""            'readyOfferCount' => (int)($result['readyOfferCount'] ?? 0),
+            'ownedOfferCount' => $owned,"""
+          new="""            'readyOfferCount' => (int)($result['readyOfferCount'] ?? 0),
+            'confirmationRequiredOfferCount' => (int)($result['confirmationRequiredOfferCount'] ?? 0),
+            'ownedOfferCount' => $owned,"""
+          if s.count(old) != 1:
+              raise SystemExit(f'PATCH_TARGET_COUNT={s.count(old)}')
+          p.write_text(s.replace(old,new))
+          PY
+          git diff --check
+          git diff -- app/integrations/andromeda-anytour-offer-autosave.php
+      - name: Run exact failing boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/integrations/andromeda-anytour-offer-autosave.php
+          php -l app/integrations/anytour-offer-snapshot-producer.php
+          php -l tests/andromeda-anytour-offer-autosave-test.php
+          php -l tests/andromeda-cache-cohort-order-test.php
+          php -l tests/andromeda-confirmation-snapshot-producer-test.php
+          php -d allow_url_fopen=0 tests/anytour-offer-snapshot-producer-test.php
+          php -d allow_url_fopen=0 tests/andromeda-anytour-offer-autosave-test.php
+          php -d allow_url_fopen=0 tests/andromeda-cache-cohort-order-test.php
+          php -d allow_url_fopen=0 tests/andromeda-confirmation-snapshot-producer-test.php
+          echo ANDROMEDA_CONFIRMATION_RECEIPT_EPHEMERAL_PATCH_OK
