@@ -1,0 +1,32 @@
+name: INT ANEX demand fill worker
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'scripts/ops/anex_local_offer_collect.php'
+      - 'scripts/ops/anex_local_offer_demand_fill.php'
+      - 'tests/anex-local-offer-demand-fill-test.php'
+      - '.github/workflows/int-anex-demand-fill.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate sequential demand worker
+        run: |
+          set -euo pipefail
+          php -l scripts/ops/anex_local_offer_collect.php
+          php -l scripts/ops/anex_local_offer_demand_fill.php
+          php -l tests/anex-local-offer-demand-fill-test.php
+          php tests/anex-local-offer-demand-fill-test.php
+          grep -q "array_slice(\$scopes,0,\$limit)" scripts/ops/anex_local_offer_demand_fill.php
+          grep -q "stopped_on_error" scripts/ops/anex_local_offer_demand_fill.php
+          grep -q "child-ages" scripts/ops/anex_local_offer_collect.php
+          ! grep -Eq 'curl_|fsockopen|stream_socket_client' scripts/ops/anex_local_offer_demand_fill.php
+          echo 'ANEX_DEMAND_FILL_WORKER_OK sequential=1 browser_calls=0'
