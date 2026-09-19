@@ -1,7 +1,7 @@
 (function(){'use strict';
 if(window.V2CurrentPriceCalendar)return;
 const money=new Intl.NumberFormat('ru-RU'),dayFormatter=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',weekday:'short',timeZone:'UTC'});
-let terminal=false,filteredItems=null,disclosureOpen=null,pendingFocus=false;
+let terminal=false,filteredItems=null,disclosureOpen=null,pendingFocus=false,selectedDate='',availableDays=[];
 function dateValue(raw){
 const s=String(raw||'').trim(),iso=s.match(/^(\d{4})-(\d{2})-(\d{2})$/),local=iso?null:s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
 if(!iso&&!local)return'';
@@ -16,27 +16,51 @@ const form=document.getElementById('tourSearch');
 const target=[document.getElementById('resultsSearchEdit'),form&&form.elements.dateFrom].find(node=>node&&node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden');
 if(target)target.focus({preventScroll:true});
 }
+function updateSelection(box){
+const selected=availableDays.find(day=>day.date===selectedDate),actions=box.querySelector('.current-price-calendar__actions');
+if(!actions)return;
+box.querySelectorAll('[data-calendar-date]').forEach(button=>button.setAttribute('aria-pressed',String(!!selected&&button.dataset.calendarDate===selected.date)));
+actions.hidden=!selected;
+if(selected){
+actions.querySelector('[role="status"]').textContent='Вылет '+dateLabel(selected.date)+' · от '+money.format(selected.price)+' ₽ за весь тур';
+const apply=actions.querySelector('[data-calendar-apply]');
+apply.textContent='Найти туры на '+dateLabel(selected.date).replace(/^.*?,\s*/,'');
+apply.disabled=false;
+}
+}
+function submitDate(date){
+const form=document.getElementById('tourSearch'),lifecycle=window.V2SearchLifecycle;
+if(!form||!date||!lifecycle||typeof lifecycle.submit!=='function')return;
+const from=form.elements.dateFrom,to=form.elements.dateTo;if(!from||!to)return;
+from.value=date;to.value=date;
+from.dispatchEvent(new Event('input',{bubbles:true}));to.dispatchEvent(new Event('input',{bubbles:true}));
+lifecycle.submit();
+}
 function render(items){
 const box=ensure();if(!box)return[];
 const compact=document.body.classList.contains('search3-candidate'),active=document.activeElement;
 const focused=compact&&box.contains(active)?active:null;
 const focusedDate=focused?dateValue(focused.getAttribute('data-calendar-date')):'';
+const focusedApply=focused&&focused.hasAttribute('data-calendar-apply');
 const previousDays=box.querySelector('.current-price-calendar__days'),scrollLeft=previousDays?previousDays.scrollLeft:0;
 const previous=box.querySelector('details');if(previous)disclosureOpen=previous.open;
 const days=collect(items);
+availableDays=days;if(!days.some(day=>day.date===selectedDate))selectedDate='';
 if(days.length<2){
+selectedDate='';
 box.hidden=true;box.innerHTML='';
 if(focused)focusFallback();
 return days;
 }
 const best=Math.min.apply(null,days.map(x=>x.price));
 const expanded=disclosureOpen===null?(compact||window.matchMedia('(min-width:701px)').matches):disclosureOpen,head=compact?'summary':'div';
-box.innerHTML=(compact?'<details'+(expanded?' open':'')+'>':'')+'<'+head+' class="current-price-calendar__head"><span class="current-price-calendar__heading"><span>Цены по датам</span><strong id="currentPriceCalendarTitle">'+(compact?'Календарь цен':'Когда дешевле вылететь')+'</strong></span><small>Минимум среди найденных сейчас туров</small></'+head+'><div class="current-price-calendar__days">'+days.map(x=>{const label=dateLabel(x.date),price=money.format(x.price),fullDate=x.date.split('-').reverse().join('.');return '<button type="button" class="current-price-calendar__day'+(x.price===best?' is-best':'')+'" data-calendar-date="'+x.date+'" aria-label="'+label+' ('+fullDate+'), '+price+' ₽, '+(x.price===best?'самая низкая среди найденных туров':'проверить дату')+'"><span>'+label+'</span><strong>'+price+' ₽</strong>'+(x.price===best?'<small>самая низкая</small>':'<small>проверить дату</small>')+'</button>';}).join('')+'</div><p class="current-price-calendar__note">Это текущие цены из уже выполненного поиска, а не история. Нажмите дату, чтобы перепроверить предложения именно на неё.</p>'+(compact?'</details>':'');box.hidden=false;
+box.innerHTML=(compact?'<details'+(expanded?' open':'')+'>':'')+'<'+head+' class="current-price-calendar__head"><span class="current-price-calendar__heading"><span>Цены по датам</span><strong id="currentPriceCalendarTitle">'+(compact?'Календарь цен':'Когда дешевле вылететь')+'</strong></span><small>Минимум среди найденных сейчас туров</small></'+head+'><div class="current-price-calendar__days">'+days.map(x=>{const label=dateLabel(x.date),price=money.format(x.price),fullDate=x.date.split('-').reverse().join('.');return '<button type="button" class="current-price-calendar__day'+(x.price===best?' is-best':'')+'" data-calendar-date="'+x.date+'"'+(compact?' aria-pressed="false"':'')+' aria-label="'+label+' ('+fullDate+'), от '+price+' ₽ за весь тур, '+(x.price===best?'самая низкая среди найденных туров':compact?'выбрать дату':'проверить дату')+'"><span>'+label+'</span><strong>'+price+' ₽</strong>'+(x.price===best?'<small>самая низкая</small>':'<small>'+(compact?'за весь тур':'проверить дату')+'</small>')+'</button>';}).join('')+'</div>'+(compact?'<div class="current-price-calendar__actions" hidden><p role="status" aria-live="polite" aria-atomic="true"></p><button type="button" data-calendar-apply></button></div>':'')+'<p class="current-price-calendar__note">'+(compact?'Цены «от» по найденным турам. Выберите дату и подтвердите новый поиск — остальные условия поездки сохранятся. Цена может измениться.':'Это текущие цены из уже выполненного поиска, а не история. Нажмите дату, чтобы перепроверить предложения именно на неё.')+'</p>'+(compact?'</details>':'');box.hidden=false;
 if(compact){
+updateSelection(box);
 const strip=box.querySelector('.current-price-calendar__days');strip.scrollLeft=scrollLeft;
 if(focused){
 const day=expanded&&focusedDate?Array.from(strip.children).find(node=>node.dataset.calendarDate===focusedDate):null;
-const target=day||box.querySelector('summary');
+const target=day||(expanded&&focusedApply&&selectedDate?box.querySelector('[data-calendar-apply]'):null)||box.querySelector('summary');
 if(target)target.focus({preventScroll:true});
 if(day){
 const rect=day.getBoundingClientRect(),viewport=strip.getBoundingClientRect();
@@ -46,7 +70,7 @@ else if(rect.right+5>viewport.right)strip.scrollLeft+=rect.right+5-viewport.righ
 }
 }
 return days;}
-function clear(){disclosureOpen=null;const box=document.getElementById('currentPriceCalendar'),restoreFocus=box&&box.contains(document.activeElement);if(box){box.hidden=true;box.innerHTML='';}if(restoreFocus){pendingFocus=true;focusFallback();}}
+function clear(){disclosureOpen=null;selectedDate='';availableDays=[];const box=document.getElementById('currentPriceCalendar'),restoreFocus=box&&box.contains(document.activeElement);if(box){box.hidden=true;box.innerHTML='';}if(restoreFocus){pendingFocus=true;focusFallback();}}
 function complete(event){terminal=true;render(filteredItems||event&&event.detail&&event.detail.items);if(pendingFocus){pendingFocus=false;focusFallback();}}
 function reset(event){if(!(event&&event.detail&&event.detail.dirty)){terminal=false;filteredItems=null;}clear();}
 window.addEventListener('v2:search-complete',complete);
@@ -54,6 +78,16 @@ window.addEventListener('v2:search-continued',complete);
 window.addEventListener('search3:local-results-filtered',e=>{filteredItems=e&&e.detail&&e.detail.items;if(terminal)render(filteredItems);});
 window.addEventListener('v2:search-started',reset);
 window.addEventListener('v2:search-reset',reset);
-document.addEventListener('click',e=>{const btn=e.target&&e.target.closest&&e.target.closest('[data-calendar-date]');if(!btn)return;const form=document.getElementById('tourSearch'),date=dateValue(btn.dataset.calendarDate);if(!form||!date)return;const from=form.elements.dateFrom,to=form.elements.dateTo;if(!from||!to)return;e.preventDefault();from.value=date;to.value=date;from.dispatchEvent(new Event('input',{bubbles:true}));to.dispatchEvent(new Event('input',{bubbles:true}));if(window.V2SearchLifecycle&&typeof window.V2SearchLifecycle.submit==='function')window.V2SearchLifecycle.submit();});
-window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:3};
+document.addEventListener('click',e=>{
+const btn=e.target&&e.target.closest&&e.target.closest('[data-calendar-date],[data-calendar-apply]');
+if(!btn)return;const box=btn.closest('#currentPriceCalendar');if(!box||box.hidden)return;
+if(btn.hasAttribute('data-calendar-apply')){
+if(btn.disabled||!availableDays.some(day=>day.date===selectedDate))return;
+e.preventDefault();btn.disabled=true;submitDate(selectedDate);return;
+}
+const date=dateValue(btn.dataset.calendarDate);if(!date||!availableDays.some(day=>day.date===date))return;
+e.preventDefault();
+if(document.body.classList.contains('search3-candidate')){selectedDate=date;updateSelection(box);}else submitDate(date);
+});
+window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:4};
 })();
