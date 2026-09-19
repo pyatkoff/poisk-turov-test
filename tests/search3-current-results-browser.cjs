@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const withFuel = require('./fixtures/search3-andromeda-fuel.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
+const {setParty,setDates}=require('./search3-mobile-parameters.cjs');
 const { execFileSync } = require('node:child_process');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
@@ -32,13 +33,19 @@ async function checkPrimaryForm(page, state, visible = false) {
   const form = page.locator('#tourSearch');
   assert.equal(await form.count(), 1, state + ': one canonical form owner');
   assert.equal(await form.isVisible(), visible, state + ': canonical editor visibility follows the results state');
+  const mobile = await form.getAttribute('data-search3-parameters') === 'mobile';
+  const groups = {dateFrom:'dates',dateTo:'dates',daysFrom:'nights',daysTill:'nights',count_people:'party',child_count:'party'};
   for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill', 'count_people', 'child_count', 'region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
     assert.equal(await form.locator(`[name="${name}"]`).count(), 1, state + ': primary control ' + name + ' remains owned by the canonical form');
     if (visible) {
-      const editor = name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
+      const editor = mobile && groups[name] ? form.locator(`[data-search3-parameter="${groups[name]}"]`) : name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
       assert.equal(await editor.count(), 1, state + ': one visible editor for ' + name);
       assert.equal(await editor.isVisible(), true, state + ': primary control ' + name + ' is editable');
       assert.equal(await editor.isEnabled(), true, state + ': primary editor ' + name + ' is enabled');
+      if (mobile && groups[name]) {
+        assert.equal(await editor.getAttribute('aria-haspopup'), 'dialog', state + ': mobile parameter opens an explicit editor');
+        assert.equal(await form.locator(`[name="${name}"]`).isVisible(), false, state + ': canonical parameter has one visible editing entry point');
+      }
       if (name === 'hotel') assert.equal(await form.locator('[name="hotel"]').isVisible(), false, state + ': canonical hotel ID stays in the hidden transport owner');
     }
   }
@@ -1025,8 +1032,8 @@ async function run(browser, width, previous) {
     // sibling can be inserted between raw/served snapshots (160px at 375px).
     await page.waitForFunction(() => document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
     assert.equal(await page.locator('.catalog-recovery').isVisible(), true, 'blocked catalogs expose their canonical recovery before result measurement');
-    await page.locator('[name=dateFrom]').fill('2026-09-21');
-    await page.locator('[name=count_people]').selectOption('3');
+    await setDates(page,'2026-09-21',await page.locator('[name=dateTo]').inputValue());
+    await setParty(page,3,await page.locator('#childAges select').evaluateAll(nodes=>nodes.map(node=>node.value)));
     catalog.recover = true;
     const catalogRetry = page.locator('.catalog-retry');
     await catalogRetry.focus();

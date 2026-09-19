@@ -13,7 +13,7 @@ function collect(items){const byDate=new Map();(Array.isArray(items)?items:[]).f
 function ensure(){let box=document.getElementById('currentPriceCalendar');if(box)return box;const tools=document.getElementById('resultsTools'),results=document.getElementById('results');if(!tools&&!results)return null;box=document.createElement('section');box.id='currentPriceCalendar';box.className='current-price-calendar';box.hidden=true;box.setAttribute('aria-labelledby','currentPriceCalendarTitle');(tools||results).insertAdjacentElement('beforebegin',box);return box;}
 function focusFallback(){
 const form=document.getElementById('tourSearch');
-const target=[document.getElementById('resultsSearchEdit'),form&&form.elements.dateFrom].find(node=>node&&node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden');
+const target=[document.getElementById('resultsSearchEdit'),document.getElementById('searchParameterDates'),form&&form.elements.dateFrom].find(node=>node&&node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden');
 if(target)target.focus({preventScroll:true});
 }
 function updateNavigation(box){

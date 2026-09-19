@@ -37,7 +37,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         # In-form mobile return action: 96000B -> 96455B (+455B CSS/behavior).
         # Sticky mobile form return: 96498B -> 96582B (+84B entry CSS).
         # Completed-results resume shell and saved-price wording: 96731B -> 96919B (+188B JS).
-        self.assertLessEqual(total, 97000, 'eight presentation assets stay within the 97KB envelope including completed-results resume')
+        # Mobile parameter drafts and validation recovery: 96919B -> 116633B (+15075B JS, +4639B CSS).
+        self.assertLessEqual(total, 117000, 'eight presentation assets stay within the 117KB envelope including mobile parameter dialogs')
 
     def test_reset_css_owners_and_native_selected_bound(self):
         assets = self.source['assets']

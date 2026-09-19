@@ -3,6 +3,7 @@ const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {setParty,setNights,checkMobileParameters}=require('./search3-mobile-parameters.cjs');
 const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_ENTRY_OWNER_OUTPUT;
 assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
 fs.mkdirSync(output, { recursive: true });
@@ -76,8 +77,7 @@ async function checkSubmittedTripContext(page, width) {
   await page.locator('[name=from]').selectOption('2');
   await page.waitForFunction(() => [...document.getElementById('tourSearch').elements.country.options].some(option => option.value === '1'));
   await page.locator('[name=country]').selectOption('1');
-  await page.locator('[name=count_people]').selectOption('1');
-  await page.locator('[name=child_count]').selectOption('0');
+  await setParty(page,1,[]);
   await page.evaluate(() => window.V2Results.rerender());
   assert.equal(await page.locator('#tourSearch').isVisible(), true, 'retained-results rerender does not close the unsent draft');
   assert.equal(await context.locator('[data-search3-trip-details]').textContent(), firstText, 'unsent edits cannot relabel the previous result set');
@@ -360,8 +360,8 @@ async function run(browser, width, servicesOnly = false) {
     assert.equal(await page.locator('#childAges select').inputValue(), '8', 'URL child age survives');
     for (const selector of ['input[type=date]', 'select[name=daysFrom]', 'select[name=daysTill]', 'select[name=count_people]', 'select[name=child_count]', '.search-submit']) {
       for (const control of await page.locator('#tourSearch ' + selector).all()) {
-        assert.equal(await control.isVisible(), true, selector + ' remains directly visible');
-        assert.ok((await control.boundingBox()).height >= 44, selector + ' native target >=44px');
+        assert.equal(await control.isVisible(), width>700||selector==='.search-submit', selector + ' uses the native desktop or mobile dialog owner');
+        if(await control.isVisible())assert.ok((await control.boundingBox()).height >= 44, selector + ' native target >=44px');
       }
     }
     assert.equal(await page.locator('.search3-composite,.search3-direct-control,.search3-primary-grid,.search3-quality,.search3-quick,.search3-tourists__pop,.search3-tourists__summary,.search3-mobile-search-filter-button,.search3-price-calendar').count(), 0,
@@ -374,11 +374,12 @@ async function run(browser, width, servicesOnly = false) {
       return { hero: box('.v2-product-hero'), form: box('#tourSearch'), ages: box('#childAges'), extras: box('#tourSearch > .extras'), submit: box('.search-submit') };
     });
     assert.ok(formGeometry.hero.bottom - formGeometry.hero.top < 140, 'compact hero leaves room for trip parameters');
-    assert.ok(formGeometry.ages.width >= 180, 'child ages retain a readable native track');
-    if (width <= 700) {
-      assert.ok(formGeometry.ages.width > formGeometry.form.width - 50, 'mobile child ages fill the tourist row');
-    } else {
-      assert.ok(formGeometry.ages.width < formGeometry.form.width / 2, 'non-mobile child ages stay grouped with tourists instead of stretching across the form');
+    if(width<=700){
+      assert.equal(await page.locator('[data-search3-parameter]:visible').count(),3,'mobile has one visible trigger for each parameter group');
+      assert.ok((await page.locator('[data-search3-parameter=party]').boundingBox()).width>formGeometry.form.width-50,'tourist summary fills the mobile row');
+      if(!servicesOnly)await checkMobileParameters(page,width,output);
+    }else{
+      assert.ok(formGeometry.ages.width >= 180 && formGeometry.ages.width < formGeometry.form.width / 2,'desktop child ages retain their native track within tourists');
     }
     if (width > 700) assert.ok(Math.abs(formGeometry.extras.top - formGeometry.submit.top) <= 1, 'closed extras and primary action share a desktop row');
     if (width >= 1199) {
@@ -455,7 +456,7 @@ async function run(browser, width, servicesOnly = false) {
     await page.screenshot({ path: path.join(output, `entry-expanded-${width}.png`), fullPage: true });
     await flightTargets.first().locator('span').click();
     await page.locator('#tourSearch > .extras > summary').click();
-    await adults.selectOption('4');
+    await setParty(page,4,['8','6']);
     const resultsLayout = await page.evaluate(() => {
       const results = document.querySelector('#results');
       const probe = document.createElement('div'); results.append(probe);
@@ -464,18 +465,14 @@ async function run(browser, width, servicesOnly = false) {
       return value;
     });
     assert.deepEqual(resultsLayout, { form: 'grid', results: 'block' }, 'the canonical form remains visible beside populated results without a retired editing class');
-    await children.selectOption('2');
-    await page.waitForFunction(() => document.querySelectorAll('#childAges select').length === 2);
-    await page.locator('#childAges select').nth(0).selectOption('8');
-    await page.locator('#childAges select').nth(1).selectOption('6');
+    assert.equal(await page.locator('#childAges select').count(),2);
     for (const [name, value] of [['daysFrom', '7'], ['daysTill', '10']]) {
       const control = page.locator(`#tourSearch select[name=${name}]`);
       assert.equal(await control.count(), 1, 'one native nights owner');
       assert.equal(await control.inputValue(), value, 'URL nights survive on the native picker');
       assert.deepEqual(await control.locator('option').evaluateAll(options => options.map(option => option.value)), Array.from({ length: 28 }, (_, i) => String(i + 1)), 'all supported nights are selectable');
     }
-    await page.locator('select[name=daysFrom]').selectOption('8');
-    await page.locator('select[name=daysTill]').selectOption('9');
+    await setNights(page,8,9);
     const payload = await page.evaluate(() => {
       const data = new FormData(document.getElementById('tourSearch'));
       return { adults: data.get('count_people'), children: data.get('child_count'), ages: data.getAll('child_age[]'), from: data.get('daysFrom'), till: data.get('daysTill') };

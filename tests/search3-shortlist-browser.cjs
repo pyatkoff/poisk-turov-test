@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {setParty}=require('./search3-mobile-parameters.cjs');
 const { chromium } = require('playwright');
 
 const base = process.env.SEARCH3_VISUAL_BASE;
@@ -468,7 +469,9 @@ async function checkSearchRecovery(browser, width) {
     assert.equal(await editSearch.getAttribute('aria-expanded'), 'false', 'the disclosure control collapses the open search editor');
     assert.equal(await editSearch.textContent(), 'Изменить поиск');
     await editSearch.click();
-    await page.locator('#tourSearch [name=count_people]').selectOption('3');
+    await setParty(page,3,['1','16','6']);
+    assert.deepEqual(await page.locator('#tourSearch').evaluate(form=>{const data=new FormData(form);return [data.get('count_people'),data.get('child_count'),...data.getAll('child_age[]')]}),['3','3','1','16','6'],'Apply completes every accepted party field even when the first change resets an existing search');
+    assert.equal(await page.evaluate(()=>window.V2SearchLifecycle.searchId),0,'editing retires the old search without starting another');
     await openComparison(page, width);
     const restore = page.locator('.search3-shortlist-restore');
     assert.equal(await restore.textContent(), 'Восстановить поиск');
@@ -502,7 +505,7 @@ async function checkSearchRecovery(browser, width) {
     await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.Search3Shortlist && document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
     await openComparison(page, width); await page.locator('.search3-shortlist-restore').click();
-    await page.waitForFunction(() => document.activeElement === document.querySelector('#tourSearch [name=dateFrom]') && document.activeElement.getAttribute('aria-invalid') === 'true');
+    await page.waitForFunction(() => {const target=document.querySelector(document.forms.tourSearch.dataset.search3Parameters==='mobile'?'.search-parameter-dialog[open] [data-from]':'#tourSearch [name=dateFrom]');return target&&document.activeElement===target&&target.getAttribute('aria-invalid')==='true';});
     assert.equal(await page.locator('#tourSearch [name=dateFrom]').inputValue(), '2000-01-01', 'past dates remain explicit for user correction');
     assert.equal(await page.evaluate(() => window.V2SearchLifecycle.searchId), 0, 'past saved dates cannot initiate a search');
     for (const invalid of [saved.searchQuery + '&phone=not-allowed', saved.searchQuery + '&country=5', 'https://example.invalid/?from=1', 'x'.repeat(4097)]) {

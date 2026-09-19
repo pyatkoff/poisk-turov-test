@@ -3,6 +3,7 @@
   "assets": {
     "search3-results-filters-v1.js": [
       "behavior/search-form.js",
+      "behavior/search-parameters.js",
       "behavior/results/local-hotel-filter.js",
       "behavior/results/shortlist.js",
       "behavior/summary-cta.js"

@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {setParty,checkMobileParameters}=require('./search3-mobile-parameters.cjs');
 const { chromium, webkit } = require('playwright');
 const nativeDateWebkit = process.env.SEARCH3_NATIVE_DATE_WEBKIT === '1';
 const base = process.env.SEARCH3_VISUAL_BASE;
@@ -32,26 +33,29 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
         await page.waitForFunction(() => document.forms.tourSearch?.dataset.search3Ready === '1' && document.forms.tourSearch.dataset.catalogSource && window.V2SearchLifecycle);
         await page.evaluate(() => document.fonts.ready);
         if (nativeDateWebkit) {
-          const dates = page.locator('#tourSearch .search-group--dates input');
-          await dates.nth(0).fill('2026-09-16');
-          await dates.nth(1).fill('2026-09-29');
+          const mobile=width<=700;
+          if(mobile)await page.locator('[data-search3-parameter=dates]').click();
+          const dates = page.locator(mobile?'.search-parameter-dialog input':'#tourSearch .search-group--dates input');
+          await dates.nth(0).fill('2099-09-16');
+          await dates.nth(1).fill('2099-09-29');
           await dates.nth(0).focus();
           await page.keyboard.press('Tab');
           assert.equal(await dates.nth(1).evaluate(node => node === document.activeElement), true, 'native date fields remain keyboard reachable');
           const native = await dates.evaluateAll(nodes => nodes.map(node => {
             const r=node.getBoundingClientRect(),field=node.parentElement.getBoundingClientRect(),s=getComputedStyle(node);
-            return {type:node.type,value:node.value,submitted:new FormData(node.form).get(node.name),appearance:s.appearance,fontSize:parseFloat(s.fontSize),height:r.height,left:r.left,right:r.right,fieldLeft:field.left,fieldRight:field.right};
+            return {type:node.type,value:node.value,appearance:s.appearance,fontSize:parseFloat(s.fontSize),height:r.height,left:r.left,right:r.right,fieldLeft:field.left,fieldRight:field.right};
           }));
           for (const [i,item] of native.entries()) {
             assert.equal(item.type,'date','native picker and ISO date semantics remain intact');
-            assert.equal(item.value,i===0?'2026-09-16':'2026-09-29');
-            assert.equal(item.submitted,item.value,'the form keeps exact ISO dates');
+            assert.equal(item.value,i===0?'2099-09-16':'2099-09-29');
             assert.equal(item.appearance,'none','WebKit uses the controlled date box');
-            assert.ok(item.height>=43.5&&item.height<=44.5&&item.fontSize>=16,`${width}: native dates keep the same readable 44px target`);
+            assert.ok(item.height>=(mobile?47.5:43.5)&&item.height<=(mobile?48.5:44.5)&&item.fontSize>=16,`${width}: native draft/desktop dates keep readable targets`);
             assert.ok(item.left>=item.fieldLeft-1&&item.right<=item.fieldRight+1,`${width}: date stays inside its grid field`);
           }
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth>innerWidth+1),false,`${width}: Russian mobile WebKit form has no horizontal overflow`);
-          await page.locator('#tourSearch .search-group--dates').screenshot({path:path.join(output,`dates-${width}.png`),animations:'disabled'});
+          await page.locator(mobile?'.search-parameter-dialog':'#tourSearch .search-group--dates').screenshot({path:path.join(output,`dates-${width}.png`),animations:'disabled'});
+          if(mobile)await page.locator('.search-parameter-apply').click();
+          assert.deepEqual(await page.locator('#tourSearch').evaluate(form=>[new FormData(form).get('dateFrom'),new FormData(form).get('dateTo')]),['2099-09-16','2099-09-29'],'Apply keeps exact ISO form dates');
           await page.locator('#tourSearch').screenshot({path:path.join(output,`form-${width}.png`),animations:'disabled'});
           assert.deepEqual(errors,[]);
           fs.writeFileSync(path.join(output,`dates-${width}.json`),JSON.stringify({source_sha:sourceSha,width,browser:'webkit',locale:'ru-RU',native,blocked,errors,supplier_requests_sent:0,lead_sent:0,physical_iphone:'not_measured'},null,2)+'\n');
@@ -104,7 +108,8 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
         assert.equal(state.hero.position, 'absolute', 'semantic hero stays outside visual flow');
         assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, 'hero adds no blank form header');
         assert.ok(state.labels.every(item => item.fontSize >= 12), 'visible labels stay readable');
-        assert.equal(state.controls.length, 15, 'all fourteen primary editors plus the hydrated child age are visible');
+        assert.equal(state.controls.length,width<=700?8:15,'all primary parameters remain accessible through one native editor or mobile group summary');
+        if(width<=700){assert.equal(await page.locator('[data-search3-parameter]:visible').count(),3);for(const button of await page.locator('[data-search3-parameter]').all())assert.ok((await button.boundingBox()).height>=44);}
         const hotelQuery = page.getByRole('searchbox', { name: 'Конкретный отель', exact: true });
         assert.equal(await hotelQuery.count(), 1, 'one accessible known-hotel editor');
         assert.equal(await hotelQuery.isVisible(), true);
@@ -118,9 +123,9 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
         assert.deepEqual(state.preferenceLabels, ['Курорт / регион', 'Конкретный отель', 'Категория отеля', 'Питание', 'Цена от', 'Цена до']);
         assert.equal(state.operatorSecondary, true, 'operator is not a primary search field');
         assert.equal(state.childAgesInsideParty, true, 'child ages stay in the canonical tourist group');
-        assert.ok(state.childAgesBox.left >= state.partyBox.left - 1 && state.childAgesBox.right <= state.partyBox.right + 1, `${width}: child ages stay within the tourist group`);
+        if(width>700)assert.ok(state.childAgesBox.left >= state.partyBox.left - 1 && state.childAgesBox.right <= state.partyBox.right + 1, `${width}: child ages stay within the tourist group`);
         if (width <= 700) {
-          assert.deepEqual(state.spacing, { padding: 12, gap: 12, mainGap: 12 }, 'mobile density comes from spacing, not smaller or hidden primary controls');
+          assert.deepEqual(state.spacing, { padding: 12, gap: 12, mainGap: 12 }, 'mobile summaries preserve the existing form spacing');
           assert.ok(state.labels.every(item => item.fontSize >= 14), 'compact phone labels retain their readable size');
         }
         if (width <= 350) {
@@ -130,7 +135,7 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
         }
         if (width === 375 || width === 430) {
           assert.equal(state.mainColumns, 1); assert.equal(state.preferenceColumns, 2);
-          assert.deepEqual(state.groupColumns, [1, 2, 2, 2]);
+          assert.deepEqual(state.groupColumns, [1, 1, 1, 1]);
           assert.equal(new Set(state.preferenceTops).size, 4);
           assert.notEqual(state.preferenceTops[0], state.preferenceTops[1]);
           assert.equal(state.preferenceTops[2], state.preferenceTops[3]);
@@ -194,12 +199,11 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
         if ([375, 1440].includes(width)) {
           await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-exact-budget-${width}.png`), animations: 'disabled' });
         }
+        if(width===320)await checkMobileParameters(page,width,output);
         const party = [];
         for (const count of [1, 2, 3, 0]) {
-          await page.locator('[name=child_count]').selectOption(String(count));
-          await page.waitForFunction(n => document.querySelectorAll('#childAges select').length === n, count);
           const ages = ['0', '17', '6'].slice(0, count);
-          for (let i = 0; i < count; i++) await page.locator('#childAges select').nth(i).selectOption(ages[i]);
+          await setParty(page,3,ages);
           const fields = await page.evaluate(() => { const form = document.forms.tourSearch, data = new FormData(form); return { adults: data.get('count_people'), count: data.get('child_count'), ages: data.getAll('child_age[]'), nights: [data.get('daysFrom'), data.get('daysTill')], visible: !form.querySelector('#childAges').hidden, insideParty: !!form.querySelector('.search-group--party > #childAges') }; });
           assert.deepEqual(fields, { adults: '3', count: String(count), ages, nights: ['7', '10'], visible: count > 0, insideParty: true });
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
@@ -218,7 +222,7 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
             await page.locator('#tourSearch').screenshot({ path:path.join(output, `entry-no-children-${width}.png`), animations:'disabled' });
             fs.writeFileSync(path.join(output, `entry-no-children-${width}.json`), JSON.stringify({ width, geometry }, null, 2) + '\n');
           }
-          if (count === 2 && ([320, 350, 375].includes(width) || width >= 1099)) {
+          if (count === 2 && width >= 1099) {
             const geometry = await page.evaluate(() => {
               const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }; };
               const ages = [...document.querySelectorAll('#childAges .child-age')].map(box), childAges = box(document.querySelector('#childAges'));
@@ -243,7 +247,7 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
               assert.ok(geometry.childAges.width <= 249, `${width}: child-age group stays bounded`);
             }
           }
-          if (count === 3 && ([320, 350, 375, 430].includes(width) || width >= 1100)) {
+          if (count === 3 && width >= 1100) {
             const geometry = await page.evaluate(() => {
               const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }; };
               const ages = [...document.querySelectorAll('#childAges .child-age')].map(box), childAges = box(document.querySelector('#childAges'));
