@@ -435,6 +435,95 @@ const viewports = [
         await input.press('Escape');
       }
 
+      // Every entry point uses the same lifecycle validation. The catalog and
+      // supplier boundary are controlled fixtures; no real tour search is sent.
+      await page.evaluate(() => {
+        const audit = window.__hotelIntentAudit = { api: window.V2Runtime.api, starts: [], hold: false };
+        window.V2Runtime.api = async (action, params, options) => {
+          if (action !== 'search_start') return audit.api(action, params, options);
+          audit.starts.push(JSON.parse(JSON.stringify(params)));
+          if (audit.hold) return new Promise(resolve => { audit.release = resolve; });
+          return { searchId: 0 }; // Stop before polling; the exact submitted request is the assertion.
+        };
+      });
+      const validation = form.locator('#hotelAutocompleteValidation');
+      const invalidCases = [
+        { query: 'Rixos', via: 'main', state: 'options' },
+        { query: 'NoSuchHotel', via: 'native', state: 'empty' },
+        { query: 'Unavailable hotel', via: 'direct', state: 'error' },
+        { query: 'R', via: 'direct', state: 'short' }
+      ];
+      for (const scenario of invalidCases) {
+        if (scenario.state === 'error') nextLookupResponse = { status: 503, body: '{}' };
+        await input.fill(scenario.query);
+        if (scenario.state === 'options') await waitForOptions();
+        if (scenario.state === 'empty') await list.getByText('По названию ничего не нашли', { exact: true }).waitFor();
+        if (scenario.state === 'error') await list.getByText('Не удалось загрузить отели', { exact: true }).waitFor();
+        await form.locator('[name="price_from"]').focus();
+        const before = await page.evaluate(() => ({
+          fields: [...new FormData(document.forms.tourSearch)], url: location.href,
+          generation: window.V2SearchLifecycle.generation,
+          results: document.getElementById('results').innerHTML
+        }));
+        if (scenario.via === 'main') await form.locator('button[type="submit"]').click();
+        else await page.evaluate(via => via === 'native' ? document.forms.tourSearch.requestSubmit() : window.V2SearchLifecycle.submit(), scenario.via);
+        await page.waitForFunction(() => document.activeElement === document.querySelector('[data-v2-hotel-query]') && document.activeElement.getAttribute('aria-invalid') === 'true');
+        assert.equal(await validation.isVisible(), true, 'unfinished hotel gets an inline correction beside its field');
+        assert.match(await validation.innerText(), /Выберите отель из подсказок или очистите название/);
+        assert.equal(await input.inputValue(), scenario.query, 'validation preserves the unfinished query');
+        assert.equal(await select.inputValue(), '');
+        assert.equal(await input.getAttribute('aria-describedby'), 'hotelAutocompleteValidation');
+        assert.equal(await page.evaluate(() => window.__hotelIntentAudit.starts.length), 0, 'invalid hotel cannot reach the supplier boundary');
+        assert.deepEqual(await page.evaluate(() => ({ fields: [...new FormData(document.forms.tourSearch)], url: location.href, generation: window.V2SearchLifecycle.generation, results: document.getElementById('results').innerHTML })), before, 'invalid submit preserves trip, URL, result set and search generation');
+        if (scenario.via === 'main') {
+          await waitForOptions();
+          const fit = await validation.evaluate(node => { const r = node.getBoundingClientRect(), popup = document.getElementById('hotelAutocompleteList').getBoundingClientRect(); return { height: node.querySelector('button').getBoundingClientRect().height, overflow: document.documentElement.scrollWidth > innerWidth + 1, overlap: r.top < popup.bottom && r.bottom > popup.top, top: r.top, bottom: r.bottom }; });
+          assert.ok(fit.height >= 44 && !fit.overflow && !fit.overlap, 'correction and suggestions are readable, reachable and do not cover each other');
+          if (viewport.width < 768) assert.ok(fit.top >= 0 && fit.bottom <= viewport.height + 1, 'short mobile viewport retains the complete correction');
+          await page.screenshot({ path: path.join(output, `known-hotel-validation-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+        }
+        await input.press('Escape');
+        await validation.getByRole('button', { name: 'Очистить название', exact: true }).click();
+        assert.equal(await input.inputValue(), '');
+        assert.equal(await input.getAttribute('aria-invalid'), null);
+        assert.equal(await validation.isVisible(), false);
+        assert.equal(await page.evaluate(() => window.__hotelIntentAudit.starts.length), 0, 'explicit clear changes the draft without starting a search');
+        assert.deepEqual(await form.evaluate(node => [...new FormData(node)]), before.fields);
+      }
+      await input.fill('Rixos'); await waitForOptions();
+      await list.locator('[role="option"]').first().click();
+      await page.evaluate(() => document.forms.tourSearch.requestSubmit());
+      await page.waitForFunction(() => !window.V2SearchLifecycle.pending && window.__hotelIntentAudit.starts.length === 1);
+      assert.deepEqual(await page.evaluate(() => window.__hotelIntentAudit.starts[0].hotelIds), ['41001'], 'accepted hotel submits its exact canonical ID once');
+      assert.equal(await validation.isVisible(), false);
+      await input.fill('');
+      await page.evaluate(async () => { window.V2SearchLifecycle.hydrateUrlState('hotel=41002'); await window.V2SearchLifecycle.submit(); });
+      assert.deepEqual(await page.evaluate(() => window.__hotelIntentAudit.starts[1].hotelIds), ['41002'], 'URL-hydrated canonical hotel without a typed query remains valid');
+      await input.fill('New hotel');
+      assert.equal(await select.inputValue(), '', 'editing a hydrated hotel clears its old canonical restriction too');
+      await page.evaluate(() => window.V2SearchLifecycle.submit());
+      assert.equal(await page.evaluate(() => window.__hotelIntentAudit.starts.length), 2, 'replacement query cannot submit the previously hydrated hotel');
+      await page.waitForFunction(() => document.activeElement === document.querySelector('[data-v2-hotel-query]'));
+      await input.press('Escape');
+      await validation.getByRole('button', { name: 'Очистить название', exact: true }).click();
+      const pendingCheck = await page.evaluate(async () => {
+        const audit = window.__hotelIntentAudit, lifecycle = window.V2SearchLifecycle, price = document.forms.tourSearch.elements.price_from;
+        audit.hold = true;
+        const pending = lifecycle.submit(), generation = lifecycle.generation, snapshot = lifecycle.snapshot, original = price.value;
+        // Model a direct invalid submission while the previous request is unresolved.
+        price.value = '-1'; await lifecycle.submit();
+        const kept = { pending: lifecycle.pending, generation: lifecycle.generation, snapshot: lifecycle.snapshot, starts: audit.starts.length };
+        price.value = original; audit.release({ searchId: 0 }); await pending;
+        window.V2Runtime.api = audit.api; delete window.__hotelIntentAudit;
+        return { kept, generation, snapshot };
+      });
+      assert.equal(pendingCheck.kept.pending, true, 'validation does not cancel the previous valid pending search');
+      assert.equal(pendingCheck.kept.generation, pendingCheck.generation);
+      assert.deepEqual(pendingCheck.kept.snapshot, pendingCheck.snapshot);
+      assert.equal(pendingCheck.kept.starts, 3, 'invalid pending resubmission never creates another request');
+      assert.deepEqual(searchStarts, [], 'all intent-validation checks stayed within the controlled runtime fixture');
+      await page.waitForFunction(() => document.activeElement === document.forms.tourSearch.elements.price_from);
+
       const tripBeforeRecovery = await form.evaluate(node => ({
         country: node.elements.country.value,
         dateFrom: node.elements.dateFrom.value,
@@ -479,7 +568,7 @@ const viewports = [
       })), tripBeforeRecovery, 'all-hotels recovery preserves the complete trip context');
       assert.equal(searchStarts.length, 1, 'explicit all-hotels recovery starts exactly one normal search');
       assert.equal(new URL(searchStarts[0]).searchParams.has('hotel'), false, 'recovery search does not send a stale hotel restriction');
-      evidence.push({ viewport, geometry, keyboardViewport, catalogFailureCases: failures.length, keyboardRecovery: true, queryReopening: true, dismissedEnterRecovery: true, shortQueryGuidance: true, coalescedReturnEdit: true, selectedReturnPreserved: true, touchSelection: viewport.width < 768, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
+      evidence.push({ viewport, geometry, keyboardViewport, intentValidation: { invalidCases, nativeAndDirect: true, exactSelectedAndHydrated: true, clearWithoutSubmit: true, pendingSearchPreserved: true }, catalogFailureCases: failures.length, keyboardRecovery: true, queryReopening: true, dismissedEnterRecovery: true, shortQueryGuidance: true, coalescedReturnEdit: true, selectedReturnPreserved: true, touchSelection: viewport.width < 768, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
       assert.deepEqual(errors, []);
       await page.close();
     }
