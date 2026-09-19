@@ -220,6 +220,7 @@ async function run(engine, width, height) {
     assert.equal(await direct.locator('.hotel-gallery-main').getAttribute('src'),profiles[0].primaryImage);
     assert.equal(calls.filter(c=>c.page===direct&&c.action==='own-profile').length,1,'One explicit canonical read');
     assert.equal(await direct.locator('#tourSearch').isVisible(), true, 'expired search keeps explicit recovery available');
+    assert.equal(await direct.locator('.search-editor-collapse').isVisible(), false, 'profile-only mode cannot hide the recovery form behind unavailable result controls');
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1, 'expiry never silently launches a full search');
     await direct.locator('.hotel-details > summary').click();
     const beforeExpiredPhotos=calls.length;
