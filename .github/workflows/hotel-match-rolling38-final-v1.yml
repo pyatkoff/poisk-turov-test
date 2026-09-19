@@ -1,0 +1,168 @@
+name: MATCH rolling38 final CURRENT plan v1
+on:
+  push:
+    branches: [ops/match-rolling38-final-1971-20260919-v1]
+    paths: [.github/workflows/hotel-match-rolling38-final-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-rolling38-final-plan-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-rolling38-final-plan-1971-20260919-v1
+jobs:
+  plan:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {artifact-ids: '10572333738', run-id: 35407846715, github-token: '${{ github.token }}', path: retained/v4, merge-multiple: true}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {artifact-ids: '10573133114', run-id: 35408259804, github-token: '${{ github.token }}', path: retained/v5, merge-multiple: true}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {artifact-ids: '10572544873', run-id: 35409029663, github-token: '${{ github.token }}', path: retained/v6, merge-multiple: true}
+      - name: Build and verify immutable rolling38 audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          test "$(git hash-object scripts/diagnostics/hotel_match_rolling54_final_v1.php)" = 3db4eefa2571f7945cc38995df6c1c551236eb10
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          cp app/integrations/anex-search-mapping-registry.php payload/
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,urllib.parse
+          specs=[
+            ('v4',pathlib.Path('retained/v4/remote'),'c29a4bc78e32cc220cb24784ae0bfd1b1056c6d35fc69742dc7c2c7024c28227',18,[]),
+            ('v5',pathlib.Path('retained/v5/remote'),'03b0d7e39cbc9a4d01a72f5df38dd892efc571080da364c54845e186945fda3a',11,[]),
+            ('v6',pathlib.Path('retained/v6/remote'),'f0bb494499d62af921f9dc261442e5f3cc9383a5f1fd5ee98c8267cbe2e0130c',7,[118906,66150]),
+          ]
+          sensitive=re.compile(r'token|password|auth|secret|session',re.I)
+          def identity(x,key):
+            if not isinstance(x,dict): return None
+            c=x.get(key)
+            v=c.get('id') if isinstance(c,dict) else x.get(key+'Id')
+            return int(v) if str(v).isdigit() else None
+          def response_by_sha(root,sha):
+            for f in root.glob('response-*.json'):
+              if hashlib.sha256(f.read_bytes()).hexdigest()==sha:return json.loads(f.read_text()),f.name
+            raise AssertionError(('response_sha_missing',root,sha))
+          def find_hotel(x,hid):
+            if isinstance(x,dict):
+              if str(x.get('id','')).isdigit() and int(x['id'])==hid and isinstance(x.get('tours'),list): return x
+              for v in x.values():
+                z=find_hotel(v,hid)
+                if z is not None:return z
+            elif isinstance(x,list):
+              for v in x:
+                z=find_hotel(v,hid)
+                if z is not None:return z
+            return None
+          def parse_link(u):
+            p=urllib.parse.urlsplit(u); assert p.scheme=='https' and p.hostname=='agent.anextour.ru' and p.path in ('/search/tour','/search/without-flight')
+            assert not p.username and not p.password and p.port is None and not p.fragment
+            pairs=urllib.parse.parse_qsl(p.query,keep_blank_values=True)
+            assert not any(sensitive.search(k) for k,_ in pairs)
+            vals=[v for k,v in pairs if k.upper()=='HOTELLIST'];assert len(vals)==1 and re.fullmatch(r'[1-9][0-9]{0,7}',vals[0])
+            return int(vals[0]),p.path
+          dossiers=[]; provenance=[]
+          for label,root,expected,expected_anchors,extra_hold_ids in specs:
+            rb=(root/'result.json').read_bytes(); digest=hashlib.sha256(rb).hexdigest(); assert digest==expected
+            d=json.loads(rb); rec=json.loads((root/'receipt.json').read_text()); assert d['state']==rec['state']=='completed_read_only' and rec['result_sha256']==digest and d['mapping_writes']==0
+            assert len(d['anchors'])==expected_anchors
+            selected=list(d['anchors'])+[x for x in d['holds'] if x.get('hotel_id') in extra_hold_ids and x.get('reason')=='operator_link_origin']
+            assert len(selected)==expected_anchors+len(extra_hold_ids)
+            for ev in selected:
+              hid=int(ev['hotel_id']);tid=str(ev['tour_id']);assert ev['operator_id']==13 and ev['detail_http_status']==200
+              rr,rrname=response_by_sha(root,ev['results_response_sha256']); hotel=find_hotel(rr['data'],hid);assert hotel and hotel['name']==ev['hotel_name'] and identity(hotel,'country')==int(ev['country_id'])
+              tours=[t for t in hotel['tours'] if str(t.get('id') or t.get('tourId'))==tid];assert len(tours)==1 and identity(tours[0],'operator')==13
+              dr,drname=response_by_sha(root,ev['detail_response_sha256']); detail=dr['data'];assert isinstance(detail,dict) and identity(detail,'hotel')==hid and identity(detail,'operator')==13 and str(detail.get('id') or detail.get('tourId'))==tid
+              link=detail.get('operatorLink');assert isinstance(link,str); native,path=parse_link(link)
+              if 'native_anex_id' in ev: assert native==int(ev['native_anex_id']) and ev['raw_signed_tokens']==[str(native)]
+              else: assert hid in extra_hold_ids and path=='/search/without-flight'
+              country=hotel.get('country') or {}; region=hotel.get('region') or {}; sub=hotel.get('subRegion') or {}
+              cur={'id':hid,'name':hotel['name'],'country_id':int(country['id']),'country_name':str(country.get('name') or ''),'region_name':str(region.get('name') or ''),'subregion_name':str(sub.get('name') or ''),'category':hotel.get('category'),'latitude':hotel.get('latitude'),'longitude':hotel.get('longitude'),'is_active':1}
+              pair=dict(ev)
+              pair.update(native_anex_id=native,operator_link=link,raw_hotellist_values=[str(native)],raw_signed_tokens=[str(native)],safe_to_write_now=False,tv_hotel=hotel,current_local=cur,route='unoccupied_needs_identity_review',holds=[],evidence_link_path=path,source_generation=label)
+              dossiers.append(pair);provenance.append({'source':label,'hotel_id':hid,'native_anex_id':native,'results_response_file':rrname,'detail_response_file':drname,'link_path':path})
+          assert len(dossiers)==38 and len({x['hotel_id'] for x in dossiers})==38 and len({x['native_anex_id'] for x in dossiers})==38
+          audit={'state':'completed_read_only','mapping_writes':0,'database_writes':0,'supplier_calls':0,'dossiers':sorted(dossiers,key=lambda x:x['native_anex_id']),'source_results':{x[0]:x[2] for x in specs},'provenance':provenance}
+          pathlib.Path('payload/audit.json').write_text(json.dumps(audit,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          audit_sha=hashlib.sha256(pathlib.Path('payload/audit.json').read_bytes()).hexdigest()
+          src=pathlib.Path('scripts/diagnostics/hotel_match_rolling54_final_v1.php').read_text()
+          repl={
+            "const R54_PLAN_OP = 'hotel-match-rolling54-final-plan-1971-20260919-v1';":"const R54_PLAN_OP = 'hotel-match-rolling38-final-plan-1971-20260919-v1';",
+            "const R54_APPLY_OP = 'hotel-match-rolling54-final-apply-1971-20260919-v1';":"const R54_APPLY_OP = 'hotel-match-rolling38-final-apply-1971-20260919-v1';",
+            "const R54_AUDIT_SHA = '8b19334f33fc1aa00c813138fbbdfa7650d008192e2c84dba419bd247701ecf2';":"const R54_AUDIT_SHA = '"+audit_sha+"';",
+            "count($a['dossiers']??[])!==62":"count($a['dossiers']??[])!==38",
+            "count($pairs)!==54":"count($pairs)!==38",
+            "count($ps)===54":"count($ps)===38",
+            "count($plan['dossiers']??[])!==54":"count($plan['dossiers']??[])!==38",
+            "($p['path']??'')!=='/search/tour'":"!in_array(($p['path']??''),['/search/tour','/search/without-flight'],true)",
+          }
+          for old,new in repl.items(): assert src.count(old)==1,(old,src.count(old));src=src.replace(old,new)
+          src=src.replace('ROLLING54_FINAL_SELFTEST_OK','ROLLING38_FINAL_SELFTEST_OK')
+          pathlib.Path('payload/hotel_match_rolling38_final_v1.php').write_text(src)
+          pathlib.Path('payload/audit-sha.txt').write_text(audit_sha+'\n')
+          print(json.dumps({'dossiers':38,'audit_sha256':audit_sha,'alternate_official_path':2}))
+          PY
+          php -l payload/hotel_match_rolling38_final_v1.php
+          php payload/hotel_match_rolling38_final_v1.php --self-test payload/audit.json
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          audit_sha=pathlib.Path('payload/audit-sha.txt').read_text().strip()
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db','source_sha':os.environ['GITHUB_SHA'],'audit_sha256':audit_sha,'pair_count':38,'read_only':True,'supplier_calls':0,'mapping_writes':0,'no_replay':True,'fresh_feature_sha_checked':'f2c468230b645187ae2921ee2baa52ef7c5ed4ad','fresh_resolver_blob_checked':'cc135a95d2a6e0f73ce50be2141c9b8a26fddc58'}
+          with pathlib.Path('result/reservation.json').open('x') as f:json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+          (cd payload && sha256sum *.php audit.json audit-sha.txt > SHA256SUMS)
+      - name: Require exact-head Security before SSH
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(60):
+            req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(req,timeout=30) as f:r=json.load(f)['workflow_runs']
+            r=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+            if r:
+              x=max(r,key=lambda x:x['id'])
+              if x['status']=='completed':assert x['conclusion']=='success';print('SECURITY_OK',x['id']);break
+            time.sleep(5)
+          else:raise SystemExit('exact_security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-rolling38-plan-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute CURRENT read once
+        shell: bash
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/r38-key";known="$RUNNER_TEMP/r38-known";trap 'rm -f "$key" "$known"' EXIT
+          test -n "$KEY";test -n "$HOST";test -n "$USER"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null;test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST";op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytour-operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${opts[@]}" result/reservation.json "$remote:$op/" >result/reserve.stdout 2>result/reserve.stderr
+          scp "${opts[@]}" payload/* "$remote:$op/payload/" >result/copy.stdout 2>result/copy.stderr
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op/payload\" && sha256sum -c SHA256SUMS >/dev/null && umask 077 && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=0 hotel_match_rolling38_final_v1.php --plan" >result/remote.stdout 2>result/remote.stderr
+          rc=$?;scp -r "${opts[@]}" "$remote:$op/." result/remote/ >result/readback.stdout 2>result/readback.stderr;trc=$?;set -e
+          printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('result/remote');d=json.loads((p/'result.json').read_bytes());r=json.loads((p/'receipt.json').read_bytes());digest=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert d['operation']==r['operation']==os.environ['OPERATION_ID'] and d['source_sha']==os.environ['GITHUB_SHA'] and r['result_sha256']==digest and r['readback_verified'] is True and r['no_replay'] is True
+          assert d['state']=='planned_read_only' and d['supplier_calls']==d['database_writes']==d['mapping_writes']==0 and len(d['dossiers'])==38 and d['eligible_count']+d['held_count']==38
+          summary={k:d.get(k) for k in ['state','eligible_count','held_count','potential_triples','captured_at_utc']};summary['result_sha256']=digest;summary['hold_reasons']={}
+          for x in d['dossiers']:
+            for h in x['holds']:summary['hold_reasons'][h]=summary['hold_reasons'].get(h,0)+1
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-rolling38-final-plan-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
