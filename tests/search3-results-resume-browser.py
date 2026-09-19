@@ -28,7 +28,7 @@ HOTELS=[]
 for i in range(1,5):
     tours=[]
     for j,provider in enumerate(['tourvisor','anex','andromeda']*3):
-        tours.append({'id':str(700+i*10+j),'provider':provider,'price':120000+i*1000+j*100,'date':'2030-10-05','nights':7,'adults':2,'childs':2,'meal':{'name':'AI'},'roomType':'STANDARD ROOM','operator':{'name':'Coral Travel'},'placement':'2AD+2CHD','selectionEnabled':provider=='tourvisor','offerRef':'PRIVATE-OFFER-REF' if provider!='tourvisor' else None,'context':{'secret':'PRIVATE-CONTEXT'},'quoteToken':'PRIVATE-QUOTE'})
+        tours.append({'id':str(700+i*10+j),'provider':provider,'price':120000+i*1000+j*100,'date':'2030-10-05','nights':7,'adults':2,'childs':2,'meal':{'name':'AI'},'roomType':'STANDARD ROOM','operator':{'name':'Coral Travel'},'placement':'2AD+2CHD','selectionEnabled':provider=='tourvisor','offerRef':'PRIVATE-OFFER-REF-'+str(j) if provider!='tourvisor' else None,'context':{'secret':'PRIVATE-CONTEXT'},'quoteToken':'PRIVATE-QUOTE'})
     HOTELS.append({'id':100+i,'provider':'tourvisor','mappingStatus':'resolved','tours':tours})
 PROFILES=[{'id':9000+i,'catalog':'anytour','revision':1,'detailsAvailable':True,'name':'Тестовый отель '+str(i),'description':'Вымышленное подробное описание отеля. '*12,'category':5,'rating':4.5,'country':{'name':'Тестовая страна'},'region':{'name':'Тестовый регион'},'hotelInformation':{'services':['Бассейн']},'images':[],'phone':'PRIVATE-PHONE'} for i in range(1,5)]
 BOOT=r'''window.__calls=[];window.__events=[];
