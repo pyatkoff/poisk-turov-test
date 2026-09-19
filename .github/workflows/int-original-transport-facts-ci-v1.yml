@@ -1,0 +1,42 @@
+name: INT original transport facts exact-head CI v1
+
+on:
+  push:
+    branches: ['ops/int-original-transport-facts-ci-20260919-v1']
+    paths: ['.github/workflows/int-original-transport-facts-ci-v1.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: e8b567eb1593783a9fb343afa20f6af24d572c70
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Verify exact parser head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          php -l scripts/diagnostics/andromeda_original_transport_facts.php
+          php -l tests/andromeda-original-transport-facts-test.php
+          php -d allow_url_fopen=0 -d zend.assertions=1 -d assert.exception=1 tests/andromeda-original-transport-facts-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/andromeda_original_transport_facts.php').read_text()
+          for token in ['curl_init','curl_exec','getFlights(','changeService(','->calc(','booking']:
+              assert token not in s, token
+          assert "'fuel_interpretation' => 'not_established'" in s
+          assert "'arithmetic_applied' => false" in s
+          assert "'finalPriceReady' => false" in s
+          print('ORIGINAL_TRANSPORT_FACTS_EXACT_HEAD_OK')
+          PY
