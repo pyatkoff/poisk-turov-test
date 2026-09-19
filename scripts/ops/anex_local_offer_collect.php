@@ -86,7 +86,7 @@ $request=['action'=>'search','generation'=>$generation,'params'=>$params];
 $searchRunner=static function(array $req,array &$collectorState)use($pdo,&$cache,$makeClient):array{
     $diagnostics=null;
     $observer=static fn(array $offers,array $context):array=>AnyTourAnexSearchObservations::record($pdo,$offers,$context);
-    return anytour_anex_search3_run($req,$pdo,$makeClient(),$cache,$diagnostics,$observer,$collectorState,'all');
+    return anytour_anex_search3_run($req,$pdo,$makeClient(),$cache,$diagnostics,$observer,$collectorState,'all',true);
 };
 $expandRunner=static function(array $req,array &$collectorState)use($resolver,$metadata,$makeClient,$checkpoint,$makeAdditional):array{
     // Background worker has its own explicit budget and uses AnyTourAnexClient's
