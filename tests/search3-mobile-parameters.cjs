@@ -25,6 +25,14 @@ async function setNights(page,from,to){
   await dialog.locator('.search-parameter-apply').click();await dialog.waitFor({state:'hidden'});
  }else{await page.locator('#tourSearch [name=daysFrom]').selectOption(String(from));await page.locator('#tourSearch [name=daysTill]').selectOption(String(to))}
 }
+async function setDates(page,from,to){
+ const trigger=page.locator('[data-search3-parameter=dates]');
+ if(await trigger.isVisible()){
+  await trigger.click();const dialog=page.getByRole('dialog',{name:'Даты вылета',exact:true});
+  await dialog.getByLabel('Вылет с',{exact:true}).fill(from);await dialog.getByLabel('Вылет до',{exact:true}).fill(to);
+  await dialog.locator('.search-parameter-apply').click();await dialog.waitFor({state:'hidden'});
+ }else{await page.locator('#tourSearch [name=dateFrom]').fill(from);await page.locator('#tourSearch [name=dateTo]').fill(to)}
+}
 async function checkMobileParameters(page,width,output){
  if(width>700)return;
  const snapshot=()=>page.locator('#tourSearch').evaluate(form=>({data:[...new FormData(form)],generation:window.V2SearchLifecycle.generation,dirty:window.V2SearchLifecycle.dirty}));
@@ -98,4 +106,4 @@ async function checkMobileParameters(page,width,output){
  assert.deepEqual((await snapshot()).data,before.data,'all canonical fields retain their original names and values');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
 }
-module.exports={setParty,setNights,checkMobileParameters};
+module.exports={setParty,setNights,setDates,checkMobileParameters};

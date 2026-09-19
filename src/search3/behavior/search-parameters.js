@@ -6,7 +6,7 @@ const triggers=Array.from(form.querySelectorAll('[data-search3-parameter]'));
 if(triggers.length!==3)return;
 const media=window.matchMedia('(max-width:700px)');
 const dialog=document.createElement('dialog');dialog.className='search-parameter-dialog';dialog.setAttribute('aria-labelledby','searchParameterTitle');
-dialog.innerHTML='<header><h2 id="searchParameterTitle"></h2><button type="button" data-close aria-label="Закрыть без изменений">×</button></header><div class="search-parameter-body"></div><footer><p class="search-parameter-error" role="alert" hidden></p><button type="button" class="search-parameter-apply">Выбрать</button><button type="button" data-close>Отмена</button></footer>';
+dialog.innerHTML='<header><h2 id="searchParameterTitle"></h2><button type="button" data-close aria-label="Закрыть без изменений">×</button></header><div class="search-parameter-body"></div><footer><p id="searchParameterError" class="search-parameter-error" role="alert" hidden></p><button type="button" class="search-parameter-apply">Выбрать</button><button type="button" data-close>Отмена</button></footer>';
 document.body.appendChild(dialog);
 const body=dialog.querySelector('.search-parameter-body'),title=dialog.querySelector('h2'),apply=dialog.querySelector('.search-parameter-apply'),error=dialog.querySelector('[role=alert]');
 let active='',draft=null,opener=null,month=null,rangeEnd=false,frame=0;
@@ -73,7 +73,7 @@ function syncParty(){
 }
 function open(kind,trigger){
  if(!media.matches)return;active=kind;opener=trigger;rangeEnd=false;showError('');
- if(kind==='dates'){draft={from:value('dateFrom'),to:value('dateTo'),center:value('dateFrom')};const initial=day(draft.from);month=Number.isFinite(initial.getTime())?initial:new Date();month=new Date(month.getFullYear(),month.getMonth(),1,12);title.textContent='Даты вылета';datesPanel()}
+ if(kind==='dates'){draft={from:value('dateFrom'),to:value('dateTo'),center:value('dateFrom')};const initial=day(draft.from);month=Number.isFinite(initial.getTime())&&draft.from>=today()?initial:new Date();month=new Date(month.getFullYear(),month.getMonth(),1,12);title.textContent='Даты вылета';datesPanel()}
  else if(kind==='nights'){draft={from:Number(value('daysFrom'))||7,to:Number(value('daysTill'))||10};title.textContent='На сколько ночей';nightsPanel()}
  else{draft={adults:Math.max(1,Math.min(6,Number(value('count_people'))||2)),ages:ages().slice(0,3)};title.textContent='Кто едет';partyPanel()}
  dialog.showModal();dialog.querySelector('[data-close]').focus({preventScroll:true});
@@ -105,11 +105,17 @@ dialog.addEventListener('click',event=>{
   if(button.hasAttribute('data-remove')){draft.ages.splice(Number(button.dataset.remove),1);syncParty();body.querySelector('[data-add]').focus()}
  }
 });
-dialog.addEventListener('change',event=>{if(!draft)return;const input=event.target;if(active==='dates'&&input.matches('input')){draft[input.hasAttribute('data-from')?'from':'to']=input.value;if(input.hasAttribute('data-from')){draft.center=input.value;const selected=day(input.value);if(Number.isFinite(selected.getTime()))month=new Date(selected.getFullYear(),selected.getMonth(),1,12)}rangeEnd=false;calendar();showError('')}if(active==='party'&&input.hasAttribute('data-age')){draft.ages[Number(input.dataset.age)]=input.value;showError('')}});
+dialog.addEventListener('change',event=>{if(!draft)return;const input=event.target;input.removeAttribute('aria-invalid');input.removeAttribute('aria-describedby');if(active==='dates'&&input.matches('input')){draft[input.hasAttribute('data-from')?'from':'to']=input.value;if(input.hasAttribute('data-from')){draft.center=input.value;const selected=day(input.value);if(Number.isFinite(selected.getTime()))month=new Date(selected.getFullYear(),selected.getMonth(),1,12)}rangeEnd=false;calendar();showError('')}if(active==='party'&&input.hasAttribute('data-age')){draft.ages[Number(input.dataset.age)]=input.value;showError('')}});
+function showValidation(name,message){
+ const kind=['dateFrom','dateTo'].includes(name)?'dates':['daysFrom','daysTill'].includes(name)?'nights':['count_people','child_count','child_age[]'].includes(name)?'party':'';
+ if(!kind||!media.matches||dialog.open)return;open(kind,triggers.find(button=>button.dataset.search3Parameter===kind));showError(message);
+ const target=kind==='dates'?body.querySelector(name==='dateTo'?'[data-to]':'[data-from]'):kind==='party'?body.querySelector('[data-age]')||body.querySelector('[data-adults="1"]'):body.querySelector('[data-night]');
+ if(target){target.setAttribute('aria-invalid','true');target.setAttribute('aria-describedby',error.id);target.focus({preventScroll:true})}
+}
 form.addEventListener('change',schedule);form.addEventListener('input',schedule);
-new MutationObserver(schedule).observe(form,{subtree:true,childList:true});
+new MutationObserver(records=>{schedule();const invalid=records.find(record=>record.type==='attributes'&&record.target.getAttribute('aria-invalid')==='true');if(invalid){const life=window.V2SearchLifecycle;showValidation(invalid.target.name,life?life.validate(life.params()):'Проверьте параметры поездки.')}}).observe(form,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-invalid']});
 media.addEventListener('change',()=>{const kind=active;if(dialog.open)close();summaries();if(kind&&!media.matches)field(kind==='dates'?'dateFrom':kind==='nights'?'daysFrom':'count_people')?.focus({preventScroll:true})});
-window.addEventListener('v2:search-error',event=>{const name=event.detail?.phase==='validation'&&event.detail.error?.field;const kind=['dateFrom','dateTo'].includes(name)?'dates':['daysFrom','daysTill'].includes(name)?'nights':['count_people','child_count','child_age[]'].includes(name)?'party':'';if(kind&&media.matches){open(kind,triggers.find(button=>button.dataset.search3Parameter===kind));showError(event.detail.error.message)}});
+window.addEventListener('v2:search-error',event=>{if(event.detail?.phase==='validation')showValidation(event.detail.error?.field,event.detail.error?.message)});
 ['v2:search-reset','v2:search-resumed','v2:search-started'].forEach(name=>window.addEventListener(name,()=>{if(dialog.open)close();schedule()}));
-summaries();
+summaries();const invalid=form.querySelector('[aria-invalid="true"]'),life=window.V2SearchLifecycle;if(invalid&&life)showValidation(invalid.name,life.validate(life.params()));
 })();

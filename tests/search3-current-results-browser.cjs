@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const withFuel = require('./fixtures/search3-andromeda-fuel.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
+const {setParty,setDates}=require('./search3-mobile-parameters.cjs');
 const { execFileSync } = require('node:child_process');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
@@ -1025,8 +1026,8 @@ async function run(browser, width, previous) {
     // sibling can be inserted between raw/served snapshots (160px at 375px).
     await page.waitForFunction(() => document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
     assert.equal(await page.locator('.catalog-recovery').isVisible(), true, 'blocked catalogs expose their canonical recovery before result measurement');
-    await page.locator('[name=dateFrom]').fill('2026-09-21');
-    await page.locator('[name=count_people]').selectOption('3');
+    await setDates(page,'2026-09-21',await page.locator('[name=dateTo]').inputValue());
+    await setParty(page,3,await page.locator('#childAges select').evaluateAll(nodes=>nodes.map(node=>node.value)));
     catalog.recover = true;
     const catalogRetry = page.locator('.catalog-retry');
     await catalogRetry.focus();
