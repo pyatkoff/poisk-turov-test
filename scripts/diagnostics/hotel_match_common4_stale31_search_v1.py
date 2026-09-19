@@ -27,6 +27,7 @@ def save(path,obj):
     with open(path,'xb') as f:
         if f.write(raw)!=len(raw): raise RuntimeError('short_write')
         f.flush(); os.fsync(f.fileno())
+        if hasattr(os,'fsync'): os.fsync(f.fileno())
     fd=os.open(str(path.parent),os.O_DIRECTORY)
     try: os.fsync(fd)
     finally: os.close(fd)
@@ -63,14 +64,17 @@ def link_evidence(operator_id,detail):
     pairs=urllib.parse.parse_qsl(p.query,keep_blank_values=True)
     if any(re.search(r'token|password|auth|secret|session',k,re.I) for k,_ in pairs):
         return {'link_state':'invalid','reason':'sensitive_operator_link','operator_link_sha256':hashlib.sha256(u.encode()).hexdigest()}
-    out={'link_state':'captured','operator_link':u,'operator_link_sha256':hashlib.sha256(u.encode()).hexdigest(),'query_keys':[k for k,_ in pairs]}
+    out={'link_state':'captured','operator_link':u,'operator_link_sha256':hashlib.sha256(u.encode()).hexdigest(),
+         'query_keys':[k for k,_ in pairs]}
     if operator_id==13:
         vals=[v for k,v in pairs if k.upper()=='HOTELLIST']; tokens=[x.strip() for v in vals for x in re.split('[,;]',v) if x.strip()!='']
-        out.update(raw_identity_key='HOTELLIST',raw_identity_values=vals,raw_identity_tokens=tokens,positive_native_candidates=[int(x) for x in tokens if re.fullmatch(r'[1-9][0-9]{0,8}',x)])
+        out.update(raw_identity_key='HOTELLIST',raw_identity_values=vals,raw_identity_tokens=tokens,
+                   positive_native_candidates=[int(x) for x in tokens if re.fullmatch(r'[1-9][0-9]{0,8}',x)])
         out['link_state']='captured_single_native' if len(out['positive_native_candidates'])==1 and len(tokens)==1 else 'captured_ambiguous_native'
     elif operator_id in (25,43):
         vals=[v for k,v in pairs if k.upper()=='HOTELS']; tokens=[x.strip() for v in vals for x in re.split('[,;]',v) if x.strip()!='']
-        out.update(raw_identity_key='HOTELS',raw_identity_values=vals,raw_identity_tokens=tokens,positive_native_candidates=[int(x) for x in tokens if re.fullmatch(r'[1-9][0-9]{0,12}',x)])
+        out.update(raw_identity_key='HOTELS',raw_identity_values=vals,raw_identity_tokens=tokens,
+                   positive_native_candidates=[int(x) for x in tokens if re.fullmatch(r'[1-9][0-9]{0,12}',x)])
         out['link_state']='captured_single_native' if len(out['positive_native_candidates'])==1 and len(tokens)==1 else 'captured_ambiguous_native'
     else:
         numeric_fields=[]
@@ -165,10 +169,12 @@ def detail_first(provider,edge):
     ev=verify_detail(detail,edge['tv_hotel_id'],edge['operator_id'],tid); ev['state']='fresh_detail_verified'
     return ev
 
-def run_search(provider,group,search_no):
+def run_search(provider,group,edges_by_key,search_no):
     ids=list(group['hotel_ids']); opid=int(group['operator_id'])
     if not (1<=len(ids)<=30): raise RuntimeError('search_batch_size')
-    params={'departureId':group['departure_id'],'countryId':group['country_id'],'dateFrom':group['departure_date'],'dateTo':group['departure_date'],'nightsFrom':group['nights'],'nightsTo':group['nights'],'adults':group['adults'],'childs':group['childs'],'currency':'RUB','onlyCharter':False,'operatorIds':[opid],'hotelIds':ids}
+    params={'departureId':group['departure_id'],'countryId':group['country_id'],'dateFrom':group['departure_date'],'dateTo':group['departure_date'],
+            'nightsFrom':group['nights'],'nightsTo':group['nights'],'adults':group['adults'],'childs':group['childs'],
+            'currency':'RUB','onlyCharter':False,'operatorIds':[opid],'hotelIds':ids}
     _,start=provider.call('search_start','/tours/search',params)
     sid=numeric(start.get('searchId') or start.get('id')) if isinstance(start,dict) else None
     if not sid: raise RuntimeError('search_id_missing')
@@ -188,52 +194,66 @@ def run_search(provider,group,search_no):
         if not usable:
             found[hid]={'tv_hotel_id':hid,'operator_id':opid,'state':'no_usable_tour','search_id':sid,'safe_to_write_now':False}; continue
         tour=usable[0]; tid=str(tour.get('id') or tour.get('tourId'))
-        code,detail=provider.call('tour_detail','/tours/'+tid,{'currency':'RUB'})
-        if code==404:
-            ev={'tv_hotel_id':hid,'operator_id':opid,'tour_id':tid,'state':'search_detail_404','search_id':sid,'safe_to_write_now':False}
+        edge=edges_by_key.get((opid,hid))
+        if not edge: raise RuntimeError('search_edge_missing')
+        if tid==str(edge['stale_tour_id']):
+            ev={'tv_hotel_id':hid,'operator_id':opid,'tour_id':tid,'state':'returned_stale_tour_id_not_retried','search_id':sid,'safe_to_write_now':False}
         else:
-            ev=verify_detail(detail,hid,opid,tid); ev.update(state='search_detail_verified',search_id=sid)
+            code,detail=provider.call('tour_detail','/tours/'+tid,{'currency':'RUB'})
+            if code==404:
+                ev={'tv_hotel_id':hid,'operator_id':opid,'tour_id':tid,'state':'search_detail_404','search_id':sid,'safe_to_write_now':False}
+            else:
+                ev=verify_detail(detail,hid,opid,tid); ev.update(state='search_detail_verified',search_id=sid)
         found[hid]=ev
         save(provider.dir/('hotel-%d-op%d-search%d.json'%(hid,opid,search_no)),ev)
     return sid,found
 
 def execute(opdir,root):
-    provider=None; state='terminal_failed_no_replay'; reason=None; plan=None; evidence={}; searches=[]; fresh_detail_attempts=0; fallback=set(); reservation={}
+    provider=None; state='terminal_failed_no_replay'; reason=None; plan=None; evidence={}; searches=[]; fresh_detail_attempts=0
     try:
         reservation=json.loads((opdir/'reservation.json').read_bytes())
         if reservation.get('operation')!=OP or reservation.get('state')!='reserved_before_db_provider': raise RuntimeError('reservation')
         manifest=json.loads((opdir/'payload/source-hashes.json').read_bytes())
         for name,digest in manifest.items():
             if pathlib.PurePath(name).name!=name or hashlib.sha256((opdir/'payload'/name).read_bytes()).hexdigest()!=digest: raise RuntimeError('source_digest')
-        env={**os.environ,'MATCH_OPERATION_ID':OP,'MATCH_SOURCE_SHA':reservation['source_sha'],'MATCH_OPERATION_DIR':str(opdir)}
-        cp=subprocess.run(['php',str(opdir/'payload/hotel_match_common4_stale31_current_v1.php')],env=env,capture_output=True,check=False)
+        cp=subprocess.run(['php',str(opdir/'payload/hotel_match_common4_stale31_current_v1.php')],env={**os.environ,'MATCH_OPERATION_ID':OP,'MATCH_SOURCE_SHA':reservation['source_sha'],'MATCH_OPERATION_DIR':str(opdir)},capture_output=True,check=False)
         if cp.returncode: raise RuntimeError('current_plan_failed')
         plan=json.loads(cp.stdout)
         if plan.get('state')!='current_read_only_complete' or plan.get('operation')!=OP: raise RuntimeError('current_plan_state')
-        save(opdir/'current-plan.json',plan)
+        plan_sha=save(opdir/'current-plan.json',plan)
         provider=Provider(root,opdir)
         edges={(int(e['operator_id']),int(e['tv_hotel_id'])):e for e in plan['eligible_edges']}
         fallback=set(edges)
+        # Owner order: a different current saved tour detail first; captured links leave search acquisition.
         for key,edge in edges.items():
             if not edge.get('detail_first_tour_id'): continue
             fresh_detail_attempts+=1
             ev=detail_first(provider,edge); save(opdir/('hotel-%d-op%d-fresh-detail.json'%(edge['tv_hotel_id'],edge['operator_id'])),ev)
             if ev.get('state')=='fresh_detail_verified' and ev.get('link_state','').startswith('captured'):
                 evidence[key]=ev; fallback.discard(key)
+        # Exact-ID searches only for remaining edges, grouped by exact current compatible context.
         search_no=0
         for group in plan['context_groups']:
             ids=[int(h) for h in group['hotel_ids'] if (int(group['operator_id']),int(h)) in fallback]
             if not ids: continue
             for off in range(0,len(ids),30):
                 g=dict(group); g['hotel_ids']=ids[off:off+30]; search_no+=1
-                before=provider.used; sid,found=run_search(provider,g,search_no)
+                before=provider.used; sid,found=run_search(provider,g,edges,search_no)
                 for hid,ev in found.items(): evidence[(int(g['operator_id']),int(hid))]=ev; fallback.discard((int(g['operator_id']),int(hid)))
                 searches.append({'search_no':search_no,'operator_id':int(g['operator_id']),'search_id':sid,'hotel_ids':g['hotel_ids'],'found_ids':sorted(found),'missing_ids':[h for h in g['hotel_ids'] if h not in found],'calls':provider.used-before,'context':{k:v for k,v in g.items() if k!='hotel_ids'}})
                 save(opdir/('search-%02d-result.json'%search_no),searches[-1])
         state='completed_read_only'
     except Exception as exc:
         reason=type(exc).__name__+':'+str(exc) if isinstance(exc,RuntimeError) else type(exc).__name__
-    out={'operation':OP,'state':state,'reason':reason,'no_replay':True,'source_sha':reservation.get('source_sha'),'current_plan_sha256':(hashlib.sha256((opdir/'current-plan.json').read_bytes()).hexdigest() if (opdir/'current-plan.json').exists() else None),'input_count':31,'eligible_edges':(len(plan['eligible_edges']) if plan else None),'current_skipped':(plan.get('skipped') if plan else None),'fresh_detail_attempts':fresh_detail_attempts,'searches':searches,'captured_edges':sorted(evidence.values(),key=lambda e:(e.get('operator_id',0),e.get('tv_hotel_id',0))),'remaining_not_returned':[{'operator_id':k[0],'tv_hotel_id':k[1]} for k in sorted(fallback)],'provider_calls':provider.used if provider else 0,'call_counts':dict(provider.counts) if provider else {},'daily_accounted_after':provider.last_accounted if provider else None,'search_calls':int(provider.counts.get('search_start',0)) if provider else 0,'status_calls':int(provider.counts.get('search_status',0)) if provider else 0,'results_calls':int(provider.counts.get('search_results',0)) if provider else 0,'detail_calls':int(provider.counts.get('tour_detail',0)) if provider else 0,'continue_calls':0,'dates_calls':0,'samo_calls':0,'database_writes':0,'mapping_writes':0}
+    out={'operation':OP,'state':state,'reason':reason,'no_replay':True,'source_sha':(reservation.get('source_sha') if 'reservation' in locals() else None),
+         'current_plan_sha256':(hashlib.sha256((opdir/'current-plan.json').read_bytes()).hexdigest() if (opdir/'current-plan.json').exists() else None),
+         'input_count':31,'eligible_edges':(len(plan['eligible_edges']) if plan else None),'current_skipped':(plan.get('skipped') if plan else None),
+         'fresh_detail_attempts':fresh_detail_attempts,'searches':searches,'captured_edges':sorted(evidence.values(),key=lambda e:(e.get('operator_id',0),e.get('tv_hotel_id',0))),
+         'remaining_not_returned':[{'operator_id':k[0],'tv_hotel_id':k[1]} for k in sorted(fallback)],
+         'provider_calls':provider.used if provider else 0,'call_counts':dict(provider.counts) if provider else {},'daily_accounted_after':provider.last_accounted if provider else None,
+         'search_calls':int(provider.counts.get('search_start',0)) if provider else 0,'status_calls':int(provider.counts.get('search_status',0)) if provider else 0,
+         'results_calls':int(provider.counts.get('search_results',0)) if provider else 0,'detail_calls':int(provider.counts.get('tour_detail',0)) if provider else 0,
+         'continue_calls':0,'dates_calls':0,'samo_calls':0,'database_writes':0,'mapping_writes':0}
     sha=save(opdir/'result.json',out)
     if provider: provider.finish(state,sha)
     save(opdir/'receipt.json',{'operation':OP,'state':state,'result_sha256':sha,'provider_calls':out['provider_calls'],'mapping_writes':0,'database_writes':0,'no_replay':True})
