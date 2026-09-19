@@ -5,6 +5,10 @@ const HMS34V2_OPERATION = 'hotel-match-common4-samo34-live-1971-20260919-v2';
 const HMS34V2_V1_OPERATION = 'hotel-match-common4-samo34-live-1971-20260919-v1';
 const HMS34V2_V1_SHA256 = '0dc3e14e22d797102aac54d82ee01c2ca75d7e9ba889d12e8b19e9244c89e7b0';
 const HMS34V2_MAX_SOURCE_BYTES = 1048576;
+// The existing workflow exports ANYTOOUR_ROOT (two O's), not ANYTOUR_ROOT.
+// Never resolve an absent root as realpath(''), which silently selects the CWD.
+const HMS34V2_V1_ROOT = '$root=realpath((string)getenv(\'ANYTOUR_ROOT\'));';
+const HMS34V2_ROOT = '$rootValue=(string)getenv(\'ANYTOOUR_ROOT\');$root=$rootValue!==\'\'?realpath($rootValue):false;';
 
 function hms34v2_require(bool $ok, string $why): void
 {
@@ -20,6 +24,11 @@ function hms34v2_transform_raw(string $raw): string
     hms34v2_require($count === 1, 'operation_replace_count');
     hms34v2_require(strpos($next, HMS34V2_V1_OPERATION) === false, 'old_operation_retained');
     hms34v2_require(substr_count($next, HMS34V2_OPERATION) === 1, 'new_operation_occurrence');
+    hms34v2_require(substr_count($next, HMS34V2_V1_ROOT) === 1, 'v1_root_occurrence');
+    $next = str_replace(HMS34V2_V1_ROOT, HMS34V2_ROOT, $next, $rootCount);
+    hms34v2_require($rootCount === 1, 'root_replace_count');
+    hms34v2_require(!str_contains($next, HMS34V2_V1_ROOT), 'old_root_retained');
+    hms34v2_require(substr_count($next, HMS34V2_ROOT) === 1, 'new_root_occurrence');
     return $next;
 }
 
@@ -53,10 +62,28 @@ function hms34v2_materialize(string $source, string $destination): string
 
 $args = $argv ?? [];
 if (in_array('--self-test', $args, true)) {
-    $fixture = "const X='" . HMS34V2_V1_OPERATION . "';\n";
+    $fixture = "const X='" . HMS34V2_V1_OPERATION . "';\n" . HMS34V2_V1_ROOT . "\n";
     $out = hms34v2_transform_raw($fixture);
     hms34v2_require(str_contains($out, HMS34V2_OPERATION), 'self_test_new');
     hms34v2_require(!str_contains($out, HMS34V2_V1_OPERATION), 'self_test_old');
+    hms34v2_require(str_contains($out, HMS34V2_ROOT), 'self_test_canonical_root');
+    hms34v2_require(!str_contains($out, HMS34V2_V1_ROOT), 'self_test_old_root');
+    $invalid = [
+        'missing_root' => str_replace(HMS34V2_V1_ROOT, '', $fixture),
+        'duplicate_root' => $fixture . HMS34V2_V1_ROOT,
+        'missing_operation' => str_replace(HMS34V2_V1_OPERATION, '', $fixture),
+        'duplicate_operation' => $fixture . HMS34V2_V1_OPERATION,
+        'already_transformed' => $out,
+    ];
+    foreach ($invalid as $name => $raw) {
+        $rejected = false;
+        try {
+            hms34v2_transform_raw($raw);
+        } catch (RuntimeException $e) {
+            $rejected = true;
+        }
+        hms34v2_require($rejected, 'self_test_accepts_' . $name);
+    }
     echo "MATCH_COMMON4_SAMO34_LIVE_V2_SELFTEST_OK\n";
     exit(0);
 }
