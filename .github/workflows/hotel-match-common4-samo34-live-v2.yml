@@ -1,0 +1,189 @@
+name: MATCH COMMON4 SAMO34 live v2
+on:
+  push:
+    branches: [ops/match-common4-samo34-live-1971-20260919-v2]
+    paths:
+      - scripts/diagnostics/hotel_match_common4_samo34_live_v2.php
+      - .github/workflows/hotel-match-common4-samo34-live-v2.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-common4-samo34-live-1971-20260919-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-common4-samo34-live-1971-20260919-v2
+  EXPECTED_BASE: dedafbcd167a88a8e3d8f77cfd4d467924d4ba93
+  CLAIM_COMMENT_ID: '5740751338'
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: de7b66bdd95db8d82445cc5edee12c8a46373dd3
+          path: historical
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {artifact-ids: '10579660688', run-id: 35426426488, github-token: '${{ github.token }}', path: prior, merge-multiple: true}
+      - name: Validate exact package, checked transformation, input and owner claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p payload reservation terminal
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_common4_samo34_live_v2.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-common4-samo34-live-v2.yml'
+          printf '%s\n' '20ef3461d1b1bedfef6fb9b0912c41f050fce07387c32f929ef04ce2e1ca3ab3  scripts/diagnostics/hotel_match_common4_samo34_live_v2.php' | sha256sum -c -
+          php -l scripts/diagnostics/hotel_match_common4_samo34_live_v2.php
+          php scripts/diagnostics/hotel_match_common4_samo34_live_v2.php --self-test
+          php scripts/diagnostics/hotel_match_common4_samo34_live_v2.php --materialize "$GITHUB_WORKSPACE/historical/scripts/diagnostics/hotel_match_common4_samo34_live_v1.php" "$GITHUB_WORKSPACE/payload/acquire.php" >payload/materialization.json
+          php -l payload/acquire.php
+          php payload/acquire.php --self-test
+          cp prior/server/result.json payload/context34.json
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          raw=pathlib.Path('payload/context34.json').read_bytes(); r=json.loads(raw)
+          assert hashlib.sha256(raw).hexdigest()=='041d63ec0606411097b980268591e86400aad2d61ee3abf1786462c3c524855d'
+          assert r['operation_id']=='hotel-match-common4-context34-current-1971-20260919-v1' and r['state']=='completed_read_only'
+          assert len(r['dossiers'])==39 and r['classification_counts']=={'exact_context_ready':39,'hotel_operator_context_only':0,'no_current_observation_context':0}
+          assert len({x['tv_hotel_id'] for x in r['dossiers']})==34
+          assert {x['operator'] for x in r['dossiers']}=={'funsun','intourist'}
+          assert all(x['current_hotel']['country_id']==4 and x['context']['departure_id']==1 for x in r['dossiers'])
+          m=json.loads(pathlib.Path('payload/materialization.json').read_bytes())
+          assert m['materialized_sha256']==hashlib.sha256(pathlib.Path('payload/acquire.php').read_bytes()).hexdigest()
+          assert m['operation']=='hotel-match-common4-samo34-live-1971-20260919-v2'
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" >payload/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('payload/claim.json')); b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530') and os.environ['OPERATION_ID'] in b
+          assert '10579660688' in b and '041d63ec0606411097b980268591e86400aad2d61ee3abf1786462c3c524855d' in b
+          assert 'Ну так возобновляй' in b
+          PY
+      - name: Create durable reservation before database or provider access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,datetime
+          deps=['payload/acquire.php','scripts/diagnostics/hotel_match_common4_samo34_live_v2.php','scripts/diagnostics/hotel_match_common4_operator_binding_v1.php','app/integrations/andromeda-client.php','app/integrations/andromeda-transport.php','app/integrations/andromeda-network-transport-failure.php']
+          ctx=pathlib.Path('payload/context34.json').read_bytes()
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'claim_comment_id':os.environ['CLAIM_COMMENT_ID'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider':'andromeda','input_artifact_id':10579660688,'input_result_sha256':hashlib.sha256(ctx).hexdigest(),'provider_call_cap':104,'price_call_cap':100,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True,'dependencies':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in deps}}
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True)+'\n').encode()
+          with open('reservation/reservation.json','xb') as f: f.write(raw); f.flush(); os.fsync(f.fileno())
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed': assert r['conclusion']=='success'; print('SECURITY_OK',r['id']); break
+            time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'common4-samo34-v2-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Require existing credentials
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          ANDROMEDA_USERNAME_VALUE: '${{ secrets.ANDROMEDA_USERNAME }}'
+          ANDROMEDA_PASSWORD_VALUE: '${{ secrets.ANDROMEDA_PASSWORD }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"; test -n "$ANDROMEDA_USERNAME_VALUE"; test -n "$ANDROMEDA_PASSWORD_VALUE"
+      - name: Stage exact private payload with exclusive operation reservation
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"; stage=".anytoour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test -d \"\$HOME/www/anytoour.ru\";mkdir -p \"\$HOME/.anytoour-match/operations\" \"\$HOME/.anytoour-operations-staging\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$stage\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" payload/acquire.php scripts/diagnostics/hotel_match_common4_operator_binding_v1.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php payload/context34.json "$remote:$stage/"
+          ssh "${opts[@]}" "$remote" "chmod 600 \"\$HOME/$op/reservation.json\" \"\$HOME/$stage/\"*"
+      - name: Run bounded SAMO evidence acquisition once and collect actual terminal files
+        env:
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          ANDROMEDA_USERNAME_VALUE: '${{ secrets.ANDROMEDA_USERNAME }}'
+          ANDROMEDA_PASSWORD_VALUE: '${{ secrets.ANDROMEDA_PASSWORD }}'
+        shell: bash
+        run: |
+          set -uo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"; stage=".anytoour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          printf '%s\n%s\n' "$ANDROMEDA_USERNAME_VALUE" "$ANDROMEDA_PASSWORD_VALUE" | ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_CONTEXT_PATH=\"\$HOME/$stage/context34.json\" MATCH_BINDER_PATH=\"\$HOME/$stage/hotel_match_common4_operator_binding_v1.php\" MATCH_CLIENT_PATH=\"\$HOME/$stage/andromeda-client.php\" MATCH_TRANSPORT_PATH=\"\$HOME/$stage/andromeda-transport.php\" php -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" -d memory_limit=768M \"\$HOME/$stage/acquire.php\"" >terminal/stdout.json 2>terminal/stderr.txt
+          rc=$?; printf '%s\n' "$rc">terminal/remote-exit.txt
+          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json;for f in result.json receipt.json provider-calls.jsonl raw-manifest.json bootstrap-errors.log raw-*.json;do test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >terminal/server-operation.tgz 2>>terminal/stderr.txt
+          trc=$?; printf '%s\n' "$trc">terminal/tar-exit.txt
+          set -e
+          test "$trc" -eq 0; test "$rc" -eq 0
+      - name: Verify terminal receipt and retained raw evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,tarfile
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True); a=p/'server-operation.tgz'
+          assert a.exists() and a.stat().st_size>0, 'terminal_archive_absent_no_replay'
+          names=set()
+          with tarfile.open(a,'r:gz') as t:
+            for m in t.getmembers():
+              assert m.isfile() and 0<=m.size<64_000_000 and re.fullmatch(r'[a-z0-9_.-]+',m.name) and m.name not in names
+              assert m.name in {'reservation.json','result.json','receipt.json','provider-calls.jsonl','raw-manifest.json','bootstrap-errors.log'} or re.fullmatch(r'raw-[a-z0-9_.-]+\.json',m.name)
+              names.add(m.name); (s/m.name).write_bytes(t.extractfile(m).read())
+          assert pathlib.Path('reservation/reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          assert (s/'result.json').exists() and (s/'receipt.json').exists(), 'terminal_incomplete_no_replay'
+          r=json.loads((s/'result.json').read_bytes()); q=json.loads((s/'receipt.json').read_bytes()); d=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==d and r['operation']==q['operation']==os.environ['OPERATION_ID'] and r['source_sha']==os.environ['GITHUB_SHA']
+          assert r['database_writes']==q['database_writes']==0 and r['mapping_writes']==q['mapping_writes']==0 and r['tourvisor_calls']==q['tourvisor_calls']==0
+          assert r['provider_calls']==q['provider_calls']<=104 and r['price_calls']==q['price_calls']<=100
+          ledger=s/'provider-calls.jsonl'; lines=ledger.read_text().splitlines() if ledger.exists() else []
+          assert len(lines)==r['provider_calls']
+          assert [json.loads(x)['seq'] for x in lines]==list(range(1,len(lines)+1))
+          summary={k:r.get(k) for k in ['state','reason','provider_calls','catalog_calls','price_calls','active_edges','group_count','live_catalog_hotel_count','direct_operator_hotel_id_observed_count','ambiguous_provider_evidence_count','not_returned_exact_context_count','no_live_catalog_candidate_count']}; summary['result_sha256']=d
+          (p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,sort_keys=True)+'\n'); print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          if (s/'raw-manifest.json').exists():
+            assert q['raw_manifest_sha256']==hashlib.sha256((s/'raw-manifest.json').read_bytes()).hexdigest()
+            for f in json.loads((s/'raw-manifest.json').read_bytes())['files']:
+              assert re.fullmatch(r'raw-[a-z0-9_.-]+\.json',f['file'])
+              raw=(s/f['file']).read_bytes(); assert len(raw)==f['bytes'] and hashlib.sha256(raw).hexdigest()==f['sha256']
+          if r['state']!='completed_read_only': raise SystemExit(2)
+          assert len(r['dossiers'])<=39 and all(x['safe_to_write_now'] is False for x in r['dossiers'])
+          assert (s/'raw-manifest.json').exists()
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0; test "$(cat terminal/tar-exit.txt)" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'common4-samo34-v2-result-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
+      - name: Remove runner credential files
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
