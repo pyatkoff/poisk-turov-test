@@ -1,0 +1,79 @@
+name: MATCH userseen208 context router v1
+on:
+  push:
+    branches: [ops/match-userseen208-context-router-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_userseen208_context_router_v1.php
+      - .github/workflows/hotel-match-userseen208-context-router-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+env: {OPERATION_ID: hotel-match-userseen208-context-router-1971-20260919-v1, CLAIM: '5743713639'}
+jobs:
+  route:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - name: Validate source, claim and immutable inputs
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input terminal
+          php -l scripts/diagnostics/hotel_match_userseen208_context_router_v1.php;php scripts/diagnostics/hotel_match_userseen208_context_router_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body'];assert c['user']['id']==226193297 and c['author_association']=='OWNER' and os.environ['OPERATION_ID'] in b and 'exactly208' in b and "source='user_search'" in b
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10580817868/zip >input/frontier.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588235888/zip >input/tf.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,tarfile,io,pathlib
+          p=pathlib.Path('input/frontier.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='b6d2571a306e781869ca64a3ffc132476584256260e46e626e67d6f6d6bf0558'
+          with zipfile.ZipFile(p) as z:b=z.read('server/result.json')
+          assert hashlib.sha256(b).hexdigest()=='3c022aeef67301e6e24de1f78380e9252221ba933b964d4963e9a778a9686e64';pathlib.Path('input/frontier.json').write_bytes(b)
+          p=pathlib.Path('input/tf.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='99ddb8d8b22b087198dbdf96e88d056ccbad555c67b261c79e2ad27b88f60c83'
+          with zipfile.ZipFile(p) as z:tb=z.read('server-operation.tgz')
+          with tarfile.open(fileobj=io.BytesIO(tb),mode='r:gz') as t:b=t.extractfile(t.getmember('raw-catalog-townfrom.json')).read()
+          assert hashlib.sha256(b).hexdigest()=='1d6865923bd54cf32e20b386419328636d684d530ed0ebfa313fc69788c2b661';pathlib.Path('input/townfrom.json').write_bytes(b)
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs and max(xs,key=lambda z:z['id'])['status']=='completed':assert max(xs,key=lambda z:z['id'])['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit(2)
+          PY
+      - name: Build CURRENT context router
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_userseen208_context_router_v1.php input/frontier.json input/townfrom.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_FRONTIER_PATH=\"\$HOME/$op/payload/frontier.json\" MATCH_TOWNFROM_PATH=\"\$HOME/$op/payload/townfrom.json\" php \"\$HOME/$op/payload/hotel_match_userseen208_context_router_v1.php\""
+          ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' >terminal/server.tgz
+      - name: Verify router
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+           for n in ['result.json','receipt.json']:pathlib.Path('terminal',n).write_bytes(t.extractfile(n).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'));assert r['state']==q['state']=='completed_read_only' and r['input_targets']==208 and r['provider_calls']==r['tourvisor_calls']==r['database_writes']==0
+          assert r['current_already_accepted']+r['current_active_targets']==208 and r['routed_count']+r['refresh_queue_count']==r['current_active_targets'] and q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          print(json.dumps({k:r[k] for k in ['current_already_accepted','current_active_targets','routed_count','refresh_queue_count','bound_departure_count','context_group_count']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-userseen208-router-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
