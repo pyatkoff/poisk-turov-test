@@ -9,7 +9,8 @@ function load(extra={}){
 }
 const r=load();const api=r.AnyTourAnexFinalPriceProvider;
 assert(api);
-assert.equal(api.endpoint('').pathname,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+assert.equal(api.endpoint(''),null);
+assert.equal(api.endpoint('/_preview/search3-anex-candidate/api-anex-search3-preview.php'),null);
 r.location.pathname='/poisk-turov/';assert.equal(api.endpoint(''),null);r.location.pathname='/_preview/search3-local-candidate/poisk-turov/';
 const search='a'.repeat(32), offer=n=>'anex_online:'+String(n).padStart(64,'b').slice(-64);
 function hotel(id,price,kind='concrete',off=offer(id),flightType=''){const tour={price:{amount:String(price),currency:'RUB'},checkin:'2026-10-05',nights:7,meal:'AI',room:'STANDARD',kind,search_ref:search,offer_ref:off};if(flightType)tour.flight_type=flightType;return{local_id:id,name:'H'+id,category:5,rating:4.8,country:'Turkey',region:'Side',catalog:{image_url:'https://img.example/h.jpg'},tours:[tour]};}
@@ -36,13 +37,22 @@ async function runtime(mode){
     {ok:true,data:{provider:'anex',generation:1,search_ref:search,hotels:[searchHotel]}},
     {ok:true,data:{provider:'anex',generation:1,search_ref:search,status:'additional_prices_batch',offers:[{offer_ref:searchHotel.tours[0].offer_ref,local_hotel_id:101,status:finalReady||regular?'additional_prices':'additional_prices_unknown',finalPriceReady:finalReady,finalPrice:finalReady?'199390':null,price:finalReady?'199390':null,additional_prices:finalReady?{application_state:'applied',search_plus_additional:{amount:'199390',currency:'RUB'}}:regular?{application_state:'unknown',total_count:0,rows:[]}:null}]}}
   ];
-  const root=load({document:{},V2_CONFIG:{},V2Results:{render(list){renders.push(JSON.parse(JSON.stringify(list||[])));return list;}},V2SearchLifecycle:{generation:1,dirty:false,snapshot:{departureId:1,countryId:4,dateFrom:'2026-10-05',dateTo:'2026-10-05',nightsFrom:7,nightsTo:7,adults:2,childs:[],currency:'RUB'}},addEventListener(type,fn){listeners[type]=fn;},dispatchEvent(event){events.push(event);if(event.type==='v2:provider-status'&&event.detail.provider==='anex'&&['complete','error'].includes(event.detail.status))resolveDone(event.detail);return true;},CustomEvent:CE,async fetch(url,options){bodies.push(JSON.parse(options.body));const body=responses.shift();return{ok:true,async json(){return body;}};}});
+  const root=load({location:{protocol:'https:',hostname:'anytoour.ru',origin:'https://anytoour.ru',pathname:'/_preview/search3-anex-candidate/poisk-turov/',href:'https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/'},document:{},V2_CONFIG:{anexApi:'/_preview/search3-anex-candidate/api-anex-search3-preview.php'},V2Results:{render(list){renders.push(JSON.parse(JSON.stringify(list||[])));return list;}},V2SearchLifecycle:{generation:1,dirty:false,snapshot:{departureId:1,countryId:4,dateFrom:'2026-10-05',dateTo:'2026-10-05',nightsFrom:7,nightsTo:7,adults:2,childs:[],currency:'RUB'}},addEventListener(type,fn){listeners[type]=fn;},dispatchEvent(event){events.push(event);if(event.type==='v2:provider-status'&&event.detail.provider==='anex'&&['complete','error'].includes(event.detail.status))resolveDone(event.detail);return true;},CustomEvent:CE,async fetch(url,options){bodies.push(JSON.parse(options.body));const body=responses.shift();return{ok:true,async json(){return body;}};}});
   root.V2Results.render([{id:'101',provider:'tourvisor',price:210000,tours:[{id:'tv',provider:'tourvisor',price:210000}]}],{});
   listeners['v2:search-reset']({detail:{generation:1,dirty:false}});
   const status=await Promise.race([done,new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),1000))]);
   return{root,renders,events,bodies,status};
 }
+async function localDbOnlyRuntime(){
+  let fetches=0;const listeners={};
+  const root=load({document:{},V2_CONFIG:{anexApi:'/_preview/search3-anex-candidate/api-anex-search3-preview.php'},V2Results:{render(list){return list;}},V2SearchLifecycle:{generation:1,dirty:false,snapshot:{}},addEventListener(type,fn){listeners[type]=fn;},dispatchEvent(){return true;},CustomEvent:class{},async fetch(){fetches++;throw new Error('LOCAL must not call ANEX');}});
+  assert.equal(root.AnyTourAnexFinalPriceProvider.localCandidate(),true);
+  assert.equal(root.AnyTourAnexFinalPriceProvider.endpoint(root.V2_CONFIG.anexApi),null);
+  assert.equal(fetches,0);
+  assert.equal(listeners['v2:search-reset'],undefined);
+}
 (async()=>{
+  await localDbOnlyRuntime();
   const good=await runtime('final');assert.equal(good.bodies.length,2);assert.equal(good.bodies[1].action,'additional_prices_batch');assert.equal(good.bodies[1].items.length,1);
   const anexPrices=good.renders.flatMap(list=>list.flatMap(h=>(h.tours||[]).filter(t=>t.provider==='anex').map(t=>t.price)));
   assert.deepEqual(anexPrices,[199390]);assert(!anexPrices.includes(185125));assert.equal(good.status.hotels,1);assert.equal(good.status.readyOffers,1);
@@ -50,5 +60,5 @@ async function runtime(mode){
   assert.equal(badAnex.length,0);assert.equal(bad.status.hotels,0);
   const regular=await runtime('regular');const regularTours=regular.renders.flatMap(list=>list.flatMap(h=>(h.tours||[]).filter(t=>t.provider==='anex')));
   assert.equal(regularTours.length,1);assert.equal(regularTours[0].price,185125);assert.equal(regularTours[0].isCharter,false);assert.equal(regularTours[0].priceNeedsConfirmation,true);assert.equal(regularTours[0].finalPriceReady,false);assert.equal(regular.status.hotels,1);assert.equal(regular.status.readyOffers,0);
-  console.log('ANEX_FINAL_PRICE_PROVIDER_OK pure=19 runtime=3 final=199390 regular_search=185125 max_ready=5');
+  console.log('ANEX_FINAL_PRICE_PROVIDER_OK local_db_only=1 pure=19 own_preview_runtime=3 final=199390 regular_search=185125');
 })().catch(error=>{console.error(error);process.exit(1);});
