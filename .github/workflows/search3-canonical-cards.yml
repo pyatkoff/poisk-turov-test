@@ -5,6 +5,7 @@ on:
       - 'v2/search3-canonical-profiles-v1.js'
       - 'v2/results-renderer-v5.js'
       - 'v2/search3-hotel-details-presentation-v1.js'
+      - 'v2/search3-results-continuity-v1.js'
       - 'v2/search3-room-normalizer-v1.js'
       - 'v2/andromeda-provider-v1.js'
       - 'v2/anex-final-price-provider-v1.js'
@@ -20,6 +21,7 @@ on:
       - 'tests/search3-canonical-description-dedupe.test.js'
       - 'tests/search3-description-only-browser.py'
       - 'tests/search3-canonical-cards-browser.py'
+      - 'tests/search3-results-resume-browser.py'
       - 'tests/search3-local-anex-canonical-browser.py'
       - 'tests/search3-local-andromeda-canonical-browser.py'
       - '.github/workflows/search3-canonical-cards.yml'
@@ -60,6 +62,7 @@ jobs:
           php -l v2/bundle-manifest-v1.php
           python -m py_compile tests/search3-description-only-browser.py
           python -m py_compile tests/search3-canonical-cards-browser.py
+          python -m py_compile tests/search3-results-resume-browser.py
           python -m py_compile tests/search3-local-anex-canonical-browser.py
           python -m py_compile tests/search3-local-andromeda-canonical-browser.py
       - name: Install pinned offline browser test tools
@@ -73,6 +76,7 @@ jobs:
           git show 7482c62f2e6b6cb3d7f202441281868d500652d9:v2/results-renderer-v5.js > "$SEARCH3_BASE_RENDERER"
           python tests/search3-canonical-cards-browser.py
           python tests/search3-description-only-browser.py
+          python tests/search3-results-resume-browser.py
           python tests/search3-local-anex-canonical-browser.py
           python tests/search3-local-andromeda-canonical-browser.py
       - name: Retain offline acceptance evidence

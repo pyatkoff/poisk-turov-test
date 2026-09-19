@@ -20,6 +20,7 @@ trip.querySelector('[data-search3-trip-route]').textContent=route;trip.querySele
 function setEditor(open,focus){form.dataset.search3View=open?'editor':'summary';if(trip)trip.hidden=open||!hasTrip;if(collapse){collapse.hidden=!open||!hasHotels();collapse.textContent='К результатам'}if(edit){edit.textContent=open?'Свернуть параметры':'Изменить поиск';edit.setAttribute('aria-controls','tourSearch');edit.setAttribute('aria-expanded',open)}if(open&&focus){form.scrollIntoView({block:'start'});form.elements.from.focus({preventScroll:true})}}
 function hasHotels(){return!!results.querySelector('.hotel-card')}
 on('v2:search-started',()=>{captureTrip();editing=false;form.querySelectorAll('details[open]').forEach(node=>node.open=false);if(hasHotels())setEditor(false);busy('true')});
+on('v2:search-resumed',()=>{captureTrip();editing=false;setEditor(!hasHotels());busy('false')});
 on('v2:search-reset',()=>{editing=true;setEditor(true);busy('true')});
 on('v2:search-error',()=>{editing=true;setEditor(true);busy('false')});
 on('v2:results-rendered',()=>{if(hasHotels()&&!editing)setEditor(false);else if(!hasHotels())setEditor(true);busy('false')});
