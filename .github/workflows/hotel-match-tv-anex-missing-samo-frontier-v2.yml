@@ -1,7 +1,7 @@
 name: MATCH TV ANEX missing SAMO frontier v2
 on:
   push:
-    branches: [ops/match-tv-anex-missing-samo-frontier-1971-20260919-v1]
+    branches: [ops/match-tv-anex-missing-samo-frontier-1971-20260919-v2]
     paths:
       - scripts/diagnostics/hotel_match_tv_anex_missing_samo_frontier_v2.php
       - .github/workflows/hotel-match-tv-anex-missing-samo-frontier-v2.yml
