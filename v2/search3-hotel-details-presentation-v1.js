@@ -94,6 +94,12 @@ function createPhotoViewer(){
  dialog.querySelector('.hotel-photo-viewer__close').addEventListener('click',closePhotoViewer);
  dialog.querySelectorAll('[data-photo-step]').forEach(button=>button.addEventListener('click',()=>{if(photoSession)showPhoto(photoSession.index+Number(button.dataset.photoStep));}));
  dialog.addEventListener('keydown',event=>{
+  if(event.key==='Tab'&&photoSession){
+   const actions=Array.from(dialog.querySelectorAll('button:not([hidden]),a[href]')),first=actions[0],last=actions[actions.length-1];
+   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+   return;
+  }
   if(!photoSession||event.altKey||event.ctrlKey||event.metaKey||!['ArrowLeft','ArrowRight'].includes(event.key))return;
   event.preventDefault();showPhoto(photoSession.index+(event.key==='ArrowRight'?1:-1));
  });
