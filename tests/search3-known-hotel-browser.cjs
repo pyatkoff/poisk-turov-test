@@ -66,6 +66,16 @@ const viewports = [
       const response = await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
       assert.equal(response.status(), 200);
       const form = page.locator('#tourSearch');
+      const tripContext = () => form.evaluate(node => ({
+        country: node.elements.country.value,
+        region: node.elements.region.value,
+        dateFrom: node.elements.dateFrom.value,
+        dateTo: node.elements.dateTo.value,
+        daysFrom: node.elements.daysFrom.value,
+        daysTill: node.elements.daysTill.value,
+        adults: node.elements.count_people.value,
+        children: node.elements.child_count.value
+      }));
       await page.waitForFunction(() => document.forms.tourSearch?.dataset.search3Ready === '1');
       await page.waitForFunction(() => document.forms.tourSearch?.dataset.catalogSource === 'anytour-departures');
       const input = form.locator('[data-v2-hotel-query]');
@@ -117,6 +127,13 @@ const viewports = [
       assert.equal(await list.isVisible(), false);
       assert.equal(await input.getAttribute('aria-activedescendant'), null);
       assert.deepEqual(searchStarts, [], 'typing/selecting a hotel does not start a supplier search');
+      const selectedQueries = hotelQueries.length;
+      await form.locator('input[name="price_from"]').focus();
+      await input.click();
+      await page.waitForTimeout(250);
+      assert.equal(hotelQueries.length, selectedQueries, 'returning to a selected hotel does not repeat its lookup');
+      assert.equal(await select.inputValue(), '41002', 'returning preserves the selected canonical identity');
+      assert.equal(await list.isVisible(), false);
 
       await form.locator('select[name="region"]').selectOption('402');
       assert.equal(await select.inputValue(), '', 'changing geography clears an incompatible exact hotel');
@@ -131,7 +148,65 @@ const viewports = [
       assert.equal(await input.inputValue(), 'Rixos', 'Escape keeps the visitor query');
       assert.equal(await select.inputValue(), '');
       assert.equal(await input.getAttribute('aria-activedescendant'), null);
-      await input.fill('Ri');
+      const tripBeforeReopening = await tripContext();
+      async function checkReopen(action, label) {
+        const before = hotelQueries.length;
+        await action();
+        await waitForOptions();
+        await page.waitForTimeout(220);
+        assert.equal(hotelQueries.length, before + 1, label + ' performs exactly one current catalog lookup');
+        assert.deepEqual(hotelQueries.at(-1), { q: 'Rixos', limit: '10', countryId: '4', regionId: '402' }, label + ' uses the current query and geography');
+        assert.equal(await input.inputValue(), 'Rixos', label + ' does not require editing the name');
+        assert.equal(await select.inputValue(), '', label + ' waits for explicit hotel selection');
+        assert.equal(await input.getAttribute('aria-activedescendant'), null);
+        assert.deepEqual(await tripContext(), tripBeforeReopening, label + ' preserves the trip');
+        assert.deepEqual(searchStarts, [], label + ' cannot start an unrestricted supplier search');
+        await input.press('Escape');
+      }
+      await checkReopen(() => input.press('ArrowDown'), 'ArrowDown after Escape');
+      await checkReopen(() => input.press('ArrowUp'), 'ArrowUp after Escape');
+      await checkReopen(async () => {
+        await form.locator('input[name="price_from"]').focus();
+        await input.focus();
+      }, 'Keyboard return from another field');
+      await checkReopen(async () => {
+        await form.locator('input[name="price_from"]').focus();
+        if (viewport.width < 768) await input.tap(); else await input.click();
+      }, 'Pointer return coalesces focus and click');
+      await checkReopen(() => viewport.width < 768 ? input.tap() : input.click(), 'Click on an already focused dismissed query');
+      await checkReopen(() => input.press('Enter'), 'Enter after Escape reopens instead of submitting');
+      await input.press('ArrowUp');
+      await waitForOptions();
+      await input.press('ArrowUp');
+      assert.equal(await input.getAttribute('aria-activedescendant'), 'hotelAutocompleteOption1', 'first ArrowUp from no active option chooses the last suggestion');
+      assert.equal(await select.inputValue(), '', 'arrow navigation alone cannot select a canonical hotel');
+      assert.deepEqual(searchStarts, []);
+      await input.press('Escape');
+
+      const beforeShortQuery = hotelQueries.length;
+      await input.fill('R');
+      await input.press('Enter');
+      await list.getByText('Введите хотя бы 2 символа', { exact: true }).waitFor({ state: 'visible' });
+      await page.waitForTimeout(220);
+      assert.equal(hotelQueries.length, beforeShortQuery, 'one-character input does not request a catalog lookup');
+      assert.deepEqual(searchStarts, [], 'one-character Enter does not silently submit a broad tour search');
+      assert.equal(await input.inputValue(), 'R');
+      assert.equal(await list.locator('[role="option"],button').count(), 0, 'short query has guidance, not a misleading hotel or submit action');
+      assert.equal(await list.evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
+      await page.screenshot({ path: path.join(output, `known-hotel-short-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+      await input.press('Escape');
+
+      await input.fill('Rixos');
+      await waitForOptions();
+      await form.locator('input[name="price_from"]').focus();
+      const beforeReturnEdit = hotelQueries.length;
+      await input.fill('Marriott');
+      await waitForOptions();
+      await page.waitForTimeout(220);
+      assert.equal(hotelQueries.length, beforeReturnEdit + 1, 'return followed by editing coalesces into one lookup');
+      assert.equal(hotelQueries.at(-1).q, 'Marriott', 'return cannot send the previous query before an immediate edit');
+      assert.match(await list.innerText(), /MARRIOTT HOTEL/);
+      assert.deepEqual(searchStarts, []);
       await input.fill('Rixos');
       await waitForOptions();
       await input.press('ArrowDown');
@@ -197,16 +272,6 @@ const viewports = [
       assert.equal(await list.isVisible(), false);
       assert.deepEqual(searchStarts, [], 'pending Enter and cancelled suggestions never start a broad supplier search');
 
-      const tripContext = () => form.evaluate(node => ({
-        country: node.elements.country.value,
-        region: node.elements.region.value,
-        dateFrom: node.elements.dateFrom.value,
-        dateTo: node.elements.dateTo.value,
-        daysFrom: node.elements.daysFrom.value,
-        daysTill: node.elements.daysTill.value,
-        adults: node.elements.count_people.value,
-        children: node.elements.child_count.value
-      }));
       const tripBeforeRetry = await tripContext();
       const retry = list.getByRole('button', { name: 'Повторить поиск отеля' });
       const failures = [
@@ -308,7 +373,7 @@ const viewports = [
       })), tripBeforeRecovery, 'all-hotels recovery preserves the complete trip context');
       assert.equal(searchStarts.length, 1, 'explicit all-hotels recovery starts exactly one normal search');
       assert.equal(new URL(searchStarts[0]).searchParams.has('hotel'), false, 'recovery search does not send a stale hotel restriction');
-      evidence.push({ viewport, geometry, catalogFailureCases: failures.length, keyboardRecovery: true, touchSelection: viewport.width < 768, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
+      evidence.push({ viewport, geometry, catalogFailureCases: failures.length, keyboardRecovery: true, queryReopening: true, dismissedEnterRecovery: true, shortQueryGuidance: true, coalescedReturnEdit: true, selectedReturnPreserved: true, touchSelection: viewport.width < 768, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
       assert.deepEqual(errors, []);
       await page.close();
     }
