@@ -213,6 +213,18 @@ foreach ([101, 2111] as $code) {
 }
 echo "ANEX single week smoke passed\n";
 
+$backgroundCalls=[];$backgroundSession=[];
+$backgroundClient=new AnyTourAnexClient('background-secret',static function(string $url)use(&$backgroundCalls):array{
+    parse_str((string)parse_url($url,PHP_URL_QUERY),$q);$page=(int)($q['PRICEPAGE']??0);$backgroundCalls[]=$page;$count=$page===1?300:($page===2?2:0);$rows=[];
+    for($i=0;$i<$count;++$i)$rows[]=['id'=>'bg-'.$page.'-'.$i,'hotelKey'=>469,'hotel'=>'BG','checkIn'=>'20260909','checkOut'=>'20260916','nights'=>7,'adult'=>2,'child'=>0,'packetType'=>0,'price'=>'100000','currency'=>'RUB','grouped'=>1,'bron'=>0];
+    return ['status'=>200,'body'=>json_encode(['SearchTour_PRICES'=>['prices'=>$rows]])];
+});
+$backgroundCriteria=array_replace($criteria,['checkin_end'=>'2026-09-09']);
+$background=anytour_anex_search3_prices($backgroundClient,static fn(string $provider,string $id):?int=>$id==='469'?999:null,$backgroundCriteria,$backgroundSession,null,true);
+search3_check($backgroundCalls===[1,2]&&count($background['offers'])===302&&$background['pages_read']===2,'background did not receive all paged offers');
+search3_check(count($backgroundSession['saved_offers']['offers'])===302&&count($backgroundSession['search']['offers'])===302,'background session truncated to browser300');
+echo "ANEX background pagination retention passed\n";
+
 search3_check($criteria['checkin_end'] === '2026-09-22', 'shared form interval not mutated');
 $oneDay = array_replace($criteria, ['checkin_end' => $criteria['checkin_begin']]);
 search3_check(anytour_anex_search3_week($oneDay) === $oneDay, 'single date stays single');
