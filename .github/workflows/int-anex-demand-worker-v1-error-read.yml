@@ -1,0 +1,32 @@
+name: INT ANEX demand worker v1 error read
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths: ['.github/workflows/int-anex-demand-worker-v1-error-read.yml']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Read sealed worker error only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/out"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s > "$RUNNER_TEMP/out/error.txt" <<'REMOTE'
+          set -euo pipefail
+          f="$HOME/.anytour-ops/int-anex-demand-worker-top3-20260919-v1/error.log"
+          test -f "$f" -a ! -L "$f"
+          head -c 6000 "$f" | sed -E 's#(/[^ :]+)+/#<path>/#g'
+          REMOTE
+          test -s "$RUNNER_TEMP/out/error.txt"
+          cat "$RUNNER_TEMP/out/error.txt"
