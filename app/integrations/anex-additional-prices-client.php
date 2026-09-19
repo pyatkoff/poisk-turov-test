@@ -24,6 +24,8 @@ final class AnyTourAnexAdditionalPricesClient
     private $cacheDir;
     /** @var callable */
     private $clock;
+    /** @var string */
+    private $rateDirectory;
     /** @var bool */
     private $used = false;
     /** @var int */
@@ -35,7 +37,7 @@ final class AnyTourAnexAdditionalPricesClient
      * Custom transports default to cache-off so offline tests/diagnostics remain isolated.
      * Pass an explicit cache directory to exercise shared-cache behavior with a custom transport.
      */
-    public function __construct(string $bearerToken, ?callable $transport = null, ?string $cacheDir = null, ?callable $clock = null)
+    public function __construct(string $bearerToken, ?callable $transport = null, ?string $cacheDir = null, ?callable $clock = null, ?string $rateDirectory = null)
     {
         $bearerToken = trim($bearerToken);
         if ($bearerToken === '' || strlen($bearerToken) > 8192 || preg_match('/[\x00-\x20\x7f]/', $bearerToken)) {
@@ -51,6 +53,10 @@ final class AnyTourAnexAdditionalPricesClient
             $this->cacheDir = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'anytour-anex-apd-v1';
         }
         $this->clock = $clock ?? static function (): int { return time(); };
+        $this->rateDirectory = $rateDirectory ?? sys_get_temp_dir();
+        if ($this->rateDirectory === '' || strpos($this->rateDirectory, "\0") !== false) {
+            throw new InvalidArgumentException('ANEX_B2B_INVALID_RATE_DIR');
+        }
     }
 
     public function __debugInfo(): array
@@ -348,6 +354,9 @@ final class AnyTourAnexAdditionalPricesClient
             'protocol' => 'https',
         ];
 
+        if ($this->transport === null && !$this->rateSlot()) {
+            throw new RuntimeException('ANEX_B2B_RATE_LIMIT');
+        }
         ++$this->requests;
         try {
             $response = $this->transport !== null
@@ -365,6 +374,9 @@ final class AnyTourAnexAdditionalPricesClient
         }
         $this->lastRequest['http_status'] = $response['status'];
         $this->lastRequest['response_bytes'] = strlen($response['body']);
+        if ($this->transport === null && $response['status'] === 429) {
+            $this->rateSlot(microtime(true) + 60.0);
+        }
         if (strlen($response['body']) > self::BODY_LIMIT) {
             throw new RuntimeException('ANEX_B2B_RESPONSE_TOO_LARGE');
         }
@@ -470,6 +482,56 @@ final class AnyTourAnexAdditionalPricesClient
             $value = $decoded;
         }
         return true;
+    }
+
+    /** Shared real-transport pacing: <= ~57 supplier reads/minute across PHP workers. */
+    private function rateSlot(?float $blockedUntil = null): bool
+    {
+        $root = rtrim($this->rateDirectory, DIRECTORY_SEPARATOR);
+        if ($root === '' || is_link($root) || (!is_dir($root) && !@mkdir($root, 0700, true) && !is_dir($root))) {
+            throw new RuntimeException('ANEX_B2B_TRANSPORT_ERROR');
+        }
+        $path = $root . DIRECTORY_SEPARATOR . 'anytour-anex-b2b-rate-' . hash('sha256', $this->token) . '.json';
+        if (is_link($path)) throw new RuntimeException('ANEX_B2B_TRANSPORT_ERROR');
+        $handle = @fopen($path, 'c+');
+        if ($handle === false) throw new RuntimeException('ANEX_B2B_TRANSPORT_ERROR');
+        @chmod($path, 0600);
+        try {
+            while (true) {
+                if (!flock($handle, LOCK_EX)) throw new RuntimeException('ANEX_B2B_TRANSPORT_ERROR');
+                rewind($handle);
+                $raw = stream_get_contents($handle, 2048);
+                $state = $raw === '' ? ['next_at' => 0.0, 'blocked_until' => 0.0] : json_decode($raw, true);
+                if (!is_array($state) || !isset($state['next_at'], $state['blocked_until'])) {
+                    throw new RuntimeException('ANEX_B2B_TRANSPORT_ERROR');
+                }
+                $now = microtime(true);
+                if ($blockedUntil !== null) {
+                    $state['blocked_until'] = max((float)$state['blocked_until'], $blockedUntil, $now + 1.05);
+                } else {
+                    if ((float)$state['blocked_until'] > $now) {
+                        flock($handle, LOCK_UN);
+                        return false;
+                    }
+                    $wait = (float)$state['next_at'] - $now;
+                    if ($wait > 0) {
+                        flock($handle, LOCK_UN);
+                        usleep((int)ceil(min($wait, 1.05) * 1000000));
+                        continue;
+                    }
+                    $state['next_at'] = $now + 1.05;
+                }
+                $encoded = json_encode($state, JSON_THROW_ON_ERROR);
+                rewind($handle);
+                if (!ftruncate($handle, 0) || fwrite($handle, $encoded) !== strlen($encoded) || !fflush($handle)) {
+                    throw new RuntimeException('ANEX_B2B_TRANSPORT_ERROR');
+                }
+                flock($handle, LOCK_UN);
+                return true;
+            }
+        } finally {
+            fclose($handle);
+        }
     }
 
     private function curlRequest(string $url, array $headers): array
