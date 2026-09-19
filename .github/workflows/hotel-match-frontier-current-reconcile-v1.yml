@@ -1,0 +1,199 @@
+name: MATCH frontier 619-pair CURRENT reconcile v1
+on:
+  push:
+    branches: [match/frontier-retained-join-1971-20260916-v1]
+    paths:
+      - .github/workflows/hotel-match-frontier-current-reconcile-v1.yml
+permissions: {contents: read, actions: read}
+concurrency: {group: match-frontier-current-reconcile-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-frontier-current-reconcile-1971-20260917-v1
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+      - name: Verify exact source and build immutable 619-pair manifest
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_frontier_current_reconcile_v1.php)" = 9dd7661ca616e70e2214e6ef1ba7dd2ea570a38b
+          test "$(git hash-object scripts/diagnostics/hotel_match_name_evidence_recovery.py)" = d08adf50e5d48ae674594e87d058afb345d0e6c3
+          php -n -l scripts/diagnostics/hotel_match_frontier_current_reconcile_v1.php
+          php -n -d allow_url_fopen=0 scripts/diagnostics/hotel_match_frontier_current_reconcile_v1.php --self-test
+          mkdir "$RUNNER_TEMP/match-inputs"
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10463840360/zip > "$RUNNER_TEMP/match-inputs/recovery.zip"
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10455217564/zip > "$RUNNER_TEMP/match-inputs/prior-current.zip"
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,re,zipfile
+          t=pathlib.Path(os.environ['RUNNER_TEMP']); a=t/'match-inputs/recovery.zip'; c=t/'match-inputs/prior-current.zip'
+          assert hashlib.sha256(a.read_bytes()).hexdigest()=='f1d58edf20f30e98ad6d0845dc60b909146efec71e18e6bf306b071bfc528416'
+          assert hashlib.sha256(c.read_bytes()).hexdigest()=='7fc52b9f312b1ea10bc46b0a4c3a2cb628b691a2de0a7fee3d758e79c142f80a'
+          with zipfile.ZipFile(a) as z:
+              assert z.read('source-sha.txt').decode().strip()=='e511d8395bedc9586c1a7812a28d50c158e4e301'
+              pr=z.read('pair-audit.json'); rr=z.read('recovery.json')
+              assert hashlib.sha256(pr).hexdigest()=='d9ee55245c3bc442659d373ff280e773603da74c29e7301b0395abcfa457f1b6'
+              assert hashlib.sha256(rr).hexdigest()=='73a6d537ed852e85bcf6601792a226f6a552ed9e7e690f64245297838ebc929c'
+              pair=json.loads(pr); rec=json.loads(rr)
+          with zipfile.ZipFile(c) as z:
+              raw=z.read('server/result.json'); receipt=json.loads(z.read('server/receipt.json')); prior=json.loads(raw)
+              assert hashlib.sha256(raw).hexdigest()==receipt['result_sha256']=='cbd3d25c9d1e75ae0871dbeb74f0b97f7b546021a1be2b5b8f4a8b80afe80183'
+              assert prior['operation_id']=='hotel-match-hierarchy-current-snapshot-1971-20260916-v1' and prior['state']=='completed_read_only'
+          assert pair['summary']['all_pairs']==619 and len({p['external_hotel_id'] for p in pair['pairs']})==538
+          assert rec['summary']['with_retrieved_candidates']==538 and rec['safe_to_write_now'] is False
+          ids=sorted({p['external_hotel_id'] for p in pair['pairs']},key=int); by={p['external_hotel_id']:p for p in pair['pairs']}
+          countries={str(p['country_id']):p['country_name'] for p in pair['pairs']}; assert len(countries)==8
+          sources=[]
+          for eid in ids:
+              old=prior['current_frontier'][eid]; p=by[eid]
+              assert len(old['state_keys'])==1 and old['evidence_sha256']==p['source_evidence_sha256']
+              sources.append({'external_hotel_id':eid,'evidence_sha256':p['source_evidence_sha256'],'state_keys':old['state_keys'],'country_id':p['country_id']})
+          manifest={'pair_audit_sha256':hashlib.sha256(pr).hexdigest(),'recovery_sha256':hashlib.sha256(rr).hexdigest(),'prior_current_result_sha256':hashlib.sha256(raw).hexdigest(),'evidence_source_sha':'e511d8395bedc9586c1a7812a28d50c158e4e301','pair_count':619,'dossier_count':538,'countries':countries,'sources':sources}
+          mraw=(json.dumps(manifest,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); msha=hashlib.sha256(mraw).hexdigest()
+          src=pathlib.Path('scripts/diagnostics/hotel_match_frontier_current_reconcile_v1.php').read_text(); needle='__SEALED_PAIR_MANIFEST_BASE64__'; assert src.count(needle)==1
+          runtime=src.replace(needle,base64.b64encode(mraw).decode())
+          assert 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' in runtime
+          assert not re.search(r'\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\s',runtime,re.I)
+          (t/'runtime.php').write_text(runtime)
+          out=t/os.environ['OPERATION_ID'];out.mkdir(mode=0o700)
+          reservation={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','run_id':os.environ['GITHUB_RUN_ID'],'claim_comment_id':5707173816,'coordination_issue':2530,'queue_issue':1971,'pair_count':619,'dossier_count':538,'manifest_sha256':msha,'runtime_sha256':hashlib.sha256(runtime.encode()).hexdigest(),'pair_audit_sha256':manifest['pair_audit_sha256'],'recovery_sha256':manifest['recovery_sha256'],'no_replay':True,'database_writes':0,'supplier_calls':0,'tourvisor_calls':0}
+          (out/'manifest.json').write_bytes(mraw);(out/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          PY
+          php -n -l "$RUNNER_TEMP/runtime.php"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-frontier-current-reconcile-v1-reservation-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/hotel-match-frontier-current-reconcile-1971-20260917-v1/reservation.json
+            ${{ runner.temp }}/hotel-match-frontier-current-reconcile-1971-20260917-v1/manifest.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: One supplier-free server CURRENT read-only transaction
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID";key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key";ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M" < "$RUNNER_TEMP/runtime.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - reservation.json result.json receipt.json" > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          export REMOTE_RC="$rc" TAR_RC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              assert sorted(t.getnames())==['receipt.json','reservation.json','result.json']
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<=96000000
+                  b=t.extractfile(m).read();(s/m.name).write_bytes(b)
+          r=json.loads((s/'result.json').read_bytes());receipt=json.loads((s/'receipt.json').read_bytes())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          assert receipt['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          for x in (r,receipt):
+              assert x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] and x['no_replay'] is True
+          assert receipt['readback_verified'] is True
+          assert r['database_writes']==r['mapping_writes']==r['supplier_calls']==r['tourvisor_calls']==0
+          assert r['state']=='completed_read_only' and r['pair_count']==619 and r['dossier_count']==538
+          assert os.environ['REMOTE_RC']==os.environ['TAR_RC']=='0'
+          (p/'workflow-readback.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':r['state'],'result_sha256':receipt['result_sha256'],'read_at_utc':r['read_at_utc'],'readback_verified':True,'no_replay':True,'remote_exit':0,'tar_exit':0},sort_keys=True)+'\n')
+          PY
+      - name: Reconcile all 619 candidate pairs against CURRENT facts
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import collections,hashlib,json,math,os,pathlib,sys,zipfile
+          sys.path.insert(0,'scripts/diagnostics');import hotel_match_name_evidence_recovery as m
+          t=pathlib.Path(os.environ['RUNNER_TEMP']);p=t/os.environ['OPERATION_ID'];cur=json.loads((p/'server/result.json').read_bytes())
+          with zipfile.ZipFile(t/'match-inputs/recovery.zip') as z:
+              pair=json.loads(z.read('pair-audit.json')); rec=json.loads(z.read('recovery.json'))
+          assert pair['summary']['all_pairs']==619 and cur['pair_count']==619 and cur['dossier_count']==538
+          rec_by={d['external_hotel_id']:d for d in rec['dossiers'] if d['retrieved_candidates']}
+          cand_by={(d['external_hotel_id'],c['proposed_local_hotel_id']):c for d in rec_by.values() for c in d['retrieved_candidates']}
+          index=m.build_index(cur['current_local_hotels'],cur['current_aliases'])
+          accepted=cur['accepted_geo_rows']; source_groups=pair['target_source_groups']; pair_rows=[]; routes=collections.Counter(); hold_counts=collections.Counter(); prepared=[]
+          def target_point(h):
+              return m.point(h) if h else None
+          for q in pair['pairs']:
+              eid=q['external_hotel_id']; lid=q['proposed_local_hotel_id']; holds=set(q['inherited_evidence_flags'])|set(q['snapshot_holds'])
+              src=cur['current_sources'].get(eid); dossier=rec_by[eid]; oldcand=cand_by[(eid,lid)]; target=cur['current_local_hotels'].get(str(lid))
+              if not src: holds.add('current_source_missing')
+              else:
+                  holds.update(src['holds'])
+                  if src['evidence_sha256']!=q['source_evidence_sha256']: holds.add('current_source_digest_mismatch')
+                  if not set(q['source_names']).issubset(set(src['names'])): holds.add('current_source_names_changed')
+              if not target or target['country_id']!=q['country_id']: holds.add('current_target_inactive_or_country_changed')
+              if target:
+                  if target['name']!=oldcand['local_name']: holds.add('current_target_primary_name_changed')
+                  if target['region_id']!=oldcand['local_region_id'] or target['subregion_id']!=oldcand['local_subregion_id']: holds.add('current_target_geography_changed')
+              names=src['names'] if src else q['source_names']; proposals=m.discover(names,q['country_id'],index)
+              current_ids=sorted(map(int,proposals.keys()))
+              if str(lid) not in proposals: holds.add('current_name_evidence_missing')
+              else:
+                  proofs=proposals[str(lid)]; compatible=[x for x in proofs if x['source']['qualifiers']==x['local']['qualifiers'] and x['source']['numbers']==x['local']['numbers']]
+                  if not compatible: holds.add('current_qualifier_or_number_conflict')
+                  if q['stage']=='exact_retained_form_requires_current_and_provenance_review' and not any(x['full_form_equal'] for x in compatible): holds.add('current_exact_form_missing')
+              if len(current_ids)!=1 or current_ids!=[lid]: holds.add('current_candidate_not_unique')
+              occupancy=[x for x in cur['current_occupancy'].get(str(lid),[]) if x!=eid]
+              if occupancy: holds.add('current_same_provider_target_occupied')
+              converging=[]
+              for other in source_groups.get(str(lid),[]):
+                  s=cur['current_sources'].get(str(other))
+                  if s and s['decision_status']=='pending' and s['local_hotel_id'] is None: converging.append(str(other))
+              if len(set(converging))>1: holds.add('multiple_current_pending_sources_converge')
+              anchors=dossier['prior_review'].get('effective_geo_anchors',[])
+              if q['geography_status']!='consistent': holds.add('independent_geography_not_consistent')
+              for a in anchors:
+                  scope=a.get('scope'); sid=a.get('scope_id')
+                  if not target or scope not in ('region','subregion') or target.get(scope+'_id')!=sid or a.get('country_id',q['country_id'])!=q['country_id']:
+                      holds.add('current_parent_geography_mismatch'); continue
+                  field=a.get('field'); value=str(a.get('value',''))
+                  if field:
+                      matches=[r for r in accepted if r['state_keys']==(src['state_keys'] if src else []) and r['geo'].get(field)==value]
+                      conflict=False
+                      for r in matches:
+                          h=cur['current_local_hotels'].get(str(r['local_hotel_id']))
+                          if not h or h['country_id']!=q['country_id'] or h.get(scope+'_id')!=sid: conflict=True; break
+                      if len(matches)<3 or conflict: holds.add('current_learned_geography_not_unanimous')
+              if src and src['points']:
+                  tp=target_point(target)
+                  if tp is None: holds.add('current_target_coordinates_missing')
+                  else:
+                      if any(m.distance(tuple(pt),tp)>5 for pt in src['points']): holds.add('current_coordinate_conflict_gt5km')
+              if any(float(x)>5 for x in oldcand.get('distances_km',[]) if isinstance(x,(int,float))): holds.add('retained_coordinate_conflict_gt5km')
+              stage=q['stage']
+              if stage=='unique_retrieved_target_requires_name_difference_proof': holds.add('independent_name_difference_proof_required')
+              elif stage=='name_and_geography_evidence_required': holds.add('independent_name_and_geography_evidence_required')
+              elif stage in ('multiple_retrieved_candidates_not_unique','multiple_retrieved_targets_not_unique'): holds.add('retrieved_ambiguity_unresolved')
+              elif stage=='held_context_requires_independent_resolution': holds.add('protected_or_conflicting_context_requires_resolution')
+              route='guard_passed_prepared' if not holds and stage=='exact_retained_form_requires_current_and_provenance_review' else 'held'
+              if route=='guard_passed_prepared': prepared.append({'external_hotel_id':eid,'local_hotel_id':lid,'country_id':q['country_id'],'source_evidence_sha256':q['source_evidence_sha256'],'stage':stage})
+              routes[route]+=1
+              for h in holds: hold_counts[h]+=1
+              pair_rows.append({'external_hotel_id':eid,'proposed_local_hotel_id':lid,'country_id':q['country_id'],'stage':stage,'route':route,'holds':sorted(holds),'current_retrieved_target_ids':current_ids,'current_occupancy':occupancy,'current_pending_convergence':sorted(set(converging),key=int)})
+          prepared_sources={x['external_hotel_id'] for x in prepared}
+          report={'schema':'match-frontier-current-reconcile/1','operation_id':cur['operation_id'],'source_sha':cur['source_sha'],'state':'completed_read_only_reconciled','read_at_utc':cur['read_at_utc'],'pair_audit_sha256':pair['recovery_report_sha256'],'examined_pairs':619,'examined_dossiers':538,'pair_routes':dict(sorted(routes.items())),'guard_passed_prepared':prepared,'guard_passed_prepared_pairs':len(prepared),'guard_passed_prepared_dossiers':len(prepared_sources),'remaining_dossiers_needing_evidence':538-len(prepared_sources),'hold_counts':dict(sorted(hold_counts.items())),'current_missing_sources':len(cur['missing_current_ids']),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'safe_to_write_now':False,'pairs':pair_rows,'limitations':['CURRENT reconciliation is read-only and does not itself authorize acceptance.','Non-exact/ambiguous/protected candidate tiers remain held; no identity threshold was relaxed.','Any write requires a separate transaction-time guarded operation and post-COMMIT per-row readback.']}
+          raw=(json.dumps(report,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();(p/'current-reconcile.json').write_bytes(raw)
+          receipt={'operation_id':cur['operation_id'],'source_sha':cur['source_sha'],'state':'completed_read_only_reconciled','current_result_sha256':hashlib.sha256((p/'server/result.json').read_bytes()).hexdigest(),'reconcile_sha256':hashlib.sha256(raw).hexdigest(),'examined_pairs':619,'examined_dossiers':538,'guard_passed_prepared_pairs':len(prepared),'guard_passed_prepared_dossiers':len(prepared_sources),'remaining_dossiers_needing_evidence':538-len(prepared_sources),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'readback_verified':True,'no_replay':True}
+          (p/'reconcile-receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          print(json.dumps({'examined_pairs':619,'examined_dossiers':538,'pair_routes':dict(routes),'prepared_pairs':len(prepared),'prepared_dossiers':len(prepared_sources),'remaining_dossiers':538-len(prepared_sources),'current_missing_sources':len(cur['missing_current_ids']),'top_holds':hold_counts.most_common(12),'reconcile_sha256':receipt['reconcile_sha256']},ensure_ascii=False))
+          assert routes['guard_passed_prepared']==len(prepared) and len(pair_rows)==619 and report['safe_to_write_now'] is False
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-frontier-current-reconcile-v1-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-frontier-current-reconcile-1971-20260917-v1/
+          if-no-files-found: warn
+          retention-days: 90

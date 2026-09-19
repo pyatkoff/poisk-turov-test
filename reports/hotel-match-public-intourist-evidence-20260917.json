@@ -1,0 +1,52 @@
+{
+  "coordination_issue": 2530,
+  "evidence_semantics": {
+    "local_id_binding": false,
+    "native_id_binding": false,
+    "note": "Official Intourist hotel page or inventory listing corroborates hotel name and geography for a CURRENT operator_342 miss. It does not itself expose operator native ID or prove AnyTour local target; use only as additional independent evidence in a later CURRENT guarded review.",
+    "safe_to_write_now": false,
+    "strength": "independent_operator_public_name_geo"
+  },
+  "items": [
+    {"andromeda_hotel_id":"2000034121","external_hotel_id":"549","official_url":"https://brn.intourist.ru/info/turkey/antaliya/lara/hotel/delphin-palace","source_geo":"Лара","source_kind":"direct_hotel_page","source_name":"Delphin Palace","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000098416","external_hotel_id":"651","official_url":"https://oms.intourist.ru/info/turkey/marmaris/marmaris/hotel/fifty-5-suite","source_geo":"Мармарис","source_kind":"direct_hotel_page","source_name":"Fifty Five Suite","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"190031","external_hotel_id":"655","official_url":"https://intourist.ru/info/turkey/antaliya/hotels/summermania_hotels","source_geo":"Анталия","source_kind":"official_inventory_listing","source_name":"Ramada Plaza by Wyndham Antalya","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"3060","external_hotel_id":"743","official_url":"https://nsb.intourist.ru/info/turkey/marmaris/ichmeler/hotel/labranda-mares-hotel","source_geo":"Ичмелер","source_kind":"direct_hotel_page","source_name":"Labranda Mares Hotel","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"175606","external_hotel_id":"12135","official_url":"https://pnz.intourist.ru/info/egypt/sharm-elj-shejh/nabk-bej/hotel/rixos-sharm-el-sheikh-adults-only-18","source_geo":"Набк Бэй","source_kind":"direct_hotel_page","source_name":"Rixos Sharm El Sheikh (Nabq Bay)","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000039701","external_hotel_id":"12281","official_url":"https://spb.intourist.ru/info/egypt/sharm-elj-shejh/ras-nasrani","source_geo":"Рас-Насрани","source_kind":"official_inventory_listing","source_name":"Ivy Cyrene Sharm (ex. Cyrene Sharm)","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000023232","external_hotel_id":"17163","official_url":"https://intourist.ru/info/turkey/stambul/sultanahmet/hotel/the-meretto-hotel-istanbul-old-city-sultanahmet","source_geo":"Султанахмет","source_kind":"direct_hotel_page","source_name":"The Meretto Hotel Istanbul Old City","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000062084","external_hotel_id":"18273","official_url":"https://intourist.ru/info/turkey/stambul/kumkapi/hotel/raimond-hotel-kumkapi-beyazit","source_geo":"Кумкапы","source_kind":"direct_hotel_page","source_name":"Raimond Hotel","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"67775","external_hotel_id":"19652","official_url":"https://intourist.ru/info/turkey/stambul/jenikapi/hotel/grand-emin-hotel","source_geo":"Йеникапы","source_kind":"direct_hotel_page","source_name":"Grand Emin Hotel","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"650","external_hotel_id":"21978","official_url":"https://klg.intourist.ru/info/turkey/stambul/beshiktash/hotel/conrad-istanbul-bosphorus","source_geo":"Бешикташ","source_kind":"direct_hotel_page","source_name":"Conrad Istanbul Bosphorus","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"182522","external_hotel_id":"23547","official_url":"https://intourist.ru/info/turkey/stambul/sirkedzhi/hotel/best-nobel-hotel-sirkeci","source_geo":"Сиркеджи","source_kind":"direct_hotel_page","source_name":"Best Nobel Hotel","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000072249","external_hotel_id":"24278","official_url":"https://intourist.ru/info/egypt/sharm-elj-shejh/sharm-elj-shejh/hotels","source_geo":"Шарм-эль-Шейх","source_kind":"official_inventory_listing","source_name":"Badawia Sharm Resort","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000057636","external_hotel_id":"24891","official_url":"https://sam.intourist.ru/info/turkey/bodrum/bodrum/hotel/bodrum-otel-you-spa-boutique","source_geo":"Бодрум","source_kind":"direct_hotel_page","source_name":"Bodrium Otel & You Spa","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000061716","external_hotel_id":"24954","official_url":"https://intourist.ru/info/turkey/bodrum/bodrum/hotel/le-meridien-bodrum-beach-resort","source_geo":"Бодрум","source_kind":"direct_hotel_page","source_name":"Le Meridien Bodrum Beach Resort","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000052591","external_hotel_id":"25728","official_url":"https://intourist.ru/info/egypt/hurgada/hurgada/hotel/arabia-azur-resort","source_geo":"Хургада","source_kind":"direct_hotel_page","source_name":"Arabia Azur Hurgada","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000073592","external_hotel_id":"27835","official_url":"https://intourist.ru/info/turkey/stambul/taksim/hotel/taxim-town-hotel-taksim","source_geo":"Таксим","source_kind":"direct_hotel_page","source_name":"Taxim Town Hotel","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000071512","external_hotel_id":"28164","official_url":"https://intourist.ru/info/turkey/stambul/topkapi","source_geo":"Топкапы","source_kind":"official_inventory_listing","source_name":"Golden Gate","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000086129","external_hotel_id":"32987","official_url":"https://niz.intourist.ru/info/turkey/bodrum/torba/hotel/the-norm-collection-door","source_geo":"Торба","source_kind":"direct_hotel_page","source_name":"The Norm Collection Door","supplier_namespace":"operator_342"},
+    {"andromeda_hotel_id":"2000034136","external_hotel_id":"36672","official_url":"https://kmv.intourist.ru/info/turkey/belek/kadrie/hotel/green-maxx-hotel","source_geo":"Кадрие","source_kind":"direct_hotel_page","source_name":"Green Maxx Hotel","supplier_namespace":"operator_342"}
+  ],
+  "no_replay": true,
+  "operation_id": "hotel-match-public-intourist-evidence-1971-20260917-v1",
+  "queue_issue": 1971,
+  "result": {
+    "checked": 34,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "new_independent_operator_public_name_geo_evidence": 19,
+    "no_exact_indexed_operator_page_or_listing": 15,
+    "public_web_queries": 34,
+    "samo_andromeda_api_calls": 0,
+    "tourvisor_api_calls": 0
+  },
+  "schema": "hotel-match-public-operator-evidence/1",
+  "source_scope": {
+    "cascade_run_id": 35187397080,
+    "exact_resolve_run_id": 35187708866,
+    "immutable_operator_miss_cohort": 81,
+    "operator_315_checked": 0,
+    "operator_342_checked": 34
+  }
+}

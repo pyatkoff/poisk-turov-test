@@ -1,0 +1,95 @@
+name: MATCH CURRENT operator exact guarded apply v1
+on:
+  push:
+    branches: [match/frontier-retained-join-1971-20260916-v1]
+    paths: [.github/workflows/hotel-match-current-operator-exact-apply-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-current-operator-native-writer-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-current-operator-exact-apply-1971-20260917-v1
+jobs:
+  apply:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false, fetch-depth: 1}
+      - name: Verify writer and reserve before DB
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_current_operator_exact_apply_v1.php)" = 69c1bc4f496e6e4705eb7902e7fcc2874a3e73fa
+          php -l scripts/diagnostics/hotel_match_current_operator_exact_apply_v1.php
+          php scripts/diagnostics/hotel_match_current_operator_exact_apply_v1.php --self-test
+          python3 - <<'PY'
+          import json,os,pathlib,re
+          s=pathlib.Path('scripts/diagnostics/hotel_match_current_operator_exact_apply_v1.php').read_text()
+          assert s.count('UPDATE andromeda_hotel_identities SET')==1
+          assert "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE" in s and "FOR UPDATE" in s and "$db->commit()" in s
+          assert "supplier_calls'=>0" in s and "tourvisor_calls'=>0" in s
+          assert "f27b7e3219115df705237196e8e12a366fb3e5d379abde45562d8cfd98cfe05a" in s
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access',
+             'run_id':os.environ['GITHUB_RUN_ID'],'coordination_issue':2530,'queue_issue':1971,'claim_comment_id':5710208110,
+             'source_blob':'69c1bc4f496e6e4705eb7902e7fcc2874a3e73fa',
+             'preflight_operation':'hotel-match-current-operator-exact-resolve-1971-20260917-v2',
+             'preflight_result_sha256':'f27b7e3219115df705237196e8e12a366fb3e5d379abde45562d8cfd98cfe05a',
+             'plan_sha256':'e2f0b38d56f87f3557d9f387618ff7418f01514c057a4fc1a0f2e9f38059a273',
+             'planned_rows':11,'maximum_database_writes':11,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-current-operator-exact-apply-v1-reservation-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-current-operator-exact-apply-1971-20260917-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Revalidate CURRENT, commit passing rows, read back each row
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID";key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key";ssh-keygen -y -f "$key" >/dev/null
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < scripts/diagnostics/hotel_match_current_operator_exact_apply_v1.php > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; cd \"\$p\" && files='reservation.json result.json receipt.json'; test ! -f precommit.json || files=\"\$files precommit.json\"; tar -czf - \$files" > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"
+          trc=$?
+          set -e
+          export REMOTE_RC="$rc" TAR_RC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            names=sorted(t.getnames());assert all(n in {'reservation.json','precommit.json','result.json','receipt.json'} for n in names)
+            assert {'reservation.json','result.json','receipt.json'}.issubset(names)
+            for m in t.getmembers():
+              assert m.isfile() and m.size<5000000
+              (s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.loads((s/'result.json').read_bytes());z=json.loads((s/'receipt.json').read_bytes())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest();assert z['result_sha256']==digest
+          assert r['operation_id']==z['operation_id']==os.environ['OPERATION_ID'] and r['source_sha']==z['source_sha']==os.environ['GITHUB_SHA']
+          assert r['state'] in {'completed_committed','completed_no_write'} and z['state']==r['state']
+          assert z['readback_verified'] is True and r['post_commit_readback_verified'] is True
+          assert r['supplier_calls']==r['tourvisor_calls']==0 and r['mapping_writes']==r['database_writes']==r['committed_count']
+          assert len(r['readback'])==r['committed_count'] and r['planned_count']==11 and r['valid_count']+r['held_count']==11
+          assert os.environ['REMOTE_RC']==os.environ['TAR_RC']=='0'
+          x={k:r[k] for k in ['operation_id','source_sha','state','planned_count','valid_count','held_count','committed_count','post_pending_by_namespace','post_pending_total','completed_at_utc']}
+          x['result_sha256']=digest;x['readback_verified']=True
+          (p/'summary.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(x,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-current-operator-exact-apply-v1-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-current-operator-exact-apply-1971-20260917-v1/
+          if-no-files-found: warn
+          retention-days: 90

@@ -1,0 +1,396 @@
+{
+  "checked_rows": [
+    {
+      "andromeda_hotel_id": "2000043232",
+      "external_hotel_id": "19155",
+      "source_geo": "Шейх Коаст",
+      "source_name": "Domina Coral Bay King's Lake",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "9180",
+      "external_hotel_id": "29619",
+      "source_geo": "Инджекум",
+      "source_name": "TUI AQI Pegasos Club",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "372134",
+      "external_hotel_id": "29621",
+      "source_geo": "Инджекум",
+      "source_name": "TUI AQI Pegasos Resort",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000034121",
+      "external_hotel_id": "29685",
+      "source_geo": "Лара",
+      "source_name": "Delphin Palace",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000034214",
+      "external_hotel_id": "29841",
+      "source_geo": "Белек Центр",
+      "source_name": "TUI BLUE Sherwood Belek",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "201859",
+      "external_hotel_id": "29950",
+      "source_geo": "Тургутрейс",
+      "source_name": "Sianji Wellbeing Resort (Ex. Garden Of Babylon Hotel)",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "218356",
+      "external_hotel_id": "30923",
+      "source_geo": "Лалели",
+      "source_name": "Darkhill Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "67775",
+      "external_hotel_id": "30946",
+      "source_geo": "Лалели",
+      "source_name": "Grand Emin Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000035221",
+      "external_hotel_id": "31083",
+      "source_geo": "Сарыгерме",
+      "source_name": "TUI BLUE Seno",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "175606",
+      "external_hotel_id": "69721",
+      "source_geo": "Набк",
+      "source_name": "Rixos Sharm El Sheikh (Adult Only 18+)",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "3060",
+      "external_hotel_id": "75663",
+      "source_geo": "Ичмелер",
+      "source_name": "Labranda Mares Marmaris",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000108645",
+      "external_hotel_id": "126268",
+      "source_geo": "Шаркс Бей",
+      "source_name": "Sunrise Arabian Beach Resort - Grand Select",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000034238",
+      "external_hotel_id": "211585",
+      "source_geo": "Соргун",
+      "source_name": "TUI AQI Pegasos World",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000034136",
+      "external_hotel_id": "236107",
+      "source_geo": "Кадрие",
+      "source_name": "Green Max Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "650",
+      "external_hotel_id": "245225",
+      "source_geo": "Бешикташ",
+      "source_name": "Conrad Istanbul Bosphorus",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000037261",
+      "external_hotel_id": "354014",
+      "source_geo": "Кемер Центр",
+      "source_name": "Kimera Lounge Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "379202",
+      "external_hotel_id": "355832",
+      "source_geo": "Бельдиби",
+      "source_name": "Seagull Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000050217",
+      "external_hotel_id": "573708",
+      "source_geo": "Хисароню",
+      "source_name": "Voxx Marmaris Beach Resort",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000081107",
+      "external_hotel_id": "668436",
+      "source_geo": "Марса Алам",
+      "source_name": "Pickalbatros Villaggio Resort - Portofino Marsa Alam",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000023232",
+      "external_hotel_id": "688987",
+      "source_geo": "Лалели",
+      "source_name": "The Meretto Hotel Istanbul",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "3888",
+      "external_hotel_id": "698991",
+      "source_geo": "Сиркеджи",
+      "source_name": "Romance Istanbul Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "475947",
+      "external_hotel_id": "751870",
+      "source_geo": "Мармарис",
+      "source_name": "Ketenci Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "240679",
+      "external_hotel_id": "778466",
+      "source_geo": "Фатих",
+      "source_name": "Hotel Evsen",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000062084",
+      "external_hotel_id": "780677",
+      "source_geo": "Кумкапы",
+      "source_name": "Raimond",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000117376",
+      "external_hotel_id": "784075",
+      "source_geo": "Аксарай",
+      "source_name": "Delta Hotel Istanbul",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000064940",
+      "external_hotel_id": "784851",
+      "source_geo": "Мармарис",
+      "source_name": "Cook's Club Adakoy",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000048736",
+      "external_hotel_id": "785274",
+      "source_geo": "Каракёй",
+      "source_name": "Morione Hotel Karakoy & SPA Center Boutique",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "182522",
+      "external_hotel_id": "787042",
+      "source_geo": "Фатих",
+      "source_name": "Best Nobel Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000067202",
+      "external_hotel_id": "789199",
+      "source_geo": "Кемер Центр",
+      "source_name": "Elijah Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000068203",
+      "external_hotel_id": "789636",
+      "source_geo": "Фатих",
+      "source_name": "My Dream Istanbul Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000061716",
+      "external_hotel_id": "799631",
+      "source_geo": "Бодрум",
+      "source_name": "Le Meridien Bodrum Beach Resort",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000052591",
+      "external_hotel_id": "802930",
+      "source_geo": "Хургада",
+      "source_name": "Arabia Azur Resort Hurghada",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000073045",
+      "external_hotel_id": "839186",
+      "source_geo": "Шаркс Бей",
+      "source_name": "Meraki Resort Sharm El Sheikh (Adult Only)",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000039701",
+      "external_hotel_id": "839809",
+      "source_geo": "Рас Насрани",
+      "source_name": "Ivy Cyrene Sharm",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "3126",
+      "external_hotel_id": "849821",
+      "source_geo": "Армуталан",
+      "source_name": "Banu Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000055468",
+      "external_hotel_id": "852372",
+      "source_geo": "Арнавуткёй",
+      "source_name": "Ramada Encore by Wyndham Istanbul Airport",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000121381",
+      "external_hotel_id": "852628",
+      "source_geo": "Шарм-эль-Шейх",
+      "source_name": "FUN&SUN FAMILY Sultan Gardens",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000090661",
+      "external_hotel_id": "854061",
+      "source_geo": "Фатих",
+      "source_name": "Woxx Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000121380",
+      "external_hotel_id": "855669",
+      "source_geo": "Набк",
+      "source_name": "FUN&SUN FAMILY Sea Beach",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000103241",
+      "external_hotel_id": "855774",
+      "source_geo": "Фатих",
+      "source_name": "Comfort Downtown Istanbul",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000103831",
+      "external_hotel_id": "855817",
+      "source_geo": "Шишли",
+      "source_name": "Icon Hotel Bomonti Istanbul",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000112070",
+      "external_hotel_id": "857868",
+      "source_geo": "Бакиркёй",
+      "source_name": "Rays Hotel Bakirkoy",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000121515",
+      "external_hotel_id": "857870",
+      "source_geo": "Фатих",
+      "source_name": "Istanbul Old City Beyazid Belmond Hotel",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000121504",
+      "external_hotel_id": "857872",
+      "source_geo": "Бакиркёй",
+      "source_name": "Blueway Hotel Bakirkoy",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "190031",
+      "external_hotel_id": "859017",
+      "source_geo": "Анталья",
+      "source_name": "Ramada Plaza by Wyndham Antalya",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000105597",
+      "external_hotel_id": "859365",
+      "source_geo": "Ускудар",
+      "source_name": "Altunizade Suites Istanbul, Curio Collection by Hilton",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000073592",
+      "external_hotel_id": "859610",
+      "source_geo": "Стамбул",
+      "source_name": "Taximtown Hotel",
+      "supplier_namespace": "operator_315"
+    }
+  ],
+  "coordination_issue": 2530,
+  "evidence_items": [
+    {
+      "andromeda_hotel_id": "2000043232",
+      "external_hotel_id": "19155",
+      "official_url": "https://fstravel.com/actions/egipet-deti-otdyxayut-besplatno-1",
+      "published_geo": "Шарм-эль-Шейх",
+      "published_name": "Domina Coral Bay King's Lake",
+      "source_geo": "Шейх Коаст",
+      "source_kind": "official_action_listing",
+      "source_name": "Domina Coral Bay King's Lake",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "175606",
+      "external_hotel_id": "69721",
+      "official_url": "https://fstravel.com/",
+      "published_geo": "Набк",
+      "published_name": "Rixos Sharm El Sheikh (Adult Only 18+)",
+      "source_geo": "Набк",
+      "source_kind": "current_homepage_offer",
+      "source_name": "Rixos Sharm El Sheikh (Adult Only 18+)",
+      "supplier_namespace": "operator_315"
+    },
+    {
+      "andromeda_hotel_id": "2000062084",
+      "external_hotel_id": "780677",
+      "official_url": "https://fstravel.com/searchtours/country/europe/turkey/v-oktyabre",
+      "published_geo": "Кумкапы",
+      "published_name": "Raimond",
+      "source_geo": "Кумкапы",
+      "source_kind": "official_search_results_listing",
+      "source_name": "Raimond",
+      "supplier_namespace": "operator_315"
+    }
+  ],
+  "evidence_semantics": {
+    "local_id_binding": false,
+    "native_id_binding": false,
+    "note": "Official FUN&SUN public page/listing corroborates hotel name and geography for a CURRENT operator_315 authority-miss row. It does not expose operator native ID or prove AnyTour local target; use only as additional independent evidence in a later CURRENT guarded review.",
+    "safe_to_write_now": false,
+    "strength": "independent_operator_public_name_geo"
+  },
+  "no_replay": true,
+  "operation_id": "hotel-match-public-funsun-evidence-1971-20260917-v1",
+  "queue_issue": 1971,
+  "result": {
+    "checked": 47,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "new_independent_operator_public_name_geo_evidence": 3,
+    "no_exact_indexed_operator_page_or_listing": 44,
+    "samo_andromeda_api_calls": 0,
+    "tourvisor_api_calls": 0
+  },
+  "schema": "hotel-match-public-operator-evidence/1",
+  "source_scope": {
+    "cascade_run_id": 35187397080,
+    "exact_resolve_run_id": 35187708866,
+    "immutable_operator_miss_cohort": 81,
+    "operator_315_checked": 47,
+    "operator_342_checked": 0
+  }
+}
