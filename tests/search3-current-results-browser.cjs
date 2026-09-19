@@ -185,9 +185,56 @@ async function checkOfferFacets(page, width, previous) {
     await render(items);
     assert.equal(await nights.inputValue(),'0');assert.equal(await flight.inputValue(),'');
     assert.equal((await visible()).length,3,'new search clears both facets');
-    await render([items[0]]);
+    const single={...items[0],tours:items[0].tours.concat({...tour,id:'a-high',price:160000,meal:'BB',nights:9,isCharter:false})};
+    await render([single]);
     if(width<1025&&!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
     assert.equal(await nights.isVisible(),true);assert.equal(await flight.isVisible(),true,'multiple offers at one hotel still allow useful choices');
+    assert.equal(await meal.isVisible(),true,'one hotel with distinct known meals still needs a meal choice');
+    assert.equal(await upper.isVisible(),true,'one hotel with distinct known offer prices still needs a budget');
+    const lower=page.locator('.search3-budget-min'),card=page.locator('#results .hotel-card:visible');
+    await meal.selectOption('meal:label:ai');
+    await upper.fill('119999');await upper.press('Tab');
+    assert.deepEqual(await visible(),[],'the cheaper BB offer cannot satisfy an AI budget at the same hotel');
+    await upper.fill('120000');await upper.press('Tab');
+    await lower.fill('120000');await lower.press('Tab');
+    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'),'a9','equal inclusive bounds select the exact AI offer');
+    assert.equal((await card.locator('.hotel-price').innerText()).replace(/\s/g,''),'120000₽');
+    await page.locator('#sortResults').selectOption('rating');
+    await render([{...single,tours:single.tours.concat({...tour,id:'a-extra',price:125000,meal:'AI',nights:9,isCharter:false})}]);
+    assert.equal(await meal.inputValue(),'meal:label:ai','continued offers retain the selected meal');
+    assert.equal(await lower.inputValue(),'120000');assert.equal(await upper.inputValue(),'120000');
+    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'),'a9','sorting and progressive offers retain exact selection');
+    await render([single]);
+    assert.deepEqual(await page.evaluate(()=>window.V2Results.state.items),[single],'single-hotel projection preserves every original offer and price');
+    if(!previous&&[375,390,720,1440].includes(width))await (width<1025?panel:page.locator('.results-filter-rail')).screenshot({path:path.join(output,`single-hotel-filters-${width}.png`),animations:'disabled'});
+    if(width<1025){
+      await panel.locator('.search3-filter-results').click();
+      await page.waitForFunction(()=>document.activeElement?.matches('#results .hotel-title'));
+      assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'),'a9','mobile return keeps the same qualifying tour');
+      if(!previous&&[375,390].includes(width))await page.screenshot({path:path.join(output,`single-hotel-result-${width}.png`),animations:'disabled'});
+      await panel.locator('summary').click();
+    }
+    await lower.fill('');await lower.press('Tab');
+    await upper.fill('119999');await upper.press('Tab');
+    assert.equal(await card.count(),0);
+    if(width<1025)await panel.locator('.search3-filter-results').click();
+    await page.locator('.search3-local-empty-reset').click();
+    await page.waitForFunction(()=>document.activeElement?.matches('#results .hotel-title'));
+    assert.equal(await card.locator('.tour-more-toggle').innerText(),'Показать варианты · 3','empty recovery restores all original offers');
+    if(width<1025&&!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
+    await meal.selectOption('meal:label:ai');
+    await render([{...single,tours:single.tours.concat({...tour,id:'missing-meal',price:100000,meal:null})}]);
+    assert.equal(await meal.isVisible(),false);assert.equal(await meal.inputValue(),'','unknown meal resets the facet instead of dropping the hotel');
+    assert.equal(await card.count(),1);
+    await render([single]);
+    await lower.fill('120000');await lower.press('Tab');
+    await render([{...single,tours:single.tours.concat({...tour,id:'missing-price',price:0,meal:'AI'})}]);
+    assert.equal(await upper.isVisible(),false);assert.equal(await lower.inputValue(),'','unknown price resets both budget bounds');
+    assert.equal(await card.count(),1);
+    await reset();await render([{...items[0],tours:[items[0].tours[0]]}]);
+    assert.equal(await meal.isVisible(),false);assert.equal(await upper.isVisible(),false,'one offer has no useful meal or price choice');
+    await render([]);
+    assert.equal(await meal.isVisible(),false);assert.equal(await upper.isVisible(),false,'empty results do not expose stale facets');
     assert.deepEqual(requests,[],'local nights/flight interactions never call supplier or lead endpoints');
   } finally {page.off('request',record);await reset();await render(hotels);if(width<1025&&await panel.evaluate(node=>node.open))await panel.locator('summary').click();}
 }
