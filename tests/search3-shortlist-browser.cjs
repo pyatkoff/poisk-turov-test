@@ -505,7 +505,7 @@ async function checkSearchRecovery(browser, width) {
     await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.Search3Shortlist && document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
     await openComparison(page, width); await page.locator('.search3-shortlist-restore').click();
-    await page.waitForFunction(() => {const target=document.querySelector(document.forms.tourSearch.dataset.search3Parameters==='mobile'?'.search-parameter-dialog[open] [data-from]':'#tourSearch [name=dateFrom]');return target&&document.activeElement===target&&target.getAttribute('aria-invalid')==='true';});
+    await page.waitForFunction(() => {const form=document.getElementById('tourSearch');if(!form)return false;const target=document.querySelector(form.dataset.search3Parameters==='mobile'?'.search-parameter-dialog[open] [data-from]':'#tourSearch [name=dateFrom]');return target&&document.activeElement===target&&target.getAttribute('aria-invalid')==='true';});
     assert.equal(await page.locator('#tourSearch [name=dateFrom]').inputValue(), '2000-01-01', 'past dates remain explicit for user correction');
     assert.equal(await page.evaluate(() => window.V2SearchLifecycle.searchId), 0, 'past saved dates cannot initiate a search');
     for (const invalid of [saved.searchQuery + '&phone=not-allowed', saved.searchQuery + '&country=5', 'https://example.invalid/?from=1', 'x'.repeat(4097)]) {
