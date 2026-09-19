@@ -62,18 +62,26 @@ function ratingFixture(label, canonical = true) {
     textContent: label,
     classList: { add(name) { classes.add(name); }, remove(name) { classes.delete(name); } },
     setAttribute(name, value) { attributes[name] = value; },
+    remove() { this.removed = true; },
   };
   const card = { dataset: canonical ? { anytourHotelId: '1' } : {}, querySelector(selector) { return selector === '.hotel-decision-rating' ? rating : null; } };
   return { card, rating, classes, attributes };
 }
 
-const ambiguousRating = ratingFixture('Рейтинг 2.1');
-assert.equal(api.normalizeCard(ambiguousRating.card), true, 'ambiguous numeric rating is normalized');
-assert.equal(ambiguousRating.rating.textContent, 'Каталожная оценка 2,1 · шкала не указана');
-assert.equal(ambiguousRating.classes.has('hotel-decision-rating'), false, 'ambiguous rating cannot retain positive badge styling');
-assert.equal(ambiguousRating.classes.has('hotel-decision-rating-unscaled'), true, 'neutral unscaled state is explicit');
-assert.equal(ambiguousRating.attributes['data-rating-semantics'], 'unscaled');
-assert.equal(ambiguousRating.attributes['aria-label'], 'Каталожная оценка 2,1. Источник, шкала и число отзывов не указаны.');
+for (const value of ['2.1', '4', '4,5', '5']) {
+  const rated = ratingFixture('Рейтинг ' + value);
+  assert.equal(api.normalizeCard(rated.card), true, 'owner-confirmed five-point scale is shown');
+  assert.equal(rated.rating.textContent, 'Рейтинг отеля ' + value.replace('.', ',') + ' из 5');
+  assert.equal(rated.classes.has('hotel-decision-rating'), true);
+  assert.equal(rated.attributes['data-rating-semantics'], 'five-point');
+  assert.equal(rated.attributes['aria-label'], rated.rating.textContent, 'no source or review count is invented');
+  assert.equal(api.normalizeCard(rated.card), false, 'rating copy is idempotent');
+}
+for (const value of ['0', '5.1', '9,6']) {
+  const invalid = ratingFixture('Рейтинг ' + value);
+  assert.equal(api.normalizeCard(invalid.card), true);
+  assert.equal(invalid.rating.removed, true, 'out-of-scale number is never relabelled or rescaled');
+}
 
 const structuredRating = ratingFixture('Оценка 8,6 из 10 · 120 отзывов');
 assert.equal(api.normalizeCard(structuredRating.card), false, 'future structured rating copy is never guessed or rewritten');
@@ -117,7 +125,7 @@ assert.equal(otherPreviewRating.rating.textContent, 'Рейтинг 4,8');
 assert.equal(api.syncHotelPageTitle(titleRoot([titleCard(3217, 'CARUS CAPPADOCIA')])), false, 'hotel title correction is isolated to local-candidate');
 assert.equal(document.title, 'Поиск туров онлайн — AnyTour');
 
-console.log('SEARCH3_CANONICAL_DESCRIPTION_DEDUPE_OK rich=1 description_only=1 rating_unscaled=1 hotel_tab_title=1 route_isolated=1');
+console.log('SEARCH3_CANONICAL_DESCRIPTION_DEDUPE_OK rich=1 description_only=1 rating_five_point=1 hotel_tab_title=1 route_isolated=1');
 
 // Minimal DOM fixture keeps native anchor semantics without a browser dependency.
 class TitleNode {

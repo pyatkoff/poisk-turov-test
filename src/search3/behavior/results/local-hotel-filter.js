@@ -2,6 +2,7 @@
 const results=document.getElementById('results'),actions=document.querySelector('#resultsTools .results-tools__actions'),rail=document.querySelector('.results-filter-rail'),summary=document.getElementById('resultSummary');
 if(!results||!actions||!rail)return;
 const desktop=window.matchMedia('(min-width:1025px)');
+const localRatings=/^\/_preview\/search3-local-candidate(?:\/|$)/.test(window.location&&window.location.pathname||'');
 let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,operatorField=null,operatorSelect=null,regionField=null,regionSelect=null,budgetField=null,budgetInput=null,ratingField=null,ratingSelect=null,ratingCoverage=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null,activeList=null;
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false,nightsField=null,nightsSelect=null,flightField=null,flightSelect=null,budgetMinInput=null,budgetHint=null,mobileResultsButton=null;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
@@ -87,11 +88,6 @@ function showResults(){
 }
 function ensure(){
   if(field)return;
-  // The canonical catalog has no proven shared rating scale or source.
-  if(window.V2Results?.ratingComparisonAvailable===false){
-    const sort=document.getElementById('sortResults');
-    if(sort){if(sort.value==='rating')sort.value='price';sort.querySelector('option[value="rating"]')?.remove();}
-  }
   rail.hidden=true;
   rail.innerHTML='<div class="search3-filter-rail__head"><strong>Фильтры</strong><span>Подходит: <b data-search3-filter-count>0</b></span></div>';
   count=rail.querySelector('[data-search3-filter-count]');
@@ -113,7 +109,7 @@ function ensure(){
   operatorField=document.createElement('label');operatorField.className='search3-operator-filter';operatorField.hidden=true;operatorField.innerHTML='<span>Туроператор</span><select aria-describedby="search3HotelFilterStatus"><option value="">Все туроператоры</option></select>';
   regionField=document.createElement('label');regionField.className='search3-region-filter';regionField.hidden=true;regionField.innerHTML='<span>Курорт / регион</span><select aria-describedby="search3HotelFilterStatus"><option value="">Все курорты</option></select>';
   categoryField=document.createElement('div');categoryField.className='search3-category-filter';categoryField.hidden=true;categoryField.innerHTML='<label><span>Категория отеля</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любая категория</option></select></label><div class="search3-filter-presets" role="group" aria-label="Быстрый выбор категории" hidden></div>';
-  ratingField=document.createElement('label');ratingField.className='search3-rating-filter';ratingField.hidden=true;ratingField.innerHTML='<span>Рейтинг гостей</span><select aria-describedby="search3HotelFilterStatus search3RatingCoverage"><option value="0">Любой рейтинг</option><option value="4">4,0 и выше</option><option value="4.5">4,5 и выше</option></select><small id="search3RatingCoverage" data-search3-rating-coverage></small>';
+  ratingField=document.createElement('label');ratingField.className='search3-rating-filter';ratingField.hidden=true;ratingField.innerHTML='<span>'+(localRatings?'Рейтинг отеля':'Рейтинг гостей')+'</span><select aria-describedby="search3HotelFilterStatus search3RatingCoverage"><option value="0">Любой рейтинг</option><option value="4">4,0 и выше</option><option value="4.5">4,5 и выше</option></select><small id="search3RatingCoverage" data-search3-rating-coverage></small>';
   seaField=document.createElement('label');seaField.className='search3-sea-filter';seaField.hidden=true;seaField.innerHTML='<span>До моря</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любое расстояние</option><option value="200">До 200 м</option><option value="500">До 500 м</option><option value="1000">До 1 км</option></select>';
   resetButton=document.createElement('button');resetButton.type='button';resetButton.className='search3-filter-reset';resetButton.textContent='Сбросить фильтры';resetButton.hidden=true;
   input=field.querySelector('input');status=field.querySelector('small');budgetInput=budgetField.querySelector('input');mealSelect=mealField.querySelector('select');operatorSelect=operatorField.querySelector('select');regionSelect=regionField.querySelector('select');categorySelect=categoryField.querySelector('select');categoryPresets=categoryField.querySelector('.search3-filter-presets');ratingSelect=ratingField.querySelector('select');ratingCoverage=ratingField.querySelector('[data-search3-rating-coverage]');seaSelect=seaField.querySelector('select');
@@ -148,7 +144,7 @@ function syncHotelFacets(){
   const region=syncTextSelect(regionField,regionSelect,regions,'Все курорты');
   const c=numericCoverage(categories,.95),category=syncSelect(categoryField,categorySelect,c.a?categories.filter(value=>value>0):[],'Любая категория'+(c.a?' · '+c.k+'/'+c.t:''),value=>value+'★');
   syncPresets(categoryPresets,categorySelect,Array.from(categorySelect.options).slice(1).map(item=>({value:item.value,label:item.textContent})),'0');
-  const r=numericCoverage(ratings,.95);r.a=r.a&&window.V2Results.ratingComparisonAvailable!==false;ratingField.hidden=!r.a;ratingCoverage.textContent=r.a?'Рейтинг указан у '+r.k+' из '+r.t+' отелей':'';if(!r.a)ratingSelect.value='0';
+  const r=numericCoverage(ratings,.95);if(localRatings)r.a=r.t>1&&r.k>0;ratingField.hidden=!r.a;ratingCoverage.textContent=r.a?(localRatings?'Шкала из 5. ':'')+'Рейтинг указан у '+r.k+' из '+r.t+' отелей':'';if(!r.a)ratingSelect.value='0';
   const s=numericCoverage(seas,.8);seaField.hidden=!s.a;if(s.a)seaSelect.options[0].textContent='Любое расстояние · '+s.k+'/'+s.t;else seaSelect.value='0';
   return{regions,categories,ratings,seas,region,category,rating:Number(ratingSelect.value||0),sea:Number(seaSelect.value||0)};
 }

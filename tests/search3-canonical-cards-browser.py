@@ -57,7 +57,7 @@ CONTROLLER=(PAYLOAD/'tour-controller-v4.js').read_text()
 LIFECYCLE=(PAYLOAD/'search-lifecycle-v6.js').read_text()
 PROVIDER=(PAYLOAD/'andromeda-provider-v1.js').read_text()
 OUT=Path(os.environ.get('SEARCH3_EVIDENCE_DIR',str(ROOT/'canonical-card-evidence')));OUT.mkdir(parents=True,exist_ok=True)
-HTML='''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Поиск туров онлайн — AnyTour</title><style>'''+CSS+'''</style></head><body class="search3-candidate"><main class="v2-shell"><p>Компонентный тест · вымышленные отели и предложения</p><form id="tourSearch" hidden></form><section id="status" class="status" hidden></section><section id="resultsTools" class="results-tools results-tools--ds2"><div><span id="resultSummary">Актуальные варианты</span><p id="resultsTripContext" class="search3-trip-context" aria-label="Параметры поиска" hidden><strong data-search3-trip-route></strong><span data-search3-trip-details></span></p></div><div class="results-tools__actions"><button type="button" id="resultsSearchEdit">Изменить поиск</button><label>Сортировка <select id="sortResults"><option value="price">По цене</option><option value="rating">По рейтингу</option><option value="stars">По звёздам</option></select></label></div></section><div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results" aria-busy="false"></section></div><section id="selectedTour" class="selected-tour" hidden tabindex="-1"></section></main></body></html>'''
+HTML='''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Поиск туров онлайн — AnyTour</title><style>'''+CSS+'''</style></head><body class="search3-candidate"><main class="v2-shell"><p>Компонентный тест · вымышленные отели и предложения</p><form id="tourSearch" hidden></form><section id="status" class="status" hidden></section><section id="resultsTools" class="results-tools results-tools--ds2"><div><span id="resultSummary">Актуальные варианты</span><p id="resultsTripContext" class="search3-trip-context" aria-label="Параметры поиска" hidden><strong data-search3-trip-route></strong><span data-search3-trip-details></span></p></div><div class="results-tools__actions"><button type="button" id="resultsSearchEdit">Изменить поиск</button><label>Сортировка <select id="sortResults"><option value="price">По цене</option><option value="rating">По рейтингу</option></select></label></div></section><div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results" aria-busy="false"></section></div><section id="selectedTour" class="selected-tour" hidden tabindex="-1"></section></main></body></html>'''
 
 def boot(browser,path='/_preview/search3-local-candidate/poisk-turov/',width=1440,original=False):
     context=browser.new_context(viewport={'width':width,'height':980},device_scale_factor=1)
@@ -103,11 +103,11 @@ with sync_playwright() as p:
         check(page.locator('.hotel-title').inner_text()=='Наш тестовый отель 1',f'{width}: own hotel title')
         check(page.title()=='Наш тестовый отель 1 — туры AnyTour',f'{width}: exact hotel URL has a distinguishable canonical tab title')
         check('НЕЛЬЗЯ' not in page.locator('#results').inner_text(),f'{width}: no supplier metadata after hydration')
-        rating=page.locator('.hotel-decision-rating-unscaled')
-        check(rating.count()==1 and rating.inner_text()=='Каталожная оценка 4,8 · шкала не указана',f'{width}: numeric catalog rating is visibly honest about missing scale')
-        check(rating.get_attribute('data-rating-semantics')=='unscaled',f'{width}: ambiguous rating exposes neutral semantics')
-        check('Источник, шкала и число отзывов не указаны.' in rating.get_attribute('aria-label'),f'{width}: assistive copy names every unavailable rating attribute')
-        check(page.locator('.hotel-decision-rating').count()==0,f'{width}: ambiguous rating cannot retain positive badge styling')
+        rating=page.locator('.hotel-decision-rating')
+        check(rating.count()==1 and rating.inner_text()=='Рейтинг отеля 4,8 из 5',f'{width}: owner-confirmed scale is visible without changing the rating')
+        check(rating.get_attribute('data-rating-semantics')=='five-point',f'{width}: five-point rating semantics are explicit')
+        check(rating.get_attribute('aria-label')=='Рейтинг отеля 4,8 из 5',f'{width}: assistive copy invents no source or review count')
+        check(page.locator('.hotel-decision-rating-unscaled').count()==0,f'{width}: superseded unknown-scale copy is removed')
         check(page.evaluate('JSON.stringify(__source)===__before'),f'{width}: input offers are byte-equivalent')
         check(page.evaluate('V2Results.state.items[0].tours.every((t,i)=>t===__source[i].tours[0])'),f'{width}: exact offer objects retained')
         check(page.evaluate('V2Results.state.items[0].seaDistance===undefined'),f'{width}: no unconfirmed supplier sea distance')
@@ -144,7 +144,7 @@ with sync_playwright() as p:
         page.screenshot(path=str(OUT/f'canonical-card-{width}.png'),full_page=True)
         check(not errors,f'{width}: no browser JavaScript errors')
         # Sorting never feeds the already grouped view back into the source identity resolver.
-        page.select_option('#sortResults','stars');page.wait_for_timeout(30)
+        page.select_option('#sortResults','rating');page.wait_for_timeout(30)
         check(page.evaluate('V2Results.state.items[0].tours.length')==3,f'{width}: sort retains source offers')
         check(page.evaluate('__requests.length')==1,f'{width}: sort/expand/gallery do not refetch or call supplier')
         c.close()
@@ -162,7 +162,7 @@ with sync_playwright() as p:
         items=[hotel(102),hotel(106,'anex'),hotel(108)]
         for h,meal,price in zip(items,['BB','AI','AI'],[100000,200000,300000]):
             h['tours'][0]['meal']={'name':meal};h['tours'][0]['price']=price;h['price']=price
-        render(page,items);resolve(page,0,{102:1,106:1,108:2},profiles=[dict(profile(1),rating=4.8,category=4),dict(profile(2),rating=9.6,category=5)])
+        render(page,items);resolve(page,0,{102:1,106:1,108:2})
         check(page.locator('.hotel-card').count()==2,f'{width}: real filters receive two own groups')
         if width<=600:
             # The component fixture mirrors the current native Search3 header.
@@ -213,29 +213,6 @@ with sync_playwright() as p:
             check(abs(opened['panelWidth']-opened['width'])<2,f'{width}: open filters restore full toolbar width')
             check(opened['countVisible'],f'{width}: open filters retain their useful matching count')
             page.locator('#resultsTools').screenshot(path=str(OUT/f'canonical-toolbar-open-{width}.png'))
-        # An unscaled catalog number cannot support a guest-rating threshold or ranking.
-        rating_filter=page.locator('.search3-rating-filter')
-        check(rating_filter.evaluate('node=>node.hidden') and not rating_filter.is_visible(),f'{width}: unscaled ratings do not expose a guest-rating facet')
-        check(page.locator('#sortResults option[value="rating"]').count()==0,f'{width}: unscaled ratings are not offered as a sort order')
-        check(page.locator('#sortResults option').evaluate_all('nodes=>nodes.map(node=>node.value)')==['price','stars'],f'{width}: price and category sorting remain available')
-        check(page.evaluate('V2Results.state.items.map(h=>h.rating)')==[4.8,9.6],f'{width}: catalog numbers are not rescaled or rewritten')
-        check(page.evaluate('V2Results.sorted(V2Results.state.items,"rating").map(h=>String(h.anytourHotelId))')==['1','2'],f'{width}: direct stale rating-sort request falls back to price')
-        page.evaluate('V2Results.render(__source,{sort:"rating"})')
-        check(page.locator('.hotel-card').evaluate_all('nodes=>nodes.map(node=>node.dataset.anytourHotelId)')==['1','2'],f'{width}: restored explicit rating sort cannot rank incomparable scores')
-        # A previously selected threshold must not silently hide hotels.
-        rating_filter.locator('select').evaluate('node=>{node.value="4.5";node.dispatchEvent(new Event("change",{bubbles:true}));}')
-        check(rating_filter.locator('select').input_value()=='0',f'{width}: unavailable rating threshold resets')
-        check(page.locator('.hotel-card:not([hidden])').count()==2,f'{width}: stale rating threshold retains both canonical hotels')
-        check(page.locator('.search3-active-filters [data-filter-key="rating"]').count()==0,f'{width}: stale rating chip is removed')
-        page.evaluate('V2Results.render(__source)')
-        page.select_option('#sortResults','stars')
-        check(page.locator('.hotel-card').evaluate_all('nodes=>nodes.map(node=>node.dataset.anytourHotelId)')==['2','1'],f'{width}: category sort still uses canonical star category')
-        page.select_option('#sortResults','price')
-        check(page.locator('.hotel-card').evaluate_all('nodes=>nodes.map(node=>node.dataset.anytourHotelId)')==['1','2'],f'{width}: price sort returns the least expensive hotel first')
-        check(page.evaluate('JSON.stringify(__source)===__before'),f'{width}: rating controls preserve exact source offers and prices')
-        check(page.evaluate('V2Results.state.items.flatMap(h=>h.tours).every(t=>__source.some(h=>h.tours.includes(t)))'),f'{width}: rating controls retain original tour objects')
-        check(page.evaluate('__requests.length')==1,f'{width}: rating correction needs no supplier or catalog request')
-        page.screenshot(path=str(OUT/f'canonical-rating-controls-{width}.png'),full_page=True)
         meal=page.locator('.search3-meal-filter select')
         # Selectors follow the actual exact-label controls, not a test-only filtering function.
         if meal.count()==0: meal=page.locator('select').filter(has=page.locator('option[value="meal:label:ai"]'))
@@ -288,6 +265,57 @@ with sync_playwright() as p:
         page.evaluate("logos=>document.querySelectorAll('img.hotel-operator-logo').forEach(img=>{const name=img.getAttribute('src').split('/').pop();if(logos[name])img.src=logos[name];})",LOGOS)
         page.screenshot(path=str(OUT/f'canonical-integrated-{width}.png'),full_page=True)
         c.close()
+
+    # Owner-confirmed five-point scores: the actual filter and sort owners share
+    # the renderer's validated facts, while raw profiles and exact offers survive.
+    for width in [375,1440]:
+        c,page,errors=boot(browser,width=width)
+        page.add_script_tag(content=FILTER)
+        scores=[3.9,4,4.5,5,None,0,5.1,9.6]
+        items=[hotel(1001+i) for i in range(len(scores))]
+        render(page,items)
+        resolve(page,0,{1001+i:i+1 for i in range(len(scores))},profiles=[dict(profile(i+1),rating=value) for i,value in enumerate(scores)])
+        if width<1025: page.locator('.search3-mobile-filter-panel > summary').click()
+        field=page.locator('.search3-rating-filter');threshold=field.locator('select')
+        check(field.is_visible() and field.locator('span').inner_text()=='Рейтинг отеля',f'{width}: neutral rating filter remains available with partial coverage')
+        check(field.locator('small').inner_text()=='Шкала из 5. Рейтинг указан у 4 из 8 отелей',f'{width}: partial coverage counts only valid five-point scores')
+        check(threshold.locator('option').evaluate_all('nodes=>nodes.map(n=>n.value)')==['0','4','4.5'],f'{width}: requested thresholds are retained')
+        check(page.locator('.hotel-decision-rating').all_text_contents()==['Рейтинг отеля 3,9 из 5','Рейтинг отеля 4 из 5','Рейтинг отеля 4,5 из 5','Рейтинг отеля 5 из 5'],f'{width}: missing and out-of-scale values have no invented rating')
+        visible=lambda:page.locator('.hotel-card:not([hidden])').evaluate_all('nodes=>nodes.map(n=>n.dataset.anytourHotelId)')
+        threshold.select_option('4');check(visible()==['2','3','4'],f'{width}: 4+ includes exactly 4 and higher valid scores')
+        threshold.select_option('4.5');check(visible()==['3','4'],f'{width}: 4.5+ includes exactly 4.5 and 5')
+        check(page.locator('.search3-active-filters [data-filter-key="rating"]').count()==1,f'{width}: active rating threshold is clearable')
+        field.screenshot(path=str(OUT/f'canonical-rating-filter-{width}.png'))
+        threshold.select_option('0')
+        page.select_option('#sortResults','rating');page.wait_for_timeout(30)
+        check(visible()==['4','3','2','1','5','6','7','8'],f'{width}: descending rating puts unknown values last without rescaling')
+        check(page.evaluate('V2Results.sorted(V2Results.state.items,"rating").map(h=>String(h.anytourHotelId))')==visible(),f'{width}: direct and selected rating sort agree')
+        check(page.evaluate('V2Results.state.items.map(h=>h.rating)')==scores,f'{width}: original catalogue values are unchanged')
+        check(page.evaluate('JSON.stringify(__source)===__before'),f'{width}: rating thresholds/sort preserve exact offers and prices')
+        check(page.evaluate('V2Results.state.items.flatMap(h=>h.tours).every(t=>__source.some(h=>h.tours.includes(t)))'),f'{width}: exact offer references survive')
+        check(page.evaluate('__requests.length')==1,f'{width}: rating interactions make no additional request')
+        if width<1025: page.locator('.search3-mobile-filter-panel > summary').click()
+        page.locator('.hotel-card').first.screenshot(path=str(OUT/f'canonical-rating-card-{width}.png'))
+        check(not page.evaluate('document.documentElement.scrollWidth>innerWidth+1'),f'{width}: rating states have no horizontal overflow')
+        if width<1025: page.locator('.search3-mobile-filter-panel > summary').click()
+        threshold.select_option('4.5')
+        render(page,[hotel(2001),hotel(2002)])
+        resolve(page,1,{2001:9,2002:10},profiles=[dict(profile(9),rating=None),dict(profile(10),rating=9.6)])
+        check(field.evaluate('n=>n.hidden') and threshold.input_value()=='0',f'{width}: all-unknown ratings reset and hide the threshold')
+        check(len(visible())==2 and page.locator('.hotel-decision-rating').count()==0,f'{width}: unknown values remain available with no threshold')
+        check(page.locator('#sortResults option[value="rating"]').count()==1,f'{width}: rating sort remains available even without known scores')
+        check(not errors,f'{width}: five-point acceptance has no browser exceptions')
+        c.close()
+
+    c,page,errors=boot(browser,width=1440);page.add_script_tag(content=FILTER)
+    render(page,[hotel(3001+i) for i in range(42)])
+    resolve(page,0,{3001+i:i+1 for i in range(42)},profiles=[dict(profile(i+1),rating=4.5 if i<38 else None) for i in range(42)])
+    check(page.locator('.search3-rating-filter').is_visible(),'38/42 known scores: useful rating thresholds are not hidden by the former 95-percent rule')
+    check('38 из 42' in page.locator('#search3RatingCoverage').inner_text(),'38/42 known scores: actual rating coverage is explicit')
+    page.locator('.search3-rating-filter select').select_option('4.5')
+    check(page.locator('.hotel-card:not([hidden])').count()==38,'38/42 known scores: threshold excludes only unknown ratings')
+    check(page.evaluate('__requests.length')==1 and not errors,'38/42 known scores: no extra request or browser error')
+    c.close()
 
     # Exercise the real Andromeda wrapper with recorded-shape, fictional server data.
     for legacy in [102,106]:
@@ -381,7 +409,7 @@ with sync_playwright() as p:
             c,page,errors=boot(browser,path=path,original=original);render(page,[hotel(102)])
             check(page.locator('.hotel-card').count()==1,f'isolation: legacy render unchanged {path} original={original}')
             check(page.evaluate('__requests.every(x=>!x.url.includes("catalog=anytour"))'),f'isolation: no canonical requests {path} original={original}')
-            check(page.locator('#sortResults option[value="rating"]').count()==1,f'isolation: legacy rating sorting remains available {path} original={original}')
+            check(page.locator('#sortResults option[value="rating"]').count()==1,f'isolation: legacy rating sort remains available {path} original={original}')
             out.append(page.locator('#results').inner_html());c.close()
         check(out[0]==out[1],f'isolation: byte-identical legacy DOM {path}')
     browser.close()
