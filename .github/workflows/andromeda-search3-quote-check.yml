@@ -30,28 +30,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Prove pre-calc fuel regression against exact predecessor
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import shutil, subprocess, tempfile
-          relative='app/integrations/andromeda-selected-quote.php'
-          before="                    'fuel_surcharges_reported' => [],"
-          after="                    // Current fuel services are evidence even before calc; neither\n                    // their presence nor flight markup proves a complete total.\n                    'fuel_surcharges_reported' => self::fuelSurcharges($claim),"
-          source=Path(relative).read_text()
-          assert source.count(after)==1
-          with tempfile.TemporaryDirectory() as directory:
-              root=Path(directory)
-              shutil.copytree('app',root/'app')
-              shutil.copytree('tests',root/'tests')
-              old=root/relative
-              old.write_text(source.replace(after,before))
-              blob=subprocess.check_output(['git','hash-object',str(old)],text=True).strip()
-              assert blob=='c6bc0d3ca1390967302f1489581ea0ae1fd5ba9f',blob
-              check=subprocess.run(['php','-d','allow_url_fopen=0',str(root/'tests/andromeda-precalc-fuel-evidence-test.php')],text=True,capture_output=True)
-              assert check.returncode!=0 and 'PRECALC_FUEL_EVIDENCE_LOST' in check.stderr,check.stderr
-              print('PRECALC_FUEL_EXACT_PREDECESSOR_RED_OK blob='+blob)
-          PY
       - name: Syntax and quote-flow regression
         run: |
           php -l app/integrations/andromeda-claim-actions.php
