@@ -1,0 +1,37 @@
+name: INT ANEX background DB fill
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'app/integrations/anex-additional-prices-client.php'
+      - 'app/integrations/anex-local-offer-collector.php'
+      - 'scripts/ops/anex_local_offer_collect.php'
+      - 'tests/anex-local-offer-collector-test.php'
+      - 'tests/anex-additional-prices-client-test.php'
+      - '.github/workflows/int-anex-background-db-fill.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify DB-only background collection contract
+        run: |
+          set -euo pipefail
+          php -l app/integrations/anex-additional-prices-client.php
+          php -l app/integrations/anex-local-offer-collector.php
+          php -l scripts/ops/anex_local_offer_collect.php
+          php -l tests/anex-local-offer-collector-test.php
+          php -l tests/anex-additional-prices-client-test.php
+          php tests/anex-additional-prices-client-test.php
+          php tests/anex-local-offer-collector-test.php
+          grep -q "max-expands']??'600'" scripts/ops/anex_local_offer_collect.php
+          grep -q "max-apd']??'600'" scripts/ops/anex_local_offer_collect.php
+          grep -q "db_only_customer_results.*true" scripts/ops/anex_local_offer_collect.php
+          ! grep -q "min(120" scripts/ops/anex_local_offer_collect.php
+          echo 'ANEX_BACKGROUND_DB_FILL_OK browser_apd=0 max_retained=600 pacing=1.05'
