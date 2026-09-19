@@ -1,0 +1,112 @@
+name: INT ANEX hotel15851 current acceptance v1
+on:
+  push:
+    branches: ['ops/int-anex-hotel15851-current-20260919-v1']
+    paths: ['.github/workflows/int-anex-hotel15851-current-v1.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  acceptance:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SOURCE_SHA: 48d399413c867c8f4c043aa64e0fd078b28bfcf7
+      SECURITY_RUN: '35450934537'
+      OPERATION_ID: int-anex-hotel15851-current-20260919-v1
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 48d399413c867c8f4c043aa64e0fd078b28bfcf7
+          persist-credentials: false
+      - name: Verify exact source and focused guards
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SECURITY_RUN" > "$RUNNER_TEMP/security.json"
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/security.json'))
+          assert r['head_sha']==os.environ['SOURCE_SHA'] and r['name']=='Security guard' and r['conclusion']=='success'
+          PY
+          php -l scripts/diagnostics/anex_current_hotel15851_acceptance_v1.php
+          php tests/anex-current-hotel15851-acceptance-v1-test.php
+          ! grep -E "['\"]action['\"][[:space:]]*=>[[:space:]]*['\"](offer|expand|get_flights|changeservice|calc|book)" scripts/diagnostics/anex_current_hotel15851_acceptance_v1.php
+          cp scripts/diagnostics/anex_current_hotel15851_acceptance_v1.php "$RUNNER_TEMP/probe.php"
+          sha256sum "$RUNNER_TEMP/probe.php"
+      - name: Run exact published ANEX path and DB readback once
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.php"
+          scp "${opts[@]}" "$RUNNER_TEMP/probe.php" "$REMOTE_USER@$HOST:$remote"
+          set +e
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$OPERATION_ID" "$remote" "$SOURCE_SHA" > "$RUNNER_TEMP/result/receipt.json" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          operation="$1"; probe="$2"; source="$3"
+          site=$(realpath "$HOME/www/anytoour.ru")
+          ledger="$HOME/.anytour-ops/$operation"
+          test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"
+          printf '%s\n' reserved > "$ledger/state"
+          trap 'rm -f "$probe"' EXIT
+          set +e
+          php -d display_errors=0 -d zend.exception_ignore_args=1 "$probe" "$site" "$ledger" > "$ledger/stdout.json" 2> "$ledger/error.log"
+          rc=$?
+          set -e
+          RC="$rc" SOURCE="$source" php -r '
+          $p=$argv[1];$d=is_file($p)?json_decode(file_get_contents($p),true,64):null;
+          if(!is_array($d)){fwrite(STDERR,"NO_RESULT\n");exit(3);}
+          $best=$d["best"]??null;
+          $safe=[
+            "operation"=>$d["operation"]??null,"source"=>getenv("SOURCE"),
+            "status"=>(int)getenv("RC")===0?($d["status"]??"completed_terminal"):"failed_terminal",
+            "scope"=>$d["scope"]??null,"catalog"=>$d["catalog"]??null,"runtime"=>$d["runtime"]??null,
+            "before"=>$d["before"]??null,"search"=>$d["search"]??null,"http"=>$d["http"]??null,
+            "best"=>is_array($best)?["search_price"=>$best["search_price"]??null,"checkin"=>$best["checkin"]??null,"nights"=>$best["nights"]??null,"flight_type"=>$best["flight_type"]??null]:null,
+            "batch"=>$d["batch"]??null,"after"=>$d["after"]??null,
+            "diagnostic_db_writes"=>$d["diagnostic_db_writes"]??null,"lead_calls"=>$d["lead_calls"]??null,"booking_calls"=>$d["booking_calls"]??null,
+            "offer_calls"=>$d["offer_calls"]??null,"expand_calls"=>$d["expand_calls"]??null,"get_flights_calls"=>$d["get_flights_calls"]??null,
+            "changeservice_calls"=>$d["changeservice_calls"]??null,"calc_calls"=>$d["calc_calls"]??null,
+            "private_result_sha256"=>hash_file("sha256",$p),"replay_allowed"=>false
+          ];
+          file_put_contents($argv[2],json_encode($safe,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n");
+          ' "$ledger/result.json" "$ledger/receipt.json"
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed_terminal || echo failed_terminal)" > "$ledger/state"
+          cat "$ledger/receipt.json"
+          exit "$rc"
+          REMOTE
+          rc=$?
+          set -e
+          test -s "$RUNNER_TEMP/result/receipt.json"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/readback.json"
+          cmp "$RUNNER_TEMP/result/receipt.json" "$RUNNER_TEMP/result/readback.json"
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['RUNNER_TEMP']+'/result/receipt.json'))
+          assert d['source']==os.environ['SOURCE_SHA'] and d['replay_allowed'] is False
+          for k in ['diagnostic_db_writes','lead_calls','booking_calls','offer_calls','expand_calls','get_flights_calls','changeservice_calls','calc_calls']:
+              assert d[k]==0
+          print('ANEX_HOTEL15851_CURRENT '+json.dumps(d,ensure_ascii=False))
+          PY
+          test "$rc" = 0
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-anex-hotel15851-current-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
