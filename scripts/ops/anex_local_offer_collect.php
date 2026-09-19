@@ -50,14 +50,15 @@ $to=$date($args['date-to']??$from);
 $nights=$int($need('nights'),1,28);
 $adults=$int($args['adults']??'2',1,6);
 $meal=$args['meal']??'';
-$maxExpands=$int($args['max-expands']??'60',0,120);
-$maxBatch=$int($args['max-apd']??'300',1,600);
+$maxExpands=$int($args['max-expands']??'600',0,600);
+$maxBatch=$int($args['max-apd']??'600',1,600);
 $generation=$int($args['generation']??'25061801',1,2147483647);
 
 $pdo=v2_data_db();
 $cache=[];$state=[];$searchRequests=0;$apdRequests=0;
-$searchBudget=min(130,max(8,$maxExpands+2));
-$apdBudget=min(120,max(8,(int)ceil($maxBatch/6)*2));
+$searchBudget=max(8,$maxExpands+2);
+// One client per unique APD context at worst. Real HTTP reads are globally paced by the APD client.
+$apdBudget=max(8,$maxBatch);
 $makeClient=static function()use($apiToken,&$searchRequests,$searchBudget):AnyTourAnexClient{
     ++$searchRequests;
     if($searchRequests>$searchBudget)throw new RuntimeException('ANEX_COLLECTOR_SEARCH_BUDGET');
@@ -112,6 +113,8 @@ $result['apd_client_instances']=$apdRequests;
 $result['search_budget']=$searchBudget;
 $result['apd_budget']=$apdBudget;
 $result['supplier_calls_bounded']=true;
+$result['browser_supplier_calls']=0;
+$result['db_only_customer_results']=true;
 $result['booking_calls']=0;
 $result['lead_calls']=0;
 echo json_encode($result,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)."\n";
