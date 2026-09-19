@@ -87,3 +87,42 @@ jobs:
           path: canonical-card-evidence/
           if-no-files-found: warn
           retention-days: 14
+
+  # Temporary draft-only pinned regeneration; removed before integration.
+  resume-regenerate-current:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.head_ref == 'feat/search3-session-resume-20260919' &&
+      github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - name: Regenerate with existing pinned builders
+        run: |
+          set -euo pipefail
+          python3 -B scripts/build/search3_assets.py --write
+          python3 -B scripts/build/search3_assets.py --check
+          node scripts/build/search3-js/shared-runtime.cjs --write
+          node scripts/build/search3-js/shared-runtime.cjs --check
+          printf '%s\n' v2/search3-shared-runtime.json v2/search3-results-filters-v1.js docs/project/search3-production-import.json > /tmp/generated-files.txt
+          sha256sum $(cat /tmp/generated-files.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: search3-resume-regenerated-${{ github.event.pull_request.head.sha }}
+          path: |
+            v2/search3-shared-runtime.json
+            v2/search3-results-filters-v1.js
+            docs/project/search3-production-import.json
+          retention-days: 2
