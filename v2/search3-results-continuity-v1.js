@@ -94,14 +94,26 @@ function readSnapshot(){
   for(const h of data.hotels){const hotel=savedProfile(h&&h.hotel);if(!hotel||own.has(hotel.id)||!Array.isArray(h.tours)||!h.tours.length)return null;own.add(hotel.id);const tours=[];for(const rawTour of h.tours){if(++count>6000)return null;const tour=displayTour(rawTour);if(!tour)return null;tours.push(tour);}hotels.push({hotel,tours});}
   const view=data.view&&typeof data.view==='object'?data.view:{},filters={};
   filterSelectors.forEach(selector=>{const value=bounded(view.filters&&view.filters[selector],200);if(value)filters[selector]=value;});
-  return{version:1,route:data.route,createdAt:data.createdAt,query:data.query,searchId:String(data.searchId),hotels,view:{renderer:view.renderer,details:(Array.isArray(view.details)?view.details:[]).map(positive).filter(Boolean).slice(0,500),scrollY:numeric(view.scrollY,0,10000000)||0,anchor:view.anchor&&positive(view.anchor.hotel)&&numeric(view.anchor.top,-100000,100000)!==null?{hotel:positive(view.anchor.hotel),top:view.anchor.top}:null,filters}};
+  return{version:1,route:data.route,createdAt:data.createdAt,query:data.query,searchId:String(data.searchId),hotels,view:{renderer:savedRenderer(view.renderer),details:(Array.isArray(view.details)?view.details:[]).map(positive).filter(Boolean).slice(0,500),scrollY:numeric(view.scrollY,0,10000000)||0,anchor:view.anchor&&positive(view.anchor.hotel)&&numeric(view.anchor.top,-100000,100000)!==null?{hotel:positive(view.anchor.hotel),top:view.anchor.top}:null,filters}};
  }catch(error){return null;}
 }
 function writeSnapshot(data){try{const encoded=JSON.stringify(data);if(encoded.length>snapshotMax)return false;window.sessionStorage.setItem(snapshotKey,encoded);return true;}catch(error){return false;}}
+function savedRenderer(raw){
+ const view=raw&&typeof raw==='object'?raw:{},expanded=Array.from(new Set((Array.isArray(view.expanded)?view.expanded:[]).map(positive).filter(Boolean))).slice(0,500),allowed=new Set(expanded),limits=[];
+ (Array.isArray(view.limits)?view.limits:[]).slice(0,500).forEach(pair=>{const id=positive(pair&&pair[0]),count=Number(pair&&pair[1]);if(id&&allowed.has(id)&&Number.isSafeInteger(count)&&count>0&&count<=6000)limits.push([id,count]);});
+ return{expanded,limits,sort:bounded(view.sort,40)||'price'};
+}
+function captureRendererView(){
+ const node=resultsNode(),expanded=[],limits=[];if(node)node.querySelectorAll('.hotel-card').forEach(card=>{const id=hotelId(card),toggle=card.querySelector('button.tour-more-toggle[aria-expanded="true"]');if(!id||!toggle)return;expanded.push(id);limits.push([id,card.querySelectorAll('.direct-tour').length]);});
+ return{expanded,limits,sort:document.getElementById('sortResults')?.value||'price'};
+}
+function restoreRendererView(view){
+ const node=resultsNode();if(!node)return;(view.expanded||[]).forEach(id=>{const card=cardById(node,id),toggle=card&&card.querySelector('button.tour-more-toggle[aria-expanded="false"]');if(toggle)toggle.click();const wanted=(view.limits||[]).find(pair=>pair[0]===id)?.[1]||0;let more=card&&card.querySelector('.tour-list-more'),guard=0;while(more&&card.querySelectorAll('.direct-tour').length<wanted&&guard++<200){more.click();more=card.querySelector('.tour-list-more');}});
+}
 function captureView(old){
  const r=window.V2Results,node=resultsNode();if(!node||node.hidden)return old&&old.view||null;
  const filters={};filterSelectors.forEach(selector=>{const field=document.querySelector(selector);if(!field)return;let value=bounded(String(field.value||''),200);if(selector==='.search3-budget-max'&&Number(value)>=Number(field.max))value='';if(value)filters[selector]=value;});
- return{renderer:r.captureView(),details:Array.from(openDetails),anchor:anchorState&&Object.assign({},anchorState),scrollY:Math.max(0,Number(window.scrollY)||0),filters};
+ return{renderer:captureRendererView(),details:Array.from(openDetails),anchor:anchorState&&Object.assign({},anchorState),scrollY:Math.max(0,Number(window.scrollY)||0),filters};
 }
 function captureSnapshot(){
  const life=window.V2SearchLifecycle,r=window.V2Results,owner=window.Search3CanonicalProfilesV1&&window.Search3CanonicalProfilesV1.current();
@@ -141,7 +153,7 @@ function applySnapshot(data){
   for(const key of ['adults','childs','isCharter'])if(saved[key]!==undefined)tour[key]=saved[key];
   owner.upsertOffer(group.hotel.id,tour,{source:'session-resume',legacyHotelId:saved.legacyHotelId});
  });});
- reset();data.view.details.forEach(key=>openDetails.add(key));r.restoreView(data.view.renderer);r.render([],{empty:false});
+ reset();data.view.details.forEach(key=>openDetails.add(key));const sort=document.getElementById('sortResults');if(sort&&Array.from(sort.options).some(option=>option.value===data.view.renderer.sort))sort.value=data.view.renderer.sort;r.render([],{empty:false,sort:data.view.renderer.sort});restoreRendererView(data.view.renderer);
  for(const selector of filterSelectors){const value=data.view.filters[selector],node=document.querySelector(selector);if(!value||!node||node.tagName==='SELECT'&&!Array.from(node.options).some(option=>option.value===value))continue;node.value=value;node.dispatchEvent(new Event(node.type==='search'?'input':'change',{bubbles:true}));}
  restoreDetails(resultsNode());
  requestAnimationFrame(()=>{window.scrollTo({top:data.view.scrollY,left:0,behavior:'instant'});if(data.view.anchor){anchorState=data.view.anchor;restoreAnchor(resultsNode());}sampleAnchor();});
