@@ -10,7 +10,7 @@ async function setup(suffix = '', options = {}) {
   const fields = Object.fromEntries(new URLSearchParams(query));
   const elements = Object.fromEntries(Object.entries(fields).map(([name, value]) => [name, { value, dataset: {}, removeAttribute() {} }]));
   const button = {}, calls = [], timers = [], events = [], status = {}, results = { querySelector: () => null };
-  const form = { elements, querySelector: () => button, querySelectorAll: () => [], addEventListener() {} };
+  const form = { elements, querySelector: selector => selector === '.primary' ? button : null, querySelectorAll: () => [], addEventListener() {} };
   const nodes = { tourSearch: form, status, results, selectedTour: {}, resultsTools: {} };
   const location = new URL('https://anytoour.ru' + (options.path || path) + '?' + query + suffix);
   const document = { body: { classList: { contains: () => true } }, getElementById: id => nodes[id] };
