@@ -143,7 +143,7 @@ function syncHotelFacets(){
   const region=syncTextSelect(regionField,regionSelect,regions,'Все курорты');
   const c=numericCoverage(categories,.95),category=syncSelect(categoryField,categorySelect,c.a?categories.filter(value=>value>0):[],'Любая категория'+(c.a?' · '+c.k+'/'+c.t:''),value=>value+'★');
   syncPresets(categoryPresets,categorySelect,Array.from(categorySelect.options).slice(1).map(item=>({value:item.value,label:item.textContent})),'0');
-  const r=numericCoverage(ratings,.95);ratingField.hidden=!r.a;ratingCoverage.textContent=r.a?'Рейтинг указан у '+r.k+' из '+r.t+' отелей':'';if(!r.a)ratingSelect.value='0';
+  const r=numericCoverage(ratings,.95);r.a=r.a&&window.V2Results.ratingComparisonAvailable();ratingField.hidden=!r.a;ratingCoverage.textContent=r.a?'Рейтинг указан у '+r.k+' из '+r.t+' отелей':'';if(!r.a)ratingSelect.value='0';
   const s=numericCoverage(seas,.8);seaField.hidden=!s.a;if(s.a)seaSelect.options[0].textContent='Любое расстояние · '+s.k+'/'+s.t;else seaSelect.value='0';
   return{regions,categories,ratings,seas,region,category,rating:Number(ratingSelect.value||0),sea:Number(seaSelect.value||0)};
 }
