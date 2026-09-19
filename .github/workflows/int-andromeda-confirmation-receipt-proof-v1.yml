@@ -43,13 +43,13 @@ jobs:
           t=Path('tests/andromeda-cache-cohort-order-test.php')
           q=t.read_text()
           old="aassert($prices === [105 => '223000'] && $verified === [105 => true], 'flight-only estimate entered full-price store');"
-          new="""$expectedStored = $validSeed
-            ? [104 => '210000', 105 => '223000']
-            : [101 => '190000', 103 => '200000', 104 => '210000', 105 => '223000'];
-        $expectedVerified = $validSeed
-            ? [104 => false, 105 => true]
-            : [101 => false, 103 => false, 104 => false, 105 => true];
-        aassert($prices === $expectedStored && $verified === $expectedVerified, 'estimated rows or confirmation fallback stored incorrectly');"""
+          new=("$expectedStored = $validSeed\n"
+               "            ? [104 => '210000', 105 => '223000']\n"
+               "            : [101 => '190000', 103 => '200000', 104 => '210000', 105 => '223000'];\n"
+               "        $expectedVerified = $validSeed\n"
+               "            ? [104 => false, 105 => true]\n"
+               "            : [101 => false, 103 => false, 104 => false, 105 => true];\n"
+               "        aassert($prices === $expectedStored && $verified === $expectedVerified, 'estimated rows or confirmation fallback stored incorrectly');")
           if q.count(old) != 1:
               raise SystemExit(f'COHORT_EXPECTATION_COUNT={q.count(old)}')
           t.write_text(q.replace(old,new))
