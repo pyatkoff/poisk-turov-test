@@ -1,0 +1,158 @@
+name: MATCH SAMO34 canonical CURRENT v1
+on:
+  push:
+    branches: [ops/match-samo34-canonical-current-1971-20260919-v1]
+    paths: [scripts/diagnostics/hotel_match_samo34_canonical_current_v1.php, .github/workflows/hotel-match-samo34-canonical-current-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo34-canonical-current-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-samo34-canonical-current-1971-20260919-v1
+  BASE_SHA: 46675ab4db978da044edc50b5e017065b3512c53
+  CLAIM: '5740854762'
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {artifact-ids: '10582147904', run-id: 35434735405, github-token: '${{ github.token }}', path: samo, merge-multiple: true}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {artifact-ids: '10577689146', run-id: 35421889041, github-token: '${{ github.token }}', path: tv, merge-multiple: true}
+      - name: Validate scope and prepare exact retained evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir payload result
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 2
+          git diff --name-only "$BASE_SHA..HEAD" | grep -Fx 'scripts/diagnostics/hotel_match_samo34_canonical_current_v1.php'
+          git diff --name-only "$BASE_SHA..HEAD" | grep -Fx '.github/workflows/hotel-match-samo34-canonical-current-v1.yml'
+          printf '%s\n' '16f3ff5dd9c15367064e7d5f0eb3e2280e58ff698c92ec458f2ea2e479b377ca  scripts/diagnostics/hotel_match_samo34_canonical_current_v1.php' | sha256sum -c -
+          php -l scripts/diagnostics/hotel_match_samo34_canonical_current_v1.php
+          php scripts/diagnostics/hotel_match_samo34_canonical_current_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >payload/claim.json
+          python3 - <<'PY'
+          import hashlib,io,json,pathlib,re,tarfile,urllib.parse,os
+          S=pathlib.Path('samo');T=pathlib.Path('tv');OUT=pathlib.Path('payload/input.json')
+          def sha(b): return hashlib.sha256(b).hexdigest()
+          c=json.loads(pathlib.Path('payload/claim.json').read_bytes())
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530') and os.environ['OPERATION_ID'] in c['body']
+          tar=S.joinpath('server-operation.tgz').read_bytes()
+          assert sha(tar)=='4fc574da980c0e4cafad1da019d8e10dca3d83c38c715ce2dd50a149c164f93b'
+          files={}; duplicate=0
+          with tarfile.open(fileobj=io.BytesIO(tar),mode='r:gz') as t:
+           for m in t.getmembers():
+            assert re.fullmatch(r'[a-z0-9_.-]+',m.name) and 0<=m.size<64000000
+            if m.name in files:
+             assert m.name=='raw-manifest.json' and m.islnk() and m.linkname==m.name and m.size==0
+             duplicate+=1;continue
+            assert m.isfile();files[m.name]=t.extractfile(m).read()
+          assert duplicate==1
+          assert sha(files['result.json'])=='91909e207ed81661d253964cf294ddca35116db859e6fcf237407bb9644e80c9'
+          r=json.loads(files['result.json']);receipt=json.loads(files['receipt.json']);manifest=json.loads(files['raw-manifest.json'])
+          assert receipt['result_sha256']==sha(files['result.json']) and r['state']=='completed_read_only'
+          assert receipt['raw_manifest_sha256']==r['raw_manifest_sha256']==sha(files['raw-manifest.json'])
+          assert r['provider_calls']==24 and r['mapping_writes']==r['database_writes']==0
+          assert len(manifest['files'])==23
+          for f in manifest['files']:
+           assert sha(files[f['file']])==f['sha256'] and len(files[f['file']])==f['bytes']
+          assert len(files['provider-calls.jsonl'].splitlines())==24
+          tr=T.joinpath('server/result.json').read_bytes()
+          assert sha(tr)=='63f64b9d8c6eb2ac28fc7a1102432ea76eda97bb40e4efcf3d8d2bbc2651a5e4'
+          tv=json.loads(tr);idx={(e['operator'],e['tv_hotel_id'],str(e['tour_id'])):e for e in tv['verified_edges']}
+          assert len(idx)==149
+          edges=[];states={'funsun':('315','b2b.fstravel.com',25),'intourist':('342','searchtour.intourist.ru',43)}
+          for d in r['dossiers']:
+           op,host,tvid=states[d['operator']];cx=d['context']
+           gkey='|'.join([d['operator'],cx['departure_date'],str(cx['nights']),str(cx['adults']),str(cx['children_count']),cx['child_ages_signature']])
+           group=r['groups'][gkey]; facts={}; proof=idx[(d['operator'],d['tv_hotel_id'],d['source_tour_id'])]
+           url=proof['operator_link'];parsed=urllib.parse.urlsplit(url);assert parsed.scheme=='https' and parsed.hostname==host and proof['operator_id']==tvid
+           q=urllib.parse.parse_qs(parsed.query);tokens=[x for value in q.get('HOTELS',[]) for x in value.split(',')]
+           assert len(tokens)==1 and re.fullmatch(r'[1-9][0-9]*',tokens[0]);token=tokens[0]
+           for page in range(1,group['pages_read']+1):
+            fn='raw-price-'+sha(gkey.encode())[:12]+'-p'+str(page)+'.json';reply=json.loads(files[fn])
+            for row in reply['PRICES']:
+             if str(row.get('operatorKey'))!=op or row.get('hotelKey') not in d['seen_catalog_hotel_ids']:continue
+             flag=row.get('isOperatorHotelKey');assert flag in [0,1,'0','1']; cid=str(row['hotelKey']); native=str(row.get('original',{}).get('hotelKey',''))
+             key=(cid,op,str(flag),native)
+             facts[key]={'external_hotel_id':cid,'supplier_namespace':('operator_'+op if str(flag)=='1' else 'andromeda_catalog'),'operator_id':op,'is_operator_hotel_key':str(flag),'native_id':native,'name':row.get('hotel'),'town':row.get('town'),'native_anchor_equal':native==token,'raw_file':fn,'raw_sha256':sha(files[fn])}
+           edges.append({'tv_hotel_id':d['tv_hotel_id'],'target_name':d['hotel_name'],'operator':d['operator'],'tv_native_id':token,'tv_link_sha256':sha(url.encode()),'tv_result_sha256':sha(tr),'facts':sorted(facts.values(),key=lambda v:(v['supplier_namespace'],v['external_hotel_id'],v['native_id'])),'acquisition_state':d['state']})
+          cat=json.loads(files['raw-catalog-all.json']);assert len(cat['HOTELS'])==3260
+          assert sum(str(h['stateKey'])=='5' and h['state']=='Турция' for h in cat['HOTELS'])==3257
+          out={'input_version':1,'source_operation':r['operation'],'source_result_sha256':sha(files['result.json']),'tv_result_sha256':sha(tr),'raw_catalog_sha256':sha(files['raw-catalog-all.json']),'catalog':cat['HOTELS'],'towns':cat.get('TOWNTO',[]),'edges':edges,'new_candidates':[{'tv_hotel_id':93680,'external_hotel_id':'2000084849','anex_id':39882},{'tv_hotel_id':1299,'external_hotel_id':'2000123210','anex_id':8648},{'tv_hotel_id':163543,'external_hotel_id':'2000120897','anex_id':45226}],'additional_catalog_ids':['2000023030'],'provider_calls':0,'mapping_writes':0}
+          raw=(json.dumps(out,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+          assert sha(raw)=='3c084e5e5c672dc7f6ffae5abe3eacccd6c0a57463ac79b0a6a2c1d6e2c39953'
+          OUT.write_bytes(raw)
+          reserve={'operation':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'input_sha256':sha(raw),'provider_calls':0,'database_writes':0,'mapping_writes':0}
+          with open('result/reservation.json','xb') as f:f.write((json.dumps(reserve,sort_keys=True)+'\n').encode());f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+           with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+           xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+           if xs:
+            r=max(xs,key=lambda x:x['id'])
+            if r['status']=='completed':assert r['conclusion']=='success';print('SECURITY_OK',r['id']);break
+           time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'samo34-canonical-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Read CURRENT canonical registry once
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077
+          test -n "$KEY_VALUE";test -n "$HOST_VALUE";test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE";op=".anytoour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" result/reservation.json payload/input.json scripts/diagnostics/hotel_match_samo34_canonical_current_v1.php app/integrations/andromeda-hotel-resolver.php app/integrations/anex-search-mapping-registry.php "$remote:$op/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" -d memory_limit=768M \"\$HOME/$op/hotel_match_samo34_canonical_current_v1.php\"" >result/stdout.json 2>result/stderr.txt
+          rc=$?;printf '%s\n' "$rc">result/remote-exit.txt
+          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json;for f in result.json receipt.json bootstrap-errors.log;do test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >result/server-operation.tgz 2>>result/stderr.txt
+          trc=$?;printf '%s\n' "$trc">result/tar-exit.txt;set -e;test "$trc" -eq 0;test "$rc" -eq 0
+      - name: Verify immutable CURRENT receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir(exist_ok=True);names=set()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+           for m in t.getmembers():
+            assert m.isfile() and m.size<64000000 and m.name in {'reservation.json','result.json','receipt.json','bootstrap-errors.log'} and m.name not in names
+            names.add(m.name);(s/m.name).write_bytes(t.extractfile(m).read())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          r=json.loads((s/'result.json').read_bytes());q=json.loads((s/'receipt.json').read_bytes())
+          assert q['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest() and q['readback_verified'] is True
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID'] and r['source_sha']==os.environ['GITHUB_SHA']
+          assert r['state']==q['state']=='completed_read_only'
+          for k in ['provider_calls','database_writes','mapping_writes']:assert r[k]==q[k]==0
+          assert len(r['edges'])==39 and len(r['new_candidate_plans'])==3
+          summary={k:r[k] for k in ['state','read_at_utc','edge_counts','already_effective_unique_local','identity_count','full_country_local_count','foreign_catalog_rows_excluded']}
+          summary['new_candidates']=[{'tv':x['tv_hotel_id'],'source':x['external_hotel_id'],'reasons':x['reasons']} for x in r['new_candidate_plans']]
+          summary['result_sha256']=q['result_sha256'];(p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'samo34-canonical-current-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
