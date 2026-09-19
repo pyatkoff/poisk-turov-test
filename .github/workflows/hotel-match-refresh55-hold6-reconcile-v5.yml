@@ -1,0 +1,178 @@
+name: MATCH refresh55 hold6 reconcile v5
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-refresh55-hold6-reconcile-1971-20260920-v5, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-refresh55-hold6-reconcile-1971-20260920-v5
+  OLD_OPERATION_ID: hotel-match-refresh55-hold6-current-1971-20260920-v1
+  OLD_SOURCE_SHA: ee093ab17894e4d4bb4573197e99e649e9d9ad21
+  OLD_SOURCE_BLOB: 87e009454804f2b30e2882beac417d4a0186228e
+  OLD_INPUT_SHA256: 3144fbbfe9a886bb94954d8a12147119172f570285ae7622edf2ffb8ed16657a
+  BASE_SHA: 93915088f169716d89e2e6426d6d8700dbcf0416
+  CLAIM: '5746157134'
+  PR_HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+jobs:
+  reconcile:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.head.ref == 'ops/match-refresh55-hold6-reconcile-1971-20260920-v5' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate isolated reconciliation and reserve
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p reservation readback result
+          test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD")" = '.github/workflows/hotel-match-refresh55-hold6-reconcile-v5.yml'
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >readback/claim.json
+          python3 - <<'PY'
+          import json,os,datetime
+          c=json.load(open('readback/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in b and os.environ['OLD_OPERATION_ID'] in b
+          assert 'No DB/provider/API access' in b and 'NO mutation of old operation' in b
+          r={'operation':os.environ['OPERATION_ID'],'old_operation':os.environ['OLD_OPERATION_ID'],'source_sha':os.environ['PR_HEAD_SHA'],'state':'reserved_before_old_state_read','reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider_calls':0,'database_reads':0,'database_writes':0,'mapping_writes':0,'old_operation_mutations':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with open('reservation/reservation.json','xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'refresh55-hold6-reconcile-v5-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          head=os.environ['PR_HEAD_SHA']
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+head+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+           with urllib.request.urlopen(q,timeout=30) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==head and x['event']=='pull_request']
+           if xs:
+            x=max(xs,key=lambda z:z['id'])
+            if x['status']=='completed':
+             assert x['conclusion']=='success'; print('SECURITY_OK',x['id']); break
+           time.sleep(5)
+          else: raise SystemExit('exact_security_not_available')
+          PY
+      - name: Read old operation filesystem only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -u; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' >"$key"; else printf '%s' "$KEY" | base64 --decode >"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null || exit 71
+          ssh-keyscan -T 15 -t ed25519 "$HOST" >"$known" 2>/dev/null || exit 72
+          test -s "$known" || exit 73
+          remote="$USER@$HOST"; old=".anytoour-match/operations/$OLD_OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu; d=\"\$HOME/$old\"; test -d \"\$d\"; cd \"\$d\"; find . -maxdepth 2 -type f -printf '%P\\t%s\\n' | LC_ALL=C sort" >readback/listing.txt 2>readback/listing.stderr
+          lrc=$?
+          ssh "${opts[@]}" "$remote" "set -eu; d=\"\$HOME/$old\"; test -d \"\$d\"; cd \"\$d\"; for f in reservation.json result.json receipt.json bootstrap-errors.log payload/current.json payload/hotel_match_refresh55_hold6_current_v1.php; do if test -f \"\$f\"; then sha256sum -- \"\$f\"; fi; done" >readback/sha256.txt 2>readback/sha256.stderr
+          hrc=$?
+          ssh "${opts[@]}" "$remote" "set -eu; d=\"\$HOME/$old\"; test -d \"\$d\"; cd \"\$d\"; set --; for f in reservation.json result.json receipt.json bootstrap-errors.log payload/current.json payload/hotel_match_refresh55_hold6_current_v1.php; do if test -f \"\$f\"; then set -- \"\$@\" \"\$f\"; fi; done; test \"\$#\" -gt 0; tar -czf - -- \"\$@\"" >readback/old-whitelist.tgz 2>readback/tar.stderr
+          trc=$?
+          set -e
+          printf '{"listing":%s,"hashes":%s,"tar":%s}\n' "$lrc" "$hrc" "$trc" >readback/read-exits.json
+          rm -f "$key" "$known"
+      - name: Reconcile immutable old state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib,tarfile,re,datetime
+          rb=pathlib.Path('readback'); out=pathlib.Path('result')
+          exits=json.load(open(rb/'read-exits.json'))
+          allowed={'reservation.json','result.json','receipt.json','bootstrap-errors.log','payload/current.json','payload/hotel_match_refresh55_hold6_current_v1.php'}
+          result={'operation':os.environ['OPERATION_ID'],'old_operation':os.environ['OLD_OPERATION_ID'],'source_sha':os.environ['PR_HEAD_SHA'],'provider_calls':0,'database_reads':0,'database_writes':0,'mapping_writes':0,'old_operation_mutations':0,'no_replay':True,'read_exits':exits,'reconciled_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+          if any(v!=0 for v in exits.values()):
+           result.update(state='reconciliation_read_failed',reason='ssh_filesystem_read_failed')
+          else:
+           entries=[]
+           for line in (rb/'listing.txt').read_text(errors='replace').splitlines():
+            if not line: continue
+            name,size=line.split('\t',1); entries.append((name,int(size)))
+           names={n for n,_ in entries}; unexpected=sorted(names-allowed)
+           result['old_file_listing']=[{'path':n,'size':s} for n,s in entries]; result['unexpected_files']=unexpected
+           if unexpected:
+            result.update(state='inconsistent',reason='unexpected_old_operation_files')
+           else:
+            extracted=rb/'old'; extracted.mkdir()
+            try:
+             with tarfile.open(rb/'old-whitelist.tgz','r:gz') as t:
+              members=t.getmembers()
+              for m in members:
+               if m.name not in allowed or not m.isfile(): raise RuntimeError('unsafe_archive_member')
+              for m in members:
+               p=extracted/m.name; p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(t.extractfile(m).read())
+            except Exception as e:
+             result.update(state='inconsistent',reason='old_whitelist_archive_invalid',archive_error=type(e).__name__)
+            else:
+             present={str(p.relative_to(extracted)) for p in extracted.rglob('*') if p.is_file()}
+             if present != names:
+              result.update(state='inconsistent',reason='listing_archive_mismatch',archive_files=sorted(present))
+             else:
+              hashes={str(p.relative_to(extracted)):hashlib.sha256(p.read_bytes()).hexdigest() for p in extracted.rglob('*') if p.is_file()}
+              result['old_file_sha256']=hashes
+              required={'reservation.json','payload/current.json','payload/hotel_match_refresh55_hold6_current_v1.php'}
+              if not required.issubset(present):
+               result.update(state='inconsistent',reason='required_old_payload_missing')
+              else:
+               r=json.loads((extracted/'reservation.json').read_bytes())
+               src=(extracted/'payload/hotel_match_refresh55_hold6_current_v1.php').read_bytes()
+               gitblob=hashlib.sha1(b'blob '+str(len(src)).encode()+b'\0'+src).hexdigest()
+               pins=(r.get('operation')==os.environ['OLD_OPERATION_ID'] and r.get('source_sha')==os.environ['OLD_SOURCE_SHA'] and r.get('state')=='reserved_before_db_read' and r.get('input_sha256')==os.environ['OLD_INPUT_SHA256'] and hashes['payload/current.json']==os.environ['OLD_INPUT_SHA256'] and gitblob==os.environ['OLD_SOURCE_BLOB'])
+               if not pins:
+                result.update(state='inconsistent',reason='old_reservation_or_payload_pin_mismatch',old_source_git_blob=gitblob)
+               else:
+                has_result='result.json' in present; has_receipt='receipt.json' in present
+                if has_result != has_receipt:
+                 result.update(state='inconsistent',reason='partial_result_receipt')
+                elif has_result:
+                 d=json.loads((extracted/'result.json').read_bytes()); q=json.loads((extracted/'receipt.json').read_bytes()); dsha=hashes['result.json']
+                 ok=(d.get('operation')==q.get('operation')==os.environ['OLD_OPERATION_ID'] and d.get('state')==q.get('state')=='completed_read_only' and q.get('result_sha256')==dsha and q.get('readback_verified') is True and q.get('no_replay') is True and d.get('provider_calls')==d.get('database_writes')==d.get('mapping_writes')==0 and d.get('hold_count')==6 and all(x.get('safe_to_write_now') is False for x in d.get('rows',[])))
+                 result.update(state='completed_verified' if ok else 'inconsistent',reason=None if ok else 'old_result_validation_failed',old_result_sha256=dsha)
+                 if ok:
+                  result['old_classification_counts']=d.get('classification_counts'); result['old_review_candidates']=d.get('review_candidates')
+                else:
+                 log=(extracted/'bootstrap-errors.log') if 'bootstrap-errors.log' in present else None
+                 if log and log.stat().st_size:
+                  raw=log.read_bytes(); result.update(state='failed_before_result',reason='bootstrap_error_present',bootstrap_log_sha256=hashlib.sha256(raw).hexdigest(),bootstrap_log_size=len(raw))
+                  tail=raw.decode('utf-8','replace')[-8192:]
+                  if not re.search(r'password|authorization|bearer|jwt|access[_-]?token|refresh[_-]?token|secret',tail,re.I): result['bootstrap_error_tail']=tail
+                 else:
+                  result.update(state='reserved_payload_only',reason='no_result_receipt_or_bootstrap_error')
+          raw=(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); (out/'result.json').write_bytes(raw); digest=hashlib.sha256(raw).hexdigest()
+          receipt={'operation':os.environ['OPERATION_ID'],'state':result['state'],'result_sha256':digest,'provider_calls':0,'database_reads':0,'database_writes':0,'mapping_writes':0,'old_operation_mutations':0,'readback_verified':True,'no_replay':True}
+          (out/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          print(json.dumps({'state':result['state'],'reason':result.get('reason'),'old_classification_counts':result.get('old_classification_counts'),'old_review_candidates':result.get('old_review_candidates'),'bootstrap_error_tail':result.get('bootstrap_error_tail'),'result_sha256':digest},ensure_ascii=False))
+          if result['state']=='reconciliation_read_failed': raise SystemExit(41)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-refresh55-hold6-reconcile-v5-${{ github.run_id }}
+          path: |
+            reservation/
+            readback/listing.txt
+            readback/sha256.txt
+            readback/read-exits.json
+            readback/*.stderr
+            result/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
