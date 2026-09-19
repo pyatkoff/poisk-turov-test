@@ -1,0 +1,78 @@
+name: Search3 exact authorized autosave helper activation
+
+on:
+  pull_request:
+    branches: ['release/search3-production-ready-v1']
+    paths:
+      - 'scripts/ops/search3_autosave_helper_activate_v1.py'
+      - '.github/workflows/search3-autosave-helper-activate-v1.yml'
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  verify:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'ops/search3-autosave-helper-3032-20260919-v1' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 8
+          persist-credentials: false
+      - name: Check exact source and transaction offline
+        run: |
+          set -euo pipefail
+          test "$(git hash-object app/integrations/tourvisor-anytour-offer-autosave.php)" = '563642d1191377d34eba4c282f882084dc33fc71'
+          python3 -m py_compile scripts/ops/search3_autosave_helper_activate_v1.py
+          python3 scripts/ops/search3_autosave_helper_activate_v1.py --self-test
+          php tests/tourvisor-anytour-offer-autosave-test.php
+      - name: Verify fresh owner authorization and exact-head Security before credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ops/search3_autosave_helper_activate_v1.py --authorize > "$RUNNER_TEMP/authorization.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-helper-authorization-${{ github.run_id }}
+          path: ${{ runner.temp }}/authorization.json
+          if-no-files-found: error
+          retention-days: 30
+
+  activate:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    concurrency:
+      group: deploy-anytoour-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 8
+          persist-credentials: false
+      - name: Recheck and replace only the authorized private helper
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 scripts/ops/search3_autosave_helper_activate_v1.py --execute
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: search3-helper-activation-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/preflight.json
+            ${{ runner.temp }}/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
