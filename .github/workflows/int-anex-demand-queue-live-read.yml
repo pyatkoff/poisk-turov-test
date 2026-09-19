@@ -1,0 +1,36 @@
+name: INT ANEX demand queue live read
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths: ['.github/workflows/int-anex-demand-queue-live-read.yml']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ad8fbbad25c4d9603c18c61a1a6ee0d219f421bf
+          persist-credentials: false
+      - name: Run queue only against live DB
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          tar -czf "$RUNNER_TEMP/q.tgz" app/integrations/anex-local-offer-demand.php scripts/ops/anex_local_offer_demand_queue.php
+          scp "${opts[@]}" "$RUNNER_TEMP/q.tgz" "$REMOTE_USER@$HOST:/tmp/anex-demand-queue-live-$GITHUB_RUN_ID.tgz"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$GITHUB_RUN_ID" <<'REMOTE'
+          set -euo pipefail
+          id="$1"; work="/tmp/anex-demand-queue-live-$id"; archive="/tmp/anex-demand-queue-live-$id.tgz"; mkdir -m700 "$work"; trap 'rm -rf "$work" "$archive"' EXIT
+          tar -xzf "$archive" -C "$work"; export ANYTOUR_PROJECT_ROOT="$(realpath "$HOME/www/anytoour.ru")"
+          php -d display_errors=1 "$work/scripts/ops/anex_local_offer_demand_queue.php" --limit=3 --lookback-hours=168 --horizon-days=21
+          REMOTE
