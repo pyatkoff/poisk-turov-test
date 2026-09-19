@@ -1,0 +1,10 @@
+<?php
+declare(strict_types=1);
+const OP='int-anex-pages2-5-ledger-readback-20260919-v1',SEALED='int-anex-current-pages2-5-20260919-v1';
+function safeError(string$s):string{$s=preg_replace('/Bearer\s+[^\s]+/i','Bearer [redacted]',$s);$s=preg_replace('/[A-Za-z0-9_-]{32,}/','[opaque]',$s);return mb_substr(trim($s),0,500,'UTF-8');}
+function main():array{$home=rtrim((string)getenv('HOME'),'/');$dir=$home.'/.anytour-ops/'.SEALED;if(!is_dir($dir)||is_link($dir))throw new RuntimeException('LEDGER');
+ $files=[];foreach(scandir($dir)?:[]as$n){if($n==='.'||$n==='..')continue;$p=$dir.'/'.$n;if(!is_file($p)||is_link($p))continue;$files[$n]=['bytes'=>filesize($p),'sha256'=>hash_file('sha256',$p)];}
+ $pages=[];foreach(array_keys($files)as$n)if(preg_match('/^page([2-5])\.raw\.json$/D',$n,$m)){try{$j=json_decode((string)file_get_contents($dir.'/'.$n),true,64,JSON_THROW_ON_ERROR);$data=$j['SearchTour_PRICES']??$j;$prices=is_array($data)&&is_array($data['prices']??null)?$data['prices']:[];$hotels=[];$names=[];foreach($prices as$r){if(!is_array($r))continue;$id=$r['hotelKey']??null;if((is_int($id)||is_string($id))&&preg_match('/^[1-9][0-9]{0,8}$/D',(string)$id))$hotels[(string)$id]=1;$name=$r['hotel']??null;if(is_string($name)&&$name!==''&&count($names)<20)$names[]=mb_substr($name,0,120,'UTF-8');}$pages[(int)$m[1]]=['rows'=>count($prices),'unique_hotels'=>count($hotels),'searchKey_present'=>is_string($data['searchKey']??null)&&$data['searchKey']!=='','sample_names'=>array_values(array_unique($names))];}catch(Throwable$e){$pages[(int)$m[1]]=['parse_error'=>true];}}
+ $error=is_file($dir.'/error.log')?safeError((string)file_get_contents($dir.'/error.log')):null;$state=is_file($dir.'/state')?trim((string)file_get_contents($dir.'/state')):null;
+ return['operation'=>OP,'sealed_operation'=>SEALED,'state'=>$state,'files'=>$files,'pages'=>$pages,'error'=>$error,'result_present'=>is_file($dir.'/result.json'),'supplier_calls'=>0,'db_writes'=>0,'runtime_writes'=>0];}
+if(PHP_SAPI==='cli'){try{echo json_encode(main(),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";}catch(Throwable$e){fwrite(STDERR,"ANEX_LEDGER_READBACK_FAILED\n");exit(2);}}
