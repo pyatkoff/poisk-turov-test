@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           test "$GITHUB_REF_NAME" = 'ops/int-andromeda-broninit-shape-error-read-20260919-v1'
           grep -Fq 'TARGET_OPERATION: int-andromeda-tourkey-broninit-shape-1717-20260919-v1' .github/workflows/int-andromeda-broninit-shape-error-read-v1.yml
-          ! grep -Eq 'gateway\.samo\.ru|curl_init|curl_exec|broninit|action=price|INSERT INTO|UPDATE anytour_|DELETE FROM' .github/workflows/int-andromeda-broninit-shape-error-read-v1.yml
+          ! grep -Eq 'gateway\.samo\.ru|curl_init|curl_exec|action=(price|all|state|townfrom|get_flights|changeservice|calc)|INSERT INTO|UPDATE anytour_|DELETE FROM|AnyTourAndromeda(Client|Transport|ClaimActions)' .github/workflows/int-andromeda-broninit-shape-error-read-v1.yml
 
       - name: Read and sanitize exact terminal ledger
         shell: bash
