@@ -1,0 +1,164 @@
+name: MATCH TV ANEX missing SAMO frontier v3
+on:
+  pull_request:
+    paths:
+      - scripts/diagnostics/hotel_match_tv_anex_missing_samo_frontier_v3.php
+      - .github/workflows/hotel-match-tv-anex-missing-samo-frontier-v3.yml
+permissions:
+  contents: read
+  actions: read
+  issues: read
+concurrency:
+  group: hotel-match-tv-anex-missing-samo-frontier-1971-20260919-v3
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-tv-anex-missing-samo-frontier-1971-20260919-v3
+  EXPECTED_BASE: dedafbcd167a88a8e3d8f77cfd4d467924d4ba93
+  CLAIM_COMMENT_ID: '5740396516'
+  HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.event.pull_request.head.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact package and owner claim
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p result payload
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_tv_anex_missing_samo_frontier_v3.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-tv-anex-missing-samo-frontier-v3.yml'
+          cp scripts/diagnostics/hotel_match_tv_anex_missing_samo_frontier_v3.php payload/frontier.php
+          php -l payload/frontier.php
+          php payload/frontier.php --self-test
+          python3 - <<'PY'
+          import pathlib,re
+          s=pathlib.Path('payload/frontier.php').read_text()
+          assert 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' in s
+          assert not re.search(r'\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\s',s,re.I)
+          assert "supplier_namespace='operator_5'" in s
+          assert "supplier_namespace='andromeda_catalog'" in s
+          assert "operator_id=13" in s
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > payload/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('payload/claim.json')); b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297
+          assert c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          assert os.environ['OPERATION_ID'] in b
+          assert 'TV+ANEX' in b and 'SAMO' in b.upper()
+          PY
+      - name: Create durable reservation before DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload/frontier.php')
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['HEAD_SHA'],'state':'reserved_before_db_access','source_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_calls':0,'andromeda_calls':0,'direct_anex_calls':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with pathlib.Path('result/reservation.json').open('xb') as f:
+            f.write(raw); f.flush(); os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed':
+                assert r['conclusion']=='success', 'security_not_green'
+                print('SECURITY_OK',r['id']); break
+            time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'missing-samo-frontier-v3-reservation-${{ github.run_id }}'
+          path: result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute CURRENT read-only frontier
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" result/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" payload/frontier.php "$remote:$op/frontier.php"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$HEAD_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M \"\$HOME/$op/frontier.php\"" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" >result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?
+          set -e
+          printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('result'); s=p/'server'; s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            assert sorted(t.getnames())==['receipt.json','reservation.json','result.json']
+            for m in t.getmembers():
+              assert m.isfile() and m.size<=64_000_000
+              (s/m.name).write_bytes(t.extractfile(m).read())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          r=json.loads((s/'result.json').read_bytes()); q=json.loads((s/'receipt.json').read_bytes())
+          d=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==d and q['readback_verified'] is True
+          assert r['state']=='completed_read_only'
+          for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_calls','andromeda_calls','direct_anex_calls']:
+            assert r[k]==0 and q[k]==0
+          c=r['coverage_global']
+          assert c['tv_anex_missing_samo']==c['tv_anex_unique_local']-c['tv_anex_samo_triple']
+          assert c['tv_samo_missing_anex']==c['tv_samo_unique_local']-c['tv_anex_samo_triple']
+          assert r['missing_samo_global']==c['tv_anex_missing_samo']
+          assert r['physical_active_nonexcluded_frontier']==len(r['frontier'])
+          summary={'state':r['state'],'read_at_utc':r['read_at_utc'],'coverage_global':c,'physical_active_nonexcluded_frontier':r['physical_active_nonexcluded_frontier'],'excluded_from_executable_frontier':r['excluded_from_executable_frontier'],'route_counts':r['route_counts'],'by_country':r['by_country'],'user_seen_frontier_count':r['user_seen_frontier_count'],'query_ready_future_anex_context_count':r['query_ready_future_anex_context_count'],'saved_direct_bridge_review_count':r['saved_direct_bridge_review_count'],'context_group_count':r['context_group_count'],'top_contexts':r['top_future_anex_context_groups'][:20],'result_sha256':d}
+          (p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'missing-samo-frontier-v3-result-${{ github.run_id }}'
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
