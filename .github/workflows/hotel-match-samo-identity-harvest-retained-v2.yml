@@ -1,0 +1,101 @@
+name: MATCH SAMO retained identity harvest v2
+on:
+  push:
+    branches: [ops/match-samo-identity-harvest-retained-1971-20260919-v2]
+    paths: [scripts/diagnostics/hotel_match_samo_identity_harvest_retained_v1.php, .github/workflows/hotel-match-samo-identity-harvest-retained-v2.yml]
+permissions: {contents: read, actions: read, issues: read}
+env:
+  OPERATION_ID: hotel-match-samo-identity-harvest-retained-1971-20260919-v2
+  BASE_SHA: e9d7bf349bfb601dff04b7fc47088c1eff38b369
+  CLAIM: '5742174412'
+jobs:
+  harvest:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact scope and scanner
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input operation export
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 2
+          php -l scripts/diagnostics/hotel_match_samo_identity_harvest_retained_v1.php
+          php scripts/diagnostics/hotel_match_samo_identity_harvest_retained_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json')); assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/2530') and os.environ['OPERATION_ID'] in c['body']
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+           with urllib.request.urlopen(q,timeout=30) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs and max(xs,key=lambda x:x['id'])['status']=='completed':
+            x=max(xs,key=lambda x:x['id']); assert x['conclusion']=='success'; print('SECURITY_OK',x['id']); break
+           time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - name: Download and verify immutable SAMO34 raw artifact
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10582147904/zip >input/samo34.zip
+          python3 - <<'PY'
+          import hashlib,pathlib,zipfile,stat,json
+          p=pathlib.Path('input/samo34.zip'); assert hashlib.sha256(p.read_bytes()).hexdigest()=='323b7f97c4786475892ad3bceecae052279520011fbd7745cf3fee4f67a4a6a1'
+          with zipfile.ZipFile(p) as z:
+           infos=z.infolist(); names=[m.filename for m in infos]
+           # Known original artifact anomaly: one duplicate raw-manifest hardlink-like member. Never extract it.
+           regular=[]
+           for m in infos:
+            mode=m.external_attr>>16
+            if m.is_dir(): continue
+            assert not m.filename.startswith('/') and '..' not in pathlib.PurePosixPath(m.filename).parts and m.file_size<64000000
+            if stat.S_ISLNK(mode):
+             assert pathlib.PurePosixPath(m.filename).name=='raw-manifest.json'; continue
+            regular.append(m)
+           manifests=[m for m in regular if pathlib.PurePosixPath(m.filename).name=='raw-manifest.json']; assert len(manifests)==1
+           manifest=json.loads(z.read(manifests[0])); ledger={x['file']:x for x in manifest['files']}
+           extracted={}
+           for m in regular:
+            n=pathlib.PurePosixPath(m.filename).name
+            if n.startswith('raw-') and n.endswith('.json') and n!='raw-manifest.json':
+             b=z.read(m); assert n not in extracted; extracted[n]=b
+           assert set(extracted)==set(ledger)
+           outdir=pathlib.Path('input/raw');outdir.mkdir(exist_ok=True)
+           for n,b in extracted.items():
+            x=ledger[n]; assert len(b)==x['bytes'] and hashlib.sha256(b).hexdigest()==x['sha256']; (outdir/n).write_bytes(b)
+          assert len(extracted)>=20
+          PY
+      - name: Harvest every retained identity field
+        shell: bash
+        run: |
+          set -euo pipefail
+          MATCH_OPERATION_DIR="$PWD/operation" MATCH_RAW_DIR="$PWD/input/raw" php scripts/diagnostics/hotel_match_samo_identity_harvest_retained_v1.php >export/stdout.json
+          cp operation/result.json operation/receipt.json export/
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          r=json.load(open('operation/result.json')); q=json.load(open('operation/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only' and r['provider_calls']==r['database_access']==r['database_writes']==0
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('operation/result.json').read_bytes()).hexdigest()
+          assert r['raw_files']>=20 and r['facts_unique']>0
+          # Private exact URL values never leave operation/.
+          assert not pathlib.Path('export/result.json').read_text().find('https://')>=0
+          print(json.dumps({k:r[k] for k in ['raw_files','nodes_scanned','facts_total','facts_unique','url_facts','numeric_identity_facts']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-samo-identity-harvest-${{ github.run_id }}', path: export/, retention-days: 90, if-no-files-found: error}
