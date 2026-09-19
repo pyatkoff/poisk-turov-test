@@ -1,0 +1,84 @@
+name: MATCH COMMON4 saved SAMO name34 CURRENT v1
+on:
+  push:
+    branches: [ops/match-common4-saved-samo-name34-current-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_common4_saved_samo_name34_current_v1.php
+      - .github/workflows/hotel-match-common4-saved-samo-name34-current-v1.yml
+permissions: {contents: read, actions: read}
+concurrency: {group: hotel-match-common4-saved-samo-name34-current-1971-20260919-v1, cancel-in-progress: false}
+env: {OPERATION_ID: hotel-match-common4-saved-samo-name34-current-1971-20260919-v1}
+jobs:
+  current:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {artifact-ids: '10578770564', run-id: 35422907462, github-token: '${{ github.token }}', path: prior, merge-multiple: true}
+      - name: Seal input39 and reserve
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p payload result
+          cp scripts/diagnostics/hotel_match_common4_saved_samo_name34_current_v1.php payload/audit.php
+          php -l payload/audit.php; php payload/audit.php --self-test
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('prior/server/result.json'); raw=p.read_bytes(); r=json.loads(raw)
+          assert hashlib.sha256(raw).hexdigest()=='fd0fcf1a6d6c8db5a1b0d3cb95b91c53c62c683e845c3eca6470ff70c9d9c0a4'
+          assert r.get('reason') is None and r['read_at_utc']=='2026-09-19T05:03:41+00:00' and r['input_edge_count']==149 and len(r['dossiers'])==149
+          assert r['database_writes']==r['mapping_writes']==r['supplier_calls']==r['tourvisor_calls']==r['samo_calls']==0
+          edges=[]
+          for d in r['dossiers']:
+            if d['classification']=='single_candidate_current_review' and d['operator'] in ('funsun','intourist'):
+              edges.append({'tv_hotel_id':int(d['tv_hotel_id']),'hotel_name':d['hotel_name'],'operator':d['operator'],'supplier_namespace':d['target_supplier_namespace'],'operator_link_native_tokens':[int(x) for x in d['candidate_external_hotel_ids']]})
+          edges.sort(key=lambda x:(x['operator'],x['tv_hotel_id'],x['operator_link_native_tokens']))
+          out={'schema':'hotel-match-common4-saved-samo-name34-input/1','source_pr':3018,'source_run':35422907462,'source_artifact_id':10578770564,'source_artifact_digest':'sha256:da91adbccaa676b7f583a4581fcd90c657e67d68566b0e78937f0bab2030aa74','source_result_sha256':'fd0fcf1a6d6c8db5a1b0d3cb95b91c53c62c683e845c3eca6470ff70c9d9c0a4','edge_count':len(edges),'unique_tv_hotels':len({e['tv_hotel_id'] for e in edges}),'edges':edges}
+          data=(json.dumps(out,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); assert len(edges)==39 and out['unique_tv_hotels']==34 and hashlib.sha256(data).hexdigest()=='75331e97a1d677e3b57e15d475d98a77aafeab16889377805dcee6daed00e372'; pathlib.Path('payload/input.json').write_bytes(data)
+          res={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','input_sha256':hashlib.sha256(data).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_calls':0,'no_replay':True}
+          pathlib.Path('result/reservation.json').write_text(json.dumps(res,sort_keys=True)+'\n')
+          PY
+          (cd payload && sha256sum audit.php input.json > SHA256SUMS)
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed': assert r['conclusion']=='success'; print('SECURITY_OK',r['id']); break
+            time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'common4-samo-name34-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute CURRENT saved SAMO read
+        shell: bash
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail; umask 077; test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null; test -s "$known"
+          o=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15); remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"
+          ssh "${o[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${o[@]}" result/reservation.json "$remote:$op/reservation.json"; scp "${o[@]}" payload/audit.php payload/input.json payload/SHA256SUMS "$remote:$op/"
+          set +e; ssh "${o[@]}" "$remote" "cd \"\$HOME/$op\"&&sha256sum -c SHA256SUMS>/dev/null&&cd \"\$HOME/www/anytoour.ru\"&&MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M \"\$HOME/$op/audit.php\"" >result/remote.stdout 2>result/remote.stderr; rc=$?; ssh "${o[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json input.json result.json receipt.json" >result/server-operation.tgz 2>>result/remote.stderr; trc=$?; set -e; printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json; test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            for m in t.getmembers(): assert m.isfile() and m.size<80_000_000; (s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.loads((s/'result.json').read_bytes());q=json.loads((s/'receipt.json').read_bytes());d=hashlib.sha256((s/'result.json').read_bytes()).hexdigest(); assert q['result_sha256']==d and q['readback_verified'] is True; assert r['state']=='completed_read_only' and len(r['dossiers'])==39 and sum(r['classification_counts'].values())==39; assert r['database_writes']==r['mapping_writes']==r['supplier_calls']==r['tourvisor_calls']==r['samo_calls']==0; assert all(x['safe_to_write_now'] is False for x in r['dossiers']); print(json.dumps({'namespace_row_counts':r['namespace_row_counts'],'namespace_rows_with_source_names':r['namespace_rows_with_source_names'],'classification_counts':r['classification_counts'],'result_sha256':d},ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'common4-samo-name34-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
