@@ -76,4 +76,3 @@ async function reply(ctx,index,value,status=200){ctx.calls[index].resolve({ok:st
  check(ctx.calls.length===1,'Invalid own IDs make no request');
  console.log('SEARCH3_CANONICAL_PROFILES_OK checks='+checks+' supplier_calls=0 db_writes=0');
 })().catch(e=>{console.error(e);process.exitCode=1;});
-

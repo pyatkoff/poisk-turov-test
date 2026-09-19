@@ -117,4 +117,3 @@ function create(refresh){
 }
 root.Search3CanonicalProfilesV1=Object.freeze({create,current:()=>activeOwner});
 })(window);
-

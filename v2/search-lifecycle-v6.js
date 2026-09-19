@@ -111,4 +111,3 @@ window.addEventListener('popstate',()=>{if(!(document.body&&document.body.classL
 window.V2SearchLifecycle={submit,params,validate,markDirty,hydrateUrlState,normalizeRestoreQuery,restorationUrl,hotelDetailUrl,get restoredAt(){return restoredAt;},get hotelDetail(){return hotelDetail&&Object.assign({},hotelDetail);},get restoreQuery(){return searchId&&searchSnapshot&&!dirty?searchRestoreQuery:'';},get searchId(){return searchId;},get generation(){return generation;},get dirty(){return dirty;},get pending(){return searchPending;},get snapshot(){return cloneSnapshot(searchSnapshot);},version:6};
 boot();
 })();
-
