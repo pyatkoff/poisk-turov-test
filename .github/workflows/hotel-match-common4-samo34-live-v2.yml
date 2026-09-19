@@ -140,7 +140,7 @@ jobs:
           set +e
           printf '%s\n%s\n' "$ANDROMEDA_USERNAME_VALUE" "$ANDROMEDA_PASSWORD_VALUE" | ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_CONTEXT_PATH=\"\$HOME/$stage/context34.json\" MATCH_BINDER_PATH=\"\$HOME/$stage/hotel_match_common4_operator_binding_v1.php\" MATCH_CLIENT_PATH=\"\$HOME/$stage/andromeda-client.php\" MATCH_TRANSPORT_PATH=\"\$HOME/$stage/andromeda-transport.php\" php -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" -d memory_limit=768M \"\$HOME/$stage/acquire.php\"" >terminal/stdout.json 2>terminal/stderr.txt
           rc=$?; printf '%s\n' "$rc">terminal/remote-exit.txt
-          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json;for f in result.json receipt.json provider-calls.jsonl raw-manifest.json bootstrap-errors.log raw-*.json;do test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >terminal/server-operation.tgz 2>>terminal/stderr.txt
+          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json;for f in result.json receipt.json provider-calls.jsonl bootstrap-errors.log raw-*.json;do test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >terminal/server-operation.tgz 2>>terminal/stderr.txt
           trc=$?; printf '%s\n' "$trc">terminal/tar-exit.txt
           set -e
           test "$trc" -eq 0; test "$rc" -eq 0
