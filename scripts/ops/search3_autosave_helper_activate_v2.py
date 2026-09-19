@@ -159,7 +159,14 @@ foreach($labels as $i=>$label){
  if($d['finalPriceReady']!==true||$d['price']!=='150824'||$d['finalPrice']!=='150824')throw new RuntimeException('price_contract');
  $n++;
 }
-echo json_encode(['installed_operator_cases'=>$n,'supplier_calls'=>0,'db_writes'=>0]);
+$compile = new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class, 'compileEntries');
+$valid=['id'=>'VALID-SIBLING','date'=>'2026-10-05','nights'=>7,'price'=>150824,'currency'=>'RUB','meal'=>['name'=>'Все включено'],'roomType'=>'Standard Room','operator'=>['name'=>'ANEX'],'fuelCharge'=>0];
+$invalid=$valid;$invalid['id']='MISSING-MEAL';unset($invalid['meal']);
+[$rows,$skipped]=$compile->invoke(null,[['id'=>3417,'tours'=>[$invalid,$valid]]],[3417=>77],987654321,2,0,[],'2026-09-19T09:00:00Z',$now);
+if(count($rows)!==1||$skipped!==1)throw new RuntimeException('sibling_compile');
+[$empty,$emptySkipped]=$compile->invoke(null,[['id'=>3417,'tours'=>[$invalid]]],[3417=>77],987654321,2,0,[],'2026-09-19T09:00:00Z',$now);
+if($empty!==[]||$emptySkipped!==1)throw new RuntimeException('all_invalid_compile');
+echo json_encode(['installed_operator_cases'=>$n,'sibling_valid_rows'=>count($rows),'sibling_skipped'=>$skipped,'all_invalid_rows'=>count($empty),'all_invalid_skipped'=>$emptySkipped,'supplier_calls'=>0,'db_writes'=>0]);
 '''
 
 
@@ -168,6 +175,8 @@ def probe(path):
     output = subprocess.check_output(['php', '-r', PHP_PROBE, str(path)], timeout=30)
     result = json.loads(output)
     need(result.get('installed_operator_cases') == 12, 'installed_probe')
+    need(result.get('sibling_valid_rows') == 1 and result.get('sibling_skipped') == 1, 'installed_sibling_probe')
+    need(result.get('all_invalid_rows') == 0 and result.get('all_invalid_skipped') == 1, 'installed_all_invalid_probe')
     return result
 
 
