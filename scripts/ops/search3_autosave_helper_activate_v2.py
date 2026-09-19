@@ -14,6 +14,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import urllib.error
 
 REPO = 'pyatkoff/poisk-turov-test'
 BASE = '25d03f7317350652129231223eccbd865b7a912b'
@@ -57,8 +58,14 @@ def github(path):
     req = urllib.request.Request('https://api.github.com/repos/' + REPO + path,
         headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
                  'Accept': 'application/vnd.github+json', 'User-Agent': OP})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (502, 503, 504) or attempt == 2:
+                raise
+            time.sleep(2 * (attempt + 1))
 
 
 def authorize(wait_security):
