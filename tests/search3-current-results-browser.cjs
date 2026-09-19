@@ -34,7 +34,13 @@ async function checkPrimaryForm(page, state, visible = false) {
   assert.equal(await form.isVisible(), visible, state + ': canonical editor visibility follows the results state');
   for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill', 'count_people', 'child_count', 'region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
     assert.equal(await form.locator(`[name="${name}"]`).count(), 1, state + ': primary control ' + name + ' remains owned by the canonical form');
-    if (visible) assert.equal(await form.locator(`[name="${name}"]`).isVisible(), true, state + ': primary control ' + name + ' is editable');
+    if (visible) {
+      const editor = name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
+      assert.equal(await editor.count(), 1, state + ': one visible editor for ' + name);
+      assert.equal(await editor.isVisible(), true, state + ': primary control ' + name + ' is editable');
+      assert.equal(await editor.isEnabled(), true, state + ': primary editor ' + name + ' is enabled');
+      if (name === 'hotel') assert.equal(await form.locator('[name="hotel"]').isVisible(), false, state + ': canonical hotel ID stays in the hidden transport owner');
+    }
   }
   if (visible) assert.equal(await form.locator('[name=operator]').isVisible(), false, state + ': supplier operator remains secondary');
 }
