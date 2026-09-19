@@ -33,13 +33,19 @@ async function checkPrimaryForm(page, state, visible = false) {
   const form = page.locator('#tourSearch');
   assert.equal(await form.count(), 1, state + ': one canonical form owner');
   assert.equal(await form.isVisible(), visible, state + ': canonical editor visibility follows the results state');
+  const mobile = await form.getAttribute('data-search3-parameters') === 'mobile';
+  const groups = {dateFrom:'dates',dateTo:'dates',daysFrom:'nights',daysTill:'nights',count_people:'party',child_count:'party'};
   for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill', 'count_people', 'child_count', 'region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
     assert.equal(await form.locator(`[name="${name}"]`).count(), 1, state + ': primary control ' + name + ' remains owned by the canonical form');
     if (visible) {
-      const editor = name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
+      const editor = mobile && groups[name] ? form.locator(`[data-search3-parameter="${groups[name]}"]`) : name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
       assert.equal(await editor.count(), 1, state + ': one visible editor for ' + name);
       assert.equal(await editor.isVisible(), true, state + ': primary control ' + name + ' is editable');
       assert.equal(await editor.isEnabled(), true, state + ': primary editor ' + name + ' is enabled');
+      if (mobile && groups[name]) {
+        assert.equal(await editor.getAttribute('aria-haspopup'), 'dialog', state + ': mobile parameter opens an explicit editor');
+        assert.equal(await form.locator(`[name="${name}"]`).isVisible(), false, state + ': canonical parameter has one visible editing entry point');
+      }
       if (name === 'hotel') assert.equal(await form.locator('[name="hotel"]').isVisible(), false, state + ': canonical hotel ID stays in the hidden transport owner');
     }
   }
