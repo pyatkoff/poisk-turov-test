@@ -1,0 +1,137 @@
+name: MATCH COMMON4 user-search CURRENT frontier v1
+on:
+  push:
+    branches: [ops/match-common4-usersearch-frontier-current-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_common4_usersearch_frontier_current_v1.php
+      - .github/workflows/hotel-match-common4-usersearch-frontier-current-v1.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: hotel-match-common4-usersearch-frontier-current-1971-20260919-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-common4-usersearch-frontier-current-1971-20260919-v1
+jobs:
+  current:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate read-only source and reserve before DB
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p result
+          php -l scripts/diagnostics/hotel_match_common4_usersearch_frontier_current_v1.php
+          php scripts/diagnostics/hotel_match_common4_usersearch_frontier_current_v1.php --self-test
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re
+          p=pathlib.Path('scripts/diagnostics/hotel_match_common4_usersearch_frontier_current_v1.php')
+          src=p.read_text()
+          assert 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' in src
+          assert not re.search(r'\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\s',src,re.I)
+          r={
+            'operation_id':os.environ['OPERATION_ID'],
+            'source_sha':os.environ['GITHUB_SHA'],
+            'state':'reserved_before_db_access',
+            'source_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+            'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_calls':0,
+            'no_replay':True,
+          }
+          raw=json.dumps(r,sort_keys=True)+'\n'
+          with pathlib.Path('result/reservation.json').open('x') as f:
+              f.write(raw);f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security success before server access
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              checks=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+              if checks:
+                  latest=max(checks,key=lambda x:x['id'])
+                  if latest['status']=='completed':
+                      if latest['conclusion']!='success': raise SystemExit('security_not_green')
+                      print('EXACT_SECURITY_GREEN',latest['id']);break
+              time.sleep(5)
+          else: raise SystemExit('exact_security_not_available_no_server_access')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: common4-usersearch-frontier-reservation-${{ github.run_id }}
+          path: result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute one CURRENT read-only snapshot
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/c4u-key"; known="$RUNNER_TEMP/c4u-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null; test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "set -e; umask 077; mkdir -p \"\$HOME/.anytoour-match/operations\"; test ! -e \"\$HOME/$op\"; mkdir \"\$HOME/$op\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${opts[@]}" result/reservation.json "$remote:$op/" >result/reserve.stdout 2>result/reserve.stderr
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < scripts/diagnostics/hotel_match_common4_usersearch_frontier_current_v1.php >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" >result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?
+          set -e
+          printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc" >result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('result'); s=p/'server'; s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              assert sorted(t.getnames())==['receipt.json','reservation.json','result.json']
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<=50_000_000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          result=json.loads((s/'result.json').read_bytes()); receipt=json.loads((s/'receipt.json').read_bytes())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['readback_verified'] is True
+          assert result['operation_id']==receipt['operation_id']=='hotel-match-common4-usersearch-frontier-current-1971-20260919-v1'
+          assert result['source_sha']==receipt['source_sha']
+          assert result['state']=='completed_read_only'
+          assert result['database_writes']==result['mapping_writes']==result['supplier_calls']==result['tourvisor_calls']==result['samo_calls']==0
+          assert result['missing_same_provider_edges']==len(result['missing_edges'])
+          assert result['unique_user_search_operator_hotel_edges']==result['accepted_same_provider_edges']+result['missing_same_provider_edges']
+          summary={k:result[k] for k in ['state','read_at_utc','raw_user_search_observation_rows','unique_user_search_operator_hotel_edges','opaque_fortuna_roulette_edges_excluded','accepted_same_provider_edges','missing_same_provider_edges','by_operator','actionable_context_groups']}
+          summary['top_contexts']=result['actionable_contexts'][:12]
+          summary['result_sha256']=digest
+          (p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: common4-usersearch-frontier-result-${{ github.run_id }}
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
