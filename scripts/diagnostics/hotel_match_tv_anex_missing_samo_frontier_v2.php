@@ -237,8 +237,9 @@ function hmms_main():void{
         $totalContextGroups=count($contextRows);$contextRows=array_slice($contextRows,0,HMMS_CONTEXT_OUTPUT_LIMIT);
 
         $db->commit();
+        $out['state']='completed_read_only';
         $out+= [
-            'state'=>'completed_read_only','read_at_utc'=>gmdate('c'),'today_moscow'=>$today,
+            'read_at_utc'=>gmdate('c'),'today_moscow'=>$today,
             'coverage_global'=>[
                 'tv_anex_unique_local'=>count($anexByLocal),'tv_samo_unique_local'=>count($samoByLocal),
                 'tv_anex_samo_triple'=>count($tripleLocals),'tv_anex_missing_samo'=>count($missingIds),
