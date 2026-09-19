@@ -289,19 +289,27 @@ final class AnyTourAndromedaSelectedQuote
             if (!is_array($block) || !is_array($block['service'] ?? null)) continue;
             foreach ($block['service'] as $service) {
                 if (!is_array($service)
-                    || (string)($service['servicetype'] ?? '') !== '8'
                     || (string)($service['servicecategoryName'] ?? '') !== 'Топливный сбор') continue;
                 $amount = self::moneyFactValue($service['price'] ?? null);
                 $currency = $service['currencyAlias'] ?? null;
                 if ($amount === null
                     || !is_string($currency) || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1) continue;
                 $route = (string)($service['routeIndex'] ?? '');
-                $out[] = [
+                $serviceType = $service['servicetype'] ?? null;
+                if (is_int($serviceType)) $serviceType = (string)$serviceType;
+                if (!is_string($serviceType) || preg_match('/^[A-Za-z0-9_.:-]{1,32}$/D', $serviceType) !== 1) {
+                    $serviceType = null;
+                }
+                $row = [
                     'amount' => $amount,
                     'currency' => $currency,
                     'route_index' => in_array($route, ['0', '1'], true) ? $route : null,
                     'source' => 'andromeda_claim_service',
                 ];
+                // Keep the historical type=8 public shape byte-compatible; newly observed
+                // supplier types remain explicit evidence instead of being filtered out.
+                if ($serviceType !== null && $serviceType !== '8') $row['service_type'] = $serviceType;
+                $out[] = $row;
             }
         }
         return $out;
