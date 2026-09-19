@@ -20,16 +20,16 @@ function syncHotelPageTitle(root){
  document.title=title;
  return changed;
 }
-function normalizeAmbiguousRating(card){
+function normalizeHotelRating(card){
  if(!active()||!card||typeof card.querySelector!=='function')return false;
  if(!card.dataset||!String(card.dataset.anytourHotelId||''))return false;
  const rating=card.querySelector('.hotel-decision-rating'),match=text(rating).match(/^Рейтинг\s+([0-9]+(?:[.,][0-9]+)?)$/i);
  if(!rating||!match)return false;
  const value=match[1].replace('.',',');
- rating.textContent='Каталожная оценка '+value+' · шкала не указана';
- if(rating.classList){rating.classList.remove('hotel-decision-rating');rating.classList.add('hotel-decision-rating-unscaled');}
- rating.setAttribute('data-rating-semantics','unscaled');
- rating.setAttribute('aria-label','Каталожная оценка '+value+'. Источник, шкала и число отзывов не указаны.');
+ if(!(Number(match[1].replace(',','.'))>0&&Number(match[1].replace(',','.'))<=5)){rating.remove();return true;}
+ rating.textContent='Рейтинг отеля '+value+' из 5';
+ rating.setAttribute('data-rating-semantics','five-point');
+ rating.setAttribute('aria-label',rating.textContent);
  return true;
 }
 // Reuse the canonical action URL; presentation never reconstructs search authority.
@@ -167,7 +167,7 @@ function resetPresentation(){
 }
 function normalizeCard(card){
  if(!active()||!card||typeof card.querySelector!=='function')return false;
- let changed=normalizeAmbiguousRating(card);
+ let changed=normalizeHotelRating(card);
  if(normalizeHotelTitleLink(card))changed=true;
  if(normalizeHotelPhotoLink(card))changed=true;
  const summary=card.querySelector('.hotel-description-summary'),details=card.querySelector('.hotel-details'),content=details&&details.querySelector('.hotel-details-content'),duplicate=content&&content.querySelector('.hotel-description');
@@ -194,5 +194,5 @@ window.addEventListener('v2:hotel-details-rendered',event=>{const root=document.
  if(name==='click'&&link&&!event.defaultPrevented&&event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey&&openPhotoViewer(link,gallery))event.preventDefault();
 }));
 ['v2:search-started','v2:search-reset'].forEach(name=>window.addEventListener(name,resetPresentation));
-window.Search3HotelDetailsPresentationV1={active,syncHotelPageTitle,normalizeAmbiguousRating,hotelTitleHref,normalizeHotelTitleLink,normalizeHotelPhotoLink,normalizeCard,normalize,version:7};
+window.Search3HotelDetailsPresentationV1={active,syncHotelPageTitle,normalizeHotelRating,hotelTitleHref,normalizeHotelTitleLink,normalizeHotelPhotoLink,normalizeCard,normalize,version:8};
 })();
