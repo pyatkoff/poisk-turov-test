@@ -1,0 +1,55 @@
+name: Verify LOCAL ANEX DB-only results v1
+on:
+  pull_request:
+    branches: ['release/search3-production-ready-v1']
+    paths: ['.github/workflows/verify-local-anex-db-v1.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Query LOCAL DB reader without supplier access
+        run: |
+          set -euo pipefail
+          endpoint='https://anytoour.ru/_preview/search3-local-candidate/data/search3-local-results-read-v1.php'
+          mkdir -p "$RUNNER_TEMP/local-anex"
+          python3 - <<'PY' > "$RUNNER_TEMP/local-anex/broad.json"
+          import json
+          params={"departureId":"1","countryId":"4","dateFrom":"2026-09-19","dateTo":"2026-09-22","nightsFrom":7,"nightsTo":10,"adults":2,"childs":[],"meal":"","hotelCategory":"","hotelRating":"","hotelTypes":[],"hotelIds":[],"hotelServices":[],"arrivalId":"","regionIds":["20"],"subregionIds":[],"operatorIds":[],"priceFrom":"","priceTo":"","currency":"RUB","onlyCharter":False,"onlyDirect":False}
+          print(json.dumps({"params":params},separators=(',',':')))
+          PY
+          python3 - <<'PY' > "$RUNNER_TEMP/local-anex/stars4.json"
+          import json
+          params={"departureId":"1","countryId":"4","dateFrom":"2026-09-19","dateTo":"2026-09-22","nightsFrom":7,"nightsTo":10,"adults":2,"childs":[],"meal":"","hotelCategory":"4","hotelRating":"","hotelTypes":[],"hotelIds":[],"hotelServices":[],"arrivalId":"","regionIds":["20"],"subregionIds":[],"operatorIds":[],"priceFrom":"","priceTo":"","currency":"RUB","onlyCharter":False,"onlyDirect":False}
+          print(json.dumps({"params":params},separators=(',',':')))
+          PY
+          for scope in broad stars4; do
+            code=$(curl -sS --max-time 45 -o "$RUNNER_TEMP/local-anex/$scope-response.json" -w '%{http_code}'               -X POST -H 'Content-Type: application/json' -H 'X-Requested-With: AnyTourSearch3' -H 'Accept: application/json'               --data-binary "@$RUNNER_TEMP/local-anex/$scope.json" "$endpoint")
+            test "$code" = 200
+            jq -e '.ok==true and .data.source=="anytour-db-first-results-v1" and .data.selectionAuthority==false and (.data.providerOfferCounts.anex//0)>0' "$RUNNER_TEMP/local-anex/$scope-response.json" >/dev/null
+            jq -e '[.data.hotels[].offers[]|select(.provider=="anex")]|length == (.data.providerOfferCounts.anex//0)' "$RUNNER_TEMP/local-anex/$scope-response.json" >/dev/null
+            jq -e '[.data.hotels[].offers[]|select(.provider=="anex")|.listing|select(.selection_state!="refresh_required" or .booking_enabled!=false or .listingPriceReady!=true or .listingPriceState!="final_ready_estimate")]|length==0' "$RUNNER_TEMP/local-anex/$scope-response.json" >/dev/null
+            jq -c '{scope:"'"$scope"'",matchMode:.data.matchMode,partial:.data.partial,hotelCount:.data.hotelCount,offerCount:.data.offerCount,storedOfferCount:.data.storedOfferCount,providerOfferCounts:.data.providerOfferCounts,withheldOfferCount:.data.withheldOfferCount,categoryFilteredOfferCount:.data.categoryFilteredOfferCount,selectionAuthority:.data.selectionAuthority,anexSample:([.data.hotels[].offers[]|select(.provider=="anex")|{price,currency,legacyHotelId,listingPriceState:.listing.listingPriceState,checkin:.listing.tour.checkin,nights:.listing.tour.nights}]|.[0:3])}' "$RUNNER_TEMP/local-anex/$scope-response.json"
+          done
+      - name: Preserve sanitized acceptance
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/acceptance"
+          for scope in broad stars4; do
+            if test -s "$RUNNER_TEMP/local-anex/$scope-response.json"; then
+              jq '{ok,data:{source:.data.source,scopeVersion:.data.scopeVersion,scopeDigest:.data.scopeDigest,matchMode:.data.matchMode,partial:.data.partial,hotelCount:.data.hotelCount,offerCount:.data.offerCount,storedOfferCount:.data.storedOfferCount,withheldOfferCount:.data.withheldOfferCount,categoryFilteredOfferCount:.data.categoryFilteredOfferCount,providerOfferCounts:.data.providerOfferCounts,selectionAuthority:.data.selectionAuthority,anex:[.data.hotels[].offers[]|select(.provider=="anex")|{legacyHotelId,price,currency,listingPriceState:.listing.listingPriceState,checkin:.listing.tour.checkin,nights:.listing.tour.nights}]}}' "$RUNNER_TEMP/local-anex/$scope-response.json" > "$RUNNER_TEMP/acceptance/$scope.json"
+            fi
+          done
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: local-anex-db-acceptance-${{ github.run_id }}
+          path: ${{ runner.temp }}/acceptance/
+          if-no-files-found: warn
+          retention-days: 30
