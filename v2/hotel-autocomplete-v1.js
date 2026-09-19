@@ -8,12 +8,33 @@ const label=field.querySelector(':scope > span');if(label)label.textContent='К�
 const box=document.createElement('div');box.className='hotel-autocomplete';box.innerHTML='<input type="search" data-v2-hotel-query autocomplete="off" placeholder="Например Rixos Premium Belek" aria-label="Конкретный отель" aria-autocomplete="list" aria-controls="hotelAutocompleteList"><div id="hotelAutocompleteList" class="hotel-autocomplete__list" role="listbox" hidden></div>';
 hotelSelect.insertAdjacentElement('afterend',box);
 const input=box.querySelector('[data-v2-hotel-query]'),list=box.querySelector('#hotelAutocompleteList');
-const endpoint=(window.V2_CONFIG&&window.V2_CONFIG.hotelSearchApi)||'/data/hotel-search-v1.php';let timer=0,controller=null,items=[],activeIndex=-1,generation=0;
+const endpoint=(window.V2_CONFIG&&window.V2_CONFIG.hotelSearchApi)||'/data/hotel-search-v1.php';let timer=0,controller=null,items=[],activeIndex=-1,generation=0,positionFrame=0,revealOnFrame=false;
 function cancelSearch(){generation++;clearTimeout(timer);timer=0;if(controller)controller.abort();controller=null;}
-function clearList(){items=[];activeIndex=-1;list.innerHTML='';list.hidden=true;list.setAttribute('role','listbox');list.removeAttribute('aria-label');input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');input.removeAttribute('aria-busy');}
+function clearList(){items=[];activeIndex=-1;list.innerHTML='';list.hidden=true;cancelAnimationFrame(positionFrame);positionFrame=0;revealOnFrame=false;list.removeAttribute('style');list.setAttribute('role','listbox');list.removeAttribute('aria-label');input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');input.removeAttribute('aria-busy');}
 function clearSelection(emit){const had=!!hotelSelect.value;hotelSelect.value='';input.value='';delete input.dataset.selectedHotelId;delete input.dataset.selectedHotelName;if(emit&&had)hotelSelect.dispatchEvent(new Event('change',{bubbles:true}));}
 function meta(item){const bits=[];if(item.region&&item.region.name)bits.push(item.region.name);if(item.subRegion&&item.subRegion.name)bits.push(item.subRegion.name);if(item.category)bits.push(item.category+'★');if(item.rating)bits.push('рейтинг '+item.rating);return bits.join(' · ');}
-function revealMobileQuery(){if(window.matchMedia&&window.matchMedia('(max-width:767px)').matches)input.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});}
+function mobileQuery(){return window.matchMedia&&window.matchMedia('(max-width:767px)').matches;}
+function visibleBounds(){const v=window.visualViewport;return{top:v?v.offsetTop:0,left:v?v.offsetLeft:0,width:v&&v.width>0?v.width:document.documentElement.clientWidth,height:v&&v.height>0?v.height:window.innerHeight};}
+function positionList(){
+if(list.hidden)return;if(!mobileQuery()){list.removeAttribute('style');return;}
+// Fixed elements otherwise follow the layout viewport, underneath a mobile keyboard.
+const v=visibleBounds(),rect=input.getBoundingClientRect(),edge=12,gap=8,top=v.top+edge,bottom=Math.max(top,v.top+v.height-edge),before=Math.min(bottom,Math.max(top,rect.top-gap)),after=Math.max(top,Math.min(bottom,rect.bottom+gap)),above=before-top,below=bottom-after;
+list.style.left=(v.left+edge)+'px';list.style.right='auto';list.style.width=Math.max(0,v.width-edge*2)+'px';list.style.bottom='auto';
+const down=below>=Math.min(320,list.scrollHeight+2)||below>=above;
+list.style.maxHeight=Math.max(0,Math.min(320,down?below:above))+'px';
+list.style.top=(down?after:before-list.getBoundingClientRect().height)+'px';
+const active=list.contains(document.activeElement)?document.activeElement:list.querySelector('[aria-selected="true"]');
+if(active){const item=active.getBoundingClientRect(),panel=list.getBoundingClientRect();if(item.top<panel.top+6)list.scrollTop+=item.top-panel.top-6;else if(item.bottom>panel.bottom-6)list.scrollTop+=item.bottom-panel.bottom+6;}
+}
+function revealMobileQuery(){
+if(!mobileQuery()){positionList();return;}
+const v=visibleBounds(),rect=input.getBoundingClientRect();
+if(rect.top<v.top+12||rect.bottom>v.top+v.height-12)window.scrollBy({top:rect.top-(v.top+Math.max(12,(v.height-rect.height)/3)),behavior:'instant'});
+positionList();
+}
+function schedulePosition(event){if(list.hidden)return;revealOnFrame=revealOnFrame||event.type==='resize';if(positionFrame)return;positionFrame=requestAnimationFrame(()=>{positionFrame=0;const reveal=revealOnFrame;revealOnFrame=false;if(reveal&&document.activeElement===input)revealMobileQuery();else positionList();});}
+window.addEventListener('resize',schedulePosition,{passive:true});window.addEventListener('scroll',schedulePosition,{passive:true});
+if(window.visualViewport){window.visualViewport.addEventListener('resize',schedulePosition,{passive:true});window.visualViewport.addEventListener('scroll',schedulePosition,{passive:true});}
 function setActive(index){const options=Array.from(list.querySelectorAll('[role="option"]'));if(!options.length){activeIndex=-1;input.removeAttribute('aria-activedescendant');return;}activeIndex=(index+options.length)%options.length;options.forEach((option,i)=>option.setAttribute('aria-selected',i===activeIndex?'true':'false'));const active=options[activeIndex];input.setAttribute('aria-activedescendant',active.id);active.scrollIntoView({block:'nearest'});}
 function ensureOption(item){const id=String(item.id);let option=Array.from(hotelSelect.options||[]).find(o=>String(o.value)===id);if(!option){option=document.createElement('option');option.value=id;hotelSelect.appendChild(option);}option.textContent=item.name;return option;}
 function choose(item){cancelSearch();ensureOption(item);hotelSelect.value=String(item.id);input.value=item.name;input.dataset.selectedHotelId=String(item.id);input.dataset.selectedHotelName=item.name;clearList();hotelSelect.dispatchEvent(new Event('change',{bubbles:true}));input.focus();}

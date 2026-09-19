@@ -329,6 +329,112 @@ const viewports = [
       assert.match(await list.innerText(), /MARRIOTT HOTEL/, 'late failure cannot replace a newer successful query');
       assert.equal(await retry.count(), 0);
 
+      let keyboardViewport = null;
+      if (viewport.width < 768) {
+        const longHotels = Array.from({ length: 10 }, (_, i) => ({ ...hotels[0], id: 43000 + i, name: `RIXOS PREMIUM FAMILY RESORT THE LAND OF LEGENDS ${i + 1}` }));
+        nextLookupResponse = { status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, items: longHotels }) };
+        await input.fill('Rixos');
+        await waitForOptions();
+        assert.equal(await list.locator('[role="option"]').count(), 10);
+        const lookupCount = hotelQueries.length;
+        const keyboardTrip = await tripContext();
+        // Model a keyboard shrinking/panning only VisualViewport. Changing the
+        // Playwright layout size alone misses the fixed-bottom keyboard defect.
+        await page.evaluate(() => {
+          const viewport = window.visualViewport;
+          const state = { height: 320, width: innerWidth, offsetTop: 0, offsetLeft: 0 };
+          const saved = Object.fromEntries(Object.keys(state).map(key => [key, Object.getOwnPropertyDescriptor(viewport, key)]));
+          window.__hotelViewportFixture = { viewport, state, saved };
+          for (const key of Object.keys(state)) Object.defineProperty(viewport, key, { configurable: true, get: () => state[key] });
+          viewport.dispatchEvent(new Event('resize'));
+        });
+        const settled = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        async function visiblePopup(label) {
+          await settled();
+          const value = await page.evaluate(() => {
+            const bounds = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height }; };
+            const v = window.visualViewport;
+            const panel = document.getElementById('hotelAutocompleteList');
+            return { input: bounds(document.querySelector('[data-v2-hotel-query]')), panel: bounds(panel), viewport: { top: v?.offsetTop || 0, left: v?.offsetLeft || 0, width: v?.width || innerWidth, height: v?.height || innerHeight }, scrollY, scrollable: panel.scrollHeight > panel.clientHeight, overflow: panel.scrollWidth > panel.clientWidth + 1 };
+          });
+          const { panel, input: query, viewport: visible } = value;
+          assert.ok(panel.top >= visible.top + 11 && panel.bottom <= visible.top + visible.height - 11, label + ': panel stays above the keyboard');
+          assert.ok(panel.left >= visible.left + 11 && panel.right <= visible.left + visible.width - 11, label + ': panel follows horizontal viewport panning');
+          assert.ok(query.bottom <= panel.top - 7 || query.top >= panel.bottom + 7, label + ': suggestions do not cover the query');
+          assert.equal(value.overflow, false, label + ': long names do not overflow the panel');
+          return value;
+        }
+        const shrunk = await visiblePopup('keyboard opens');
+        assert.ok(shrunk.input.top >= shrunk.viewport.top && shrunk.input.bottom <= shrunk.viewport.top + shrunk.viewport.height, 'keyboard opening preserves a visible query');
+        assert.equal(shrunk.scrollable, true, 'long results scroll inside the available space');
+        await page.evaluate(() => {
+          const fixture = window.__hotelViewportFixture;
+          Object.assign(fixture.state, { offsetTop: 24, offsetLeft: 10, width: innerWidth - 20 });
+          for (let i = 0; i < 4; i++) fixture.viewport.dispatchEvent(new Event('scroll'));
+        });
+        const panned = await visiblePopup('keyboard viewport pans');
+        assert.equal(panned.scrollY, shrunk.scrollY, 'viewport panning does not force a page-scroll loop');
+        assert.equal(hotelQueries.length, lookupCount, 'viewport updates do not repeat catalog lookup');
+        assert.deepEqual(await tripContext(), keyboardTrip);
+        await input.press('ArrowUp');
+        assert.equal(await input.getAttribute('aria-activedescendant'), 'hotelAutocompleteOption9');
+        const last = await list.locator('[role="option"]').last().boundingBox();
+        const activePanel = await visiblePopup('last keyboard result');
+        assert.ok(last.y >= activePanel.panel.top && last.y + last.height <= activePanel.panel.bottom, 'last option is revealed within the scrolled panel');
+        await page.screenshot({ path: path.join(output, `known-hotel-keyboard-model-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+        if (viewport.width === 390) await list.locator('[role="option"]').last().tap();
+        else await input.press('Enter');
+        assert.equal(await select.inputValue(), '43009', 'selection under the keyboard keeps the exact hotel identity');
+        assert.equal(await list.getAttribute('style'), null, 'closing releases transient mobile geometry');
+
+        nextLookupResponse = failures[0];
+        await input.fill('Rixos');
+        await retry.waitFor({ state: 'visible' });
+        await input.press('Tab');
+        await page.evaluate(() => {
+          const fixture = window.__hotelViewportFixture;
+          fixture.state.height = 280;
+          fixture.viewport.dispatchEvent(new Event('resize'));
+        });
+        const failed = await visiblePopup('recovery with shorter keyboard viewport');
+        const action = await retry.boundingBox();
+        assert.ok(action.y >= failed.panel.top && action.y + action.height <= failed.panel.bottom, 'focused retry stays reachable after another keyboard resize');
+        assert.equal(await retry.evaluate(node => node === document.activeElement), true);
+        await page.screenshot({ path: path.join(output, `known-hotel-keyboard-error-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+        const beforeRetry = hotelQueries.length;
+        await retry.press('Enter');
+        await waitForOptions();
+        assert.equal(hotelQueries.length, beforeRetry + 1, 'keyboard-safe recovery performs exactly one retry');
+        assert.deepEqual(await tripContext(), keyboardTrip);
+        assert.deepEqual(searchStarts, [], 'keyboard geometry and recovery never start a supplier search');
+
+        await page.evaluate(() => {
+          const fixture = window.__hotelViewportFixture;
+          for (const [key, descriptor] of Object.entries(fixture.saved)) {
+            if (descriptor) Object.defineProperty(fixture.viewport, key, descriptor);
+            else delete fixture.viewport[key];
+          }
+          fixture.viewport.dispatchEvent(new Event('resize'));
+          delete window.__hotelViewportFixture;
+        });
+        await visiblePopup('keyboard closes');
+        await page.evaluate(() => {
+          window.__hotelViewportDescriptor = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+          Object.defineProperty(window, 'visualViewport', { configurable: true, value: undefined });
+          window.dispatchEvent(new Event('resize'));
+        });
+        const fallback = await visiblePopup('visual viewport unavailable');
+        assert.equal(fallback.viewport.height, viewport.height);
+        await page.evaluate(() => { if (window.__hotelViewportDescriptor) Object.defineProperty(window, 'visualViewport', window.__hotelViewportDescriptor); else delete window.visualViewport; delete window.__hotelViewportDescriptor; window.dispatchEvent(new Event('resize')); });
+        await page.setViewportSize({ width: 1000, height: 800 });
+        await settled();
+        assert.equal(await list.getAttribute('style'), null, 'desktop breakpoint restores the existing anchored dropdown');
+        await page.setViewportSize(viewport);
+        await visiblePopup('return to mobile');
+        keyboardViewport = { model: 'controlled VisualViewport shrink/pan; no physical keyboard', shrunk, panned, failed, lastOptionSelected: '43009', retryVisible: true, fallback: true, desktopReset: true, tripPreserved: true };
+        await input.press('Escape');
+      }
+
       const tripBeforeRecovery = await form.evaluate(node => ({
         country: node.elements.country.value,
         dateFrom: node.elements.dateFrom.value,
@@ -373,7 +479,7 @@ const viewports = [
       })), tripBeforeRecovery, 'all-hotels recovery preserves the complete trip context');
       assert.equal(searchStarts.length, 1, 'explicit all-hotels recovery starts exactly one normal search');
       assert.equal(new URL(searchStarts[0]).searchParams.has('hotel'), false, 'recovery search does not send a stale hotel restriction');
-      evidence.push({ viewport, geometry, catalogFailureCases: failures.length, keyboardRecovery: true, queryReopening: true, dismissedEnterRecovery: true, shortQueryGuidance: true, coalescedReturnEdit: true, selectedReturnPreserved: true, touchSelection: viewport.width < 768, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
+      evidence.push({ viewport, geometry, keyboardViewport, catalogFailureCases: failures.length, keyboardRecovery: true, queryReopening: true, dismissedEnterRecovery: true, shortQueryGuidance: true, coalescedReturnEdit: true, selectedReturnPreserved: true, touchSelection: viewport.width < 768, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
       assert.deepEqual(errors, []);
       await page.close();
     }
