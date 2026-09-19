@@ -22,7 +22,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-      - name: Apply ephemeral receipt-only patch
+      - name: Apply ephemeral compatibility patches
         shell: bash
         run: |
           set -euo pipefail
@@ -39,9 +39,17 @@ jobs:
               raise SystemExit(f'RECEIPT_NEEDLE_COUNT={block.count(needle)}')
           replacement=needle+"\n            'confirmationRequiredOfferCount' => (int)($result['confirmationRequiredOfferCount'] ?? 0),"
           p.write_text(s[:start]+block.replace(needle,replacement)+s[end:])
+
+          t=Path('tests/andromeda-cache-cohort-order-test.php')
+          q=t.read_text()
+          old="aassert($prices === [105 => '223000'] && $verified === [105 => true], 'flight-only estimate entered full-price store');"
+          new="aassert($prices === [104 => '210000', 105 => '223000'] && $verified === [104 => false, 105 => true], 'estimated rows or confirmation fallback stored incorrectly');"
+          if q.count(old) != 1:
+              raise SystemExit(f'COHORT_EXPECTATION_COUNT={q.count(old)}')
+          t.write_text(q.replace(old,new))
           PY
           git diff --check
-          git diff -- app/integrations/andromeda-anytour-offer-autosave.php
+          git diff -- app/integrations/andromeda-anytour-offer-autosave.php tests/andromeda-cache-cohort-order-test.php
       - name: Run exact failing boundary
         shell: bash
         run: |
@@ -55,4 +63,4 @@ jobs:
           php -d allow_url_fopen=0 tests/andromeda-anytour-offer-autosave-test.php
           php -d allow_url_fopen=0 tests/andromeda-cache-cohort-order-test.php
           php -d allow_url_fopen=0 tests/andromeda-confirmation-snapshot-producer-test.php
-          echo ANDROMEDA_CONFIRMATION_RECEIPT_EPHEMERAL_PATCH_OK
+          echo ANDROMEDA_CONFIRMATION_RECEIPT_AND_COHORT_EPHEMERAL_PATCH_OK
