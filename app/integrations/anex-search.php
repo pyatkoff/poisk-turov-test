@@ -28,24 +28,70 @@ final class AnyTourAnexSearch
         $params = $this->buildParams($criteria);
         // Validate the normalizer's full context before making a network request.
         anytour_anex_normalize_prices(['prices' => []], $criteria, $this->resolver, $this->sensitive);
-        $data = $this->client->request('SearchTour_PRICES', $params);
-        $result = anytour_anex_normalize_prices($data, $criteria, $this->resolver, $this->sensitive);
-        if (isset($criteria['hotel_ids'])) {
-            $requestedHotels = array_map('strval', $criteria['hotel_ids']);
-            $accepted = [];
-            foreach ($result['offers'] as $offer) {
-                if (in_array($offer['hotel']['external_id'], $requestedHotels, true)) {
-                    $accepted[] = $offer;
-                } else {
-                    $result['rejected_count']++;
+
+        $combined = null;
+        $seenPages = [];
+        $seenOffers = [];
+        $pagesRead = 0;
+        for ($page = 1; $page <= 12; ++$page) {
+            $pageParams = $params;
+            $pageParams['PRICEPAGE'] = $page;
+            $data = $this->client->request('SearchTour_PRICES', $pageParams);
+            $rows = self::rawPriceRows($data);
+            $pageDigest = hash('sha256', json_encode($rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+            if (isset($seenPages[$pageDigest])) break;
+            $seenPages[$pageDigest] = true;
+
+            $result = anytour_anex_normalize_prices($data, $criteria, $this->resolver, $this->sensitive);
+            if (isset($criteria['hotel_ids'])) {
+                $requestedHotels = array_map('strval', $criteria['hotel_ids']);
+                $accepted = [];
+                foreach ($result['offers'] as $offer) {
+                    if (in_array($offer['hotel']['external_id'], $requestedHotels, true)) {
+                        $accepted[] = $offer;
+                    } else {
+                        $result['rejected_count']++;
+                    }
                 }
+                $result['offers'] = $accepted;
             }
-            $result['offers'] = $accepted;
+            if ($combined === null) {
+                $combined = $result;
+                $combined['offers'] = [];
+                $combined['rejected_count'] = 0;
+                $combined['truncated_count'] = 0;
+                $combined['external_search_pending'] = false;
+            }
+            $combined['rejected_count'] += (int)$result['rejected_count'];
+            $combined['truncated_count'] += (int)$result['truncated_count'];
+            $combined['external_search_pending'] = $combined['external_search_pending'] || $result['external_search_pending'];
+            foreach ($result['offers'] as $offer) {
+                $key = $offer['offer_key'];
+                if (isset($seenOffers[$key])) continue;
+                $seenOffers[$key] = true;
+                $combined['offers'][] = $offer;
+            }
+            $this->remember($result['offers'], $this->freightRefsBySupplierOffer($data));
+            ++$pagesRead;
+            if (count($rows) < 300) break;
+            if ($page === 12) throw new RuntimeException('ANEX_SEARCH_PAGINATION_LIMIT');
         }
+        if ($combined === null) throw new RuntimeException('ANEX_INVALID_PRICES');
+        $combined['pages_read'] = $pagesRead;
+        $combined['first_page_only'] = $pagesRead === 1;
         $this->params = $params;
         $this->context = $criteria;
-        $this->remember($result['offers'], $this->freightRefsBySupplierOffer($data));
-        return $result;
+        return $combined;
+    }
+
+    private static function rawPriceRows(array $payload): array
+    {
+        $data = array_key_exists('SearchTour_PRICES', $payload) ? $payload['SearchTour_PRICES'] : $payload;
+        $rows = is_array($data) ? ($data['prices'] ?? null) : null;
+        if (!is_array($rows) || ($rows !== [] && array_keys($rows) !== range(0, count($rows) - 1))) {
+            throw new RuntimeException('ANEX_INVALID_PRICES');
+        }
+        return $rows;
     }
 
     /** Export the minimum server-only state needed by a later HTTP request. */
@@ -75,7 +121,7 @@ final class AnyTourAnexSearch
         $this->offers = $this->params = $this->context = [];
         if (!self::exactKeys($snapshot, ['schema_version', 'context', 'offers'])
             || $snapshot['schema_version'] !== 1 || !is_array($snapshot['context'])
-            || !is_array($snapshot['offers']) || count($snapshot['offers']) > 600
+            || !is_array($snapshot['offers']) || count($snapshot['offers']) > 4800
             || ($snapshot['offers'] !== []
                 && array_keys($snapshot['offers']) !== range(0, count($snapshot['offers']) - 1))) {
             throw new InvalidArgumentException('ANEX_INVALID_SESSION');
@@ -290,7 +336,7 @@ final class AnyTourAnexSearch
     private function remember(array $offers, array $freightRefs = []): void
     {
         foreach ($offers as $offer) {
-            if (count($this->offers) >= 600 && !isset($this->offers[$offer['offer_key']])) break;
+            if (count($this->offers) >= 4800 && !isset($this->offers[$offer['offer_key']])) throw new RuntimeException('ANEX_SESSION_OFFER_LIMIT');
             $this->offers[$offer['offer_key']] = [
                 'offer_key' => $offer['offer_key'],
                 'supplier_offer_id' => $offer['supplier_offer_id'],

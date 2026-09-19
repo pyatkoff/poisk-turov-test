@@ -1,0 +1,37 @@
+name: INT ANEX SearchTour pagination
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'app/integrations/anex-search.php'
+      - 'app/integrations/anex-preview-gateway.php'
+      - 'v2/api-anex-search3-preview.php'
+      - 'scripts/ops/anex_local_offer_collect.php'
+      - 'tests/anex-search-smoke.php'
+      - 'tests/anex-search3-preview-smoke.php'
+      - '.github/workflows/int-anex-search-pagination.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify page drain and background retention
+        run: |
+          set -euo pipefail
+          php -l app/integrations/anex-search.php
+          php -l app/integrations/anex-preview-gateway.php
+          php -l v2/api-anex-search3-preview.php
+          php -l scripts/ops/anex_local_offer_collect.php
+          php -l tests/anex-search-smoke.php
+          php -l tests/anex-search3-preview-smoke.php
+          php tests/anex-search-smoke.php
+          php tests/anex-search3-preview-smoke.php
+          grep -q "backgroundCollection" v2/api-anex-search3-preview.php
+          grep -q "PRICEPAGE.*page" app/integrations/anex-search.php
+          echo 'ANEX_PAGINATION_OK browser_projection=300 background_retention=all_paged'

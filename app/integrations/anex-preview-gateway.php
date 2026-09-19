@@ -100,7 +100,8 @@ final class AnyTourAnexPreviewGateway
     {
         if (!isset($session['saved_offers']) || $now >= $session['saved_offers']['expires_at']) return;
         $known = array_column($session['search']['offers'], null, 'offer_key');
-        foreach (array_slice($result['offers'], 0, 300) as $offer) {
+        $retainedOffers = $this->enforcePreviewRateLimit ? array_slice($result['offers'], 0, 300) : $result['offers'];
+        foreach ($retainedOffers as $offer) {
             $key = $offer['offer_key'];
             if (!isset($known[$key])) continue;
             $tourProgramId = $offer['supplier_tour_program_id'] ?? null;
