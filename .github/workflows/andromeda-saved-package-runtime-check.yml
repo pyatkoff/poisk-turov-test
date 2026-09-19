@@ -37,6 +37,8 @@ on:
       - 'tests/andromeda-current-surcharge-cli-smoke.php'
       - 'scripts/diagnostics/andromeda_package_checkpoint_read.py'
       - 'tests/andromeda_package_checkpoint_read_test.py'
+      - 'scripts/diagnostics/andromeda_retained_full_claim_fuel_read.py'
+      - 'scripts/diagnostics/test_andromeda_retained_full_claim_fuel_read.py'
       - '.github/workflows/andromeda-saved-package-runtime-check.yml'
 permissions:
   contents: read
@@ -123,6 +125,7 @@ jobs:
           php -l change/tests/andromeda-package-public-value-guards.php
           php -d allow_url_fopen=0 change/tests/andromeda-package-public-value-guards.php
           python3 -B change/tests/andromeda_package_checkpoint_read_test.py
+          python3 -B change/scripts/diagnostics/test_andromeda_retained_full_claim_fuel_read.py
       - name: Record exact source handoff without private runtime state
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
