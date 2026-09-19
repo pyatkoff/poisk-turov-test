@@ -1,0 +1,773 @@
+{
+  "checked_at": "2026-09-07T16:23:20.4804513Z",
+  "run_url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34142991785",
+  "source_sha": "bfe698926433a2d610bc81b2b19dffc005e70217",
+  "checks": [
+    {
+      "check": "reference_currentstamp",
+      "count": 1,
+      "elapsed_ms": 166,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "reference_hotels",
+      "count": 500,
+      "elapsed_ms": 857,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 421,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 184,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 159,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 255,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 204,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 194,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 312,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 165,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 221,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 120,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 261,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 160,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 216,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 154,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 261,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 386,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 252,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 275,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 125,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 140,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 336,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 143,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 155,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 221,
+      "http_status": 200,
+      "status": "no_details"
+    },
+    {
+      "check": "api_hotel_details",
+      "elapsed_ms": 178,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "catalog",
+      "count": 10,
+      "status": "ok"
+    }
+  ],
+  "hotels": [
+    {
+      "api": {
+        "address": "",
+        "country": "Турция",
+        "id": 43689,
+        "name": "Radisson Blu Hotel Kas",
+        "region": "Анталья",
+        "town": "Каш",
+        "town_id": 4534
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "Çukurbağ Yarımadası, Andifli, Demokrasi Cd. No:28, 07580 Kaş/Antalya, Турция.",
+          "country": "Турция",
+          "country_match": true,
+          "id": 83221,
+          "latitude": 36.1902904,
+          "longitude": 29.5975571,
+          "name": "RADISSON BLU HOTEL KAS",
+          "name_similarity": 1,
+          "region": "Анталья",
+          "score": 0.75,
+          "town": "Каш"
+        }
+      ],
+      "match_status": "probable",
+      "xml": {
+        "alternate_name": "Radisson Blu Hotel Kas",
+        "id": 43689,
+        "name": "Radisson Blu Hotel Kas",
+        "town_id": 4534
+      }
+    },
+    {
+      "api": {
+        "address": "",
+        "country": "Россия",
+        "id": 30160,
+        "latitude": 43.473747,
+        "longitude": 39.895739,
+        "name": "Грейс Кристалл",
+        "region": "Краснодарский край",
+        "town": "Адлер",
+        "town_id": 4528
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "",
+          "country": "Россия",
+          "country_match": true,
+          "distance_m": 12.5,
+          "id": 40430,
+          "latitude": 43.4737762,
+          "longitude": 39.8955895,
+          "name": "ГРЕЙС КРИСТАЛЛ (EX. КРИСТАЛЛ)",
+          "name_similarity": 1,
+          "region": "Сочи",
+          "score": 1.05,
+          "town": "Адлер"
+        },
+        {
+          "address": "",
+          "country": "Россия",
+          "country_match": true,
+          "distance_m": 111.1,
+          "id": 30123,
+          "latitude": 43.472777,
+          "longitude": 39.896068,
+          "name": "ГРЕЙС АРЛИ СПА-ОТЕЛЬ",
+          "name_similarity": 0.6471,
+          "region": "Сочи",
+          "score": 0.8206,
+          "town": "Адлер"
+        },
+        {
+          "address": "",
+          "country": "Россия",
+          "country_match": true,
+          "distance_m": 12.6,
+          "id": 30176,
+          "latitude": 43.473634,
+          "longitude": 39.895736,
+          "name": "ВОЛНА РЕЗОРТ & СПА ОТЕЛЬ",
+          "name_similarity": 0.3333,
+          "region": "Сочи",
+          "score": 0.6166,
+          "town": "Адлер"
+        }
+      ],
+      "match_status": "confirmed",
+      "xml": {
+        "alternate_name": "Greys Kristall",
+        "id": 30160,
+        "name": "Грейс Кристалл",
+        "town_id": 4528
+      }
+    },
+    {
+      "api": {
+        "address": "Cankurtaran Mah., Amiral Tafdil Sk. No:11, Fatih",
+        "country": "Турция",
+        "id": 30536,
+        "latitude": 41.004379,
+        "longitude": 28.980203,
+        "name": "Hotel Historia",
+        "region": "Стамбул",
+        "town": "Султанахмет-Фатих",
+        "town_id": 1312
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "",
+          "country": "Турция",
+          "country_match": true,
+          "distance_m": 21.3,
+          "id": 17469,
+          "latitude": 41.0044289,
+          "longitude": 28.9799576,
+          "name": "HISTORIA HOTEL",
+          "name_similarity": 1,
+          "region": "Стамбул",
+          "score": 1.05,
+          "town": "Султанахмет"
+        },
+        {
+          "address": "",
+          "country": "Турция",
+          "country_match": true,
+          "distance_m": 17.2,
+          "id": 17270,
+          "latitude": 41.0045242,
+          "longitude": 28.9801311,
+          "name": "ACRA HOTEL",
+          "name_similarity": 0.4167,
+          "region": "Стамбул",
+          "score": 0.6709,
+          "town": "Султанахмет"
+        },
+        {
+          "address": "",
+          "country": "Турция",
+          "country_match": true,
+          "distance_m": 999,
+          "id": 17273,
+          "latitude": 41.0129966,
+          "longitude": 28.9768352,
+          "name": "AGAN HOTEL",
+          "name_similarity": 0.4167,
+          "region": "Стамбул",
+          "score": 0.5209,
+          "town": "Сиркеджи"
+        }
+      ],
+      "match_status": "confirmed",
+      "xml": {
+        "alternate_name": "Hotel Historia",
+        "id": 30536,
+        "name": "Hotel Historia",
+        "town_id": 1312
+      }
+    },
+    {
+      "api": {
+        "address": "Marsa El Dekhela, Sharm El Sheikh 1, South Sinai Governorate",
+        "country": "Египет",
+        "id": 464,
+        "latitude": 27.923217,
+        "longitude": 34.364654,
+        "name": "Domina Coral Bay Harem",
+        "region": "Шарм Эль Шейх",
+        "town": "Марса Эль Дехела",
+        "town_id": 5914
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "Marsa El Dekhela, Sharm el Sheikh, 46619, Египет",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 158.3,
+          "id": 185,
+          "latitude": 27.9246192,
+          "longitude": 34.3643765,
+          "name": "DOMINA CORAL BAY HAREM JUNIOR SUITE",
+          "name_similarity": 0.8,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.92,
+          "town": "Корал Бей"
+        },
+        {
+          "address": "Coral Bay, Po Box 74, Hadaba, South Sinai Governorate 46619, Египет",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 997.4,
+          "id": 187,
+          "latitude": 27.9321774,
+          "longitude": 34.3651179,
+          "name": "DOMINA CORAL BAY OASIS",
+          "name_similarity": 0.8182,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.7818,
+          "town": "Корал Бей"
+        },
+        {
+          "address": "",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 939.4,
+          "id": 186,
+          "latitude": 27.931412,
+          "longitude": 34.366979,
+          "name": "DOMINA CORAL BAY KINGS LAKE",
+          "name_similarity": 0.7755,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.7541,
+          "town": "Корал Бей"
+        }
+      ],
+      "match_status": "probable",
+      "xml": {
+        "alternate_name": "Domina Coral Bay Harem",
+        "id": 464,
+        "name": "Domina Coral Bay Harem",
+        "town_id": 5914
+      }
+    },
+    {
+      "api": {
+        "address": "Fanar St. Haddabah,Sharm El Sheikh, South Sinai, Egypt",
+        "country": "Египет",
+        "id": 465,
+        "latitude": 27.875491,
+        "longitude": 34.31865,
+        "name": "Dreams Beach Resort & Aqua Park Sharm El Sheikh",
+        "region": "Шарм Эль Шейх",
+        "town": "Хадаба",
+        "town_id": 5913
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "El Fanar St, Qesm Sharm Ash Sheikh, South Sinai Governorate, Египет",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 96.4,
+          "id": 195,
+          "latitude": 27.8746245,
+          "longitude": 34.3186849,
+          "name": "DREAMS BEACH",
+          "name_similarity": 0.4444,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.6889,
+          "town": "Хадаба"
+        },
+        {
+          "address": "",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 852.4,
+          "id": 385,
+          "latitude": 27.869954,
+          "longitude": 34.312653,
+          "name": "RESTA CLUB RESORT (EX. RESTA SHARM RESORT)",
+          "name_similarity": 0.5476,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.6059,
+          "town": "Хадаба"
+        },
+        {
+          "address": "El Fanar Street, Hadaba, Sharm el Sheikh, Egypt",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 394.8,
+          "id": 230,
+          "latitude": 27.8719461,
+          "longitude": 34.3184298,
+          "name": "THE GRAND HOTEL SHARM EL SHEIKH",
+          "name_similarity": 0.5455,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.6046,
+          "town": ""
+        }
+      ],
+      "match_status": "unmatched",
+      "xml": {
+        "alternate_name": "Dreams Beach Resort & Aqua Park Sharm El Sheikh",
+        "id": 465,
+        "name": "Dreams Beach Resort & Aqua Park Sharm El Sheikh",
+        "town_id": 5913
+      }
+    },
+    {
+      "api": {
+        "address": "Four Seasons Boulevard, Sharm El Sheikh, South Sinai 203, Egypt",
+        "country": "Египет",
+        "id": 466,
+        "latitude": 27.956691,
+        "longitude": 34.392619,
+        "name": "Four Seasons Resort Sharm El Sheikh",
+        "region": "Шарм Эль Шейх",
+        "town": "Шаркс Бэй",
+        "town_id": 5918
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "1 Four Seasons Boulevard, El-Salam, Qesm Sharm Ash Sheikh, South Sinai Governorate, Египет",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 52.4,
+          "id": 218,
+          "latitude": 27.9562777,
+          "longitude": 34.392363,
+          "name": "FOUR SEASONS RESORT SSH",
+          "name_similarity": 0.7931,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.9155,
+          "town": ""
+        },
+        {
+          "address": "",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 656.3,
+          "id": 408,
+          "latitude": 27.9617379,
+          "longitude": 34.3960827,
+          "name": "SAVOY SHARM EL SHEIKH",
+          "name_similarity": 0.6667,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.6834,
+          "town": "Шаркс Бей"
+        },
+        {
+          "address": "Sharks Bay, Qesm Sharm Ash Sheikh, South Sinai Governorate 46628, Египет",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 283.8,
+          "id": 506,
+          "latitude": 27.9563291,
+          "longitude": 34.3897584,
+          "name": "GRAND OASIS RESORT",
+          "name_similarity": 0.4151,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.5198,
+          "town": "Шаркс Бей"
+        }
+      ],
+      "match_status": "probable",
+      "xml": {
+        "alternate_name": "Four Seasons Resort Sharm El Sheikh",
+        "id": 466,
+        "name": "Four Seasons Resort Sharm El Sheikh",
+        "town_id": 5918
+      }
+    },
+    {
+      "api": {
+        "address": "Al Tahrir Street, Dahab, South Sinai, Egypt.",
+        "country": "Египет",
+        "id": 468,
+        "latitude": 28.469033,
+        "longitude": 34.477184,
+        "name": "Retac Qunay Dahab Resort & Spa",
+        "region": "Шарм Эль Шейх",
+        "town": "Дахаб",
+        "town_id": 868
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "1 Al Tahrir Street, Dahab, South Sinai Governorate 46617, Египет",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 45.5,
+          "id": 295,
+          "latitude": 28.4691784,
+          "longitude": 34.4776193,
+          "name": "RETAC QUNAY RESORT & SPA (EX. LE MERIDIEN DAHAB RESORT)",
+          "name_similarity": 0.75,
+          "region": "Дахаб",
+          "score": 0.8875,
+          "town": ""
+        }
+      ],
+      "match_status": "probable",
+      "xml": {
+        "alternate_name": "Retac Qunay Dahab Resort & Spa",
+        "id": 468,
+        "name": "Retac Qunay Dahab Resort & Spa",
+        "town_id": 868
+      }
+    },
+    {
+      "api": {
+        "address": "Peace Road, Naama Bay, Sharm El Sheikh, South Sinai",
+        "country": "Египет",
+        "id": 469,
+        "latitude": 27.915462,
+        "longitude": 34.32703,
+        "name": "Jaz Sharm Dreams",
+        "region": "Шарм Эль Шейх",
+        "town": "Наама Бэй",
+        "town_id": 5915
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "Naama Bay, El-Salam, Sharm Al Shiekh, South Sinai Governorate 46619, Египет",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 143,
+          "id": 245,
+          "latitude": 27.915673,
+          "longitude": 34.3255943,
+          "name": "JAZ SHARM DREAMS RESORT",
+          "name_similarity": 1,
+          "region": "Шарм-эль-Шейх",
+          "score": 1.05,
+          "town": "Наама Бей"
+        },
+        {
+          "address": "Naama Bay, 44619 Шарм-эш-Шейх, Египет",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 646.9,
+          "id": 147,
+          "latitude": 27.9102771,
+          "longitude": 34.3240442,
+          "name": "CATARACT RESORT",
+          "name_similarity": 0.4516,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.5435,
+          "town": "Наама Бей"
+        },
+        {
+          "address": "خليج نعمة, Sharm Al Shiekh, South Sinai Governorate 8763125, Египет.",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 793.3,
+          "id": 220,
+          "latitude": 27.9169975,
+          "longitude": 34.3349142,
+          "name": "GAFY RESORT (EX. DAYS INN GAFY RESORT)",
+          "name_similarity": 0.3529,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.4794,
+          "town": "Наама Бей"
+        }
+      ],
+      "match_status": "confirmed",
+      "xml": {
+        "alternate_name": "Jaz Sharm Dreams",
+        "id": 469,
+        "name": "Jaz Sharm Dreams",
+        "town_id": 5915
+      }
+    },
+    {
+      "api": {
+        "address": "",
+        "country": "Египет",
+        "id": 470,
+        "latitude": 29.490211,
+        "longitude": 34.899299,
+        "name": "Taba Hotel & Nelson Village Taba (Ex. Hilton Taba)",
+        "region": "Таба",
+        "town": "Таба",
+        "town_id": 385
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 48.6,
+          "id": 252,
+          "latitude": 29.4901387,
+          "longitude": 34.898804,
+          "name": "TABA HOTEL & NELSON VILLAGE (EX. HILTON)",
+          "name_similarity": 1,
+          "region": "Таба",
+          "score": 1.05,
+          "town": ""
+        },
+        {
+          "address": "",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 488.9,
+          "id": 330,
+          "latitude": 29.49153,
+          "longitude": 34.89448,
+          "name": "MOVENPICK RESORT TABA",
+          "name_similarity": 0.3333,
+          "region": "Таба",
+          "score": 0.4666,
+          "town": ""
+        },
+        {
+          "address": "",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 233.2,
+          "id": 21637,
+          "latitude": 29.4922791,
+          "longitude": 34.8988991,
+          "name": "TABA SANDS",
+          "name_similarity": 0.3333,
+          "region": "Таба",
+          "score": 0.4666,
+          "town": ""
+        }
+      ],
+      "match_status": "confirmed",
+      "xml": {
+        "alternate_name": "Taba Hotel & Nelson Village Taba (Ex. Hilton Taba)",
+        "id": 470,
+        "name": "Taba Hotel & Nelson Village Taba (Ex. Hilton Taba)",
+        "town_id": 385
+      }
+    },
+    {
+      "api": {
+        "address": "Gardens Bay, Sharm El Sheikh",
+        "country": "Египет",
+        "id": 472,
+        "latitude": 27.915499,
+        "longitude": 34.349216,
+        "name": "Park Regency Resort (Ex. Hyatt Regency Sharm El Sheikh)",
+        "region": "Шарм Эль Шейх",
+        "town": "Гарден Бей",
+        "town_id": 10838
+      },
+      "api_xml_relation": "same_record",
+      "candidates": [
+        {
+          "address": "",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 0,
+          "id": 260,
+          "latitude": 27.915499,
+          "longitude": 34.349216,
+          "name": "PARK REGENCY SHARM EL SHEIKH (EX. HYATT REGENCY SSH)",
+          "name_similarity": 0.9231,
+          "region": "Шарм-эль-Шейх",
+          "score": 1,
+          "town": ""
+        },
+        {
+          "address": "",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 908.3,
+          "id": 12111,
+          "latitude": 27.9135114,
+          "longitude": 34.3402499,
+          "name": "MOVENPICK RESORT SHARM EL SHEIKH NAAMA BAY",
+          "name_similarity": 0.5532,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.6096,
+          "town": "Наама Бей"
+        },
+        {
+          "address": "",
+          "country": "Египет",
+          "country_match": true,
+          "distance_m": 681,
+          "id": 157,
+          "latitude": 27.9189012,
+          "longitude": 34.3549792,
+          "name": "CONTINENTAL GARDEN REEF RESORT",
+          "name_similarity": 0.3171,
+          "region": "Шарм-эль-Шейх",
+          "score": 0.4561,
+          "town": ""
+        }
+      ],
+      "match_status": "confirmed",
+      "xml": {
+        "alternate_name": "Park Regency Resort (Ex. Hyatt Regency Sharm El Sheikh)",
+        "id": 472,
+        "name": "Park Regency Resort (Ex. Hyatt Regency Sharm El Sheikh)",
+        "town_id": 10838
+      }
+    }
+  ],
+  "mode": "hotels",
+  "ok": true,
+  "skipped_details": 15,
+  "skipped_placeholders": 3
+}
