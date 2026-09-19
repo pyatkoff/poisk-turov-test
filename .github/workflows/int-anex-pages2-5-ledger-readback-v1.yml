@@ -1,0 +1,57 @@
+name: INT ANEX pages2-5 sealed ledger readback v1
+on:
+  push:
+    branches: ['ops/int-anex-hotel15851-current-20260919-v1']
+    paths: ['.github/workflows/int-anex-pages2-5-ledger-readback-v1.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SOURCE_SHA: d211e7e1140e4ea9bd544770ace47ba40db9d8db
+      SECURITY_RUN: '35453088677'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: d211e7e1140e4ea9bd544770ace47ba40db9d8db
+          persist-credentials: false
+      - name: Verify source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SECURITY_RUN" | jq -e --arg s "$SOURCE_SHA" '.head_sha==$s and .conclusion=="success"' >/dev/null
+          php -l scripts/diagnostics/anex_pages2_5_ledger_readback_v1.php
+          cp scripts/diagnostics/anex_pages2_5_ledger_readback_v1.php "$RUNNER_TEMP/read.php"
+      - name: Read sealed ledger only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="/tmp/anex-ledger-readback.$GITHUB_RUN_ID.php"; scp "${opts[@]}" "$RUNNER_TEMP/read.php" "$REMOTE_USER@$HOST:$remote"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" "php -d display_errors=0 '$remote'; rc=\$?; rm -f '$remote'; exit \$rc" > "$RUNNER_TEMP/result/receipt.json"
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['RUNNER_TEMP']+'/result/receipt.json'))
+          assert d['supplier_calls']==d['db_writes']==d['runtime_writes']==0
+          print('ANEX_PAGES2_5_LEDGER '+json.dumps(d,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-anex-pages2-5-ledger-readback-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
