@@ -4,11 +4,13 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const CODE=fs.readFileSync(require('node:path').join(__dirname,'../v2/search3-local-db-provider-v1.js'),'utf8');
 
+function params(){return {departureId:'1',countryId:'4',dateFrom:'2026-10-05',dateTo:'2026-10-07',nightsFrom:'7',nightsTo:'9',adults:'2',childs:[],meal:'',hotelCategory:'',hotelRating:'',hotelTypes:[],hotelIds:[],hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:'',priceTo:'',currency:'RUB',onlyCharter:'false',onlyDirect:'false'};}
+function scope(){return{scopeVersion:1,...params(),nightsFrom:7,nightsTo:9,adults:2,onlyCharter:false,onlyDirect:false};}
 function stored(provider,legacy,digestChar,price){
  const d=digestChar.repeat(64);
  return{provider,legacyHotelId:legacy,price,currency:'RUB',observedAt:'2026-10-06T10:00:00Z',lastSeenAt:'2026-10-06T10:00:00Z',expiresAt:'2026-10-06T12:00:00Z',listing:{schema_version:1,provider,operator:{raw:provider==='anex'?'ANEX':'Pegas Touristik',canonical_name:provider==='anex'?'ANEX':null},identity:{search_ref_digest:'a'.repeat(64),offer_ref_digest:d,provider_hotel_ref_digest:'b'.repeat(64)},tour:{checkin:'2026-10-05',nights:7,party:{adults:2,children:0,child_ages:[]},meal:{raw:'AI'},room:{raw:'STANDARD ROOM'},placement:{raw:'DBL'}},listingPriceReady:true,listingPrice:{amount:String(price),currency:'RUB'},currency:'RUB',selection_state:'refresh_required',booking_enabled:false}};
 }
-function payload(offers){return{source:'anytour-db-first-results-v1',scopeVersion:1,scopeDigest:'c'.repeat(64),selectionAuthority:false,hotelCount:offers.length?1:0,offerCount:offers.length,storedOfferCount:offers.length,withheldOfferCount:0,hotels:offers.length?[{anytourHotelId:77,hotel:{id:77,catalog:'anytour',revision:1,name:'Own Hotel'},offers}]:[]};}
+function payload(offers){return{source:'anytour-db-first-results-v1',scopeVersion:1,scope:scope(),scopeDigest:'c'.repeat(64),selectionAuthority:false,hotelCount:offers.length?1:0,offerCount:offers.length,storedOfferCount:offers.length,withheldOfferCount:0,hotels:offers.length?[{anytourHotelId:77,hotel:{id:77,catalog:'anytour',revision:1,name:'Own Hotel'},offers}]:[]};}
 function stateRow(state,provider='anex',digestChar='e'){
  const row=stored(provider,102,digestChar,125000),verified=state==='final_verified',confirmation=state==='search_price_confirmation_required';
  Object.assign(row.listing,{listingPriceState:state,listingPriceReady:!confirmation,priceConfirmationRequired:confirmation,quoteState:verified?'verified':'unknown',finalPriceVerified:verified,quoteEvidenceDigest:verified?'f'.repeat(64):null});
@@ -28,7 +30,7 @@ function fakeRoot(pathname,fetcher){
   dispatchEvent(event){for(const fn of events.get(event.type)||[])fn(event);},
   fetch:fetcher||(()=>Promise.reject(new Error('unexpected fetch'))),
   Search3CanonicalProfilesV1:{current:()=>owner},
-  V2SearchLifecycle:{generation:1,dirty:false,snapshot:{departureId:'1',countryId:'4',dateFrom:'2026-10-05',dateTo:'2026-10-07',nightsFrom:'7',nightsTo:'9',adults:'2',childs:[],meal:'',hotelCategory:'',hotelRating:'',hotelTypes:[],hotelIds:[],hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:'',priceTo:'',currency:'RUB',onlyCharter:'false',onlyDirect:'false'}},
+  V2SearchLifecycle:{generation:1,dirty:false,snapshot:params()},
   V2Results:{render(list,options){renders.push({list,options});return list;}}
  };
  root.window=root;root.globalThis=root;
@@ -139,6 +141,102 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
  resolveOld({ok:true,json:async()=>({ok:true,data:withLegacy})});await tick();await tick();
  assert.equal(env.ownerCalls.offers.length,0);assert.equal(env.ownerCalls.refreshes,0,'late legacy-containing response cannot repaint a dirty generation');
  console.log('SEARCH3_LOCAL_LEGACY_ROW_ISOLATION_OK providers=3 withheld=2 malformed_rejected=1 truthful_counts=1 immutable=1 generation_guard=1');
+
+ // Bind the HTTP response to the complete request, not merely to a local generation.
+ const path='/_preview/search3-local-candidate/poisk-turov/';
+ const changed={countryId:'9',departureId:'2',dateFrom:'2026-10-06',dateTo:'2026-10-08',nightsFrom:8,nightsTo:10,adults:3,childs:[0],meal:'AI',hotelCategory:'5',hotelRating:'4.5',hotelTypes:['beach'],hotelIds:[77],hotelServices:['wifi'],arrivalId:'3',regionIds:[2],subregionIds:[3],operatorIds:[13],priceFrom:'100000',priceTo:'300000',currency:'USD',onlyCharter:true,onlyDirect:true};
+ async function receive(request,data){
+  let sent;const status=[];
+  const e=fakeRoot(path,async(url,options)=>{sent=options.body;return{ok:true,json:async()=>({ok:true,data})};});
+  e.root.V2SearchLifecycle.snapshot=structuredClone(request);
+  e.root.addEventListener('v2:provider-status',event=>status.push(event.detail));
+  e.root.dispatchEvent(new e.root.CustomEvent('v2:search-reset',{detail:{generation:1}}));await tick();await tick();
+  return{...e,sent,status};
+ }
+ function rejected(result,label){
+  assert.equal(result.ownerCalls.offers.length,0,label+': no wrong offer admitted');
+  assert.equal(result.ownerCalls.hotels.length,0,label+': no wrong hotel admitted');
+  assert.deepEqual(result.ownerCalls.clear,['local-db'],label+': other providers untouched');
+  assert.equal(result.ownerCalls.refreshes,1,label+': one existing error clear');
+  assert.equal(result.status.at(-1).status,'error',label);
+  assert.equal(result.status.at(-1).errorCode,'local_db_scope_mismatch',label+': no request details leaked');
+ }
+ for(const [key,value] of Object.entries(changed)){
+  const data=payload([stored('anex',102,'e',125000)]);data.scope[key]=value;
+  const before=JSON.stringify(data);rejected(await receive(params(),data),'foreign '+key);
+  assert.equal(JSON.stringify(data),before,'response remains immutable');
+ }
+ for(const invalidScope of [undefined,null,[],{},'scope',{...scope(),scopeVersion:2},{...scope(),countryId:true},{...scope(),childs:'0'},{...scope(),operatorIds:{}},{...scope(),hotelRating:{value:''}},{...scope(),extra:'ignored?'}]){
+  const data=payload([stored('anex',102,'e',125000)]);data.scope=invalidScope;
+  rejected(await receive(params(),data),'malformed scope');
+ }
+ for(const key of Object.keys(scope())){
+  const data=payload([]);delete data.scope[key];
+  rejected(await receive(params(),data),'missing '+key+' on empty response');
+ }
+
+ // The actual PHP normalizer supplies the response shape: numeric filter keys
+ // become integers, lists are sets, child ages remain a sorted multiset.
+ const validRequests=[params(),{...params(),departureId:1,countryId:4,nightsFrom:7,nightsTo:9,adults:2,onlyCharter:0,onlyDirect:1},
+  {...params(),childs:['17',0,'0'],meal:' AI ',hotelCategory:5,hotelRating:'4.5',arrivalId:3,
+   hotelTypes:['beach','city','beach'],hotelIds:['10',2,'2','01'],hotelServices:[' Wi-Fi ','бассейн','Wi-Fi'],regionIds:['10',2],subregionIds:[7,'7'],operatorIds:['13',5,'13'],priceFrom:'100000.00',priceTo:'300000.50',onlyCharter:'1',onlyDirect:'false'},
+  {...params(),meal:null,hotelCategory:null,hotelRating:null,arrivalId:null,priceFrom:null,priceTo:null,onlyCharter:true,onlyDirect:false},
+  {...params(),childs:[17,0,17],dateFrom:'2028-02-28',dateTo:'2028-02-29',nightsFrom:1,nightsTo:11,adults:6,priceFrom:0,priceTo:0.01},
+  {...params(),hotelTypes:['01','1','a','А','😀','\ue000'],hotelIds:['__proto__','constructor','toString'],meal:'\u00a0AI\u00a0'},
+  {...params(),hotelServices:Array.from({length:100},(_,i)=>String(i)),hotelTypes:Array.from({length:30},(_,i)=>i),priceFrom:'999999999999.90',priceTo:'999999999999.99'}];
+ const invalidRequests=[{...params(),countryId:true},{...params(),countryId:'04'},{...params(),adults:0},{...params(),childs:[18]},{...params(),childs:[0,1,2,3]},
+  {...params(),childs:['00']},{...params(),dateFrom:'2026-02-30'},{...params(),dateTo:'2026-10-27'},{...params(),dateTo:'2026-10-04'},
+  {...params(),nightsFrom:0},{...params(),nightsTo:29},{...params(),nightsTo:18},{...params(),onlyDirect:'yes'},{...params(),operatorIds:{unexpected:1}},
+  {...params(),hotelTypes:Array(31).fill('beach')},{...params(),hotelIds:Array(101).fill('1')},{...params(),hotelServices:[{}]},
+  {...params(),meal:'я'.repeat(65)},{...params(),hotelRating:'x\ny'},{...params(),priceFrom:'01'},{...params(),priceTo:'10.001'},{...params(),priceFrom:'10.02',priceTo:'10.01'},
+  {...params(),priceTo:'1000000000000'},{...params(),currency:'USD'},{...params(),unrecognized:'x'}];
+ const php="require 'v2/data/anytour-search-scope-v1.php'; $out=[]; foreach(json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR) as $p){try{$out[]=AnyTourSearchScopeV1::normalize($p);}catch(Throwable $e){$out[]=null;}} echo json_encode($out,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);";
+ const normalized=JSON.parse(require('node:child_process').execFileSync('php',['-r',php],{cwd:require('node:path').join(__dirname,'..'),input:JSON.stringify([...validRequests,...invalidRequests]),encoding:'utf8'}));
+ for(let i=0;i<validRequests.length;i++){
+  assert.ok(normalized[i],'PHP accepts valid fixture '+i);
+  const data=payload([stored('tourvisor',102,'d',120000),stored('anex',102,'e',125000),stored('andromeda',102,'f',126000)]);
+  data.scope=normalized[i];data.scopeMode='compatible';data.sourceScopeDigests=['d'.repeat(64),'e'.repeat(64)];
+  for(const item of data.hotels[0].offers)item.sourceScopeDigest='d'.repeat(64);
+  const before=JSON.stringify(data),result=await receive(validRequests[i],data);
+  assert.equal(result.status.at(-1).status,'complete','PHP normalized request accepted '+i);
+  assert.equal(result.ownerCalls.offers.length,3,'compatible source scopes need not equal current scope digest');
+  assert.equal(result.ownerCalls.refreshes,1);assert.equal(JSON.stringify(data),before);
+  assert.deepEqual(JSON.parse(result.sent),{params:validRequests[i]},'supplier-neutral HTTP payload unchanged');
+  for(const item of result.ownerCalls.offers){assert.equal(item.tour.selectionEnabled,false);assert.equal(item.tour.quoteRequired,true);assert.equal(item.tour.offerRef,undefined);}
+ }
+ for(let i=0;i<invalidRequests.length;i++){
+  assert.equal(normalized[validRequests.length+i],null,'PHP rejects invalid fixture '+i);
+  const data=payload([]);data.scope={scopeVersion:1,...invalidRequests[i]};
+  rejected(await receive(invalidRequests[i],data),'invalid request/scope '+i);
+ }
+ const duplicateAgeData=payload([]);duplicateAgeData.scope={...normalized[2],childs:[0,17,17]};
+ rejected(await receive(validRequests[2],duplicateAgeData),'child multiplicity, not just age set');
+
+ // Bind to the bytes sent, even if a caller later mutates its snapshot in place.
+ for(const foreign of [false,true]){
+  let resolveResponse,wire;const status=[];
+  env=fakeRoot(path,async(url,options)=>{wire=options.body;return new Promise(resolve=>{resolveResponse=resolve;});});
+  env.root.addEventListener('v2:provider-status',event=>status.push(event.detail));
+  env.root.dispatchEvent(new env.root.CustomEvent('v2:search-reset',{detail:{generation:1}}));
+  env.root.V2SearchLifecycle.snapshot.countryId='9';
+  const data=payload([stored('anex',102,'e',125000)]);if(foreign)data.scope.countryId='9';
+  resolveResponse({ok:true,json:async()=>({ok:true,data})});await tick();await tick();
+  assert.equal(JSON.parse(wire).params.countryId,'4');
+  assert.equal(env.ownerCalls.offers.length,foreign?0:1,'in-place mutation cannot retarget the response');
+  assert.equal(status.at(-1).status,foreign?'error':'complete');
+ }
+ // A late response for an old run must neither repaint nor clear a newer run.
+ const deferred=[];
+ env=fakeRoot(path,()=>new Promise(resolve=>deferred.push(resolve)));
+ env.root.dispatchEvent(new env.root.CustomEvent('v2:search-reset',{detail:{generation:1}}));
+ env.root.V2SearchLifecycle.generation=2;env.root.V2SearchLifecycle.snapshot.countryId='9';
+ env.root.dispatchEvent(new env.root.CustomEvent('v2:search-reset',{detail:{generation:2}}));
+ const nextData=payload([stored('anex',102,'e',125000)]);nextData.scope.countryId='9';
+ deferred[1]({ok:true,json:async()=>({ok:true,data:nextData})});await tick();await tick();
+ const callsBeforeLate=JSON.stringify(env.ownerCalls);
+ deferred[0]({ok:true,json:async()=>({ok:true,data:nextData})});await tick();await tick();
+ assert.equal(JSON.stringify(env.ownerCalls),callsBeforeLate,'old mismatched response cannot clear the new matching one');
+ console.log('SEARCH3_LOCAL_SCOPE_BINDING_OK fields='+Object.keys(changed).length+' php_valid='+validRequests.length+' php_invalid='+invalidRequests.length+' exact_sent=1 compatible=1 stale=1');
 
  console.log('SEARCH3_LOCAL_DB_PROVIDER_OK parse=2 apply=1 lifecycle=1 empty_clear=1 error_clear=1 route_isolated=1 no_renderer_patch=1');
 })().catch(error=>{console.error(error);process.exit(1);});
