@@ -233,6 +233,44 @@ tv_autosave_check(
     'missing_operator_never_persisted'
 );
 
+$compileMethod = new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class, 'compileEntries');
+$missingMealTour = $baseTour;
+$missingMealTour['id'] = 'TV-MISSING-MEAL';
+unset($missingMealTour['meal']);
+$validSiblingTour = $baseTour;
+$validSiblingTour['id'] = 'TV-VALID-SIBLING';
+[$compiledSiblings, $skippedSiblings] = $compileMethod->invoke(
+    null,
+    [['id' => 3417, 'tours' => [$missingMealTour, $validSiblingTour]]],
+    [3417 => 77],
+    $searchId,
+    2,
+    0,
+    [],
+    '2026-09-17T09:30:00Z',
+    $now
+);
+tv_autosave_check($skippedSiblings === 1 && count($compiledSiblings) === 1,
+    'incomplete_sibling_does_not_abort_cohort');
+tv_autosave_check(
+    ($compiledSiblings[0]['offer']['identity']['offer_ref_digest'] ?? null)
+        === hash('sha256', 'tourvisor:tour:TV-VALID-SIBLING'),
+    'valid_sibling_identity_retained'
+);
+[$compiledInvalidOnly, $skippedInvalidOnly] = $compileMethod->invoke(
+    null,
+    [['id' => 3417, 'tours' => [$missingMealTour]]],
+    [3417 => 77],
+    $searchId,
+    2,
+    0,
+    [],
+    '2026-09-17T09:30:00Z',
+    $now
+);
+tv_autosave_check($compiledInvalidOnly === [] && $skippedInvalidOnly === 1,
+    'all_incomplete_rows_stay_empty');
+
 $helperSource = (string)file_get_contents(__DIR__ . '/../app/integrations/tourvisor-anytour-offer-autosave.php');
 $apiSource = (string)file_get_contents(__DIR__ . '/../v2/api-v2.php');
 
@@ -244,6 +282,10 @@ tv_autosave_check(strpos($helperSource, 'search_plus_additional') === false, 'no
 tv_autosave_check(strpos($helperSource, 'v2_data_tv_get(') === false && strpos($helperSource, 'curl_') === false, 'no_supplier_io');
 tv_autosave_check(strpos($helperSource, 'ownedOperatorFamily') === false, 'no_operator_allowlist_in_either_stage');
 tv_autosave_check(strpos($helperSource, "'no_routed_offers'") !== false, 'empty_cohort_receipt_compatible');
+tv_autosave_check(strpos($helperSource, 'skippedIncompleteOfferCount') !== false,
+    'incomplete_row_count_exposed');
+tv_autosave_check(strpos($helperSource, "'tour_contract_incomplete'") === false,
+    'single_incomplete_row_no_longer_aborts_snapshot');
 
 tv_autosave_check(strpos($apiSource, "tourvisor_autosave_start(\$searchParams, \$data);") !== false, 'start_hook');
 tv_autosave_check(strpos($apiSource, 'tourvisor_autosave_status($id, $data);') !== false, 'status_hook');
