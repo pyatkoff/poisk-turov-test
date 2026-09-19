@@ -52,7 +52,7 @@ Do not edit generated `v2/search3-*` assets independently.
 
 | Public output under `v2/` | Manifest input under `src/search3/` |
 | --- | --- |
-| `search3-results-filters-v1.js` | Ordered behavior entries in `manifest.json`, including the three active owners above |
+| `search3-results-filters-v1.js` | Ordered behavior entries in `manifest.json`, including the active owners above |
 | `search3-results-filters-v1.css` | `styles/results-layout.css` |
 | `search3-entry-v1.css` | `styles/entry-native-controls.css` |
 | `search3-entry-v1.js` | `behavior/entry-v1.js` — retired slot |

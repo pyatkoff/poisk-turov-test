@@ -48,7 +48,10 @@ async function checkMobileParameters(page,width,output){
  assert.equal(await dialog.getByRole('button',{name:'Увеличить число взрослых'}).isDisabled(),true);
  assert.equal(await dialog.getByRole('button',{name:'Добавить ребёнка +',exact:true}).isDisabled(),true);
  await dialog.screenshot({path:path.join(output,`mobile-party-${width}.png`)});
+ await dialog.getByRole('button',{name:'Убрать ребёнка 2',exact:true}).click();
+ assert.deepEqual(await dialog.locator('[data-age]').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','6'],'removing the middle child preserves the other exact ages');
  await page.keyboard.press('Escape');assert.equal(await dialog.isVisible(),false);
+ assert.deepEqual(await page.locator('#childAges select').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','17','6'],'Escape also discards child removal');
  await page.locator('[data-search3-parameter=nights]').click();
  await dialog.locator('[data-night="1"]').click();await dialog.locator('[data-night="28"]').click();
  assert.match(await dialog.getByRole('alert').innerText(),/не больше 10/);

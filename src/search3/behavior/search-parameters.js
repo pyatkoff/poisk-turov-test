@@ -22,7 +22,7 @@ function setText(node,text){if(node.textContent!==text)node.textContent=text}
 function summaries(){
  const texts={dates:dateText(value('dateFrom'))+(value('dateTo')!==value('dateFrom')?' — '+dateText(value('dateTo')):''),nights:nightsText(value('daysFrom'),value('daysTill')),party:value('count_people')+' '+word(Number(value('count_people')),'взрослый','взрослых','взрослых')};
  const count=Number(value('child_count'));if(count)texts.party+=' · '+count+' '+word(count,'ребёнок','ребёнка','детей');
- triggers.forEach(button=>{button.hidden=!media.matches;setText(button.querySelector('strong'),texts[button.dataset.search3Parameter]);const small=button.querySelector('small');setText(small,button.dataset.search3Parameter==='party'&&count?'Возраст: '+ages().map(age=>age+' '+word(Number(age),'год','года','лет')).join(', '):button.dataset.search3Parameter==='dates'?'Можно выбрать диапазон':'Изменить');});
+ triggers.forEach(button=>{const kind=button.dataset.search3Parameter;button.hidden=!media.matches;setText(button.querySelector('strong'),texts[kind]);const small=button.querySelector('small');setText(small,kind==='party'&&count?'Возраст: '+ages().map(age=>age+' '+word(Number(age),'год','года','лет')).join(', '):kind==='dates'?'Можно выбрать диапазон':'Изменить');button.setAttribute('aria-label',({dates:'Даты вылета',nights:'Продолжительность',party:'Туристы'})[kind]+': '+texts[kind]+(kind==='party'&&count?'. '+small.textContent:''));});
  form.dataset.search3Parameters=media.matches?'mobile':'native';
 }
 function schedule(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;summaries()})}
@@ -67,7 +67,7 @@ function partyPanel(){
 function syncParty(){
  setText(body.querySelector('output'),String(draft.adults));body.querySelector('[data-adults="-1"]').disabled=draft.adults<=1;body.querySelector('[data-adults="1"]').disabled=draft.adults>=6;
  const children=body.querySelector('[data-children]');children.replaceChildren();draft.ages.forEach((age,index)=>{
-  const row=document.createElement('div');row.className='search-parameter-child';const label=document.createElement('label');label.textContent='Возраст ребёнка '+(index+1);const select=document.createElement('select');select.dataset.age=String(index);select.add(new Option('Выберите возраст',''));for(let n=0;n<=17;n++)select.add(new Option(n+' '+word(n,'год','года','лет'),String(n)));select.value=age;label.appendChild(select);row.appendChild(label);
+  const row=document.createElement('div');row.className='search-parameter-child';const label=document.createElement('label'),caption=document.createElement('span');caption.id='searchParameterAgeLabel'+index;caption.textContent='Возраст ребёнка '+(index+1);label.appendChild(caption);const select=document.createElement('select');select.dataset.age=String(index);select.setAttribute('aria-labelledby',caption.id);select.add(new Option('Выберите возраст',''));for(let n=0;n<=17;n++)select.add(new Option(n+' '+word(n,'год','года','лет'),String(n)));select.value=age;label.appendChild(select);row.appendChild(label);
   const remove=document.createElement('button');remove.type='button';remove.dataset.remove=String(index);remove.setAttribute('aria-label','Убрать ребёнка '+(index+1));remove.textContent='×';row.appendChild(remove);children.appendChild(row);
  });body.querySelector('[data-add]').disabled=draft.ages.length>=3;setText(apply,'Выбрать');showError('');
 }
