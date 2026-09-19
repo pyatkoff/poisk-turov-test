@@ -1,0 +1,157 @@
+name: MATCH ANEX rolling30 identity trial v5
+on:
+  push:
+    branches: [ops/match-anex-rolling30-1971-20260919-v5]
+    paths:
+      - .github/workflows/hotel-match-anex-rolling30-v5.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-anex-rolling30-1971-20260919-v5
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-rolling30-1971-20260919-v5
+jobs:
+  trial:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Build exact v5 payload from immutable v3 source plus closed-history manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p payload result
+          test "$(git hash-object scripts/diagnostics/hotel_match_anex_rolling30_current_v3.php)" = e8c5c7628637b43672f40fdc4ee37e4d3e5878f3
+          test "$(git hash-object scripts/diagnostics/hotel_match_anex_rolling30_v3.py)" = 1f67292bbef6d304a22b503fdde3e53cf9a6a4c6
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          planner=Path('scripts/diagnostics/hotel_match_anex_rolling30_current_v3.php').read_text()
+          executor=Path('scripts/diagnostics/hotel_match_anex_rolling30_v3.py').read_text()
+          old='hotel-match-anex-rolling30-1971-20260919-v3'; new='hotel-match-anex-rolling30-1971-20260919-v5'
+          excluded=[112358,60006,81356,60957,92738,130835,60968,70035,89073,114210,59991,81750,92745,60985,99759,60940,60947,70424,95553,60257,69289,69290,81197,100475,127325,68625,99760,101025,101026,59990,1063,1441,66037,950,1580,42576,2191,75538,72865,1244,115349,75791,152266,132017,42596,103212,42592,131058,42581,75871,156593,9443,147573,9427,99582,157197,62868,967,132716,1151,1546,1500,44669,2559,74083,2590,32230,2522,73509,55495,73055,63906,2586,113007,2565,2582,66192,133061,88323,54603,2634,49851,11745,11751,11754,11756,11758,11761,11770,11775,11788,11789,26841,64582,11769,11771,11792,11802,11805,15788,15794,26842,28452,35164,35170,44413,60234,68977,106703,159,344,367,1001,1255,1557,1709,2513,4453,4492,4493,8943,8953,8970,13830,32401,37919,43060,43517,50623,50627,57059,57645,58479,58485,60023,60944,60960,60979,60981,64195,65266,65896,66187,66290,67304,69111,69291,69442,69451,69454,70984,71258,73056,76295,77323,80872,81400,81951,83099,83227,97122,102139,106204,109304,113292,116228,124758,126153,127817,128538,141586,141976,143442,143790,146665,148230,148539,156439,159008,159711,161982,162479,163929,163937,
+                    64066,2857,2811,24463,43236,12131,81532,50869,24474,2788,69521,117935,64772,46770,92129,66564,81154,4054,64672,24781,57656,9251,9426,127474,67490,70207,51783,60004,74977,60002,82624,1558]
+          residual=[293,358,963,1570,1600,4029,8972,9442,17569,21641,55721,64774,74258,78331,132075]
+          assert len(excluded)==216 and len(set(excluded))==216 and len(residual)==15 and not set(excluded)&set(residual)
+          assert planner.count(old)==1 and executor.count(old)==1
+          planner=planner.replace(old,new).replace('ROLLING30_V3_PLANNER_SELFTEST_OK','ROLLING30_V5_PLANNER_SELFTEST_OK')
+          planner,n1=re.subn(r'const R30_EXCLUDED = \[[^\n]*\];','const R30_EXCLUDED = ['+','.join(map(str,excluded))+'];',planner,count=1)
+          planner,n2=re.subn(r'const R30_PRIOR_RESIDUAL = \[[^\n]*\];','const R30_PRIOR_RESIDUAL = ['+','.join(map(str,residual))+'];',planner,count=1)
+          assert n1==1 and n2==1
+          planner=planner.replace('count(R30_EXCLUDED)!==184','count(R30_EXCLUDED)!==216').replace('count(R30_PRIOR_RESIDUAL)!==14','count(R30_PRIOR_RESIDUAL)!==15')
+          executor=executor.replace(old,new).replace('hotel_match_anex_rolling30_current_v3.php','hotel_match_anex_rolling30_current_v5.php').replace('ROLLING30_V3_SELFTEST_OK','ROLLING30_V5_SELFTEST_OK')
+          Path('payload/hotel_match_anex_rolling30_current_v5.php').write_text(planner)
+          Path('payload/hotel_match_anex_rolling30_v5.py').write_text(executor)
+          Path('payload/anex-search-mapping-registry.php').write_bytes(Path('app/integrations/anex-search-mapping-registry.php').read_bytes())
+          Path('payload/history.json').write_text(__import__('json').dumps({'excluded_closed_ids':excluded,'prior_attempt1_residual_ids':residual},sort_keys=True)+'\n')
+          PY
+          php -l payload/hotel_match_anex_rolling30_current_v5.php
+          php payload/hotel_match_anex_rolling30_current_v5.php --self-test
+          python3 -m py_compile payload/hotel_match_anex_rolling30_v5.py
+          python3 payload/hotel_match_anex_rolling30_v5.py --self-test
+          rm -rf payload/__pycache__
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload')
+          hashes={x.name:hashlib.sha256(x.read_bytes()).hexdigest() for x in p.iterdir() if x.is_file()}
+          (p/'source-hashes.json').write_text(json.dumps(hashes,sort_keys=True)+'\n')
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db_provider','source_sha':os.environ['GITHUB_SHA'],
+             'daily_limit':3000,'known_daily_floor':741,'operation_http_cap':180,'max_batches':6,
+             'max_total_attempts_per_hotel':2,'no_continue':True,'mapping_writes':0,'no_replay':True,
+             'source_v3_planner_blob':'e8c5c7628637b43672f40fdc4ee37e4d3e5878f3','source_v3_executor_blob':'1f67292bbef6d304a22b503fdde3e53cf9a6a4c6'}
+          with pathlib.Path('result/reservation.json').open('x') as f:
+              json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security success before server access
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for attempt in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              checks=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+              if checks:
+                  latest=max(checks,key=lambda x:x['id'])
+                  if latest['status']=='completed':
+                      assert latest['conclusion']=='success','security_not_green'
+                      print('EXACT_SECURITY_GREEN',latest['id']);break
+              time.sleep(5)
+          else: raise SystemExit('exact_security_not_available_no_server_access')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-rolling30-v5-reservation-${{ github.run_id }}
+          path: result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute reserved CURRENT and rolling acquisition once
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/r30-key"; known="$RUNNER_TEMP/r30-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null; test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; op=".anytour-operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "set -e; umask 077; mkdir -p \"\$HOME/.anytour-operations\"; test ! -e \"\$HOME/$op\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${opts[@]}" result/reservation.json "$remote:$op/" >result/reserve.stdout 2>result/reserve.stderr
+          scp "${opts[@]}" payload/* "$remote:$op/payload/" >result/copy.stdout 2>result/copy.stderr
+          set +e
+          ssh "${opts[@]}" "$remote" "umask 077; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" python3 \"\$HOME/$op/payload/hotel_match_anex_rolling30_v5.py\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          scp -r "${opts[@]}" "$remote:$op/." result/remote/ >result/readback.stdout 2>result/readback.stderr
+          trc=$?
+          set -e
+          printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc" >result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import collections,hashlib,json,pathlib
+          p=pathlib.Path('result/remote'); d=json.loads((p/'result.json').read_bytes());r=json.loads((p/'receipt.json').read_bytes())
+          digest=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert r['result_sha256']==digest and r['operation']==d['operation'] and r['no_replay'] is True
+          requests=[json.loads(x.read_bytes()) for x in sorted(p.glob('request-*.json'))]
+          assert len(requests)==d['provider_calls']<=180 and d['continue_calls']==0 and d['mapping_writes']==0
+          assert not any('/continue' in x['path'] or '/dates' in x['path'] for x in requests)
+          assert collections.Counter(x['action'] for x in requests)==d['call_counts']
+          details=[x for x in requests if x['action']=='tour_detail']
+          assert len(details)==len({x['path'] for x in details})
+          assert all(v<=2 for v in d['attempts'].values())
+          for b in d['batches']:
+              assert 1<=b['sent']<=30 and b['new_count']>0
+          for e in d['anchors']:
+              assert e['safe_to_write_now'] is False and e['raw_signed_tokens']==[str(e['native_anex_id'])]
+          summary={k:d[k] for k in ['state','reason','frontier_before','found_hotels','provider_calls','call_counts','daily_accounted_after','mapping_writes']}
+          summary.update(result_sha256=digest,anchors=len(d['anchors']),holds=len(d['holds']),not_found=len(d['not_found_ids']),batches=d['batches'])
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False))
+          assert d['state']=='completed_read_only','terminal_failure_no_replay'
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-rolling30-v5-result-${{ github.run_id }}
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
