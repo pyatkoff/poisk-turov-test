@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
-const LM_OP='hotel-match-live143-moscow-anex-samo-1971-20260919-v2',LM_FRONTIER_SHA='3c022aeef67301e6e24de1f78380e9252221ba933b964d4963e9a778a9686e64',LM_MAX_CALLS=180,LM_MAX_PRICE=150,LM_MAX_PAGES=8;
-if(in_array('--self-test',$argv??[],true)){require_once __DIR__.'/hotel_match_live143_moscow_anex_samo_helpers_v2.php';lm_need(lm_id('8365')==='8365','id');$f=lm_fact(['hotelKey'=>190031,'operatorKey'=>5,'original'=>['hotelKey'=>8365,'isOperatorHotelKey'=>0]],'5');lm_need(($f['native_operator_hotel_id']??'')==='8365','fact');echo"LIVE143_MOSCOW_ANEX_SAMO_SELFTEST_OK\n";exit(0);}
+const LM_OP='hotel-match-refresh82-samo-native-1971-20260919-v1',LM_ROUTER_SHA='3b189d1b7313eb85743a6d22be48aa7323725fe6fb57e8d47b6e5ea220b1cb8f',LM_DETAIL_SHA='9d8be005458ca901dac8f94a7224662ae25833882dda2ed6687d184a660af034',LM_MAX_CALLS=120,LM_MAX_PRICE=100,LM_MAX_PAGES=8;
+if(in_array('--self-test',$argv??[],true)){require_once __DIR__.'/hotel_match_refresh82_samo_native_helpers_v1.php';lm_need(lm_id('315')==='315','id');$f=lm_fact(['hotelKey'=>123,'operatorKey'=>315,'original'=>['hotelKey'=>834805]],'315');lm_need(($f['native_operator_hotel_id']??'')==='834805','fact');echo"REFRESH82_SAMO_NATIVE_SELFTEST_OK\n";exit(0);}
 if(PHP_SAPI!=='cli')exit(2);
-$dir=(string)getenv('MATCH_OPERATION_DIR');$root=realpath((string)getenv('ANYTOUR_ROOT'));$input=realpath((string)getenv('MATCH_FRONTIER_PATH'));$sha=(string)getenv('MATCH_SOURCE_SHA');
-if(!is_dir($dir)||basename($dir)!==LM_OP||!is_string($root)||!is_dir($root)||!is_string($input)||hash_file('sha256',$input)!==LM_FRONTIER_SHA||!preg_match('/^[a-f0-9]{40}$/D',$sha))throw new RuntimeException('runtime');
+$dir=(string)getenv('MATCH_OPERATION_DIR');$root=realpath((string)getenv('ANYTOUR_ROOT'));$rp=realpath((string)getenv('MATCH_ROUTER'));$dp=realpath((string)getenv('MATCH_DETAIL'));$sha=(string)getenv('MATCH_SOURCE_SHA');
+if(!is_dir($dir)||basename($dir)!==LM_OP||!is_string($root)||!is_string($rp)||hash_file('sha256',$rp)!==LM_ROUTER_SHA||!is_string($dp)||hash_file('sha256',$dp)!==LM_DETAIL_SHA||!preg_match('/^[a-f0-9]{40}$/D',$sha))throw new RuntimeException('runtime');
 $res=json_decode((string)file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);if(($res['operation']??'')!==LM_OP||($res['state']??'')!=='reserved_before_provider_access')throw new RuntimeException('reservation');
-require_once $dir.'/payload/hotel_match_live143_moscow_anex_samo_helpers_v2.php';require_once $dir.'/payload/andromeda-network-transport-failure.php';require_once $dir.'/payload/andromeda-transport.php';require_once $dir.'/payload/andromeda-client.php';
+require_once $dir.'/payload/hotel_match_refresh82_samo_native_helpers_v1.php';require_once $dir.'/payload/hotel_match_common4_operator_binding_v1.php';require_once $dir.'/payload/andromeda-network-transport-failure.php';require_once $dir.'/payload/andromeda-transport.php';require_once $dir.'/payload/andromeda-client.php';
 $front=json_decode((string)file_get_contents($input),true,128,JSON_THROW_ON_ERROR);lm_need(($front['state']??'')==='completed_read_only','frontier_state');
 $rows=[];foreach((array)$front['frontier']as$x){if(($x['route']??'')!=='query_ready_user_seen_anex')continue;$c=$x['latest_future_anex_context']??null;if(!is_array($c)||(int)($c['departure_id']??0)!==1)continue;$rows[]=$x;}lm_need(count($rows)===143,'frontier143');
 $ids=array_values(array_unique(array_map(fn($x)=>(int)$x['tv_hotel_id'],$rows)));sort($ids,SORT_NUMERIC);$ph=implode(',',array_fill(0,count($ids),'?'));
