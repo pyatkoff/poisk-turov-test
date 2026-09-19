@@ -40,17 +40,33 @@ final class AnyTourAndromedaSearchSurcharge
             'state' => 'unknown',
         ];
 
-        // One distinct value may be repeated on both directions. Different values
-        // mean the flight choice affects money, so search must stay fail-closed.
-        if (count($markupFacts) !== 1) return $result;
-        $markup = array_values($markupFacts)[0];
+        $aggregation = 'single_distinct_party_markup';
+        $markup = null;
+        $converted = null;
+        if (count($markupFacts) === 1) {
+            $markup = array_values($markupFacts)[0];
+            $converted = self::convert($markup['amount'], $markup['currency'], $targetCurrency, $rates);
+        } else {
+            // Owner-approved search fallback (2026-09-18): when get_flights returns
+            // several choice-dependent markup values, use the numerical minimum only
+            // if the FULL claim proves one complete required one-item roundtrip and
+            // every eligible option in both required flight groups has one valid,
+            // convertible markup. A party surcharge must be selectable on both
+            // directions; never manufacture a value from only one leg.
+            $minimum = self::minimumCompleteRequiredRoundtripMarkup($claim, $targetCurrency, $rates);
+            if ($minimum !== null) {
+                $markup = $minimum['reported'];
+                $converted = $minimum['converted'];
+                $aggregation = 'minimum_complete_required_roundtrip_markup';
+            }
+        }
+        if ($markup === null || $converted === null) return $result;
+
         $result['transport_markup_reported'] = $markup + [
             'source' => 'andromeda_get_flights_transport',
-            'aggregation' => 'single_distinct_party_markup',
+            'aggregation' => $aggregation,
         ];
 
-        $converted = self::convert($markup['amount'], $markup['currency'], $targetCurrency, $rates);
-        if ($converted === null) return $result;
         $total = self::addMoney($base, $converted);
         if ($total === null) return $result;
 
@@ -213,6 +229,90 @@ final class AnyTourAndromedaSearchSurcharge
             throw new InvalidArgumentException('ANDROMEDA_SEARCH_SURCHARGE_CLAIM');
         }
         return $claim['claimDocument'][0];
+    }
+
+    /**
+     * Search-only fallback for choice-dependent money. The full shape must have
+     * exactly one required one-item flight group per direction in one variant.
+     * Every option in those two groups must expose one unambiguous markup that can
+     * be converted to the target currency. Because the markup is party-scoped,
+     * only values available in BOTH directions are valid roundtrip candidates.
+     *
+     * @return array{reported:array{amount:string,currency:string},converted:string}|null
+     */
+    private static function minimumCompleteRequiredRoundtripMarkup(
+        array $claim,
+        string $targetCurrency,
+        array $rates
+    ): ?array {
+        $required = [];
+        foreach (($claim['groups'] ?? []) as $block) {
+            if (!is_array($block) || !is_array($block['group'] ?? null)) continue;
+            foreach ($block['group'] as $group) {
+                if (!is_array($group) || (string)($group['required'] ?? '') !== 'true') continue;
+                $id = (string)($group['id'] ?? '');
+                if ($id === '' || strlen($id) > 128) return null;
+                $required[$id] = (string)($group['oneItem'] ?? '') === 'true';
+            }
+        }
+        if ($required === []) return null;
+
+        $variants = [];
+        foreach (($claim['variants'] ?? []) as $variant) {
+            if (is_array($variant)) $variants[] = $variant;
+        }
+        // Cross-variant option compatibility is not inferable. Stay unknown unless
+        // one complete variant owns the entire required roundtrip choice set.
+        if (count($variants) !== 1) return null;
+
+        $groupDirection = [];
+        $groupValues = [];
+        $reportedByUnits = [];
+        foreach (($variants[0]['transports'] ?? []) as $block) {
+            if (!is_array($block) || !is_array($block['transport'] ?? null)) continue;
+            foreach ($block['transport'] as $item) {
+                if (!is_array($item) || ($item['type'] ?? null) !== 'ttAvia') continue;
+                $groupId = (string)($item['groupId'] ?? '');
+                if (!array_key_exists($groupId, $required)) continue;
+                if ($required[$groupId] !== true) return null;
+                $direction = (string)($item['direction'] ?? '');
+                if ($direction !== '0' && $direction !== '1') return null;
+                if (isset($groupDirection[$groupId]) && $groupDirection[$groupId] !== $direction) return null;
+                $groupDirection[$groupId] = $direction;
+
+                $markup = self::transportMarkupFact($item);
+                if ($markup === null) return null;
+                $converted = self::convert($markup['amount'], $markup['currency'], $targetCurrency, $rates);
+                if ($converted === null) return null;
+                $units = self::units($converted, 2);
+                if ($units === null) return null;
+                $groupValues[$groupId][$units] = true;
+                $reportedByUnits[$units] ??= $markup;
+            }
+        }
+
+        $byDirection = ['0' => [], '1' => []];
+        foreach ($groupDirection as $groupId => $direction) {
+            if (($groupValues[$groupId] ?? []) === []) return null;
+            $byDirection[$direction][] = $groupId;
+        }
+        // A bounded roundtrip fallback only. More than one required flight group
+        // on a direction can carry hidden dependency semantics, so fail closed.
+        if (count($byDirection['0']) !== 1 || count($byDirection['1']) !== 1) return null;
+
+        $out = $groupValues[$byDirection['0'][0]];
+        $back = $groupValues[$byDirection['1'][0]];
+        $common = array_intersect_key($out, $back);
+        if ($common === []) return null;
+        $units = array_keys($common);
+        sort($units, SORT_NUMERIC);
+        $minimumUnits = (int)$units[0];
+        $reported = $reportedByUnits[$minimumUnits] ?? null;
+        if (!is_array($reported)) return null;
+        return [
+            'reported' => $reported,
+            'converted' => self::fromUnits($minimumUnits, 2),
+        ];
     }
 
     private static function transportMarkupFact(array $transport): ?array
