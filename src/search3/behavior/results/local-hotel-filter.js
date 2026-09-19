@@ -154,7 +154,7 @@ function setBudget(value){
   budgetInput.value=String(next);budgetActive=next<max;window.V2Results.rerender();
 }
 function syncBudget(items){
-  const list=prices(items),available=items.length>1&&items.every(h=>Array.isArray(h&&h.tours)&&h.tours.length&&h.tours.every(t=>Number(t&&t.price||0)>0))&&new Set(list).size>1;
+  const list=prices(items),available=items.length>0&&items.every(h=>Array.isArray(h&&h.tours)&&h.tours.length&&h.tours.every(t=>Number(t&&t.price||0)>0))&&new Set(list).size>1;
   if(!available){budgetActive=false;budgetMinInput.value='';budgetInput.min='0';budgetInput.max='0';budgetInput.value='0';budgetHint.textContent='';budgetField.hidden=true;return 0;}
   const maximum=Math.max(5000,Math.ceil(Math.max(...list)/5000)*5000),previous=Number(budgetInput.value||0),next=budgetActive?Math.max(previous,0):maximum;
   budgetInput.min='0';budgetInput.max=String(maximum);budgetInput.value=String(next);
@@ -163,7 +163,7 @@ function syncBudget(items){
 }
 function syncMeal(items){
   const labels=new Map(),ids=new Set(),api=window.V2Results;
-  const complete=items.length>1&&items.every(h=>{const hotelId=id(h);if(!hotelId||ids.has(hotelId)||!Array.isArray(h.tours)||!h.tours.length)return false;ids.add(hotelId);return h.tours.every(t=>{const identity=api.mealIdentity(t);if(!identity)return false;if(!labels.has(identity.key))labels.set(identity.key,identity.label);return true;});});
+  const complete=items.length>0&&items.every(h=>{const hotelId=id(h);if(!hotelId||ids.has(hotelId)||!Array.isArray(h.tours)||!h.tours.length)return false;ids.add(hotelId);return h.tours.every(t=>{const identity=api.mealIdentity(t);if(!identity)return false;if(!labels.has(identity.key))labels.set(identity.key,identity.label);return true;});});
   const previous=mealSelect.value,available=complete&&labels.size>1;mealSelect.replaceChildren(option('','Любое питание'));
   if(available)Array.from(labels).sort((a,b)=>a[1].localeCompare(b[1],'ru')).forEach(([value,label])=>mealSelect.appendChild(option(value,label)));
   mealSelect.value=available&&labels.has(previous)?previous:'';mealField.hidden=!available;
