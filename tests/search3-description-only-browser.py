@@ -42,10 +42,12 @@ def image(label):
     return 'data:image/svg+xml;base64,' + base64.b64encode(svg.encode()).decode()
 
 
+PHOTOS = {'https://fixture.invalid/photos/a.svg': image('A'),
+          'https://fixture.invalid/photos/b.svg': image('B')}
 PROFILE = {'id': 1, 'catalog': 'anytour', 'revision': 1,
            'name': 'Тестовый отель с подробным описанием', 'description': DESCRIPTION,
-           'detailsAvailable': True, 'category': 5, 'primaryImage': image('A'),
-           'images': [image('A'), image('B')], 'hotelInformation': {}}
+           'detailsAvailable': True, 'category': 5, 'primaryImage': next(iter(PHOTOS)),
+           'images': list(PHOTOS), 'hotelInformation': {}}
 HOTEL = {'id': '102', 'provider': 'tourvisor', 'name': 'НЕЛЬЗЯ: имя поставщика',
          'price': 125000, 'tours': [{'id': '731', 'provider': 'tourvisor', 'price': 125000,
          'date': '2026-10-05', 'nights': 7, 'meal': {'name': 'AI'}, 'roomType': 'Standard',
@@ -59,8 +61,16 @@ with sync_playwright() as playwright:
     browser = playwright.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or None,
                                          headless=True, args=['--no-sandbox'])
     for width in [375, 768, 1440]:
-        context = browser.new_context(viewport={'width': width, 'height': 1000})
-        context.route('**/*', lambda route: route.abort())
+        context = browser.new_context(viewport={'width': width, 'height': 1000},
+                                      is_mobile=width <= 760, has_touch=width <= 760)
+        def fixture_route(route):
+            photo = PHOTOS.get(route.request.url)
+            if photo:
+                route.fulfill(status=200, content_type='image/svg+xml',
+                              body=base64.b64decode(photo.split(',', 1)[1]))
+            else:
+                route.abort()
+        context.route('**/*', fixture_route)
         page = context.new_page()
         page.set_default_timeout(3000)
         errors = []
@@ -105,6 +115,26 @@ with sync_playwright() as playwright:
         else:
             expect(teaser).to_be_visible()
             assert teaser.evaluate('node => node.clientHeight < node.scrollHeight')
+        photo_link = page.get_by_role('link', name='Фото отеля Тестовый отель с подробным описанием — открыть в новой вкладке', exact=True)
+        expect(photo_link).to_have_count(1)
+        expect(photo_link).to_have_attribute('href', PROFILE['primaryImage'])
+        expect(photo_link).to_have_attribute('target', '_blank')
+        expect(photo_link).to_have_attribute('rel', 'noopener noreferrer')
+        image_box = page.locator('.hotel-gallery-main').bounding_box()
+        link_box = photo_link.bounding_box()
+        assert all(abs(image_box[key] - link_box[key]) <= 1 for key in ['x', 'y', 'width', 'height'])
+        original_url = page.url
+        with page.expect_popup() as opened:
+            if width <= 760:
+                photo_link.tap()
+            else:
+                photo_link.click()
+        popup = opened.value
+        popup.wait_for_load_state('domcontentloaded')
+        assert popup.url == PROFILE['primaryImage']
+        popup.close()
+        assert page.url == original_url
+        expect(details).not_to_have_attribute('open', '')
         page.screenshot(path=str(OUT / f'description-only-closed-{width}.png'), full_page=True)
         details.locator('summary').focus()
         page.keyboard.press('Enter')
@@ -118,6 +148,15 @@ with sync_playwright() as playwright:
         first_image = main.get_attribute('src')
         thumbs.locator('button').first.click()
         assert main.get_attribute('src') != first_image
+        expect(photo_link).to_have_attribute('href', main.get_attribute('src'))
+        photo_link.focus()
+        with page.expect_popup() as opened:
+            page.keyboard.press('Enter')
+        popup = opened.value
+        popup.wait_for_load_state('domcontentloaded')
+        assert popup.url == main.get_attribute('src')
+        popup.close()
+        assert page.url == original_url
         assert page.evaluate('Search3HotelDetailsPresentationV1.normalize(document.getElementById("results"))') == 0
         expect(details).to_have_attribute('open', '')
         assert page.evaluate('JSON.stringify(__hotel)===__before')
@@ -135,7 +174,9 @@ with sync_playwright() as playwright:
             expect(teaser).to_be_visible()
         REPORT.append({'width': width, 'native_disclosure': True, 'full_text': True,
                        'single_visible_description': True, 'gallery': True,
-                       'keyboard': True, 'no_extra_catalog_calls': True, 'overflow': False})
+                       'native_photo_tab': True, 'current_thumbnail_photo': True,
+                       'touch_photo': width <= 760, 'keyboard': True,
+                       'no_extra_catalog_calls': True, 'overflow': False})
         context.close()
     browser.close()
 
