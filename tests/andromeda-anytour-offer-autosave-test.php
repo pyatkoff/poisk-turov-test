@@ -211,9 +211,11 @@ try {
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
     echo 'ANDROMEDA_ESTIMATE_RETENTION_MEASURE ' . json_encode([
         'published' => $result['published'], 'ready' => $result['readyOfferCount'],
+        'confirmation' => $result['confirmationRequiredOfferCount'] ?? null,
         'stored_rows' => count($ingests[0]['rows'] ?? []),
     ], JSON_THROW_ON_ERROR) . "\n";
-    aassert($result['published'] === true && $result['readyOfferCount'] === 0, 'flight-only search rows were dropped or marked final');
+    aassert($result['published'] === true && $result['readyOfferCount'] === 0
+        && $result['confirmationRequiredOfferCount'] === 2, 'flight-only search rows were dropped, marked final or hidden from receipt');
     aassert($result['receivedOfferCount'] === 2 && $result['ownedOfferCount'] === 2
         && count($ingests) === 1 && count($ingests[0]['rows']) === 2, 'flight-only cohort retention');
     foreach ($ingests[0]['rows'] as $row) assert_confirmation_dto($row['dto']);
@@ -259,7 +261,9 @@ try {
     [$mapping, $canonical, $pricing, $save, $ingest] = callbacks($ingests, $verifiedPricing);
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $pricing, $save, $ingest);
-    aassert($result['published'] === true && $result['readyOfferCount'] === 2 && count($ingests[0]['rows']) === 2, 'verified cohort not published');
+    aassert($result['published'] === true && $result['readyOfferCount'] === 2
+        && $result['confirmationRequiredOfferCount'] === 0 && count($ingests[0]['rows']) === 2,
+        'verified cohort not published or confirmation count wrong');
     $dto = $ingests[0]['rows'][0]['dto'] ?? null;
     aassert(is_array($dto) && $dto['quote_state'] === 'verified'
         && $dto['final_price_verified'] === true, 'verified dto state lost');
@@ -286,7 +290,8 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === true && $result['readyOfferCount'] === 0, 'terminal flight-only prices were promoted or rows lost');
+    aassert($result['published'] === true && $result['readyOfferCount'] === 0
+        && $result['confirmationRequiredOfferCount'] === 2, 'terminal flight-only prices were promoted, hidden from receipt or rows lost');
     aassert($result['receivedOfferCount'] === 2 && $result['ownedOfferCount'] === 2
         && count($ingests[0]['rows']) === 2, 'terminal data pages lost');
     foreach ($ingests[0]['rows'] as $row) assert_confirmation_dto($row['dto']);
@@ -338,7 +343,9 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, null);
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === true && count($ingests) === 1, 'missing surcharge confirmation snapshot not published');
+    aassert($result['published'] === true && $result['readyOfferCount'] === 0
+        && $result['confirmationRequiredOfferCount'] === 1 && count($ingests) === 1,
+        'missing surcharge confirmation snapshot not published or receipt lost confirmation count');
     $dto = $ingests[0]['rows'][0]['dto'] ?? null;
     aassert(is_array($dto) && $dto['finalPriceReady'] === false && $dto['finalPrice'] === null
         && $dto['price'] === '185125' && $dto['currency'] === 'RUB', 'confirmation search price invalid');
@@ -370,7 +377,8 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === true && count($ingests) === 1 && $ingests[0]['rows'] === [], 'excluded-only cohort not authoritative empty');
+    aassert($result['published'] === true && $result['confirmationRequiredOfferCount'] === 0
+        && count($ingests) === 1 && $ingests[0]['rows'] === [], 'excluded-only cohort not authoritative empty');
 } finally { cleanup_dir($dir); }
 
 // Safe excluded rejections do not poison valid confirmation-required rows.
@@ -385,6 +393,7 @@ try {
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
     aassert($result['published'] === true && $result['readyOfferCount'] === 0
+        && $result['confirmationRequiredOfferCount'] === 1
         && $result['ownedOfferCount'] === 1 && count($ingests[0]['rows']) === 1, 'safe rejection changed completeness or retention');
     assert_confirmation_dto($ingests[0]['rows'][0]['dto']);
 } finally { cleanup_dir($dir); }
@@ -431,7 +440,9 @@ foreach ([party_surcharge(), party_surcharge('185125', '0', '185125'),
         $before = $fact;
         $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
             new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $pricing, $save, $ingest);
-        aassert($result['published'] === true && $result['readyOfferCount'] === 0 && count($ingests[0]['rows']) === 1, 'estimated shape not retained');
+        aassert($result['published'] === true && $result['readyOfferCount'] === 0
+            && $result['confirmationRequiredOfferCount'] === 1 && count($ingests[0]['rows']) === 1,
+            'estimated shape not retained or receipt lost confirmation count');
         assert_confirmation_dto($ingests[0]['rows'][0]['dto']);
         aassert($fact === $before, 'retained flight evidence mutated');
     } finally { cleanup_dir($dir); }
@@ -452,19 +463,22 @@ try {
     };
     $at = new DateTimeImmutable('now', new DateTimeZone('UTC'));
     $first = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1, $at, $mapping, $canonical, $pricing, $save, $ingest);
-    aassert($first['published'] === true && $first['readyOfferCount'] === 0 && count($ingests[0]['rows']) === 2, 'mixed estimate lost a row');
+    aassert($first['published'] === true && $first['readyOfferCount'] === 0
+        && $first['confirmationRequiredOfferCount'] === 2 && count($ingests[0]['rows']) === 2,
+        'mixed estimate lost a row or fresh receipt lost confirmation count');
     foreach ($ingests[0]['rows'] as $row) assert_confirmation_dto($row['dto']);
     $mode = 'verified';
     $upgraded = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1, $at, $mapping, $canonical, $pricing, $save, $ingest);
     aassert($upgraded['published'] === true && $upgraded['readyOfferCount'] === 1
-        && count($ingests) === 2 && count($ingests[1]['rows']) === 2, 'verified upgrade suppressed or sibling lost');
+        && $upgraded['confirmationRequiredOfferCount'] === 1
+        && count($ingests) === 2 && count($ingests[1]['rows']) === 2, 'verified upgrade suppressed, sibling lost or receipt count wrong');
     assert_confirmation_dto($ingests[1]['rows'][0]['dto']);
     aassert($ingests[1]['rows'][1]['dto']['finalPriceReady'] === true
         && $ingests[1]['rows'][1]['dto']['finalPrice'] === '199390', 'verified final not preserved');
     $again = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1, $at, $mapping, $canonical, $pricing, $save, $ingest);
     aassert($again['reason'] === 'already_published' && $again['readyOfferCount'] === 1 && count($ingests) === 2,
         'mixed finalizer inflated readiness or repeated intake');
-    echo "ANDROMEDA_ESTIMATE_UPGRADE_OK stored=2 initial_ready=0 upgraded_ready=1 repeated_intakes=0\n";
+    echo "ANDROMEDA_ESTIMATE_UPGRADE_OK stored=2 initial_ready=0 initial_confirmation=2 upgraded_ready=1 upgraded_confirmation=1 repeated_intakes=0\n";
 } finally { cleanup_dir($dir); }
 
 // Malformed or contradictory retained evidence still refuses BEFORE persistence.
@@ -493,5 +507,5 @@ foreach ($invalid as $case => $fact) {
         aassert(!file_exists($dir . '/' . $ref . '-' . $created . '-anytour-offer-autosave-v1.json'), 'invalid estimate wrote checkpoint');
     } finally { cleanup_dir($dir); }
 }
-echo "ANDROMEDA_ESTIMATE_RETENTION_OK shapes=3 invalid=6 full_price_guard_unchanged=1 supplier=0 live_db=0\n";
+echo "ANDROMEDA_ESTIMATE_RETENTION_OK shapes=3 invalid=6 full_price_guard_unchanged=1 receipt_counts=1 supplier=0 live_db=0\n";
 echo "andromeda-anytour-offer-autosave-test: OK\n";
