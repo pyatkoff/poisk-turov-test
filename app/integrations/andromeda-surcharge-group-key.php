@@ -11,8 +11,8 @@ final class AndromedaSurchargeGroupKey
      * Build a fail-closed cache/group key for external-freight surcharge evidence.
      *
      * Money experiment v1 proved SPO-invariance for the observed supplier contract,
-     * so spo_ref is deliberately outside the key. Nights/tour/route/date/party are
-     * retained until isolated evidence proves that they can be removed safely.
+     * so spo_ref is deliberately outside the key. Nights/tour/route/date/full party
+     * are retained until isolated evidence proves that they can be removed safely.
      * Hotel/room/meal/offer/search-price fields are presentation/package variants,
      * not transport-group discriminators.
      *
@@ -61,6 +61,10 @@ final class AndromedaSurchargeGroupKey
             || $adults === null || $children === null || $currency === null) {
             return null;
         }
+        $childAges = self::childAges($scope['childs'] ?? null, $children);
+        if ($childAges === null) {
+            return null;
+        }
 
         $canonical = [
             'operator' => $operator,
@@ -72,6 +76,7 @@ final class AndromedaSurchargeGroupKey
             'nights' => $nights,
             'adults' => $adults,
             'children' => $children,
+            'child_ages' => $childAges,
             'currency' => $currency,
         ];
 
@@ -79,6 +84,27 @@ final class AndromedaSurchargeGroupKey
             $canonical,
             JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         ));
+    }
+
+    private static function childAges(mixed $value, int $children): ?array
+    {
+        if ($value === null || $value === '') {
+            return $children === 0 ? [] : null;
+        }
+        if (!is_array($value) || count($value) !== $children) {
+            return null;
+        }
+        $ages = [];
+        foreach ($value as $age) {
+            $parsed = self::integer($age);
+            if ($parsed === null || $parsed < 0 || $parsed > 17) {
+                return null;
+            }
+            $ages[] = $parsed;
+        }
+        // Child position is not semantic supplier evidence; the exact age multiset is.
+        sort($ages, SORT_NUMERIC);
+        return $ages;
     }
 
     private static function id(mixed $value): ?string
