@@ -38,6 +38,7 @@ assert(strlen($key) === strlen('andromeda-surcharge-v2:') + 64);
 // The real Search3 request wrapper and its params block identify the same group.
 assert(AndromedaSurchargeGroupKey::build($baseOffer, ['params' => $baseRequest]) === $key);
 assert(AndromedaSurchargeGroupKey::build($baseOffer, ['params' => ['countryId' => '4', 'departureId' => '1']]) === $key);
+assert(AndromedaSurchargeGroupKey::build($baseOffer, $baseRequest + ['childs' => []]) === $key);
 
 // Presentation/package variants and PRICE amount do not split transport surcharge evidence.
 $presentationVariant = $baseOffer;
@@ -64,7 +65,6 @@ $variants = [
     ['offer', 'check_in', '2026-11-02'],
     ['offer', 'nights', 8],
     ['offer', 'adults', 3],
-    ['offer', 'children', 1],
     ['price', 'currency', 'USD'],
     ['request', 'departureId', 2],
     ['request', 'countryId', 5],
@@ -84,6 +84,37 @@ foreach ($variants as [$where, $field, $value]) {
     $variant = AndromedaSurchargeGroupKey::build($offer, $request);
     assert(is_string($variant) && $variant !== $key, $field . ' must split surcharge group');
 }
+
+// Full party identity includes exact child ages, not only child count. Order is not semantic.
+$familyOffer = $baseOffer;
+$familyOffer['children'] = 2;
+$familyRequest = $baseRequest + ['childs' => [7, 3]];
+$familyKey = AndromedaSurchargeGroupKey::build($familyOffer, $familyRequest);
+assert(is_string($familyKey) && $familyKey !== $key);
+assert(AndromedaSurchargeGroupKey::build($familyOffer, $baseRequest + ['childs' => [3, 7]]) === $familyKey);
+assert(AndromedaSurchargeGroupKey::build($familyOffer, ['params' => $baseRequest + ['childs' => ['7', '3']]]) === $familyKey);
+$otherAges = AndromedaSurchargeGroupKey::build($familyOffer, $baseRequest + ['childs' => [7, 4]]);
+assert(is_string($otherAges) && $otherAges !== $familyKey, 'different child ages must split surcharge group');
+
+$oneChildOffer = $baseOffer;
+$oneChildOffer['children'] = 1;
+$oneChildKey = AndromedaSurchargeGroupKey::build($oneChildOffer, $baseRequest + ['childs' => [7]]);
+assert(is_string($oneChildKey) && $oneChildKey !== $key, 'child count still splits surcharge group');
+
+// Positive child count without exact valid ages is not reusable evidence.
+foreach ([
+    $baseRequest,
+    $baseRequest + ['childs' => []],
+    $baseRequest + ['childs' => [7]],
+    $baseRequest + ['childs' => [7, 18]],
+    $baseRequest + ['childs' => [7, -1]],
+    $baseRequest + ['childs' => [7, 'x']],
+    $baseRequest + ['childs' => '7,3'],
+] as $badParty) {
+    assert(AndromedaSurchargeGroupKey::build($familyOffer, $badParty) === null);
+}
+assert(AndromedaSurchargeGroupKey::build($baseOffer, $baseRequest + ['childs' => [7]]) === null,
+    'zero-child offer must reject contradictory ages');
 
 // Program identity and explicit external-freight fact are mandatory.
 $missingProgram = $baseOffer;
@@ -127,10 +158,12 @@ $flat['currency'] = $flat['price']['currency'];
 unset($flat['transport_context'], $flat['price']);
 assert(AndromedaSurchargeGroupKey::build($flat, $baseRequest) === null);
 
-// Opaque key must not expose offer/hotel/price/SPO identifiers.
-assert(!str_contains($key, 'offer-1'));
-assert(!str_contains($key, '101'));
-assert(!str_contains($key, '100000'));
-assert(!str_contains($key, '40082967'));
+// Opaque key must not expose offer/hotel/price/SPO/child-age identifiers.
+assert(!str_contains($familyKey, 'offer-1'));
+assert(!str_contains($familyKey, '101'));
+assert(!str_contains($familyKey, '100000'));
+assert(!str_contains($familyKey, '40082967'));
+assert(!str_contains($familyKey, '7'));
+assert(!str_contains($familyKey, '3'));
 
-echo "Andromeda surcharge group key evidence v1: OK\n";
+echo "Andromeda surcharge group key evidence v2: OK\n";
