@@ -122,5 +122,21 @@ assert.match(styles, /data-mobile-open=false[\s\S]*\.search3-shortlist__body\{di
 assert.match(styles, /\.search3-shortlist__items\{grid-template-columns:1fr;gap:12px;padding:0;overflow:visible\}/, 'opened mobile comparison uses readable full-width cards');
 assert.doesNotMatch(styles, /grid-auto-columns:88%|scroll-snap-type:x|overflow-x:auto/, 'retired clipped mobile shortlist carousel rules stay deleted');
 
+const focusSandbox = {
+  saved: [{ offerId: 'first', searchId: '731', observedPrice: 120000 }, { offerId: 'second', searchId: '731', observedPrice: 125000 }],
+  snapshot: () => ({ offerId: 'second', searchId: '731' }),
+  identity: item => item.offerId
+};
+focusSandbox.save = () => { focusSandbox.persisted = JSON.stringify(focusSandbox.saved); };
+focusSandbox.focusToggle = id => { focusSandbox.focused = id; };
+focusSandbox.focusAfterRemoval = (index, item) => { focusSandbox.panelFocus = [index, item.offerId]; };
+vm.createContext(focusSandbox);
+vm.runInContext(`${functionLine('removeAt')}; ${functionLine('toggle')}; toggle({dataset:{offerId:'second'}});`, focusSandbox);
+assert.equal(focusSandbox.focused, 'second', 'result-row removal returns to that exact offer toggle even when comparison is collapsed');
+assert.equal(focusSandbox.panelFocus, undefined, 'result-row removal never focuses a hidden comparison control');
+assert.equal(focusSandbox.persisted, '[{"offerId":"first","searchId":"731","observedPrice":120000}]', 'removal preserves the other exact snapshot and price');
+vm.runInContext('removeAt(0)', focusSandbox);
+assert.deepEqual(focusSandbox.panelFocus, [0, 'first'], 'comparison-panel removal keeps its existing neighbor/fallback focus policy');
+
 assert.doesNotMatch(source, /window\.Search3Shortlist=.*displayDate|window\.Search3Shortlist=.*partyLabel|window\.Search3Shortlist=.*compareState/, 'presentation helpers stay private; shortlist public API is not expanded');
 console.log('search3 shortlist trip summary: ok');

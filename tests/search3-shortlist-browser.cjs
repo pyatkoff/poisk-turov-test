@@ -251,6 +251,16 @@ async function checkJourney(browser, width) {
     const one = await checkComparisonGeometry(page, width, 1);
     savedActions.push(await addOffer(page, 'offer-family'));
     const two = await checkComparisonGeometry(page, width, 2);
+    const beforeRemoval = await page.evaluate(() => window.Search3Shortlist.items());
+    const familyToggle = page.locator('.search3-shortlist-toggle[data-offer-id="offer-family"]');
+    await familyToggle.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.activeElement?.matches('.search3-shortlist-toggle[data-offer-id="offer-family"][aria-pressed="false"]'));
+    assert.deepEqual(await page.evaluate(() => window.Search3Shortlist.items()), beforeRemoval.filter(item => item.offerId !== 'offer-family'), 'row removal preserves all other exact snapshots');
+    assert.equal(await meal.inputValue(), 'meal:label:всё включено', 'row removal preserves active filters');
+    if (width <= 600) assert.equal(await page.locator('.search3-shortlist__body').isVisible(), false, 'removing from results does not open collapsed comparison');
+    await page.screenshot({ path: path.join(output, `shortlist-remove-row-focus-${width}.png`), animations: 'disabled' });
+    savedActions.push(await addOffer(page, 'offer-family', true));
     savedActions.push(await addOffer(page, 'offer-third'));
     await openComparison(page, width, { assertCollapsed: true });
     const shortlist = page.locator('.search3-shortlist');
