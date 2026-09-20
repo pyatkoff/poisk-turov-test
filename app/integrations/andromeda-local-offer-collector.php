@@ -52,18 +52,33 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             && $search['received_offers'] >= 0
             && is_int($search['mapped_offers'] ?? null)
             && $search['mapped_offers'] >= 0;
+        // The complete first empty page is returned unchanged by run_pages with
+        // pages_count=0. Admit only that exact projection, not an arbitrary zero.
+        // The retained cohort and canonical autosave independently validate it.
+        $terminalEmpty = is_array($search)
+            && ($search['pages_count'] ?? null) === 0
+            && ($search['page'] ?? null) === 1
+            && ($search['generation'] ?? null) === $request['generation']
+            && $status === 'complete'
+            && ($search['hotels'] ?? null) === []
+            && ($search['grouped'] ?? null) === true
+            && ($search['first_page_only'] ?? null) === false
+            && ($search['external_search_pending'] ?? null) === false
+            && ($search['received_offers'] ?? null) === 0
+            && ($search['mapped_offers'] ?? null) === 0;
         if (!is_array($search)
             || ($search['provider'] ?? null) !== 'andromeda'
             || !is_string($search['search_ref'] ?? null)
             || !preg_match('/\A[a-f0-9]{64}\z/D', $search['search_ref'])
             || !is_int($search['pages_count'] ?? null)
-            || $search['pages_count'] < 1
+            || $search['pages_count'] < 0
+            || ($search['pages_count'] === 0 && !$terminalEmpty)
             || ($status !== 'complete' && !$drainedPartial)) {
             throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_SEARCH');
         }
 
         $rows = $loadCohort($search['search_ref'], $request['generation']);
-        if (!is_array($rows) || !array_is_list($rows)) {
+        if (!is_array($rows) || !array_is_list($rows) || ($terminalEmpty && $rows !== [])) {
             throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_COHORT');
         }
 

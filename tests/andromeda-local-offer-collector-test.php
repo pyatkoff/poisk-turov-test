@@ -110,6 +110,97 @@ foreach ([
     ok($partialThrown,'ambiguous partial aggregate must fail closed');
 }
 
+// The real page orchestrator returns its first terminal-empty page unchanged:
+// page=1, pages_count=0. Empty must reach the existing autosave owner exactly once,
+// without manufacturing a priced offer or using the supplier-capture callbacks.
+$emptyPage=[
+    'provider'=>'andromeda','search_ref'=>str_repeat('0',64),'generation'=>7,
+    'page'=>1,'pages_count'=>0,'status'=>'complete','hotels'=>[],
+    'grouped'=>true,'first_page_only'=>false,'external_search_pending'=>false,
+    'received_offers'=>0,'mapped_offers'=>0,'selection_enabled'=>false,
+];
+$emptyPageBefore=$emptyPage;$emptyRequestBefore=$request;
+$emptySaveReceipts=[
+    ['published'=>true,'reason'=>null,'readyOfferCount'=>0],
+    ['published'=>false,'reason'=>'already_published','readyOfferCount'=>0],
+];
+$emptyMustNotRun=static function():array{throw new RuntimeException('empty_offer_callback_must_not_run');};
+foreach(['all','non_external_only'] as $mode)foreach($emptySaveReceipts as $saveReceipt){
+    $emptyOrder=[];
+    $emptyResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
+        $request,
+        static function(array $r)use($request,$emptyPage,&$emptyOrder):array{
+            ok($r===$request,'empty search preserves exact request');
+            $emptyOrder[]='search';return $emptyPage;
+        },
+        static function(string $ref,int $generation)use($emptyPage,&$emptyOrder):array{
+            ok($ref===$emptyPage['search_ref']&&$generation===$emptyPage['generation'],'empty cohort binding');
+            $emptyOrder[]='load';return [];
+        },
+        $emptyMustNotRun,$emptyMustNotRun,
+        static function(array $r,string $ref,int $generation)use($request,$emptyPage,$saveReceipt,&$emptyOrder):array{
+            ok($r===$request&&$ref===$emptyPage['search_ref']&&$generation===7,'empty autosave binding');
+            $emptyOrder[]='autosave';return $saveReceipt;
+        },
+        2,$mode
+    );
+    ok($emptyOrder===['search','load','autosave'],'terminal empty reaches autosave once without captures');
+    ok($emptyResult['status']==='complete'&&$emptyResult['pages']===0,'terminal empty metadata');
+    foreach(['received_offers','owned_operator_offers','eligible_offers','capture_queue_offers',
+        'surcharge_capture_attempts','surcharge_ready','ready_offer_count','booking_calls'] as $key){
+        ok($emptyResult[$key]===0,'terminal empty keeps zero '.$key);
+    }
+    ok($emptyResult['capture_mode']===$mode&&$emptyResult['selection_authority']===false,'empty no selection authority');
+    ok($emptyResult['autosave_published']===$saveReceipt['published']
+        &&$emptyResult['autosave_reason']===$saveReceipt['reason'],'empty never promotes an unpublished receipt');
+}
+ok($emptyPage===$emptyPageBefore&&$request===$emptyRequestBefore,'empty input immutability');
+
+// Zero pages alone is not evidence of an authoritative empty search. Wrong types,
+// missing fields, pending/partial state, wrong generation or hidden offers must all
+// fail before any cohort load, capture, mapping callback or autosave can occur.
+$invalidEmptyPages=[];
+foreach([
+    'provider'=>['anex',null], 'search_ref'=>['bad',null],
+    'generation'=>[8,'7',null], 'page'=>[0,2,'1',null],
+    'pages_count'=>[-1,'0',false,null], 'status'=>['partial','pending',null],
+    'hotels'=>[[['local_id'=>1]],null], 'grouped'=>[false,null],
+    'first_page_only'=>[true,null], 'external_search_pending'=>[true,null],
+    'received_offers'=>[1,-1,'0',null], 'mapped_offers'=>[1,-1,'0',null],
+] as $field=>$values){
+    foreach($values as $value){$shape=$emptyPage;$shape[$field]=$value;$invalidEmptyPages[]=$shape;}
+    $shape=$emptyPage;unset($shape[$field]);$invalidEmptyPages[]=$shape;
+}
+foreach($invalidEmptyPages as $shape){
+    $invalidEmptyThrown=false;
+    try{
+        AnyTourAndromedaLocalOfferCollectorV1::collect(
+            $request,static fn(array $r):array=>$shape,
+            $emptyMustNotRun,$emptyMustNotRun,$emptyMustNotRun,$emptyMustNotRun,1
+        );
+    }catch(RuntimeException $error){$invalidEmptyThrown=$error->getMessage()==='ANDROMEDA_LOCAL_COLLECTOR_SEARCH';}
+    ok($invalidEmptyThrown,'unproven zero-page result must fail before autosave');
+}
+
+// Independently loaded retained rows must also be empty. Even a row that normal
+// operator/mapping routing would discard must not turn a contradictory cohort into
+// an authoritative empty replacement of the canonical snapshot.
+foreach([
+    [['page'=>1,'offer'=>$offer('empty-owned','FUN&SUN',12,'7')]],
+    [['page'=>1,'offer'=>$offer('empty-excluded','ANEX',11,'5')]],
+    [[]], ['malformed'], ['not_a_list'=>[]],
+] as $rows){
+    $nonemptyThrown=false;
+    try{
+        AnyTourAndromedaLocalOfferCollectorV1::collect(
+            $request,static fn(array $r):array=>$emptyPage,
+            static fn(string $ref,int $generation):array=>$rows,
+            $emptyMustNotRun,$emptyMustNotRun,$emptyMustNotRun,1
+        );
+    }catch(RuntimeException $error){$nonemptyThrown=$error->getMessage()==='ANDROMEDA_LOCAL_COLLECTOR_COHORT';}
+    ok($nonemptyThrown,'contradictory retained cohort must not autosave');
+}
+
 $priorityCohort=static fn(string $ref,int $generation):array=>[
     ['page'=>1,'offer'=>$offer('p-false','FUN&SUN',21,'21',false,'pf','tf')],
     ['page'=>1,'offer'=>$offer('p-unknown','Библио-Глобус',22,'22',null,'pu','tu')],
@@ -285,4 +376,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 strict_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 strict_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1 terminal_empty=4 empty_fail_closed=51\n";
