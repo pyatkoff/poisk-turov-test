@@ -265,6 +265,27 @@ const vm = require('node:vm');
   window.history.back();
   frames.shift()();
   frames.shift()();
+
+  deferResponses = true;
+  const pendingSource = focusableTour(20);
+  pendingSource.textContent = 'Выбрать тур';
+  click({ target: pendingSource, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
+  assert.equal(historyIndex, 1, 'pending selection also owns one same-URL history entry');
+  window.history.back();
+  frames.shift()();
+  frames.shift()();
+  assert.equal(selected.hidden, true, 'Browser Back closes a still-loading selection');
+  assert.equal(selected.innerHTML, '', 'the abandoned loading state cannot be restored by Browser Forward');
+  const selectedBeforeLateResponse = selectedEvents.length;
+  pendingTours.get('20').resolve({ id: 20, hotel: { name: 'Late Hotel' }, price: 100 });
+  pendingTours.delete('20');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(window.V2TourController.currentTour, null, 'late tour detail cannot revive an abandoned selection');
+  assert.equal(pendingFlights.has('20'), false, 'abandoned selection cannot start a late flight lookup');
+  assert.equal(selectedEvents.length, selectedBeforeLateResponse, 'abandoned selection emits no tour-selected event');
+  window.history.forward();
+  assert.equal(selected.hidden, true, 'Browser Forward is a no-op when the selection never completed');
+  window.history.back();
   delete window.history;
   delete window.location;
 

@@ -339,7 +339,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 source = source.replace(reviewed_history_entry, b'', 1)
                 self.assertEqual(source.count(b'returnFromSelected(root)'), 2, 'two selected return actions traverse the selected history entry')
                 source = source.replace(b'returnFromSelected(root)', b'returnToResults(root)')
-                history_listener = b"window.addEventListener('v2:search-history-pop',e=>{const root=selected(),requested=historyTourId(e&&e.detail&&e.detail.state);if(requested){selectedHistoryActive=true;restoreSelected(root);return;}if(!selectedHistoryActive)return;selectedHistoryActive=false;if(root&&!root.hidden)returnToResults(root);});\n"
+                history_listener = b"window.addEventListener('v2:search-history-pop',e=>{const root=selected(),requested=historyTourId(e&&e.detail&&e.detail.state);if(requested){selectedHistoryActive=true;restoreSelected(root);return;}if(!selectedHistoryActive)return;selectedHistoryActive=false;if(root&&!root.hidden){if(busyTourId){tourGeneration++;flightGeneration++;busyTourId='';root.innerHTML='';}returnToResults(root);}});\n"
                 self.assertEqual(source.count(history_listener), 1, 'one controller listener for lifecycle-owned same-query history')
                 source = source.replace(history_listener, b'', 1)
                 self.assertEqual(source.count(b"window.addEventListener('v2:search-reset',()=>{clearSelectedHistory();leadDraft=null;"), 1)
