@@ -128,3 +128,44 @@ foreach($invalid as $value) {
     familyCheck(str_contains($run['stderr'],'ANDROMEDA_COLLECTOR_'),'bounded validation error');
 }
 echo 'ANDROMEDA_COLLECTOR_FAMILY_CLI_OK positive='.count($positive).' invalid='.count($invalid).' exact_request=1 supplier=0 db=0'."\n";
+
+// Local destination IDs must survive the same CLI -> catalog/search -> autosave
+// path. Provider-native TOWNTO translation remains in the existing API owner.
+$destinations=[
+    [[],[],[]],
+    [['--region=','--subregion='],[],[]],
+    [['--region=20'],['20'],[]],
+    [['--region=22'],['22'],[]],
+    [['--subregion=201'],[],['201']],
+    [['--region=20','--subregion=201'],['20'],['201']],
+    [['--region=20','--subregion=202'],['20'],['202']],
+    [['--region=1','--subregion=999999999'],['1'],['999999999']],
+];
+$destinationRequests=[];
+foreach($destinations as $index=>[$args,$regions,$subregions]) {
+    $run=familyCli(array_merge($args,['--child-ages=7,3']));
+    familyCheck($run['code']===0,'destination CLI succeeds '.$index.': '.$run['stderr']);
+    familyCheck(array_column($run['trace'],0)===['runtime','private_config','site_config','db_double','catalog','collector','pages','search','autosave'],
+        'destination one ordered pass '.$index);
+    $events=array_column($run['trace'],1,0);
+    $request=$events['catalog'];$params=$request['params'];
+    familyCheck($params['regionIds']===$regions&&$params['subregionIds']===$subregions,
+        'exact destination at catalog '.$index.': '.json_encode([$params['regionIds'],$params['subregionIds']]));
+    familyCheck($params['childs']===[3,7]&&array_replace($params,['regionIds'=>[],'subregionIds'=>[],'childs'=>[]])===$adultParams,
+        'destination preserves party and all other criteria '.$index);
+    foreach(['pages','search','autosave'] as $stage) familyCheck($events[$stage]===$request,'same exact destination request at '.$stage);
+    familyCheck($events['collector']['request']===$request&&$events['collector']['mode']==='non_external_only'
+        &&$events['collector']['maxCaptures']===2&&$events['collector']['seconds']===0,'destination does not expand capture policy');
+    $destinationRequests[]=$request;
+}
+familyCheck($destinationRequests[0]===$destinationRequests[1],'explicit empty keeps broad-country request');
+familyCheck($destinationRequests[2]!==$destinationRequests[3]&&$destinationRequests[5]!==$destinationRequests[6],
+    'different resorts and subresorts never collapse');
+$badDestinations=['0','-1','020','20.0','2e1',' 20','20 ','20,22','[]','1000000000','999999999999999999999','20;echo invalid'];
+foreach(['region','subregion'] as $key) foreach($badDestinations as $value) {
+    $run=familyCli(['--'.$key.'='.$value]);
+    familyCheck($run['code']!==0&&$run['stdout']===''&&$run['trace']===[],
+        'invalid destination rejected before runtime/config/DB: '.$key.'='.$value);
+    familyCheck(str_contains($run['stderr'],'ANDROMEDA_COLLECTOR_INT'),'strict destination validation error');
+}
+echo 'ANDROMEDA_COLLECTOR_DESTINATION_CLI_OK positive='.count($destinations).' invalid='.(2*count($badDestinations)).' exact_request=1 supplier=0 db=0'."\n";

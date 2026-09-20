@@ -32,6 +32,14 @@ if($childRaw!==''){
     sort($childAges,SORT_NUMERIC);
 }
 
+// Keep local destination scope identical in search and persistence. The existing
+// API resolves these local IDs against country-scoped provider dictionaries.
+$destinationIds=[];
+foreach(['region','subregion'] as $key){
+    $raw=$args[$key]??'';
+    $destinationIds[$key]=$raw===''?[]:[(string)$int($raw,1,999999999)];
+}
+
 $site=realpath($get('site-root'));
 $privateConfig=realpath($get('private-config'));
 $source=$get('source-sha');
@@ -77,8 +85,8 @@ $params=[
     'departureId'=>(string)$departure,'countryId'=>(string)$country,
     'dateFrom'=>$from,'dateTo'=>$to,'nightsFrom'=>$nights,'nightsTo'=>$nights,
     'adults'=>$adults,'childs'=>$childAges,'meal'=>$meal,'hotelCategory'=>'','hotelRating'=>'',
-    'hotelTypes'=>[],'hotelIds'=>[],'hotelServices'=>[],'arrivalId'=>'','regionIds'=>[],
-    'subregionIds'=>[],'operatorIds'=>[],'priceFrom'=>'','priceTo'=>'','currency'=>'RUB',
+    'hotelTypes'=>[],'hotelIds'=>[],'hotelServices'=>[],'arrivalId'=>'','regionIds'=>$destinationIds['region'],
+    'subregionIds'=>$destinationIds['subregion'],'operatorIds'=>[],'priceFrom'=>'','priceTo'=>'','currency'=>'RUB',
     'onlyCharter'=>false,'onlyDirect'=>false,
 ];
 $request=['generation'=>$generation,'params'=>$params];
