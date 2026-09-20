@@ -57,7 +57,9 @@ def build(queue,tv,date_from):
     for _,vals in by_key.items():
         links={x["operator_link"] for x in vals if x["operator_link"]}
         if len(links)>1: ambiguous+=1;rejected.extend({"local_hotel_id":x["local_hotel_id"],"operator_id":x["operator_id"],"reason":"ambiguous_operator_links"} for x in vals);continue
-        captures.append(vals[0])
+        # Keep the row that owns the saved link, including its tour provenance.
+        # A preceding linkless listing must not trigger another detail request.
+        captures.append(next((x for x in vals if x["operator_link"]), vals[0]))
     captures.sort(key=lambda x:(-x["live_frequency"],x["local_hotel_id"],x["operator_id"] or ""));ops={}
     for c in captures:
         k=c["operator_id"] or c["operator_name"] or "unknown";ops[k]=ops.get(k,0)+1
