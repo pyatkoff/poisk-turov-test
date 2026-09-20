@@ -124,4 +124,24 @@ for (const forbidden of ['fetch(', 'XMLHttpRequest', 'V2SearchLifecycle', 'start
   assert.ok(!localFilters.includes(forbidden), `local result facets do not start supplier transport: ${forbidden}`);
 }
 
+{
+  const mount = localFilters.slice(localFilters.indexOf('function mount(){'), localFilters.indexOf('function option('));
+  let moves = 0;
+  const container = () => ({ appendChild(node) { moves++; node.parentNode = this; }, append(node) { this.appendChild(node); } });
+  const rail = container(), actions = container(), mobileBody = container();
+  const controls = [{}, {}], activeList = {}, resetButton = {}, mobilePanel = { open: true };
+  const context = { field: controls[0], desktop: { matches: false }, rail, actions, mobileBody, mobilePanel,
+    activeList, resetButton, fields: () => controls, count: { textContent: '2' }, syncContainers() {} };
+  vm.createContext(context);vm.runInContext(mount, context);
+  const run = () => vm.runInContext('mount()', context);
+  run();assert.equal(moves, 5, 'initial mobile mount attaches one panel and each control once');
+  moves = 0;run();assert.equal(moves, 0, 'filter/progressive rerenders never detach already-mounted controls');
+  assert.equal(mobilePanel.open, true, 'mobile disclosure stays open during local filtering');
+  context.desktop.matches = true;run();assert.equal(moves, 4, 'breakpoint moves the existing controls to desktop exactly once');
+  assert.equal(mobilePanel.open, false);
+  moves = 0;run();assert.equal(moves, 0, 'desktop rerenders leave the focused subtree connected');
+  context.desktop.matches = false;run();assert.equal(moves, 4, 'returning to mobile reuses the same controls and panel');
+  assert.ok([activeList, ...controls, resetButton].every(node => node.parentNode === mobileBody));
+}
+
 console.log('PASS: Search3 exposes honest result controls and an immediately visible current-price calendar');

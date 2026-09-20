@@ -150,9 +150,15 @@ async function checkOfferFacets(page, width, previous) {
     if(width<1025&&!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
     assert.equal(await nights.isVisible(),true);assert.equal(await flight.isVisible(),true);
     for(const select of [nights,flight])assert.ok((await select.boundingBox()).height>=44,'new filters retain a native touch target');
-    await nights.selectOption('7');await flight.selectOption('regular');
+    for(const [control,value] of [[nights,'7'],[flight,'regular']]){
+      await control.focus();await control.selectOption(value);
+      assert.equal(await control.evaluate(node=>node===document.activeElement),true,'changing an offer facet preserves focus on its native control');
+    }
     assert.deepEqual(await visible(),['facet-b','facet-c'],'nights and flight must match the same tour, not different offers at the same hotel');
-    await meal.selectOption('meal:label:ai');
+    await meal.focus();await meal.selectOption('meal:label:ai');
+    assert.equal(await meal.evaluate(node=>node===document.activeElement),true,'meal projection keeps the focused select mounted');
+    if(width<1025)assert.equal(await panel.evaluate(node=>node.open),true,'local filtering keeps the mobile panel open');
+    if(!previous&&[375,1440].includes(width))await (width<1025?panel:page.locator('.results-filter-rail')).screenshot({path:path.join(output,`filter-focus-${width}.png`),animations:'disabled'});
     assert.deepEqual(await visible(),['facet-b'],'meal joins the same exact seven-night regular-flight tour');
     assert.equal((await page.locator('#results [data-hotel-id=facet-b] .hotel-price').innerText()).replace(/\s/g,''),'130000₽');
     assert.equal(await page.locator('#resultSummary').innerText(),'Показано отелей: 1 из 3 · цены из текущего поиска');
@@ -168,7 +174,9 @@ async function checkOfferFacets(page, width, previous) {
     if(!previous&&[320,375,720,1440].includes(width))await (width<1025?panel:page.locator('.results-filter-rail')).screenshot({path:path.join(output,`offer-filters-${width}.png`),animations:'disabled'});
     await nights.selectOption('9');assert.deepEqual(await visible(),['facet-a']);
     const continued=items.concat({...items[0],id:'facet-d',name:'Новый отель',tours:[{...tour,id:'d9',nights:9,isCharter:false,meal:'AI',price:110000}]});
-    await render(continued);assert.deepEqual(await visible(),['facet-a','facet-d'],'progressive results retain the selected conjunction');
+    await nights.focus();await render(continued);
+    assert.equal(await nights.evaluate(node=>node===document.activeElement),true,'progressive results do not detach the focused filter');
+    assert.deepEqual(await visible(),['facet-a','facet-d'],'progressive results retain the selected conjunction');
     assert.equal(await nights.inputValue(),'9');assert.equal(await flight.inputValue(),'regular');
     await page.locator('.search3-active-filters [data-filter-key=flight]').click();
     assert.deepEqual(await visible(),['facet-a','facet-c','facet-d'],'removing only flight retains nights and meal');
