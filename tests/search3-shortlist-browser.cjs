@@ -262,6 +262,8 @@ async function checkJourney(browser, width) {
     assert.deepEqual(await page.evaluate(() => window.__shortlistCalls), [['tour', 'offer-standard', 731], ['flights', 'offer-standard', 731]], 'filtered comparison selection reuses only the existing exact detail and flight path');
     await page.locator('#selectedTour .back-results:not(.search3-lead-return)').click();
     await page.waitForFunction(() => document.getElementById('selectedTour').hidden);
+    const filteredDisclosure = page.locator('.search3-shortlist-disclosure');
+    if (width <= 600 && await filteredDisclosure.getAttribute('aria-expanded') === 'true') await filteredDisclosure.click();
     await page.evaluate(() => { window.__shortlistCalls = []; });
     await meal.selectOption('meal:label:всё включено');
     if (!await page.locator('.search3-shortlist-toggle[data-offer-id="offer-family"]').count()) await page.locator('#results [data-hotel-id="offer-hotel"] .tour-more-toggle').click();
