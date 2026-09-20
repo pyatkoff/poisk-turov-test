@@ -401,7 +401,7 @@ ok($invariantThrown,'unexpected capture invariant must fail closed');
 ok($invariantAutosaveCalls===0,'unexpected capture invariant must not autosave');
 
 $cliSource=file_get_contents(__DIR__.'/../scripts/ops/andromeda_local_offer_collect.php');
-ok(is_string($cliSource)&&str_contains($cliSource,"if (($result['status'] ?? null) !== 'complete') exit(1);"),'CLI must propagate incomplete collector status after printing receipt');
+ok(is_string($cliSource)&&str_contains($cliSource,'if (($result[\'status\'] ?? null) !== \'complete\') exit(1);'),'CLI must propagate incomplete collector status after printing receipt');
 
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('ANEX')===false,'ANEX excluded');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('PEGAS Touristik')===false,'PEGAS excluded');
