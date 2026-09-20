@@ -1,0 +1,127 @@
+name: MATCH Tourvisor day ledger read-only audit v1
+on:
+  pull_request:
+    types: [opened]
+    paths:
+      - scripts/diagnostics/hotel_match_tourvisor_day_audit_v1.py
+      - .github/workflows/hotel-match-tourvisor-day-ledger-audit-v1.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: hotel-match-tourvisor-day-ledger-audit-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-tourvisor-day-ledger-audit-1971-20260920-v1
+  BASE_SHA: 15284ae7f4075bb06121549c9d695ff5504e049d
+  CLAIM_COMMENT_ID: '5749522714'
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'ops/match-tourvisor-day-ledger-audit-1971-20260920-v1' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ env.SOURCE_SHA }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact source and owner claim
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p reservation result
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert actual=={'scripts/diagnostics/hotel_match_tourvisor_day_audit_v1.py','.github/workflows/hotel-match-tourvisor-day-ledger-audit-v1.yml'}
+          PY
+          python3 scripts/diagnostics/hotel_match_tourvisor_day_audit_v1.py --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > reservation/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('reservation/claim.json'))
+          assert c['id']==int(os.environ['CLAIM_COMMENT_ID'])
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+          assert os.environ['OPERATION_ID'] in c['body'] and os.environ['BASE_SHA'] in c['body']
+          assert 'safe_to_initialize_day=false' in c['body'] and 'no remote file writes' in c['body']
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(60):
+            req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed':
+                assert r['conclusion']=='success';print('SECURITY_OK',r['id']);break
+            time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - name: Reserve before filesystem read
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import datetime,hashlib,json,os,pathlib
+          p=pathlib.Path('scripts/diagnostics/hotel_match_tourvisor_day_audit_v1.py')
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'script_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'claim_comment_id':int(os.environ['CLAIM_COMMENT_ID']),'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider_calls':0,'database_reads':0,'database_writes':0,'quota_writes':0,'remote_file_writes':0}
+          with open('reservation/reservation.json','x') as f:json.dump(r,f,sort_keys=True);f.flush();os.fsync(f.fileno())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'match-day-audit-reservation-${{ github.run_id }}'
+          path: reservation/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Read existing quota metadata without modification
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/day-audit-key"; known="$RUNNER_TEMP/day-audit-known-hosts"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" > /dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE" > "$known" 2>/dev/null; test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'python3 - --audit' < scripts/diagnostics/hotel_match_tourvisor_day_audit_v1.py > result/result.json 2> result/remote.stderr
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > result/remote-exit.txt
+          test "$rc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('result/result.json');r=json.loads(p.read_bytes())
+          assert r['operation_id']==os.environ['OPERATION_ID'] and r['provider_day']=='2026-09-20'
+          assert r['state'] in ('completed_read_only','directory_absent')
+          assert r['safe_to_initialize_day'] is False and r['safe_to_query_now'] is False
+          for k in ('provider_calls','database_reads','database_writes','quota_writes','mapping_writes'):assert r[k]==0
+          receipt={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'state':r['state'],'result_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'provider_calls':0,'database_reads':0,'database_writes':0,'quota_writes':0,'remote_file_writes':0,'no_replay':True}
+          with open('result/receipt.json','x') as f:json.dump(receipt,f,sort_keys=True)
+          print(json.dumps({k:r.get(k) for k in ('state','scanned_files','daily_ledger_present','current_operation_count','unknown_day_operation_count')}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'match-day-audit-result-${{ github.run_id }}'
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
