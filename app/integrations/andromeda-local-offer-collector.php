@@ -206,10 +206,18 @@ final class AnyTourAndromedaLocalOfferCollectorV1
 
         $save = $autosave($request, $search['search_ref'], $request['generation']);
         if (!is_array($save)) throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_AUTOSAVE');
+        // A collector run is complete only when the canonical offer snapshot was
+        // actually published, or when the autosave owner proves this exact generation
+        // was already published. Preserve every other receipt verbatim: an autosave
+        // failure can represent an unknown DB/write outcome and must never become replay
+        // authority just because search/capture work itself completed.
+        $autosaveComplete = ($save['published'] ?? null) === true
+            || (($save['published'] ?? null) === false
+                && ($save['reason'] ?? null) === 'already_published');
 
         return [
             'source' => 'andromeda-local-offer-collector-v1',
-            'status' => 'complete',
+            'status' => $autosaveComplete ? 'complete' : 'incomplete',
             'pages' => $search['pages_count'],
             'received_offers' => count($rows),
             'owned_operator_offers' => $owned,
@@ -223,6 +231,7 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             'autosave_published' => ($save['published'] ?? false) === true,
             'autosave_reason' => $save['reason'] ?? null,
             'ready_offer_count' => (int)($save['readyOfferCount'] ?? 0),
+            'autosave' => $save,
             'selection_authority' => false,
             'booking_calls' => 0,
         ];
