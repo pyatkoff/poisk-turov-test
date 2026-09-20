@@ -100,7 +100,17 @@ foreach(array_slice($scopes,0,$limit) as $index=>$scope){
     $command=AnyTourAnexDemandFillV1::collectorCommand($scope,$collector,$generationBase+$index,$maxExpands,$maxApd);
     $child=$run($command);
     if($child['code']!==0){
-        $status='stopped_on_error';$error=['index'=>$index,'code'=>$child['code'],'stderr'=>mb_substr(trim($child['stderr']),0,500)];
+        $status='stopped_on_error';
+        $error=['index'=>$index,'code'=>$child['code'],'stderr'=>mb_substr(trim($child['stderr']),0,500)];
+        // The collector can fail closed with a structured persistence receipt. Retain only
+        // that known source so an unknown write can be reconciled without replaying supplier
+        // work. Arbitrary/malformed child stdout remains private and is never surfaced.
+        try{
+            $candidate=json_decode(trim($child['stdout']),true,64,JSON_THROW_ON_ERROR);
+            if(is_array($candidate)&&($candidate['source']??null)==='anex-local-offer-collector-v1'){
+                $error['collectorResult']=$candidate;
+            }
+        }catch(Throwable $ignored){}
         break;
     }
     $value=json_decode(trim($child['stdout']),true,64,JSON_THROW_ON_ERROR);

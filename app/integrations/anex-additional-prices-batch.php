@@ -181,7 +181,9 @@ function anytour_anex_additional_prices_batch_execute(array $plan, array &$state
     // INT best-effort side effect only. It sees exactly the terminal APD state above;
     // any persistence failure is contained inside the runtime adapter and never changes
     // the supplier response returned by this executor.
-    anytour_anex_anytour_offer_autosave_runtime($plan, $state, $results);
+    // Keep the exact receipt private so background callers can stop on a failed
+    // write without changing this executor's browser-facing supplier response.
+    $state['anytour_offer_autosave_last_result'] = anytour_anex_anytour_offer_autosave_runtime($plan, $state, $results);
 
     return [
         'requested_offers' => count($publicOffers),
