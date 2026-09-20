@@ -12,6 +12,12 @@ def _rows(x):
     if isinstance(x,dict):
         # Raw detail is one tour; a result object owns its nested tours.
         if isinstance(x.get("hotel"),dict) or ("id" in x and "tours" in x): return [x]
+        # Persisted HTTP evidence wraps a successful single detail under data:{}.
+        # Unwrap only that exact documented detail/nested-result shape; do not
+        # recursively reinterpret arbitrary dictionaries as provider rows.
+        data=x.get("data")
+        if isinstance(data,dict) and (isinstance(data.get("hotel"),dict) or ("id" in data and "tours" in data)):
+            return [data]
         for k in ("results","rows","tours","data"):
             if isinstance(x.get(k),list): return x[k]
     return []
