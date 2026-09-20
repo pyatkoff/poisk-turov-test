@@ -39,6 +39,43 @@ final class AnyTourAnexLocalOfferCollectorV1
         $regular = [];
         self::collectOffers($searchData['hotels'], $grouped, $charters, $regular);
 
+        $processed = 0;
+        $ready = 0;
+        $complete = 0;
+        $retryable = 0;
+        $batchCalls = 0;
+        // Persist full batches as soon as their concrete offers are discovered.
+        // Keep the final short tail until normal completion: batching, item order
+        // and budgets stay unchanged, and failures never trigger a retry/flush.
+        $flush = static function (bool $finish) use (
+            &$charters, &$state, $searchRequest, $searchData, $additionalBatch, $maxBatchItems,
+            &$processed, &$ready, &$complete, &$retryable, &$batchCalls
+        ): void {
+            $items = array_slice(array_values($charters), $processed, $maxBatchItems - $processed);
+            foreach (array_chunk($items, 6) as $chunk) {
+                if (!$finish && count($chunk) < 6) break;
+                $batch = $additionalBatch([
+                    'action' => 'additional_prices_batch',
+                    'generation' => $searchRequest['generation'],
+                    'search_ref' => $searchData['search_ref'],
+                    'items' => $chunk,
+                ], $state);
+                ++$batchCalls;
+                if (!is_array($batch) || ($batch['status'] ?? null) !== 'additional_prices_batch'
+                    || !is_array($batch['offers'] ?? null)) {
+                    throw new RuntimeException('ANEX_LOCAL_COLLECTOR_APD');
+                }
+                foreach ($batch['offers'] as $offer) {
+                    if (!is_array($offer)) continue;
+                    if (($offer['status'] ?? null) === 'additional_prices') ++$complete;
+                    if (($offer['finalPriceReady'] ?? null) === true) ++$ready;
+                    if (($offer['retryable'] ?? null) === true) ++$retryable;
+                }
+                $processed += count($chunk);
+            }
+        };
+        $flush(false);
+
         $expanded = 0;
         foreach ($grouped as $group) {
             if ($expanded >= $maxExpands || count($charters) >= $maxBatchItems) break;
@@ -54,32 +91,10 @@ final class AnyTourAnexLocalOfferCollectorV1
             if (!is_array($reply) || ($reply['status'] ?? null) !== 'expanded') continue;
             $ignoredGrouped = [];
             self::collectOffers($reply['hotels'] ?? [], $ignoredGrouped, $charters, $regular);
+            $flush(false);
         }
 
-        $items = array_slice(array_values($charters), 0, $maxBatchItems);
-        $ready = 0;
-        $complete = 0;
-        $retryable = 0;
-        $batchCalls = 0;
-        foreach (array_chunk($items, 6) as $chunk) {
-            $batch = $additionalBatch([
-                'action' => 'additional_prices_batch',
-                'generation' => $searchRequest['generation'],
-                'search_ref' => $searchData['search_ref'],
-                'items' => $chunk,
-            ], $state);
-            ++$batchCalls;
-            if (!is_array($batch) || ($batch['status'] ?? null) !== 'additional_prices_batch'
-                || !is_array($batch['offers'] ?? null)) {
-                throw new RuntimeException('ANEX_LOCAL_COLLECTOR_APD');
-            }
-            foreach ($batch['offers'] as $offer) {
-                if (!is_array($offer)) continue;
-                if (($offer['status'] ?? null) === 'additional_prices') ++$complete;
-                if (($offer['finalPriceReady'] ?? null) === true) ++$ready;
-                if (($offer['retryable'] ?? null) === true) ++$retryable;
-            }
-        }
+        $flush(true);
 
         $groupedDrained = $expanded >= count($grouped);
         $concreteDrained = count($charters) <= $maxBatchItems;
@@ -91,7 +106,7 @@ final class AnyTourAnexLocalOfferCollectorV1
             'expand_calls' => $expanded,
             'charter_concrete_candidates' => count($charters),
             'regular_concrete_candidates' => count($regular),
-            'apd_batch_items' => count($items),
+            'apd_batch_items' => $processed,
             'apd_batch_calls' => $batchCalls,
             'apd_complete_offers' => $complete,
             'final_price_ready_offers' => $ready,
