@@ -1,0 +1,63 @@
+name: MATCH missing-SAMO v3 readback
+on:
+  pull_request:
+    paths:
+      - .github/workflows/hotel-match-tv-anex-missing-samo-frontier-v3-readback-v1.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_OPERATION_ID: hotel-match-tv-anex-missing-samo-frontier-1971-20260920-v3
+      TARGET_SOURCE_SHA: a96d3e8133024dc04a23c87edb9b47c2dd5f8dd8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - name: Read existing terminal files only
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          found=0
+          for i in $(seq 1 72); do
+            if ssh "${opts[@]}" "$remote" "p=\"\$HOME/.anytoour-match/operations/$TARGET_OPERATION_ID\"; test -f \"\$p/reservation.json\" -a -f \"\$p/result.json\" -a -f \"\$p/receipt.json\""; then found=1; break; fi
+            sleep 5
+          done
+          test "$found" -eq 1
+          ssh "${opts[@]}" "$remote" "p=\"\$HOME/.anytoour-match/operations/$TARGET_OPERATION_ID\"; tar -C \"\$p\" -czf - reservation.json result.json receipt.json" > operation.tgz
+      - name: Verify sanitized summary
+        shell: bash
+        run: |
+          set -euo pipefail; mkdir server; tar -C server -xzf operation.tgz
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('server')
+          a=json.loads((p/'reservation.json').read_text()); r=json.loads((p/'result.json').read_text()); q=json.loads((p/'receipt.json').read_text())
+          raw=(p/'result.json').read_bytes(); d=hashlib.sha256(raw).hexdigest()
+          assert a['operation_id']==os.environ['TARGET_OPERATION_ID'] and a['source_sha']==os.environ['TARGET_SOURCE_SHA']
+          assert q['result_sha256']==d and q['readback_verified'] is True
+          for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_calls','andromeda_calls','direct_anex_calls']:
+            assert r.get(k)==0 and q.get(k)==0
+          out={'state':r.get('state'),'reason':r.get('reason'),'result_sha256':d,'coverage_global':r.get('coverage_global'),'physical_active_nonexcluded_frontier':r.get('physical_active_nonexcluded_frontier'),'route_counts':r.get('route_counts'),'by_country':r.get('by_country'),'user_seen_frontier_count':r.get('user_seen_frontier_count'),'query_ready_future_anex_context_count':r.get('query_ready_future_anex_context_count'),'saved_direct_bridge_review_count':r.get('saved_direct_bridge_review_count'),'context_group_count':r.get('context_group_count'),'top_contexts':(r.get('top_future_anex_context_groups') or [])[:20]}
+          pathlib.Path('summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: missing-samo-v3-readback-${{ github.run_id }}
+          path: summary.json
+          retention-days: 90
+          if-no-files-found: error
