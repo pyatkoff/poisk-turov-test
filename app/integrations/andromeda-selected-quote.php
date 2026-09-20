@@ -280,6 +280,14 @@ final class AnyTourAndromedaSelectedQuote
         return array_values($out);
     }
 
+    private static function supplierBoolean(mixed $value): ?bool
+    {
+        if (is_bool($value)) return $value;
+        if ($value === 'true') return true;
+        if ($value === 'false') return false;
+        return null;
+    }
+
     /** Supplier-reported fuel services are evidence only; do not aggregate or apply them to prices here. */
     private static function fuelSurcharges(array $claim): array
     {
@@ -306,9 +314,18 @@ final class AnyTourAndromedaSelectedQuote
                     'route_index' => in_array($route, ['0', '1'], true) ? $route : null,
                     'source' => 'andromeda_claim_service',
                 ];
-                // Keep the historical type=8 public shape byte-compatible; newly observed
-                // supplier types remain explicit evidence instead of being filtered out.
-                if ($serviceType !== null && $serviceType !== '8') $row['service_type'] = $serviceType;
+                // Keep the historical type=8 public shape byte-compatible. For the
+                // observed non-8 fuel types, retain only literal supplier applicability
+                // flags when the pair is complete; do not infer unit or PRICE inclusion.
+                if ($serviceType !== null && $serviceType !== '8') {
+                    $row['service_type'] = $serviceType;
+                    $required = self::supplierBoolean($service['required'] ?? null);
+                    $packet = self::supplierBoolean($service['packet'] ?? null);
+                    if ($required !== null && $packet !== null) {
+                        $row['required_reported'] = $required;
+                        $row['packet_reported'] = $packet;
+                    }
+                }
                 $out[] = $row;
             }
         }
