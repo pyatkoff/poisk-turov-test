@@ -137,3 +137,4 @@ $result=AnyTourAndromedaLocalOfferCollectorV1::collect(
     $maxCaptures,$captureMode,$maxCaptureSeconds
 );
 echo json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
+if (($result['status'] ?? null) !== 'complete') exit(1);
