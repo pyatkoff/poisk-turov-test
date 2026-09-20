@@ -111,7 +111,7 @@
     const run=generation,id=searchId;
     const t=await rt.api('tour',{tourId:o.raw.id,currency:'RUB'});
     if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');
-    if(!t||String(t.id)!==String(o.raw.id))throw new Error('Не удалось подтвердить выбранный тур.');
+    if(!t||String(t.id)!==String(o.raw.id)||!amount(t.price))throw new Error('Не удалось подтвердить цену выбранного тура.');
     quoteReceipts.set(t,{generation:run,searchId:id});
     return t;
   }
@@ -124,7 +124,14 @@
     const run=generation,id=searchId;
     const receipt=quoteReceipts.get(o.tour);
     if(!receipt||receipt.generation!==run||receipt.searchId!==id)throw new Error('Предложение устарело. Откройте условия тура и проверьте цену заново.');
-    const session=root.V2TourController.createLeadSession({tour:o.tour,flight:o.flightChoiceId===null?null:o.variants?.[Number(o.flightChoiceId)]||null,searchId:id,search:searchParams});
+    if(o.pricePending||!amount(o.tour.price))throw new Error('Цена тура пока не подтверждена. Проверьте условия заново.');
+    let flight=null;
+    if(o.flightChoiceId!==null){
+      const index=Number(o.flightChoiceId);
+      flight=Number.isInteger(index)&&index>=0&&String(index)===String(o.flightChoiceId)?o.variants?.[index]:null;
+      if(!flight||!variantPrice(o.tour,flight))throw new Error('Цена выбранного перелёта пока не подтверждена. Выберите другой вариант.');
+    }
+    const session=root.V2TourController.createLeadSession({tour:o.tour,flight,searchId:id,search:searchParams});
     const current=()=>{if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');};
     return Object.freeze({payload(fd){current();return session.payload(fd);},submit(form,controls){current();return session.submit(form,controls);}});
   }

@@ -9,7 +9,7 @@ const photo='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.
 const profiles=[1,2].map(id=>({id,catalog:'anytour',revision:1,name:id===1?'Отель для проверки «Море»':'Отель для проверки «Сад»',category:id===1?5:4,rating:id===1?4.7:4.2,region:{name:'Анталья'},country:{name:'Турция'},description:'Описание отеля из собственной базы.',images:['http://127.0.0.1/test-photo.svg'],hotelInformation:{}}));
 const tours=[{id:'exact-1',price:120000,date:day(8),nights:7,adults:2,childs:0,meal:{name:'AI'},roomType:'STANDARD',placement:'DBL',operator:{name:'ANEX'},fuelCharge:null},{id:'exact-2',price:133000,date:day(8),nights:7,adults:2,childs:0,meal:{name:'HB'},roomType:'SUPERIOR',placement:'DBL',operator:{name:'Coral Travel'},fuelCharge:0}];
 const segment=(number,time)=>({company:{name:'Тестовая авиакомпания'},number,departure:{date:day(8),time,port:{name:'Москва',id:'SVO'}},arrival:{date:day(8),time:'14:00',port:{name:'Анталья',id:'AYT'}},baggage:20,carryOn:'5 кг'});
-const variants=[{isDefault:true,price:{value:120000},fuelCharge:null,forward:[segment('TT 111','10:00')],backward:[segment('TT 112','12:00')]},{price:{value:133500.5},fuelCharge:0,forward:[segment('TT 211','14:00')],backward:[segment('TT 212','16:00')]}];
+const variants=[{price:{value:120000},fuelCharge:null,forward:[segment('TT 111','10:00')],backward:[segment('TT 112','12:00')]},{price:{value:133500.5},fuelCharge:0,forward:[segment('TT 211','14:00')],backward:[segment('TT 212','16:00')]},{isDefault:true,price:null,fuelCharge:null,forward:[segment('TT 311','18:00')],backward:[segment('TT 312','20:00')]}];
 function stored(p){return {provider:'tourvisor',legacyHotelId:101,price:110000,currency:'RUB',listing:{schema_version:1,provider:'tourvisor',operator:{raw:'ANEX'},identity:{search_ref_digest:'a'.repeat(64),offer_ref_digest:'b'.repeat(64),provider_hotel_ref_digest:'c'.repeat(64)},tour:{checkin:p.dateFrom,nights:p.nightsFrom,party:{adults:p.adults,children:p.childs.length,child_ages:p.childs},meal:{raw:'AI'},room:{raw:'STANDARD'},placement:{raw:'DBL'}},listingPriceReady:true,listingPrice:{amount:'110000',currency:'RUB'},currency:'RUB',selection_state:'refresh_required',booking_enabled:false}};}
 const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http://localhost').pathname;let file=path.join(root,pathname.slice(base.length));if(pathname.endsWith('/'))file=path.join(file,'index.html');if(!pathname.startsWith(base)||!file.startsWith(root)||!fs.existsSync(file)){res.writeHead(404);return res.end();}const ext=path.extname(file);res.setHeader('Content-Type',({'.js':'text/javascript','.css':'text/css','.html':'text/html','.svg':'image/svg+xml','.woff2':'font/woff2','.png':'image/png'})[ext]||'application/octet-stream');res.end(fs.readFileSync(file));});
 (async()=>{
@@ -67,9 +67,33 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   if(width<1100)await page.locator('[data-action="apply-filters"]').click();
   assert.equal(await page.locator('.hotel-card').count(),1,'Exact category chip filters cards');assert.equal(calls.length,callsBefore,'Local filter does not repeat supplier search');
   await page.locator('.hotel-price [data-action="all-offers"]').first().click();
+  assert.doesNotMatch(await page.locator('.offer-list-context').textContent(),/включая топливный сбор/,'The list does not promise an unproven inclusion');
+  assert.equal(await page.locator('#offer-flight option[value="unknown"]').textContent(),'Тип рейса уточняется','Unknown is not presented as charter');
+  await page.locator('[data-action="offer-view"][data-value="compare"]').click();
+  assert.match(await page.locator('.comparison-tour-facts').first().textContent(),/Тип рейса уточняется/);
+  await page.locator('[data-action="offer-view"][data-value="list"]').click();
   const real=page.locator('#modal [data-action="offer"][data-key="tourvisor%3Aexact-1"]').first();await real.click();
   await page.waitForFunction(()=>document.querySelector('[data-action="choose-flight"]'));
   assert.match(await page.locator('#modal-body').textContent(),/Сбор уточняется/,'Missing fuel is not announced as included');
+  assert.equal(await page.locator('[data-action="confirm-tour"]').isEnabled(),false,'An unpriced default flight cannot reach the lead form');
+  assert.equal(await page.locator('#detail-total').textContent(),'Уточняется','The base tour price is not reused for an unpriced flight');
+  await page.locator('[data-action="choose-flight"]').click();
+  assert.equal(await page.locator('input[name="flight-pair"][value="2"]').isChecked(),true);
+  assert.equal(await page.locator('input[name="flight-pair"][value="2"]').evaluate(el=>{const a=el.getBoundingClientRect(),b=document.querySelector('#modal-body').getBoundingClientRect();return document.activeElement===el&&a.top>=b.top&&a.bottom<=b.bottom;}),true,'Opening the picker reveals and focuses the selected pair');
+  assert.equal(await page.locator('[data-action="apply-flight"]').isEnabled(),false);
+  assert.match(await page.locator('#flight-price-change').textContent(),/Цена этого перелёта пока не подтверждена/);
+  await page.screenshot({path:path.join(evidence,`flight-price-missing-${width}.png`),fullPage:true});
+  await page.locator('input[name="flight-pair"][value="0"]').check();
+  await page.locator('[data-action="apply-flight"]').click();
+  assert.match(await page.locator('#detail-total').textContent(),/120\s?000/);
+  assert.equal(await page.locator('[data-action="confirm-tour"]').isEnabled(),true);
+  const beforeFlightPreview=calls.length;
+  await page.locator('[data-action="choose-flight"]').click();await page.locator('input[name="flight-pair"][value="2"]').check();
+  assert.equal(await page.locator('[data-action="apply-flight"]').isEnabled(),false);
+  await page.locator('#modal-footer [data-action="modal-back"]').click();
+  assert.match(await page.locator('#detail-total').textContent(),/120\s?000/,'Cancel keeps the last confirmed full price');
+  assert.match(await page.locator('#modal-body').textContent(),/TT 111/,'Cancel keeps the prior flight');
+  assert.equal(calls.length,beforeFlightPreview,'Flight previews and cancellation make no requests');
   await page.locator('[data-action="choose-flight"]').click();await page.locator('input[name="flight-pair"][value="1"]').check();
   assert.match(await page.locator('#flight-total').textContent(),/133\s?500,5/,'Variant price is full tour price with original precision');
   await page.locator('[data-action="apply-flight"]').click();assert.match(await page.locator('#detail-total').textContent(),/133\s?500,5/);
