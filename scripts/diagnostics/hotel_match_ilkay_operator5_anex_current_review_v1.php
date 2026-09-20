@@ -38,7 +38,7 @@ function main():void{
     $same=isset($accepted[ILK_ANEX])&&$accepted[ILK_ANEX]===ILK_LOCAL;
     $sourceConflict=isset($accepted[ILK_ANEX])&&$accepted[ILK_ANEX]!==ILK_LOCAL;
     $targetOccupants=[];foreach($accepted as $a=>$l)if($l===ILK_LOCAL&&$a!==ILK_ANEX)$targetOccupants[]=$a;
-    $facts=count($catalog)===1&&((int)$catalog[0]['is_active']===1)&&in_array(mb_strtolower((string)$catalog[0]['country_name'],'UTF-8'),['турция','turkey'],true);
+    $facts=count($catalog)===1&&((int)$catalog[0]['is_active']===1)&&in_array((string)$catalog[0]['country_name'],['Турция','Turkey','turkey'],true);
     $safe=$facts&&count($canon)===1&&count($op5)===1&&!$op5Comp&&!$pairExcluded&&!$same&&!$sourceConflict&&!$targetOccupants;
     $class=$same?'already_materialized':($sourceConflict?'anex_source_conflict':($targetOccupants?'anex_target_occupied':($pairExcluded?'pair_excluded':($op5Comp?'operator5_competition':($safe?'safe_materialization_candidate':'hold_incomplete_evidence')))));
     $db->commit();
