@@ -47,28 +47,43 @@ try{
         .'FROM tour_price_observations WHERE source=\'user_search\' AND observed_at>=:since '
         .'AND departure_date>=:today AND departure_date<=:until '
         .'GROUP BY departure_id,country_id,region_id,departure_date,nights,adults,children_count,child_ages_signature '
-        .'ORDER BY searches DESC,last_seen DESC,observations DESC LIMIT 100';
-    $stmt=$db->prepare($sql);$stmt->execute(['since'=>$since,'today'=>$today,'until'=>$until]);
-    $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
-    $ranked=AnyTourAnexLocalOfferDemandV1::normalizeRows($rows,100);
+        .'ORDER BY searches DESC,last_seen DESC,observations DESC,'
+        .'departure_id,country_id,region_id,departure_date,nights,adults,children_count,child_ages_signature';
     $fresh=$db->prepare(
         'SELECT COUNT(*) FROM anytour_offer_scope_state s JOIN anytour_offers o '
         .'ON o.provider=s.provider AND o.scope_sha256=s.scope_sha256 AND o.last_refresh_token=s.latest_complete_refresh_token '
         .'WHERE s.provider=\'anex\' AND s.scope_sha256=:scope AND s.latest_complete_refresh_token IS NOT NULL '
         .'AND o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now LIMIT 1'
     );
-    $freshCount=0;
-    $scopes=AnyTourAnexLocalOfferDemandV1::withoutFreshScopes($ranked,static function(array $scope)use($fresh,$now,&$freshCount):bool{
-        $canonical=AnyTourSearchScopeV1::fromParams(AnyTourAnexLocalOfferDemandV1::searchParams($scope));
-        $fresh->execute(['scope'=>$canonical['digest'],'now'=>$now->format('Y-m-d H:i:s')]);
-        $yes=(int)$fresh->fetchColumn()>0;if($yes)++$freshCount;return $yes;
-    },$limit);
+    // Fresh popular scopes must not hide lower-ranked uncovered demand. Page only
+    // metadata in this one read-only snapshot; supplier execution remains elsewhere.
+    $freshCount=0;$rankedCount=0;$rowsRead=0;$pageCount=0;$seen=[];$scopes=[];
+    $selectionStatus='scan_limit_reached';
+    for($page=0;$page<10;++$page){
+        $stmt=$db->prepare($sql.' LIMIT 100 OFFSET '.($page*100));
+        $stmt->execute(['since'=>$since,'today'=>$today,'until'=>$until]);
+        $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);++$pageCount;$rowsRead+=count($rows);
+        if(count($rows)>100)throw new RuntimeException('ANEX_DEMAND_PAGE_SIZE');
+        $ranked=AnyTourAnexLocalOfferDemandV1::normalizeRows($rows,100);
+        foreach($ranked as $scope){
+            $canonical=AnyTourSearchScopeV1::fromParams(AnyTourAnexLocalOfferDemandV1::searchParams($scope));
+            $digest=$canonical['digest'];
+            if(isset($seen[$digest]))continue;
+            $seen[$digest]=true;++$rankedCount;
+            $fresh->execute(['scope'=>$digest,'now'=>$now->format('Y-m-d H:i:s')]);
+            if((int)$fresh->fetchColumn()>0){++$freshCount;continue;}
+            $scopes[]=$scope;
+            if(count($scopes)>=$limit){$selectionStatus='limit_reached';break 2;}
+        }
+        if(count($rows)<100){$selectionStatus='source_exhausted';break;}
+    }
     $db->commit();
 }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 
 echo json_encode([
     'source'=>'tour_price_observations:user_search','generatedAt'=>$now->format('Y-m-d\TH:i:s\Z'),
-    'lookbackHours'=>$lookback,'horizonDays'=>$horizon,'rankedScopeCount'=>count($ranked),
+    'lookbackHours'=>$lookback,'horizonDays'=>$horizon,'rankedScopeCount'=>$rankedCount,
     'freshScopesSkipped'=>$freshCount,'scopeCount'=>count($scopes),'scopes'=>$scopes,
+    'selectionStatus'=>$selectionStatus,'scannedRowCount'=>$rowsRead,'scannedPageCount'=>$pageCount,
     'supplierCalls'=>0,'databaseWrites'=>0,
 ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
