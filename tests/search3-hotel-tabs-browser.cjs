@@ -252,6 +252,7 @@ async function run(engine, width, height) {
     assert.equal(await timer.locator('#results .direct-tour, #results .hotel-price').count(),0,'Midnight timer revokes expired offers');
     assert.equal(await timer.locator('#results .hotel-card h3').innerText(),profiles[0].name);
     const expiredUrl = new URL(initialDetailUrl); expiredUrl.searchParams.set('search3_search', '43');
+    const profileReadsBeforeExpired=calls.filter(c=>c.page===direct&&c.action==='own-profile').length;
     await direct.goto(expiredUrl.href, { waitUntil: 'domcontentloaded' });
     await direct.getByText('Этот поиск больше недоступен.', { exact: false }).waitFor();
     await direct.waitForSelector('#results .hotel-card .hotel-gallery-main');
@@ -261,7 +262,7 @@ async function run(engine, width, height) {
     assert.equal(await direct.locator('#results .direct-tour, #results .hotel-price, #results .search3-shortlist-toggle').count(),0,'No stale price, offer selection or shortlist authority');
     assert.doesNotMatch(await direct.locator('#results > .results-state').innerText(),/Поисковая цена/,'Profile-only mode does not claim a current search price');
     assert.equal(await direct.locator('.hotel-gallery-main').getAttribute('src'),profiles[0].primaryImage);
-    assert.equal(calls.filter(c=>c.page===direct&&c.action==='own-profile').length,1,'One explicit canonical read');
+    assert.equal(calls.filter(c=>c.page===direct&&c.action==='own-profile').length,profileReadsBeforeExpired+1,'Expired search performs one explicit canonical read');
     assert.equal(await direct.locator('#tourSearch').isVisible(), true, 'expired search keeps explicit recovery available');
     assert.equal(await direct.locator('.search-editor-collapse').isVisible(), false, 'profile-only mode cannot hide the recovery form behind unavailable result controls');
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1, 'expiry never silently launches a full search');
