@@ -108,15 +108,38 @@ $expandRunner=static function(array $req,array &$collectorState)use($resolver,$m
 $programRecorder=static function(array &$collectorState)use($pdo):array{
     return AnyTourAnexProgramObservationRuntimeV1::record($pdo,$collectorState,new DateTimeImmutable('now',new DateTimeZone('UTC')));
 };
-$batchRunner=static function(array $req,array &$collectorState)use($resolver,$metadata,$checkpoint,$makeAdditional):array{
-    return anytour_anex_search3_additional_batch($req,$collectorState,$resolver,$metadata,null,$checkpoint,$makeAdditional);
+$persistenceFailure=null;
+$requireAutosave=static function(mixed $receipt,string $phase)use(&$persistenceFailure):void{
+    if(is_array($receipt)&&(($receipt['published']??null)===true
+        ||(($receipt['published']??null)===false
+            &&in_array($receipt['reason']??null,['already_published','no_final_price_ready'],true))))return;
+    // A write failure may be an unknown committed outcome. Stop this invocation;
+    // do not spend more supplier budget or retry it through finalization.
+    $persistenceFailure=['phase'=>$phase,'receipt'=>$receipt];
+    throw new RuntimeException('ANEX_COLLECTOR_AUTOSAVE');
+};
+$batchRunner=static function(array $req,array &$collectorState)use($resolver,$metadata,$checkpoint,$makeAdditional,$requireAutosave):array{
+    unset($collectorState['anytour_offer_autosave_last_result']);
+    $reply=anytour_anex_search3_additional_batch($req,$collectorState,$resolver,$metadata,null,$checkpoint,$makeAdditional);
+    $requireAutosave($collectorState['anytour_offer_autosave_last_result']??null,'batch');
+    return $reply;
 };
 
-$result=AnyTourAnexLocalOfferCollectorV1::collect(
-    $request,$state,$searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch
-);
-if(function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
-    $result['snapshot_finalize']=anytour_anex_anytour_offer_autosave_finalize_runtime($state);
+$result=[];
+try{
+    $result=AnyTourAnexLocalOfferCollectorV1::collect(
+        $request,$state,$searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch
+    );
+    if(function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
+        $result['snapshot_finalize']=anytour_anex_anytour_offer_autosave_finalize_runtime($state);
+        $requireAutosave($result['snapshot_finalize'],'finalize');
+    }
+}catch(RuntimeException $error){
+    if($error->getMessage()!=='ANEX_COLLECTOR_AUTOSAVE'||$persistenceFailure===null)throw $error;
+    $result=array_replace($result,[
+        'source'=>'anex-local-offer-collector-v1','status'=>'incomplete',
+        'autosave_failure'=>$persistenceFailure,'selection_authority'=>false,
+    ]);
 }
 $result['search_client_instances']=$searchRequests;
 $result['apd_client_instances']=$apdRequests;
@@ -128,3 +151,4 @@ $result['db_only_customer_results']=true;
 $result['booking_calls']=0;
 $result['lead_calls']=0;
 echo json_encode($result,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)."\n";
+if (($result['status'] ?? null) !== 'complete') exit(1);
