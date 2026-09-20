@@ -38,4 +38,4 @@ jobs:
           php tests/andromeda-zero-capture-collection-test.php
           php tests/andromeda-surcharge-evidence-test.php
           php tests/andromeda-confirmation-snapshot-producer-test.php
-          php -r '$s=file_get_contents("scripts/ops/andromeda_local_offer_collect.php"); if(!str_contains($s,"non_external_only")||!str_contains($s,"1,300")) exit(1);'
+          php -r '$s=file_get_contents("scripts/ops/andromeda_local_offer_collect.php"); if(!str_contains($s,"non_external_only")||!str_contains($s,"0,300")) exit(1);'
