@@ -38,7 +38,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         # Sticky mobile form return: 96498B -> 96582B (+84B entry CSS).
         # Completed-results resume shell and saved-price wording: 96731B -> 96919B (+188B JS).
         # Mobile parameter drafts and validation recovery: 96919B -> 116633B (+15075B JS, +4639B CSS).
-        self.assertLessEqual(total, 117000, 'eight presentation assets stay within the 117KB envelope including mobile parameter dialogs')
+        # v17 compact entry + canonical mobile category choices: 116974B -> 120499B (+3525B).
+        self.assertLessEqual(total, 121000, 'eight presentation assets stay within the 121KB envelope including mobile parameter dialogs and category choices')
 
     def test_reset_css_owners_and_native_selected_bound(self):
         assets = self.source['assets']
@@ -172,7 +173,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn('& .child-ages{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}', native)
         self.assertIn('& .child-age:last-child:nth-child(odd){grid-column:1/-1}', native)
         self.assertIn('& .search-submit{grid-column:1;width:100%}', native)
-        self.assertIn('@media(max-width:430px){& .search-group--route{grid-template-columns:1fr}', native)
+        self.assertIn('@media(max-width:350px){& .search-group--route{grid-template-columns:1fr}', native)
         self.assertIn('@media(max-width:350px){& .search-group,& .search-preferences,& .child-ages{grid-template-columns:1fr}', native)
         self.assertIn('& .child-age{grid-column:auto!important}', native)
         self.assertNotIn('.ds2-site-footer', results)
