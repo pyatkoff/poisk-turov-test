@@ -217,6 +217,7 @@ async function run(engine, width, height) {
     await direct.goto(initialDetailUrl, { waitUntil: 'domcontentloaded' });
     await direct.waitForSelector('#results .hotel-card .direct-tour');
     assert.equal(await direct.evaluate(() => window.opener === null), true);
+    assert.equal(await direct.locator('#resultSummary').innerText(),'Найдено отелей: 1 · цены из текущего поиска','Active hotel detail keeps the current-search price scope');
     const selectionCalls=()=>calls.filter(c=>c.action==='tour'||c.action==='flights').length;
     const shortlistBeforeRollover=await direct.evaluate(()=>localStorage.getItem('anytour.search3.shortlist.v1'));
     const afterDeparture=new Date(date+'T12:00:00').getTime()+86400000;
@@ -228,6 +229,7 @@ async function run(engine, width, height) {
     await direct.waitForSelector('#results .hotel-card .hotel-gallery-main');
     assert.equal(selectionCalls(),beforeClickRollover,'Past offer click is stopped before tour/flights requests');
     assert.equal(await direct.locator('#results .direct-tour, #results .hotel-price, #results .search3-shortlist-toggle').count(),0,'Rollover removes stale offer and price authority');
+    assert.equal(await direct.locator('#resultSummary').innerText(),'Найдено отелей: 1 · сохранённая выдача','Rollover summary revokes the current-price claim with the offers');
     assert.equal(await direct.locator('#results .hotel-card h3').innerText(),profiles[0].name,'Rollover keeps the canonical hotel profile');
     assert.equal(await direct.locator('.search3-shortlist-select:not(.search3-shortlist-restore)').count(),0,'Historical comparison cannot select an expired offer');
     assert.equal(await direct.locator('.search3-shortlist-restore').count(),1,'Historical comparison remains available only through explicit search restoration');
@@ -260,6 +262,7 @@ async function run(engine, width, height) {
     assert.equal(await direct.locator('#results .hotel-card h3').innerText(),profiles[0].name,'Expired search preserves the canonical hotel');
     assert.equal(await direct.locator('#results .hotel-description-summary').innerText(),profiles[0].description);
     assert.equal(await direct.locator('#results .direct-tour, #results .hotel-price, #results .search3-shortlist-toggle').count(),0,'No stale price, offer selection or shortlist authority');
+    assert.equal(await direct.locator('#resultSummary').innerText(),'Найдено отелей: 1 · сохранённая выдача','Expired profile-only summary does not claim a current-search price');
     assert.doesNotMatch(await direct.locator('#results > .results-state').innerText(),/Поисковая цена/,'Profile-only mode does not claim a current search price');
     assert.equal(await direct.locator('.hotel-gallery-main').getAttribute('src'),profiles[0].primaryImage);
     assert.equal(calls.filter(c=>c.page===direct&&c.action==='own-profile').length,profileReadsBeforeExpired+1,'Expired search performs one explicit canonical read');
@@ -296,6 +299,7 @@ async function run(engine, width, height) {
     await direct.waitForSelector('#results .hotel-card .hotel-gallery-main');
     assert.equal(calls.filter(c=>c.action==='search_results').length,resultsBeforePast,'Past dates read the hotel without querying old offers');
     assert.equal(await direct.locator('#results .direct-tour, #results .hotel-price').count(),0);
+    assert.equal(await direct.locator('#resultSummary').innerText(),'Найдено отелей: 1 · сохранённая выдача','Past-date profile summary remains truthful without offers');
     const missingUrl=new URL(expiredUrl);missingUrl.searchParams.set('search3_hotel','999');
     await direct.goto(missingUrl.href,{waitUntil:'domcontentloaded'});
     await direct.getByText('Описание отеля сейчас недоступно.',{exact:false}).waitFor();
