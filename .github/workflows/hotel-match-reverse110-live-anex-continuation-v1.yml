@@ -1,0 +1,85 @@
+name: MATCH reverse110 live ANEX continuation v1
+on:
+  push:
+    branches: [ops/match-reverse110-live-anex-continuation-1971-20260921-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_reverse110_live_anex_continuation_v1.py
+      - .github/workflows/hotel-match-reverse110-live-anex-continuation-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-reverse110-live-anex-continuation-1971-20260921-v1, cancel-in-progress: false}
+env: {OPERATION_ID: hotel-match-reverse110-live-anex-continuation-1971-20260921-v1, BASE_SHA: e8b65edb650509a549d1e032a81eb594d038a75c, CLAIM: '5752666857'}
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Build exact unsent110
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input reservation result
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 -m py_compile scripts/diagnostics/hotel_match_reverse110_live_anex_continuation_v1.py
+          python3 scripts/diagnostics/hotel_match_reverse110_live_anex_continuation_v1.py --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10612519331/zip >input/prior.zip
+          python3 - <<'PY'
+          import zipfile,hashlib,json,pathlib,os
+          p=pathlib.Path('input/prior.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='18d8508d374f26299fd0f85ea036abd1657a9b7baf9b3cb962bceb715c3e691c'
+          with zipfile.ZipFile(p) as z:rb=z.read('server/result.json');pb=z.read('server/plan.json')
+          assert hashlib.sha256(rb).hexdigest()=='79723f7087a3725f130c437666e42ab68c34f83aefc7213b7fc34c7a412e581e'
+          r=json.loads(rb);pl=json.loads(pb);sent={int(i) for b in r['batches'] for i in b['hotel_ids']};rows=[]
+          for g in pl['plan']:
+           for hid in g['hotel_ids']:
+            if int(hid) not in sent:rows.append({'tv_hotel_id':int(hid),**{k:g[k] for k in ['departure_id','country_id','departure_date','nights','adults','children_count','child_ages_signature']}})
+          assert r['state']=='terminal_day_changed_no_replay' and len(sent)==576 and len(rows)==110 and len({x['tv_hotel_id'] for x in rows})==110
+          pathlib.Path('input/exact110.json').write_text(json.dumps({'rows':rows},sort_keys=True)+'\n')
+          c=json.load(open('input/claim.json'));assert c['user']['id']==226193297 and c['author_association']=='OWNER' and os.environ['OPERATION_ID'] in c['body']
+          PY
+      - name: Reserve
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os,datetime
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'input_count':110,'provider_day':'2026-09-21','daily_limit':3000,'operation_cap':600,'no_continue':True,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True}
+          with open('reservation/reservation.json','x') as f:json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs:
+            x=max(xs,key=lambda z:z['id'])
+            if x['status']=='completed':assert x['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'reverse110-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90}
+      - name: Execute unsent110
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null;remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\"";scp "${opts[@]}" reservation/reservation.json input/exact110.json scripts/diagnostics/hotel_match_reverse110_live_anex_continuation_v1.py "$remote:$op/payload/";ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          set +e;ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/exact110.json\" python3 \"\$HOME/$op/payload/hotel_match_reverse110_live_anex_continuation_v1.py\" --execute" >result/remote.stdout 2>result/remote.stderr;rc=$?;scp -r "${opts[@]}" "$remote:$op/." result/server/;trc=$?;set -e;printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          p=pathlib.Path('result/server');r=json.loads((p/'result.json').read_bytes());q=json.loads((p/'receipt.json').read_bytes());d=hashlib.sha256((p/'result.json').read_bytes()).hexdigest();assert q['result_sha256']==d and r['operation']==os.environ['OPERATION_ID'] and r['input_count']==110 and r['provider_calls']<=600 and r['continue_calls']==r['dates_calls']==r['samo_calls']==r['database_writes']==r['mapping_writes']==0 and r['state']=='completed_read_only'
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps({k:r.get(k) for k in ['state','input_count','planned_groups','completed_batches','found_hotels','provider_calls','daily_accounted_after_local_ledger','call_counts','link_state_counts']},ensure_ascii=False,indent=2)+'\n');print(pathlib.Path('result/verified-summary.json').read_text())
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-reverse110-live-${{ github.run_id }}', path: result/, retention-days: 90}
