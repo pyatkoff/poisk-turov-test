@@ -58,6 +58,17 @@ final class AnyTourAnexOfferAutosaveV1
             return self::receipt(false, 'search_context_expired', 0, 0);
         }
 
+        // One current canonical answer per hotel in this invocation, including null.
+        // Never retain it in session/static state: every next batch/finalizer re-reads.
+        // LOCAL still validates the bridge in each actual upsert transaction.
+        $canonicalIds = [];
+        $ownHotelId = static function (int $legacyId) use ($db, &$canonicalIds): ?int {
+            if (!array_key_exists($legacyId, $canonicalIds)) {
+                $canonicalIds[$legacyId] = self::ownHotelId($db, $legacyId);
+            }
+            return $canonicalIds[$legacyId];
+        };
+
         $auto = $state['anytour_offer_autosave'] ?? null;
         if (!is_array($auto)
             || ($auto['search_ref'] ?? null) !== $searchRef
@@ -101,7 +112,7 @@ final class AnyTourAnexOfferAutosaveV1
                 continue;
             }
             // Only price-ready, canonical AnyTour-bridge-eligible hotels enter the accumulator.
-            if (self::ownHotelId($db, $localId) === null) continue;
+            if ($ownHotelId($localId) === null) continue;
             $auto['offers'][$offerRef] = ['local_hotel_id' => $localId, 'context_digest' => $digest];
         }
         if (count($auto['offers']) > self::MAX_ACCUMULATED_OFFERS) {
@@ -110,7 +121,7 @@ final class AnyTourAnexOfferAutosaveV1
         $state['anytour_offer_autosave'] = $auto;
 
         self::loadIntContracts();
-        $entries = self::regularEntries($db,$saved,$state,$now,$supplierResolver);
+        $entries = self::regularEntries($ownHotelId,$saved,$state,$now,$supplierResolver);
         foreach ($auto['offers'] as $offerRef => $item) {
             $entry = $saved['offers'][$offerRef] ?? null;
             $offer = is_array($entry) ? ($entry['offer'] ?? null) : null;
@@ -133,7 +144,7 @@ final class AnyTourAnexOfferAutosaveV1
             if ($currentLegacy !== $legacyId) {
                 return self::receipt(false, 'supplier_identity_changed', 0, count($auto['offers']));
             }
-            $ownId = self::ownHotelId($db, $legacyId);
+            $ownId = $ownHotelId($legacyId);
             if ($ownId === null) {
                 return self::receipt(false, 'canonical_bridge_changed', 0, count($auto['offers']));
             }
@@ -241,7 +252,7 @@ final class AnyTourAnexOfferAutosaveV1
     }
 
     private static function regularEntries(
-        PDO $db,
+        callable $ownHotelId,
         array $saved,
         array $state,
         DateTimeImmutable $now,
@@ -258,7 +269,7 @@ final class AnyTourAnexOfferAutosaveV1
             $external=$offer['hotel']['external_id']??null;
             if(!is_int($legacyId)||$legacyId<1||!is_string($external)) continue;
             if($supplierResolver('anex_online',$external)!==$legacyId) continue;
-            $ownId=self::ownHotelId($db,$legacyId); if($ownId===null) continue;
+            $ownId=$ownHotelId($legacyId); if($ownId===null) continue;
             $customerSearchPrice=self::regularCustomerSearchPrice($offer); if($customerSearchPrice===null) continue;
             $observed=$entry['observed_at']??null;
             if(!is_int($observed)||$observed<$saved['created_at']||$observed>$now->getTimestamp()) continue;
