@@ -72,6 +72,51 @@ $success(cliFixture([$scope],'',$interleaved),'interleaved streams');
 $closedOut=$emit.'fclose(STDOUT);'.$flood;
 $success(cliFixture([$scope],'',$closedOut),'stderr after stdout closes');
 
+
+// An exit-zero collector may still carry an explicit persistence failure. Keep
+// that exact evidence and do not count the failed scope or invoke its successor.
+$persistenceFailures=[
+    ['published'=>false,'reason'=>'autosave_failed'],
+    ['published'=>false,'reason'=>'local_ingest_unavailable'],
+    ['published'=>false,'reason'=>'runtime_dependency_unavailable'],
+    ['published'=>false,'reason'=>'db_unavailable'],
+    ['published'=>false,'reason'=>'supplier_identity_changed'],
+    ['published'=>false,'reason'=>'protected_price_mismatch'],
+    ['published'=>false,'reason'=>'unknown_future_reason'],
+    ['published'=>'true','reason'=>null],
+    ['published'=>0,'reason'=>'already_published'],
+    ['published'=>false,'reason'=>'no_final_price_ready','readyOfferCount'=>0],
+    [],
+    null,
+];
+foreach($persistenceFailures as $index=>$finalize){
+    $unpublished=array_replace($childReceipt,['snapshot_finalize'=>$finalize]);
+    if($index===count($persistenceFailures)-1)unset($unpublished['snapshot_finalize']);
+    $run=cliFixture([$scope,$family],'','echo '.var_export(json_encode($unpublished,JSON_THROW_ON_ERROR),true).';');
+    ck($run['code']===1,'persistence failure '.$index.' exits nonzero');
+    $r=json_decode($run['stdout'],true,64,JSON_THROW_ON_ERROR);
+    ck($r['status']==='stopped_on_error'&&$r['completedScopes']===0&&$r['readyOffersAcrossScopes']===0&&$r['results']===[],'persistence failure '.$index.' not counted');
+    ck($r['error']===['index'=>0,'code'=>0,'reason'=>'snapshot_not_published','collectorResult'=>$unpublished],'persistence failure '.$index.' exact receipt retained');
+    ck(count($run['calls'])===1,'persistence failure '.$index.' no retry/no next scope');
+}
+$already=array_replace($childReceipt,['snapshot_finalize'=>['published'=>false,'reason'=>'already_published','readyOfferCount'=>7]]);
+$success(cliFixture([$scope],'','echo '.var_export(json_encode($already,JSON_THROW_ON_ERROR),true).';'),'already published');
+$zero=array_replace($childReceipt,['final_price_ready_offers'=>0,'snapshot_finalize'=>['published'=>false,'reason'=>'no_final_price_ready','readyOfferCount'=>0,'accumulatedOfferCount'=>0]]);
+$zeroThenReady='if(in_array("--generation=261900000",$argv,true)){echo '.var_export(json_encode($zero,JSON_THROW_ON_ERROR),true).';}else{'.$emit.'}';
+$zeroRun=cliFixture([$scope,$family],'',$zeroThenReady);
+ck($zeroRun['code']===0&&count($zeroRun['calls'])===2,'legitimate zero yield continues without retry');
+$zeroReceipt=json_decode($zeroRun['stdout'],true,64,JSON_THROW_ON_ERROR);
+ck($zeroReceipt['status']==='complete'&&$zeroReceipt['completedScopes']===2&&$zeroReceipt['readyOffersAcrossScopes']===7,'zero yield not invented ready offers');
+ck($zeroReceipt['results'][0]['snapshotFinalize']===$zero['snapshot_finalize']&&$zeroReceipt['results'][0]['finalPriceReadyOffers']===0,'zero no-write receipt unchanged');
+$badSecond=array_replace($childReceipt,['snapshot_finalize'=>['published'=>false,'reason'=>'autosave_failed']]);
+$secondPersistenceFailure='if(in_array("--generation=261900001",$argv,true)){echo '.var_export(json_encode($badSecond,JSON_THROW_ON_ERROR),true).';}else{'.$emit.'}';
+$partialRun=cliFixture([$scope,$family,array_replace($scope,['nights'=>9])],'',$secondPersistenceFailure);
+ck($partialRun['code']===1&&count($partialRun['calls'])===2,'persistence failure after success stops before third scope');
+$partialReceipt=json_decode($partialRun['stdout'],true,64,JSON_THROW_ON_ERROR);
+ck($partialReceipt['completedScopes']===1&&$partialReceipt['readyOffersAcrossScopes']===7&&count($partialReceipt['results'])===1,'earlier persisted result preserved');
+ck($partialReceipt['error']['index']===1&&$partialReceipt['error']['collectorResult']===$badSecond,'second persistence failure retained exactly');
+echo "ANEX_DEMAND_PERSISTENCE_CASES_OK failed=".count($persistenceFailures)." already=1 zero_yield=1 partial_success=1\n";
+
 $third=array_replace($scope,['nights'=>9]);
 $secondFailure='if(in_array("--generation=261900001",$argv,true)){fclose(STDOUT);fwrite(STDERR,str_repeat("ошибка",200000));exit(23);}'.$emit;
 $failed=cliFixture([$family,$scope,$third],'',$secondFailure);
