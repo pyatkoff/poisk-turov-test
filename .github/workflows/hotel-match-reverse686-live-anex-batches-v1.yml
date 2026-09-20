@@ -1,0 +1,104 @@
+name: MATCH reverse686 live ANEX batches v1
+on:
+  push:
+    branches: [ops/match-reverse686-live-anex-batches-1971-20260920-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_reverse686_live_anex_batches_v1.py
+      - .github/workflows/hotel-match-reverse686-live-anex-batches-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-reverse686-live-anex-batches-1971-20260920-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-reverse686-live-anex-batches-1971-20260920-v1
+  BASE_SHA: e8b65edb650509a549d1e032a81eb594d038a75c
+  CLAIM: '5752579784'
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate and build exact686 input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input reservation result
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 -m py_compile scripts/diagnostics/hotel_match_reverse686_live_anex_batches_v1.py
+          python3 scripts/diagnostics/hotel_match_reverse686_live_anex_batches_v1.py --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10603089800/zip >input/frontier.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10603677365/zip >input/router.zip
+          python3 - <<'PY'
+          import zipfile,hashlib,json,pathlib,os
+          f=pathlib.Path('input/frontier.zip');r=pathlib.Path('input/router.zip')
+          assert hashlib.sha256(f.read_bytes()).hexdigest()=='cc386d3619180815948e7f97b814395ef4672ed54445884e7e5c8dda1581a5cc'
+          assert hashlib.sha256(r.read_bytes()).hexdigest()=='a204bb030fc871819d205db04c5408e0acd2dea741d01c8e2941f5b45b423b68'
+          with zipfile.ZipFile(f) as z:fb=z.read('server/result.json')
+          with zipfile.ZipFile(r) as z:rb=z.read('server/result.json')
+          assert hashlib.sha256(fb).hexdigest()=='2b09cbda05446ca5210901fcd8f5d9498bdbab2f30e0cab4c6b0192f68c6ed66'
+          assert hashlib.sha256(rb).hexdigest()=='668a370b69d3967ff3758f8ceb9e4d8a52d87d741b39fda1f6dcb7a1e83f7272'
+          F=json.loads(fb);R=json.loads(rb);cur={int(x['local_hotel_id']) for x in F['remaining_retained_context_frontier'] if x.get('route')=='user_seen_needs_anex_evidence'}
+          rows=[x for x in R['routed'] if int(x['tv_hotel_id']) in cur]
+          assert len(cur)==754 and len(rows)==686 and len({int(x['tv_hotel_id']) for x in rows})==686
+          pathlib.Path('input/exact686.json').write_text(json.dumps({'rows':rows},ensure_ascii=False,sort_keys=True)+'\n')
+          c=json.load(open('input/claim.json'));assert c['user']['id']==226193297 and c['author_association']=='OWNER' and os.environ['OPERATION_ID'] in c['body']
+          PY
+      - name: Reserve before provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,datetime
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'input_count':686,'provider_day':'2026-09-20','daily_limit':3000,'operation_cap':500,'hotel_ids_max':30,'operator_id':13,'no_continue':True,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True}
+          with open('reservation/reservation.json','x') as f:json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q,timeout=30) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs:
+            x=max(xs,key=lambda z:z['id'])
+            if x['status']=='completed':assert x['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'reverse686-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90}
+      - name: Execute live batches until complete cap or day change
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>result/keyscan.stderr;test -s "$known"
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json input/exact686.json scripts/diagnostics/hotel_match_reverse686_live_anex_batches_v1.py "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/exact686.json\" python3 \"\$HOME/$op/payload/hotel_match_reverse686_live_anex_batches_v1.py\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?;scp -r "${opts[@]}" "$remote:$op/." result/server/ >result/readback.stdout 2>result/readback.stderr;trc=$?;set -e;printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          p=pathlib.Path('result/server');r=json.loads((p/'result.json').read_bytes());q=json.loads((p/'receipt.json').read_bytes());d=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==d and r['operation']==os.environ['OPERATION_ID'] and r['provider_calls']==len(list(p.glob('request-*.json')))<=500
+          assert r['continue_calls']==r['dates_calls']==r['samo_calls']==r['database_writes']==r['mapping_writes']==0
+          assert r['state'] in ('completed_read_only','terminal_day_changed_no_replay','terminal_quota_stop_no_replay')
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps({k:r.get(k) for k in ['state','reason','input_count','planned_groups','completed_batches','found_hotels','provider_calls','daily_accounted_after_local_ledger','call_counts','link_state_counts']},ensure_ascii=False,indent=2)+'\n');print(pathlib.Path('result/verified-summary.json').read_text())
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-reverse686-live-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
