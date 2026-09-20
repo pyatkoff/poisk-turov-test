@@ -26,10 +26,12 @@ async function checkCategoryChoices(page, width) {
   await page.keyboard.press('Home');assert.equal(await native.inputValue(),'');
   await page.keyboard.press('ArrowRight');assert.equal(await native.inputValue(),'2');
   await page.setViewportSize({width:1440,height:1000});
+  await radios.waitFor({state:'hidden'});
   assert.equal(await radios.isVisible(),false);assert.equal(await native.isVisible(),true);
   assert.equal(await native.evaluate(node=>node===document.activeElement),true,'resize returns focus to the visible canonical editor');
   await native.selectOption('3');
   await page.setViewportSize({width,height:1000});
+  await radios.waitFor({state:'visible'});
   assert.equal(await radios.getByRole('radio',{name:'3★ и выше',exact:true}).getAttribute('aria-checked'),'true');
   assert.equal(await radios.getByRole('radio',{name:'3★ и выше',exact:true}).evaluate(node=>node===document.activeElement),true,'resize keeps category focus usable');
   await page.evaluate(()=>{
