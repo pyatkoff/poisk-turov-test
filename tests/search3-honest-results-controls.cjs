@@ -165,7 +165,7 @@ for (const forbidden of ['fetch(', 'XMLHttpRequest', 'V2SearchLifecycle', 'start
   reset(false);assert.equal(focused, input, 'multi-hotel reset retains the name-input target');
   reset(true);assert.equal(focused, title, 'empty-result reset retains the restored hotel target');
   assert.equal(title.attributes.tabindex, '-1');title.onBlur();assert.equal(title.hasAttribute('tabindex'), false);
-  field.hidden = true;mealField.hidden = true;context.cards = () => [];
+  field.hidden = true;mealField.hidden = true;input.visible = false;meal.visible = false;context.cards = () => [];
   reset(false);assert.equal(focused, results, 'a disappearing facet set falls back to the result region');
 }
 
