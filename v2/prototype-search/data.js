@@ -34,7 +34,8 @@
     const p = params(s, hotelIds,filters);
     const response = await fetch(local+'data/search3-local-results-read-v1.php', {method:'POST',credentials:'same-origin',cache:'no-store',signal,headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({params:p})});
     if (!response.ok) throw new Error('Цены из базы временно недоступны.');
-    const data=await response.json();
+    const payload=await response.json(),data=payload?.data;
+    if(payload?.ok!==true||!data)throw new Error('Цены из базы временно недоступны.');
     if (!sameScope(p,data.scope) || !root.AnyTourLocalDbProviderV1.parse(data)) throw new Error('Ответ базы не соответствует параметрам поездки.');
     return data;
   }
@@ -115,6 +116,6 @@
     return Array.isArray(data)?data:Array.isArray(data?.flights)?data.flights:[];
   }
   function variantPrice(t,v){return amount(v?.price);}
-  function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge;if(raw===null||raw===undefined||raw==='')return null;const n=Number(typeof raw==='object'?raw.value:raw);return Number.isFinite(n)&&n>=0?n:null;}
+  function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
   root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,catalog,get searchId(){return searchId;}});
 })(window);
