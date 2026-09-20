@@ -1,0 +1,124 @@
+name: MATCH live80 room CURRENT evidence v2
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live80_room_current_v2.php
+      - .github/workflows/hotel-match-live80-room-current-v2.yml
+permissions:
+  contents: read
+  actions: read
+  issues: read
+concurrency:
+  group: hotel-match-live80-room-current-1971-20260920-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-live80-room-current-1971-20260920-v2
+  BASE_SHA: 6cf5cc3e59e12ff02700056cee8f283f22142375
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  CLAIM1: '5750349146'
+  CLAIM2: '5750349943'
+  INPUT_SHA: 9c4472df212a45861596fd6c46c56670216fdd66239ec7679063a1bc81d4862b
+jobs:
+  room-current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-live80-room-current-1971-20260920-v2' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ env.SOURCE_SHA }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact source claims and pure room resolver
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p inputs payload/source/scripts/diagnostics result
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert actual=={'scripts/diagnostics/hotel_match_live80_room_current_v2.php','.github/workflows/hotel-match-live80-room-current-v2.yml'},actual
+          PY
+          php -l scripts/diagnostics/hotel_match_live80_room_current_v2.php
+          php -l scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php
+          php scripts/diagnostics/hotel_match_live80_room_current_v2.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM1" > inputs/claim1.json
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM2" > inputs/claim2.json
+          python3 - <<'PY'
+          import json,os
+          cs=[json.load(open('inputs/claim1.json')),json.load(open('inputs/claim2.json'))]
+          for c in cs:
+              assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+              assert c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+          b1,b2=cs[0]['body'],cs[1]['body']
+          assert os.environ['OPERATION_ID'] in b1 and os.environ['BASE_SHA'] in b1
+          assert 'provider/Tourvisor/SAMO/Andromeda/direct-ANEX calls0' in b1
+          assert os.environ['INPUT_SHA'] in b2
+          assert 'Final owned paths are exactly two NEW files' in b2
+          assert 'saved159' in b1 and 'day ledger untouched' in b1
+          PY
+          cp scripts/diagnostics/hotel_match_live80_room_current_v2.php payload/source/scripts/diagnostics/
+          cp scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php payload/source/scripts/diagnostics/
+      - name: Derive immutable compact room input from terminal artifacts
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588361321/zip > inputs/acquisition.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588117347/zip > inputs/acceptance.zip
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile,datetime
+          acq=pathlib.Path('inputs/acquisition.zip'); acc=pathlib.Path('inputs/acceptance.zip')
+          assert hashlib.sha256(acq.read_bytes()).hexdigest()=='783aa1d3e7748c5d65414e6de23800164ccd59847ddaa12253b5e0a0cb9fbb8c'
+          assert hashlib.sha256(acc.read_bytes()).hexdigest()=='6669f55df2de99f1ae06f3857fa2b1d057cad0ce2f113f1f9fe12b24a92f8b08'
+          with zipfile.ZipFile(acq) as z:
+              acqr=json.loads(z.read('server/result.json'))
+              assert hashlib.sha256(z.read('server/result.json')).hexdigest()=='05ff5be9057a1485f07ee0f3a0ac12e2e8f74b21a81ed2f3d5556ba61e84bd47'
+              price_names=sorted(n for n z.namelist() if n.startswith('server/raw-price') and n.endswith('.json'))
+              price_raw={n:z.read(n) for n in price_names}
+              price_data={n:json.loads(price_raw[n]) for n in price_names}
+          with zipfile.ZipFile(acc) as z:
+              accr=json.loads(z.read('server/result.json'))
+              assert hashlib.sha256(z.read('server/result.json')).hexdigest()=='387e65a02eb292a870ef85747541c468bb78116155ec46d51e1eee9d3d1f023e'
+          assert accr['state']=='committed_verified' and accr['written_count']==80 and accr['accepted_delta']==80 and accr['triple_delta']==80
+          def walk(x):
+              if isinstance(x,dict):
+                  yield x
+                  for v in x.values(): yield from walk(v)
+              elif isinstance(x,list):
+                  for v in x: yield from walk(v)
+          offers=[]
+          for fn,data in price_data.items():
+              sha=hashlib.sha256(price_raw[fn]).hexdigest()
+              for node in walk(data):
+                  if isinstance(node,dict) and 'hotelKey' in node and 'room' in node and 'price' in node and 'operatorKey' in node:
+                      offers.append((fn,sha,node))
+          didx={}
+          for d in acqr['dossiers']:
+              for br in d.get('direct_bridges',[]):
+                  didx[(int(d['tv_hotel_id']),str(br['samo_hotel_id']))]=d
+          rows=[]
+          for sid,w in sorted(accr['written'].items(),key=lambda kv:int(kv[0])):
+              tv=int(w['tv_hotel_id']); native=str(w['native_anex_id']); d=didx[(tv,str(sid))]; ctx=d['context']
+              checkin=datetime.datetime.strptime(ctx['departure_date'],'%Y-%m-%d').strftime('%d.%m.%Y')
+              agg={}
+              for fn,sha,node in offers:
+                  orig=node.get('original') or {}
+                  if not (str(node.get('hotelKey'))==str(sid) and str(orig.get('hotelKey',''))==native and str(node.get('operatorKey',''))=='5'
+                          and str(node.get('checkIn',''))==checkin and int(node.get('nights',-1))==int(ctx['nights'])
+                          and int(node.get('adult',-1))==int(ctx['adults']) and int(node.get('child',-1))==int(ctx['children_count'])):
+                      continue
+                  rk=str(node.get('roomKey','')); rr=str(node.get('room','')).strip(); mk=str(node.get('mealKey','')); mr=str(node.get('meal','')).strip()
+                  ent=agg.setdefault((rk,rr),{'room_key':rk,'room_raw':rr,'meal_pairs':set(),'sources':set()})
+                  ent['meal_pairs'].add((mk,mr)); ent['sources'].add((fn.replace('server/',''),sha))
+              rooms=[]
+              for _,ent in sorted(agg.items()):
+                  rooms.append({'room_key':ent['room_key'],'room_raw':ent['room_raw'],
+                                'meal_variants':[{'meal_key':a,'meal_raw':b} for a,b in sorted(ent['meal_pairs'])],
+                               'source_evidence':[{'file':a,"sha256':b
