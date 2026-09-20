@@ -306,7 +306,8 @@ try {
     aassert($result['reason'] === 'cohort_incomplete' && $ingests === [], 'growing pages published early');
 } finally { cleanup_dir($dir); }
 
-// Missing saved surcharge stays fail-closed: nonempty cohort cannot expire existing rows.
+// Missing saved surcharge persists only the supplier search price as confirmation-required.
+// It must not manufacture a final/fuel-inclusive total or selection/booking authority.
 $dir = temp_searches();
 try {
     $ref = hash('sha256', 'missing-surcharge'); $created = time() - 30; $ingests = [];
@@ -314,7 +315,13 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, null);
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === false && $result['reason'] === 'no_final_price_ready_resolved_offers' && $ingests === [], 'missing surcharge published');
+    aassert($result['published'] === true && count($ingests) === 1, 'missing surcharge confirmation snapshot not published');
+    $dto = $ingests[0]['rows'][0]['dto'] ?? null;
+    aassert(is_array($dto) && $dto['finalPriceReady'] === false && $dto['finalPrice'] === null
+        && $dto['price'] === '185125' && $dto['currency'] === 'RUB', 'confirmation search price invalid');
+    aassert($dto['money']['fuel_charge_reported'] === null && $dto['final_price_verified'] === false
+        && $dto['selection_state'] === 'disabled' && $dto['booking_enabled'] === false,
+        'confirmation snapshot gained final/fuel/selection authority');
 } finally { cleanup_dir($dir); }
 
 // Current mapping mismatch blocks a false authoritative empty snapshot.
