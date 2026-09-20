@@ -229,7 +229,8 @@ async function run(engine, width, height) {
     assert.equal(selectionCalls(),beforeClickRollover,'Past offer click is stopped before tour/flights requests');
     assert.equal(await direct.locator('#results .direct-tour, #results .hotel-price, #results .search3-shortlist-toggle').count(),0,'Rollover removes stale offer and price authority');
     assert.equal(await direct.locator('#results .hotel-card h3').innerText(),profiles[0].name,'Rollover keeps the canonical hotel profile');
-    assert.equal(await direct.locator('.search3-shortlist-select:visible').count(),0,'Historical comparison cannot select an expired offer');
+    assert.equal(await direct.locator('.search3-shortlist-select:not(.search3-shortlist-restore):visible').count(),0,'Historical comparison cannot select an expired offer');
+    assert.equal(await direct.locator('.search3-shortlist-restore:visible').count(),1,'Historical comparison remains available only through explicit search restoration');
     assert.equal(await direct.evaluate(()=>localStorage.getItem('anytour.search3.shortlist.v1')),shortlistBeforeRollover,'Rollover does not rewrite historical comparison records');
     assert.equal(await direct.evaluate(()=>window.V2SearchLifecycle.searchId),0,'Rollover revokes the active search ID');
     await direct.reload({waitUntil:'domcontentloaded'});
