@@ -108,7 +108,16 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
         assert.equal(state.hero.position, 'absolute', 'semantic hero stays outside visual flow');
         assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, 'hero adds no blank form header');
         assert.ok(state.labels.every(item => item.fontSize >= 12), 'visible labels stay readable');
-        assert.equal(state.controls.length,width<=700?8:15,'all primary parameters remain accessible through one native editor or mobile group summary');
+        assert.equal(state.controls.length,width<=700?7:15,'all primary parameters remain accessible through one native editor, mobile group summary or category radio group');
+        assert.equal(await page.locator('#tourSearch [name=stars]').count(),1,'category has one canonical submitted field');
+        const categories=page.getByRole('radiogroup',{name:'Категория отеля'});
+        assert.equal(await categories.isVisible(),width<=700,'category choices replace the mobile select only');
+        if(width<=700){
+          assert.equal(await categories.getByRole('radio').count(),5);
+          for(const radio of await categories.getByRole('radio').all()){
+            const box=await radio.boundingBox();assert.ok(box.width>=44&&box.height>=44,`${width}: category targets remain at least 44px`);
+          }
+        }
         if(width<=700){assert.equal(await page.locator('[data-search3-parameter]:visible').count(),3);for(const button of await page.locator('[data-search3-parameter]').all())assert.ok((await button.boundingBox()).height>=44);}
         const hotelQuery = page.getByRole('searchbox', { name: 'Конкретный отель', exact: true });
         assert.equal(await hotelQuery.count(), 1, 'one accessible known-hotel editor');
@@ -134,11 +143,12 @@ const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 37
           assert.equal(new Set(state.preferenceTops).size, 6, 'narrow phone has six safe preference rows');
         }
         if (width === 375 || width === 430) {
-          assert.equal(state.mainColumns, 1); assert.equal(state.preferenceColumns, 2);
-          assert.deepEqual(state.groupColumns, [1, 1, 1, 1]);
-          assert.equal(new Set(state.preferenceTops).size, 4);
+          assert.equal(state.mainColumns, 2); assert.equal(state.preferenceColumns, 2);
+          assert.deepEqual(state.groupColumns, [2, 1, 1, 1]);
+          assert.equal(state.groupTops[2],state.groupTops[3],'nights and tourists share one compact mobile row');
+          assert.equal(new Set(state.preferenceTops).size, 5);
           assert.notEqual(state.preferenceTops[0], state.preferenceTops[1]);
-          assert.equal(state.preferenceTops[2], state.preferenceTops[3]);
+          assert.notEqual(state.preferenceTops[2], state.preferenceTops[3],'category choices and meal each have an unclipped full-width row');
           assert.equal(state.preferenceTops[4], state.preferenceTops[5]);
           assert.ok(state.preferenceWidths.slice(0, 2).every(value => Math.abs(value - state.preferenceWidth) < 2), 'region/hotel stay full-width');
         }

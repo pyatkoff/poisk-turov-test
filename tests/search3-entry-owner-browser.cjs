@@ -7,6 +7,41 @@ const {setParty,setNights,checkMobileParameters}=require('./search3-mobile-param
 const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_ENTRY_OWNER_OUTPUT;
 assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
 fs.mkdirSync(output, { recursive: true });
+async function checkCategoryChoices(page, width) {
+  if(width!==375)return;
+  const radios=page.getByRole('radiogroup',{name:'Категория отеля'}),native=page.locator('#tourSearch [name=stars]');
+  assert.deepEqual(await radios.getByRole('radio').allTextContents(),['Любая','2★+','3★+','4★+','5★']);
+  assert.equal(await native.isVisible(),false,'the enhanced mobile category has one visible editor');
+  await page.evaluate(()=>{
+    const field=document.forms.tourSearch.elements.stars;
+    window.__categoryAudit={value:field.value,changes:0,submits:0};
+    field.addEventListener('change',window.__categoryChange=()=>window.__categoryAudit.changes++);
+    document.forms.tourSearch.addEventListener('submit',window.__categorySubmit=()=>window.__categoryAudit.submits++);
+  });
+  await radios.getByRole('radio',{name:'4★ и выше',exact:true}).click();
+  assert.equal(await native.inputValue(),'4','4★+ keeps the existing minimum-category value');
+  assert.equal(await page.evaluate(()=>new FormData(document.forms.tourSearch).get('stars')),'4','the hidden native field remains submitted');
+  assert.deepEqual(await page.evaluate(()=>[window.__categoryAudit.changes,window.__categoryAudit.submits]),[1,0],'one choice emits one canonical change and no form submit');
+  await page.keyboard.press('End');assert.equal(await native.inputValue(),'5');
+  await page.keyboard.press('Home');assert.equal(await native.inputValue(),'');
+  await page.keyboard.press('ArrowRight');assert.equal(await native.inputValue(),'2');
+  await page.setViewportSize({width:1440,height:1000});
+  await radios.waitFor({state:'hidden'});
+  assert.equal(await radios.isVisible(),false);assert.equal(await native.isVisible(),true);
+  assert.equal(await native.evaluate(node=>node===document.activeElement),true,'resize returns focus to the visible canonical editor');
+  await native.selectOption('3');
+  await page.setViewportSize({width,height:1000});
+  await radios.waitFor({state:'visible'});
+  assert.equal(await radios.getByRole('radio',{name:'3★ и выше',exact:true}).getAttribute('aria-checked'),'true');
+  assert.equal(await radios.getByRole('radio',{name:'3★ и выше',exact:true}).evaluate(node=>node===document.activeElement),true,'resize keeps category focus usable');
+  await page.evaluate(()=>{
+    const field=document.forms.tourSearch.elements.stars;
+    field.removeEventListener('change',window.__categoryChange);
+    document.forms.tourSearch.removeEventListener('submit',window.__categorySubmit);
+    field.value=window.__categoryAudit.value;field.dispatchEvent(new Event('change',{bubbles:true}));
+    delete window.__categoryAudit;delete window.__categoryChange;delete window.__categorySubmit;
+  });
+}
 async function checkSubmittedTripContext(page, width) {
   const expected = await page.evaluate(async () => {
     const form = document.getElementById('tourSearch');
@@ -207,6 +242,7 @@ async function checkUrlRoundTrip(page, width, blocked) {
   await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
   const submittedReload = submitted.expected;
   assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'reload restores the exact shareable conditions including the explicitly chosen advanced operator');
+  if(width<=700)assert.equal(await page.locator('.search-category-choices [data-category="4"]').getAttribute('aria-checked'),'true','URL hydration restores the visible minimum category');
   await page.screenshot({ path: path.join(output, `url-restored-${width}.png`), fullPage: true });
   // Clear the restored hotel through its visible control, keeping the native
   // canonical ID and the query consistent before testing history denial.
@@ -249,6 +285,7 @@ async function checkUrlRoundTrip(page, width, blocked) {
   await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle);
   await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
   assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), cleared.expected, 'second reload retains zero children and cleared secondary filters');
+  if(width<=700)assert.equal(await page.locator('.search-category-choices [data-category=""]').getAttribute('aria-checked'),'true','cleared category cannot reappear after reload');
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
     page.evaluate(() => history.back()),
@@ -288,6 +325,7 @@ async function run(browser, width, servicesOnly = false) {
     });
     // Exercise the actual served shared header; retired fabricated fixtures stay retired.
     await page.evaluate(() => document.fonts.ready);
+    if(!servicesOnly)await checkCategoryChoices(page,width);
     assert.equal(await page.locator('.at-global-header').count(), 1, 'one current shared header');
     const headerGeometry = await page.evaluate(() => {
       const box = node => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, width: r.width, height: r.height }; };
@@ -379,7 +417,10 @@ async function run(browser, width, servicesOnly = false) {
     assert.ok(formGeometry.hero.bottom - formGeometry.hero.top < 140, 'compact hero leaves room for trip parameters');
     if(width<=700){
       assert.equal(await page.locator('[data-search3-parameter]:visible').count(),3,'mobile has one visible trigger for each parameter group');
-      assert.ok((await page.locator('[data-search3-parameter=party]').boundingBox()).width>formGeometry.form.width-50,'tourist summary fills the mobile row');
+      const party=await page.locator('[data-search3-parameter=party]').boundingBox();
+      const group=await page.locator('.search-group--party').boundingBox();
+      assert.ok(Math.abs(party.width-group.width)<2,'tourist summary fills its current mobile grid cell');
+      if(width>350){const nights=await page.locator('.search-group--nights').boundingBox();assert.ok(Math.abs(group.y-nights.y)<2&&group.x>=nights.x+nights.width,'tourists share a non-overlapping row with nights');}
       if(!servicesOnly)await checkMobileParameters(page,width,output);
     }else{
       assert.ok(formGeometry.ages.width >= 180 && formGeometry.ages.width < formGeometry.form.width / 2,'desktop child ages retain their native track within tourists');
@@ -400,6 +441,12 @@ async function run(browser, width, servicesOnly = false) {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'expanded form has no horizontal overflow');
     const flightTargets = page.locator('#tourSearch .toggle');
     assert.equal(await flightTargets.count(), 2, 'original two flight switches stay the only owners');
+    // Wait for the real catalog promises (including bounded retries) before
+    // injecting services, so a late blocked-country reply cannot erase them.
+    await page.evaluate(()=>{
+      const audit=window.__flightCatalogAudit={api:window.V2Runtime.api,pending:0};
+      window.V2Runtime.api=async(...args)=>{audit.pending++;try{return await audit.api(...args)}finally{audit.pending--}};
+    });
     for (const target of await flightTargets.all()) {
       assert.ok((await target.boundingBox()).height >= 44, 'flight option has a full 44px label target');
       const input = target.locator('input');
@@ -409,6 +456,8 @@ async function run(browser, width, servicesOnly = false) {
       await page.keyboard.press('Space');
       assert.equal(await input.isChecked(), false, 'native keyboard toggle stays intact');
     }
+    await page.waitForFunction(()=>window.__flightCatalogAudit.pending===0);
+    await page.evaluate(()=>{window.V2Runtime.api=window.__flightCatalogAudit.api;delete window.__flightCatalogAudit});
     const servicePicker = page.locator('#tourSearch .service-picker'), serviceSummary = servicePicker.locator('summary');
     await page.evaluate(() => {
       const groups = ['Пляж и бассейн', 'Для семьи', 'В номере', 'Спорт и отдых'];

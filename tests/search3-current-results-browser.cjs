@@ -38,7 +38,7 @@ async function checkPrimaryForm(page, state, visible = false) {
   for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill', 'count_people', 'child_count', 'region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
     assert.equal(await form.locator(`[name="${name}"]`).count(), 1, state + ': primary control ' + name + ' remains owned by the canonical form');
     if (visible) {
-      const editor = mobile && groups[name] ? form.locator(`[data-search3-parameter="${groups[name]}"]`) : name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
+      const editor = mobile && groups[name] ? form.locator(`[data-search3-parameter="${groups[name]}"]`) : mobile && name === 'stars' ? form.getByRole('radiogroup', { name: 'Категория отеля', exact: true }) : name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
       assert.equal(await editor.count(), 1, state + ': one visible editor for ' + name);
       assert.equal(await editor.isVisible(), true, state + ': primary control ' + name + ' is editable');
       assert.equal(await editor.isEnabled(), true, state + ': primary editor ' + name + ' is enabled');
@@ -47,6 +47,13 @@ async function checkPrimaryForm(page, state, visible = false) {
         assert.equal(await form.locator(`[name="${name}"]`).isVisible(), false, state + ': canonical parameter has one visible editing entry point');
       }
       if (name === 'hotel') assert.equal(await form.locator('[name="hotel"]').isVisible(), false, state + ': canonical hotel ID stays in the hidden transport owner');
+      if (mobile && name === 'stars') {
+        assert.equal(await form.locator('[name=stars]').isVisible(), false, state + ': the native category is submitted through one hidden owner');
+        const selected=editor.locator('[role=radio][aria-checked=true]');
+        assert.equal(await selected.count(),1,state + ': exactly one category choice is selected');
+        assert.equal(await selected.getAttribute('data-category'),await form.locator('[name=stars]').inputValue(),state + ': visible category matches the canonical filter');
+        assert.equal(await selected.isEnabled(),true,state + ': selected category remains keyboard-editable');
+      }
     }
   }
   if (visible) assert.equal(await form.locator('[name=operator]').isVisible(), false, state + ': supplier operator remains secondary');

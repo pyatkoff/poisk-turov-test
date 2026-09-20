@@ -3,6 +3,24 @@
 var form=document.getElementById('tourSearch'),results=document.getElementById('results'),edit=document.getElementById('resultsSearchEdit'),trip=document.getElementById('resultsTripContext'),collapse=form&&form.querySelector('.search-editor-collapse');if(!form||!results)return;
 form.dataset.search3Ready='1';
 const busy=value=>results.setAttribute('aria-busy',value),on=(name,handler)=>window.addEventListener(name,handler);
+/* Mobile choices project the existing minimum-category field; no second value owner. */
+const category=form.elements.stars,categoryField=category&&category.closest('.search-preference--stars');
+if(categoryField&&window.matchMedia){
+ const mobile=window.matchMedia('(max-width:700px)'),choices=document.createElement('div');
+ choices.className='search-category-choices';choices.hidden=true;choices.setAttribute('role','radiogroup');choices.setAttribute('aria-labelledby','searchCategoryLabel');
+ const buttons=Array.from(category.options).map(option=>{
+  const button=document.createElement('button');button.type='button';button.setAttribute('role','radio');button.dataset.category=option.value;
+  button.textContent=option.value?option.value+'★'+(option.value==='5'?'':'+'):'Любая';button.setAttribute('aria-label',option.textContent.trim());
+  button.addEventListener('click',()=>choose(button));choices.appendChild(button);return button;
+ });
+ function syncCategory(){buttons.forEach(button=>{const option=Array.from(category.options).find(item=>item.value===button.dataset.category),checked=category.value===button.dataset.category;button.disabled=category.disabled||!option||option.disabled;button.setAttribute('aria-checked',String(checked));button.tabIndex=checked&&!button.disabled?0:-1})}
+ function choose(button){if(button.disabled)return;category.value=button.dataset.category;category.dispatchEvent(new Event('change',{bubbles:true}));syncCategory()}
+ choices.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))return;const available=buttons.filter(button=>!button.disabled),index=available.indexOf(event.target);if(index<0||!available.length)return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?available.length-1:(index+(['ArrowLeft','ArrowUp'].includes(event.key)?-1:1)+available.length)%available.length;choose(available[next]);available[next].focus()});
+ function categoryLayout(){const focus=document.activeElement,restore=mobile.matches?focus===category:choices.contains(focus);category.hidden=mobile.matches;choices.hidden=!mobile.matches;syncCategory();if(restore)(mobile.matches?buttons.find(button=>button.tabIndex===0):category)?.focus({preventScroll:true})}
+ categoryField.appendChild(choices);category.addEventListener('change',syncCategory);form.addEventListener('reset',()=>queueMicrotask(syncCategory));
+ ['v2:search-hydrated','v2:search-started','v2:search-resumed','v2:search-reset','pageshow'].forEach(name=>on(name,syncCategory));
+ new MutationObserver(syncCategory).observe(category,{attributes:true,childList:true,subtree:true});mobile.addEventListener('change',categoryLayout);categoryLayout();
+}
 let editing=false,hasTrip=false;
 function optionLabel(name,id){const field=form.elements[name],option=field&&Array.from(field.options||[]).find(item=>String(item.value)===String(id||''));return option&&option.value?String(option.textContent||'').trim():''}
 function dateLabel(value){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value||''));return m&&Number(m[2])>=1&&Number(m[2])<=12&&Number(m[3])>=1&&Number(m[3])<=31?m[3]+'.'+m[2]+'.'+m[1]:''}
