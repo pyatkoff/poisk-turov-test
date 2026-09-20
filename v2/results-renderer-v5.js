@@ -2,7 +2,13 @@
 if(window.V2ResultsV5)return;
 const state={items:[],lastOptions:{}},expandedHotels=new Set(),expandedTourLimits=new Map(),hotelDetailsCache=new Map(),hotelDetailsPending=new Map(),INITIAL_TOURS=1,INITIAL_EXPANDED_TOURS=3,EXPANDED_TOUR_STEP=3,moneyFormatter=new Intl.NumberFormat('ru-RU');
 let viewItems=[],detailOpened=false;
-function hotelTabLink(h,label){const url=window.V2SearchLifecycle?.hotelDetailUrl?.(h);return url?'<a class="secondary tour-more-toggle" href="'+esc(url)+'" target="_blank" rel="noopener" aria-label="'+esc(label+' — откроется в новой вкладке')+'">'+esc(label)+'</a>':'';}
+function hotelTabLink(h,label){
+ // Hotel tabs reload the complete group. A local offer projection must keep
+ // its existing inline actions, otherwise the destination discards the filters.
+ const original=state.items.find(item=>hotelKey(item)===hotelKey(h));
+ if(original&&(original.tours||[]).length!==(h.tours||[]).length)return'';
+ const url=window.V2SearchLifecycle?.hotelDetailUrl?.(h);return url?'<a class="secondary tour-more-toggle" href="'+esc(url)+'" target="_blank" rel="noopener" aria-label="'+esc(label+' — откроется в новой вкладке')+'">'+esc(label)+'</a>':'';
+}
 function syncHotelDetailLayout(){
  if(!window.V2SearchLifecycle?.hotelDetail)return;
  window.addEventListener('search3:local-results-filtered',syncHotelDetailLayout);
