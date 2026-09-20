@@ -39,7 +39,7 @@ $params=[
 ];
 $issued=(new DateTimeImmutable('2026-09-20T12:00:00Z'))->getTimestamp();
 $now=new DateTimeImmutable('2026-09-20T12:05:00Z');
-$makeEntry=static function(array $offer,int $generation,?array $pricedMoney):array use($issued){
+$makeEntry=static function(array $offer,int $generation,?array $pricedMoney) use($issued):array{
     $retained=AnyTourThreeProviderOfferContext::retain($offer,$generation,1,$issued,900);
     $current=[
         'provider'=>$retained['provider'],'operator'=>$retained['operator'],'local_hotel_id'=>$retained['local_hotel_id'],
