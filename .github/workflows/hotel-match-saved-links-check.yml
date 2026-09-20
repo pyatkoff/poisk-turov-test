@@ -5,6 +5,7 @@ on:
       - scripts/diagnostics/hotel_match_tourvisor_multi_operator_links.py
       - tests/hotel_match_tourvisor_multi_operator_links_test.py
       - tests/hotel_match_nested_result_evidence_test.py
+      - tests/hotel_match_detail_envelope_evidence_test.py
       - .github/workflows/hotel-match-saved-links-check.yml
   push:
     branches: [feature/anex-search-adapter-20260907]
@@ -12,6 +13,7 @@ on:
       - scripts/diagnostics/hotel_match_tourvisor_multi_operator_links.py
       - tests/hotel_match_tourvisor_multi_operator_links_test.py
       - tests/hotel_match_nested_result_evidence_test.py
+      - tests/hotel_match_detail_envelope_evidence_test.py
       - .github/workflows/hotel-match-saved-links-check.yml
 permissions:
   contents: read
@@ -30,4 +32,5 @@ jobs:
           python3 -m py_compile scripts/diagnostics/hotel_match_tourvisor_multi_operator_links.py
           python3 tests/hotel_match_tourvisor_multi_operator_links_test.py
           python3 tests/hotel_match_nested_result_evidence_test.py
-          sha256sum scripts/diagnostics/hotel_match_tourvisor_multi_operator_links.py tests/hotel_match_tourvisor_multi_operator_links_test.py tests/hotel_match_nested_result_evidence_test.py
+          python3 tests/hotel_match_detail_envelope_evidence_test.py
+          sha256sum scripts/diagnostics/hotel_match_tourvisor_multi_operator_links.py tests/hotel_match_tourvisor_multi_operator_links_test.py tests/hotel_match_nested_result_evidence_test.py tests/hotel_match_detail_envelope_evidence_test.py
