@@ -12,13 +12,15 @@
   const plus = (d, n) => new Date(new Date(d + 'T12:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
   function meal(value){const label=text(value),record=catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)||text(x).toLocaleLowerCase('ru-RU')===label.toLocaleLowerCase('ru-RU')),full=text(value?.fullName)||text(record?.fullName);return full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?full:label;}
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
-  function params(s, hotelIds = []) {
+  function params(s, hotelIds = [], filters = {}) {
     const departure = catalog.departures.find(x => text(x) === s.origin || String(x.id) === s.origin);
     if (!departure || !catalog.countries.some(x => String(x.id) === String(s.country))) throw new Error('Выберите город вылета и страну из загруженного списка.');
     if (!date(s.from) || !date(s.to) || s.from > s.to || (new Date(s.to) - new Date(s.from)) / 86400000 > 21) throw new Error('Выберите диапазон вылета не больше 21 дня.');
     if (!Number.isInteger(s.adults) || s.adults < 1 || s.adults > 6 || !Array.isArray(s.ages) || s.ages.length > 3 || s.ages.some(x => !Number.isInteger(x) || x < 0 || x > 17)) throw new Error('Укажите возраст каждого ребёнка.');
     if (!Number.isInteger(s.minNights) || !Number.isInteger(s.maxNights) || s.minNights < 1 || s.maxNights > 28 || s.maxNights < s.minNights || s.maxNights - s.minNights > 10) throw new Error('Проверьте диапазон ночей.');
-    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:'',hotelCategory:'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:'',priceTo:'',currency:'RUB',onlyCharter:false,onlyDirect:false};
+    const chosenMeal=filters.meals?.length===1?catalog.meals.find(x=>meal(x)===filters.meals[0]):null;
+    const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
+    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:chosenMeal?String(chosenMeal.id):'',hotelCategory:stars.length?String(Math.min(...stars)):'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max>0&&filters.max<600000?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
   }
   function sameScope(request, response) {
     if (!response || response.scopeVersion !== 1 || Object.keys(response).length !== Object.keys(request).length + 1) return false;
@@ -28,8 +30,8 @@
       return typeof a === 'boolean' ? a === b : b !== null && String(a) === String(b);
     });
   }
-  async function db(s, signal, hotelIds=[]) {
-    const p = params(s, hotelIds);
+  async function db(s, signal, hotelIds=[], filters={}) {
+    const p = params(s, hotelIds,filters);
     const response = await fetch(local+'data/search3-local-results-read-v1.php', {method:'POST',credentials:'same-origin',cache:'no-store',signal,headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({params:p})});
     if (!response.ok) throw new Error('Цены из базы временно недоступны.');
     const data=await response.json();
@@ -51,10 +53,10 @@
   function project(list,s) { return list.map(rawHotel=>{const h=hotel(rawHotel,s);h.offers=(rawHotel.tours||[]).map((t,i)=>offer(t,h,s,i)).filter(Boolean);return h;}).filter(h=>h.offers.length); }
   function publish() {if(owner&&context)notify({type:'results',hotels:project(owner.read(raw,{}),context)});}
   function stop(){generation++;clearTimeout(timer);timer=null;return generation;}
-  async function search(s, callback, hotelIds=[]) {
-    const p=params(s,hotelIds),run=stop();notify=callback;context=structuredClone(s);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
+  async function search(s, callback, hotelIds=[], filters={}) {
+    const p=params(s,hotelIds,filters),run=stop();notify=callback;context=structuredClone(s);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
     callback({type:'loading'});
-    db(s,undefined,hotelIds).then(data=>{if(run!==generation||!owner)return;root.AnyTourLocalDbProviderV1.apply(owner,data);callback({type:'database'});}).catch(error=>{if(run===generation)callback({type:'database-error',message:error.message});});
+    db(s,undefined,hotelIds,filters).then(data=>{if(run!==generation||!owner)return;root.AnyTourLocalDbProviderV1.apply(owner,data);callback({type:'database'});}).catch(error=>{if(run===generation)callback({type:'database-error',message:error.message});});
     try {
       const started=await rt.api('search_start',p);
       if(run!==generation)return;
@@ -76,12 +78,12 @@
       timer=setTimeout(poll,1000);
     }catch(error){if(run===generation)callback({type:'error',message:error.message});}
   }
-  async function calendar(s,from,to,signal) {
+  async function calendar(s,from,to,signal,filters={}) {
     const result=[];
     for(let start=from;start<=to;start=plus(start,22)) {
       if(signal?.aborted)throw new DOMException('Aborted','AbortError');
       const scope={...s,from:start,to:plus(start,21)<to?plus(start,21):to};
-      const data=await db(scope,signal),parsed=root.AnyTourLocalDbProviderV1.parse(data);
+      const data=await db(scope,signal,[],filters),parsed=root.AnyTourLocalDbProviderV1.parse(data);
       const list=parsed.hotels.map(g=>({...g.hotel,anytourHotelId:g.anytourHotelId,canonicalLegacyIds:[...new Set(g.offers.map(o=>o.legacyHotelId))],tours:g.offers.map(o=>o.tour)}));
       result.push(...project(list,scope));
     }

@@ -553,7 +553,7 @@ function runSearch(options={}){
   if(event.type==='complete'){searchResponse.pending=false;searchResponse.phase='complete';}
   if(event.type==='error'){searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=event.message;}
   renderResults();updateSearchUI();
- },options.hotelIds||[]).catch(error=>{searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=error.message;renderResults();});
+ },options.hotelIds||(state.filters.hotelId?hotels.find(h=>h.id===state.filters.hotelId)?.legacyIds||[]:[]),structuredClone(state.filters)).catch(error=>{searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=error.message;renderResults();});
  renderResults();
 }
 
@@ -671,7 +671,7 @@ async function loadCalendarPrices(){
  calendarHotels=[];datePrices.clear();
  const monthStart=calendarMonth<startDay?startDay:calendarMonth,next=dateObj(calendarMonth);next.setUTCMonth(next.getUTCMonth()+1);next.setUTCDate(0);
  const monthEnd=iso(next)>endDay?endDay:iso(next);
- try{const rows=await data.calendar(ctx.search,monthStart,monthEnd,controller.signal);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;calendarHotels=rows;datePrices.clear();renderDateCalendar();$('.calendar-legend span').textContent='Цены из базы за всех, от · пробелы означают отсутствие сохранённой цены';}
+ try{const rows=await data.calendar(ctx.search,monthStart,monthEnd,controller.signal,ctx.filters);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;calendarHotels=rows;datePrices.clear();renderDateCalendar();$('.calendar-legend span').textContent='Цены из базы за всех, от · пробелы означают отсутствие сохранённой цены';}
  catch(error){if(error.name!=='AbortError'&&dateContext===ctx&&modalType==='dates')$('.calendar-legend span').textContent='Цены пока недоступны. Даты можно выбрать без цены.';}
 }
 function applyCatalog(c){

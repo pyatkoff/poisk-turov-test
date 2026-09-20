@@ -68,6 +68,8 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'No document overflow');
   const scopeCheck=await page.evaluate(async()=>{const d=window.AnyTourPrototypeData,p=d.params({origin:'Москва',country:'4',from:new Date(Date.now()+86400000).toISOString().slice(0,10),to:new Date(Date.now()+2*86400000).toISOString().slice(0,10),minNights:7,maxNights:7,adults:2,ages:[0,17]}),r={scopeVersion:1,...p};return {same:d.sameScope(p,r),party:d.sameScope(p,{...r,childs:[7,10]}),departure:d.sameScope(p,{...r,departureId:'2'}),cached:await d.quote({cached:true}).then(()=>false,()=>true)};});
   assert.deepEqual(scopeCheck,{same:true,party:false,departure:false,cached:true});
+  const primary=await page.evaluate(()=>window.AnyTourPrototypeData.params({origin:'Москва',country:'4',from:new Date(Date.now()+86400000).toISOString().slice(0,10),to:new Date(Date.now()+86400000).toISOString().slice(0,10),minNights:7,maxNights:7,adults:2,ages:[]},['101'],{stars:[4,5],meals:['AI'],min:80000,max:200000}));
+  assert.deepEqual([primary.hotelCategory,primary.meal,primary.priceFrom,primary.priceTo,primary.hotelIds],['4','7','80000','200000',['101']],'Primary constraints use existing API fields; exact star set remains local');
   assert.deepEqual(errors,[],'No browser errors');
   console.log(JSON.stringify({width,calls,dbReads:dbCalls.length,status:'passed'}));await context.close();
  }}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
