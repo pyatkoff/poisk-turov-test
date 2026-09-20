@@ -231,6 +231,17 @@ async function checkOfferFacets(page, width, previous) {
     assert.equal(await card.locator('.tour-more-toggle').innerText(),'Показать варианты · 3','empty recovery restores all original offers');
     if(width<1025&&!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
     await meal.selectOption('meal:label:ai');
+    const panelReset=page.locator('.search3-filter-reset');
+    assert.equal(await page.locator('.search3-hotel-filter input').isVisible(),false,'single-hotel reset cannot target the hidden name field');
+    await panelReset.focus();await panelReset.press('Enter');
+    await page.waitForFunction(()=>document.activeElement?.matches('.search3-meal-filter select'));
+    assert.equal(await meal.inputValue(),'','panel reset clears the single-hotel meal');
+    assert.equal(await meal.getAttribute('tabindex'),null,'reset keeps the native filter in normal keyboard order');
+    assert.deepEqual(await page.evaluate(()=>window.V2Results.state.items),[single],'keyboard reset retains every original offer and price');
+    assert.equal(await card.locator('.tour-more-toggle').innerText(),'Показать варианты · 3','panel reset restores all three exact offers');
+    if(width<1025)assert.equal(await panel.evaluate(node=>node.open),true,'single-hotel reset keeps the mobile filter panel open');
+    if(!previous&&[375,1440].includes(width))await (width<1025?panel:page.locator('.results-filter-rail')).screenshot({path:path.join(output,`single-hotel-reset-focus-${width}.png`),animations:'disabled'});
+    await meal.selectOption('meal:label:ai');
     await render([{...single,tours:single.tours.concat({...tour,id:'missing-meal',price:100000,meal:null})}]);
     assert.equal(await meal.isVisible(),false);assert.equal(await meal.inputValue(),'','unknown meal resets the facet instead of dropping the hotel');
     assert.equal(await card.count(),1);

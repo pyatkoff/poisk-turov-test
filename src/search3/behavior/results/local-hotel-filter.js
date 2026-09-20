@@ -199,7 +199,8 @@ function apply(){
   const items=projectedItems.filter(item=>visibleIds.has(id(item)));window.dispatchEvent(new CustomEvent('search3:local-results-filtered',{detail:{items,shown,total:list.length,active:active()}}));
 }
 function focusAfterReset(trigger){
-  requestAnimationFrame(()=>{const restored=cards().find(card=>!card.hidden),target=trigger.classList.contains('search3-local-empty-reset')&&(restored&&restored.querySelector('.hotel-title')||results)||input;if(!target)return;const temporary=target!==input&&!target.hasAttribute('tabindex');if(temporary)target.setAttribute('tabindex','-1');try{target.focus({preventScroll:true});}catch(error){target.focus();}if(temporary)target.addEventListener('blur',()=>target.removeAttribute('tabindex'),{once:true});});
+  requestAnimationFrame(()=>{const restored=cards().find(card=>!card.hidden),fallback=restored&&restored.querySelector('.hotel-title')||results;
+    const target=trigger.classList.contains('search3-local-empty-reset')?fallback:fields().map(node=>node.querySelector('input,select')).find(node=>node&&!node.disabled&&node.getClientRects().length)||fallback;const temporary=target===fallback&&!target.hasAttribute('tabindex');if(temporary)target.setAttribute('tabindex','-1');try{target.focus({preventScroll:true});}catch(error){target.focus();}if(temporary)target.addEventListener('blur',()=>target.removeAttribute('tabindex'),{once:true});});
 }
 function reset(event){ensure();const trigger=event&&event.currentTarget;input.value='';categorySelect.value='0';mealSelect.value='';nightsSelect.value='0';flightSelect.value='';operatorSelect.value='';regionSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;budgetMinInput.value='';window.V2Results.rerender();if(trigger)focusAfterReset(trigger);}
 function clear(event){
