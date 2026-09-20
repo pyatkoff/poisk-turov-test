@@ -80,7 +80,7 @@ function searchDateExpired(){const value=String(searchSnapshot&&searchSnapshot.d
 function scheduleDateExpiry(){clearDateExpiry();if(typeof document.addEventListener!=='function'||!searchId||!searchSnapshot)return;const now=new Date(),next=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,1),delay=Math.max(1000,Math.min(2147483647,next.getTime()-now.getTime()));dateExpiryTimer=setTimeout(()=>{dateExpiryTimer=0;expirePastSearch('date_rollover');},delay);}
 async function expirePastSearch(reason){
  if(!searchDateExpired()){scheduleDateExpiry();return false;}
- const previousSearchId=Number(searchId||0),detail=hotelDetail&&detail.hotelId,run=++generation,message='Дата вылета уже прошла. Проверьте параметры и нажмите «Найти туры», чтобы обновить предложения.';
+ const previousSearchId=Number(searchId||0),detail=hotelDetail&&hotelDetail.hotelId,run=++generation,message='Дата вылета уже прошла. Проверьте параметры и нажмите «Найти туры», чтобы обновить предложения.';
  clearDateExpiry();if(pollTimer){clearTimeout(pollTimer);pollTimer=0;}searchPending=false;restoredAt=0;searchId=0;searchSnapshot=null;searchRestoreQuery='';resetProgressiveResults();rt.setSearchId(0);if(tools)tools.hidden=true;if(selected){selected.hidden=true;selected.innerHTML='';}
  emit('reset',{generation:run,reason:reason||'past_departure',previousSearchId,expired:true},0);
  if(detail){hotelDetail.profileOnly=true;await recoverHotelProfile(detail,run,0,message);}else{renderer.render([],{empty:false});show(message);}
