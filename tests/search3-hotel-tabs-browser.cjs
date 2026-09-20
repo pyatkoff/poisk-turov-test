@@ -272,10 +272,10 @@ async function run(engine, width, height) {
         const form=document.querySelector('#tourSearch'),title=form?.querySelector(':scope>.search-section-title:first-child'),submit=form?.querySelector('.search-submit');
         if(!title||!submit)return null;
         const titleBox=title.getBoundingClientRect(),submitBox=submit.getBoundingClientRect();
-        const center=document.elementFromPoint(submitBox.left+submitBox.width/2,submitBox.top+submitBox.height/2);
-        return {titlePosition:getComputedStyle(title).position,overlap:!(titleBox.right<=submitBox.left||titleBox.left>=submitBox.right||titleBox.bottom<=submitBox.top||titleBox.top>=submitBox.bottom),submitOwnsCenter:submit===center||submit.contains(center)};
+        return {titlePosition:getComputedStyle(title).position,overlap:!(titleBox.right<=submitBox.left||titleBox.left>=submitBox.right||titleBox.bottom<=submitBox.top||titleBox.top>=submitBox.bottom)};
       });
-      assert.deepEqual(recoveryGeometry,{titlePosition:'static',overlap:false,submitOwnsCenter:true},'expired mobile recovery keeps the full Find tours CTA unobscured and tappable');
+      assert.deepEqual(recoveryGeometry,{titlePosition:'static',overlap:false},'expired mobile recovery keeps the full Find tours CTA clear of the form title');
+      await recoverySubmit.click({trial:true});
     }
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1, 'expiry never silently launches a full search');
     await direct.locator('.hotel-details > summary').click();
