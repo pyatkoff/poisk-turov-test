@@ -1,0 +1,138 @@
+name: MATCH new user-search ANEX-SAMO intake v1
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_new_usersearch_anex_samo_intake_v1.php
+      - .github/workflows/hotel-match-new-usersearch-anex-samo-intake-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency:
+  group: hotel-match-new-usersearch-anex-samo-intake-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-new-usersearch-anex-samo-intake-1971-20260920-v1
+  BASE_SHA: 6cf5cc3e59e12ff02700056cee8f283f22142375
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  CLAIM: '5750622773'
+  CUTOFF: '2026-09-20 12:00:00'
+jobs:
+  intake:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-new-usersearch-anex-samo-intake-1971-20260920-v1' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ env.SOURCE_SHA }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact source and owner claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p inputs payload/source/scripts/diagnostics payload/source/app/integrations result
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          expected={'scripts/diagnostics/hotel_match_new_usersearch_anex_samo_intake_v1.php','.github/workflows/hotel-match-new-usersearch-anex-samo-intake-v1.yml'}
+          assert actual==expected,actual
+          blobs={'scripts/diagnostics/hotel_match_anex_effective_coverage.php':'1b5190727690f50a4cdd606c48afa575978ec48e','app/integrations/anex-search-mapping-registry.php':'cc135a95d2a6e0f73ce50be2141c9b8a26fddc58'}
+          for path,sha in blobs.items():assert subprocess.check_output(['git','rev-parse','HEAD:'+path],text=True).strip()==sha
+          PY
+          php -l scripts/diagnostics/hotel_match_new_usersearch_anex_samo_intake_v1.php
+          php -l scripts/diagnostics/hotel_match_anex_effective_coverage.php
+          php -l app/integrations/anex-search-mapping-registry.php
+          php scripts/diagnostics/hotel_match_new_usersearch_anex_samo_intake_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > inputs/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('inputs/claim.json'));assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+          for s in (os.environ['OPERATION_ID'],os.environ['BASE_SHA'],os.environ['CUTOFF'],'Provider/Tourvisor/SAMO/Andromeda/direct-ANEX calls0','day ledgers untouched','safe_to_query_now=false','safe_to_write_now=false'):assert s in c['body'],s
+          PY
+          cp scripts/diagnostics/hotel_match_new_usersearch_anex_samo_intake_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php payload/source/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php payload/source/app/integrations/
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(72):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE_SHA']]
+              if xs:
+                  r=max(xs,key=lambda x:x['id'])
+                  if r['status']=='completed':assert r['conclusion']=='success';print('SECURITY_OK',r['id']);break
+              time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - name: Seal reservation before CURRENT DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload');files=sorted(x for x in p.rglob('*') if x.is_file());digests={str(x.relative_to(p)):hashlib.sha256(x.read_bytes()).hexdigest() for x in files}
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'base_sha':os.environ['BASE_SHA'],'claim_id':int(os.environ['CLAIM']),'database_time_cutoff':os.environ['CUTOFF'],'state':'reserved_before_db_read','file_sha256':digests,'supplier_calls':0,'provider_calls':0,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with (p/'reservation.json').open('xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
+          pathlib.Path('result/reservation.json').write_bytes(raw);digests['reservation.json']=hashlib.sha256(raw).hexdigest();(p/'SHA256SUMS').write_text(''.join(v+'  '+k+'\n' for k,v in sorted(digests.items())))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'match-new-usersearch-intake-reservation-${{ github.run_id }}'
+          path: result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Read new missing SAMO hotel edges without supplier access
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;test -n "$KEY_VALUE";test -n "$HOST_VALUE";test -n "$USER_VALUE";key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" -r payload/source payload/reservation.json payload/SHA256SUMS "$remote:$op/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";sha256sum -c SHA256SUMS >/dev/null;cd \"\$HOME/www/anytoour.ru\";MATCH_OPERATION_ID='$OPERATION_ID' MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$SOURCE_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M \"\$HOME/$op/source/scripts/diagnostics/hotel_match_new_usersearch_anex_samo_intake_v1.php\"" > result/remote.stdout 2> result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json execution-reservation.json result.json receipt.json" > result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?;set -e;printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              assert sorted(t.getnames())==['execution-reservation.json','receipt.json','reservation.json','result.json']
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<=64000000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          r=json.loads((s/'result.json').read_bytes());q=json.loads((s/'receipt.json').read_bytes());digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==digest and q['readback_verified'] is True and r['source_sha']==q['source_sha']==os.environ['SOURCE_SHA'] and r['operation_id']==q['operation_id']==os.environ['OPERATION_ID']
+          assert r['state']==q['state']=='completed_read_only' and r['database_time_cutoff']==os.environ['CUTOFF']
+          for k in ('supplier_calls','provider_calls','tourvisor_calls','samo_calls','andromeda_calls','direct_anex_calls','database_writes','mapping_writes'):assert r[k]==0
+          assert r['safe_to_query_now'] is r['safe_to_write_now'] is False
+          assert 0<=r['seed_hotel_count']<=1000 and r['new_user_search_hotel_dossiers']==len(r['dossiers'])
+          for row in r['dossiers']:assert row['safe_to_query_now'] is row['safe_to_write_now'] is False and row['local_hotel_id']!=420
+          summary={k:r[k] for k in ('state','clock','seed_hotel_count','new_user_search_hotel_dossiers','route_counts')};summary['result_sha256']=digest
+          (p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'match-new-usersearch-intake-result-${{ github.run_id }}'
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
