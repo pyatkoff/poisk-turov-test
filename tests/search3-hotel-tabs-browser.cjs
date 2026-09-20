@@ -265,6 +265,18 @@ async function run(engine, width, height) {
     assert.equal(calls.filter(c=>c.page===direct&&c.action==='own-profile').length,profileReadsBeforeExpired+1,'Expired search performs one explicit canonical read');
     assert.equal(await direct.locator('#tourSearch').isVisible(), true, 'expired search keeps explicit recovery available');
     assert.equal(await direct.locator('.search-editor-collapse').isVisible(), false, 'profile-only mode cannot hide the recovery form behind unavailable result controls');
+    if(width<768){
+      const recoverySubmit=direct.locator('#tourSearch .search-submit');
+      await recoverySubmit.scrollIntoViewIfNeeded();
+      const recoveryGeometry=await direct.evaluate(()=>{
+        const form=document.querySelector('#tourSearch'),title=form?.querySelector(':scope>.search-section-title:first-child'),submit=form?.querySelector('.search-submit');
+        if(!title||!submit)return null;
+        const titleBox=title.getBoundingClientRect(),submitBox=submit.getBoundingClientRect();
+        const center=document.elementFromPoint(submitBox.left+submitBox.width/2,submitBox.top+submitBox.height/2);
+        return {titlePosition:getComputedStyle(title).position,overlap:!(titleBox.right<=submitBox.left||titleBox.left>=submitBox.right||titleBox.bottom<=submitBox.top||titleBox.top>=submitBox.bottom),submitOwnsCenter:submit===center||submit.contains(center)};
+      });
+      assert.deepEqual(recoveryGeometry,{titlePosition:'static',overlap:false,submitOwnsCenter:true},'expired mobile recovery keeps the full Find tours CTA unobscured and tappable');
+    }
     assert.equal(calls.filter(c => c.action === 'search_start').length, 1, 'expiry never silently launches a full search');
     await direct.locator('.hotel-details > summary').click();
     const beforeExpiredPhotos=calls.length;
