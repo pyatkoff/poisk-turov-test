@@ -65,6 +65,23 @@ receipt and stale-search rejection. Fixture delivery success is not a real lead.
 On the published preview, the button checks the form locally and explicitly states
 that nothing was sent. The server's `preview-lead-disabled.php` remains HTTP 403.
 
+A flight without a positive supplier variant price remains visible for inspection,
+but cannot be applied or passed to the contact form. An unpriced default pair also
+blocks confirmation until another priced pair is selected. The listing or exact-tour
+base amount never substitutes for the missing flight price. Cancel preserves the
+previous pair and amount without another request. The adapter rejects unpriced or
+missing selected variants before invoking the unchanged lead owner; an explicit
+no-flight fallback still follows the existing flow. `tests/search3-prototype-flight-price.cjs`
+checks that boundary; the 390/1440 journey covers default unknown price, correction,
+cancel and a priced decimal variant. List/comparison copy does not promise unknown
+fuel inclusion, and unknown flight type is not labelled charter.
+
+Direct cached ANEX/Andromeda selection still requires an INT handoff that resolves
+the persisted provider-qualified offer/search digests into fresh private offer
+context. The current DB response intentionally grants no selection authority.
+Neither a cached ID nor a previously verified listing is used as a quote locator;
+the existing LOCAL ANEX restriction and protected provider contracts remain intact.
+
 Source visual assets and logo remain from the immutable baseline. The controller
 gains a presentation entry and its shared build map is regenerated; legacy defaults
 are retained. DB readers, supplier APIs, pricing, lead transport/mapping, Metrika
