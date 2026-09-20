@@ -403,9 +403,11 @@ async function run(engine, width, height) {
     await cap.fill('130000');
     await closeFilters();
     assert.equal(await first.locator('a.tour-more-toggle, a.search3-hotel-title-link').count(),0,'filtered count must not link to a broader hotel group');
-    await first.getByRole('button',{name:'Показать варианты · 2',exact:true}).click();
+    const filteredToggle=first.locator('button.tour-more-toggle');
+    assert.equal(await filteredToggle.innerText(),'Показать варианты · 2','the action count describes the narrowed group');
+    await filteredToggle.click();
     assert.deepEqual(await offerIds(),['hotel-1-offer-1','hotel-1-offer-2'],'inline expansion retains both exact meal/budget matches');
-    await first.locator('.hotel-details > summary').click();
+    if(!await first.locator('.hotel-details').evaluate(node=>node.open))await first.locator('.hotel-details > summary').click();
     await first.locator('.search3-hotel-photo-link').click();
     await page.getByRole('dialog',{name:profiles[0].name,exact:true}).waitFor({state:'visible'});
     await page.keyboard.press('Escape');

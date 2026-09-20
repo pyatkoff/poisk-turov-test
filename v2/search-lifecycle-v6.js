@@ -6,13 +6,17 @@ let historySearch=window.location.pathname+window.location.search,searchRestoreQ
 let hotelDetail=null,restoredAt=0;
 function localHotelTabs(){return !!(document.body&&document.body.classList.contains('search3-candidate')&&/^\/_preview\/search3-local-candidate\/poisk-turov\/$/.test(window.location.pathname||''));}
 function detailId(value){const s=String(value||'');return /^[1-9][0-9]*$/.test(s)&&Number.isSafeInteger(Number(s))?s:'';}
-function hotelDetailUrl(h){
+function hotelDetailUrl(h,items=[]){
  if(!localHotelTabs()||hotelDetail||dirty||!searchId||!searchRestoreQuery||!detailId(h&&h.anytourHotelId))return'';
  const tours=h&&h.tours;
  // Only complete live Tourvisor groups can be reconstructed by search_results.
  // Cached/other-provider groups retain their current actions until their owner
  // supplies an opener-independent detail receipt; never silently drop offers.
  if(!Array.isArray(tours)||!tours.length||h.andromedaExpansion||tours.some(t=>!t||t.cachedListing||t.selectionEnabled===false||t.selection_enabled===false||!['','tourvisor'].includes(String(t.provider||'').toLowerCase())))return'';
+ // A hotel tab reloads all offers. Keep narrowed groups in the existing inline
+ // path so that reconstruction cannot silently discard their local filters.
+ const original=items.find(item=>String(item.anytourHotelId)===String(h.anytourHotelId));
+ if(original&&(original.tours||[]).length!==tours.length)return'';
  const url=new URL(window.location.href);url.search='';url.hash='';
  new URLSearchParams(searchRestoreQuery).forEach((value,name)=>url.searchParams.append(name,value));
  new URLSearchParams(window.location.search).forEach((value,name)=>{if(attributionParam(name))url.searchParams.append(name,value);});
