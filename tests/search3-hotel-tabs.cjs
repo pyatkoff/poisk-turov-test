@@ -35,6 +35,10 @@ async function setup(suffix = '', options = {}) {
   assert.equal(link.searchParams.get('utm_source'), 'owner');
   assert.equal(link.searchParams.get('yclid'), 'example');
   assert.equal(link.searchParams.get('dateFrom'), date);
+  const fullHotel={...hotel,tours:[...hotel.tours,{id:'second-exact-offer',provider:'tourvisor'}]};
+  assert.equal(fresh.lifecycle.hotelDetailUrl(hotel,[fullHotel]),'','a narrowed offer group must retain its local inline selection path');
+  assert.ok(fresh.lifecycle.hotelDetailUrl(fullHotel,[fullHotel]),'complete groups retain their independent hotel tab');
+  assert.ok(fresh.lifecycle.hotelDetailUrl(hotel,[{...fullHotel,anytourHotelId:902},hotel]),'only the same canonical hotel controls transfer eligibility');
   for (const patch of [{ cachedListing: true }, { provider: 'andromeda' }, { selectionEnabled: false }]) {
     assert.equal(fresh.lifecycle.hotelDetailUrl({ ...hotel, tours: [{ ...hotel.tours[0], ...patch }] }), '', 'unsupported group keeps all existing offers instead of lossy transfer');
   }
