@@ -78,6 +78,8 @@ class Contracts(unittest.TestCase):
             'GITHUB_EVENT_NAME':'issue_comment','GITHUB_RUN_ID':'789'}
         site_root=self.root/'anytoour.ru'; (site_root/'_preview/search3-site-candidate').mkdir(parents=True)
         (site_root/'_preview/search3-site-candidate/keep.txt').write_text('existing preview')
+        (site_root/'_preview/search3-v17-candidate').mkdir()
+        (site_root/'_preview/search3-v17-candidate/keep.txt').write_text('accepted v17 unchanged')
         for name in remote.REQUIRED:
             p=site_root/name; p.parent.mkdir(parents=True,exist_ok=True); p.write_text('protected:'+name)
         self.site=remote.Site(site_root)
@@ -88,13 +90,15 @@ class Contracts(unittest.TestCase):
         self.tmp.cleanup()
 
     def staged(self):
-        fd,name=tempfile.mkstemp(prefix='search3-v17.',suffix='.tar.gz',dir='/tmp')
+        fd,name=tempfile.mkstemp(prefix='search3-v18.',suffix='.tar.gz',dir='/tmp')
         import os
         os.close(fd); self.upload=Path(name); self.upload.write_bytes(self.archive)
         return {**self.q,'archive':name,'before':self.site.snapshot()}
 
     def test_owner_command(self):
         q=pub.checked_request(self.event,self.env)
+        self.assertEqual(remote.ROUTE,'/_preview/search3-v18-candidate/');
+        self.assertIn('preview:search3-v17-candidate',self.site.protected());
         self.assertEqual(q['source_sha'],'a'*40); self.assertEqual(q['artifact_id'],123)
 
     def test_wrong_environment_denied(self):
@@ -191,12 +195,12 @@ class Contracts(unittest.TestCase):
         self.assertTrue(self.site.target.exists())
 
     def test_existing_locks_not_stolen(self):
-        q=self.staged(); (self.site.parent/'.search3-v17-lock').mkdir()
+        q=self.staged(); (self.site.parent/'.search3-v18-lock').mkdir()
         with self.assertRaises(FileExistsError): self.site.activate(q)
-        self.assertTrue((self.site.parent/'.search3-v17-lock').is_dir())
+        self.assertTrue((self.site.parent/'.search3-v18-lock').is_dir())
 
     def test_binding_exact_nonce_only(self):
-        q={'name':'search3-v17-bind-789-'+'e'*24+'.txt','nonce':'f'*64}
+        q={'name':'search3-v18-bind-789-'+'e'*24+'.txt','nonce':'f'*64}
         self.site.binding(q)
         with self.assertRaises(ValueError): self.site.binding({**q,'nonce':'0'*64},True)
         self.site.binding(q,True)
