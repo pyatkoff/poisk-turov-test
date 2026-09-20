@@ -1,0 +1,120 @@
+name: MATCH TV SAMO missing ANEX readback v2
+on:
+  push:
+    branches: [ops/match-tv-samo-missing-anex-frontier-v1-readback-1971-20260920-v2]
+    paths: [.github/workflows/hotel-match-tv-samo-missing-anex-frontier-v1-readback-v2.yml]
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: hotel-match-tv-samo-missing-anex-frontier-v1-readback-1971-20260920-v2
+  cancel-in-progress: false
+env:
+  TARGET_OPERATION_ID: hotel-match-tv-samo-missing-anex-frontier-1971-20260920-v1
+  TARGET_SOURCE_SHA: 860bf53c8fd7808182354b76718afad84c782c5b
+  EXPECTED_BASE: 04679a5f1136ac06c8cd790c2c90315a09322335
+  CLAIM_COMMENT_ID: '5749138355'
+jobs:
+  readback:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact package and claim
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = '.github/workflows/hotel-match-tv-samo-missing-anex-frontier-v1-readback-v2.yml'
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json'));b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          assert os.environ['TARGET_OPERATION_ID'] in b and os.environ['TARGET_SOURCE_SHA'] in b
+          assert 'observability' in b and 'not replay' in b.lower()
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed':
+                assert r['conclusion']=='success';print('SECURITY_OK',r['id']);break
+            time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - name: Read sealed target only
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077
+          test -n "$KEY_VALUE";test -n "$HOST_VALUE";test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE";p="\$HOME/.anytoour-match/operations/$TARGET_OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "test -f \"$p/reservation.json\" -a -f \"$p/result.json\" -a -f \"$p/receipt.json\";tar -C \"$p\" -czf - reservation.json result.json receipt.json" > operation.tgz
+      - name: Verify and sanitize
+        shell: bash
+        run: |
+          set -euo pipefail;mkdir server;tar -C server -xzf operation.tgz
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('server');a=json.loads((p/'reservation.json').read_text());r=json.loads((p/'result.json').read_text());q=json.loads((p/'receipt.json').read_text());d=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert a['operation_id']==os.environ['TARGET_OPERATION_ID'] and a['source_sha']==os.environ['TARGET_SOURCE_SHA']
+          assert r['operation_id']==os.environ['TARGET_OPERATION_ID'] and r['source_sha']==os.environ['TARGET_SOURCE_SHA']
+          assert q['result_sha256']==d and q['readback_verified'] is True
+          for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','samo_calls','andromeda_calls','direct_anex_calls']: assert int(r.get(k,0))==0
+          out={'state':r.get('state'),'reason':r.get('reason'),'error_class':r.get('error_class'),'result_sha256':d,'coverage_global':r.get('coverage_global'),'missing_anex_global':r.get('missing_anex_global'),'physical_active_nonexcluded_frontier':r.get('physical_active_nonexcluded_frontier'),'route_counts':r.get('route_counts'),'user_seen_frontier_count':r.get('user_seen_frontier_count'),'saved_operator5_review_count':r.get('saved_operator5_review_count'),'saved_tour_detail_ready_count':r.get('saved_tour_detail_ready_count')}
+          pathlib.Path('summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n');print(json.dumps(out,ensure_ascii=False))
+          PY
+      - name: Post sanitized receipt
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          python3 - <<'PY' > comment.md
+          import json
+          s=json.load(open('summary.json'))
+          print('MATCH TV+SAMO missing ANEX v1 terminal readback VERIFIED / NO-REPLAY.')
+          print()
+          print('State: '+str(s.get('state'))+'; reason: '+str(s.get('reason'))+'; error_class: '+str(s.get('error_class'))+'.')
+          if s.get('coverage_global') is not None: print('Coverage: '+json.dumps(s['coverage_global'],ensure_ascii=False,sort_keys=True))
+          if s.get('route_counts') is not None: print('Routes: '+json.dumps(s['route_counts'],ensure_ascii=False,sort_keys=True))
+          print(f"Result {s['result_sha256']}. Provider/Tourvisor/SAMO/Andromeda/direct-ANEX calls0; DB/mapping writes0. Target remains sealed and is not replayed.")
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/issues/1971/comments -f body="$(cat comment.md)"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: tv-samo-missing-anex-frontier-v1-readback-v2-${{ github.run_id }}
+          path: summary.json
+          retention-days: 90
+          if-no-files-found: error
