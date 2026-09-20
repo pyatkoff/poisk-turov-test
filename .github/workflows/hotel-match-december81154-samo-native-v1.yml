@@ -1,0 +1,194 @@
+name: MATCH December81154 SAMO native v1
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_december81154_samo_native_v1.php
+      - .github/workflows/hotel-match-december81154-samo-native-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency:
+  group: hotel-match-december81154-samo-native-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-december81154-samo-native-1971-20260920-v1
+  BASE_SHA: 3e1b0585739372998abf27087531f90a2a50c6a4
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  CLAIM: '5751028467'
+  DELTA_ARTIFACT: '10608496618'
+  DELTA_ZIP_SHA: 1d2eb1f88e8be3ce8853a7a52fe09ca0ebfa9046fd9d208809255f2b89f938e3
+  DELTA_RESULT_SHA: a6217f102e477f42a69b51cfbb009cf6efc438e343e8865aaea51bd5103e669a
+  RETAINED_ARTIFACT: '10588338849'
+  RETAINED_ZIP_SHA: f360237113f3c65003fc564efab5749f2ecc66fed41881a3043b526e7b3db5fc
+  RETAINED_RESULT_SHA: 34c0f56d9640c0e29bc59d2c7355dad3728fe421e18db55e528eba013cb58e3b
+  CATALOG_FILE: raw-catalog-3565a80c17b2.json
+  CATALOG_SHA: 05a13bd6b8dd9821e630dc7cbe9ef7e55de70405e4eb37fad413bba36592c1ba
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-december81154-samo-native-1971-20260920-v1' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ env.SOURCE_SHA }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and owner claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          mkdir -p inputs payload/inputs payload/source/scripts/diagnostics payload/source/app/integrations result
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          expected={'scripts/diagnostics/hotel_match_december81154_samo_native_v1.php','.github/workflows/hotel-match-december81154-samo-native-v1.yml'}
+          assert actual==expected,actual
+          pins={
+            'scripts/diagnostics/hotel_match_anex_effective_coverage.php':'1b5190727690f50a4cdd606c48afa575978ec48e',
+            'app/integrations/anex-search-mapping-registry.php':'cc135a95d2a6e0f73ce50be2141c9b8a26fddc58',
+            'app/integrations/andromeda-client.php':'83e4bdd5a76979b1ab505cd165c95e6ff47cf648',
+            'app/integrations/andromeda-transport.php':'162e33d3f1997ec7e73e1ef276c586d4732f8957',
+            'app/integrations/andromeda-network-transport-failure.php':'df4402fa7d3da98363c8a579ff27587d8d91d917',
+          }
+          for path,sha in pins.items(): assert subprocess.check_output(['git','rev-parse','HEAD:'+path],text=True).strip()==sha,(path,sha)
+          PY
+          php -l scripts/diagnostics/hotel_match_december81154_samo_native_v1.php
+          php -l scripts/diagnostics/hotel_match_anex_effective_coverage.php
+          php -l app/integrations/andromeda-client.php
+          php -l app/integrations/andromeda-transport.php
+          php scripts/diagnostics/hotel_match_december81154_samo_native_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > inputs/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('inputs/claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+          for s in (os.environ['OPERATION_ID'],os.environ['BASE_SHA'],os.environ['DELTA_ARTIFACT'],os.environ['DELTA_ZIP_SHA'],os.environ['DELTA_RESULT_SHA'],os.environ['RETAINED_ARTIFACT'],os.environ['RETAINED_ZIP_SHA'],'2000073578','35406','cap2','Tourvisor/direct-ANEX calls0','DB/mapping writes0','day ledger untouched'):
+              assert s in c['body'],s
+          PY
+          cp scripts/diagnostics/hotel_match_december81154_samo_native_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php payload/source/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php payload/source/app/integrations/
+      - name: Reuse saved evidence before HTTP
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$DELTA_ARTIFACT/zip" > inputs/delta.zip
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$RETAINED_ARTIFACT/zip" > inputs/retained.zip
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile
+          out=pathlib.Path('payload/inputs')
+          dz=pathlib.Path('inputs/delta.zip'); rz=pathlib.Path('inputs/retained.zip')
+          assert hashlib.sha256(dz.read_bytes()).hexdigest()==os.environ['DELTA_ZIP_SHA']
+          assert hashlib.sha256(rz.read_bytes()).hexdigest()==os.environ['RETAINED_ZIP_SHA']
+          with zipfile.ZipFile(dz) as z:
+              raw=z.read('server/result.json')
+              assert hashlib.sha256(raw).hexdigest()==os.environ['DELTA_RESULT_SHA']
+              d=json.loads(raw)
+              assert d['state']=='completed_read_only' and d['new_seed_hotel_count']==10
+              targets=[x for x in d['dossiers'] if x.get('state')=='new_seed_missing_samo_edge_needs_evidence_dedupe']
+              assert len(targets)==1 and int(targets[0]['local_hotel_id'])==81154 and 35406 in list(map(int,targets[0]['anex_native_ids']))
+              out.joinpath('delta-result.json').write_bytes(raw)
+          with zipfile.ZipFile(rz) as z:
+              rraw=z.read('server/result.json')
+              assert hashlib.sha256(rraw).hexdigest()==os.environ['RETAINED_RESULT_SHA']
+              out.joinpath('retained-result.json').write_bytes(rraw)
+              craw=z.read('server/'+os.environ['CATALOG_FILE'])
+              assert hashlib.sha256(craw).hexdigest()==os.environ['CATALOG_SHA']
+              cat=json.loads(craw)
+              hs=[h for h in cat['HOTELS'] if int(h.get('id',0))==2000073578]
+              assert len(hs)==1 and int(hs[0].get('stateKey',0))==126 and str(hs[0].get('star'))=='4'
+              assert str(hs[0].get('townLName','')).strip().lower()=='nha trang' and 'december' in str(hs[0].get('name','')).lower()
+              ops=[o for o in cat['OPERATORS'] if int(o.get('id',0))==5]
+              assert len(ops)==1 and str(ops[0].get('name','')).strip().lower()=='anex tour'
+              out.joinpath('vietnam-catalog.json').write_bytes(craw)
+              for n in z.namelist():
+                  if n.startswith('server/raw-price-') and n.endswith('.json'):
+                      b=z.read(n)
+                      assert b'2000073578' not in b, 'saved SAMO candidate PRICE evidence exists; stop before HTTP'
+          out.joinpath('saved-evidence-readback.json').write_text(json.dumps({'delta_sha256':os.environ['DELTA_RESULT_SHA'],'retained_sha256':os.environ['RETAINED_RESULT_SHA'],'catalog_file':os.environ['CATALOG_FILE'],'catalog_sha256':os.environ['CATALOG_SHA'],'saved_price_candidate_hits':0,'tourvisor_calls':0},sort_keys=True)+'\n')
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(72):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE_SHA']]
+              if xs:
+                  r=max(xs,key=lambda x:x['id'])
+                  if r['status']=='completed': assert r['conclusion']=='success'; print('SECURITY_OK',r['id']); break
+              time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - name: Seal reservation before supplier or database access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload');digests={str(x.relative_to(p)):hashlib.sha256(x.read_bytes()).hexdigest() for x in p.rglob('*') if x.is_file()}
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'base_sha':os.environ['BASE_SHA'],'claim_id':int(os.environ['CLAIM']),'state':'reserved_before_access','delta_result_sha256':os.environ['DELTA_RESULT_SHA'],'retained_result_sha256':os.environ['RETAINED_RESULT_SHA'],'catalog_sha256':os.environ['CATALOG_SHA'],'provider_call_cap':2,'tourvisor_calls':0,'direct_anex_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with (p/'reservation.json').open('xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
+          pathlib.Path('result/reservation.json').write_bytes(raw);digests['reservation.json']=hashlib.sha256(raw).hexdigest();(p/'SHA256SUMS').write_text(''.join(v+'  '+k+'\n' for k,v in sorted(digests.items())))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-december81154-native-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Acquire exact SAMO native evidence once
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          AU: '${{ secrets.ANDROMEDA_USERNAME }}'
+          AP: '${{ secrets.ANDROMEDA_PASSWORD }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"; test -n "$AU"; test -n "$AP"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" -r payload/source payload/inputs payload/reservation.json payload/SHA256SUMS "$remote:$op/"
+          set +e
+          printf '%s\n%s\n' "$AU" "$AP" | ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";sha256sum -c SHA256SUMS >/dev/null;cd \"\$HOME/www/anytoour.ru\";MATCH_OPERATION_ID='$OPERATION_ID' MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$SOURCE_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d zend.exception_ignore_args=1 -d memory_limit=768M \"\$HOME/$op/source/scripts/diagnostics/hotel_match_december81154_samo_native_v1.php\"" > result/remote.stdout 2> result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";tar -czf - -- *.json" > result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?; set -e; printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json; test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  assert m.isfile() and m.name.endswith('.json') and '/' not in m.name and m.size<=64000000
+                  s.joinpath(m.name).write_bytes(t.extractfile(m).read())
+          assert p.joinpath('reservation.json').read_bytes()==s.joinpath('reservation.json').read_bytes()
+          r=json.loads(s.joinpath('result.json').read_bytes());q=json.loads(s.joinpath('receipt.json').read_bytes());digest=hashlib.sha256(s.joinpath('result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==digest and q['readback_verified'] is True and r['source_sha']==q['source_sha']==os.environ['SOURCE_SHA'] and r['operation_id']==q['operation_id']==os.environ['OPERATION_ID']
+          assert r['state'] in ('completed_evidence','completed_current_hold_no_http') and r['local_hotel_id']==81154 and r['anex_native_id']==35406 and r['samo_hotel_id']==2000073578
+          assert r['tourvisor_calls']==r['direct_anex_calls']==r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False
+          if r['state']=='completed_current_hold_no_http':
+              assert r['provider_calls']==r['supplier_calls']==0
+          else:
+              assert r['provider_calls']==r['supplier_calls']==2
+              assert r['query_params']=={'TOWNFROMINC':1,'STATEINC':126,'CHECKIN_BEG':'20261020','CHECKIN_END':'20261020','NIGHTS_FROM':10,'NIGHTS_TILL':10,'ADULT':2,'CHILD':0,'CURRENCYINC':643,'OPERATORS':'5','HOTELS':'2000073578','PACKETTYPE':0,'PAGE':1}
+              assert s.joinpath('call-001-login-reservation.json').is_file() and s.joinpath('call-001-login-receipt.json').is_file()
+              assert s.joinpath('call-002-price-reservation.json').is_file() and s.joinpath('call-002-price-receipt.json').is_file() and s.joinpath('raw-http-002-price.json').is_file()
+              assert r['bridge']['state'] in ('direct_canonical_native_bridge','native_conflict_hold','native_namespace_hold','no_exact_native_anchor')
+              if r['bridge']['state']=='direct_canonical_native_bridge':
+                  assert list(map(int,r['bridge']['native_ids_observed']))==[35406]
+                  assert [str(x) for x in r['bridge']['namespace_flags_observed']]==['0']
+          summary={'state':r['state'],'provider_calls':r['provider_calls'],'bridge':r.get('bridge'),'price_row_count':r.get('price_row_count'),'pages_count':r.get('pages_count'),'result_sha256':digest}
+          p.joinpath('verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n'); print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-december81154-native-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
