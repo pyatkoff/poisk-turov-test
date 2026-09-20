@@ -101,7 +101,8 @@ quote_facts_check(strpos($json, 'PRIVATE-FLIGHT') === false);
 quote_facts_check(!isset($factsOut['flights']) && !isset($factsOut['final_price']));
 
 // Regression for #3151: exercise the actual pure claim-service projection. The
-// selected-quote producer emits service_type for 5/9, but keeps type 8 unchanged.
+// selected-quote producer emits service_type for 5/9, keeps type 8 unchanged, and
+// preserves only explicitly reported required/packet flags without deriving units.
 // No package/get_flights/calc call is made by this fixture.
 require_once __DIR__ . '/../app/integrations/andromeda-selected-quote.php';
 require_once __DIR__ . '/../app/integrations/anytour-offer-snapshot-producer.php';
@@ -109,14 +110,14 @@ $serviceProjection = new ReflectionMethod(AnyTourAndromedaSelectedQuote::class, 
 $projectedFuel = $serviceProjection->invoke(null, ['claimDocument' => [[
     'condition' => 'ccOffer',
     'services' => [['service' => [
-        ['servicetype' => 5, 'servicecategoryName' => 'Топливный сбор', 'price' => '80', 'currencyAlias' => 'USD', 'routeIndex' => '0'],
-        ['servicetype' => '9', 'servicecategoryName' => 'Топливный сбор', 'price' => '80', 'currencyAlias' => 'USD', 'routeIndex' => '1'],
+        ['servicetype' => 5, 'servicecategoryName' => 'Топливный сбор', 'price' => '80', 'currencyAlias' => 'USD', 'routeIndex' => '0', 'required' => 'true', 'packet' => 'false'],
+        ['servicetype' => '9', 'servicecategoryName' => 'Топливный сбор', 'price' => '80', 'currencyAlias' => 'USD', 'routeIndex' => '1', 'required' => 'true', 'packet' => 'false'],
         ['servicetype' => 8, 'servicecategoryName' => 'Топливный сбор', 'price' => '80', 'currencyAlias' => 'USD', 'routeIndex' => '0'],
     ]]],
 ]]]);
 quote_facts_check($projectedFuel === [
-    $factsQuote['fuel_surcharges_reported'][0] + ['service_type' => '5'],
-    $factsQuote['fuel_surcharges_reported'][1] + ['service_type' => '9'],
+    $factsQuote['fuel_surcharges_reported'][0] + ['service_type' => '5', 'required_reported' => true, 'packet_reported' => false],
+    $factsQuote['fuel_surcharges_reported'][1] + ['service_type' => '9', 'required_reported' => true, 'packet_reported' => false],
     $factsQuote['fuel_surcharges_reported'][0],
 ]);
 $typedQuote = $factsQuote;
@@ -139,8 +140,32 @@ $changedTypeOut = AnyTourThreeProviderQuoteEnvelope::verified(
 );
 quote_facts_check($changedTypeOut['quote_evidence_digest'] !== $typedOut['quote_evidence_digest']);
 quote_facts_check($changedTypeOut['money']['quote_price'] === $typedOut['money']['quote_price']);
+$changedRequired = $typedQuote;
+$changedRequired['fuel_surcharges_reported'][0]['required_reported'] = false;
+$changedRequiredOut = AnyTourThreeProviderQuoteEnvelope::verified(
+    $factsOffer, $factsRetained, $factsCurrent, $changedRequired, 1789161300
+);
+quote_facts_check($changedRequiredOut['quote_evidence_digest'] !== $typedOut['quote_evidence_digest']);
+quote_facts_check($changedRequiredOut['money']['quote_price'] === $typedOut['money']['quote_price']);
 
-// The optional field is exact and bounded, not permission to forward arbitrary data.
+// Applicability is an exact optional PAIR. Partial, non-boolean or arbitrary fields fail closed.
+quote_facts_reject(function () use ($factsOffer, $factsRetained, $factsCurrent, $typedQuote): void {
+    $x = $typedQuote;
+    unset($x['fuel_surcharges_reported'][0]['packet_reported']);
+    AnyTourThreeProviderQuoteEnvelope::verified($factsOffer, $factsRetained, $factsCurrent, $x, 1789161300);
+});
+quote_facts_reject(function () use ($factsOffer, $factsRetained, $factsCurrent, $typedQuote): void {
+    $x = $typedQuote;
+    $x['fuel_surcharges_reported'][0]['required_reported'] = 'true';
+    AnyTourThreeProviderQuoteEnvelope::verified($factsOffer, $factsRetained, $factsCurrent, $x, 1789161300);
+});
+quote_facts_reject(function () use ($factsOffer, $factsRetained, $factsCurrent, $typedQuote): void {
+    $x = $typedQuote;
+    $x['fuel_surcharges_reported'][0]['unit_scope'] = 'person';
+    AnyTourThreeProviderQuoteEnvelope::verified($factsOffer, $factsRetained, $factsCurrent, $x, 1789161300);
+});
+
+// The optional service_type field is exact and bounded, not permission to forward arbitrary data.
 foreach ([null, 5, 5.0, true, [], '', "5\n", '5 9', '<5>', str_repeat('a', 33)] as $invalidType) {
     quote_facts_reject(function () use ($factsOffer, $factsRetained, $factsCurrent, $typedQuote, $invalidType): void {
         $x = $typedQuote;
@@ -189,6 +214,7 @@ quote_facts_check($typedDto['finalPriceReady'] === true && $typedDto['finalPrice
     && $typedDto['price'] === '135643' && $typedDto['currency'] === 'RUB');
 quote_facts_check($typedDto['money']['arithmetic_applied'] === false
     && $typedDto['money']['search_price_fuel_relation'] === 'unknown'
+    && !isset($typedDto['money']['fuel_total']) && !isset($typedDto['money']['unit_scope'])
     && $typedDto['selection_state'] === 'disabled' && $typedDto['booking_enabled'] === false);
 
 echo 'Three-provider quote reported facts: '.$factsChecks." checks passed; arithmetic/supplier/DB/booking=0.\n";
