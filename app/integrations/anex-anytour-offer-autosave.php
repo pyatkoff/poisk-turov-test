@@ -229,7 +229,14 @@ final class AnyTourAnexOfferAutosaveV1
             ];
         }, $entries), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
         if (($auto['last_published_digest'] ?? null) === $publishDigest) {
-            return self::receipt(false, 'already_published', count($entries), count($auto['offers']));
+            // A persisted regular offer still requires price confirmation. Keep the
+            // two states separate even when no new intake is necessary.
+            $confirmationCount = count(array_filter(
+                $entries,
+                static fn(array $entry): bool => ($entry['confirmation_required'] ?? false) === true
+            ));
+            return self::receipt(false, 'already_published', count($entries) - $confirmationCount, count($auto['offers']))
+                + ['confirmationRequiredOfferCount' => $confirmationCount];
         }
 
         $result = AnyTourIntOfferSnapshotProducerV1::produce('anex', $state['params'], [

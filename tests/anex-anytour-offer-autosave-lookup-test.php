@@ -119,3 +119,42 @@ $mixReceipt = AnyTourAnexOfferAutosaveV1::consume($lookupDb, $negativePlan, $mix
 lookupCheck($mixReceipt['published'] === true && $mixReceipt['readyOfferCount'] === 6
     && $mixReceipt['confirmationRequiredOfferCount'] === 6 && $lookupDb->lookups === 2, 'mixed two-hotel snapshot uses two lookups');
 echo "ANEX_AUTOSAVE_LOOKUP_OK offers=60 batches=10 selects=10 invalidation=5 negative=1 mixed=1 supplier=0 live_db=0\n";
+
+// Idempotent finalization must retain price-state counts without another intake.
+$regularOnly = $mixedLookup;
+unset($regularOnly['anytour_offer_autosave']);
+$regularOnly['gateway']['saved_offers']['offers'] = array_filter(
+    $regularOnly['gateway']['saved_offers']['offers'],
+    static fn(array $entry): bool => ($entry['offer']['flight_type'] ?? null) === 'regular'
+);
+$regularReceipt = AnyTourAnexOfferAutosaveV1::consume(
+    $lookupDb, ['offers' => []], $regularOnly, [], $now, $apply, $mixedResolver, $lookupIngest
+);
+lookupCheck($regularReceipt['published'] === true && $regularReceipt['readyOfferCount'] === 0
+    && $regularReceipt['confirmationRequiredOfferCount'] === 6, 'regular-only initial state is not final ready');
+$repeatCases = [
+    'mixed' => [$mixedLookup, 6, 6],
+    'regular_only' => [$regularOnly, 0, 6],
+    'charter_only' => [$negative, 6, 0],
+];
+foreach ($repeatCases as $label => [$repeatState, $expectedReady, $expectedConfirmation]) {
+    $beforeIntake = $lookupRows;
+    $beforeState = $repeatState;
+    for ($pass = 1; $pass <= 2; ++$pass) {
+        $repeat = AnyTourAnexOfferAutosaveV1::consume(
+            $lookupDb, ['offers' => []], $repeatState, [], $now, $apply, $mixedResolver, $lookupIngest
+        );
+        echo 'ANEX_ALREADY_PUBLISHED_COUNT_MEASURE ' . json_encode([
+            'case' => $label, 'pass' => $pass, 'ready' => $repeat['readyOfferCount'] ?? null,
+            'confirmation' => $repeat['confirmationRequiredOfferCount'] ?? null,
+            'new_intakes' => count($lookupRows) - count($beforeIntake),
+        ], JSON_THROW_ON_ERROR) . "\n";
+        lookupCheck($repeat['published'] === false && $repeat['reason'] === 'already_published'
+            && $repeat['readyOfferCount'] === $expectedReady
+            && ($repeat['confirmationRequiredOfferCount'] ?? null) === $expectedConfirmation,
+            'idempotent receipt preserves both price states: ' . $label);
+        lookupCheck($repeat['selectionAuthority'] === false && $lookupRows === $beforeIntake
+            && $repeatState === $beforeState, 'idempotency has no write, price or state mutation: ' . $label);
+    }
+}
+echo "ANEX_IDEMPOTENT_READINESS_COUNTS_OK cohorts=3 repeats=6 writes=0 supplier=0 live_db=0\n";
