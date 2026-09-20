@@ -12,6 +12,7 @@ on:
       - 'app/integrations/anex-anytour-offer-autosave.php'
       - 'tests/anex-anytour-offer-autosave-test.php'
       - 'tests/anex-anytour-offer-autosave-runtime-test.php'
+      - 'tests/anex-anytour-offer-autosave-lookup-test.php'
       - '.github/workflows/int-anex-local-offer-collector.yml'
 permissions:
   contents: read
@@ -36,8 +37,10 @@ jobs:
           php -l app/integrations/anex-anytour-offer-autosave.php
           php -l tests/anex-anytour-offer-autosave-test.php
           php -l tests/anex-anytour-offer-autosave-runtime-test.php
+          php -l tests/anex-anytour-offer-autosave-lookup-test.php
           php tests/anex-local-offer-collector-test.php
           php tests/anex-local-offer-collector-cli-persistence-test.php
           php tests/anex-background-gateway-limit-test.php
           php tests/anex-anytour-offer-autosave-test.php
           php tests/anex-anytour-offer-autosave-runtime-test.php
+          php tests/anex-anytour-offer-autosave-lookup-test.php
