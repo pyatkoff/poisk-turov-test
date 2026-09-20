@@ -1,0 +1,83 @@
+name: MATCH missing-SAMO ready75 history v1
+on:
+  push:
+    branches: [ops/match-missing-samo-ready75-history-1971-20260920-v1]
+permissions: {contents: read, actions: read}
+env:
+  CURRENT_OP: hotel-match-tv-anex-missing-samo-frontier-1971-20260920-v4
+  CURRENT_RESULT_SHA: 356b4394fe29a6600a5c9d80d3ab06253cbbc439c65702e295e4bb5543175fda
+jobs:
+  reconcile:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aa4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - name: Read immutable results
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir old
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER@$HOST"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          for op in "$CURRENT_OP" hotel-match-live143-moscow-anex-samo-1971-20260919-v2 hotel-match-live20-nonmoscow-anex-samo-1971-20260919-v1 hotel-match-userseen153-anex-samo-1971-20260919-v1 hotel-match-refresh82-samo-native-1971-20260919-v5; do
+            ssh "${opts[@]}" "$remote" "p=\"\$HOME/.anytour-match/operations/$op\"; test -f \"\/result.json\" -a -f \"\/receipt.json\"; tar -C \"\/p\" -czf - result.json receipt.json" > "old/$op.tgz"
+          done
+      - name: Partition
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import datetime-hashlib,json,os,pathlib,tarfile
+          ops=[os.environ['CURRENT_OP'],'hotel-match-live143-moscow-anex-samo-1971-20260919-v2','hotel-match-live20-nonmoscow-anex-samo-1971-20260919-v1','hotel-match-userseen153-anex-samo-1971-20260919-v1','hotel-match-refresh82-samo-native-1971-20260919-v5']
+          D={}
+          for op in ops:
+            z={}
+            with tarfile.open(pathlib.Path('old')/f'{op}.tgz','r:gz') as t:
+              for m in t.getmembers(): z[m.name]=t.extractfile(m).read()
+            r=json.loads(z['result.json']);q=json.loads(z[receipt.json']);h=hashlib.sha256(z['result.json']).hexdigest();assert q["result_sha256"]==h;D[op]=(r,h)
+          cur,h=D[ops[0]]; assert h==os.environ['CURRENT_RESULT_SHA']
+          ready=[x x for x in cur['frontier'] if x.get('route')=='query_ready_user_seen_anex'];assert len(ready)==75
+          touched=set();ctx=set()
+          def ck(x):
+            if not isinstance(x,dict):return None
+            d=x.get('departure_date') or x.get('date') or x.get('checkin');vals=[x.get('departure_id'),x.get('country_id'),d,x.get('nights'),x.get('adults'),x.get('children_count',x.get('children'))]
+            if any(v is None or v == '' for v in vals):return None
+            return (int(vals[0]),int(vals[1]),str(vals[2])[:10],int(vals[3]),int(vals[4]),int(vals[5]),str(x.get('child_ages_signature') or ''))
+          def walk(n):
+            if isinstance(n,dict):
+              ids=[]
+              for k in ('tv_hotel_id','target_local_id','target_hotel_id','catalog_hotel_id','local_hotel_id'):
+                v=n.get(k)
+                if isinstance(v,(int,str)) and str(v).isdigit() and int(v)>0: ids.append(int(v))
+              cs=[ck(n)])+[ck(n(n.get(k))) for k in ('context','live_context','latest_future_context','search_context')]
+              for i in ids:
+                touched.add(i)
+                for c in cs:
+                  if c:ctx.add((i,c))
+              for v in n.values():walk(v)
+            elif isinstance(n,list):
+              for v in n:walk(v)
+          for op in ops[1:]: walk(D[op][0])
+          fresh=[];new=[];hold=[];cut=datetime.datetime.fromisoformat('2026-09-20T00:00:00+00:00')
+          for x in ready:
+             i=int(x['tv_hotel_id']);c=x.get('latest_future_anex_context') or {},k-ck(c);row={'tv_hotel_id':i,'hotel_name':x.get('hotel_name'),'country_id':x.get('country_id'),'anex_hotel_ids':x.get('anex_hotel_ids'),'context':c}
+            if i not in touched: row['class']='fresh';fresh.append(row);continue
+            if k and (i,k) in ctx: row['class']='same_context_hold';hold.append(row);continue
+             try:dt=datetime.datetime.fromisoformat(str(c.get('observed_at','')).replace('Z','+00:00'))
+            except:dt=None
+            if k and dt and dt>=cut: row['class']='new_context';new.append(row)
+            else: row['class']='touched_hold';hold.append(row)
+          out={'state':'completed','ready':75,'fresh':len(fresh),'new_context':len(new),'hold':len(hold),'queryable':len(fresh)+len(new),'queryable_rows':fresh+new,'held_rows':hold,'provider_calls':0,'db_reads':0,'writes':0}
+          pathlib.Path('result.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n');print(json.dumps({'k':out[k]} for k in ('ready','fresh','new_context','hold','queryable')}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'missing-samo-ready75-history-${{ github.run_id }}', path: result.json, retention-days: 90, if-no-files-found: error}
