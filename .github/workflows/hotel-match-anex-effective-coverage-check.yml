@@ -1,0 +1,185 @@
+name: MATCH canonical ANEX coverage
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_anex_effective_coverage.php
+      - scripts/diagnostics/hotel_match_anex_canonical_frontier_current_v1.php
+      - tests/hotel-match-anex-effective-coverage-smoke.php
+      - app/integrations/anex-search-mapping-registry.php
+      - .github/workflows/hotel-match-anex-effective-coverage-check.yml
+permissions:
+  contents: read
+  actions: read
+  issues: read
+env:
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  OPERATION_ID: hotel-match-anex-canonical-frontier-current-1971-20260920-v1
+  EXPECTED_BASE: 04679a5f1136ac06c8cd790c2c90315a09322335
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.event.pull_request.head.sha }}'
+          persist-credentials: false
+      - name: Coverage regression with actual PDO
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! php -r 'exit(in_array("sqlite",PDO::getAvailableDrivers(),true)?0:1);'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-sqlite3
+          fi
+          php -l scripts/diagnostics/hotel_match_anex_effective_coverage.php
+          php -l scripts/diagnostics/hotel_match_anex_canonical_frontier_current_v1.php
+          php tests/hotel-match-anex-effective-coverage-smoke.php
+  current:
+    needs: checks
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/match-canonical-anex-frontier-20260920' && github.run_attempt == 1 && github.run_number == 1
+    concurrency:
+      group: hotel-match-anex-canonical-frontier-current-1971-20260920-v1
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.event.pull_request.head.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate scope, owner claims and unchanged resolver
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir inputs result
+          mkdir -p payload/source/scripts/diagnostics payload/source/app/integrations
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          git diff --name-only "$EXPECTED_BASE..HEAD" > inputs/changed.txt
+          test "$(git rev-parse HEAD:app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5749255446 > inputs/claim1.json
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5749267517 > inputs/claim2.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          paths=set(pathlib.Path('inputs/changed.txt').read_text().splitlines())
+          assert paths=={'scripts/diagnostics/hotel_match_anex_effective_coverage.php','scripts/diagnostics/hotel_match_anex_canonical_frontier_current_v1.php','tests/hotel-match-anex-effective-coverage-smoke.php','.github/workflows/hotel-match-anex-effective-coverage-check.yml'}
+          bodies=[]
+          for p in ['inputs/claim1.json','inputs/claim2.json']:
+              c=json.load(open(p));assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+              assert c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at'];bodies.append(c['body'])
+          assert os.environ['OPERATION_ID'] in bodies[1]
+          assert all(p in '\n'.join(bodies) for p in paths)
+          PY
+          cp scripts/diagnostics/hotel_match_anex_effective_coverage.php scripts/diagnostics/hotel_match_anex_canonical_frontier_current_v1.php payload/source/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php payload/source/app/integrations/
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10603032763/zip > inputs/frontier.zip
+          python3 - <<'PY'
+          import hashlib,pathlib,zipfile
+          p=pathlib.Path('inputs/frontier.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='7d64c6d2e21180bd47f6d574df78f6d640dc4f67ab24ce131f1241ebf042f9d5'
+          with zipfile.ZipFile(p) as z:raw=z.read('server/result.json')
+          assert hashlib.sha256(raw).hexdigest()=='8644e09a8301b3a98aced075365c0ce89488d2e09adab3d43796f3b4ced0c968'
+          pathlib.Path('payload/old-frontier.json').write_bytes(raw)
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(72):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE_SHA']]
+              if xs:
+                  r=max(xs,key=lambda x:x['id'])
+                  if r['status']=='completed':
+                      assert r['conclusion']=='success','security_not_green';print('SECURITY_OK',r['id']);break
+              time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - name: Durable reservation before CURRENT read
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload');files=sorted(x for x in p.rglob('*') if x.is_file())
+          digests={str(x.relative_to(p)):hashlib.sha256(x.read_bytes()).hexdigest() for x in files}
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'state':'reserved_before_db_read','file_sha256':digests,'supplier_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with (p/'reservation.json').open('xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
+          pathlib.Path('result/reservation.json').write_bytes(raw)
+          digests['reservation.json']=hashlib.sha256(raw).hexdigest()
+          (p/'SHA256SUMS').write_text(''.join(v+'  '+k+'\n' for k,v in sorted(digests.items())))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'match-canonical-frontier-reservation-${{ github.run_id }}'
+          path: result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Read canonical coverage and correct reverse queue
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" -r payload/source payload/old-frontier.json payload/reservation.json payload/SHA256SUMS "$remote:$op/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";sha256sum -c SHA256SUMS >/dev/null;cd \"\$HOME/www/anytoour.ru\";MATCH_OPERATION_ID='$OPERATION_ID' MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$SOURCE_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M \"\$HOME/$op/source/scripts/diagnostics/hotel_match_anex_canonical_frontier_current_v1.php\"" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json execution-reservation.json result.json receipt.json" >result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?
+          set -e
+          printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              assert sorted(t.getnames())==['execution-reservation.json','receipt.json','reservation.json','result.json']
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<=64000000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          r=json.loads((s/'result.json').read_bytes());q=json.loads((s/'receipt.json').read_bytes())
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==digest and q['readback_verified'] is True
+          assert r['operation_id']==q['operation_id']==os.environ['OPERATION_ID']
+          assert r['source_sha']==q['source_sha']==os.environ['SOURCE_SHA']
+          assert r['state']=='completed_read_only'
+          assert r['database_writes']==r['mapping_writes']==r['provider_calls']==r['supplier_calls']==0
+          assert all(x['safe_to_query_now'] is False and x['safe_to_write_now'] is False for x in r['remaining_retained_context_frontier'])
+          keys=['read_at_utc','coverage_global','same_snapshot_legacy_comparison','old_reverse_count','removed_already_effective_count','old_ready181_removed','old_ready181_remaining','remaining_route_counts']
+          summary={k:r[k] for k in keys};summary['result_sha256']=digest
+          (p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'match-canonical-frontier-result-${{ github.run_id }}'
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
