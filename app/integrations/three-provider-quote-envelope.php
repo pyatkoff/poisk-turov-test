@@ -228,15 +228,22 @@ final class AnyTourThreeProviderQuoteEnvelope
         self::listShape($rows, 'THREE_PROVIDER_QUOTE_FUEL_FACT');
         $out = [];
         foreach ($rows as $row) {
-            // Match the selected-quote producer without dropping its type evidence.
-            // Legacy type=8 rows remain byte-compatible; neither shape adds money.
+            // Match the selected-quote producer without deriving unit or package-price
+            // semantics. Legacy and typed shapes remain valid; applicability is an
+            // exact optional pair of supplier-reported booleans.
             $legacy = is_array($row)
                 && self::exactKeys($row, ['amount', 'currency', 'route_index', 'source']);
             $typed = is_array($row)
                 && self::exactKeys($row, ['amount', 'currency', 'route_index', 'source', 'service_type']);
-            if ((!$legacy && !$typed)
-                || ($typed && (!is_string($row['service_type'])
+            $typedApplicability = is_array($row)
+                && self::exactKeys($row, [
+                    'amount', 'currency', 'route_index', 'source', 'service_type',
+                    'required_reported', 'packet_reported'
+                ]);
+            if ((!$legacy && !$typed && !$typedApplicability)
+                || (($typed || $typedApplicability) && (!is_string($row['service_type'])
                     || preg_match('/\A[A-Za-z0-9_.:-]{1,32}\z/D', $row['service_type']) !== 1))
+                || ($typedApplicability && (!is_bool($row['required_reported']) || !is_bool($row['packet_reported'])))
                 || !self::amount($row['amount'], false)
                 || !self::currency($row['currency'])
                 || !in_array($row['route_index'], [null, '0', '1'], true)
