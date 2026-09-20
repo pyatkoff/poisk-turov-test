@@ -513,6 +513,26 @@ async function checkLeadRecovery(page, width) {
   assert.deepEqual(await readDraft(), { name: '', phone: '', comment: '' }, 'confirmed lead clears the reusable draft');
   assert.equal(await form.locator('[name="consent"]').isChecked(), false);
   for (const [name, value] of Object.entries(draft)) await form.locator('[name="' + name + '"]').fill(value);
+  await form.locator('[name="consent"]').check();
+  await submit.click();
+  await page.waitForFunction(() => window.__leadRecovery.pending.length === 1);
+  await assertLocks(true);
+  await page.goBack();
+  await page.waitForFunction(() => document.getElementById('selectedTour').hidden);
+  await page.evaluate(() => window.__leadRecovery.pending.shift().resolve({ ok: true, json: async () => ({ ok: true, writes: 1, leadId: 9990002 }) }));
+  await page.waitForFunction(() => !window.V2LeadUiRaceGuardV1.leadPending);
+  await assertLocks(false);
+  assert.equal(await root.isVisible(), false, 'late success keeps the completed selected view hidden after Browser Back');
+  await page.locator('#results').screenshot({ path: path.join(output, `selected-lead-hidden-success-${width}.png`), animations: 'disabled' });
+  await page.goForward();
+  await root.locator('.lead-success-panel').waitFor();
+  assert.equal(await form.getAttribute('data-sent'), '1', 'Browser Forward restores the completed exact lead receipt');
+  await root.locator('.lead-success-back').click();
+  await page.waitForFunction(id => document.activeElement?.dataset.tid === id, first.id);
+  await openOffer(first.id);
+  assert.deepEqual(await readDraft(), { name: '', phone: '', comment: '' }, 'hidden completed lead also clears the reusable draft');
+  assert.equal(await form.locator('[name="consent"]').isChecked(), false);
+  for (const [name, value] of Object.entries(draft)) await form.locator('[name="' + name + '"]').fill(value);
   await root.locator('.search3-lead-return').click();
   await page.evaluate(({ searchId, hotel, first, second }) => {
     window.dispatchEvent(new CustomEvent('v2:search-reset'));
@@ -528,11 +548,11 @@ async function checkLeadRecovery(page, width) {
     events: window.__leadRecovery.events,
     pendingRequests: window.__leadRecovery.pending.length
   }));
-  assert.deepEqual(evidence.identities, [first.id, first.id, second.id].map(tourId => ({ tourId, searchId, consent: true })), 'the unchanged payload always carries the exact selected offer and search');
+  assert.deepEqual(evidence.identities, [first.id, first.id, second.id, first.id].map(tourId => ({ tourId, searchId, consent: true })), 'the unchanged payload always carries the exact selected offer and search');
   assert.equal(evidence.calls.some(([action]) => !['tour', 'flights'].includes(action)), false);
   assert.equal(evidence.pendingRequests, 0);
-  console.log('SEARCH3_LEAD_RECOVERY_OK ' + JSON.stringify({ width, validation: true, pendingReturns: pending.returns.length, staleBlocked: true, errors: ['network', 'server'], draftRetained: true, consentReset: true, successReturn: true, resetClearsDraft: true, localSubmissions: 3, realLeads: 0, realSupplierRequests: 0 }));
-  return { ...evidence, validation: true, pendingReturns: pending.returns.length, staleBlocked: true, draftRetained: true, consentReset: true, successReturn: true, resetClearsDraft: true, localSubmissions: 3, realLeads: 0, realSupplierRequests: 0 };
+  console.log('SEARCH3_LEAD_RECOVERY_OK ' + JSON.stringify({ width, validation: true, pendingReturns: pending.returns.length, staleBlocked: true, errors: ['network', 'server'], draftRetained: true, consentReset: true, successReturn: true, hiddenSuccessUnlock: true, resetClearsDraft: true, localSubmissions: 4, realLeads: 0, realSupplierRequests: 0 }));
+  return { ...evidence, validation: true, pendingReturns: pending.returns.length, staleBlocked: true, draftRetained: true, consentReset: true, successReturn: true, hiddenSuccessUnlock: true, resetClearsDraft: true, localSubmissions: 4, realLeads: 0, realSupplierRequests: 0 };
 }
 
 async function checkSelectedLoadRecovery(page, width) {

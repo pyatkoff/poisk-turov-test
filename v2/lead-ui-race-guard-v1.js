@@ -21,7 +21,7 @@ function setPendingLocked(locked){setFlightLocked(locked);setReturnLocked(locked
 function startPending(){leadPending=true;leadCompleted=false;setPendingLocked(true);}
 function clearPending(){leadPending=false;leadCompleted=false;setPendingLocked(false);}
 function handleError(event){if(protect(event))clearPending();}
-function handleSuccess(event){if(protect(event))leadCompleted=true;}
+function handleSuccess(event){if(!protect(event))return;if(selectedRoot()?.hidden){clearPending();return;}leadCompleted=true;}
 function handleSearchReset(){if(leadPending){setPendingLocked(true);return false;}clearPending();return true;}
 function handleSearchSubmit(event){const form=event&&event.target;if(!leadPending||!form||form.id!=='tourSearch')return true;if(typeof event.preventDefault==='function')event.preventDefault();if(typeof event.stopImmediatePropagation==='function')event.stopImmediatePropagation();return false;}
 window.addEventListener('v2:lead-started',startPending);
@@ -31,5 +31,5 @@ window.addEventListener('click',event=>{const action=event.target&&event.target.
 window.addEventListener('v2:tour-selected',()=>{if(!leadPending)setPendingLocked(false);});
 window.addEventListener('v2:search-reset',handleSearchReset);
 window.addEventListener('submit',handleSearchSubmit,true);
-window.V2LeadUiRaceGuardV1={tourId,searchId,eventTourId,eventSearchId,isCurrent,protect,selectedRoot,searchForm,flightChoices,returnAction,tourActions,stickySearchActions,setFlightLocked,setReturnLocked,setTourActionsLocked,setSearchLocked,setPendingLocked,startPending,clearPending,handleError,handleSuccess,handleSearchReset,handleSearchSubmit,get leadPending(){return leadPending;},version:7};
+window.V2LeadUiRaceGuardV1={tourId,searchId,eventTourId,eventSearchId,isCurrent,protect,selectedRoot,searchForm,flightChoices,returnAction,tourActions,stickySearchActions,setFlightLocked,setReturnLocked,setTourActionsLocked,setSearchLocked,setPendingLocked,startPending,clearPending,handleError,handleSuccess,handleSearchReset,handleSearchSubmit,get leadPending(){return leadPending;},version:8};
 })();
