@@ -56,6 +56,8 @@ $expected = [
         'route_index' => '0',
         'source' => 'andromeda_claim_service',
         'service_type' => '5',
+        'required_reported' => true,
+        'packet_reported' => false,
     ],
     [
         'amount' => '160',
@@ -63,9 +65,30 @@ $expected = [
         'route_index' => '1',
         'source' => 'andromeda_claim_service',
         'service_type' => '9',
+        'required_reported' => true,
+        'packet_reported' => false,
     ],
 ];
-if ($actual !== $expected) throw new RuntimeException('observed service types were not preserved');
+if ($actual !== $expected) throw new RuntimeException('observed service applicability was not preserved');
+++$checks;
+
+// Optional applicability evidence is all-or-none and literal. Absence or malformed
+// supplier flags must not invent a unit/package interpretation.
+$withoutFlags = $claim;
+unset($withoutFlags['claimDocument'][0]['services'][0]['service'][0]['required']);
+unset($withoutFlags['claimDocument'][0]['services'][0]['service'][0]['packet']);
+$withoutActual = $fuel->invoke(null, $withoutFlags);
+if (array_key_exists('required_reported', $withoutActual[0]) || array_key_exists('packet_reported', $withoutActual[0])) {
+    throw new RuntimeException('missing applicability was invented');
+}
+++$checks;
+
+$malformedFlags = $claim;
+$malformedFlags['claimDocument'][0]['services'][0]['service'][0]['required'] = 'maybe';
+$malformedActual = $fuel->invoke(null, $malformedFlags);
+if (array_key_exists('required_reported', $malformedActual[0]) || array_key_exists('packet_reported', $malformedActual[0])) {
+    throw new RuntimeException('malformed applicability was admitted');
+}
 ++$checks;
 
 $legacy = [
@@ -91,8 +114,8 @@ if ($legacyActual !== [[
 ++$checks;
 
 $encoded = json_encode($actual, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-foreach (['fuel_total', 'surcharge_total', 'finalPriceReady', 'derived_price'] as $forbidden) {
-    if (str_contains($encoded, $forbidden)) throw new RuntimeException('arithmetic leaked into evidence');
+foreach (['fuel_total', 'surcharge_total', 'finalPriceReady', 'derived_price', 'unit_scope', 'price_includes_fuel'] as $forbidden) {
+    if (str_contains($encoded, $forbidden)) throw new RuntimeException('arithmetic or inferred semantics leaked into evidence');
 }
 ++$checks;
 
