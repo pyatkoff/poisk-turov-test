@@ -637,4 +637,3 @@ async function checkCorruptStorage(browser, width) {
   fs.writeFileSync(path.join(output, 'shortlist-contract.json'), JSON.stringify(evidence, null, 2));
   console.log('SEARCH3_SHORTLIST_OK ' + JSON.stringify(evidence));
 })().catch(error => { console.error(error); process.exitCode = 1; });
-
