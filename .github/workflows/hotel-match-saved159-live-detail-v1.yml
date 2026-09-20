@@ -1,0 +1,117 @@
+name: MATCH saved159 live Tourvisor detail v1
+on:
+  push:
+    branches: [ops/match-saved159-live-detail-1971-20260920-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_saved159_live_detail_v1.py
+      - .github/workflows/hotel-match-saved159-live-detail-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-saved159-live-detail-1971-20260920-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-saved159-live-detail-1971-20260920-v1
+  BASE_SHA: e8b65edb650509a549d1e032a81eb594d038a75c
+  CLAIM: '5752518346'
+  INPUT_ARTIFACT: '10603089800'
+  INPUT_ZIP_SHA: 'cc386d3619180815948e7f97b814395ef4672ed54445884e7e5c8dda1581a5cc'
+  INPUT_RESULT_SHA: '2b09cbda05446ca5210901fcd8f5d9498bdbab2f30e0cab4c6b0192f68c6ed66'
+jobs:
+  details:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source claim and immutable input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input reservation result
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          a=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert a=={'scripts/diagnostics/hotel_match_saved159_live_detail_v1.py','.github/workflows/hotel-match-saved159-live-detail-v1.yml'},a
+          PY
+          python3 -m py_compile scripts/diagnostics/hotel_match_saved159_live_detail_v1.py
+          python3 scripts/diagnostics/hotel_match_saved159_live_detail_v1.py --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530')
+          for s in (os.environ['OPERATION_ID'],'159','owner_authorized_unknown_prior_usage','one retained Tourvisor tour detail per edge'.replace('one','One')): assert s in b,s
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$INPUT_ARTIFACT/zip" >input/frontier.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,json,os,pathlib
+          p=pathlib.Path('input/frontier.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()==os.environ['INPUT_ZIP_SHA']
+          with zipfile.ZipFile(p) as z:b=z.read('server/result.json')
+          assert hashlib.sha256(b).hexdigest()==os.environ['INPUT_RESULT_SHA']
+          d=json.loads(b);rows=[x for x in d['remaining_retained_context_frontier'] if x.get('route')=='saved_tour_detail_ready']
+          assert d['state']=='completed_read_only' and d['old_ready181_remaining']==159 and len(rows)==159
+          pathlib.Path('input/frontier.json').write_bytes(b)
+          PY
+      - name: Reserve before provider access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,datetime
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'input_artifact':10603089800,'input_result_sha256':os.environ['INPUT_RESULT_SHA'],'input_count':159,'provider_day':'2026-09-20','daily_limit':3000,'operation_cap':159,'unknown_prior_usage':True,'owner_authorization_comment':int(os.environ['CLAIM']),'search_calls':0,'continue_calls':0,'samo_calls':0,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True}
+          with open('reservation/reservation.json','x') as f:json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q,timeout=30) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs:
+            x=max(xs,key=lambda z:z['id'])
+            if x['status']=='completed':assert x['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'saved159-live-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute 159 retained Tourvisor details
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;test -n "$KEY";test -n "$HOST";test -n "$USER";key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>result/keyscan.stderr;test -s "$known"
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\"" >result/setup.stdout 2>result/setup.stderr
+          scp "${opts[@]}" reservation/reservation.json input/frontier.json scripts/diagnostics/hotel_match_saved159_live_detail_v1.py "$remote:$op/payload/" >result/copy.stdout 2>result/copy.stderr
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\"" >result/move.stdout 2>result/move.stderr
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/frontier.json\" python3 \"\$HOME/$op/payload/hotel_match_saved159_live_detail_v1.py\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          scp -r "${opts[@]}" "$remote:$op/." result/server/ >result/readback.stdout 2>result/readback.stderr
+          trc=$?;set -e;printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          p=pathlib.Path('result/server');r=json.loads((p/'result.json').read_bytes());q=json.loads((p/'receipt.json').read_bytes());d=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==d and r['operation']==os.environ['OPERATION_ID'] and r['provider_calls']==len(list(p.glob('request-*.json')))<=159
+          assert r['provider_calls']==r['attempted'] and r['search_calls']==r['status_calls']==r['results_calls']==r['dates_calls']==r['continue_calls']==r['samo_calls']==0
+          assert r['database_writes']==r['mapping_writes']==0 and all(x['safe_to_write_now'] is False for x in r['edges'])
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps({k:r.get(k) for k in ['state','reason','attempted','provider_calls','daily_accounted_after_local_ledger','unknown_prior_usage','state_counts','link_state_counts']},ensure_ascii=False,indent=2)+'\n')
+          print(pathlib.Path('result/verified-summary.json').read_text())
+          assert r['state']=='completed_read_only'
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-saved159-live-detail-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
