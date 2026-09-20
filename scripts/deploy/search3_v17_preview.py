@@ -138,8 +138,16 @@ def live_checks(files):
     for name in ('assets.php', 'search-page-v2.php', 'seo-config.php', 'data/db-v1.php', 'data/hotel-presentation-read-v1.php'):
         need(http(ROUTE + name)[0] == 403, 'internal_PHP_exposed:' + name)
     need(http(ROUTE + 'config.php')[0] in (403, 404), 'config_exposed')
-    for path in ('data/hotel-details-read-v1.php', 'data/search3-local-results-read-v1.php'):
-        need(http(ROUTE + path)[0] == 403, 'LOCAL_only_data_boundary:' + path)
+    boundaries = {
+        'data/hotel-details-read-v1.php?catalog=anytour&anytourHotelId=1':
+            'Canonical catalogue is isolated to local preview',
+        'data/search3-local-results-read-v1.php':
+            'Local DB results are isolated to local preview',
+    }
+    for path, message in boundaries.items():
+        status, body = http(ROUTE + path)
+        need(status == 403 and json.loads(body) == {'ok': False, 'error': message},
+             'LOCAL_only_data_boundary:' + path)
     for name in ('search3-results-filters-v1.css', 'search3-results-filters-v1.js', 'site-header-v2.css'):
         status, body = http(ROUTE + name + '?sha=' + files[name], binary=True)
         need(status == 200 and digest(body) == files[name], 'served_asset_hash')
