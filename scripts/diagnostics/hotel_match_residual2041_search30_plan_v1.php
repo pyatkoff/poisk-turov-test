@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-const OP='hotel-match-residual2041-search30-common4-1971-20260921-v1';
+const OP='hotel-match-residual2041-search30-common4-1971-20260921-v2';
 const OPS=[13=>'anex',18=>'operator_115',25=>'operator_315',43=>'operator_342'];
 const PROTECTED_HOTEL_IDS=[420,1244,81154,68705,72755];
 function rr(PDO $db,string $sql,array $p=[]):array{$s=$db->prepare($sql);$s->execute(array_values($p));return $s->fetchAll(PDO::FETCH_ASSOC)?:[];}
@@ -15,7 +15,7 @@ if(($census['operation_id']??'')!=='hotel-match-userseen-coverage-1971-20260920-
 $residual=[];foreach(($census['rows']??[])as$r){if(!is_array($r)||empty($r['is_active'])||!empty($r['excluded_market'])||!in_array((string)($r['bucket']??''),['anex_only','samo_only','neither'],true))continue;$id=(int)$r['tv_hotel_id'];if($id<1||isset($residual[$id]))throw new RuntimeException('census_id');$residual[$id]=['tv_hotel_id'=>$id,'name'=>(string)$r['name'],'country_id'=>(int)$r['country_id'],'country_name'=>(string)$r['country_name'],'bucket'=>(string)$r['bucket']];}
 if(count($residual)!==2041)throw new RuntimeException('census_2041');
 $attempted=attempted($r20)+attempted($r21);foreach(PROTECTED_HOTEL_IDS as$id)$attempted[$id]=true;
-$detailLinks=[];foreach(($detail['edges']??[])as$e){if(!is_array($e))continue;$id=(int)($e['tv_hotel_id']??0);$op=(int)($e['operator_id']??0);if($id>0&&isset(OPS[$op])&&str_starts_with((string)($e['link_state']??''),'captured'))$detailLinks["$id|$op"]=true;}
+$priorDetails=[];$detailLinks=[];foreach(($detail['edges']??[])as$e){if(!is_array($e))continue;$id=(int)($e['tv_hotel_id']??0);$op=(int)($e['operator_id']??0);$tid=(string)($e['tour_id']??'');if($id>0&&isset(OPS[$op])&&preg_match('/^[1-9][0-9]{0,31}$/D',$tid))$priorDetails["$id|$op|$tid"]=true;if($id>0&&isset(OPS[$op])&&str_starts_with((string)($e['link_state']??''),'captured'))$detailLinks["$id|$op"]=true;}
 require_once $root.'/scripts/diagnostics/hotel_match_anex_effective_coverage.php';
 require_once (is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php');
 $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
@@ -37,5 +37,5 @@ try{
  }
  $db->rollBack();$by=[];foreach($targets as$t)$by[$t['country_id']][]=$t;$groups=[];$n=0;ksort($by,SORT_NUMERIC);foreach($by as$cid=>$rows){usort($rows,fn($a,$b)=>$a['tv_hotel_id']<=>$b['tv_hotel_id']);foreach(array_chunk($rows,30)as$c){$n++;$groups[]=['batch'=>$n,'country_id'=>(int)$cid,'country_name'=>$c[0]['country_name'],'hotel_ids'=>array_column($c,'tv_hotel_id'),'targets'=>$c];}}
  foreach($groups as$g)if(count($g['hotel_ids'])>30||count($g['hotel_ids'])<1||count($g['hotel_ids'])!==count(array_unique($g['hotel_ids'])))throw new RuntimeException('batch_guard');
- echo js(['operation'=>OP,'state'=>'current_plan_complete','stats'=>$stats,'attempted_search_ids'=>count($attempted),'detail_saved_edges'=>count($detailLinks),'group_count'=>count($groups),'groups'=>$groups,'provider_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);
+ echo js(['operation'=>OP,'state'=>'current_plan_complete','stats'=>$stats,'attempted_search_ids'=>count($attempted),'detail_saved_edges'=>count($detailLinks),'prior_detail_attempts'=>array_keys($priorDetails),'group_count'=>count($groups),'groups'=>$groups,'provider_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);
 }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw$e;}

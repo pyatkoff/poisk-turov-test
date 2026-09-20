@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import collections,datetime as dt,fcntl,hashlib,json,os,pathlib,re,subprocess,time,urllib.error,urllib.parse,urllib.request
 from zoneinfo import ZoneInfo
-OP='hotel-match-residual2041-search30-common4-1971-20260921-v1';DAY='2026-09-21';LIMIT=3000;BODY=32*1024*1024
+OP='hotel-match-residual2041-search30-common4-1971-20260921-v2';DAY='2026-09-21';LIMIT=3000;BODY=32*1024*1024
 BASE='https://api.tourvisor.ru/search/api/v1';OPS={13:'anex',18:'biblio',25:'funsun',43:'intourist'}
 TARIFF={'search_start','search_continue','tour_flights'};UNMETERED={'search_status','search_results','tour_detail'}
 def enc(x):return (json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode()
@@ -58,11 +58,15 @@ def link_state(op,d):
 class NR(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,req,fp,code,msg,headers,newurl):return None
 def scan_tariff(home):
- q=home/'.anytoour-match/provider-quotas';opsdir=home/'.anytoour-match/operations';total=physical=0;breakdown=collections.Counter();seen=[]
+ q=home/'.anytour-match/provider-quotas';opsdir=home/'.anytoour-match/operations';total=physical=0;breakdown=collections.Counter();seen=[]
+ day_path=q/('tourvisor-test-'+DAY+'.json')
+ if not day_path.is_file():raise RuntimeError('existing_physical_day_ledger_missing')
+ day=readj(day_path)
+ if str(day.get('provider_day',''))!=DAY or int(day.get('owner_daily_limit',0))!=LIMIT:raise RuntimeError('physical_day_ledger_identity')
+ accounted=max(int(day.get('accounted_requests',0)),int(day.get('known_prior_attempt_floor',0))+int(day.get('match_new_attempts',0)))
  for p in sorted(q.glob('tourvisor-*.json')):
   if p.name.startswith('tourvisor-test-') or p.name.startswith('tourvisor-tariff-'):continue
-  try:o=readj(p)
-  except Exception:continue
+  o=readj(p)
   if str(o.get('provider_day',''))!=DAY or int(o.get('used',0) or 0)<=0:continue
   used=int(o['used']);name=str(o.get('operation') or p.stem[len('tourvisor-'):]);req=sorted((opsdir/name).glob('request-*.json'))
   if len(req)!=used:raise RuntimeError('operation_request_count_mismatch:'+name)
@@ -72,12 +76,14 @@ def scan_tariff(home):
    if a not in TARIFF|UNMETERED:raise RuntimeError('unknown_accounting_action:'+a)
    c[a]+=1;physical+=1
   total+=sum(c[a] for a in TARIFF);breakdown.update(c);seen.append({'operation':name,'used':used,'actions':dict(c)})
+ if physical!=accounted:raise RuntimeError('unreconciled_physical_attempts:'+str(accounted)+':'+str(physical))
+ if total<97:raise RuntimeError('missing_pinned_reverse110_tariff_floor')
  return total,physical,dict(breakdown),seen
 class Provider:
  def __init__(self,root,opdir):
   self.home=pathlib.Path(os.environ['HOME']);self.dir=opdir;self.physical=0;self.actions=collections.Counter();self.last=time.monotonic()-1
   if dt.datetime.now(ZoneInfo('Europe/Moscow')).date().isoformat()!=DAY:raise RuntimeError('provider_day_mismatch')
-  floor,physical,breakdown,ops=scan_tariff(self.home);self.tariff_path=self.home/'.anytoour-match/provider-quotas'/('tourvisor-tariff-'+DAY+'.json')
+  floor,physical,breakdown,ops=scan_tariff(self.home);self.tariff_path=self.home/'.anytour-match/provider-quotas'/('tourvisor-tariff-'+DAY+'.json')
   if self.tariff_path.exists():
    t=readj(self.tariff_path);cur=int(t.get('tariff_search_units',-1))
    if str(t.get('provider_day'))!=DAY or cur<floor:raise RuntimeError('tariff_ledger_drift')
