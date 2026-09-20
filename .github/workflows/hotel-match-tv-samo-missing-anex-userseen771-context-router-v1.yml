@@ -1,0 +1,146 @@
+name: MATCH reverse771 userseen context router v1
+on:
+  push:
+    branches: [ops/match-tv-samo-missing-anex-userseen771-context-router-1971-20260920-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_missing_anex_userseen771_context_router_v1.php
+      - .github/workflows/hotel-match-tv-samo-missing-anex-userseen771-context-router-v1.yml
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: hotel-match-tv-samo-missing-anex-userseen771-context-router-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-tv-samo-missing-anex-userseen771-context-router-1971-20260920-v1
+  BASE_SHA: 04679a5f1136ac06c8cd790c2c90315a09322335
+  CLAIM_COMMENT_ID: '5749201357'
+  SOURCE_ARTIFACT_ID: '10603032763'
+  SOURCE_ARTIFACT_ZIP_SHA256: 7d64c6d2e21180bd47f6d574df78f6d640dc4f67ab24ce131f1241ebf042f9d5
+  SOURCE_RESULT_SHA256: 8644e09a8301b3a98aced075365c0ce89488d2e09adab3d43796f3b4ced0c968
+jobs:
+  route:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate package and build sealed771 input
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input result payload
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 2
+          git diff --name-only "$BASE_SHA..HEAD" | grep -Fx scripts/diagnostics/hotel_match_tv_samo_missing_anex_userseen771_context_router_v1.php
+          git diff --name-only "$BASE_SHA..HEAD" | grep -Fx .github/workflows/hotel-match-tv-samo-missing-anex-userseen771-context-router-v1.yml
+          cp scripts/diagnostics/hotel_match_tv_samo_missing_anex_userseen771_context_router_v1.php payload/router.php
+          php -l payload/router.php;php payload/router.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          for x in [os.environ['OPERATION_ID'],os.environ['SOURCE_RESULT_SHA256'],os.environ['SOURCE_ARTIFACT_ID'],'771']:assert x in b
+          assert 'Provider/Tourvisor/SAMO/Andromeda/direct-ANEX calls0' in b
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$SOURCE_ARTIFACT_ID/zip" > input/source.zip
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile
+          zp=pathlib.Path('input/source.zip');assert hashlib.sha256(zp.read_bytes()).hexdigest()==os.environ['SOURCE_ARTIFACT_ZIP_SHA256'];want=os.environ['SOURCE_RESULT_SHA256'];hits=[]
+          with zipfile.ZipFile(zp) as z:
+            for i in z.infolist():
+              if i.is_dir() or i.file_size>64_000_000:continue
+              raw=z.read(i)
+              if hashlib.sha256(raw).hexdigest()==want:hits.append(raw)
+          assert len(hits)==1;r=json.loads(hits[0]);rows=[]
+          for x in r['frontier']:
+            if x.get('route')=='user_seen_needs_anex_evidence':rows.append({'tv_hotel_id':int(x['local_hotel_id']),'hotel_name':x['name'],'samo_external_ids':x['samo_external_ids']})
+          assert len(rows)==771 and len({x['tv_hotel_id'] for x in rows})==771
+          out={'operation':os.environ['OPERATION_ID'],'source_result_sha256':want,'input_count':771,'rows':rows};raw=(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();pathlib.Path('input/router771.json').write_bytes(raw);print(hashlib.sha256(raw).hexdigest())
+          PY
+      - name: Reserve before DB access
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import datetime,hashlib,json,os,pathlib
+          p=pathlib.Path('input/router771.json');r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'input_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'input_count':771,'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'supplier_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True};raw=(json.dumps(r,sort_keys=True)+'\n').encode();f=pathlib.Path('result/reservation.json').open('xb');f.write(raw);f.flush();os.fsync(f.fileno());f.close()
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:rs=json.load(f)['workflow_runs']
+            xs=[r for r in rs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed':assert r['conclusion']=='success';print('SECURITY_OK',r['id']);break
+            time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'reverse771-router-reservation-${{ github.run_id }}'
+          path: result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute CURRENT read-only router
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op\""
+          scp "${opts[@]}" result/reservation.json "$remote:$op/reservation.json";scp "${opts[@]}" payload/router.php input/router771.json "$remote:$op/"
+          set +e;ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_INPUT_PATH=\"\$HOME/$op/router771.json\" php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M \"\$HOME/$op/router.php\"" >result/remote.stdout 2>result/remote.stderr;rc=$?;ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" >result/server-operation.tgz 2>>result/remote.stderr;trc=$?;set -e;printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            assert sorted(t.getnames())==['receipt.json','reservation.json','result.json']
+            for m in t.getmembers():assert m.isfile() and m.size<64_000_000;(s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.loads((s/'result.json').read_text());q=json.loads((s/'receipt.json').read_text());d=hashlib.sha256((s/'result.json').read_bytes()).hexdigest();assert q['result_sha256']==d and q['readback_verified'] is True
+          assert r['state']=='completed_read_only' and r['input_count']==771 and r['supplier_calls']==r['tourvisor_calls']==r['samo_calls']==r['andromeda_calls']==r['direct_anex_calls']==r['database_writes']==r['mapping_writes']==0
+          assert r['current_accepted_anex_skip_count']+r['current_samo_missing_skip_count']+r['routed_future_context_count']+r['no_future_context_count']==771
+          assert all(x['hotel_count']<=30 for x in r['batch_plan'])
+          summary={k:r.get(k) for k in ['read_at_utc','today_moscow','input_count','current_accepted_anex_skip_count','current_samo_missing_skip_count','routed_future_context_count','no_future_context_count','context_group_count','batch_count']};summary['result_sha256']=d;(p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - name: Post sanitized router receipt
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          python3 - <<'PY' > result/comment.md
+          import json
+          s=json.load(open('result/verified-summary.json'))
+          print('MATCH reverse missing-ANEX user-seen771 context router COMPLETE / READ ONLY / NO-REPLAY.')
+          print()
+          print(f"CURRENT input{s['input_count']}: accepted-ANEX skip{s['current_accepted_anex_skip_count']}, lost-SAMO skip{s['current_samo_missing_skip_count']}, routed future exact contexts{s['routed_future_context_count']}, no future context{s['no_future_context_count']}. Compatible context groups{s['context_group_count']}, <=30-ID batches{s['batch_count']}.")
+          print(f"Result {s['result_sha256']}. Provider/Tourvisor/SAMO/Andromeda/direct-ANEX calls0; DB/mapping writes0. Routed contexts prove only a real user-seen date/context, not ANEX availability.")
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/issues/1971/comments -f body="$(cat result/comment.md)"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'reverse771-context-router-result-${{ github.run_id }}'
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
