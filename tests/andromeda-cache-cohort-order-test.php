@@ -99,8 +99,11 @@ function order_case(array $order, bool $validSeed = true, bool $missingPage = fa
             $prices[$id] = $dto['price']; $verified[$id] = $dto['final_price_verified'];
             aassert($dto['booking_enabled'] === false && $dto['selection_state'] === 'disabled', 'cache gained authority');
             if ($dto['final_price_verified'] === false) {
-                aassert($dto['finalPriceReady'] === false && $dto['finalPrice'] === null, 'confirmation row became final');
-                aassert($dto['money']['fuel_charge_reported'] === null, 'confirmation row invented fuel');
+                assert_confirmation_dto($dto, $offers[$id]['price']['amount']);
+            } else {
+                aassert($id === 105 && $dto['finalPriceReady'] === true
+                    && $dto['finalPrice'] === '223000' && $dto['quote_state'] === 'verified',
+                    'only independently verified row is final ready');
             }
         }
         ksort($prices); ksort($verified); ksort($resolvedPrices);
@@ -108,13 +111,12 @@ function order_case(array $order, bool $validSeed = true, bool $missingPage = fa
             ? [101 => '204265', 102 => '199390', 103 => '214265', 105 => '223000']
             : [102 => '199390', 105 => '223000'];
         aassert($resolvedPrices === $expectedResolved, 'partial pricing depends on specimen order: ' . json_encode($resolvedPrices));
-        $expectedPrices = $validSeed
-            ? [104 => '210000', 105 => '223000']
-            : [101 => '190000', 103 => '200000', 104 => '210000', 105 => '223000'];
-        $expectedVerified = $validSeed
-            ? [104 => false, 105 => true]
-            : [101 => false, 103 => false, 104 => false, 105 => true];
-        aassert($prices === $expectedPrices && $verified === $expectedVerified,
+        // Cache evidence still follows its strict groups, but having a valid flight
+        // estimate must not remove an otherwise valid supplier search-price row.
+        $expectedPrices = [101 => '190000', 102 => '185125', 103 => '200000', 104 => '210000', 105 => '223000'];
+        $expectedVerified = [101 => false, 102 => false, 103 => false, 104 => false, 105 => true];
+        aassert($prices === $expectedPrices && $verified === $expectedVerified
+            && $result['readyOfferCount'] === 1 && count($ingests[0]['rows']) === 5,
             'confirmation/verified persistence contract changed');
         aassert(!isset($resolvedPrices[104]), 'mismatched transport group reused');
         aassert(($reads[102] ?? 0) === 1 && ($reads[105] ?? 0) === 1, 'non-null exact pricing reread');
@@ -122,7 +124,13 @@ function order_case(array $order, bool $validSeed = true, bool $missingPage = fa
         aassert($cacheWrites === ($validSeed ? 1 : 0), 'cache write count/invalid provenance');
         $again = AnyTourAndromedaOfferAutosaveV1::consume($request, $dir, $ref, 1,
             new DateTimeImmutable('@' . $now), $mapping, $canonical, $pricing, $save, $ingest);
-        aassert(($again['reason'] ?? null) === 'already_published' && count($ingests) === 1, 'stable cohort republished');
+        aassert(($again['reason'] ?? null) === 'already_published'
+            && $again['readyOfferCount'] === 1 && count($ingests) === 1, 'stable cohort republished or readiness inflated');
+        echo 'ANDROMEDA_CACHE_RETENTION_MEASURE ' . json_encode([
+            'order' => $order, 'valid_seed' => $validSeed,
+            'stored_rows' => count($ingests[0]['rows']), 'ready' => $result['readyOfferCount'],
+            'idempotent_ready' => $again['readyOfferCount'],
+        ], JSON_THROW_ON_ERROR) . "\n";
         return $resolvedPrices;
     } finally { cleanup_dir($dir); }
 }
