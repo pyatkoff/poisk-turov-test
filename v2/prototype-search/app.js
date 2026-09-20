@@ -334,18 +334,22 @@ $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=e.ta
 let calendarHotels=[],calendarRequest=null;
 let dateContext=null,datePrices=new Map(),mealDraft=[],dateAnchor=null;
 const budgetText=()=>state.filters.min?`${money(state.filters.min)} — ${money(state.filters.max)}`:state.filters.max<600000?'До '+money(state.filters.max):'Любой';
+function createDateContext(source='form'){
+ const s=source==='results'?state.search:draft,filters=structuredClone(state.filters);
+ if(source==='form'&&draftDestination){filters.resorts=[...draftDestination.resorts];filters.hotelId=draftDestination.hotelId;filters.q='';}else if(s.country!==state.search.country){filters.resorts=[];filters.hotelId=0;filters.q='';}
+ return {source,search:structuredClone(s),filters};
+}
+const dateContextLabel=s=>`${countryNames[s.country]||''} · из ${s.origin==='Москва'?'Москвы':s.origin==='Казань'?'Казани':'Санкт-Петербурга'} · ${guestsText(s)} · ${durationText(s)}`;
 function openMeals(){
  mealDraft=[...state.filters.meals];showModal('meals','Какое питание включить?','ПИТАНИЕ',`<p class="modal-intro">Можно выбрать несколько вариантов.</p><div class="meal-options">${[['','Любое питание'],...Object.entries(mealNames)].map(([v,label])=>`<label class="meal-option"><input type="checkbox" data-meal-choice value="${v}" ${v?mealDraft.includes(v)?'checked':'':!mealDraft.length?'checked':''}><span><strong>${label}</strong>${v==='AI'?'<small>В том числе ультра всё включено</small>':v==='HB'?'<small>Два приёма пищи в день</small>':''}</span></label>`).join('')}</div>`);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-meals">Применить</button>';
 }
 function openBudget(){showModal('budget','Бюджет на весь тур','НА ВСЕХ ТУРИСТОВ',`<p class="modal-intro">Полная стоимость с перелётом и обязательными сборами.</p><div class="form-row"><label>От, ₽<input type="number" class="input" id="budget-min" min="0" max="600000" step="1000" value="${state.filters.min}"></label><label>До, ₽<input type="number" class="input" id="budget-max" min="0" max="600000" step="1000" value="${state.filters.max}"></label></div><div class="budget-presets">${[150000,200000,300000,600000].map(n=>`<button class="chip" data-action="budget-preset" data-value="${n}">${n===600000?'Без ограничений':'До '+money(n)}</button>`).join('')}</div><p class="error-text" id="budget-error" role="alert"></p>`);$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-budget">Применить бюджет</button>';}
 function openDates(source='form'){
- const s=source==='results'?state.search:draft;
- dateContext={source,search:structuredClone(s),filters:structuredClone(state.filters)};
- if(source==='form'&&draftDestination){dateContext.filters.resorts=[...draftDestination.resorts];dateContext.filters.hotelId=draftDestination.hotelId;dateContext.filters.q='';}else if(s.country!==state.search.country){dateContext.filters.resorts=[];dateContext.filters.hotelId=0;dateContext.filters.q='';}
+ dateContext=createDateContext(source);const s=dateContext.search;
  dateDraft={from:source==='results'&&state.selectedDate?state.selectedDate:s.from,to:source==='results'&&state.selectedDate?state.selectedDate:s.to,phase:0,flex:0};
  dateAnchor=dateDraft.from;datePrices=new Map();calendarMonth=dateDraft.from.slice(0,7)+'-01';
- showModal('dates','Даты вылета','ЦЕНЫ ИЗ БАЗЫ · ЗА ВСЕХ',`<p class="calendar-context">${esc(countryNames[s.country]||'')} · из ${s.origin==='Москва'?'Москвы':s.origin==='Казань'?'Казани':'Санкт-Петербурга'} · ${guestsText(s)} · ${durationText(s)}</p><div class="calendar-legend"><span>Сохранённая цена от, тыс. ₽</span><span><i class="legend-dot"></i>Минимум среди сохранённых цен</span></div><div id="date-calendar"></div><details class="manual-dates"><summary>Ввести даты вручную</summary><div class="form-row"><label>Вылет от<input class="input" id="date-from" type="date" min="${startDay}" max="${endDay}" value="${dateDraft.from}"></label><label>Вылет до<input class="input" id="date-to" type="date" min="${startDay}" max="${endDay}" value="${dateDraft.to}"></label></div></details>`);
+ showModal('dates','Даты вылета','ЦЕНЫ ИЗ БАЗЫ · ЗА ВСЕХ',`<p class="calendar-context">${esc(dateContextLabel(s))}</p><div class="calendar-legend"><span>Сохранённая цена от, тыс. ₽</span><span><i class="legend-dot"></i>Минимум среди сохранённых цен</span></div><div id="date-calendar"></div><details class="manual-dates"><summary>Ввести даты вручную</summary><div class="form-row"><label>Вылет от<input class="input" id="date-from" type="date" min="${startDay}" max="${endDay}" value="${dateDraft.from}"></label><label>Вылет до<input class="input" id="date-to" type="date" min="${startDay}" max="${endDay}" value="${dateDraft.to}"></label></div></details>`);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="date-footer"><div class="flex-dates" aria-label="Гибкие даты">${[0,1,2,3].map(n=>`<button data-action="flex-date" data-value="${n}" aria-pressed="${!n}">${n?'±'+n+' '+(n===1?'день':'дня'):'Точно'}</button>`).join('')}</div><p id="date-selection-hint" aria-live="polite"></p><p class="error-text" id="date-error" role="alert"></p><button class="primary picker-apply" data-action="apply-dates"></button></div>`;
  renderDateCalendar();
  loadCalendarPrices();
@@ -687,7 +691,7 @@ async function restoreSavedHotels(){
 }
 async function bootRealData(){
  const button=$('.search-submit');button.disabled=true;
- try{applyCatalog(await data.init(new URLSearchParams(location.search).get('origin')||draft.origin));state.search=structuredClone(draft);restoreURL();updateSearchUI();renderResults();button.disabled=false;await restoreSavedHotels();}
+ try{applyCatalog(await data.init(new URLSearchParams(location.search).get('origin')||draft.origin));state.search=structuredClone(draft);restoreURL();updateSearchUI();renderResults();button.disabled=false;if(modalType==='dates'){dateContext=createDateContext(dateContext?.source==='results'?'results':'form');$('.calendar-context').textContent=dateContextLabel(dateContext.search);loadCalendarPrices();}await restoreSavedHotels();}
  catch(error){$('#cards').innerHTML=`<div class="empty"><h3>Не удалось загрузить направления</h3><p>${esc(error.message)}</p><button class="primary" data-action="retry-catalog">Повторить</button></div>`;}
 }
 document.addEventListener('click',event=>{const b=event.target.closest('[data-action]');if(!b||b.disabled)return;if(b.dataset.action==='refresh-hotel')refreshHotel(Number(b.dataset.id));if(b.dataset.action==='retry-flights')loadRealFlights();if(b.dataset.action==='retry-catalog')bootRealData();});
