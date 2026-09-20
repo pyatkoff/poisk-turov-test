@@ -11,7 +11,7 @@ const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 // Relock this hash whenever a reviewed controller source change regenerates the shared map.
 const rules = {
   'tour-controller-v4.js': {
-    sourceSha256: '507aa7dcd3d5a49c147b630d01aeda09c4d0acdad9d57ad2b963a8a5f3247a7a',
+    sourceSha256: '4e6c4b038fa72046634ddbc907084325a2af519ee7723d3e90cda688250082dd',
     from: 'catch(_){};}try{',
     to: 'catch(_){}}try{'
   },
