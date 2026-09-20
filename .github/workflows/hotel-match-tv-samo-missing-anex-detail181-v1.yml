@@ -1,0 +1,185 @@
+name: MATCH TV SAMO missing ANEX detail181 v1
+on:
+  push:
+    branches: [ops/match-tv-samo-missing-anex-detail181-1971-20260920-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_missing_anex_detail181_v1.py
+      - .github/workflows/hotel-match-tv-samo-missing-anex-detail181-v1.yml
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: hotel-match-tv-samo-missing-anex-detail181-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-tv-samo-missing-anex-detail181-1971-20260920-v1
+  BASE_SHA: 04679a5f1136ac06c8cd790c2c90315a09322335
+  CLAIM_COMMENT_ID: '5749162133'
+  SOURCE_ARTIFACT_ID: '10603032763'
+  SOURCE_ARTIFACT_ZIP_SHA256: 7d64c6d2e21180bd47f6d574df78f6d640dc4f67ab24ce131f1241ebf042f9d5
+  SOURCE_RESULT_SHA256: 8644e09a8301b3a98aced075365c0ce89488d2e09adab3d43796f3b4ced0c968
+jobs:
+  details:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate source and build exact181 input
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input reservation result
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 2
+          git diff --name-only "$BASE_SHA..HEAD" | grep -Fx 'scripts/diagnostics/hotel_match_tv_samo_missing_anex_detail181_v1.py'
+          git diff --name-only "$BASE_SHA..HEAD" | grep -Fx '.github/workflows/hotel-match-tv-samo-missing-anex-detail181-v1.yml'
+          python3 -m py_compile scripts/diagnostics/hotel_match_tv_samo_missing_anex_detail181_v1.py
+          python3 scripts/diagnostics/hotel_match_tv_samo_missing_anex_detail181_v1.py --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          for v in [os.environ['OPERATION_ID'],os.environ['SOURCE_RESULT_SHA256'],os.environ['SOURCE_ARTIFACT_ID']]: assert v in b
+          assert 'exactly181' in b or 'exactly181' in b.replace(' ','')
+          assert 'No search/start/status/results/dates/continue' in b or 'No search' in b
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$SOURCE_ARTIFACT_ID/zip" > input/source.zip
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile
+          zpath=pathlib.Path('input/source.zip')
+          assert hashlib.sha256(zpath.read_bytes()).hexdigest()==os.environ['SOURCE_ARTIFACT_ZIP_SHA256']
+          want=os.environ['SOURCE_RESULT_SHA256'];hits=[]
+          with zipfile.ZipFile(zpath) as z:
+            for i in z.infolist():
+              if i.is_dir() or i.file_size>64_000_000: continue
+              raw=z.read(i)
+              if hashlib.sha256(raw).hexdigest()==want:hits.append((i.filename,raw))
+          assert len(hits)==1,hits
+          r=json.loads(hits[0][1]);assert r['operation_id']=='hotel-match-tv-samo-missing-anex-frontier-1971-20260920-v1'
+          assert r['route_counts']['saved_tour_detail_ready']==181
+          rows=[]
+          for x in r['frontier']:
+            if x.get('route')!='saved_tour_detail_ready':continue
+            ctx=x.get('latest_future_anex_context') or {};tid=ctx.get('tour_id')
+            assert tid and x.get('samo_external_ids') and x.get('safe_to_write_now') is False
+            rows.append({'tv_hotel_id':int(x['local_hotel_id']),'hotel_name':x['name'],'operator_id':13,'tour_id':str(tid),'search_id':ctx.get('search_id'),'departure_date':ctx.get('departure_date'),'nights':ctx.get('nights'),'observed_at':ctx.get('observed_at'),'samo_external_ids':x['samo_external_ids']})
+          assert len(rows)==181
+          out={'operation':os.environ['OPERATION_ID'],'source_result_sha256':want,'input_count':181,'rows':rows}
+          raw=(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();pathlib.Path('input/detail181.json').write_bytes(raw)
+          pathlib.Path('input/detail181.sha256').write_text(hashlib.sha256(raw).hexdigest()+'\n')
+          print('INPUT181_OK',hashlib.sha256(raw).hexdigest())
+          PY
+      - name: Reserve before provider access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import datetime,hashlib,json,os,pathlib
+          p=pathlib.Path('input/detail181.json')
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'source_artifact_id':int(os.environ['SOURCE_ARTIFACT_ID']),'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'input_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'input_count':181,'provider_day':'2026-09-20','daily_limit':3000,'operation_cap':181,'ledger_mode':'existing_account_day_only','search_calls':0,'status_calls':0,'results_calls':0,'dates_calls':0,'continue_calls':0,'samo_calls':0,'andromeda_calls':0,'direct_anex_calls':0,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with pathlib.Path('reservation/reservation.json').open('xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed':assert r['conclusion']=='success';print('SECURITY_OK',r['id']);break
+            time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'tv-samo-missing-anex-detail181-reservation-${{ github.run_id }}'
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute one retained ANEX detail per eligible row
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077
+          test -n "$KEY_VALUE";test -n "$HOST_VALUE";test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE";op=".anytoour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" input/detail181.json scripts/diagnostics/hotel_match_tv_samo_missing_anex_detail181_v1.py "$remote:$op/payload/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/detail181.json\" python3 \"\$HOME/$op/payload/hotel_match_tv_samo_missing_anex_detail181_v1.py\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          scp -r "${opts[@]}" "$remote:$op/." result/server/ >result/readback.stdout 2>result/readback.stderr
+          trc=$?
+          set -e
+          printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import collections,hashlib,json,os,pathlib
+          p=pathlib.Path('result/server');r=json.loads((p/'result.json').read_text());q=json.loads((p/'receipt.json').read_text());d=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID'];assert q['result_sha256']==d
+          assert len(r['edges'])==181 and r['input_count']==181
+          assert r['provider_calls']==len(list(p.glob('request-*.json')))==r['attempted']<=181
+          assert r['search_calls']==r['status_calls']==r['results_calls']==r['dates_calls']==r['continue_calls']==r['samo_calls']==r['andromeda_calls']==r['direct_anex_calls']==0
+          assert r['database_writes']==r['mapping_writes']==0 and all(x['safe_to_write_now'] is False for x in r['edges'])
+          summary={k:r.get(k) for k in ['state','reason','attempted','provider_calls','daily_accounted_after','operation_cap','state_counts','link_state_counts']};summary['result_sha256']=d
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          pathlib.Path('result/state.txt').write_text(str(r['state'])+'\n')
+          PY
+      - name: Post sanitized acquisition receipt
+        if: always()
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          test -f result/verified-summary.json || exit 0
+          python3 - <<'PY' > result/comment.md
+          import json
+          s=json.load(open('result/verified-summary.json'))
+          print('MATCH TV+SAMO missing ANEX detail181 terminal receipt / NO-REPLAY after provider access.')
+          print()
+          print(f"State {s.get('state')}; reason {s.get('reason')}; attempted/provider calls {s.get('provider_calls')}/181; shared TV ledger after {s.get('daily_accounted_after')}/3000; operation cap {s.get('operation_cap')}.")
+          print('Detail states: '+json.dumps(s.get('state_counts') or {},ensure_ascii=False,sort_keys=True))
+          print('Link states: '+json.dumps(s.get('link_state_counts') or {},ensure_ascii=False,sort_keys=True))
+          print(f"Result {s.get('result_sha256')}. Search/status/results/dates/continue/SAMO/Andromeda/direct-ANEX calls0; DB/mapping writes0. No mapping is accepted by this acquisition.")
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/issues/1971/comments -f body="$(cat result/comment.md)"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'tv-samo-missing-anex-detail181-result-${{ github.run_id }}'
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Require completed bounded acquisition
+        if: always()
+        shell: bash
+        run: |
+          test -f result/state.txt
+          test "$(cat result/state.txt)" = completed_read_only
