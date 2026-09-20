@@ -115,6 +115,18 @@ final class AnyTourIntOfferSnapshotProducerV1
                     $current,
                     $nowTs
                 );
+            } elseif ($provider === 'andromeda' && $pricedMoney === null) {
+                // A complete mapped Andromeda PRICE row remains useful before verified
+                // supplier repricing. Persist only its supplier search price as a
+                // confirmation-required row: unknown fuel stays unknown and neither
+                // selection nor booking authority is introduced.
+                $dto = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
+                    $offer,
+                    $retained,
+                    $current,
+                    $nowTs
+                );
+                $confirmationRequired = true;
             } else {
                 $dto = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
                     $offer,
