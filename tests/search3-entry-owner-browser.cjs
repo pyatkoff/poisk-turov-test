@@ -208,6 +208,9 @@ async function checkUrlRoundTrip(page, width, blocked) {
   const submittedReload = submitted.expected;
   assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'reload restores the exact shareable conditions including the explicitly chosen advanced operator');
   await page.screenshot({ path: path.join(output, `url-restored-${width}.png`), fullPage: true });
+  // Clear the restored hotel through its visible control, keeping the native
+  // canonical ID and the query consistent before testing history denial.
+  await page.locator('[data-v2-hotel-query]').fill('');
   const cleared = await page.evaluate(async () => {
     const form = document.getElementById('tourSearch'), lifecycle = window.V2SearchLifecycle;
     const optional = ['arrival', 'region', 'subregion', 'hotel', 'operator', 'hotel_type', 'stars', 'rating', 'food', 'price_from', 'price_till'];

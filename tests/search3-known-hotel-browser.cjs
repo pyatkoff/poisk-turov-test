@@ -55,6 +55,7 @@ const viewports = [
           if (action === 'search_start') searchStarts.push(request.url());
           const payload = action === 'countries' ? [{ id: 4, name: 'Турция' }]
             : action === 'regions' ? [{ id: 401, name: 'Белек' }, { id: 402, name: 'Кемер' }]
+            : action === 'hotels' ? hotels
             : action === 'meals' ? [{ id: 7, name: 'Всё включено' }]
             : [];
           return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload) });
@@ -499,6 +500,7 @@ const viewports = [
       await input.fill('');
       await page.evaluate(async () => { window.V2SearchLifecycle.hydrateUrlState('hotel=41002'); await window.V2SearchLifecycle.submit(); });
       assert.deepEqual(await page.evaluate(() => window.__hotelIntentAudit.starts[1].hotelIds), ['41002'], 'URL-hydrated canonical hotel without a typed query remains valid');
+      assert.equal(await input.inputValue(), await select.locator('option:checked').textContent(), 'hydrated ID and visible hotel label agree');
       await input.fill('New hotel');
       assert.equal(await select.inputValue(), '', 'editing a hydrated hotel clears its old canonical restriction too');
       await page.evaluate(() => window.V2SearchLifecycle.submit());
@@ -568,7 +570,33 @@ const viewports = [
       })), tripBeforeRecovery, 'all-hotels recovery preserves the complete trip context');
       assert.equal(searchStarts.length, 1, 'explicit all-hotels recovery starts exactly one normal search');
       assert.equal(new URL(searchStarts[0]).searchParams.has('hotel'), false, 'recovery search does not send a stale hotel restriction');
-      evidence.push({ viewport, geometry, keyboardViewport, intentValidation: { invalidCases, nativeAndDirect: true, exactSelectedAndHydrated: true, clearWithoutSubmit: true, pendingSearchPreserved: true }, catalogFailureCases: failures.length, keyboardRecovery: true, queryReopening: true, dismissedEnterRecovery: true, shortQueryGuidance: true, coalescedReturnEdit: true, selectedReturnPreserved: true, touchSelection: viewport.width < 768, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
+      // Reopen the real manual editor, including its catalog and lifecycle
+      // startup. A saved canonical hotel must not look like an unrestricted search.
+      const restoreQuery = new URLSearchParams({ from: '1', country: '4', region: '401', hotel: '41001', dateFrom: tripBeforeRecovery.dateFrom, dateTo: tripBeforeRecovery.dateTo, daysFrom: tripBeforeRecovery.daysFrom, daysTill: tripBeforeRecovery.daysTill, count_people: '2', child_count: '0', search3_restore: '1' });
+      const lookupsBeforeRestore = hotelQueries.length;
+      await page.goto(base + '/poisk-turov/?' + restoreQuery, { waitUntil: 'domcontentloaded' });
+      await page.getByText('Параметры сохранённого поиска восстановлены. Проверьте даты и нажмите «Найти туры».', { exact: true }).waitFor();
+      await page.waitForFunction(() => document.activeElement === document.forms.tourSearch.elements.from);
+      assert.equal(await select.inputValue(), '41001');
+      assert.equal(await input.inputValue(), 'RIXOS PREMIUM BELEK', 'manual restore shows the actual selected catalog label');
+      assert.equal(await input.getAttribute('data-selected-hotel-id'), '41001');
+      assert.equal(await list.isVisible(), false, 'restoring a selection does not open suggestions');
+      assert.equal(hotelQueries.length, lookupsBeforeRestore, 'restore does not perform an autocomplete lookup');
+      assert.equal(searchStarts.length, 1, 'manual restore does not add a supplier search');
+      await input.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(output, `known-hotel-restored-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+      await page.evaluate(() => window.V2SearchLifecycle.hydrateUrlState('hotel=49999'));
+      assert.equal(await select.inputValue(), '49999');
+      assert.equal(await input.inputValue(), 'Отель #49999', 'unknown ID keeps its existing honest placeholder instead of an invented name');
+      const finishRestoreLookup = await delayLookup('Marriott');
+      await page.evaluate(() => window.V2SearchLifecycle.hydrateUrlState('hotel=41001'));
+      await finishRestoreLookup();
+      assert.equal(await input.inputValue(), 'RIXOS PREMIUM BELEK', 'late query cannot overwrite the newly restored selection');
+      assert.equal(await select.inputValue(), '41001');
+      assert.equal(await list.isVisible(), false);
+      assert.equal(await input.evaluate(node => node === document.activeElement), true, 'hydration does not move the current focus');
+      assert.equal(searchStarts.length, 1);
+      evidence.push({ viewport, geometry, keyboardViewport, manualHotelRestore: { knownId: '41001', unknownId: '49999', visibleSelection: true, noAddedSearch: true, lateQueryIgnored: true, focusPreserved: true }, intentValidation: { invalidCases, nativeAndDirect: true, exactSelectedAndHydrated: true, clearWithoutSubmit: true, pendingSearchPreserved: true }, catalogFailureCases: failures.length, keyboardRecovery: true, queryReopening: true, dismissedEnterRecovery: true, shortQueryGuidance: true, coalescedReturnEdit: true, selectedReturnPreserved: true, touchSelection: viewport.width < 768, hotelQueries: hotelQueries.slice(), selectedHotelId: '41001', supplierSearches: searchStarts.length, errors });
       assert.deepEqual(errors, []);
       await page.close();
     }
