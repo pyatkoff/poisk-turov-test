@@ -326,7 +326,7 @@ function modalBack(){
  const previous=modalHistory.pop();if(!previous)return;
  restoringModal=true;showModal(previous.type,previous.title,previous.kicker,previous.body,previous.className==='wide-dialog');restoringModal=false;
  $('#modal').className=previous.className;$('#modal-footer').innerHTML=previous.footer;$('#modal-footer').hidden=previous.footerHidden;gallery=previous.gallery;selectedOffer=previous.offer;$('#modal-back').hidden=!modalHistory.length;
- if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='compare')renderCompare();if(previous.type==='favorites')renderFavorites();
+ if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='compare')renderCompare();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);
  restoreFocus(previous.focus,$('#modal-title'),$('#modal'));$('#modal-body').scrollTop=previous.scroll;rememberUIRoute();
 }
 $('#modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
@@ -427,7 +427,10 @@ function applyFlightPair(){if(!flightDraft)return;const applied=withFlightPair(f
 function savedFlightText(o){const v=flightPairFor(o);return v?[...(v.forward||[]),...(v.backward||[])].map(f=>[data.text(f.company),f.number,f.departure?.time].filter(Boolean).join(' ')).map(esc).join(' · '):'Рейс пока не выбран';}
 function refreshHotel(id){const h=hotels.find(h=>h.id===id);if(!h?.legacyIds.length){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}closeModal();state.filters.hotelId=id;runSearch({hotelIds:h.legacyIds});}
 function openLeadPreview(){
- const o=selectedOffer;if(!o?.tour)return;savedSelection=o;updateNav();showModal('selected-tour','Выбранный тур','ВАШ ВЫБОР',`<div class="verification-tour"><strong>${esc(hotels.find(h=>h.id===o.hotelId).name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span><span>${savedFlightText(o)}</span><strong>${o.pricePending?'Цена уточняется':money(o.total)}</strong></div><p class="modal-intro">Выбор сохранён на время этой сессии. В версии для проверки заявки и оплата отключены.</p><div class="form-row"><label>Ваше имя<input class="input" autocomplete="name" placeholder="Как к вам обращаться" disabled></label><label>Телефон<input class="input" type="tel" autocomplete="tel" placeholder="+7" disabled></label></div>`);$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="secondary" data-action="selected-tour-details">К условиям тура</button><button class="primary" disabled>Отправка заявок отключена</button>';
+ const o=selectedOffer;if(!o?.tour)return;savedSelection=o;updateNav();
+ showModal('selected-tour','Выбранный тур','ВАШ ВЫБОР',`<div class="verification-tour"><strong>${esc(hotels.find(h=>h.id===o.hotelId).name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span><span>${savedFlightText(o)}</span><strong>${o.pricePending?'Цена уточняется':money(o.total)}</strong></div>${window.AnyTourPrototypeLead.markup()}`);
+ $('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="secondary" data-action="selected-tour-details">К туру</button>'+window.AnyTourPrototypeLead.action();
+ window.AnyTourPrototypeLead.bind(o);
 }
 
 let offerView=null,comparisonQuotes=[];
@@ -542,7 +545,7 @@ function renderSearchStatus(items,total){
  if(!items.length&&r.pending)$('#cards').innerHTML=Array.from({length:2},()=>'<div class="search-skeleton" aria-hidden="true"><div class="skeleton-photo"></div><div class="skeleton-lines"><i></i><i></i><i></i></div></div>').join('');
 }
 function runSearch(options={}){
- selectionGeneration++;selectedOffer=null;state.hasSearched=true;
+ selectionGeneration++;selectedOffer=null;savedSelection=null;removedSelectedTour=null;window.AnyTourPrototypeLead.reset();updateNav();state.hasSearched=true;
  const key=searchKey(state.search);searchResponse={key,phase:'loading',operators:[],pending:true};collapseSearch();
  data.search(state.search,event=>{
   if(key!==searchKey(state.search))return;
@@ -593,7 +596,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  switch(action){
  case 'choose-flight':openFlightPicker();break;case 'apply-flight':applyFlightPair();break;
  case 'selected-tour':openSelectedTour();break;
- case 'selected-tour-details':{const saved=readSelectedTour();if(saved)openOffer(saved.key,saved);break;}
+ case 'selected-tour-details':{const saved=readSelectedTour();if(saved){selectedOffer=saved;renderRealOffer();}break;}
  case 'selected-tour-alternatives':restoreSelectedSearch();break;
  case 'remove-selected-tour':removeSelectedTour();break;
  case 'undo-selected-tour':undoSelectedTour();break;

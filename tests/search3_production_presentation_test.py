@@ -263,6 +263,34 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             source = (ROOT / 'v2' / name).read_bytes()
             if name == 'tour-controller-v4.js':
+                # The prototype enters the same lead owner with a frozen selection.
+                # Reverse only that reviewed entry; the original payload, request,
+                # response handling and events must still match the protected hash.
+                handoff_start = source.index(b'// Presentation handoff:')
+                handoff_end = source.index(b'function consentHtml()', handoff_start)
+                self.assertEqual(hashlib.sha256(source[handoff_start:handoff_end]).hexdigest(),
+                                 '9654931720b281eac402ecb55d60d4fcb0933210682235fc5b3f2b7d3360b62e')
+                source = source[:handoff_start] + source[handoff_end:]
+                lead_entry_fragments = (
+                    ('function selectedFlightData(v=flightVariants[selectedFlightIndex]){',
+                     'function selectedFlightData(){const v=flightVariants[selectedFlightIndex];'),
+                    ('function leadPayload(fd,selection){const t=(selection?selection.tour:currentTour)||{},h=t.hotel||{};const payload=Object.assign(',
+                     'function leadPayload(fd){const t=currentTour||{},h=t.hotel||{};return Object.assign('),
+                    ("searchId:(selection?selection.searchId:rt.state.searchId)||''",
+                     "searchId:rt.state.searchId||''"),
+                    ('selectedFlightData(selection?selection.flight:flightVariants[selectedFlightIndex]),attribution());return selection?window.V2LeadSearchContext.enrichPayload(payload,selection.search):payload;}',
+                     'selectedFlightData(),attribution());}'),
+                    ('async function submitLead(form,selection,controls){const btn=controls&&controls.button||', 'async function submitLead(form){const btn='),
+                    ('const payload=selection?leadPayload(new FormData(form),selection):leadPayload(new FormData(form)),tourSnapshot=selection?selection.tour:currentTour,flightSnapshot=selection?selection.flight:flightVariants[selectedFlightIndex]||null;',
+                     'const payload=leadPayload(new FormData(form)),tourSnapshot=currentTour,flightSnapshot=flightVariants[selectedFlightIndex]||null;'),
+                    ('finally{if(!sent)btn.disabled=false;}return sent;}',
+                     'finally{if(!sent)btn.disabled=false;}}'),
+                    ('{selectTour,selectProviderQuote,createLeadSession,get currentTour()',
+                     '{selectTour,selectProviderQuote,get currentTour()'),
+                )
+                for reviewed, original in lead_entry_fragments:
+                    self.assertEqual(source.count(reviewed.encode()), 1, 'one optional presentation lead entry')
+                    source = source.replace(reviewed.encode(), original.encode(), 1)
                 # Reviewed canonical hotel presentation only. Reverse every exact
                 # display insertion before the existing business/transport digest.
                 # The supplier tour and lead source remain byte-for-byte protected.

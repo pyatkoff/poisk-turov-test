@@ -31,12 +31,14 @@ already enforce that boundary. No reader guard or provider contract is widened.
 | Fuel | Unknown remains unknown; zero is shown only when explicitly supplied |
 | Cached offer selection | Requires refresh; cached IDs are never sent to `tour` or `flights` |
 | Favorites and comparison | Original widgets; own hotel IDs, separate real-data storage namespace |
-| Lead handoff | Preview selection summary only; no submission or payment |
+| Lead handoff | Original selected-tour summary with editable contacts, phone validation and an immutable handoff to the existing controller; preview validates without sending |
 
 This packet is the first functional transfer, not final production migration.
-Current-source provider-specific ANEX/Andromeda quote selection and the production
-lead-controller handoff still need integration into this presentation before the
-whole product can replace production. Cached provider offers remain display-only
+Current-source provider-specific ANEX/Andromeda quote selection still needs
+integration before the whole product can replace production. The existing ANEX
+adapter deliberately declines the LOCAL boundary; the Andromeda controller also
+does not yet support lead delivery. These restrictions are not widened here.
+Cached provider offers remain display-only
 and require refresh. Calendar does not initiate supplier acquisition. Descriptive
 facets without complete factual coverage are not offered.
 
@@ -44,12 +46,27 @@ Focused acceptance: `tests/search3-prototype-real-data.cjs` exercises the copied
 at 390 and 1440 px against deterministic API-shaped fixtures. It covers DB-only
 calendar loading, search and own-profile projection, local stars, exact-tour
 opening, real-shaped flight selection, full variant price including decimals and
-disabled lead submission. It makes no live supplier requests. Screenshots must
+preview lead validation. It makes no live supplier requests. Screenshots must
 be inspected. Physical iPhone/Safari and supplier-connected acceptance remain
 separate evidence; they are not implied by this test.
 
-Source assets are copied from the immutable baseline. Existing generated Search3
-assets, lifecycle/controller files, DB readers, pricing implementation, lead
-transport/mapping, Metrika and production entrypoints are unchanged. Keep this
-new presentation isolated until its remaining handoffs and owner acceptance are
-complete.
+The contact form calls `V2TourController.createLeadSession` through the presentation
+adapter. That entry snapshots the confirmed Tourvisor tour, selected flight pair,
+search ID and search parameters. The existing `leadPayload`, `submitLead` and
+`V2LeadSearchContext.enrichPayload` remain the only mapping/delivery owners; URL,
+headers, payload fields, decimal prices, child ages, success/duplicate handling
+and existing events are retained. A new search invalidates the old quote/session.
+Contacts remain in memory across modal navigation; consent must be selected again.
+
+`tests/search3-prototype-lead.cjs` uses intercepted HTTP fixtures to cover unknown
+provider rejection, snapshot isolation, children aged 0/17, full decimal flight
+price, invalid phone, pending duplicate suppression, failure/retry, server duplicate
+receipt and stale-search rejection. Fixture delivery success is not a real lead.
+On the published preview, the button checks the form locally and explicitly states
+that nothing was sent. The server's `preview-lead-disabled.php` remains HTTP 403.
+
+Source visual assets and logo remain from the immutable baseline. The controller
+gains a presentation entry and its shared build map is regenerated; legacy defaults
+are retained. DB readers, supplier APIs, pricing, lead transport/mapping, Metrika
+and production entrypoints remain unchanged. Production lead activation and live
+supplier acceptance are separate from this isolated preview.
