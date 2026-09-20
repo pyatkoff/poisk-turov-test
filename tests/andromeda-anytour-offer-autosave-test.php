@@ -145,6 +145,16 @@ function callbacks(array &$ingests, ?array $surcharge = null, bool $mapping = tr
     return [$mappingReader, $canonicalResolver, $surchargeReader, $save, $ingest];
 }
 
+function assert_confirmation_dto(array $dto, string $amount = '185125'): void {
+    aassert($dto['finalPriceReady'] === false && $dto['finalPrice'] === null
+        && $dto['price'] === $amount && $dto['currency'] === 'RUB', 'confirmation used a full or derived price');
+    aassert($dto['money']['fuel_charge_reported'] === null
+        && $dto['money']['search_price_with_surcharge'] === null
+        && $dto['quote_state'] === 'unknown' && $dto['final_price_verified'] === false
+        && $dto['selection_state'] === 'disabled' && $dto['booking_enabled'] === false,
+        'confirmation gained fuel/final/selection authority');
+}
+
 // Missing-field provenance is sanitized and records only ownership, never raw supplier text.
 $criteria = [
     'TOWNFROMINC' => '1', 'STATEINC' => '4', 'CHECKIN_BEG' => '20261010', 'CHECKIN_END' => '20261010',
@@ -188,8 +198,8 @@ $anex = AnyTourThreeProviderMoneyFacts::fromSearch('anex',
 $anexPriced = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($anex, 2, 1);
 aassert($anexPriced['search_price_with_surcharge']['amount'] === '102500', 'ANEX per-passenger arithmetic regressed');
 
-// Complete pages plus flight-only estimates cannot publish a false full-price
-// snapshot or write a completion checkpoint that suppresses later fuel evidence.
+// Flight-only evidence must not remove valid mapped PRICE rows from the store.
+// Retain search prices as confirmation-required, never the derived flight total.
 $dir = temp_searches();
 try {
     $ref = hash('sha256', 'complete-two-page'); $created = time() - 30; $ingests = [];
@@ -198,9 +208,20 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === false && $result['reason'] === 'no_final_price_ready_resolved_offers', 'flight-only cohort marked full-price');
-    aassert($result['receivedOfferCount'] === 2 && $result['ownedOfferCount'] === 2 && $ingests === [], 'flight-only cohort ingest');
-    aassert(!file_exists($dir . '/' . $ref . '-' . $created . '-anytour-offer-autosave-v1.json'), 'held cohort checkpoint written');
+    echo 'ANDROMEDA_ESTIMATE_RETENTION_MEASURE ' . json_encode([
+        'published' => $result['published'], 'ready' => $result['readyOfferCount'],
+        'stored_rows' => count($ingests[0]['rows'] ?? []),
+    ], JSON_THROW_ON_ERROR) . "\n";
+    aassert($result['published'] === true && $result['readyOfferCount'] === 0, 'flight-only search rows were dropped or marked final');
+    aassert($result['receivedOfferCount'] === 2 && $result['ownedOfferCount'] === 2
+        && count($ingests) === 1 && count($ingests[0]['rows']) === 2, 'flight-only cohort retention');
+    foreach ($ingests[0]['rows'] as $row) assert_confirmation_dto($row['dto']);
+    $checkpoint = json_decode(file_get_contents($dir . '/' . $ref . '-' . $created . '-anytour-offer-autosave-v1.json'), true, 64, JSON_THROW_ON_ERROR);
+    aassert($checkpoint['ready_offer_count'] === 0, 'confirmation checkpoint claimed final prices');
+    $again = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+        new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
+    aassert($again['reason'] === 'already_published' && $again['readyOfferCount'] === 0 && count($ingests) === 1,
+        'idempotency changed readiness or repeated intake');
 } finally { cleanup_dir($dir); }
 
 // Saved independently verified totals still publish a complete two-page cohort,
@@ -249,11 +270,10 @@ try {
     aassert($dto['tour']['placement']['raw'] === '2AD+1CH', 'raw placement lost');
     $again = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $pricing, $save, $ingest);
-    aassert($again['reason'] === 'already_published' && count($ingests) === 1, 'identical verified cohort republished');
+    aassert($again['reason'] === 'already_published' && $again['readyOfferCount'] === 2 && count($ingests) === 1, 'identical verified cohort republished');
 } finally { cleanup_dir($dir); }
 
-// EOF completion still recognizes preceding data pages. Completeness alone is
-// not evidence that their flight-only prices include fuel.
+// EOF completion retains preceding PRICE rows without promoting flight-only totals.
 $dir = temp_searches();
 try {
     $ref = hash('sha256', 'terminal-empty-eof'); $created = time() - 30; $ingests = [];
@@ -265,8 +285,10 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === false && $result['reason'] === 'no_final_price_ready_resolved_offers', 'terminal flight-only cohort published');
-    aassert($result['receivedOfferCount'] === 2 && $result['ownedOfferCount'] === 2 && $ingests === [], 'terminal data pages lost or ingested');
+    aassert($result['published'] === true && $result['readyOfferCount'] === 0, 'terminal flight-only prices were promoted or rows lost');
+    aassert($result['receivedOfferCount'] === 2 && $result['ownedOfferCount'] === 2
+        && count($ingests[0]['rows']) === 2, 'terminal data pages lost');
+    foreach ($ingests[0]['rows'] as $row) assert_confirmation_dto($row['dto']);
 } finally { cleanup_dir($dir); }
 
 // A zero pages_count page with offers is not EOF and must fail closed.
@@ -350,7 +372,7 @@ try {
     aassert($result['published'] === true && count($ingests) === 1 && $ingests[0]['rows'] === [], 'excluded-only cohort not authoritative empty');
 } finally { cleanup_dir($dir); }
 
-// Safe excluded rejections do not poison the cohort, but do not prove its fuel.
+// Safe excluded rejections do not poison valid confirmation-required rows.
 $dir = temp_searches();
 try {
     $ref = hash('sha256', 'safe-excluded-rejection'); $created = time() - 30; $ingests = [];
@@ -361,8 +383,9 @@ try {
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['published'] === false && $result['reason'] === 'no_final_price_ready_resolved_offers'
-        && $result['ownedOfferCount'] === 1 && $ingests === [], 'safe rejection changed completeness or fuel guard');
+    aassert($result['published'] === true && $result['readyOfferCount'] === 0
+        && $result['ownedOfferCount'] === 1 && count($ingests[0]['rows']) === 1, 'safe rejection changed completeness or retention');
+    assert_confirmation_dto($ingests[0]['rows'][0]['dto']);
 } finally { cleanup_dir($dir); }
 
 // Owned, unknown, legacy or payload-bearing rejected rows stay fail-closed.
@@ -396,4 +419,78 @@ try {
     aassert($result['reason'] === 'duplicate_offer_identity' && $ingests === [], 'duplicate offer published');
 } finally { cleanup_dir($dir); }
 
+// Both retained envelope shapes and explicit zero keep only the supplier base.
+foreach ([party_surcharge(), party_surcharge('185125', '0', '185125'),
+    ['state' => 'estimated', 'fact' => party_surcharge(), 'verified_quote' => null]] as $case => $fact) {
+    $dir = temp_searches();
+    try {
+        $ref = hash('sha256', 'estimated-shape-' . $case); $created = time() - 30; $ingests = [];
+        write_state($dir, $ref, $created, 1, state($ref, 1, 1, 1, $created, [normalized_offer('shape-' . $case)]));
+        [$mapping, $canonical, $pricing, $save, $ingest] = callbacks($ingests, $fact);
+        $before = $fact;
+        $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+            new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $pricing, $save, $ingest);
+        aassert($result['published'] === true && $result['readyOfferCount'] === 0 && count($ingests[0]['rows']) === 1, 'estimated shape not retained');
+        assert_confirmation_dto($ingests[0]['rows'][0]['dto']);
+        aassert($fact === $before, 'retained flight evidence mutated');
+    } finally { cleanup_dir($dir); }
+}
+
+// A later verified quote must upgrade a mixed PRICE cohort, not be suppressed by
+// its earlier confirmation checkpoint. Missing evidence never loses sibling rows.
+$dir = temp_searches();
+try {
+    $ref = hash('sha256', 'estimate-upgrade'); $created = time() - 30; $ingests = [];
+    $plain = normalized_offer('upgrade-plain'); $estimated = normalized_offer('upgrade-estimated');
+    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 1, $created, [$plain, $estimated]));
+    [$mapping, $canonical, $unused, $save, $ingest] = callbacks($ingests);
+    $mode = 'estimated';
+    $pricing = static function(array $state, int $created, array $offer, array $current) use (&$mode, $estimated, $verifiedPricing): ?array {
+        if ($offer['offer_ref'] !== $estimated['offer_ref']) return null;
+        return $mode === 'estimated' ? ['state' => 'estimated', 'fact' => party_surcharge(), 'verified_quote' => null] : $verifiedPricing;
+    };
+    $at = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    $first = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1, $at, $mapping, $canonical, $pricing, $save, $ingest);
+    aassert($first['published'] === true && $first['readyOfferCount'] === 0 && count($ingests[0]['rows']) === 2, 'mixed estimate lost a row');
+    foreach ($ingests[0]['rows'] as $row) assert_confirmation_dto($row['dto']);
+    $mode = 'verified';
+    $upgraded = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1, $at, $mapping, $canonical, $pricing, $save, $ingest);
+    aassert($upgraded['published'] === true && $upgraded['readyOfferCount'] === 1
+        && count($ingests) === 2 && count($ingests[1]['rows']) === 2, 'verified upgrade suppressed or sibling lost');
+    assert_confirmation_dto($ingests[1]['rows'][0]['dto']);
+    aassert($ingests[1]['rows'][1]['dto']['finalPriceReady'] === true
+        && $ingests[1]['rows'][1]['dto']['finalPrice'] === '199390', 'verified final not preserved');
+    $again = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1, $at, $mapping, $canonical, $pricing, $save, $ingest);
+    aassert($again['reason'] === 'already_published' && $again['readyOfferCount'] === 1 && count($ingests) === 2,
+        'mixed finalizer inflated readiness or repeated intake');
+    echo "ANDROMEDA_ESTIMATE_UPGRADE_OK stored=2 initial_ready=0 upgraded_ready=1 repeated_intakes=0\n";
+} finally { cleanup_dir($dir); }
+
+// Malformed or contradictory retained evidence still refuses BEFORE persistence.
+$invalid = [];
+$bad = party_surcharge(); $bad['surcharge_scope'] = 'person'; $invalid['scope'] = $bad;
+$bad = party_surcharge(); $bad['search_price']['amount'] = '1'; $invalid['base'] = $bad;
+$bad = party_surcharge(); $bad['party_surcharge']['source'] = 'unknown'; $invalid['source'] = $bad;
+$bad = party_surcharge(); $bad['party_surcharge']['currency'] = 'EUR'; $invalid['currency'] = $bad;
+$bad = party_surcharge(); $bad['search_price_with_surcharge']['amount'] = '199391'; $invalid['sum'] = $bad;
+$invalid['shape'] = ['state' => 'estimated', 'fact' => 'bad'];
+foreach ($invalid as $case => $fact) {
+    $dir = temp_searches();
+    try {
+        $ref = hash('sha256', 'invalid-estimate-' . $case); $created = time() - 30; $ingests = [];
+        write_state($dir, $ref, $created, 1, state($ref, 1, 1, 1, $created, [normalized_offer('invalid-' . $case)]));
+        [$mapping, $canonical, $pricing, $save, $ingest] = callbacks($ingests, $fact);
+        $refused = false;
+        try {
+            $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+                new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $pricing, $save, $ingest);
+            $refused = $result['published'] === false && $result['reason'] === 'offer_contract_incomplete';
+        } catch (DomainException $error) {
+            $refused = $case === 'sum' && $error->getMessage() === 'ANDROMEDA_ANYTOUR_PROTECTED_PRICE_MISMATCH';
+        }
+        aassert($refused && $ingests === [], 'invalid estimate fell back: ' . $case);
+        aassert(!file_exists($dir . '/' . $ref . '-' . $created . '-anytour-offer-autosave-v1.json'), 'invalid estimate wrote checkpoint');
+    } finally { cleanup_dir($dir); }
+}
+echo "ANDROMEDA_ESTIMATE_RETENTION_OK shapes=3 invalid=6 full_price_guard_unchanged=1 supplier=0 live_db=0\n";
 echo "andromeda-anytour-offer-autosave-test: OK\n";
