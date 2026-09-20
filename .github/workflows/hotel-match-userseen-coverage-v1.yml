@@ -1,0 +1,120 @@
+name: MATCH all retained user-search coverage v1
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_userseen_coverage_v1.php
+      - .github/workflows/hotel-match-userseen-coverage-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency:
+  group: hotel-match-userseen-coverage-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OP: hotel-match-userseen-coverage-1971-20260920-v1
+  BASE: d527fb1c60d964ba54206948c72d169e165bd334
+  SOURCE: '${{ github.event.pull_request.head.sha }}'
+  CLAIM: '5751291651'
+jobs:
+  census:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-userseen-coverage-1971-20260920-v1' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ env.SOURCE }}', fetch-depth: 0, persist-credentials: false}
+      - name: Check exact scope, owner claim and unchanged resolvers
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p payload/source/scripts/diagnostics payload/source/app/integrations result
+          test "$(git rev-parse HEAD)" = "$SOURCE"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > result/claim.json
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess
+          assert set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE']+'..HEAD'],text=True).splitlines())=={'scripts/diagnostics/hotel_match_userseen_coverage_v1.php','.github/workflows/hotel-match-userseen-coverage-v1.yml'}
+          pins={'scripts/diagnostics/hotel_match_anex_effective_coverage.php':'1b5190727690f50a4cdd606c48afa575978ec48e','app/integrations/anex-search-mapping-registry.php':'cc135a95d2a6e0f73ce50be2141c9b8a26fddc58','app/integrations/andromeda-hotel-resolver.php':'d49d0eaf8d6abccefd84c0c3921edde94ef50a68'}
+          for path,sha in pins.items():assert subprocess.check_output(['git','rev-parse','HEAD:'+path],text=True).strip()==sha
+          c=json.load(open('result/claim.json'));assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+          for text in [os.environ['OP'],os.environ['BASE'],'READ ONLY','database/mapping writes0','NO operator/date/price/party/country restrictions']:assert text in c['body'],text
+          for path in list(pins)+['scripts/diagnostics/hotel_match_userseen_coverage_v1.php']:
+              dest=pathlib.Path('payload/source')/path;dest.write_bytes(pathlib.Path(path).read_bytes())
+          PY
+          php -l scripts/diagnostics/hotel_match_userseen_coverage_v1.php
+          php scripts/diagnostics/hotel_match_userseen_coverage_v1.php --self-test
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE']+'&per_page=100'
+          for _ in range(60):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE']]
+              if xs:
+                  r=max(xs,key=lambda x:x['id'])
+                  if r['status']=='completed':assert r['conclusion']=='success';print('SECURITY_OK',r['id']);break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Reserve before read-only DB access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import datetime,hashlib,json,os,pathlib
+          p=pathlib.Path('payload');digests={str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in p.rglob('*') if f.is_file()}
+          r={'operation_id':os.environ['OP'],'source_sha':os.environ['SOURCE'],'base_sha':os.environ['BASE'],'claim_id':int(os.environ['CLAIM']),'state':'reserved_before_db_read','reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'file_sha256':digests,'provider_calls':0,'database_writes':0,'mapping_writes':0,'safe_to_query_now':False,'safe_to_write_now':False,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with (p/'reservation.json').open('xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
+          pathlib.Path('result/reservation.json').write_bytes(raw);digests['reservation.json']=hashlib.sha256(raw).hexdigest();(p/'SHA256SUMS').write_text(''.join(v+'  '+k+'\n' for k,v in sorted(digests.items())))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-userseen-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Read one consistent snapshot without changing identities
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077;test -n "$KEY_VALUE";test -n "$HOST_VALUE";test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE";op=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" -r payload/source payload/reservation.json payload/SHA256SUMS "$remote:$op/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";sha256sum -c SHA256SUMS >/dev/null;cd \"\$HOME/www/anytoour.ru\";MATCH_OPERATION_ID='$OP' MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$SOURCE' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d zend.exception_ignore_args=1 -d memory_limit=512M \"\$HOME/$op/source/scripts/diagnostics/hotel_match_userseen_coverage_v1.php\"" > result/remote.stdout 2> result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";tar -czf - -- *.json" > result/server-operation.tgz 2>> result/remote.stderr
+          trc=$?;set -e;printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json
+          test "$trc" -eq 0
+      - name: Verify receipt and every count partition
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import collections,hashlib,json,os,pathlib,re,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              seen=set()
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<=64000000 and re.fullmatch(r'[a-z0-9.-]+\.json',m.name) and m.name not in seen;seen.add(m.name);(s/m.name).write_bytes(t.extractfile(m).read())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          r=json.loads((s/'result.json').read_bytes());q=json.loads((s/'receipt.json').read_bytes());digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==digest and r['source_sha']==q['source_sha']==os.environ['SOURCE'] and r['operation_id']==q['operation_id']==os.environ['OP']
+          assert r['provider_calls']==r['database_writes']==r['mapping_writes']==0 and r['safe_to_query_now'] is r['safe_to_write_now'] is False
+          assert r['state']==q['state']=='completed_read_only' and q['readback_verified'] is True
+          rows=r['rows'];assert len(rows)==len({x['tv_hotel_id'] for x in rows})==int(r['stats']['distinct_positive_hotels'])==r['coverage_all_retained']['total']
+          for key,cohort in [('coverage_all_retained',rows),('coverage_active_nonexcluded',[x for x in rows if x['is_active'] and not x['excluded_market']])]:
+              counts=collections.Counter(x['bucket'] for x in cohort);actual=r[key];assert actual['total']==len(cohort)
+              for name in ['both','anex_only','samo_only','neither']:assert actual[name]==counts[name]
+          assert sum(x['user_search_observations'] for x in rows)+int(r['stats']['invalid_hotel_rows'])==int(r['stats']['observation_rows'])
+          summary={k:v for k,v in r.items() if k!='rows'};summary['result_sha256']=digest;(p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          assert json.loads((p/'exit-codes.json').read_bytes())=={'remote':0,'tar':0}
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-userseen-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
