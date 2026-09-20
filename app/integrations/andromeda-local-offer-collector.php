@@ -7,6 +7,7 @@ require_once __DIR__ . '/andromeda-surcharge-group-key.php';
  * INT-owned orchestration for a complete Andromeda cohort followed by a bounded
  * number of retained package/get_flights surcharge captures and canonical autosave.
  * Supplier transport, DB writes and mapping validation stay in injected owners.
+ * An explicit zero capture budget keeps search and retained-pricing autosave only.
  */
 final class AnyTourAndromedaLocalOfferCollectorV1
 {
@@ -24,7 +25,7 @@ final class AnyTourAndromedaLocalOfferCollectorV1
     ): array {
         if (!is_int($request['generation'] ?? null) || $request['generation'] < 1
             || !is_array($request['params'] ?? null)
-            || $maxCaptures < 1 || $maxCaptures > 300
+            || $maxCaptures < 0 || $maxCaptures > 300
             || $maxCaptureSeconds < 0 || $maxCaptureSeconds > 240
             || !in_array($captureMode, ['all','non_external_only'], true)) {
             throw new InvalidArgumentException('ANDROMEDA_LOCAL_COLLECTOR_INPUT');
@@ -152,7 +153,7 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         $readClock = null;
         $captureStartedAt = null;
         $timeBudgetExhausted = false;
-        if ($maxCaptureSeconds > 0) {
+        if ($maxCaptures > 0 && $maxCaptureSeconds > 0) {
             $clock ??= static fn(): float => microtime(true);
             $readClock = static function() use ($clock): float {
                 $value = $clock();
