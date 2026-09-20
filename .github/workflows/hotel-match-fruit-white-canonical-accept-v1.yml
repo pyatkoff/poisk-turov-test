@@ -1,0 +1,140 @@
+name: MATCH Fruit White canonical accept v1
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions: {contents: read, actions: read, issues: read}
+concurrency:
+  group: hotel-match-fruit-white-canonical-accept-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-fruit-white-canonical-accept-1971-20260920-v1
+  BASE_SHA: ea45d2d0ae14459d8f560985fb392c7f724c41c7
+  CLAIM: '5748317389'
+  INPUT_SHA: f47483a3859eebbd273ca826c8870a530d9745e03e274716a3f977673e2b387b
+  PR_HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+jobs:
+  accept:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-fruit-white-canonical-accept-1971-20260920-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate scope, claim and independent raw proofs
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | sort)" = "$(printf '%s\n' '.github/workflows/hotel-match-fruit-white-canonical-accept-v1.yml' 'scripts/diagnostics/hotel_match_fruit_white_canonical_plan_v1.py' 'scripts/diagnostics/hotel_match_fruit_white_canonical_accept_v1.php' | sort)"
+          php -l scripts/diagnostics/hotel_match_fruit_white_canonical_accept_v1.php
+          python3 -m py_compile scripts/diagnostics/hotel_match_fruit_white_canonical_plan_v1.py
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for token in [os.environ['OPERATION_ID'],os.environ['INPUT_SHA'],'Max2','Provider calls0','ANEX mapping writes0','andromeda_catalog:2000034436→TV49104','andromeda_catalog:2000063032→TV69340','isOperatorHotelKey=0','SERIALIZABLE']:
+              assert token in b,token
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10599469743/zip > input/review.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10591695073/zip > input/tv.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10591406713/zip > input/samo.zip
+          python3 scripts/diagnostics/hotel_match_fruit_white_canonical_plan_v1.py --input-dir input --output input/input.json
+          echo "$INPUT_SHA  input/input.json" | sha256sum -c -
+          php scripts/diagnostics/hotel_match_fruit_white_canonical_accept_v1.php --self-test input/input.json
+      - name: Reserve before DB write
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,datetime
+          r={'operation':os.environ['OPERATION_ID'],'source_sha':os.environ['PR_HEAD_SHA'],'state':'reserved_before_db_write','reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'input_sha256':os.environ['INPUT_SHA'],'max_mapping_writes':2,'provider_calls':0,'anex_mapping_writes':0,'no_replay':True}
+          with open('reservation/reservation.json','x') as f:
+              f.write(json.dumps(r,sort_keys=True)+'\n'); f.flush(); os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['PR_HEAD_SHA']+'&per_page=100'
+          for _ in range(72):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(q,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['PR_HEAD_SHA']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success'; print('SECURITY_OK',x['id']); break
+              time.sleep(5)
+          else: raise SystemExit('exact_security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'fruit-white-canonical-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute max2 canonical guarded append
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu; test -d \"\$HOME/.anytoour-match/operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+          mkdir input/payload
+          cp reservation/reservation.json input/input.json scripts/diagnostics/hotel_match_fruit_white_canonical_accept_v1.php app/integrations/anex-search-mapping-registry.php app/integrations/andromeda-hotel-resolver.php input/payload/
+          (cd input/payload; sha256sum reservation.json input.json hotel_match_fruit_white_canonical_accept_v1.php anex-search-mapping-registry.php andromeda-hotel-resolver.php > checksums.sha256)
+          scp "${opts[@]}" input/payload/* "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "set -eu; cd \"\$HOME/$op/payload\"; sha256sum -c checksums.sha256 >/dev/null; mv reservation.json ../reservation.json"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\"; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" \"\$HOME/$op/payload/hotel_match_fruit_white_canonical_accept_v1.php\" --execute" >terminal/stdout.json 2>terminal/stderr.txt
+          rc=$?; printf '%s\n' "$rc">terminal/remote-exit.txt
+          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json;for f in execution-reservation.json capture.json plan.json pre-commit.json result.json receipt.json bootstrap-errors.log;do test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >terminal/server.tgz 2>>terminal/stderr.txt
+          trc=$?; printf '%s\n' "$trc">terminal/tar-exit.txt
+          set -e; test "$rc" -eq 0; test "$trc" -eq 0
+      - name: Verify post-COMMIT rows, hashes and resolver receipts
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib,os
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True)
+          allowed={'reservation.json','execution-reservation.json','capture.json','plan.json','pre-commit.json','result.json','receipt.json','bootstrap-errors.log'}
+          with tarfile.open(p/'server.tgz','r:gz') as t:
+              seen=set()
+              for m in t.getmembers():
+                  assert m.isfile() and m.name in allowed and m.name not in seen and m.size<32_000_000
+                  seen.add(m.name); (s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open(s/'result.json')); q=json.load(open(s/'receipt.json')); pre=json.load(open(s/'pre-commit.json'))
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID']
+          assert r['source_sha']==q['source_sha']==os.environ['PR_HEAD_SHA']
+          assert r['input_sha256']==q['input_sha256']==os.environ['INPUT_SHA']
+          assert q['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest() and q['readback_verified'] is True
+          assert r['state']==q['state'] and r['state'] in ['committed_verified','completed_no_write_current_drift']
+          n=r['written_count']; assert 0<=n<=2 and n==r['mapping_writes']==r['database_writes']==r['accepted_delta']==r['unique_samo_local_delta']==r['triple_delta']==pre['uncommitted_writes']
+          assert r['provider_calls']==r['anex_mapping_writes']==0 and len(r['written'])==n and len(r['skipped'])+n==2
+          assert pre['plan_sha256']==r['plan_sha256']==hashlib.sha256((s/'plan.json').read_bytes()).hexdigest()
+          expected={'2000034436':49104,'2000063032':69340}; seen=set()
+          for row in r['written']:
+              sid=row['samo_hotel_id']; assert sid in expected and sid not in seen; seen.add(sid)
+              assert row['tv_hotel_id']==row['canonical_resolver_target']==expected[sid] and row['new_anex_id_still_unresolved'] is True
+              assert row['row_digest']==pre['expected_row_digests'][sid] and len(row['evidence_sha256'])==64
+          assert (n>0)==(r['state']=='committed_verified')
+          print(json.dumps({'state':r['state'],'written_count':n,'verified_at_utc':r['verified_at_utc'],'result_sha256':q['result_sha256'],'provider_calls':0,'anex_mapping_writes':0}))
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0; test "$(cat terminal/tar-exit.txt)" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-fruit-white-canonical-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
