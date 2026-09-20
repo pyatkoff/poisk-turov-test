@@ -10,7 +10,7 @@ if(extras&&moreFilters){
  const focusExtra=name=>{extras.open=true;sync();const native=form.elements[name],target=name==='hotel'?extras.querySelector('[data-v2-hotel-query]'):native;requestAnimationFrame(()=>target?.focus({preventScroll:true}))};
  moreFilters.addEventListener('click',()=>{extras.open=!extras.open;sync();if(extras.open){extras.scrollIntoView({block:'nearest'});extras.querySelector('select:not([hidden]),input:not([hidden])')?.focus({preventScroll:true})}});
  extras.addEventListener('toggle',sync);
- on('v2:search-error',event=>{const name=event.detail?.error?.field;if(event.detail?.phase==='validation'&&name&&extras.contains(form.elements[name]))focusExtra(name)});
+ on('v2:search-error',event=>{const name=event.detail?.error?.field,native=name&&form.elements[name];if(event.detail?.phase==='validation'&&native?.nodeType===1&&extras.contains(native))focusExtra(name)});
  form.addEventListener('invalid',event=>{if(extras.contains(event.target))focusExtra(event.target.name)},true);
  sync();
 }

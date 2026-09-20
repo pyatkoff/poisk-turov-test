@@ -81,6 +81,24 @@ async function checkMobileParameters(page,width,output){
  assert.deepEqual(await dialog.locator('[data-age]').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','6'],'removing the middle child preserves the other exact ages');
  await page.keyboard.press('Escape');assert.equal(await dialog.isVisible(),false);
  assert.deepEqual(await page.locator('#childAges select').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','17','6'],'Escape also discards child removal');
+ // A saved URL can contain an invalid age while several canonical age fields exist.
+ const ageErrors=[],captureAgeError=error=>ageErrors.push(String(error));page.on('pageerror',captureAgeError);
+ const routeBefore=await page.evaluate(()=>{
+  const form=document.forms.tourSearch,route=['from','country'].map(name=>({name,value:form.elements[name].value,options:[...form.elements[name].options].map(option=>option.value)}));
+  window.V2SearchLifecycle.hydrateUrlState('from=1&country=4&child_count=3&child_age[]=0&child_age[]=18&child_age[]=6');
+  return route;
+ });
+ assert.match(await page.evaluate(()=>window.V2SearchLifecycle.validate(window.V2SearchLifecycle.params())),/Проверьте возраст детей/);
+ await page.evaluate(()=>window.V2SearchLifecycle.submit());
+ await dialog.waitFor({state:'visible'});
+ assert.equal(await dialog.locator('h2').innerText(),'Кто едет','invalid saved ages open the visible party editor');
+ assert.match(await dialog.getByRole('alert').innerText(),/Проверьте возраст детей/);
+ await dialog.getByLabel('Возраст ребёнка 2',{exact:true}).selectOption('17');
+ await dialog.getByRole('button',{name:'Выбрать',exact:true}).click();await dialog.waitFor({state:'hidden'});
+ assert.deepEqual(await page.locator('#childAges select').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','17','6'],'the invalid age can be corrected without changing other children');
+ assert.equal((await snapshot()).generation,before.generation,'invalid saved ages never start a supplier search');
+ await page.evaluate(route=>{for(const {name,value,options}of route){const field=document.forms.tourSearch.elements[name];for(const option of [...field.options])if(!options.includes(option.value))option.remove();field.value=value}},routeBefore);
+ page.off('pageerror',captureAgeError);assert.deepEqual(ageErrors,[],'multiple age fields never cause a disclosure exception');
  await page.locator('[data-search3-parameter=nights]').click();
  await dialog.locator('[data-night="1"]').click();await dialog.locator('[data-night="28"]').click();
  assert.match(await dialog.getByRole('alert').innerText(),/не больше 10/);
