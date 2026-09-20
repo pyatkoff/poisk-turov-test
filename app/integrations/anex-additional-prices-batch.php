@@ -40,7 +40,6 @@ function anytour_anex_additional_prices_batch_plan(array $items, array $state): 
         }
         $savedEntry = $savedOffers[$offerRef] ?? null;
         $offer = is_array($savedEntry) ? ($savedEntry['offer'] ?? null) : null;
-        $knownRow = $known['offer_key'] ?? null;
         $knownRow = $known[$offerRef] ?? null;
         if (!is_array($savedEntry) || !is_array($offer) || !is_array($knownRow)) {
             throw new InvalidArgumentException('ANEX_INVALID_SESSION');
