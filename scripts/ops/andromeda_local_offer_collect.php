@@ -22,6 +22,16 @@ $date=static function(string $value):string{
     return $value;
 };
 
+// Preserve the exact family composition before loading runtime/configuration.
+$childAges=[];
+$childRaw=$args['child-ages']??'';
+if($childRaw!==''){
+    $parts=explode(',',$childRaw);
+    if(count($parts)>3)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_CHILD_AGES');
+    foreach($parts as $part)$childAges[]=$int($part,0,17);
+    sort($childAges,SORT_NUMERIC);
+}
+
 $site=realpath($get('site-root'));
 $privateConfig=realpath($get('private-config'));
 $source=$get('source-sha');
@@ -66,7 +76,7 @@ if(!in_array($captureMode,['all','non_external_only'],true))throw new InvalidArg
 $params=[
     'departureId'=>(string)$departure,'countryId'=>(string)$country,
     'dateFrom'=>$from,'dateTo'=>$to,'nightsFrom'=>$nights,'nightsTo'=>$nights,
-    'adults'=>$adults,'childs'=>[],'meal'=>$meal,'hotelCategory'=>'','hotelRating'=>'',
+    'adults'=>$adults,'childs'=>$childAges,'meal'=>$meal,'hotelCategory'=>'','hotelRating'=>'',
     'hotelTypes'=>[],'hotelIds'=>[],'hotelServices'=>[],'arrivalId'=>'','regionIds'=>[],
     'subregionIds'=>[],'operatorIds'=>[],'priceFrom'=>'','priceTo'=>'','currency'=>'RUB',
     'onlyCharter'=>false,'onlyDirect'=>false,
