@@ -60,6 +60,7 @@ ok($result['eligible_offers']===2,'candidate gate');
 ok($captureCalls===2 && $result['surcharge_capture_attempts']===2,'capture bound');
 ok($result['surcharge_ready']===1,'surcharge ready');
 ok($autosaveCalls===1 && $result['autosave_published']===true && $result['ready_offer_count']===1,'autosave');
+ok($result['status']==='complete'&&$result['autosave']===['published'=>true,'reason'=>null,'readyOfferCount'=>1],'published autosave completes collector');
 
 // Real multi-page orchestrator shape: all advertised pages were drained, but the
 // aggregate preserves the standalone page normalizer's `partial` label. The exact
@@ -86,6 +87,7 @@ $drained=AnyTourAndromedaLocalOfferCollectorV1::collect(
     1
 );
 ok($drained['pages']===3 && $drainedCaptureCalls===1 && $drainedAutosaveCalls===1,'drained partial aggregate accepted');
+ok($drained['status']==='incomplete','unpublished drained cohort must not report complete');
 
 foreach ([
     ['page'=>2,'pages_count'=>3,'status'=>'partial','grouped'=>true,'first_page_only'=>false,'external_search_pending'=>false,'received_offers'=>5,'mapped_offers'=>5],
@@ -153,8 +155,36 @@ foreach(['all','non_external_only'] as $mode)foreach($emptySaveReceipts as $save
     ok($emptyResult['capture_mode']===$mode&&$emptyResult['selection_authority']===false,'empty no selection authority');
     ok($emptyResult['autosave_published']===$saveReceipt['published']
         &&$emptyResult['autosave_reason']===$saveReceipt['reason'],'empty never promotes an unpublished receipt');
+    ok($emptyResult['autosave']===$saveReceipt,'empty preserves autosave receipt');
 }
 ok($emptyPage===$emptyPageBefore&&$request===$emptyRequestBefore,'empty input immutability');
+
+// Persistence failures are terminal evidence, not permission to claim the collector
+// completed. Preserve the exact receipt so a caller can reconcile an unknown write
+// state without replaying supplier or DB operations.
+$persistenceCases=[
+    [['published'=>true,'reason'=>null,'readyOfferCount'=>3],'complete'],
+    [['published'=>false,'reason'=>'already_published','readyOfferCount'=>3],'complete'],
+    [['published'=>false,'reason'=>'autosave_failed','readyOfferCount'=>0,'failedOfferCount'=>2],'incomplete'],
+    [['published'=>false,'reason'=>'runtime_dependency_unavailable','readyOfferCount'=>0],'incomplete'],
+    [['published'=>false,'reason'=>'local_ingest_unavailable','readyOfferCount'=>0],'incomplete'],
+    [['published'=>false,'readyOfferCount'=>0],'incomplete'],
+    [[], 'incomplete'],
+];
+foreach($persistenceCases as [$saveReceipt,$expectedStatus]){
+    $persistenceAutosaveCalls=0;
+    $persistenceResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
+        $request,static fn(array $r):array=>$emptyPage,
+        static fn(string $ref,int $generation):array=>[],
+        $emptyMustNotRun,$emptyMustNotRun,
+        static function(array $r,string $ref,int $generation)use($saveReceipt,&$persistenceAutosaveCalls):array{
+            ++$persistenceAutosaveCalls;return $saveReceipt;
+        },1
+    );
+    ok($persistenceAutosaveCalls===1,'persistence receipt autosave once');
+    ok($persistenceResult['status']===$expectedStatus,'persistence receipt completion status');
+    ok($persistenceResult['autosave']===$saveReceipt,'persistence receipt preserved exactly');
+}
 
 // Zero pages alone is not evidence of an authoritative empty search. Wrong types,
 // missing fields, pending/partial state, wrong generation or hidden offers must all
@@ -224,6 +254,7 @@ $priorityResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
 ok($priorityOrder===[23,25,26],'strict external surcharge groups must consume capture budget before same-group SPO duplicate');
 ok($priorityResult['surcharge_capture_attempts']===3,'priority capture bound');
 ok($priorityResult['eligible_offers']===6,'priority keeps all candidates eligible');
+ok($priorityResult['status']==='incomplete','unpublished populated cohort must not report complete');
 
 // The evidence-backed key must not collapse materially different transport groups.
 $strictBase=$offer('strict-a','Интурист',30,'30',true,'p4','t4','spo-a');
@@ -353,6 +384,7 @@ $terminalResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
 ok($terminalOrder===[23,25,26],'sealed package outcome must continue with distinct disjoint transport groups');
 ok($terminalResult['surcharge_capture_attempts']===3,'terminal package outcome still consumes capture budget');
 ok($terminalAutosaveCalls===1,'terminal per-offer package outcome must not skip autosave');
+ok($terminalResult['status']==='incomplete','terminal captures do not override failed persistence');
 
 $invariantAutosaveCalls=0;$invariantThrown=false;
 try{
@@ -368,6 +400,9 @@ try{
 ok($invariantThrown,'unexpected capture invariant must fail closed');
 ok($invariantAutosaveCalls===0,'unexpected capture invariant must not autosave');
 
+$cliSource=file_get_contents(__DIR__.'/../scripts/ops/andromeda_local_offer_collect.php');
+ok(is_string($cliSource)&&str_contains($cliSource,"if (($result['status'] ?? null) !== 'complete') exit(1);"),'CLI must propagate incomplete collector status after printing receipt');
+
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('ANEX')===false,'ANEX excluded');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('PEGAS Touristik')===false,'PEGAS excluded');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Coral Travel')===false,'Coral excluded');
@@ -376,4 +411,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 strict_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1 terminal_empty=4 empty_fail_closed=51\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 strict_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1 persistence_fail_closed=7 cli_exit_guard=1 terminal_empty=4 empty_fail_closed=51\n";
