@@ -1,0 +1,237 @@
+name: MATCH live44 room CURRENT evidence v2
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live44_room_current_v2.php
+      - .github/workflows/hotel-match-live44-room-current-v2.yml
+permissions:
+  contents: read
+  actions: read
+  issues: read
+concurrency:
+  group: hotel-match-live44-room-current-1971-20260920-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-live44-room-current-1971-20260920-v2
+  BASE_SHA: 6cf5cc3e59e12ff02700056cee8f283f22142375
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  CLAIM: '5750490049'
+  INPUT_SHA: 8811a26e6416c2b10d605b2871f4615f5e2e6de68e78d5f9cac4dedd4e2d14f2
+jobs:
+  room-current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-live44-room-current-1971-20260920-v2' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ env.SOURCE_SHA }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact source claim and pure room resolver
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p inputs payload/source/scripts/diagnostics result
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert actual=={'scripts/diagnostics/hotel_match_live44_room_current_v2.php','.github/workflows/hotel-match-live44-room-current-v2.yml'},actual
+          PY
+          php -l scripts/diagnostics/hotel_match_live44_room_current_v2.php
+          php -l scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php
+          php scripts/diagnostics/hotel_match_live44_room_current_v2.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > inputs/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('inputs/claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+          b=c['body']
+          for s in (os.environ['OPERATION_ID'],os.environ['INPUT_SHA'],'accepted44-room-v2',
+                    'Provider/Tourvisor/SAMO/Andromeda/direct-ANEX calls0',
+                    'day ledger untouched'):
+              assert s in b,s
+          PY
+          cp scripts/diagnostics/hotel_match_live44_room_current_v2.php payload/source/scripts/diagnostics/
+          cp scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php payload/source/scripts/diagnostics/
+      - name: Derive immutable compact room input from terminal artifacts
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588338849/zip > inputs/acquisition.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588144438/zip > inputs/acceptance.zip
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile,datetime
+          acq=pathlib.Path('inputs/acquisition.zip'); acc=pathlib.Path('inputs/acceptance.zip')
+          assert hashlib.sha256(acq.read_bytes()).hexdigest()=='f360237113f3c65003fc564efab5749f2ecc66fed41881a3043b526e7b3db5fc'
+          assert hashlib.sha256(acc.read_bytes()).hexdigest()=='0b39603e9b34b00fe1cca94e74a4a17508b0c45b262ad67b5fd7ae7f1ca7eb71'
+          with zipfile.ZipFile(acq) as z:
+              acqr=json.loads(z.read('server/result.json'))
+              assert hashlib.sha256(z.read('server/result.json')).hexdigest()=='34c0f56d9640c0e29bc59d2c7355dad3728fe421e18db55e528eba013cb58e3b'
+              price_names=sorted(n for n in z.namelist() if n.startswith('server/raw-price') and n.endswith('.json'))
+              price_raw={n:z.read(n) for n in price_names}
+              price_data={n:json.loads(price_raw[n]) for n in price_names}
+          with zipfile.ZipFile(acc) as z:
+              accr=json.loads(z.read('server/result.json'))
+              assert hashlib.sha256(z.read('server/result.json')).hexdigest()=='309ed63dd872e00ef0e5a095442ea817a453203de59f400b317b3392d9262b41'
+          assert accr['state']=='committed_verified' and accr['written_count']==44 and accr['accepted_delta']==44 and accr['triple_delta']==44
+          def walk(x):
+              if isinstance(x,dict):
+                  yield x
+                  for v in x.values(): yield from walk(v)
+              elif isinstance(x,list):
+                  for v in x: yield from walk(v)
+          offers=[]
+          for fn,data in price_data.items():
+              sha=hashlib.sha256(price_raw[fn]).hexdigest()
+              for node in walk(data):
+                  if isinstance(node,dict) and 'hotelKey' in node and 'room' in node and 'price' in node and 'operatorKey' in node:
+                      offers.append((fn,sha,node))
+          didx={}
+          for d in acqr['dossiers']:
+              for br in d.get('direct_bridges',[]):
+                  didx[(int(d['tv_hotel_id']),str(br['samo_hotel_id']))]=d
+          rows=[]
+          for sid,w in sorted(accr['written'].items(),key=lambda kv:int(kv[0])):
+              tv=int(w['tv_hotel_id']); native=str(w['native_anex_id']); d=didx[(tv,str(sid))]; ctx=d['context']
+              checkin=datetime.datetime.strptime(ctx['departure_date'],'%Y-%m-%d').strftime('%d.%m.%Y')
+              agg={}
+              for fn,sha,node in offers:
+                  orig=node.get('original') or {}
+                  try:
+                      ok=(str(node.get('hotelKey'))==str(sid) and str(orig.get('hotelKey',''))==native and str(node.get('operatorKey',''))=='5'
+                          and str(node.get('checkIn',''))==checkin and int(node.get('nights',-1))==int(ctx['nights'])
+                          and int(node.get('adult',-1))==int(ctx['adults']) and int(node.get('child',-1))==int(ctx['children_count']))
+                  except (TypeError,ValueError):
+                      ok=False
+                  if not ok: continue
+                  rk=str(node.get('roomKey','')); rr=str(node.get('room','')).strip(); mk=str(node.get('mealKey','')); mr=str(node.get('meal','')).strip()
+                  ent=agg.setdefault((rk,rr),{'room_key':rk,'room_raw':rr,'meal_pairs':set(),'sources':set()})
+                  ent['meal_pairs'].add((mk,mr)); ent['sources'].add((fn.replace('server/',''),sha))
+              rooms=[]
+              for _,ent in sorted(agg.items()):
+                  rooms.append({'room_key':ent['room_key'],'room_raw':ent['room_raw'],
+                                'meal_variants':[{'meal_key':a,'meal_raw':b} for a,b in sorted(ent['meal_pairs'])],
+                                'source_evidence':[{'file':a,'sha256':b} for a,b in sorted(ent['sources'])]})
+              rows.append({'tv_hotel_id':tv,'samo_hotel_id':str(sid),'native_anex_id':native,'hotel_name':d['hotel_name'],
+                           'context':{'search_id':int(ctx['search_id']),'tour_id':str(ctx['tour_id']),'departure_date':ctx['departure_date'],
+                                      'nights':int(ctx['nights']),'adults':int(ctx['adults']),'children_count':int(ctx['children_count']),
+                                      'child_ages_signature':str(ctx['child_ages_signature'])},
+                           'samo_rooms':rooms,'accepted_evidence_sha256':w['evidence_sha256'],'accepted_catalog_sha256':w['catalog_sha256']})
+          payload={'schema':'match-live44-room-current-input-v1',
+                   'source_acquisition':{'artifact_id':10588338849,'artifact_zip_sha256':'f360237113f3c65003fc564efab5749f2ecc66fed41881a3043b526e7b3db5fc','result_sha256':'34c0f56d9640c0e29bc59d2c7355dad3728fe421e18db55e528eba013cb58e3b'},
+                   'source_acceptance':{'artifact_id':10588144438,'artifact_zip_sha256':'0b39603e9b34b00fe1cca94e74a4a17508b0c45b262ad67b5fd7ae7f1ca7eb71','result_sha256':'309ed63dd872e00ef0e5a095442ea817a453203de59f400b317b3392d9262b41'},
+                   'input_count':len(rows),'samo_room_observation_count':sum(len(r['samo_rooms']) for r in rows),
+                   'samo_unique_room_count':sum(len(r['samo_rooms']) for r in rows),'rows':rows}
+          raw=(json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+          assert len(rows)==44 and payload['samo_room_observation_count']==119 and payload['samo_unique_room_count']==119
+          assert sum(1 for r in rows if not r['samo_rooms'])==6
+          assert hashlib.sha256(raw).hexdigest()==os.environ['INPUT_SHA']
+          pathlib.Path('payload/input.json').write_bytes(raw)
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(72):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE_SHA']]
+              if xs:
+                  r=max(xs,key=lambda x:x['id'])
+                  if r['status']=='completed':
+                      assert r['conclusion']=='success';print('SECURITY_OK',r['id']);break
+              time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - name: Durable reservation before CURRENT DB read
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload'); files=sorted(x for x in p.rglob('*') if x.is_file())
+          digests={str(x.relative_to(p)):hashlib.sha256(x.read_bytes()).hexdigest() for x in files}
+          assert digests['input.json']==os.environ['INPUT_SHA']
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'state':'reserved_before_db_read',
+             'file_sha256':digests,'supplier_calls':0,'provider_calls':0,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'room_mapping_writes':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with (p/'reservation.json').open('xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
+          pathlib.Path('result/reservation.json').write_bytes(raw)
+          digests['reservation.json']=hashlib.sha256(raw).hexdigest()
+          (p/'SHA256SUMS').write_text(''.join(v+'  '+k+'\n' for k,v in sorted(digests.items())))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'match-live44-room-v2-reservation-${{ github.run_id }}'
+          path: result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Read CURRENT TV room observations and reconcile retained SAMO rooms
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" -r payload/source payload/input.json payload/reservation.json payload/SHA256SUMS "$remote:$op/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";sha256sum -c SHA256SUMS >/dev/null;cd \"\$HOME/www/anytoour.ru\";MATCH_OPERATION_ID='$OPERATION_ID' MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$SOURCE_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M \"\$HOME/$op/source/scripts/diagnostics/hotel_match_live44_room_current_v2.php\"" > result/remote.stdout 2> result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json execution-reservation.json result.json receipt.json" > result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?
+          set -e
+          printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc" > result/exit-codes.json
+          test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result'); s=p/'server'; s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              assert sorted(t.getnames())==['execution-reservation.json','receipt.json','reservation.json','result.json']
+              for m in t.getmembers():
+                  assert m.isfile() and m.size<=64000000
+                  (s/m.name).write_bytes(t.extractfile(m).read())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          r=json.loads((s/'result.json').read_bytes()); q=json.loads((s/'receipt.json').read_bytes())
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==digest and q['readback_verified'] is True
+          assert r['operation_id']==q['operation_id']==os.environ['OPERATION_ID'] and r['source_sha']==q['source_sha']==os.environ['SOURCE_SHA']
+          assert r['state']=='completed_read_only'
+          for k in ('supplier_calls','provider_calls','tourvisor_calls','samo_calls','andromeda_calls','direct_anex_calls','database_writes','mapping_writes','room_mapping_writes'): assert r[k]==0
+          assert r['input_clusters']==44 and r['input_samo_room_observations']==119 and r['input_unique_samo_rooms']==119
+          assert all(d['safe_to_write_now'] is False for d in r['dossiers'])
+          summary={k:r[k] for k in ('read_at_utc','input_clusters','clusters_with_current_tv_anex_room_observations','current_tv_anex_room_observations','clusters_with_room_concepts','room_concept_count','room_hold_count','same_search_concepts','same_context_concepts')}
+          summary['result_sha256']=digest
+          (p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'match-live44-room-v2-result-${{ github.run_id }}'
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
