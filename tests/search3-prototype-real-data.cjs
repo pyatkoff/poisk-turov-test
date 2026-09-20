@@ -24,7 +24,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
    if(url.pathname==='/test-photo.svg')return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});
    if(url.pathname==='/data/departures-v1.php')return json({ok:true,items:[{id:1,name:'Москва'},{id:2,name:'Казань'}]});
    if(url.pathname.endsWith('/hotel-details-read-v1.php')){const ids=url.searchParams.getAll('legacyHotelIds[]');return json({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:profiles.filter(p=>ids.includes(String(100+p.id))),links:ids.map(id=>({legacyHotelId:Number(id),anytourHotelId:Number(id)-100}))});}
-   if(url.pathname.endsWith('/search3-local-results-read-v1.php')){const p=route.request().postDataJSON().params;dbCalls.push(p);return json({source:'anytour-db-first-results-v1',scopeVersion:1,scope:{scopeVersion:1,...p},scopeDigest:'c'.repeat(64),selectionAuthority:false,hotels:[{anytourHotelId:1,hotel:profiles[0],offers:[stored(p)]}]});}
+   if(url.pathname.endsWith('/search3-local-results-read-v1.php')){const p=route.request().postDataJSON().params;dbCalls.push(p);return json({ok:true,data:{source:'anytour-db-first-results-v1',scopeVersion:1,scope:{scopeVersion:1,...p},scopeDigest:'c'.repeat(64),selectionAuthority:false,hotels:[{anytourHotelId:1,hotel:profiles[0],offers:[stored(p)]}]}});}
    if(url.pathname==='/api-v2.php'){
     const action=url.searchParams.get('action');calls.push(action);
     if(action==='meals')return json([{id:7,name:'AI'},{id:5,name:'HB'}]);
