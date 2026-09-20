@@ -10,9 +10,55 @@ SECRET=re.compile(r"(?:token|jwt|auth|pass|password|secret|key|session|sid|cooki
 def _rows(x):
     if isinstance(x,list): return x
     if isinstance(x,dict):
+        # Raw detail is one tour; a result object owns its nested tours.
+        if isinstance(x.get("hotel"),dict) or ("id" in x and "tours" in x): return [x]
         for k in ("results","rows","tours","data"):
             if isinstance(x.get(k),list): return x[k]
     return []
+def _nested_id(value):
+    if isinstance(value,bool) or not isinstance(value,(int,str)): return None
+    value=str(value)
+    return value if re.fullmatch(r"[1-9][0-9]{0,21}",value) else None
+
+def _tour_rows(tv):
+    """Unpack only the documented hotel->tours shape; keep tour provenance."""
+    for row in _rows(tv):
+        if not isinstance(row,dict): continue
+        if "tours" not in row or isinstance(row.get("hotel"),dict):
+            yield row,None
+            continue
+        hid=_nested_id(row.get("id"))
+        country=row.get("country")
+        cid=_nested_id(country.get("id")) if isinstance(country,dict) else None
+        error={"local_hotel_id":int(hid) if hid else None}
+        if hid is None or cid is None or not isinstance(row["tours"],list):
+            yield None,dict(error,reason="invalid_nested_hotel")
+            continue
+        hotel={k:row[k] for k in ("id","name","country","region","subRegion","common","latitude","longitude") if k in row}
+        for tour in row["tours"]:
+            if not isinstance(tour,dict) or _nested_id(tour.get("id")) is None:
+                yield None,dict(error,reason="invalid_nested_tour")
+                continue
+            hids=[tour[k] for k in ("hotelId","hotel_id") if k in tour]
+            cids=[tour[k] for k in ("countryId","country_id") if k in tour]
+            if "hotel" in tour:
+                embedded=tour["hotel"] if isinstance(tour["hotel"],dict) else {}
+                hids.append(embedded.get("id"))
+                if "country" in embedded:
+                    ec=embedded["country"]
+                    cids.append(ec.get("id") if isinstance(ec,dict) else None)
+            if "country" in tour:
+                tc=tour["country"]
+                cids.append(tc.get("id") if isinstance(tc,dict) else None)
+            if any(_nested_id(v)!=hid for v in hids) or any(_nested_id(v)!=cid for v in cids):
+                yield None,dict(error,reason="nested_hotel_identity_conflict")
+                continue
+            if any(_nested_id(tour[k])!=_nested_id(tour["id"]) for k in ("tourId","tour_id") if k in tour):
+                yield None,dict(error,reason="nested_tour_identity_conflict")
+                continue
+            # Parent IDs/names are hotel facts. Never copy its operator/link.
+            yield dict(tour,hotel=hotel),None
+
 def _operator(row):
     op=row.get("operator") if isinstance(row.get("operator"),dict) else {}
     oid=op.get("id",row.get("operatorId",row.get("operator_id")))
@@ -40,8 +86,9 @@ def build(queue,tv,date_from):
         except Exception: continue
         if country in CORE8: targets[local]={"country_id":country,"frequency":int(q.get("search_count",q.get("frequency",0)) or 0)}
     captures=[];rejected=[];by_key={}
-    for r in _rows(tv):
-        if not isinstance(r,dict): continue
+    for r,error in _tour_rows(tv):
+        if error:
+            rejected.append(error);continue
         h,hid,cid=_hotel(r)
         try: local=int(hid);country=int(cid)
         except Exception: continue
