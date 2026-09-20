@@ -1,0 +1,123 @@
+name: MATCH residual2041 common4 nonANEX detail v3
+on:
+  push:
+    branches: [ops/match-residual2041-common4-nonanex-detail-1971-20260921-v3]
+    paths:
+      - scripts/diagnostics/hotel_match_residual2041_common4_plan_v3.php
+      - scripts/diagnostics/hotel_match_residual2041_common4_detail_v3.py
+      - .github/workflows/hotel-match-residual2041-common4-nonanex-detail-v3.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v3, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v3
+  BASE_SHA: 4b620405797e996eb3b6e02ae3d982fb2b7a1d6c
+  CLAIM: '5752771515'
+  PREDECESSOR_RUN: '35537849926'
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source claim and census input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input reservation result
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          a=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert a=={'scripts/diagnostics/hotel_match_residual2041_common4_plan_v3.php','scripts/diagnostics/hotel_match_residual2041_common4_detail_v3.py','.github/workflows/hotel-match-residual2041-common4-nonanex-detail-v3.yml'},a
+          PY
+          php -l scripts/diagnostics/hotel_match_residual2041_common4_plan_v3.php
+          php scripts/diagnostics/hotel_match_residual2041_common4_plan_v3.php --self-test
+          python3 -m py_compile scripts/diagnostics/hotel_match_residual2041_common4_detail_v3.py
+          python3 scripts/diagnostics/hotel_match_residual2041_common4_detail_v3.py --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > input/claim.json
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10608424651/zip > input/census.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,pathlib,json,os
+          p=pathlib.Path('input/census.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='74b1a55d75e0bf3fd90a0ed23506b8195be2e0e6eb7b51d77cfa4eaf2593d30a'
+          with zipfile.ZipFile(p) as z:b=z.read('server/result.json')
+          assert hashlib.sha256(b).hexdigest()=='eb5a9f0d88d581b6d98eccbee89d4f04dd65c30e12ca5efa93c9e2939582bd5c'
+          r=json.loads(b);res=[x for x in r['rows'] if x.get('is_active') and not x.get('excluded_market') and x.get('bucket') in ('anex_only','samo_only','neither')]
+          assert len(res)==2041 and len({int(x['tv_hotel_id']) for x in res})==2041
+          pathlib.Path('input/census.json').write_bytes(b)
+          c=json.load(open('input/claim.json'));assert c['user']['id']==226193297 and c['author_association']=='OWNER' and os.environ['OPERATION_ID'] in c['body']
+          PY
+      - name: Reserve before DB or provider access
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os,datetime
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db_provider','source_sha':os.environ['GITHUB_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'input_residual':2041,'operators':[18,25,43],'provider_day':'2026-09-21','daily_limit':3000,'operation_cap':1800,'search_calls':0,'continue_calls':0,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True}
+          with open('reservation/reservation.json','x') as f:json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'residual-common4-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs:
+            x=max(xs,key=lambda z:z['id'])
+            if x['status']=='completed':assert x['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Wait for reverse110 terminal receipt
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/'+os.environ['PREDECESSOR_RUN']
+          for _ in range(180):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)
+           if r['status']=='completed':
+            assert r['conclusion']=='success',('predecessor_not_success',r['conclusion'])
+            print('PREDECESSOR_SUCCESS',r['id']);break
+           time.sleep(5)
+          else:raise SystemExit('predecessor_still_running')
+          PY
+      - name: Plan CURRENT and execute mass detail-only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json input/census.json scripts/diagnostics/hotel_match_residual2041_common4_plan_v3.php scripts/diagnostics/hotel_match_residual2041_common4_detail_v3.py "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/census.json\" php \"\$HOME/$op/payload/hotel_match_residual2041_common4_plan_v3.php\" --execute > \"\$HOME/$op/plan.json\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_PLAN_PATH=\"\$HOME/$op/plan.json\" python3 \"\$HOME/$op/payload/hotel_match_residual2041_common4_detail_v3.py\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?;scp -r "${opts[@]}" "$remote:$op/." result/server/;trc=$?;set -e;printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          p=pathlib.Path('result/server');plan=json.loads((p/'plan.json').read_bytes());r=json.loads((p/'result.json').read_bytes());q=json.loads((p/'receipt.json').read_bytes());d=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert plan['operation']==r['operation']==os.environ['OPERATION_ID'] and plan['input_residual_count']==2041 and q['result_sha256']==d
+          assert r['provider_calls']==r['attempted']<=1800 and r['search_calls']==r['status_calls']==r['results_calls']==r['dates_calls']==r['continue_calls']==r['samo_calls']==r['database_writes']==r['mapping_writes']==0
+          assert r['state'] in ('completed_read_only','completed_cap_reached')
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps({'plan_stats':plan['stats'],**{k:r.get(k) for k in ['state','planned','attempted','provider_calls','daily_accounted_after_local_ledger','operator_attempt_counts','state_counts','link_state_counts']}},ensure_ascii=False,indent=2)+'\n')
+          print(pathlib.Path('result/verified-summary.json').read_text())
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-residual-common4-detail-${{ github.run_id }}', path: result/, retention-days: 90}
