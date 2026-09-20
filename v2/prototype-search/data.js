@@ -4,7 +4,8 @@
   const rt = root.V2Runtime;
   const local = '/_preview/search3-local-candidate/';
   const catalog = { departures: [], countries: [], meals: [] };
-  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null;
+  const quoteReceipts = new WeakMap();
+  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
   const text = value => typeof value === 'object' && value ? String(value.russianName || value.name || '') : String(value ?? '');
   const amount = value => { const n = Number(value && typeof value === 'object' ? value.value : value); return Number.isFinite(n) && n > 0 ? n : null; };
@@ -55,7 +56,7 @@
   function publish() {if(owner&&context)notify({type:'results',hotels:project(owner.read(raw,{}),context)});}
   function stop(){generation++;clearTimeout(timer);timer=null;return generation;}
   async function search(s, callback, hotelIds=[], filters={}) {
-    const p=params(s,hotelIds,filters),run=stop();notify=callback;context=structuredClone(s);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
+    const p=params(s,hotelIds,filters),run=stop();notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
     callback({type:'loading'});
     db(s,undefined,hotelIds,filters).then(data=>{if(run!==generation||!owner)return;root.AnyTourLocalDbProviderV1.apply(owner,data);callback({type:'database'});}).catch(error=>{if(run===generation)callback({type:'database-error',message:error.message});});
     try {
@@ -107,15 +108,27 @@
   async function savedHotels(ids,s){if(!owner)return[];const rows=await Promise.allSettled(ids.slice(0,20).map(id=>owner.readProfile(id)));return rows.filter(r=>r.status==='fulfilled'&&r.value).map(r=>hotel({...r.value,anytourHotelId:r.value.id},s));}
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
+    const run=generation,id=searchId;
     const t=await rt.api('tour',{tourId:o.raw.id,currency:'RUB'});
+    if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');
     if(!t||String(t.id)!==String(o.raw.id))throw new Error('Не удалось подтвердить выбранный тур.');
+    quoteReceipts.set(t,{generation:run,searchId:id});
     return t;
   }
   async function flights(t) {
     const data=await rt.api('flights',{tourId:t.id,currency:'RUB'});
     return Array.isArray(data)?data:Array.isArray(data?.flights)?data.flights:[];
   }
+  function leadSession(o) {
+    if(!o?.tour||o.cached||o.provider!=='tourvisor'||String(o.tour.id)!==String(o.raw.id)||!searchId||!searchParams)throw new Error('Сначала подтвердите актуальное предложение.');
+    const run=generation,id=searchId;
+    const receipt=quoteReceipts.get(o.tour);
+    if(!receipt||receipt.generation!==run||receipt.searchId!==id)throw new Error('Предложение устарело. Откройте условия тура и проверьте цену заново.');
+    const session=root.V2TourController.createLeadSession({tour:o.tour,flight:o.flightChoiceId===null?null:o.variants?.[Number(o.flightChoiceId)]||null,searchId:id,search:searchParams});
+    const current=()=>{if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');};
+    return Object.freeze({payload(fd){current();return session.payload(fd);},submit(form,controls){current();return session.submit(form,controls);}});
+  }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,catalog,get searchId(){return searchId;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,catalog,get searchId(){return searchId;}});
 })(window);
