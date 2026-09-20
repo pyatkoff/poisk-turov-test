@@ -79,13 +79,15 @@ const vm = require('node:vm');
   const replacement = focusableTour(17);
   const collapsed = focusableTour(17);
   collapsed.hidden = true;
+  const fuelValue = { textContent: '' };
+  const fuelFact = { querySelector(selector) { return selector === 'span' ? { textContent: 'Топливный сбор' } : selector === 'b' ? fuelValue : null; } };
   const document = {
     body: { classList: { contains(name) { return name === 'search3-candidate' || name === 'search3-selected-open'; } } },
     cookie: '',
     contains(node) { return !!(node && node.connected); },
     getElementById(id) { return id === 'selectedTour' ? selected : id === 'results' ? results : null; },
     querySelector() { return null; },
-    querySelectorAll(selector) { return selector === '.direct-tour' ? listedButtons : []; },
+    querySelectorAll(selector) { return selector === '.direct-tour' ? listedButtons : selector === '#selectedTour .facts>div' ? [fuelFact] : []; },
     addEventListener(name, handler) { documentEvents.set(name, handler); }
   };
   const window = {
@@ -112,6 +114,7 @@ const vm = require('node:vm');
           id: 17,
           hotel: { name: 'Test' },
           price: 100,
+          fuelCharge: { value: null },
           hotelDescription: 'Номер 25 м&#178; &amp; SPA <b>рядом</b> &#x3C;script&#x3E;alert(1)&#x3C;/script&#x3E;'
         });
         if (actionName === 'flights') return Promise.resolve([]);
@@ -159,6 +162,8 @@ const vm = require('node:vm');
   assert.match(selected.innerHTML, /<div class="hotel-desc">Номер 25 м² &amp; SPA рядом &lt;script&gt;alert\(1\)&lt;\/script&gt;<\/div>/,
     'supplier entities become readable text while decoded markup remains escaped');
   assert.doesNotMatch(selected.innerHTML, /<script>/, 'decoded supplier text cannot inject markup');
+  assert.match(selected.innerHTML, /<span>Топливный сбор<\/span><b>уточняется<\/b>/,
+    'an explicitly empty nested fuel value remains unknown rather than claiming no surcharge');
 
   const back = action('back-results');
   click({ target: back, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
@@ -358,6 +363,18 @@ const vm = require('node:vm');
   assert.equal(window.V2TourController.currentTour.id, 'current-flight');
   assert.equal(pendingTours.size, 0);
   assert.equal(pendingFlights.size, 0);
+
+  const priceSyncSource = fs.readFileSync(path.join(__dirname, '../v2/flight-price-sync-v1.js'), 'utf8');
+  vm.runInNewContext(priceSyncSource, { window, document, Intl, Number, String, Array, Object, CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; } },
+    { filename: 'flight-price-sync-v1.js' });
+  for (const empty of [null, '']) {
+    window.V2FlightPriceSync.renderFuel({ fuelCharge: { value: empty } });
+    assert.equal(fuelValue.textContent, 'уточняется', 'flight selection keeps an empty nested fuel value unknown');
+  }
+  window.V2FlightPriceSync.renderFuel({ fuelCharge: { value: 0 } });
+  assert.equal(fuelValue.textContent, 'без доплаты', 'flight selection preserves an explicit zero fuel charge');
+  window.V2FlightPriceSync.renderFuel({ fuelCharge: { value: 1400 } });
+  assert.match(fuelValue.textContent.replace(/\s/g, ''), /^1400₽$/, 'flight selection preserves a known positive fuel charge');
 
   console.log('PASS: current tour controller owns exact source, collapsed disclosure recovery, fallback return and stale tour/flight response isolation');
 })();
