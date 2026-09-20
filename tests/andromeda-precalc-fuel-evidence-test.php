@@ -105,7 +105,8 @@ $observedKind['claimDocument'][0]['services'] = [['service' => [$observedService
 fuel_need($runPending($observedKind)['fuel_surcharges_reported'] === [[
     'amount' => '17', 'currency' => 'USD', 'route_index' => '0',
     'source' => 'andromeda_claim_service', 'service_type' => '9',
-]], 'observed_fuel_service_type_lost');
+    'required_reported' => true, 'packet_reported' => false,
+]], 'observed_fuel_service_type_or_applicability_lost');
 
 $wrongKind = $pending;
 $wrongService = $service('17', 'USD', '0'); $wrongService['servicecategoryName'] = 'Доплата за рейс';
