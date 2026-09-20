@@ -1,0 +1,141 @@
+name: MATCH Safaya guarded accept v1
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-hold3-safaya-accept-1971-20260920-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-hold3-safaya-accept-1971-20260920-v1
+  BASE_SHA: 70b69b49639357cb7bd283435ee8ee32e7ebc066
+  CLAIM: '5746338294'
+  PR_HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+  REVIEW_ARTIFACT: '10594403572'
+  SUPPORT_ARTIFACT: '10591517115'
+jobs:
+  accept:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.head.ref == 'ops/match-hold3-safaya-accept-1971-20260920-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate isolated source and immutable Safaya input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | sort)" = "$(printf '%s\n' '.github/workflows/hotel-match-hold3-safaya-accept-v1.yml' 'scripts/diagnostics/hotel_match_hold3_safaya_accept_helpers_v1.php' 'scripts/diagnostics/hotel_match_hold3_safaya_accept_v1.php' | sort)"
+          php -l scripts/diagnostics/hotel_match_hold3_safaya_accept_helpers_v1.php
+          php -l scripts/diagnostics/hotel_match_hold3_safaya_accept_v1.php
+          php scripts/diagnostics/hotel_match_hold3_safaya_accept_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for s in [os.environ['OPERATION_ID'],'8e8c90a545a045d1272b1c41f80bdf078a9e63a3d507cbb43d7d93173be03b2b','3144fbbfe9a886bb94954d8a12147119172f570285ae7622edf2ffb8ed16657a','2000089754→TV150945','native ANEX44057','Max1','Provider calls0']:
+              assert s in b,s
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$REVIEW_ARTIFACT/zip" > input/review.zip
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$SUPPORT_ARTIFACT/zip" > input/support.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,pathlib,json
+          rp=pathlib.Path('input/review.zip'); sp=pathlib.Path('input/support.zip')
+          assert hashlib.sha256(rp.read_bytes()).hexdigest()=='79cd024cd81d97c3089065a7ddd70f7dd2cf2e5b9a8854bf5db7c6d08859d8fb'
+          assert hashlib.sha256(sp.read_bytes()).hexdigest()=='389b97a73c9e668fd36bf41d23bd62f0eb990faa1db79c2cad82a64203f171f7'
+          with zipfile.ZipFile(rp) as z: rb=z.read('server/result.json'); rq=json.loads(z.read('server/receipt.json'))
+          with zipfile.ZipFile(sp) as z: sb=z.read('result.json')
+          assert hashlib.sha256(rb).hexdigest()=='8e8c90a545a045d1272b1c41f80bdf078a9e63a3d507cbb43d7d93173be03b2b' and rq['result_sha256']==hashlib.sha256(rb).hexdigest()
+          assert hashlib.sha256(sb).hexdigest()=='3144fbbfe9a886bb94954d8a12147119172f570285ae7622edf2ffb8ed16657a'
+          review=json.loads(rb); support=json.loads(sb)
+          r=[x for x in review['rows'] if str(x.get('samo_hotel_id'))=='2000089754' and int(x.get('tv_hotel_id',0))==150945]
+          s=[x for x in support['rows'] if str(x.get('samo_hotel_id'))=='2000089754' and int(x.get('tv_hotel_id',0))==150945]
+          assert len(r)==len(s)==1
+          r=r[0]; s=s[0]
+          assert r['classification']=='safe_candidate' and r['anex_mapping_state']=='exact_enabled' and r['hold_reasons']==[] and r['proof_native_ids']=={'13':'44057','43':'61321'}
+          assert r['name_ok'] is True and r['country_ok'] is True and r['place_ok'] is True and r['category_ok'] is False and r['category_override_by_dual_operator_geo'] is True
+          assert s['state']=='hold' and s['source_catalog']['catalog_sha256']=='b9b27238c1c980bbf5015ecf6f5c46bacada55251fcd0d92d373fa11bcd5e056'
+          out={'review_result_sha256':hashlib.sha256(rb).hexdigest(),'support_result_sha256':hashlib.sha256(sb).hexdigest(),'review':r,'support':s}
+          body=(json.dumps(out,sort_keys=True,separators=(',',':'),ensure_ascii=False)+'\n').encode(); pathlib.Path('input/safaya.json').write_bytes(body); pathlib.Path('input/safaya.sha256').write_text(hashlib.sha256(body).hexdigest()+'\n')
+          print('SAFAYA_INPUT_OK',hashlib.sha256(body).hexdigest())
+          PY
+      - name: Reserve before DB write
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,datetime,pathlib
+          r={'operation':os.environ['OPERATION_ID'],'source_sha':os.environ['PR_HEAD_SHA'],'state':'reserved_before_db_write','reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'input_sha256':pathlib.Path('input/safaya.sha256').read_text().strip(),'max_mapping_writes':1,'provider_calls':0,'no_replay':True}
+          open('reservation/reservation.json','x').write(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['PR_HEAD_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(q) as f: runs=json.load(f)['workflow_runs']
+            xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['PR_HEAD_SHA']]
+            if xs:
+              x=max(xs,key=lambda z:z['id'])
+              if x['status']=='completed': assert x['conclusion']=='success'; print('SECURITY_OK',x['id']); break
+            time.sleep(5)
+          else: raise SystemExit('exact_security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'safaya-accept-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute max1 guarded SERIALIZABLE write
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json input/safaya.json scripts/diagnostics/hotel_match_hold3_safaya_accept_helpers_v1.php scripts/diagnostics/hotel_match_hold3_safaya_accept_v1.php app/integrations/andromeda-hotel-resolver.php app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          sha="$(cat input/safaya.sha256)"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\"; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/safaya.json\" MATCH_INPUT_SHA256=\"$sha\" MATCH_SOURCE_SHA=\"$PR_HEAD_SHA\" php -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" \"\$HOME/$op/payload/hotel_match_hold3_safaya_accept_v1.php\"" >terminal/stdout.json 2>terminal/stderr.txt
+          rc=$?; printf '%s\n' "$rc">terminal/remote-exit.txt
+          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json;for f in capture.json plan.json pre-commit.json result.json receipt.json bootstrap-errors.log;do test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >terminal/server.tgz 2>>terminal/stderr.txt
+          trc=$?; printf '%s\n' "$trc">terminal/tar-exit.txt; set -e; test "$rc" -eq 0; test "$trc" -eq 0
+      - name: Verify terminal result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib,os
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server.tgz','r:gz') as t:
+            seen=set()
+            for m in t.getmembers():
+              assert m.isfile() and m.name not in seen and m.size<32_000_000; seen.add(m.name); (s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open(s/'result.json')); q=json.load(open(s/'receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID'] and q['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert r['provider_calls']==0 and q['readback_verified'] is True
+          if r['state']=='committed_verified':
+            assert r['written_count']==r['database_writes']==r['mapping_writes']==r['accepted_delta']==r['unique_samo_local_delta']==r['triple_delta']==1 and r['skipped_count']==0
+            assert len(r['written'])==1 and r['written'][0]['samo_hotel_id']=='2000089754' and r['written'][0]['tv_hotel_id']==150945 and r['written'][0]['native_anex_id']=='44057'
+          else:
+            assert r['state']=='completed_no_write_current_drift' and r['written_count']==r['database_writes']==r['mapping_writes']==r['accepted_delta']==r['triple_delta']==0 and r['skipped_count']==1
+          print(json.dumps({'state':r['state'],'written_count':r['written_count'],'skipped_count':r['skipped_count'],'accepted_delta':r['accepted_delta'],'triple_delta':r['triple_delta'],'result_sha256':q['result_sha256']},ensure_ascii=False))
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0; test "$(cat terminal/tar-exit.txt)" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-safaya-accept-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
