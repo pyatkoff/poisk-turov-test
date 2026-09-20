@@ -571,6 +571,7 @@ final class AnyTourAndromedaOfferAutosaveV1
             'published' => ($result['published'] ?? false) === true,
             'reason' => $result['reason'] ?? null,
             'readyOfferCount' => (int)($result['readyOfferCount'] ?? 0),
+            'confirmationRequiredOfferCount' => (int)($result['confirmationRequiredOfferCount'] ?? 0),
             'ownedOfferCount' => $owned,
             'receivedOfferCount' => $received,
             'selectionAuthority' => false,
