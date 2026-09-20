@@ -345,6 +345,12 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 source = source.replace(history_listener, b'', 1)
                 self.assertEqual(source.count(b"window.addEventListener('v2:search-reset',()=>{clearSelectedHistory();leadDraft=null;"), 1)
                 source = source.replace(b"window.addEventListener('v2:search-reset',()=>{clearSelectedHistory();leadDraft=null;", b"window.addEventListener('v2:search-reset',()=>{leadDraft=null;", 1)
+                retired_selected_source = b"sourceButton=null;sourceTourId='';"
+                self.assertEqual(source.count(retired_selected_source), 1, 'one reset retires the selected source identity')
+                source = source.replace(retired_selected_source, b'', 1)
+                retired_selected_dom = b"const root=selected();if(root){root.hidden=true;root.setAttribute('aria-hidden','true');root.innerHTML='';}"
+                self.assertEqual(source.count(retired_selected_dom), 1, 'one reset retires the selected DOM')
+                source = source.replace(retired_selected_dom, b'', 1)
                 # Reviewed selected placement display only. The result renderer
                 # carries its canonical label through the existing action while
                 # the detail object and lead payload retain their raw values.
