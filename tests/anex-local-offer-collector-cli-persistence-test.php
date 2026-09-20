@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // Actual CLI, collector, planner and batch executor; only supplier/cache/DB owners
-// are isolated doubles. No real credentials, provider requests or database access.
+// and demand queue are isolated doubles. No real credentials, provider requests or database access.
 function persistenceCheck(bool $ok, string $label): void
 {
     if (!$ok) throw new RuntimeException('ANEX_CLI_PERSISTENCE_TEST:' . $label);
@@ -19,13 +19,36 @@ function persistenceCli(array $scenario): array
     };
     $process=null;
     try{
-        foreach(['scripts/ops/anex_local_offer_collect.php','app/integrations/anex-local-offer-collector.php',
-            'app/integrations/anex-additional-prices-batch.php'] as $path){
+        $paths=['scripts/ops/anex_local_offer_collect.php','app/integrations/anex-local-offer-collector.php',
+            'app/integrations/anex-additional-prices-batch.php'];
+        if(($scenario['worker']??false)===true)$paths[]='scripts/ops/anex_local_offer_demand_fill.php';
+        foreach($paths as $path){
             $bytes=file_get_contents($root.'/'.$path);
             if(!is_string($bytes))throw new RuntimeException('fixture source');
             $write('payload/'.$path,$bytes);
         }
         $write('scenario.json',json_encode($scenario,JSON_THROW_ON_ERROR));
+        if(($scenario['worker']??false)===true){
+            $write('payload/app/integrations/anex-local-offer-demand.php', <<<'STUB'
+<?php
+// Only the queue/input boundary is doubled; the actual worker process is copied.
+final class AnyTourAnexLocalOfferDemandV1{
+    public static function normalizeRows(array $rows,int $limit):array{
+        $r=$rows[0];return [[
+            'departureId'=>$r['departure_id'],'countryId'=>$r['country_id'],'regionId'=>$r['region_id'],
+            'dateFrom'=>$r['departure_date'],'dateTo'=>$r['departure_date'],'nights'=>$r['nights'],
+            'adults'=>$r['adults'],'childAges'=>[3,7],
+        ]];
+    }
+}
+STUB);
+            $write('payload/scripts/ops/anex_local_offer_demand_queue.php', <<<'STUB'
+<?php
+$scope=['departureId'=>1,'countryId'=>4,'regionId'=>null,'dateFrom'=>'2026-10-30','dateTo'=>'2026-10-30',
+    'nights'=>7,'adults'=>2,'childAges'=>[3,7]];
+echo json_encode(['source'=>'fixture_queue','scopes'=>[$scope,$scope]],JSON_THROW_ON_ERROR);
+STUB);
+        }
         $write('payload/app/integrations/anex-anytour-offer-autosave.php', <<<'STUB'
 <?php
 function fixtureTrace(string $stage, mixed $value=null):void{
@@ -107,8 +130,11 @@ final class FixturePdo extends PDO{public function __construct(){}}
 function v2_data_db():PDO{return new FixturePdo();}
 STUB);
         $pipes=[];
-        $process=proc_open([PHP_BINARY,$dir.'/payload/scripts/ops/anex_local_offer_collect.php',
-            '--departure=1','--country=4','--date-from=2026-10-30','--nights=7','--child-ages=3,7'],
+        $command=($scenario['worker']??false)===true
+            ?[PHP_BINARY,$dir.'/payload/scripts/ops/anex_local_offer_demand_fill.php','--limit=2']
+            :[PHP_BINARY,$dir.'/payload/scripts/ops/anex_local_offer_collect.php',
+                '--departure=1','--country=4','--date-from=2026-10-30','--nights=7','--child-ages=3,7'];
+        $process=proc_open($command,
             [0=>['file','/dev/null','r'],1=>['file',$dir.'/stdout','w'],2=>['file',$dir.'/stderr','w']],$pipes,null,
             ['ANYTOUR_PROJECT_ROOT'=>$dir.'/anytoour.ru','ANEX_API_TOKEN'=>'fixture','ANEX_B2B_TOKEN'=>'fixture','FIXTURE_DIR'=>$dir]);
         if(!is_resource($process))throw new RuntimeException('fixture process');
@@ -178,3 +204,24 @@ $other=persistenceCli(['expand_error'=>7]);
 persistenceCheck($other['code']!==0&&$other['result']===null&&str_contains($other['stderr'],'FIXTURE_EXPAND_INVARIANT')
     &&!isset($other['counts']['finalize']),'unrelated invariant not swallowed');
 echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=3 late=1 final=1 missing=1 empty_regular=2 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
+
+// The unchanged worker used to discard JSON stdout on exit1. Reconciliation must
+// retain the exact CLI failure while still stopping before the second scope.
+foreach([['receipts'=>[$failures[0]]],['final'=>$failures[0]]] as $scenario){
+    $r=persistenceCli($scenario+['worker'=>true]);
+    persistenceCheck($r['code']===1&&$r['result']['status']==='stopped_on_error'
+        &&$r['result']['completedScopes']===0&&$r['result']['readyOffersAcrossScopes']===0
+        &&$r['counts']['search']===1,'worker never advances after collector failure');
+    $expected=['phase'=>isset($scenario['final'])?'finalize':'batch','receipt'=>$failures[0]];
+    persistenceCheck(($r['result']['error']['collectorResult']['autosave_failure']??null)===$expected,
+        'worker retains original failed-write evidence');
+    persistenceCheck($r['result']['error']['code']===1,'worker keeps nonzero exit');
+}
+$r=persistenceCli(['worker'=>true]);
+persistenceCheck($r['code']===0&&$r['result']['completedScopes']===2&&$r['counts']['search']===2
+    &&$r['result']['error']===null,'successful worker still completes both scopes');
+$r=persistenceCli(['worker'=>true,'expand_error'=>1]);
+persistenceCheck($r['code']===1&&$r['result']['status']==='stopped_on_error'&&$r['counts']['search']===1
+    &&!isset($r['result']['error']['collectorResult'])
+    &&str_contains($r['result']['error']['stderr'],'FIXTURE_EXPAND_INVARIANT'),'non-JSON failure keeps stderr without invented receipt');
+echo "ANEX_WORKER_TO_CLI_PERSISTENCE_OK cases=4 no_next_scope=1 exact_receipt=1 supplier=0 db=0\n";
