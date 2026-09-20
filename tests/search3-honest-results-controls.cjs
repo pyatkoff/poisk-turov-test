@@ -144,4 +144,29 @@ for (const forbidden of ['fetch(', 'XMLHttpRequest', 'V2SearchLifecycle', 'start
   assert.ok([activeList, ...controls, resetButton].every(node => node.parentNode === mobileBody));
 }
 
+{
+  const source = localFilters.slice(localFilters.indexOf('function focusAfterReset('), localFilters.indexOf('function reset('));
+  let focused = null;
+  const node = (name, native = true) => ({ name, hidden: false, visible: true, attributes: {},
+    focus() { if (this.visible) focused = this; }, getClientRects() { return this.visible ? [{}] : []; },
+    matches() { return native; }, hasAttribute(key) { return key in this.attributes; },
+    setAttribute(key, value) { this.attributes[key] = value; }, removeAttribute(key) { delete this.attributes[key]; },
+    addEventListener(type, handler) { this.onBlur = handler; } });
+  const input = node('hotel'), meal = node('meal'), title = node('title', false), results = node('results', false);
+  const field = { hidden: true, querySelector: () => input }, mealField = { hidden: false, querySelector: () => meal };
+  input.visible = false;
+  const context = { input, field, results, fields: () => [field, mealField],
+    cards: () => [{ hidden: false, querySelector: () => title }], requestAnimationFrame: fn => fn() };
+  vm.createContext(context);vm.runInContext(source, context);
+  const reset = empty => { context.trigger = { classList: { contains: () => empty } };vm.runInContext('focusAfterReset(trigger)', context); };
+  reset(false);assert.equal(focused, meal, 'one-hotel panel reset focuses its visible meal control, never the hidden hotel input');
+  assert.equal(meal.hasAttribute('tabindex'), false, 'native filter remains in the natural tab order');
+  field.hidden = false;input.visible = true;
+  reset(false);assert.equal(focused, input, 'multi-hotel reset retains the name-input target');
+  reset(true);assert.equal(focused, title, 'empty-result reset retains the restored hotel target');
+  assert.equal(title.attributes.tabindex, '-1');title.onBlur();assert.equal(title.hasAttribute('tabindex'), false);
+  field.hidden = true;mealField.hidden = true;context.cards = () => [];
+  reset(false);assert.equal(focused, results, 'a disappearing facet set falls back to the result region');
+}
+
 console.log('PASS: Search3 exposes honest result controls and an immediately visible current-price calendar');
