@@ -228,7 +228,15 @@ final class AnyTourThreeProviderQuoteEnvelope
         self::listShape($rows, 'THREE_PROVIDER_QUOTE_FUEL_FACT');
         $out = [];
         foreach ($rows as $row) {
-            if (!is_array($row) || !self::exactKeys($row, ['amount', 'currency', 'route_index', 'source'])
+            // Match the selected-quote producer without dropping its type evidence.
+            // Legacy type=8 rows remain byte-compatible; neither shape adds money.
+            $legacy = is_array($row)
+                && self::exactKeys($row, ['amount', 'currency', 'route_index', 'source']);
+            $typed = is_array($row)
+                && self::exactKeys($row, ['amount', 'currency', 'route_index', 'source', 'service_type']);
+            if ((!$legacy && !$typed)
+                || ($typed && (!is_string($row['service_type'])
+                    || preg_match('/\A[A-Za-z0-9_.:-]{1,32}\z/D', $row['service_type']) !== 1))
                 || !self::amount($row['amount'], false)
                 || !self::currency($row['currency'])
                 || !in_array($row['route_index'], [null, '0', '1'], true)
