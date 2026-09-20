@@ -249,8 +249,11 @@ final class AnyTourAndromedaOfferAutosaveV1
             'search_ref' => $searchRef, 'generation' => $generation,
             'pages' => $target, 'offers' => $digestRows,
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
-        if (self::alreadyPublished($directory, $searchRef, $firstCreated, $generation, $digest)) {
-            return self::receipt(false, 'already_published', count($entries), count($owned), count($offers));
+        $publishedReadyCount = null;
+        if (self::alreadyPublished($directory, $searchRef, $firstCreated, $generation, $digest, $publishedReadyCount)) {
+            // The checkpoint records the producer's actual ready count. Counting all
+            // entries here would turn stored confirmation-required rows into ready ones.
+            return self::receipt(false, 'already_published', $publishedReadyCount, count($owned), count($offers));
         }
 
         $result = AnyTourIntOfferSnapshotProducerV1::produce('andromeda', $request['params'], [
@@ -384,6 +387,14 @@ final class AnyTourAndromedaOfferAutosaveV1
                 'current' => $current,
                 'priced_money' => $priced,
             ];
+            if ($surcharge !== null && $price['currency'] === 'RUB') {
+                // Valid flight-only evidence is not a full/fuel-inclusive total. Keep
+                // this mapped PRICE row through the existing confirmation path, just
+                // like a row without pricing. Validation above is never bypassed;
+                // the retained fact remains intact and no derived total is published.
+                $entry['priced_money'] = null;
+                $entry['confirmation_required'] = true;
+            }
             if ($verifiedQuote !== null) $entry['verified_quote'] = $verifiedQuote;
             return $entry;
         } catch (DomainException $error) {
@@ -512,7 +523,7 @@ final class AnyTourAndromedaOfferAutosaveV1
         return $directory . '/' . $ref . '-' . $created . '-anytour-offer-autosave-v1.json';
     }
 
-    private static function alreadyPublished(string $directory, string $ref, int $created, int $generation, string $digest): bool
+    private static function alreadyPublished(string $directory, string $ref, int $created, int $generation, string $digest, ?int &$publishedReadyCount = null): bool
     {
         $path = self::checkpointPath($directory, $ref, $created);
         if (!file_exists($path)) return false;
@@ -523,7 +534,9 @@ final class AnyTourAndromedaOfferAutosaveV1
             || !is_int($value['published_at'] ?? null) || !is_int($value['ready_offer_count'] ?? null)) {
             throw new DomainException('ANDROMEDA_ANYTOUR_CHECKPOINT_INVALID');
         }
-        return hash_equals($value['cohort_digest'], $digest);
+        $matches = hash_equals($value['cohort_digest'], $digest);
+        if ($matches) $publishedReadyCount = $value['ready_offer_count'];
+        return $matches;
     }
 
     private static function saveCheckpoint(
