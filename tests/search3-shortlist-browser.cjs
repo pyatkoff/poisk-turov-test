@@ -264,6 +264,15 @@ async function checkJourney(browser, width) {
     assert.equal(await shortlist.locator('.search3-shortlist-item').count(), 3, 'fourth offer cannot evict or replace an existing snapshot');
     assert.match(compact(await shortlist.locator('.search3-shortlist-status').innerText()), /3|тр[её]х|максим/i, 'max-three limit is announced');
 
+    await render(page, 732);
+    await openFilters(page, width);
+    await meal.selectOption('meal:label:всё включено');
+    await discloseMatchingOffers(page);
+    await addOffer(page, 'offer-standard');
+    assert.equal(await shortlist.locator('.search3-shortlist-item').count(), 3, 'the same provider, hotel and offer from a refreshed search reuses its comparison slot');
+    assert.deepEqual(await shortlist.locator('.search3-shortlist-item[data-offer-id="offer-standard"]').evaluateAll(nodes => nodes.map(node => node.dataset.searchId)), ['732'], 'the reused slot keeps the newest exact search snapshot');
+    assert.deepEqual(await page.evaluate(() => window.__shortlistCalls), [], 'refresh dedupe does not call supplier or lead endpoints');
+
     const differences = shortlist.locator('.search3-shortlist-view-toggle');
     assert.equal(await differences.isVisible(), true, 'multi-offer comparison exposes the optional differences view');
     assert.ok((await differences.boundingBox()).height >= 44, 'differences view keeps a 44px target');
@@ -628,3 +637,4 @@ async function checkCorruptStorage(browser, width) {
   fs.writeFileSync(path.join(output, 'shortlist-contract.json'), JSON.stringify(evidence, null, 2));
   console.log('SEARCH3_SHORTLIST_OK ' + JSON.stringify(evidence));
 })().catch(error => { console.error(error); process.exitCode = 1; });
+
