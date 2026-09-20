@@ -260,7 +260,7 @@ async function checkJourney(browser, width) {
     assert.equal(await meal.inputValue(), '', 'opening the saved exact offer clears only local result filters');
     assert.equal(await page.locator('#selectedTour .facts>div').filter({ hasText: 'Номер' }).locator('b').innerText(), 'STANDARD', 'filtered comparison action opens the same exact room offer');
     assert.deepEqual(await page.evaluate(() => window.__shortlistCalls), [['tour', 'offer-standard', 731], ['flights', 'offer-standard', 731]], 'filtered comparison selection reuses only the existing exact detail and flight path');
-    await page.locator('#selectedTour .back-results').click();
+    await page.locator('#selectedTour .back-results:not(.search3-lead-return)').click();
     await page.waitForFunction(() => document.getElementById('selectedTour').hidden);
     await page.evaluate(() => { window.__shortlistCalls = []; });
     await meal.selectOption('meal:label:всё включено');
