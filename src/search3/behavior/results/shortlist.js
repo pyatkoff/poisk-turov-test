@@ -53,13 +53,12 @@ function persist(){
   catch(error){persistence=false;message=storageWarning;}
 }
 function save(){persist();render();}
-function exactOffer(offerId,hotelId){
-  const id=String(offerId||''),hotel=String(hotelId||''),matches=[];
-  currentItems.forEach(item=>(Array.isArray(item&&item.tours)?item.tours:[]).forEach(tour=>{if(String(tour&&tour.id||'')===id)matches.push({hotel:item,tour});}));
-  return matches.length===1&&(!hotel||String(matches[0].hotel&&matches[0].hotel.id)===hotel)?matches[0]:null;
+function exactOffer(offerId,hotelId,items=window.V2Results.state.items){
+  const id=String(offerId||''),hotel=String(hotelId||''),matches=(items||[]).flatMap(item=>(item.tours||[]).filter(tour=>String(tour.id||'')===id).map(tour=>({hotel:item,tour})));
+  return matches.length===1&&(!hotel||String(matches[0].hotel.id)===hotel)?matches[0]:null;
 }
 function snapshot(offerId){
-  const currentSearch=searchId(),match=exactOffer(offerId);
+  const currentSearch=searchId(),match=exactOffer(offerId,'',currentItems);
   if(!currentSearch||!/^\d+$/.test(currentSearch)||Number(currentSearch)<=0||!match)return null;
   const lifecycle=window.V2SearchLifecycle,query=lifecycle&&String(lifecycle.searchId)===currentSearch?lifecycle.restoreQuery:'',hotel=match.hotel,tour=match.tour,record=cleanRecord({schemaVersion:1,savedAt:new Date().toISOString(),source,hotelId:String(hotel.id),hotelName:hotel.name,country:hotel.country,region:hotel.region,searchId:currentSearch,offerId:String(tour.id),date:tour.date,nights:tour.nights,meal:meal(tour,true),room:room(tour,true),placement:tour.placement,operator:tour.operator,adults:tour.adults,childs:tour.childs,observedPrice:tour.price,currency:'RUB',searchQuery:query});
   return record;
@@ -110,7 +109,7 @@ function focusAfterRemoval(index,item){requestAnimationFrame(()=>{const buttons=
 function removeAt(index,fromOffer){const removed=saved.splice(index,1)[0];message='';save();if(fromOffer)focusToggle(removed.offerId);else focusAfterRemoval(index,removed);}
 function toggle(button){const record=snapshot(button.dataset.offerId);if(!record){message='Это предложение больше не доступно в текущей выдаче.';render();return;}const index=saved.findIndex(item=>identity(item)===identity(record));if(index>=0){if(saved[index].searchId===record.searchId){removeAt(index,true);return;}saved[index]=record;message='';save();focusToggle(record.offerId);return;}if(saved.length>=limit){message='Можно сравнить не больше трёх предложений.';render();focusToggle(record.offerId);return;}saved.push(record);message=persistence?'Тур добавлен в сравнение.':storageWarning;save();focusToggle(record.offerId);}
 function savedItem(button){const article=button.closest('.search3-shortlist-item');return saved.find(item=>item.offerId===article?.dataset.offerId&&item.searchId===article?.dataset.searchId);}
-function selectSaved(button){const item=savedItem(button);if(!item||!available(item)){message='Предложение уже не входит в текущую выдачу. Обновите поиск или удалите снимок.';render();return;}let target=Array.from(results.querySelectorAll('.hotel-card')).find(card=>card.dataset.hotelId===item.hotelId);target=target&&Array.from(target.querySelectorAll('.direct-tour')).find(node=>String(node.dataset.tid)===item.offerId);if(!target&&window.V2Results&&typeof window.V2Results.revealOfferAlternatives==='function')target=window.V2Results.revealOfferAlternatives(item.offerId);if(!target){message='Не удалось открыть предложение из текущей выдачи.';render();return;}returnFocus={offerId:item.offerId,searchId:item.searchId};target.click();}
+function selectSaved(button){const item=savedItem(button);if(!item||!available(item)){message='Предложение уже не входит в текущую выдачу. Обновите поиск или удалите снимок.';render();return;}if(!exactOffer(item.offerId,item.hotelId,currentItems))window.Search3LocalHotelFilter.reset();let target=results.querySelector(`[data-hotel-id="${CSS.escape(item.hotelId)}"] [data-tid="${CSS.escape(item.offerId)}"]`);if(!target&&window.V2Results&&typeof window.V2Results.revealOfferAlternatives==='function')target=window.V2Results.revealOfferAlternatives(item.offerId);if(!target){message='Не удалось открыть предложение из текущей выдачи.';render();return;}returnFocus={offerId:item.offerId,searchId:item.searchId};target.click();}
 function restoreSaved(button){const item=savedItem(button),url=item&&window.V2SearchLifecycle&&window.V2SearchLifecycle.restorationUrl(item.searchQuery);if(url)window.location.assign(url);}
 function remove(button){const index=saved.indexOf(savedItem(button));if(index<0)return;removeAt(index);}
 function clear(){const first=saved[0];saved=[];mobileOpen=false;differencesOnly=false;message='';save();focusAfterRemoval(0,first||{});}
