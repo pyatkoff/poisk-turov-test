@@ -142,12 +142,48 @@ $dir = rtrim((string)getenv('HOME'), '/') . '/.anytoour-match/operations/' . M80
 m80_need(realpath((string)getenv('MATCH_OPERATION_DIR')) === $dir, 'operation_directory');
 $source = (string)getenv('MATCH_SOURCE_SHA');
 m80_need(preg_match('/^[0-9a-f]{40}$/D', $source) === 1, 'source_sha');
-m80_need(hash_file('sha256', $dir . '/input.json') === M80_INPUT_SHA, 'MÄ($tbRows) === 1 && strtoupper((string)$tbRows[0]['ENGINE']) === 'INNODB', 'table_engine');
+m80_need(hash_file('sha256', $dir . '/input.json') === M80_INPUT_SHA, 'input_digest');
+$input = json_decode((string)file_get_contents($dir . '/input.json'), true, 128, JSON_THROW_ON_ERROR);
+m80_need(($input['schema'] ?? '') === 'match-live80-room-current-input-v1', 'input_schema');
+m80_need(($input['input_count'] ?? 0) === 80 && count($input['rows'] ?? []) === 80, 'input_count');
+m80_need(($input['samo_room_observation_count'] ?? 0) === 765 && ($input['samo_unique_room_count'] ?? 0) === 361, 'input_room_counts');
+$reservation = json_decode((string)file_get_contents($dir . '/reservation.json'), true, 64, JSON_THROW_ON_ERROR);
+m80_need(($reservation['operation_id'] ?? '') === M80_OP && ($reservation['source_sha'] ?? '') === $source && ($reservation['state'] ?? '') === 'reserved_before_db_read', 'reservation_guard');
+
+$base = [
+    'operation_id' => M80_OP,
+    'source_sha' => $source,
+    'input_sha256' => M80_INPUT_SHA,
+    'supplier_calls' => 0,
+    'provider_calls' => 0,
+    'tourvisor_calls' => 0,
+    'samo_calls' => 0,
+    'andromeda_calls' => 0,
+    'direct_anex_calls' => 0,
+    'database_writes' => 0,
+    'mapping_writes' => 0,
+    'room_mapping_writes' => 0,
+    'no_replay' => true,
+];
+$db = null;
+try {
+    m80_save($dir . '/execution-reservation.json', $base + ['state'=>'started_before_db_read']);
+    $root = realpath(getcwd());
+    m80_need(is_string($root) && basename($root) === 'anytoour.ru', 'root_guard');
+    require_once (is_file($root . '/data/db-v1.php') ? $root . '/data/db-v1.php' : $root . '/v2/data/db-v1.php');
+    $db = v2_data_db();
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    $db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+
+    foreach (['tour_price_observations','catalog_hotels','andromeda_hotel_identities'] as $table) {
+        $r = m80_rows($db, 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?', [$table]);
+        m80_need(count($r) === 1 && strtoupper((string)$r[0]['ENGINE']) === 'INNODB', 'table_engine');
     }
-    $columns = [];
-    foreach (m80_rows($db, 'SELECT COLUMN_NAME FROM information_schema.COLUMNNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? ORDER BY ORDINAL_POSITION', ['tour_price_observations']) as $c)) $columns[] = (string)$c['COLUMN_NAME'];
-    foreach (['observed_at','source','search_id','hotel_id','tour_id','departure_date','nights','adults','children_count','child_ages_signature','meal_id','room_id','room_type','operator_id'] as $c)&í80_need(in_array($c, $columns, true), 'observation_column');
-    
+    $cols = [];
+    foreach (m80_rows($db, 'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? ORDER BY ORDINAL_POSITION', ['tour_price_observations']) as $r) $cols[]=(string)$r['COLUMN_NAME'];
+    foreach (['observed_at','source','search_id','hotel_id','tour_id','departure_date','nights','adults','children_count','child_ages_signature','meal_id','room_id','room_type','operator_id'] as $c) m80_need(in_array($c,$cols,true),'observation_column');
+
     $dossiers = [];
     $conceptCount = 0;
     $holdCount = 0;
@@ -156,9 +192,117 @@ m80_need(hash_file('sha256', $dir . '/input.json') === M80_INPUT_SHA, 'MÄ($
     $clustersWithTv = 0;
     $clustersWithConcept = 0;
     $tvObservationCount = 0;
-    
+
     foreach ($input['rows'] as $row) {
         m80_need(is_array($row), 'input_row');
         $tvHotel = m80_pos_int($row['tv_hotel_id'] ?? null);
         $samoHotel = is_scalar($row['samo_hotel_id'] ?? null) ? trim((string)$row['samo_hotel_id']) : '';
-        $nativeAnex = is_scalar($row['native_anex_id'] ?? null) ? trim((string)$row['
+        $nativeAnex = is_scalar($row['native_anex_id'] ?? null) ? trim((string)$row['native_anex_id']) : '';
+        $ctx = $row['context'] ?? [];
+        m80_need($tvHotel !== null && preg_match('/^[1-9][0-9]*$/D',$samoHotel) && preg_match('/^[1-9][0-9]*$/D',$nativeAnex), 'input_identity');
+        m80_need(is_array($ctx) && preg_match('/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/D',(string)($ctx['departure_date']??'')), 'input_context');
+        $active = m80_rows($db, 'SELECT id,is_active FROM catalog_hotels WHERE id=?', [$tvHotel]);
+        $samoAccepted = m80_rows($db, "SELECT external_hotel_id,local_hotel_id,decision_status FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=? AND local_hotel_id=? AND decision_status='accepted'", [$samoHotel,$tvHotel]);
+        if (count($active)!==1 || (int)$active[0]['is_active']!==1 || count($samoAccepted)!==1) {
+            $dossiers[]=['tv_hotel_id'=>$tvHotel,'samo_hotel_id'=>$samoHotel,'native_anex_id'=>$nativeAnex,'state'=>'current_hotel_cluster_hold','safe_to_write_now'=>false];
+            continue;
+        }
+        $params = [
+            $tvHotel,
+            (string)$ctx['departure_date'],
+            (int)$ctx['nights'],
+            (int)$ctx['adults'],
+            (int)$ctx['children_count'],
+            (string)$ctx['child_ages_signature'],
+        ];
+        $tvRows = m80_rows($db, "SELECT observed_at,search_id,tour_id,hotel_id,departure_date,nights,adults,children_count,child_ages_signature,meal_id,room_id,room_type,operator_id
+            FROM tour_price_observations
+            WHERE source='user_search' AND operator_id=13 AND hotel_id=? AND departure_date=? AND nights=? AND adults=? AND children_count=? AND child_ages_signature=?
+              AND room_id IS NOT NULL AND room_id>0 AND room_type IS NOT NULL AND room_type<>''
+            ORDER BY observed_at DESC,id DESC", $params);
+        $tvObservationCount += count($tvRows);
+        if ($tvRows !== []) $clustersWithTv++;
+        $matched = m80_match_concepts($tvRows, is_array($row['samo_rooms'] ?? null) ? $row['samo_rooms'] : [], (int)$ctx['search_id']);
+        if ($matched['concepts'] !== []) $clustersWithConcept++;
+        foreach ($matched['concepts'] as &$c) {
+            $c['tv_hotel_id']=$tvHotel;
+            $c['samo_hotel_id']=$samoHotel;
+            $c['native_anex_id']=$nativeAnex;
+            $c['hotel_name']=(string)($row['hotel_name']??'');
+            $c['context']=$ctx;
+            $c['provider_operator']='anex';
+            $c['native_anex_anchor']='retained_samo_original_hotel_key_exact';
+            $c['accepted_hotel_evidence_sha256']=(string)($row['accepted_evidence_sha256']??'');
+            $conceptCount++;
+            if ($c['evidence_class']==='same_search_exact_room_key') $sameSearch++; else $sameContext++;
+        }
+        unset($c);
+        foreach ($matched['holds'] as &$h) {
+            $h['tv_hotel_id']=$tvHotel;
+            $h['samo_hotel_id']=$samoHotel;
+            $h['native_anex_id']=$nativeAnex;
+            $h['hotel_name']=(string)($row['hotel_name']??'');
+            $h['context']=$ctx;
+            $holdCount++;
+        }
+        unset($h);
+        $dossiers[]=[
+            'tv_hotel_id'=>$tvHotel,
+            'samo_hotel_id'=>$samoHotel,
+            'native_anex_id'=>$nativeAnex,
+            'hotel_name'=>(string)($row['hotel_name']??''),
+            'context'=>$ctx,
+            'tv_anex_observation_count'=>count($tvRows),
+            'samo_room_count'=>count($row['samo_rooms']??[]),
+            'room_concepts'=>$matched['concepts'],
+            'room_holds'=>$matched['holds'],
+            'state'=>$matched['concepts']!==[]?'room_evidence_found':($tvRows===[]?'no_current_tv_anex_room_observation':'no_exact_room_key_overlap'),
+            'safe_to_write_now'=>false,
+        ];
+    }
+    $clock = m80_rows($db, 'SELECT UTC_TIMESTAMP AS db_utc_timestamp')[0]['db_utc_timestamp'];
+    $db->rollBack();
+    $result = $base + [
+        'state'=>'completed_read_only',
+        'read_at_utc'=>$clock,
+        'input_clusters'=>80,
+        'input_samo_room_observations'=>765,
+        'input_unique_samo_rooms'=>361,
+        'clusters_with_current_tv_anex_room_observations'=>$clustersWithTv,
+        'current_tv_anex_room_observations'=>$tvObservationCount,
+        'clusters_with_room_concepts'=>$clustersWithConcept,
+        'room_concept_count'=>$conceptCount,
+        'room_hold_count'=>$holdCount,
+        'same_search_concepts'=>$sameSearch,
+        'same_context_concepts'=>$sameContext,
+        'dossiers'=>$dossiers,
+    ];
+} catch (Throwable $e) {
+    if ($db && $db->inTransaction()) $db->rollBack();
+    $reason = preg_match('/^[a-z0-9_]+$/D', $e->getMessage()) ? $e->getMessage() : 'database_or_runtime_error';
+    $result = $base + ['state'=>'failed_no_replay','reason'=>$reason,'error_class'=>get_class($e)];
+}
+$hash = m80_save($dir . '/result.json', $result);
+m80_save($dir . '/receipt.json', [
+    'operation_id'=>M80_OP,
+    'source_sha'=>$source,
+    'state'=>$result['state'],
+    'result_sha256'=>$hash,
+    'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$hash,
+    'supplier_calls'=>0,
+    'provider_calls'=>0,
+    'database_writes'=>0,
+    'mapping_writes'=>0,
+    'room_mapping_writes'=>0,
+    'no_replay'=>true,
+]);
+echo m80_json([
+    'state'=>$result['state'],
+    'clusters_with_current_tv_anex_room_observations'=>$result['clusters_with_current_tv_anex_room_observations']??null,
+    'room_concept_count'=>$result['room_concept_count']??null,
+    'room_hold_count'=>$result['room_hold_count']??null,
+    'same_search_concepts'=>$result['same_search_concepts']??null,
+    'same_context_concepts'=>$result['same_context_concepts']??null,
+    'result_sha256'=>$hash,
+]);
+if ($result['state'] !== 'completed_read_only') exit(2);
