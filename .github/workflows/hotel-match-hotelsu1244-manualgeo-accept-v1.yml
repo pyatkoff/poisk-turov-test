@@ -1,0 +1,165 @@
+name: MATCH HOTEL SU owner-geo accept v1
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_hotelsu1244_manualgeo_accept_v1.php
+      - .github/workflows/hotel-match-hotelsu1244-manualgeo-accept-v1.yml
+permissions:
+  contents: read
+  actions: read
+  issues: read
+concurrency:
+  group: hotel-match-hotelsu1244-manualgeo-accept-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-hotelsu1244-manualgeo-accept-1971-20260920-v1
+  BASE_SHA: e8b65edb650509a549d1e032a81eb594d038a75c
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  CLAIM: '5752445552'
+  AUDIT_ARTIFACT: '10611084977'
+  AUDIT_ZIP_SHA: '390b8658bc668c510987ec005204d881dc2086877b998fad9ec9f1747365df9c'
+  AUDIT_RESULT_SHA: '0a2767e4e6dde89505e8397d46c46b1b03a542e7bddeeda25e4d5b7325a06895'
+jobs:
+  accept:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-hotelsu1244-manualgeo-accept-1971-20260920-v1' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ env.SOURCE_SHA }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact source and owner decision
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p inputs payload/source/scripts/diagnostics payload/source/app/integrations result
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert actual=={'scripts/diagnostics/hotel_match_hotelsu1244_manualgeo_accept_v1.php','.github/workflows/hotel-match-hotelsu1244-manualgeo-accept-v1.yml'},actual
+          PY
+          php -l scripts/diagnostics/hotel_match_hotelsu1244_manualgeo_accept_v1.php
+          php scripts/diagnostics/hotel_match_hotelsu1244_manualgeo_accept_v1.php --self-test
+          test "$(git rev-parse "$BASE_SHA:app/integrations/andromeda-hotel-resolver.php")" = d49d0eaf8d6abccefd84c0c3921edde94ef50a68
+          test "$(git rev-parse "$BASE_SHA:app/integrations/anex-search-mapping-registry.php")" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > inputs/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('inputs/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+          for s in (os.environ['OPERATION_ID'],'Konyaaltı','Antalya-center','2000032277','ANEX15072','COMMIT'):
+              assert s in b,s
+          PY
+          cp scripts/diagnostics/hotel_match_hotelsu1244_manualgeo_accept_v1.php payload/source/scripts/diagnostics/
+          cp app/integrations/andromeda-hotel-resolver.php payload/source/app/integrations/
+          cp app/integrations/anex-search-mapping-registry.php payload/source/app/integrations/
+      - name: Verify immutable CURRENT audit
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$AUDIT_ARTIFACT/zip" > inputs/audit.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,json,os,pathlib
+          p=pathlib.Path('inputs/audit.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()==os.environ['AUDIT_ZIP_SHA']
+          with zipfile.ZipFile(p) as z:b=z.read('server/result.json')
+          assert hashlib.sha256(b).hexdigest()==os.environ['AUDIT_RESULT_SHA']
+          r=json.loads(b)
+          assert r['state']=='completed_read_only' and r['local_hotel_id']==1244 and str(r['samo_hotel_id'])=='2000032277' and r['current_anex_resolution']==1244
+          assert r['acceptance_reasons']==['current_direct_place_corroboration_missing'] and r['identity_conflicts']==[] and r['current_manual_rows']==[] and r['current_exclusion_rows']==[]
+          pathlib.Path('payload/audit-result.json').write_bytes(b)
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(72):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:r=json.load(f)['workflow_runs']
+              xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['SOURCE_SHA']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success';print('SECURITY_OK',x['id']);break
+              time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - name: Seal durable reservation before DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload');files=sorted(x for x in p.rglob('*') if x.is_file())
+          dig={str(x.relative_to(p)):hashlib.sha256(x.read_bytes()).hexdigest() for x in files}
+          assert dig['audit-result.json']==os.environ['AUDIT_RESULT_SHA']
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'state':'reserved_before_db_access','owner_claim':os.environ['CLAIM'],'audit_result_sha256':os.environ['AUDIT_RESULT_SHA'],'provider_calls':0,'tourvisor_calls':0,'samo_calls':0,'direct_anex_calls':0,'quota_mutations':0,'database_write_cap':1,'mapping_write_cap':1,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          (p/'reservation.json').write_bytes(raw);dig['reservation.json']=hashlib.sha256(raw).hexdigest()
+          (p/'SHA256SUMS').write_text(''.join(v+'  '+k+'\n' for k,v in sorted(dig.items())))
+          pathlib.Path('result/reservation.json').write_bytes(raw)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'match-hotelsu-manualgeo-reservation-${{ github.run_id }}'
+          path: result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute exact guarded write once
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;test -n "$KEY_VALUE";test -n "$HOST_VALUE";test -n "$USER_VALUE";key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" -r payload/source payload/audit-result.json payload/reservation.json payload/SHA256SUMS "$remote:$op/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";sha256sum -c SHA256SUMS >/dev/null;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_PATH=\"\$HOME/$op/audit-result.json\" MATCH_SOURCE_SHA='$SOURCE_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 \"\$HOME/$op/source/scripts/diagnostics/hotel_match_hotelsu1244_manualgeo_accept_v1.php\"" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json capture.json plan.json pre-commit.json result.json receipt.json" >result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?;set -e;printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+      - name: Verify COMMIT and canonical readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib,os
+          p=pathlib.Path('result');s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              names=sorted(t.getnames());assert names==['capture.json','plan.json','pre-commit.json','receipt.json','reservation.json','result.json'],names
+              for m in t.getmembers():(s/m.name).write_bytes(t.extractfile(m).read())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          r=json.load(open(s/'result.json'));q=json.load(open(s/'receipt.json'));e=json.load(open(p/'exit-codes.json'))
+          digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert e=={'remote':0,'tar':0} and r['state']==q['state']=='committed_verified' and q['result_sha256']==digest
+          assert r['database_writes']==r['mapping_writes']==r['accepted_delta']==r['triple_delta']==1 and r['readback_verified'] is True
+          assert r['external_hotel_id']=='2000032277' and r['local_hotel_id']==1244 and r['anex_native_id']=='15072' and r['owner_geo_decision_applied'] is True
+          assert r['provider_calls']==r['tourvisor_calls']==r['samo_calls']==r['direct_anex_calls']==r['quota_mutations']==0
+          print(json.dumps({'state':r['state'],'delta':1,'samo':'2000032277','local':1244,'anex':'15072','result_sha256':digest}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'match-hotelsu-manualgeo-result-${{ github.run_id }}'
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
