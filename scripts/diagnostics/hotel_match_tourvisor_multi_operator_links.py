@@ -51,7 +51,9 @@ def build(queue,tv,date_from):
         if oid is None and oname is None: rejected.append({"local_hotel_id":local,"reason":"missing_operator_identity"});continue
         safe,why=_safe_link(r.get("operatorLink",r.get("operator_link")))
         cap={"local_hotel_id":local,"country_id":country,"live_frequency":targets[local]["frequency"],"tourvisor_hotel_name":h.get("name"),"tour_id":str(r.get("id",r.get("tourId",r.get("tour_id")))) if r.get("id",r.get("tourId",r.get("tour_id"))) not in (None,"") else None,"operator_id":oid,"operator_name":oname,"operator_link":safe,"region":(h.get("region") or {}).get("name") if isinstance(h.get("region"),dict) else None,"subregion":(h.get("subRegion") or {}).get("name") if isinstance(h.get("subRegion"),dict) else None,"tourvisor_latitude":(h.get("common") or {}).get("latitude") if isinstance(h.get("common"),dict) else h.get("latitude"),"tourvisor_longitude":(h.get("common") or {}).get("longitude") if isinstance(h.get("common"),dict) else h.get("longitude"),"date_from":date_from,"status":"operator_link_ready_for_native_extractor" if safe else "operator_identity_ready_link_missing"}
-        by_key.setdefault((local,oid,oname or ""),[]).append(cap)
+        # A display label must not split one observed Tourvisor operator ID.
+        # ID-less rows retain exact-name isolation; never infer an ID by name.
+        by_key.setdefault((local,oid,(oname or "") if oid is None else ""),[]).append(cap)
         if why: rejected.append({"local_hotel_id":local,"operator_id":oid,"operator_name":oname,"reason":why})
     ambiguous=0
     for _,vals in by_key.items():
