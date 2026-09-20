@@ -1,0 +1,181 @@
+name: MATCH HOTEL SU retained SAMO evidence v1
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - .github/workflows/hotel-match-hotelsu1244-retained-samo-evidence-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency:
+  group: hotel-match-hotelsu1244-retained-samo-evidence-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-hotelsu1244-retained-samo-evidence-1971-20260920-v1
+  BASE_SHA: d527fb1c60d964ba54206948c72d169e165bd334
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  CLAIM: '5751182119'
+  ARTIFACT_ID: '10588338849'
+  ARTIFACT_ZIP_SHA: f360237113f3c65003fc564efab5749f2ecc66fed41881a3043b526e7b3db5fc
+  SOURCE_RESULT_SHA: 34c0f56d9640c0e29bc59d2c7355dad3728fe421e18db55e528eba013cb58e3b
+jobs:
+  inspect:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-hotelsu1244-retained-samo-evidence-1971-20260920-v1' && github.run_attempt == 1 && github.run_number == 1
+    name: Inspect retained Turkey SAMO evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      strong: '${{ steps.parse.outputs.strong }}'
+      su_rows: '${{ steps.parse.outputs.su_rows }}'
+      result_matches: '${{ steps.parse.outputs.result_matches }}'
+      direct: '${{ steps.parse.outputs.direct }}'
+      candidates: '${{ steps.parse.outputs.candidates }}'
+      result_items: '${{ steps.parse.outputs.result_items }}'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ env.SOURCE_SHA }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact scope and owner claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert actual=={'.github/workflows/hotel-match-hotelsu1244-retained-samo-evidence-v1.yml'},actual
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+          for s in (os.environ['OPERATION_ID'],os.environ['BASE_SHA'],os.environ['ARTIFACT_ID'],os.environ['ARTIFACT_ZIP_SHA'],os.environ['SOURCE_RESULT_SHA'],'local/TV `1244`','ANEX native `15072`','Provider/Tourvisor/SAMO/Andromeda/direct-ANEX calls0','DB writes0','mapping writes0','day ledgers untouched','safe_to_write_now=false'):
+              assert s in c['body'],s
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(72):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE_SHA']]
+              if xs:
+                  r=max(xs,key=lambda x:x['id'])
+                  if r['status']=='completed': assert r['conclusion']=='success'; print('SECURITY_OK',r['id']); break
+              time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - name: Download immutable retained artifact only
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > retained.zip
+          test "$(sha256sum retained.zip | awk '{print $1}')" = "$ARTIFACT_ZIP_SHA"
+      - name: Verify and retrieve Turkey candidates
+        id: parse
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir out
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,unicodedata,zipfile
+          zpath=pathlib.Path('retained.zip')
+          assert hashlib.sha256(zpath.read_bytes()).hexdigest()==os.environ['ARTIFACT_ZIP_SHA']
+          def norm(v):
+              s=unicodedata.normalize('NFKD',str(v or '')).casefold()
+              s=''.join(c for c in s if not unicodedata.combining(c))
+              return ' '.join(re.findall(r'[a-zа-я0-9]+',s))
+          def safe(v,n=90):
+              return re.sub(r'[\r\n|]+',' ',str(v or '')).strip()[:n] or '-'
+          with zipfile.ZipFile(zpath) as z:
+              names=set(z.namelist())
+              assert 'server/result.json' in names and 'server/receipt.json' in names
+              rr=z.read('server/result.json'); assert hashlib.sha256(rr).hexdigest()==os.environ['SOURCE_RESULT_SHA']
+              result=json.loads(rr); receipt=json.loads(z.read('server/receipt.json'))
+              assert result['state']=='completed_read_only' and receipt['result_sha256']==os.environ['SOURCE_RESULT_SHA']
+              assert result['database_writes']==result['mapping_writes']==0 and result['tourvisor_calls']==0
+              catalogs=[]; strong=[]; su_rows=[]
+              for name in sorted(n for n in names if re.fullmatch(r'server/raw-catalog-[a-f0-9]{12}\.json',n)):
+                  cat=json.loads(z.read(name)); hotels=cat.get('HOTELS') or []
+                  if not isinstance(hotels,list): continue
+                  turkey=[]
+                  for h in hotels:
+                      if not isinstance(h,dict): continue
+                      state=norm(h.get('state') or h.get('country') or '')
+                      if state not in {'турция','turkey','turkiye','türkiye'}: continue
+                      turkey.append(h)
+                  if not turkey: continue
+                  ops=[o for o in (cat.get('OPERATORS') or []) if isinstance(o,dict) and (str(o.get('id') or '')=='5' or norm(o.get('name'))=='anex tour')]
+                  catalogs.append({'file':name.split('/')[-1],'turkey_hotels':len(turkey),'operator5':ops})
+                  for h in turkey:
+                      n=norm(h.get('name'))
+                      toks=set(n.split())
+                      row={'file':name.split('/')[-1],'id':str(h.get('id') or ''),'name':h.get('name'),'town':h.get('town'),'townKey':h.get('townKey'),'state':h.get('state'),'stateKey':h.get('stateKey'),'star':h.get('star'),'latitude':h.get('latitude'),'longitude':h.get('longitude'),'operator5':ops}
+                      is_strong=(n in {'hotel su','su hotel','su aqualand','hotel su aqualand','hillside su','hillside su hotel'}) or ({'su','aqualand'}<=toks) or ({'hillside','su'}<=toks)
+                      if is_strong: strong.append(row)
+                      if 'su' in toks: su_rows.append(row)
+              dossiers=result.get('dossiers') or []
+              matches=[]
+              for d in dossiers:
+                  if not isinstance(d,dict): continue
+                  blob=json.dumps(d,ensure_ascii=False,separators=(',',':'))
+                  local=str(d.get('local_hotel_id') or d.get('tv_hotel_id') or '')
+                  anchors=[str(x) for x in (d.get('anex_native_ids') or [])]
+                  target=(local=='1244' or '15072' in anchors or 'HOTEL SU' in blob.upper() or 'SU & AQUALAND' in blob.upper() or 'HILLSIDE SU' in blob.upper())
+                  if not target: continue
+                  b=d.get('bridge') if isinstance(d.get('bridge'),dict) else {}
+                  matches.append({'local_hotel_id':local or None,'name':(d.get('hotel_raw') or {}).get('name') if isinstance(d.get('hotel_raw'),dict) else d.get('name'),'anex_native_ids':anchors,'state':d.get('state'),'route':d.get('route'),'bridge':b,'context':d.get('context')})
+              direct=sum(1 for x in matches if x.get('bridge'))
+              evidence={'operation_id':os.environ['OPERATION_ID'],'source_artifact_id':int(os.environ['ARTIFACT_ID']),'source_result_sha256':os.environ['SOURCE_RESULT_SHA'],'source_state':result['state'],'source_provider_calls':result.get('provider_calls'),'reader_provider_calls':0,'reader_tourvisor_calls':0,'reader_samo_calls':0,'reader_andromeda_calls':0,'reader_direct_anex_calls':0,'reader_database_writes':0,'reader_mapping_writes':0,'day_ledgers_touched':False,'safe_to_write_now':False,'turkey_catalogs':catalogs,'strong_candidates':strong,'all_turkey_su_token_rows':su_rows,'source_result_matches':matches}
+              raw=(json.dumps(evidence,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); pathlib.Path('out/evidence.json').write_bytes(raw)
+              items=[]
+              for r in strong[:50]: items.append({'id':safe(r['id'],20),'name':safe(r['name'],70),'town':safe(r['town'],45),'star':safe(r['star'],20),'file':safe(r['file'],40)})
+              result_items=[]
+              for x in matches[:20]:
+                  b=x.get('bridge') or {}; sid=b.get('requested_samo_id') or b.get('samo_hotel_id') or b.get('hotel_id') or '-'
+                  result_items.append({'local':safe(x.get('local_hotel_id'),20),'name':safe(x.get('name'),60),'state':safe(x.get('state') or x.get('route'),40),'samo':safe(sid,30)})
+              out=pathlib.Path(os.environ['GITHUB_OUTPUT'])
+              with out.open('a',encoding='utf-8') as f:
+                  f.write('strong='+str(len(strong))+'\n')
+                  f.write('su_rows='+str(len(su_rows))+'\n')
+                  f.write('result_matches='+str(len(matches))+'\n')
+                  f.write('direct='+str(direct)+'\n')
+                  f.write('candidates='+json.dumps({'item':items},ensure_ascii=False,separators=(',',':'))+'\n')
+                  f.write('result_items='+json.dumps({'item':result_items},ensure_ascii=False,separators=(',',':'))+'\n')
+              print(json.dumps({'turkey_catalogs':len(catalogs),'strong_candidates':len(strong),'su_token_rows':len(su_rows),'source_result_matches':len(matches),'direct_matches':direct,'candidate_ids':[r['id'] for r in strong]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-hotelsu1244-retained-evidence-${{ github.run_id }}', path: out/evidence.json, retention-days: 90, if-no-files-found: error}
+  summary:
+    needs: inspect
+    if: always() && needs.inspect.result == 'success'
+    name: 'SUMMARY strong=${{ needs.inspect.outputs.strong }} su-token=${{ needs.inspect.outputs.su_rows }} source-match=${{ needs.inspect.outputs.result_matches }} direct=${{ needs.inspect.outputs.direct }}'
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'true'
+  candidates:
+    needs: inspect
+    if: needs.inspect.result == 'success' && needs.inspect.outputs.strong != '0'
+    strategy:
+      fail-fast: false
+      matrix: '${{ fromJSON(needs.inspect.outputs.candidates) }}'
+    name: 'CAND ${{ matrix.item.id }} ${{ matrix.item.name }} | ${{ matrix.item.town }} | ${{ matrix.item.star }} | ${{ matrix.item.file }}'
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'true'
+  source_matches:
+    needs: inspect
+    if: needs.inspect.result == 'success' && needs.inspect.outputs.result_matches != '0'
+    strategy:
+      fail-fast: false
+      matrix: '${{ fromJSON(needs.inspect.outputs.result_items) }}'
+    name: 'SOURCE local=${{ matrix.item.local }} ${{ matrix.item.name }} | ${{ matrix.item.state }} | SAMO=${{ matrix.item.samo }}'
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'true'
