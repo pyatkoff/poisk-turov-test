@@ -1,0 +1,107 @@
+name: MATCH detail251 CURRENT bridge audit v1
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_detail251_current_bridge_audit_v1.php
+      - .github/workflows/hotel-match-detail251-current-bridge-audit-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-detail251-current-bridge-audit-1971-20260921-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-detail251-current-bridge-audit-1971-20260921-v1
+  BASE_SHA: 4b620405797e996eb3b6e02ae3d982fb2b7a1d6c
+  CLAIM: '5753278086'
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and claim
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import subprocess,os
+          want={'.github/workflows/hotel-match-detail251-current-bridge-audit-v1.yml','scripts/diagnostics/hotel_match_detail251_current_bridge_audit_v1.php'}
+          got=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert got==want,(got,want)
+          PY
+          php -l scripts/diagnostics/hotel_match_detail251_current_bridge_audit_v1.php
+          php scripts/diagnostics/hotel_match_detail251_current_bridge_audit_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in b and '10614103969' in b and '251' in b and 'supplier-free' in b and 'safe_to_write_now=false' in b
+          PY
+      - name: Download immutable detail evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10614103969/zip >input/detail.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,pathlib,json
+          p=pathlib.Path('input/detail.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='ed9bdce7f2372ef9ca4aeeec06d99719719abf8b004cdb834f72454518856c76'
+          with zipfile.ZipFile(p) as z:b=z.read('server/result.json')
+          assert hashlib.sha256(b).hexdigest()=='2534eebc2a8b0ba79dbf32dedda165c7e87da609284b25c5209c04747624e564'
+          j=json.loads(b);assert j['operation']=='hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v4' and len(j['edges'])==1348
+          pathlib.Path('input/detail.json').write_bytes(b)
+          PY
+      - name: Reserve before server DB read
+        env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,datetime,pathlib
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db','source_sha':os.environ['HEAD_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider_calls':0,'database_writes':0,'mapping_writes':0}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'detail251-current-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(q) as f:xs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD_SHA']]
+            if xs and max(xs,key=lambda x:x['id'])['status']=='completed':
+              x=max(xs,key=lambda x:x['id']);assert x['conclusion']=='success',x;break
+            time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Execute CURRENT read-only audit
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_detail251_current_bridge_audit_v1.php input/detail.json reservation/reservation.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_DETAIL_PATH=\"\$HOME/$op/payload/detail.json\" php \"\$HOME/$op/payload/hotel_match_detail251_current_bridge_audit_v1.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' >terminal/server.tgz
+      - name: Verify immutable result
+        run: |
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+            for n in ['result.json','receipt.json']:pathlib.Path('terminal',n).write_bytes(t.extractfile(n).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']=='hotel-match-detail251-current-bridge-audit-1971-20260921-v1'
+          assert r['state']==q['state']=='completed_read_only' and r['input_edges']==251 and len(r['rows'])==251
+          assert r['provider_calls']==r['tourvisor_calls']==r['samo_calls']==r['database_writes']==r['mapping_writes']==0
+          assert all(x['safe_to_write_now'] is False for x in r['rows'])
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          print(json.dumps({'classification_counts':r['classification_counts'],'unique_tv_hotels':r['unique_tv_hotels'],'result_sha256':q['result_sha256']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-detail251-current-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
