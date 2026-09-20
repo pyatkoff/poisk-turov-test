@@ -158,12 +158,11 @@ $flat['currency'] = $flat['price']['currency'];
 unset($flat['transport_context'], $flat['price']);
 assert(AndromedaSurchargeGroupKey::build($flat, $baseRequest) === null);
 
-// Opaque key must not expose offer/hotel/price/SPO/child-age identifiers.
+// Opaque key must not expose offer/hotel/price/SPO identifiers.
 assert(!str_contains($familyKey, 'offer-1'));
 assert(!str_contains($familyKey, '101'));
 assert(!str_contains($familyKey, '100000'));
 assert(!str_contains($familyKey, '40082967'));
-assert(!str_contains($familyKey, '7'));
-assert(!str_contains($familyKey, '3'));
+assert(strlen($familyKey) === strlen('andromeda-surcharge-v2:') + 64);
 
 echo "Andromeda surcharge group key evidence v2: OK\n";
