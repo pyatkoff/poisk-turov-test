@@ -33,12 +33,33 @@ async function setDates(page,from,to){
   await dialog.locator('.search-parameter-apply').click();await dialog.waitFor({state:'hidden'});
  }else{await page.locator('#tourSearch [name=dateFrom]').fill(from);await page.locator('#tourSearch [name=dateTo]').fill(to)}
 }
+async function setBudget(page,from,to){
+ await page.locator('[data-search3-parameter=budget]').click();
+ const dialog=page.getByRole('dialog',{name:'Бюджет за всех',exact:true});
+ await dialog.getByLabel('Цена от',{exact:true}).fill(from);await dialog.getByLabel('Цена до',{exact:true}).fill(to);
+ await dialog.locator('.search-parameter-apply').click();await dialog.waitFor({state:'hidden'});
+}
 async function checkMobileParameters(page,width,output){
- if(width>700)return;
+ if(width>700&&width!==1440)return;
  const snapshot=()=>page.locator('#tourSearch').evaluate(form=>({data:[...new FormData(form)],generation:window.V2SearchLifecycle.generation,dirty:window.V2SearchLifecycle.dirty}));
- const before=await snapshot(),dialog=page.locator('.search-parameter-dialog');
- assert.equal(await page.locator('[data-search3-parameter]:visible').count(),3,'all three primary parameter groups remain visible');
+ let before=await snapshot();const dialog=page.locator('.search-parameter-dialog');
+ assert.equal(await page.locator('[data-search3-parameter]:visible').count(),4,'primary parameters and budget remain visible');
  for(const trigger of await page.locator('[data-search3-parameter]').all())assert.ok((await trigger.boundingBox()).height>=44);
+ await page.locator('[data-search3-parameter=budget]').click();
+ await dialog.getByRole('button',{name:'До 150 000 ₽',exact:true}).click();
+ assert.deepEqual(await snapshot(),before,'budget preset remains a draft until Apply');
+ await page.keyboard.press('Escape');assert.deepEqual(await snapshot(),before,'Escape discards the budget draft');
+ await setBudget(page,'155500','200750');
+ assert.deepEqual(await page.locator('#tourSearch').evaluate(form=>[new FormData(form).get('price_from'),new FormData(form).get('price_till')]),['155500','200750'],'budget preserves exact values');
+ await page.locator('[data-search3-parameter=budget]').click();
+ await dialog.getByLabel('Цена до',{exact:true}).fill('155499');await dialog.locator('.search-parameter-apply').click();
+ assert.match(await dialog.getByRole('alert').innerText(),/меньше минимальной/);
+ await dialog.getByLabel('Цена от',{exact:true}).fill('-1');await dialog.locator('.search-parameter-apply').click();
+ assert.match(await dialog.getByRole('alert').innerText(),/от нуля/);
+ await dialog.getByRole('button',{name:'Отмена',exact:true}).click();
+ await setBudget(page,before.data.find(x=>x[0]==='price_from')[1],before.data.find(x=>x[0]==='price_till')[1]);
+ assert.equal((await snapshot()).generation,before.generation,'budget editing never submits a search');
+ before=await snapshot();
  await page.locator('[data-search3-parameter=party]').click();
  await dialog.getByRole('button',{name:'Увеличить число взрослых'}).click();
  await dialog.getByRole('button',{name:'Добавить ребёнка +',exact:true}).click();
@@ -106,4 +127,4 @@ async function checkMobileParameters(page,width,output){
  assert.deepEqual((await snapshot()).data,before.data,'all canonical fields retain their original names and values');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
 }
-module.exports={setParty,setNights,setDates,checkMobileParameters};
+module.exports={setParty,setNights,setDates,setBudget,checkMobileParameters};

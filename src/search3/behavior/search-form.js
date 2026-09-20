@@ -3,6 +3,17 @@
 var form=document.getElementById('tourSearch'),results=document.getElementById('results'),edit=document.getElementById('resultsSearchEdit'),trip=document.getElementById('resultsTripContext'),collapse=form&&form.querySelector('.search-editor-collapse');if(!form||!results)return;
 form.dataset.search3Ready='1';
 const busy=value=>results.setAttribute('aria-busy',value),on=(name,handler)=>window.addEventListener(name,handler);
+const extras=form.querySelector('.extras'),moreFilters=form.querySelector('.search-more-filters');
+if(extras&&moreFilters){
+ moreFilters.hidden=false;extras.querySelector('summary').hidden=true;form.dataset.search3Extras='enhanced';
+ const sync=()=>moreFilters.setAttribute('aria-expanded',String(extras.open));
+ const focusExtra=name=>{extras.open=true;sync();const native=form.elements[name],target=name==='hotel'?extras.querySelector('[data-v2-hotel-query]'):native;requestAnimationFrame(()=>target?.focus({preventScroll:true}))};
+ moreFilters.addEventListener('click',()=>{extras.open=!extras.open;sync();if(extras.open){extras.scrollIntoView({block:'nearest'});extras.querySelector('select:not([hidden]),input:not([hidden])')?.focus({preventScroll:true})}});
+ extras.addEventListener('toggle',sync);
+ on('v2:search-error',event=>{const name=event.detail?.error?.field;if(event.detail?.phase==='validation'&&name&&extras.contains(form.elements[name]))focusExtra(name)});
+ form.addEventListener('invalid',event=>{if(extras.contains(event.target))focusExtra(event.target.name)},true);
+ sync();
+}
 /* Mobile choices project the existing minimum-category field; no second value owner. */
 const category=form.elements.stars,categoryField=category&&category.closest('.search-preference--stars');
 if(categoryField&&window.matchMedia){

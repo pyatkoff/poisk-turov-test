@@ -32,17 +32,17 @@ const childAgesStart = markup.indexOf('<div id="childAges"', partyStart);
 assert.ok(partyStart > 0 && partyEnd > partyStart && childAgesStart > partyStart && childAgesStart < partyEnd,
   'child ages stay inside the canonical tourist group');
 const primaryStart = markup.indexOf('<div class="search-preferences">');
-const extrasStart = markup.indexOf('<details class="extras">', primaryStart);
+const extrasStart = markup.indexOf('<details class="extras"', primaryStart);
 assert.ok(primaryStart > 0 && extrasStart > primaryStart, 'primary preference grid remains bounded before extras');
 const primaryMarkup = markup.slice(primaryStart, extrasStart);
-for (const name of ['region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
+for (const name of ['stars', 'food', 'price_from', 'price_till']) {
   assert.ok(primaryMarkup.includes(`name="${name}"`), `primary preference remains directly visible: ${name}`);
 }
 for (const name of ['subregion', 'rating', 'operator']) {
   assert.ok(!primaryMarkup.includes(`name="${name}"`), `secondary field is not promoted into the primary grid: ${name}`);
-  assert.match(markup, new RegExp(`<details class="extras">[\\s\\S]*?name="${name}"`), `secondary field remains available under extras: ${name}`);
+  assert.match(markup, new RegExp(`<details class="extras"[^>]*>[\\s\\S]*?name="${name}"`), `secondary field remains available under extras: ${name}`);
 }
-assert.match(markup, /<details class="extras">[\s\S]*?<select name="operator">[\s\S]*?<\/details>/, 'tour operator stays secondary inside the existing extras owner');
+assert.match(markup, /<details class="extras"[^>]*>[\s\S]*?<select name="operator">[\s\S]*?<\/details>/, 'tour operator stays secondary inside the existing extras owner');
 assert.match(markup, /\$advancedFilterCount=0;/, 'server entry owns the secondary-filter count');
 for (const name of ['subregion', 'rating', 'arrival', 'operator', 'hotel_type', 'hotel_service']) {
   assert.ok(markup.includes(`'${name}'`), `secondary summary includes ${name}`);
@@ -138,4 +138,4 @@ vm.runInNewContext(formOwner, context);
 assert.equal(trip.hidden, true, 'late initialization cannot present unsent draft criteria as an active search');
 emit('v2:results-rendered');
 assert.equal(form.dataset.search3View, 'editor', 'late initialization preserves the canonical dirty editor through retained-results rerenders');
-console.log('PASS: native server form keeps six primary OTA hotel/price preferences visible, groups child ages with tourists, keeps tour operator under extras, and preserves URL hydration/FormData');
+console.log('PASS: native server form keeps compact trip and hotel/price editors with accessible secondary destinations, groups child ages with tourists, keeps tour operator under extras, and preserves URL hydration/FormData');

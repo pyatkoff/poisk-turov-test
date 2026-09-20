@@ -1,66 +1,49 @@
-/* Native labels, fields and disclosures; values and lifecycle remain canonical. */
+/* Compact OTA entry with one canonical field per parameter. */
 .search3-candidate #tourSearch{
-display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;padding:clamp(16px,2vw,22px);background:#fff;border:1px solid #dbe2ed;border-radius:16px;box-shadow:0 8px 24px #17233b08;
-& :is(.search-section-title,.main-fields,.child-ages,.search-preferences){grid-column:1/-1}
-& :is(.main-fields,.search-preferences){grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;display:grid}
-& .main-fields{margin:0;gap:inherit}
-& :is(.extra-grid,.child-ages){display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:16px 0}
-& .search-group{min-width:0;margin:0;padding:0;border:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start}
-& .search-group legend{padding:0;margin-bottom:8px;color:#17233b;font-size:14px;font-weight:700}
-& .field>span{display:block;font-size:14px;color:#526078;margin-bottom:6px}
-& .field :is(input:not([type=checkbox]),select){display:block;box-sizing:border-box;width:100%;min-width:0;height:44px!important;min-height:44px!important;padding:10px 12px;border:1px solid #dbe2ed;border-radius:10px;background-color:#fff;font-size:16px!important;line-height:22px}
-/* Keep the native date picker while removing iOS's intrinsic button geometry. */
-& .field input[type=date]{appearance:none;-webkit-appearance:none;max-width:100%}
-& .field input[type=date]::-webkit-date-and-time-value{min-width:0;text-align:left}
-& .field select{appearance:none;-webkit-appearance:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:36px;background-image:linear-gradient(45deg,transparent 50%,#526078 50%),linear-gradient(135deg,#526078 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
-@media(forced-colors:active){& .field select{appearance:auto;-webkit-appearance:auto;background-image:none}}
-& .search-section-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;font-size:18px;font-weight:700}
-& .search-editor-collapse{margin-left:auto;min-height:44px;padding:8px 12px;border:1px solid #dbe2ed;border-radius:10px;background:#fff;color:#2743cb;font:inherit;font-size:14px;cursor:pointer}
-& .search-editor-collapse:focus-visible{outline:3px solid #2743cb;outline-offset:2px}
-& summary span{font-weight:400;font-size:14px;color:#526078}
-& .child-ages{margin:0;padding:14px;border-radius:10px;background:#f5f7fb}
-& .extras{margin:0;align-self:start}
-& .extras[open]{grid-column:1/-1}
-& .extras:not([open])>.extra-grid{display:none}
-& .extras>summary{padding:12px;border-color:transparent;background:#f5f7fb;color:#2743cb;font-weight:600}
-& .extras>summary span{margin-left:6px}
-& .toggle-row{display:flex;flex-wrap:wrap;gap:8px}
-& :is(.toggle,.service-check){display:flex;align-items:center;gap:8px;min-height:44px;padding:9px 12px;border:1px solid #dbe2ed;border-radius:10px;cursor:pointer;font-size:14px}
-& :is(.toggle,.service-check):has(input:checked){border-color:#2743cb;background:#eef2ff;color:#2743cb}
-& :is(.toggle,.service-check) input{flex:0 0 auto;width:18px;height:18px;margin:0;accent-color:#2743cb}
-& .service-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:12px}
-& .service-group>strong{display:block;margin-bottom:6px}
-& .service-items{display:grid;gap:6px}
-& .service-check:focus-within{outline:3px solid #2743cb;outline-offset:2px}
-& .search-submit{grid-column:2;display:block;width:100%;min-height:48px;margin:0;align-self:start;padding:12px 24px;background:#d83d00;font-weight:700}
-@media(min-width:701px) and (max-width:899px){& .extra-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}& .extra-grid .toggle-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));flex-wrap:initial}}
-@media(min-width:900px){& .extra-grid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:end}& .extra-grid .toggle-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));flex-wrap:initial}}
-@media(min-width:1100px){grid-template-columns:minmax(0,1fr) 180px;gap:12px 16px;& .main-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;align-items:start}& .search-preferences{grid-template-columns:minmax(150px,1.15fr) minmax(230px,1.7fr) minmax(110px,.72fr) minmax(130px,.85fr) minmax(115px,.72fr) minmax(115px,.72fr);gap:12px;align-items:end}& .search-group{gap:8px}& .search-group legend{margin-bottom:6px;font-size:13px}& .search-group--route{grid-template-columns:minmax(120px,.85fr) minmax(140px,1.15fr)}& .search-group--dates{grid-template-columns:repeat(2,minmax(115px,1fr))}& .search-group--nights{grid-template-columns:repeat(2,minmax(80px,1fr))}& .search-group--party{grid-template-columns:repeat(2,minmax(90px,1fr))}& .search-group--party:has(.child-ages:not([hidden])){grid-template-columns:minmax(90px,.65fr) minmax(100px,.7fr) minmax(240px,1.4fr)}& .child-ages{grid-column:3;grid-row:1;grid-template-columns:repeat(2,120px);justify-content:start;justify-self:start;gap:8px;width:min(100%,248px);max-width:248px;padding:0;background:transparent;align-self:end}& .child-age>span{font-size:12px;white-space:nowrap}& .main-fields:has(.child-age:nth-child(3)){grid-template-columns:repeat(6,minmax(0,1fr));& .search-group{grid-column:span 3}& .search-group--nights{grid-column:span 2}& .search-group--party{grid-column:span 4;grid-template-columns:minmax(90px,.65fr) minmax(100px,.7fr) 376px}& .child-ages{grid-template-columns:repeat(3,120px);width:376px;max-width:376px}}& .extras{grid-column:1;align-self:start}& .search-submit{grid-column:2;width:180px;min-height:44px;padding:10px 18px;align-self:start}}
-@media(max-width:700px){grid-template-columns:1fr;gap:12px;padding:12px;&>.search-section-title:first-child:not(:has([hidden])){position:sticky;top:0;z-index:2;background:#fff}& .main-fields{grid-template-columns:1fr}& .child-ages{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}& .child-age:last-child:nth-child(odd){grid-column:1/-1}& .search-submit{grid-column:1;width:100%}& .search-preferences{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}& .search-preference:nth-child(-n+2){grid-column:1/-1}& .extras>summary span{display:block;margin:4px 0 0}& .service-groups{grid-template-columns:1fr}}
-@media(max-width:350px){& .search-group--route{grid-template-columns:1fr}}
-@media(max-width:350px){& .search-group,& .search-preferences,& .child-ages{grid-template-columns:1fr}& .child-age{grid-column:auto!important}& .search-preference{grid-column:auto}}
+ display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:14px;padding:20px;background:#fff;border:1px solid #dbe2ed;border-top:3px solid #2743cb;border-radius:16px;box-shadow:0 8px 24px #17233b08;
+ & :is(.search-section-title,.main-fields,.search-preferences,.extras){grid-column:1/-1}
+ & .main-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0}
+ & .search-group{min-width:0;margin:0;padding:0;border:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start}
+ & .search-group legend{padding:0;margin-bottom:8px;color:#17233b;font-size:14px;font-weight:700}
+ & .search-preferences{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;align-items:end}
+ & .field{min-width:0}
+ & .field>span{display:block;font-size:14px;color:#526078;margin-bottom:6px}
+ & .field :is(input:not([type=checkbox]),select){display:block;box-sizing:border-box;width:100%;min-width:0;height:44px!important;min-height:44px!important;padding:10px 12px;border:1px solid #dbe2ed;border-radius:10px;background-color:#fff;font-size:16px!important;line-height:22px}
+ & .field input[type=date]{appearance:none;-webkit-appearance:none;max-width:100%}
+ & .field input[type=date]::-webkit-date-and-time-value{min-width:0;text-align:left}
+ & .field select{appearance:none;-webkit-appearance:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:32px;background-image:linear-gradient(45deg,transparent 50%,#526078 50%),linear-gradient(135deg,#526078 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 12px) 50%;background-size:4px 4px;background-repeat:no-repeat}
+ @media(forced-colors:active){& .field select{appearance:auto;-webkit-appearance:auto;background-image:none}}
+ & .search-section-title{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;font-size:22px;line-height:1.2;font-weight:700}
+ & :is(.search-editor-collapse,.search-more-filters){min-height:44px;padding:8px 2px;border:0;background:transparent;color:#2743cb;font:inherit;font-size:14px;cursor:pointer}
+ & .search-more-filters{margin-left:auto}
+ & .search-section-title:has(.search-editor-collapse:not([hidden]))>span{display:none}
+ & :is(.search-editor-collapse,.search-more-filters):focus-visible{outline:3px solid #2743cb;outline-offset:2px}
+ & .search-preference--budget{align-self:stretch;margin:0;padding:0;border:0;min-width:0}
+ & .search-preference--budget legend{font-size:14px;color:#526078;margin-bottom:6px}
+ & .search-budget-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ & .search-budget-fields small{display:none}
+ & :is(.extra-grid,.child-ages){display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:14px 0}
+ & .child-ages{grid-column:1/-1;margin:0;padding:12px;border-radius:10px;background:#f5f7fb}
+ & .extras{margin:0;align-self:start}
+ & .extras[open]{padding:14px;border:1px solid #dbe2ed;border-radius:12px;background:#f8faff}
+ & .extras:not([open])>.extra-grid{display:none}
+ & .extras>summary{padding:10px;border-color:transparent;background:#f5f7fb;color:#2743cb;font-weight:600}
+ & .extras>summary span{display:block;margin-top:4px;font-weight:400;font-size:13px;color:#526078}
+ & .toggle-row{display:flex;flex-wrap:wrap;gap:8px}
+ & :is(.toggle,.service-check){display:flex;align-items:center;gap:8px;min-height:44px;padding:9px 12px;border:1px solid #dbe2ed;border-radius:10px;cursor:pointer;font-size:14px}
+ & :is(.toggle,.service-check):has(input:checked){border-color:#2743cb;background:#eef2ff;color:#2743cb}
+ & :is(.toggle,.service-check) input{flex:0 0 auto;width:18px;height:18px;margin:0;accent-color:#2743cb}
+ & .service-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:12px}
+ & .service-group>strong{display:block;margin-bottom:6px}
+ & .service-items{display:grid;gap:6px}
+ & .service-check:focus-within{outline:3px solid #2743cb;outline-offset:2px}
+ & .search-submit{grid-column:2;display:block;width:100%;min-height:48px;margin:0;padding:12px 20px;background:#d83d00;font-weight:700}
+ @media(max-width:700px){padding:12px;gap:10px;grid-template-columns:1fr;& .search-section-title{font-size:18px}&>.search-section-title:has(.search-editor-collapse:not([hidden])){position:sticky;top:0;z-index:2;background:#fff}& .search-more-filters{font-size:13px}& .main-fields{grid-template-columns:1fr}& .search-submit{grid-column:1}& .search-preferences{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}& .search-preference--stars{grid-column:1/-1}& .extra-grid,& .service-groups{grid-template-columns:1fr}& .child-ages{grid-template-columns:repeat(2,minmax(0,1fr))}}
+ @media(min-width:701px){& .extra-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+ @media(min-width:1100px){& .extra-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 }
 .search3-candidate #tourSearch[data-search3-view=summary]{display:none}
-/* A single draft dialog replaces the three mobile native editors after enhancement. */
-@media(max-width:700px){
-.search3-candidate #tourSearch[data-search3-parameters=mobile]{
- & :is(.search-group--dates,.search-group--nights,.search-group--party)>.field,
- & .search-group--party>.child-ages{display:none}
- & .search-parameter-trigger{grid-column:1/-1;position:relative;display:grid;gap:5px;width:100%;min-height:66px;padding:12px 40px 12px 14px;text-align:left;border:1px solid #dbe2ed;border-radius:12px;background:#f5f7fb;color:#17233b;font:inherit;cursor:pointer}
- & .search-parameter-trigger strong{font-size:17px;line-height:1.35;font-weight:600}
- & .search-parameter-trigger small{font-size:13px;line-height:1.4;color:#526078}
- & .search-parameter-trigger>span{position:absolute;right:16px;top:16px;font-size:26px;color:#2743cb}
- & .search-parameter-trigger:focus-visible{outline:3px solid #2743cb;outline-offset:2px}
- & .main-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
- & :is(.search-group--route,.search-group--dates){grid-column:1/-1}
- & .search-group--nights legend{font-size:13px}
- & :is(.search-group--nights,.search-group--party) .search-parameter-trigger{padding:12px 25px 12px 10px}
- & :is(.search-group--nights,.search-group--party) .search-parameter-trigger strong{font-size:16px;overflow-wrap:anywhere}
- & :is(.search-group--nights,.search-group--party) .search-parameter-trigger>span{right:10px}
- @media(max-width:350px){& .main-fields{grid-template-columns:1fr}}
-}
-}
-/* The native select remains the submitted field and desktop/no-script fallback. */
+.search3-candidate #tourSearch[data-search3-extras=enhanced] .extras:not([open]){display:none}
 .search3-candidate #tourSearch .search-preference--stars>select[hidden]{display:none}
 .search3-candidate .search-category-choices{display:grid;grid-template-columns:minmax(52px,1.2fr) repeat(4,minmax(44px,1fr));gap:4px}
 .search3-candidate .search-category-choices[hidden]{display:none}
@@ -68,7 +51,44 @@ display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;pa
 .search3-candidate .search-category-choices [aria-checked=true]{border-color:#2743cb;background:#2743cb;color:#fff;font-weight:700}
 .search3-candidate .search-category-choices button:disabled{opacity:.5;cursor:default}
 .search3-candidate .search-category-choices button:focus-visible{outline:3px solid #2743cb;outline-offset:2px}
-@media(max-width:700px){.search3-candidate #tourSearch .search-preference--stars,.search3-candidate #tourSearch .search-preference:has(select[name=food]){grid-column:1/-1}}
+/* Enhanced editors remain the same controls across phone, tablet and desktop. */
+.search3-candidate #tourSearch[data-search3-parameters=compact]{
+ & :is(.search-group--dates,.search-group--nights,.search-group--party)>.field,
+ & .search-group--party>.child-ages,& .search-budget-fields{display:none}
+ & .search-group legend,& .search-preference--budget legend{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0;padding:0}
+ & .main-fields{grid-template-columns:repeat(5,minmax(0,1fr));gap:0}
+ & .search-group{display:block;background:#f7f9ff;border-top:1px solid #dbe2ed;border-bottom:1px solid #dbe2ed}
+ & .search-group--route{grid-column:span 2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border-left:1px solid #dbe2ed;border-radius:12px 0 0 12px;overflow:hidden}
+ & .search-group--route .field{padding:8px 10px 4px;border-right:1px solid #dbe2ed}
+ & .search-group--route .field>span{margin:0;font-size:14px}
+ & .search-group--route .field select{padding:4px 24px 4px 0;border:0;border-radius:0;background-color:transparent;font-weight:600}
+ & .search-group--party{border-right:1px solid #dbe2ed;border-radius:0 12px 12px 0;overflow:hidden}
+ & .search-parameter-trigger{position:relative;display:grid;gap:4px;align-content:center;width:100%;min-height:72px;padding:10px 30px 10px 12px;text-align:left;border:0;border-right:1px solid #dbe2ed;border-radius:0;background:transparent;color:#17233b;font:inherit;cursor:pointer}
+ & .search-parameter-trigger small{order:-1;font-size:14px;line-height:1.3;color:#526078}
+ & .search-parameter-trigger strong{font-size:16px;line-height:1.4;font-weight:600;overflow-wrap:anywhere}
+ & .search-parameter-trigger>span{position:absolute;right:12px;top:30px;font-size:22px;color:#2743cb}
+ & .search-parameter-trigger:focus-visible{outline:3px solid #2743cb;outline-offset:-3px;border-radius:10px}
+ & .search-group--party .search-parameter-trigger{border-right:0}
+ & .search-preferences{margin-top:14px}
+ & .search-preference--budget .search-parameter-trigger{height:100%;border:1px solid #dbe2ed;border-radius:10px;min-height:68px;padding:8px 28px 8px 10px;background:#fff}
+ & .search-preference--budget .search-parameter-trigger strong{font-size:15px}
+ & .search-preference:has(>select[name=food]){padding:8px 10px 4px;border:1px solid #dbe2ed;border-radius:10px}
+ & .search-preference:has(>select[name=food])>span{margin:0}
+ & .search-preference select[name=food]{padding:4px 24px 4px 0;border:0;border-radius:0;background-color:transparent;font-weight:600}
+ @media(min-width:701px) and (max-width:1099px){& .main-fields{grid-template-columns:repeat(6,minmax(0,1fr))}& .search-group--route{grid-column:span 3}& .search-group--dates{grid-column:span 3;border-right:1px solid #dbe2ed;border-radius:0 12px 0 0}& .search-group--nights{grid-column:span 3;border-left:1px solid #dbe2ed;border-radius:0 0 0 12px;border-top:0}& .search-group--party{grid-column:span 3;border-radius:0 0 12px 0;border-top:0}& .search-group--route{border-radius:12px 0 0 0}& .search-group--dates .search-parameter-trigger{border-right:0}}
+ @media(max-width:700px){
+  & .main-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+  & .search-group--route{grid-column:1/-1;border-radius:12px 12px 0 0;border-right:1px solid #dbe2ed}
+  & .search-group--route .field:last-child{border-right:0}
+  & .search-group--dates{grid-column:1/-1;border-top:0;border-left:1px solid #dbe2ed;border-right:1px solid #dbe2ed}
+  & .search-group--dates .search-parameter-trigger{border-right:0}
+  & .search-group--nights{border-top:0;border-left:1px solid #dbe2ed;border-radius:0 0 0 12px}
+  & .search-group--party{border-top:0;border-radius:0 0 12px 0}
+  & .search-parameter-trigger{min-height:66px;padding:8px 26px 8px 10px}
+  & .search-parameter-trigger>span{top:26px;right:10px}
+  & .search-preferences{margin-top:12px}
+ }
+}
 body:has(>.search-parameter-dialog[open]){overflow:hidden}
 .search-parameter-dialog{
 box-sizing:border-box;width:min(100%,560px);max-width:100%;max-height:94vh;max-height:94dvh;margin:auto auto 0;padding:0;border:0;border-radius:24px 24px 0 0;background:#fff;color:#17233b;box-shadow:0 -12px 48px #17233b26;font:inherit;overflow:hidden;
@@ -113,3 +133,5 @@ box-sizing:border-box;width:min(100%,560px);max-width:100%;max-height:94vh;max-h
 & .search-parameter-add{width:100%;padding:12px;font-weight:600}
 @media(max-width:350px){& header{padding:14px 12px 8px}& .search-parameter-body{padding:10px 12px 16px}& footer{padding:10px 12px max(10px,env(safe-area-inset-bottom))}& h2{font-size:22px}& :is(.search-parameter-week,.search-parameter-calendar){gap:2px}}
 }
+
+@media(min-width:701px){.search-parameter-dialog{margin:auto;border-radius:20px;max-height:min(90dvh,860px)}}

@@ -33,16 +33,21 @@ async function checkPrimaryForm(page, state, visible = false) {
   const form = page.locator('#tourSearch');
   assert.equal(await form.count(), 1, state + ': one canonical form owner');
   assert.equal(await form.isVisible(), visible, state + ': canonical editor visibility follows the results state');
-  const mobile = await form.getAttribute('data-search3-parameters') === 'mobile';
-  const groups = {dateFrom:'dates',dateTo:'dates',daysFrom:'nights',daysTill:'nights',count_people:'party',child_count:'party'};
+  const compact = await form.getAttribute('data-search3-parameters') === 'compact';
+  const mobile = page.viewportSize().width <= 700;
+  const groups = {dateFrom:'dates',dateTo:'dates',daysFrom:'nights',daysTill:'nights',count_people:'party',child_count:'party',price_from:'budget',price_till:'budget'};
   for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill', 'count_people', 'child_count', 'region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
     assert.equal(await form.locator(`[name="${name}"]`).count(), 1, state + ': primary control ' + name + ' remains owned by the canonical form');
     if (visible) {
-      const editor = mobile && groups[name] ? form.locator(`[data-search3-parameter="${groups[name]}"]`) : mobile && name === 'stars' ? form.getByRole('radiogroup', { name: 'Категория отеля', exact: true }) : name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
+      if(['region','hotel'].includes(name)){
+        assert.equal(await form.locator('.search-more-filters').isVisible(),true,state+': secondary destinations have an accessible entry');
+        continue;
+      }
+      const editor = compact && groups[name] ? form.locator(`[data-search3-parameter="${groups[name]}"]`) : mobile && name === 'stars' ? form.getByRole('radiogroup', { name: 'Категория отеля', exact: true }) : name === 'hotel' ? form.getByRole('searchbox', { name: 'Конкретный отель', exact: true }) : form.locator(`[name="${name}"]`);
       assert.equal(await editor.count(), 1, state + ': one visible editor for ' + name);
       assert.equal(await editor.isVisible(), true, state + ': primary control ' + name + ' is editable');
       assert.equal(await editor.isEnabled(), true, state + ': primary editor ' + name + ' is enabled');
-      if (mobile && groups[name]) {
+      if (compact && groups[name]) {
         assert.equal(await editor.getAttribute('aria-haspopup'), 'dialog', state + ': mobile parameter opens an explicit editor');
         assert.equal(await form.locator(`[name="${name}"]`).isVisible(), false, state + ': canonical parameter has one visible editing entry point');
       }
@@ -1469,6 +1474,26 @@ async function run(browser, width, previous) {
     assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(hotels), 'disclosure leaves frozen source prices, tour order and contents unchanged');
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await page.locator('#results .hotel-card').first().getAttribute('data-hotel-id'), 'expensive', 'rating sorting retained');
+    // Network failure is distinct from no supplied URL and from a pending lazy image.
+    if(!previous&&width===375){
+      await page.route('**/broken-hotel-photo.svg',route=>route.fulfill({status:404,contentType:'text/plain',body:'missing'}));
+      await page.evaluate(items=>window.V2Results.render([{...items[0],id:'broken-photo',picturelink:location.origin+'/broken-hotel-photo.svg'}]),hotels);
+      const failed=page.locator('#results .hotel-card[data-hotel-id=broken-photo]');
+      await failed.scrollIntoViewIfNeeded();await failed.locator('.photo-placeholder').waitFor({state:'attached'});
+      assert.ok(await failed.locator('.hotel-photo').evaluate(n=>n.getBoundingClientRect().height<64),'failed image also releases its empty media area');
+      assert.equal(await failed.locator('.stars-badge').isVisible(),true,'failed image retains hotel category');
+      assert.equal(await page.evaluate(()=>window.V2Results.state.items[0].picturelink.endsWith('/broken-hotel-photo.svg')),true,'image recovery leaves source metadata intact');
+      await failed.evaluate((card,picture)=>{
+        const box=card.querySelector('.hotel-photo');box.classList.add('hotel-gallery');
+        box.querySelector('.photo-placeholder').remove();
+        const img=new Image();img.className='hotel-gallery-main';img.src=location.origin+'/broken-hotel-photo.svg';
+        const thumb=document.createElement('button');thumb.className='hotel-gallery-thumb';const alt=new Image();alt.src=picture;thumb.appendChild(alt);box.prepend(img);box.appendChild(thumb);
+      },picture);
+      await page.waitForFunction(()=>{const image=document.querySelector('[data-hotel-id=broken-photo] .hotel-gallery-main');return image&&image.complete&&image.naturalWidth>0});
+      assert.equal(await failed.locator('.hotel-gallery-main').getAttribute('src'),picture,'failed main photo recovers from another already-rendered photo of this hotel');
+      assert.equal(await failed.locator('.photo-placeholder').count(),0);
+      await page.unroute('**/broken-hotel-photo.svg');
+    }
     await page.evaluate(items => window.V2Results.render([{ ...items[0], id: 'no-photo', name: 'Отель без фотографии', picturelink: '' }]), hotels);
     const noPhoto = page.locator('#results [data-hotel-id=no-photo].hotel-card');
     const noPhotoGeometry = await noPhoto.evaluate(node => { const box = element => { const r = element.getBoundingClientRect(); return { x:r.x, y:r.y, width:r.width, height:r.height }; }; return { main:box(node.querySelector('.hotel-main')), media:box(node.querySelector('.hotel-photo')), body:box(node.querySelector('.hotel-body')), placeholder:getComputedStyle(node.querySelector('.photo-placeholder')).display, stars:getComputedStyle(node.querySelector('.stars-badge')).display }; });

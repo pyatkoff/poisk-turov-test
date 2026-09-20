@@ -401,7 +401,7 @@ async function run(browser, width, servicesOnly = false) {
     assert.equal(await page.locator('#childAges select').inputValue(), '8', 'URL child age survives');
     for (const selector of ['input[type=date]', 'select[name=daysFrom]', 'select[name=daysTill]', 'select[name=count_people]', 'select[name=child_count]', '.search-submit']) {
       for (const control of await page.locator('#tourSearch ' + selector).all()) {
-        assert.equal(await control.isVisible(), width>700||selector==='.search-submit', selector + ' uses the native desktop or mobile dialog owner');
+        assert.equal(await control.isVisible(), selector==='.search-submit', selector + ' uses the canonical field with one visible compact editor');
         if(await control.isVisible())assert.ok((await control.boundingBox()).height >= 44, selector + ' native target >=44px');
       }
     }
@@ -415,25 +415,18 @@ async function run(browser, width, servicesOnly = false) {
       return { hero: box('.v2-product-hero'), form: box('#tourSearch'), ages: box('#childAges'), extras: box('#tourSearch > .extras'), submit: box('.search-submit') };
     });
     assert.ok(formGeometry.hero.bottom - formGeometry.hero.top < 140, 'compact hero leaves room for trip parameters');
-    if(width<=700){
-      assert.equal(await page.locator('[data-search3-parameter]:visible').count(),3,'mobile has one visible trigger for each parameter group');
-      const party=await page.locator('[data-search3-parameter=party]').boundingBox();
-      const group=await page.locator('.search-group--party').boundingBox();
-      assert.ok(Math.abs(party.width-group.width)<2,'tourist summary fills its current mobile grid cell');
-      if(width>350){const nights=await page.locator('.search-group--nights').boundingBox();assert.ok(Math.abs(group.y-nights.y)<2&&group.x>=nights.x+nights.width,'tourists share a non-overlapping row with nights');}
-      if(!servicesOnly)await checkMobileParameters(page,width,output);
-    }else{
-      assert.ok(formGeometry.ages.width >= 180 && formGeometry.ages.width < formGeometry.form.width / 2,'desktop child ages retain their native track within tourists');
+    assert.equal(await page.locator('[data-search3-parameter]:visible').count(),4,'each compact parameter has one visible editor');
+    const party=await page.locator('[data-search3-parameter=party]').boundingBox();
+    const group=await page.locator('.search-group--party').boundingBox();
+    assert.ok(Math.abs(party.width-group.width)<2,'tourist summary fills its current grid cell');
+    const nights=await page.locator('.search-group--nights').boundingBox();
+    assert.ok(Math.abs(group.y-nights.y)<2&&group.x>=nights.x+nights.width,'tourists share a non-overlapping row with nights');
+    if(!servicesOnly)await checkMobileParameters(page,width,output);
+    if(width>=1100){
+      const rows=await page.locator('#tourSearch .search-group').evaluateAll(nodes=>new Set(nodes.map(node=>Math.round(node.getBoundingClientRect().top))).size);
+      assert.equal(rows,1,'desktop trip parameters fit one row');
     }
-    if (width > 700) assert.ok(Math.abs(formGeometry.extras.top - formGeometry.submit.top) <= 1, 'closed extras and primary action share a desktop row');
-    if (width >= 1199) {
-      const rows = await page.locator('#tourSearch .search-group').evaluateAll(nodes => new Set(nodes.map(node => Math.round(node.getBoundingClientRect().top))).size);
-      assert.equal(rows, 2, 'served form keeps two balanced trip rows across the 1199/1200 desktop boundary');
-      if (width >= 1200) for (const input of await page.locator('#tourSearch input[type=date]').all()) {
-        assert.ok((await input.boundingBox()).width >= 125, 'desktop dates retain readable native values');
-      }
-    }
-    await page.locator('#tourSearch > .extras > summary').click();
+    await page.locator('#tourSearch .search-more-filters').click();
     const openExtras = await page.locator('#tourSearch > .extras').boundingBox();
     const openSubmit = await page.locator('.search-submit').boundingBox();
     assert.ok(openExtras.width > formGeometry.form.width - 50, 'open advanced parameters take the full form width');
@@ -507,7 +500,7 @@ async function run(browser, width, servicesOnly = false) {
     await flightTargets.first().locator('span').click();
     await page.screenshot({ path: path.join(output, `entry-expanded-${width}.png`), fullPage: true });
     await flightTargets.first().locator('span').click();
-    await page.locator('#tourSearch > .extras > summary').click();
+    await page.locator('#tourSearch .search-more-filters').click();
     await setParty(page,4,['8','6']);
     const resultsLayout = await page.evaluate(() => {
       const results = document.querySelector('#results');

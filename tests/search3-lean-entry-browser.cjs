@@ -94,7 +94,7 @@ async function inspect(browser, width, previous) {
     const resized = await state();
     assert.ok(resized.visible && (previous || !resized.overflow), 'crossing the collapse breakpoint restores a usable form');
     if (!previous) {
-      await page.locator('#tourSearch details.extras > summary').click();
+      await page.locator('#tourSearch .search-more-filters').click();
       await page.locator('[name="food"]').focus();
       await page.waitForFunction(() => [...document.querySelector('[name="food"]').options].some(option => option.value === 'BB'));
       const meal = await page.locator('[name="food"]').evaluate(select => ({

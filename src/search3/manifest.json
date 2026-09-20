@@ -19,7 +19,8 @@
       "styles/result-cards.css"
     ],
     "search3-results-cards-v2.js": [
-      "behavior/results-cards-v2.js"
+      "behavior/results-cards-v2.js",
+      "behavior/results/photo-recovery.js"
     ],
     "search3-selected-flow-v2.css": [
       "styles/selected-tour.css"

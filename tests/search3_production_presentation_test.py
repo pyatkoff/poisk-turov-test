@@ -39,7 +39,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         # Completed-results resume shell and saved-price wording: 96731B -> 96919B (+188B JS).
         # Mobile parameter drafts and validation recovery: 96919B -> 116633B (+15075B JS, +4639B CSS).
         # v17 compact entry + canonical mobile category choices: 116974B -> 120557B (+3583B).
-        self.assertLessEqual(total, 121000, 'eight presentation assets stay within the 121KB envelope including mobile parameter dialogs and category choices')
+        # Compact all-viewport form + exact budget drafts: 120557B -> 125827B including same-hotel image recovery.
+        self.assertLessEqual(total, 126500, 'eight presentation assets stay within the 126.5KB envelope including compact form editors')
 
     def test_reset_css_owners_and_native_selected_bound(self):
         assets = self.source['assets']
@@ -163,19 +164,13 @@ class Search3HalfSizeResetTest(unittest.TestCase):
             # Nights have mutually exclusive native/legacy presentation branches.
             self.assertEqual(index.count(f'name="{name}"'), 2 if name in ('daysFrom', 'daysTill') else 1, name)
         self.assertIn('& .search-group{', native)
-        self.assertIn('& :is(.main-fields,.search-preferences){grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;display:grid}', native)
-        self.assertNotIn('@media(min-width:1200px){& .main-fields{', native)
-        self.assertIn('& .search-preferences{grid-template-columns:minmax(150px,1.15fr) minmax(230px,1.7fr)', native)
+        self.assertIn('#tourSearch[data-search3-parameters=compact]', native)
+        self.assertIn('& .main-fields{grid-template-columns:repeat(5,minmax(0,1fr));gap:0}', native)
+        self.assertIn('& .search-budget-fields{display:none}', native)
+        self.assertIn('search-more-filters', index)
+        self.assertIn('id="search3ExtraFilters"', index)
         self.assertNotIn('Legacy source-contract marker', native)
-        self.assertIn('@media(max-width:700px){grid-template-columns:1fr;', native)
-        self.assertIn('&>.search-section-title:first-child:not(:has([hidden])){position:sticky;top:0;z-index:2;background:#fff}', native)
-        self.assertIn('& .main-fields{grid-template-columns:1fr}', native)
-        self.assertIn('& .child-ages{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}', native)
-        self.assertIn('& .child-age:last-child:nth-child(odd){grid-column:1/-1}', native)
-        self.assertIn('& .search-submit{grid-column:1;width:100%}', native)
-        self.assertIn('@media(max-width:350px){& .search-group--route{grid-template-columns:1fr}', native)
-        self.assertIn('@media(max-width:350px){& .search-group,& .search-preferences,& .child-ages{grid-template-columns:1fr}', native)
-        self.assertIn('& .child-age{grid-column:auto!important}', native)
+        self.assertIn('position:sticky;top:0;z-index:2;background:#fff', native)
         self.assertNotIn('.ds2-site-footer', results)
 
     def test_native_nights_have_one_rendered_owner_and_legacy_stays_unchanged(self):
@@ -185,6 +180,11 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 'define("V2_SEARCH3_PRESENTATION", ' + ('true' if candidate else 'false') + ');'
                 '$_SERVER["DOCUMENT_ROOT"]=""; require "v2/index.php";'
             ], cwd=ROOT, text=True)
+            for name in ('region', 'hotel', 'price_from', 'price_till'):
+                self.assertEqual(rendered.count(f'name="{name}"'), 1)
+            extras = rendered.index('<details class="extras"')
+            for name in ('region', 'hotel'):
+                self.assertEqual(rendered.index(f'name="{name}"') > extras, candidate)
             for name in ('daysFrom', 'daysTill'):
                 self.assertEqual(rendered.count(f'name="{name}"'), 1)
                 if candidate:
