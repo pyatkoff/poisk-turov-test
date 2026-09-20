@@ -266,6 +266,7 @@ async function checkJourney(browser, width) {
 
     await render(page, 732);
     await addOffer(page, 'offer-standard');
+    await openComparison(page, width, { assertCollapsed: true });
     assert.equal(await shortlist.locator('.search3-shortlist-item').count(), 3, 'the same provider, hotel and offer from a refreshed search reuses its comparison slot');
     assert.deepEqual(await shortlist.locator('.search3-shortlist-item[data-offer-id="offer-standard"]').evaluateAll(nodes => nodes.map(node => node.dataset.searchId)), ['732'], 'the reused slot keeps the newest exact search snapshot');
     assert.deepEqual(await page.evaluate(() => window.__shortlistCalls), [], 'refresh dedupe does not call supplier or lead endpoints');
