@@ -70,10 +70,25 @@ $root=dirname(__DIR__,2);$queue=$root.'/scripts/ops/anex_local_offer_demand_queu
 foreach([$queue,$collector] as $file)if(!is_file($file)||is_link($file))throw new RuntimeException('ANEX_DEMAND_FILL_SOURCE');
 
 $run=static function(array $command):array{
-    $pipes=[];$process=proc_open($command,[0=>['file','/dev/null','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,null,null,['bypass_shell'=>true]);
-    if(!is_resource($process))throw new RuntimeException('ANEX_DEMAND_FILL_PROCESS');
-    $stdout=stream_get_contents($pipes[1]);$stderr=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$code=proc_close($process);
-    return ['code'=>$code,'stdout'=>$stdout,'stderr'=>$stderr];
+    // A full stderr pipe can block the child before it closes stdout. Keep the
+    // streams separate, but spool diagnostics to a private auto-removed file.
+    $stderrStream=tmpfile();
+    if(!is_resource($stderrStream))throw new RuntimeException('ANEX_DEMAND_FILL_STDERR');
+    $pipes=[];$process=null;
+    try{
+        $process=proc_open($command,[0=>['file','/dev/null','r'],1=>['pipe','w'],2=>$stderrStream],$pipes,null,null,['bypass_shell'=>true]);
+        if(!is_resource($process))throw new RuntimeException('ANEX_DEMAND_FILL_PROCESS');
+        $stdout=stream_get_contents($pipes[1]);fclose($pipes[1]);unset($pipes[1]);
+        $code=proc_close($process);$process=null;
+        if($stdout===false||!rewind($stderrStream))throw new RuntimeException('ANEX_DEMAND_FILL_OUTPUT');
+        $stderr=stream_get_contents($stderrStream);
+        if($stderr===false)throw new RuntimeException('ANEX_DEMAND_FILL_OUTPUT');
+        return ['code'=>$code,'stdout'=>$stdout,'stderr'=>$stderr];
+    }finally{
+        foreach($pipes as $pipe)if(is_resource($pipe))fclose($pipe);
+        if(is_resource($process))proc_close($process);
+        fclose($stderrStream);
+    }
 };
 $q=$run([PHP_BINARY,$queue,'--limit='.$limit,'--lookback-hours='.$lookback,'--horizon-days='.$horizon]);
 if($q['code']!==0)throw new RuntimeException('ANEX_DEMAND_FILL_QUEUE');
