@@ -266,6 +266,15 @@ const vm = require('node:vm');
   frames.shift()();
   frames.shift()();
 
+  const restoredBeforeResetForward = restoredEvents.length;
+  windowEvents.get('v2:search-reset')();
+  assert.equal(window.V2TourController.currentTour, null, 'a new search retires the completed selected offer');
+  assert.equal(selected.innerHTML, '', 'a new search retires the retained selected-tour DOM');
+  window.history.forward();
+  assert.equal(selected.hidden, true, 'Browser Forward after a new search cannot expose the old selected tour');
+  assert.equal(restoredEvents.length, restoredBeforeResetForward, 'Browser Forward after reset emits no retained-tour event');
+  window.history.back();
+
   deferResponses = true;
   const pendingSource = focusableTour(20);
   pendingSource.textContent = 'Выбрать тур';
