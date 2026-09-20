@@ -92,19 +92,30 @@ function order_case(array $order, bool $validSeed = true, bool $missingPage = fa
                 'invalid cohort or mapping reached pricing/cache/ingest');
             return [];
         }
-        aassert(($result['published'] ?? false) === true && count($ingests) === 1, 'verified order fixture not published');
+        aassert(($result['published'] ?? false) === true && count($ingests) === 1, 'verified/confirmation order fixture not published');
         $prices = []; $verified = [];
         foreach ($ingests[0]['rows'] as $row) {
             $dto = $row['dto']; $id = $dto['local_hotel_id'];
             $prices[$id] = $dto['price']; $verified[$id] = $dto['final_price_verified'];
             aassert($dto['booking_enabled'] === false && $dto['selection_state'] === 'disabled', 'cache gained authority');
+            if ($dto['final_price_verified'] === false) {
+                aassert($dto['finalPriceReady'] === false && $dto['finalPrice'] === null, 'confirmation row became final');
+                aassert($dto['money']['fuel_charge_reported'] === null, 'confirmation row invented fuel');
+            }
         }
         ksort($prices); ksort($verified); ksort($resolvedPrices);
-        $expected = $validSeed
+        $expectedResolved = $validSeed
             ? [101 => '204265', 102 => '199390', 103 => '214265', 105 => '223000']
             : [102 => '199390', 105 => '223000'];
-        aassert($resolvedPrices === $expected, 'partial pricing depends on specimen order: ' . json_encode($resolvedPrices));
-        aassert($prices === [105 => '223000'] && $verified === [105 => true], 'flight-only estimate entered full-price store');
+        aassert($resolvedPrices === $expectedResolved, 'partial pricing depends on specimen order: ' . json_encode($resolvedPrices));
+        $expectedPrices = $validSeed
+            ? [104 => '210000', 105 => '223000']
+            : [101 => '190000', 103 => '200000', 104 => '210000', 105 => '223000'];
+        $expectedVerified = $validSeed
+            ? [104 => false, 105 => true]
+            : [101 => false, 103 => false, 104 => false, 105 => true];
+        aassert($prices === $expectedPrices && $verified === $expectedVerified,
+            'confirmation/verified persistence contract changed');
         aassert(!isset($resolvedPrices[104]), 'mismatched transport group reused');
         aassert(($reads[102] ?? 0) === 1 && ($reads[105] ?? 0) === 1, 'non-null exact pricing reread');
         aassert(max($reads) <= 2 && array_sum($reads) <= 2 * count($ordered), 'unbounded pricing scan');
@@ -123,4 +134,4 @@ aassert($early === $late && $early === $middle, 'cohort permutations differ');
 order_case([101, 103, 104, 105, 102], false);
 order_case([101, 103, 104, 105, 102], true, true);
 order_case([101, 103, 104, 105, 102], true, false, false);
-echo "ANDROMEDA_CACHE_COHORT_ORDER_OK permutations=3 cross_page=1 rebase=2 exact_priority=2 fuel_guard=1 invalid_seed=1 incomplete=1 unmapped=1 supplier_calls=0 live_db_writes=0\n";
+echo "ANDROMEDA_CACHE_COHORT_ORDER_OK permutations=3 cross_page=1 rebase=2 exact_priority=2 fuel_guard=1 confirmation=1 invalid_seed=1 incomplete=1 unmapped=1 supplier_calls=0 live_db_writes=0\n";
