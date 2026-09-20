@@ -17,6 +17,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
  const browser=await chromium.launch({headless:true});
  try{for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],calls=[],dbCalls=[];
+  let releaseCountries;const countriesReady=new Promise(resolve=>{releaseCountries=resolve});let countriesBlocked=true;
   page.on('pageerror',error=>{errors.push(error.message);console.error('browser:',error.message);});
   await context.route('**/*',async route=>{
    const url=new URL(route.request().url());
@@ -28,7 +29,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
    if(url.pathname==='/api-v2.php'){
     const action=url.searchParams.get('action');calls.push(action);
     if(action==='meals')return json([{id:7,name:'AI'},{id:5,name:'HB'}]);
-    if(action==='countries')return json([{id:4,name:'Турция'},{id:5,name:'Египет'}]);
+    if(action==='countries'){if(countriesBlocked)await countriesReady;return json([{id:4,name:'Турция'},{id:5,name:'Египет'}]);}
     if(action==='search_start')return json({searchId:123});
     if(action==='search_status')return json({progress:100,status:'complete'});
     if(action==='search_results')return json([{id:101,provider:'tourvisor',tours}, {id:102,provider:'tourvisor',tours:[{...tours[0],id:'exact-3',price:99000}]}]);
@@ -39,7 +40,17 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
    if(url.origin!==origin)throw new Error('Unexpected external URL '+url.href);
    return route.continue();
   });
-  await page.goto(origin+base+'prototype-search/');await page.locator('.search-submit:not([disabled])').waitFor({timeout:10000}).catch(async error=>{console.error(await page.locator('#cards').textContent());throw error;});
+  await page.goto(origin+base+'prototype-search/');
+  await page.locator('[data-action="dates"]').click();
+  await page.getByText('Цены пока недоступны. Даты можно выбрать без цены.').waitFor();
+  const earlyDate=day(10);await page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`).click();
+  countriesBlocked=false;releaseCountries();
+  await page.locator('.search-submit:not([disabled])').waitFor({timeout:10000}).catch(async error=>{console.error(await page.locator('#cards').textContent());throw error;});
+  await page.waitForFunction(()=>document.querySelectorAll('.month-day.is-cheap').length>0);
+  assert.equal(await page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`).getAttribute('aria-pressed'),'true','Catalog retry preserves the early date draft');
+  assert.equal(await page.locator('.calendar-legend span').first().textContent(),'Цены из базы за всех, от · пробелы означают отсутствие сохранённой цены','Open calendar retries after catalogs load');
+  await page.screenshot({path:path.join(evidence,`calendar-retry-${width}.png`),fullPage:true});
+  await page.locator('[data-action="close-modal"]').click();await page.waitForTimeout(100);
   assert.equal(await page.locator('#destination-label').textContent(),'Турция');
   await page.screenshot({path:path.join(evidence,`form-${width}.png`),fullPage:true});
   await page.locator('[data-action="dates"]').click();await page.waitForFunction(()=>document.querySelectorAll('.month-day.is-cheap').length>0);
