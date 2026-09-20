@@ -101,6 +101,8 @@ function order_case(array $order, bool $validSeed = true, bool $missingPage = fa
             if ($dto['final_price_verified'] === false) {
                 aassert($dto['finalPriceReady'] === false && $dto['finalPrice'] === null, 'confirmation row became final');
                 aassert($dto['money']['fuel_charge_reported'] === null, 'confirmation row invented fuel');
+                aassert($dto['money']['additional_prices_reported'] === [], 'historical get_flights money leaked into canonical row');
+                aassert(!array_key_exists('search_price_with_surcharge', $dto['money']), 'derived get_flights estimate leaked into canonical row');
             }
         }
         ksort($prices); ksort($verified); ksort($resolvedPrices);
@@ -108,12 +110,10 @@ function order_case(array $order, bool $validSeed = true, bool $missingPage = fa
             ? [101 => '204265', 102 => '199390', 103 => '214265', 105 => '223000']
             : [102 => '199390', 105 => '223000'];
         aassert($resolvedPrices === $expectedResolved, 'partial pricing depends on specimen order: ' . json_encode($resolvedPrices));
-        $expectedPrices = $validSeed
-            ? [104 => '210000', 105 => '223000']
-            : [101 => '190000', 103 => '200000', 104 => '210000', 105 => '223000'];
-        $expectedVerified = $validSeed
-            ? [104 => false, 105 => true]
-            : [101 => false, 103 => false, 104 => false, 105 => true];
+        $expectedPrices = [
+            101 => '190000', 102 => '185125', 103 => '200000', 104 => '210000', 105 => '223000',
+        ];
+        $expectedVerified = [101 => false, 102 => false, 103 => false, 104 => false, 105 => true];
         aassert($prices === $expectedPrices && $verified === $expectedVerified,
             'confirmation/verified persistence contract changed');
         aassert(!isset($resolvedPrices[104]), 'mismatched transport group reused');
@@ -134,4 +134,4 @@ aassert($early === $late && $early === $middle, 'cohort permutations differ');
 order_case([101, 103, 104, 105, 102], false);
 order_case([101, 103, 104, 105, 102], true, true);
 order_case([101, 103, 104, 105, 102], true, false, false);
-echo "ANDROMEDA_CACHE_COHORT_ORDER_OK permutations=3 cross_page=1 rebase=2 exact_priority=2 fuel_guard=1 confirmation=1 invalid_seed=1 incomplete=1 unmapped=1 supplier_calls=0 live_db_writes=0\n";
+echo "ANDROMEDA_CACHE_COHORT_ORDER_OK permutations=3 cross_page=1 rebase=2 exact_priority=2 fuel_guard=1 confirmation=4 historical_estimate_ignored=1 invalid_seed=1 incomplete=1 unmapped=1 supplier_calls=0 live_db_writes=0\n";
