@@ -57,7 +57,10 @@ $meal=$args['meal']??'7';
 $generation=$int($args['generation']??'17171801',1,2147483647);
 $maxCaptures=$int($args['max-captures']??'2',1,300);
 $maxCaptureSeconds=$int($args['max-capture-seconds']??'0',0,240);
-$captureMode=$args['capture-mode']??'all';
+// Background collection must not discover flights merely to derive money evidence.
+// External/unknown freight remains eligible for normal snapshot autosave, while an
+// explicit caller can still opt into `all` for a separately owned quote-selection flow.
+$captureMode=$args['capture-mode']??'non_external_only';
 if(!in_array($captureMode,['all','non_external_only'],true))throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_CAPTURE_MODE');
 
 $params=[
