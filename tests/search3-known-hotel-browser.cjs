@@ -79,14 +79,16 @@ const viewports = [
       }));
       await page.waitForFunction(() => document.forms.tourSearch?.dataset.search3Ready === '1');
       await page.waitForFunction(() => document.forms.tourSearch?.dataset.catalogSource === 'anytour-departures');
+      await form.locator('.search-more-filters').click();
       const input = form.locator('[data-v2-hotel-query]');
+      async function editHotel(value){if(!await form.locator('.extras').evaluate(node=>node.open))await form.locator('.search-more-filters').click();await input.fill(value)}
       const select = form.locator('select[name="hotel"]');
       assert.equal(await input.count(), 1, 'Search3 exposes one known-hotel query');
       assert.equal(await input.isVisible(), true, 'known-hotel query is visible');
       assert.equal(await select.isVisible(), false, 'exact hotel ID remains in one hidden native owner');
       assert.equal(await input.getAttribute('placeholder'), 'Например Rixos Premium Belek');
 
-      await input.fill('Rixos');
+      await editHotel('Rixos');
       const list = form.locator('#hotelAutocompleteList');
       const waitForOptions = () => list.locator('[role="option"]').first().waitFor({ state: 'visible', timeout: 3000 });
       await waitForOptions();
@@ -129,7 +131,7 @@ const viewports = [
       assert.equal(await input.getAttribute('aria-activedescendant'), null);
       assert.deepEqual(searchStarts, [], 'typing/selecting a hotel does not start a supplier search');
       const selectedQueries = hotelQueries.length;
-      await form.locator('input[name="price_from"]').focus();
+      await form.locator('[data-search3-parameter=budget]').focus();
       await input.click();
       await page.waitForTimeout(250);
       assert.equal(hotelQueries.length, selectedQueries, 'returning to a selected hotel does not repeat its lookup');
@@ -141,7 +143,7 @@ const viewports = [
       assert.equal(await input.inputValue(), '');
       assert.deepEqual(searchStarts, [], 'geographic clarification still does not submit a tour search');
 
-      await input.fill('Rixos');
+      await editHotel('Rixos');
       await waitForOptions();
       await input.press('ArrowDown');
       await input.press('Escape');
@@ -167,11 +169,11 @@ const viewports = [
       await checkReopen(() => input.press('ArrowDown'), 'ArrowDown after Escape');
       await checkReopen(() => input.press('ArrowUp'), 'ArrowUp after Escape');
       await checkReopen(async () => {
-        await form.locator('input[name="price_from"]').focus();
+        await form.locator('[data-search3-parameter=budget]').focus();
         await input.focus();
       }, 'Keyboard return from another field');
       await checkReopen(async () => {
-        await form.locator('input[name="price_from"]').focus();
+        await form.locator('[data-search3-parameter=budget]').focus();
         if (viewport.width < 768) await input.tap(); else await input.click();
       }, 'Pointer return coalesces focus and click');
       await checkReopen(() => viewport.width < 768 ? input.tap() : input.click(), 'Click on an already focused dismissed query');
@@ -185,7 +187,7 @@ const viewports = [
       await input.press('Escape');
 
       const beforeShortQuery = hotelQueries.length;
-      await input.fill('R');
+      await editHotel('R');
       await input.press('Enter');
       await list.getByText('Введите хотя бы 2 символа', { exact: true }).waitFor({ state: 'visible' });
       await page.waitForTimeout(220);
@@ -197,18 +199,18 @@ const viewports = [
       await page.screenshot({ path: path.join(output, `known-hotel-short-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
       await input.press('Escape');
 
-      await input.fill('Rixos');
+      await editHotel('Rixos');
       await waitForOptions();
-      await form.locator('input[name="price_from"]').focus();
+      await form.locator('[data-search3-parameter=budget]').focus();
       const beforeReturnEdit = hotelQueries.length;
-      await input.fill('Marriott');
+      await editHotel('Marriott');
       await waitForOptions();
       await page.waitForTimeout(220);
       assert.equal(hotelQueries.length, beforeReturnEdit + 1, 'return followed by editing coalesces into one lookup');
       assert.equal(hotelQueries.at(-1).q, 'Marriott', 'return cannot send the previous query before an immediate edit');
       assert.match(await list.innerText(), /MARRIOTT HOTEL/);
       assert.deepEqual(searchStarts, []);
-      await input.fill('Rixos');
+      await editHotel('Rixos');
       await waitForOptions();
       await input.press('ArrowDown');
       await page.screenshot({ path: path.join(output, `known-hotel-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
@@ -216,9 +218,9 @@ const viewports = [
       else await list.locator('[role="option"]').first().click();
       assert.equal(await select.inputValue(), '41001', 'pointer selection keeps the exact canonical hotel ID');
 
-      await input.fill('Rixos');
+      await editHotel('Rixos');
       await waitForOptions();
-      await input.fill('Marriott');
+      await editHotel('Marriott');
       await input.press('Enter');
       assert.equal(await select.inputValue(), '', 'Enter during replacement query cannot select a previous Rixos hotel');
       assert.equal(await input.inputValue(), 'Marriott');
@@ -234,7 +236,7 @@ const viewports = [
         const wait = new Promise(resolve => { release = resolve; });
         const done = new Promise(resolve => { finished = resolve; });
         pauseLookup = { started, wait, finished };
-        await input.fill(query);
+        await editHotel(query);
         await Promise.race([begun, new Promise((_, reject) => setTimeout(() => reject(new Error('catalog lookup did not start')), 3000))]);
         return async () => { release(); await done; await page.waitForTimeout(100); };
       }
@@ -246,7 +248,7 @@ const viewports = [
       await input.press('Enter');
       assert.deepEqual(searchStarts, [], 'Enter during visible loading cannot submit a supplier search');
       await page.screenshot({ path: path.join(output, `known-hotel-loading-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
-      await input.fill('Marriott');
+      await editHotel('Marriott');
       await waitForOptions();
       await finishOld();
       assert.equal(await input.getAttribute('aria-busy'), null);
@@ -255,10 +257,10 @@ const viewports = [
 
       for (const dismissal of ['clear', 'escape', 'geography', 'blur']) {
         const finish = await delayLookup('Rixos');
-        if (dismissal === 'clear') await input.fill('R');
+        if (dismissal === 'clear') await editHotel('R');
         if (dismissal === 'escape') await input.press('Escape');
         if (dismissal === 'geography') await form.locator('select[name="region"]').selectOption('401');
-        if (dismissal === 'blur') await form.locator('input[name="price_from"]').focus();
+        if (dismissal === 'blur') await form.locator('[data-search3-parameter=budget]').focus();
         await finish();
         assert.equal(await list.isVisible(), false, dismissal + ' invalidates pending suggestions');
         assert.equal(await select.inputValue(), '', dismissal + ' does not select an old hotel');
@@ -266,7 +268,7 @@ const viewports = [
         assert.equal(await input.inputValue(), dismissal === 'clear' ? 'R' : 'Rixos', 'dismissal keeps the current query');
       }
       const lookupsBeforeEscape = hotelQueries.length;
-      await input.fill('Marriott');
+      await editHotel('Marriott');
       await input.press('Escape');
       await page.waitForTimeout(250);
       assert.equal(hotelQueries.length, lookupsBeforeEscape, 'Escape also cancels a lookup waiting for debounce');
@@ -283,7 +285,7 @@ const viewports = [
       ];
       for (const [index, failure] of failures.entries()) {
         nextLookupResponse = failure;
-        await input.fill('Rixos');
+        await editHotel('Rixos');
         await retry.waitFor({ state: 'visible' });
         assert.match(await list.innerText(), /Не удалось загрузить отели[\s\S]*Название сохранено/);
         assert.doesNotMatch(await list.innerText(), /По названию ничего не нашли/, 'catalog failure is not disguised as no matching hotel');
@@ -324,7 +326,7 @@ const viewports = [
 
       nextLookupResponse = failures[0];
       const finishOldFailure = await delayLookup('Rixos');
-      await input.fill('Marriott');
+      await editHotel('Marriott');
       await waitForOptions();
       await finishOldFailure();
       assert.match(await list.innerText(), /MARRIOTT HOTEL/, 'late failure cannot replace a newer successful query');
@@ -334,7 +336,7 @@ const viewports = [
       if (viewport.width < 768) {
         const longHotels = Array.from({ length: 10 }, (_, i) => ({ ...hotels[0], id: 43000 + i, name: `RIXOS PREMIUM FAMILY RESORT THE LAND OF LEGENDS ${i + 1}` }));
         nextLookupResponse = { status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, items: longHotels }) };
-        await input.fill('Rixos');
+        await editHotel('Rixos');
         await waitForOptions();
         assert.equal(await list.locator('[role="option"]').count(), 10);
         const lookupCount = hotelQueries.length;
@@ -377,6 +379,7 @@ const viewports = [
         assert.equal(panned.scrollY, shrunk.scrollY, 'viewport panning does not force a page-scroll loop');
         assert.equal(hotelQueries.length, lookupCount, 'viewport updates do not repeat catalog lookup');
         assert.deepEqual(await tripContext(), keyboardTrip);
+        await page.mouse.move(0,0); // keyboard journey: a parked pointer must not hover a newly scrolled option
         await input.press('ArrowUp');
         assert.equal(await input.getAttribute('aria-activedescendant'), 'hotelAutocompleteOption9');
         const last = await list.locator('[role="option"]').last().boundingBox();
@@ -389,7 +392,7 @@ const viewports = [
         assert.equal(await list.getAttribute('style'), null, 'closing releases transient mobile geometry');
 
         nextLookupResponse = failures[0];
-        await input.fill('Rixos');
+        await editHotel('Rixos');
         await retry.waitFor({ state: 'visible' });
         await input.press('Tab');
         await page.evaluate(() => {
@@ -456,11 +459,11 @@ const viewports = [
       ];
       for (const scenario of invalidCases) {
         if (scenario.state === 'error') nextLookupResponse = { status: 503, body: '{}' };
-        await input.fill(scenario.query);
+        await editHotel(scenario.query);
         if (scenario.state === 'options') await waitForOptions();
         if (scenario.state === 'empty') await list.getByText('По названию ничего не нашли', { exact: true }).waitFor();
         if (scenario.state === 'error') await list.getByText('Не удалось загрузить отели', { exact: true }).waitFor();
-        await form.locator('[name="price_from"]').focus();
+        await form.locator('[data-search3-parameter=budget]').focus();
         const before = await page.evaluate(() => ({
           fields: [...new FormData(document.forms.tourSearch)], url: location.href,
           generation: window.V2SearchLifecycle.generation,
@@ -491,17 +494,17 @@ const viewports = [
         assert.equal(await page.evaluate(() => window.__hotelIntentAudit.starts.length), 0, 'explicit clear changes the draft without starting a search');
         assert.deepEqual(await form.evaluate(node => [...new FormData(node)]), before.fields);
       }
-      await input.fill('Rixos'); await waitForOptions();
+      await editHotel('Rixos'); await waitForOptions();
       await list.locator('[role="option"]').first().click();
       await page.evaluate(() => document.forms.tourSearch.requestSubmit());
       await page.waitForFunction(() => !window.V2SearchLifecycle.pending && window.__hotelIntentAudit.starts.length === 1);
       assert.deepEqual(await page.evaluate(() => window.__hotelIntentAudit.starts[0].hotelIds), ['41001'], 'accepted hotel submits its exact canonical ID once');
       assert.equal(await validation.isVisible(), false);
-      await input.fill('');
+      await editHotel('');
       await page.evaluate(async () => { window.V2SearchLifecycle.hydrateUrlState('hotel=41002'); await window.V2SearchLifecycle.submit(); });
       assert.deepEqual(await page.evaluate(() => window.__hotelIntentAudit.starts[1].hotelIds), ['41002'], 'URL-hydrated canonical hotel without a typed query remains valid');
       assert.equal(await input.inputValue(), await select.locator('option:checked').textContent(), 'hydrated ID and visible hotel label agree');
-      await input.fill('New hotel');
+      await editHotel('New hotel');
       assert.equal(await select.inputValue(), '', 'editing a hydrated hotel clears its old canonical restriction too');
       await page.evaluate(() => window.V2SearchLifecycle.submit());
       assert.equal(await page.evaluate(() => window.__hotelIntentAudit.starts.length), 2, 'replacement query cannot submit the previously hydrated hotel');
@@ -524,7 +527,8 @@ const viewports = [
       assert.deepEqual(pendingCheck.kept.snapshot, pendingCheck.snapshot);
       assert.equal(pendingCheck.kept.starts, 3, 'invalid pending resubmission never creates another request');
       assert.deepEqual(searchStarts, [], 'all intent-validation checks stayed within the controlled runtime fixture');
-      await page.waitForFunction(() => document.activeElement === document.forms.tourSearch.elements.price_from);
+      await page.waitForFunction(() => document.activeElement === document.querySelector('.search-parameter-dialog[open] [data-budget-from]'));
+      await page.keyboard.press('Escape');
 
       const tripBeforeRecovery = await form.evaluate(node => ({
         country: node.elements.country.value,
@@ -535,7 +539,7 @@ const viewports = [
         adults: node.elements.count_people.value,
         children: node.elements.child_count.value
       }));
-      await input.fill('NoSuchHotel');
+      await editHotel('NoSuchHotel');
       const recovery = list.locator('.hotel-autocomplete__empty');
       const searchAll = recovery.getByRole('button', { name: 'Искать туры по всем отелям' });
       await searchAll.waitFor({ state: 'visible' });

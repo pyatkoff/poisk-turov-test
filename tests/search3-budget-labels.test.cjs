@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../v2/index.php'), 'utf8');
-const primary = source.slice(source.indexOf('<div class="search-preferences">'), source.indexOf('<details class="extras">'));
+const primary = source.slice(source.indexOf('<div class="search-preferences">'), source.indexOf('<details class="extras"'));
 for (const [name, caption, placeholder] of [['price_from', 'Цена от', '80 000'], ['price_till', 'Цена до', '180 000']]) {
   const labels = [...primary.matchAll(/<label\b[^>]*>[\s\S]*?<\/label>/g)].map(match => match[0]);
   const matching = labels.filter(label => label.includes(`name="${name}"`));

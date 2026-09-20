@@ -124,7 +124,7 @@ class Search3SourceBuildTest(unittest.TestCase):
         assets = json.loads((self.root / 'src/search3/manifest.json').read_text())['assets']
         self.assertEqual(assets['search3-entry-v1.js'], [])
         self.assertEqual(assets['search3-selected-flow-v2.js'], [])
-        self.assertEqual(assets['search3-results-cards-v2.js'], ['behavior/results-cards-v2.js'])
+        self.assertEqual(assets['search3-results-cards-v2.js'], ['behavior/results-cards-v2.js', 'behavior/results/photo-recovery.js'])
         self.assertEqual(len((self.root / 'v2/search3-entry-v1.js').read_bytes()), 0)
         self.assertEqual(len((self.root / 'v2/search3-selected-flow-v2.js').read_bytes()), 0)
         self.assertGreater(len((self.root / 'v2/search3-results-cards-v2.js').read_bytes()), 0)

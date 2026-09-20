@@ -1,9 +1,9 @@
-/* Mobile drafts project the canonical form. Only the existing lifecycle submits. */
+/* Compact parameter drafts project the canonical form; only the lifecycle submits. */
 (function(){'use strict';
 const form=document.getElementById('tourSearch');
 if(!form||!document.body.classList.contains('search3-candidate')||typeof HTMLDialogElement==='undefined'||!HTMLDialogElement.prototype.showModal)return;
 const triggers=Array.from(form.querySelectorAll('[data-search3-parameter]'));
-if(triggers.length!==3)return;
+if(triggers.length!==4)return;
 const media=window.matchMedia('(max-width:700px)');
 const dialog=document.createElement('dialog');dialog.className='search-parameter-dialog';dialog.setAttribute('aria-labelledby','searchParameterTitle');
 dialog.innerHTML='<header><h2 id="searchParameterTitle"></h2><button type="button" data-close aria-label="Закрыть без изменений">×</button></header><div class="search-parameter-body"></div><footer><p id="searchParameterError" class="search-parameter-error" role="alert" hidden></p><button type="button" class="search-parameter-apply">Выбрать</button><button type="button" data-close>Отмена</button></footer>';
@@ -18,12 +18,16 @@ const dateText=value=>Number.isFinite(day(value).getTime())?day(value).toLocaleD
 const span=(a,b)=>Math.round((day(b)-day(a))/86400000);
 const word=(n,one,few,many)=>n%100>=11&&n%100<=14?many:n%10===1?one:n%10>=2&&n%10<=4?few:many;
 const nightsText=(from,to)=>(from===to?from:from+'–'+to)+' '+word(Number(to),'ночь','ночи','ночей');
+const money=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(value))+' ₽';
+const budgetText=(from,to)=>from&&to?money(from)+' — '+money(to):to?'До '+money(to):from?'От '+money(from):'Любой';
 function setText(node,text){if(node.textContent!==text)node.textContent=text}
 function summaries(){
  const texts={dates:dateText(value('dateFrom'))+(value('dateTo')!==value('dateFrom')?' — '+dateText(value('dateTo')):''),nights:nightsText(value('daysFrom'),value('daysTill')),party:value('count_people')+' '+word(Number(value('count_people')),'взрослый','взрослых','взрослых')};
  const count=Number(value('child_count'));if(count)texts.party+=' · '+count+' '+word(count,'ребёнок','ребёнка','детей');
- triggers.forEach(button=>{const kind=button.dataset.search3Parameter;button.hidden=!media.matches;setText(button.querySelector('strong'),texts[kind]);const small=button.querySelector('small');setText(small,kind==='party'&&count?'Возраст: '+ages().map(age=>age+' '+word(Number(age),'год','года','лет')).join(', '):kind==='dates'?'Можно выбрать диапазон':'Изменить');button.setAttribute('aria-label',({dates:'Даты вылета',nights:'Продолжительность',party:'Туристы'})[kind]+': '+texts[kind]+(kind==='party'&&count?'. '+small.textContent:''));});
- form.dataset.search3Parameters=media.matches?'mobile':'native';
+ texts.budget=budgetText(value('price_from'),value('price_till'));
+ const captions={dates:'Даты вылета',nights:'Ночей',party:'Туристы',budget:'Бюджет'};
+ triggers.forEach(button=>{const kind=button.dataset.search3Parameter;button.hidden=false;setText(button.querySelector('strong'),texts[kind]);setText(button.querySelector('small'),captions[kind]);button.setAttribute('aria-label',captions[kind]+': '+texts[kind]+(kind==='party'&&count?'. Возраст: '+ages().map(age=>age+' '+word(Number(age),'год','года','лет')).join(', '):''));});
+ form.dataset.search3Parameters='compact';
 }
 function schedule(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;summaries()})}
 function showError(message){error.textContent=message;error.hidden=!message}
@@ -32,6 +36,7 @@ function valid(){
  if(active==='dates')return !draft.from||!draft.to||!Number.isFinite(span(draft.from,draft.to))?'Укажите обе даты вылета.':draft.from<today()?'Дата вылета не может быть в прошлом.':draft.to<draft.from?'Последняя дата не может быть раньше первой.':span(draft.from,draft.to)>21?'Выберите диапазон не больше 21 дня.':'';
  if(active==='nights')return ![draft.from,draft.to].every(n=>Number.isInteger(n)&&n>=1&&n<=28)?'Выберите от 1 до 28 ночей.':draft.to<draft.from?'Последнее число ночей не может быть меньше первого.':draft.to-draft.from>10?'Выберите диапазон не больше 10 ночей.':'';
  if(active==='party')return draft.ages.some(age=>age===''||!Number.isInteger(Number(age))||Number(age)<0||Number(age)>17)?'Укажите возраст каждого ребёнка на момент окончания поездки.':'';
+ if(active==='budget')return [draft.from,draft.to].some(n=>n!==''&&(!Number.isFinite(Number(n))||!Number.isInteger(Number(n))||Number(n)<0))?'Укажите цену в целых рублях от нуля или оставьте поле пустым.':draft.from!==''&&draft.to!==''&&Number(draft.to)<Number(draft.from)?'Максимальная цена не может быть меньше минимальной.':'';
  return '';
 }
 function calendar(){
@@ -71,10 +76,15 @@ function syncParty(){
   const remove=document.createElement('button');remove.type='button';remove.dataset.remove=String(index);remove.setAttribute('aria-label','Убрать ребёнка '+(index+1));remove.textContent='×';row.appendChild(remove);children.appendChild(row);
  });body.querySelector('[data-add]').disabled=draft.ages.length>=3;setText(apply,'Выбрать');showError('');
 }
+function budgetPanel(){
+ body.innerHTML='<p>Общая стоимость тура за всех туристов.</p><div class="search-parameter-range"><label>Цена от<input type="number" min="0" step="1" inputmode="numeric" data-budget-from placeholder="Без минимума"></label><label>Цена до<input type="number" min="0" step="1" inputmode="numeric" data-budget-to placeholder="Без максимума"></label></div><div class="search-parameter-presets" role="group" aria-label="Бюджет тура"><button type="button" data-budget="">Любой</button><button type="button" data-budget="100000">До 100 000 ₽</button><button type="button" data-budget="150000">До 150 000 ₽</button><button type="button" data-budget="200000">До 200 000 ₽</button></div>';
+ body.querySelector('[data-budget-from]').value=draft.from;body.querySelector('[data-budget-to]').value=draft.to;setText(apply,'Применить бюджет');
+}
 function open(kind,trigger){
- if(!media.matches)return;active=kind;opener=trigger;rangeEnd=false;showError('');
+ active=kind;opener=trigger;rangeEnd=false;showError('');
  if(kind==='dates'){draft={from:value('dateFrom'),to:value('dateTo'),center:value('dateFrom')};const initial=day(draft.from);month=Number.isFinite(initial.getTime())&&draft.from>=today()?initial:new Date();month=new Date(month.getFullYear(),month.getMonth(),1,12);title.textContent='Даты вылета';datesPanel()}
  else if(kind==='nights'){draft={from:Number(value('daysFrom'))||7,to:Number(value('daysTill'))||10};title.textContent='На сколько ночей';nightsPanel()}
+ else if(kind==='budget'){draft={from:value('price_from'),to:value('price_till')};title.textContent='Бюджет за всех';budgetPanel()}
  else{draft={adults:Math.max(1,Math.min(6,Number(value('count_people'))||2)),ages:ages().slice(0,3)};title.textContent='Кто едет';partyPanel()}
  dialog.showModal();dialog.querySelector('[data-close]').focus({preventScroll:true});
 }
@@ -86,6 +96,7 @@ function commit(){
  const set=(name,next)=>{const node=field(name);if(node&&node.value!==String(next)){node.value=String(next);node.dispatchEvent(new Event('change',{bubbles:true}))}};
  if(kind==='dates'){set('dateFrom',next.from);set('dateTo',next.to)}
  else if(kind==='nights'){set('daysFrom',next.from);set('daysTill',next.to)}
+ else if(kind==='budget'){set('price_from',next.from);set('price_till',next.to)}
  else{set('count_people',next.adults);set('child_count',next.ages.length);Array.from(form.querySelectorAll('[name="child_age[]"]')).forEach((node,i)=>{if(node.value!==next.ages[i]){node.value=next.ages[i];node.dispatchEvent(new Event('change',{bubbles:true}))}})}
  summaries();
 }
@@ -102,22 +113,26 @@ dialog.addEventListener('click',event=>{
  }else if(active==='nights'){
   if(button.dataset.nights){[draft.from,draft.to]=button.dataset.nights.split(',').map(Number);rangeEnd=false;syncNights()}
   if(button.dataset.night){const n=Number(button.dataset.night);if(rangeEnd&&n>=draft.from){if(n-draft.from>10){showError('Выберите диапазон не больше 10 ночей.');return}draft.to=n;rangeEnd=false}else{draft.from=n;draft.to=n;rangeEnd=true}syncNights()}
+ }else if(active==='budget'){
+  if(button.hasAttribute('data-budget')){draft={from:'',to:button.dataset.budget};budgetPanel();showError('')}
  }else{
   if(button.dataset.adults){draft.adults=Math.max(1,Math.min(6,draft.adults+Number(button.dataset.adults)));syncParty()}
   if(button.hasAttribute('data-add')&&draft.ages.length<3){draft.ages.push('');syncParty();body.querySelector('[data-age="'+(draft.ages.length-1)+'"]').focus()}
   if(button.hasAttribute('data-remove')){draft.ages.splice(Number(button.dataset.remove),1);syncParty();body.querySelector('[data-add]').focus()}
  }
 });
+dialog.addEventListener('input',event=>{if(active==='budget'&&draft&&event.target.matches('input')){draft[event.target.hasAttribute('data-budget-from')?'from':'to']=event.target.value;showError('')}});
 dialog.addEventListener('change',event=>{if(!draft)return;const input=event.target;input.removeAttribute('aria-invalid');input.removeAttribute('aria-describedby');if(active==='dates'&&input.matches('input')){draft[input.hasAttribute('data-from')?'from':'to']=input.value;if(input.hasAttribute('data-from')){draft.center=input.value;const selected=day(input.value);if(Number.isFinite(selected.getTime()))month=new Date(selected.getFullYear(),selected.getMonth(),1,12)}rangeEnd=false;calendar();showError('')}if(active==='party'&&input.hasAttribute('data-age')){draft.ages[Number(input.dataset.age)]=input.value;showError('')}});
 function showValidation(name,message){
- const kind=['dateFrom','dateTo'].includes(name)?'dates':['daysFrom','daysTill'].includes(name)?'nights':['count_people','child_count','child_age[]'].includes(name)?'party':'';
- if(!kind||!media.matches||dialog.open)return;open(kind,triggers.find(button=>button.dataset.search3Parameter===kind));showError(message);
- const target=kind==='dates'?body.querySelector(name==='dateTo'?'[data-to]':'[data-from]'):kind==='party'?body.querySelector('[data-age]')||body.querySelector('[data-adults="1"]'):body.querySelector('[data-night]');
+ const kind=['dateFrom','dateTo'].includes(name)?'dates':['daysFrom','daysTill'].includes(name)?'nights':['count_people','child_count','child_age[]'].includes(name)?'party':['price_from','price_till'].includes(name)?'budget':'';
+ if(!kind||dialog.open)return;open(kind,triggers.find(button=>button.dataset.search3Parameter===kind));showError(message);
+ const target=kind==='dates'?body.querySelector(name==='dateTo'?'[data-to]':'[data-from]'):kind==='party'?body.querySelector('[data-age]')||body.querySelector('[data-adults="1"]'):kind==='budget'?body.querySelector(name==='price_from'?'[data-budget-from]':'[data-budget-to]'):body.querySelector('[data-night]');
  if(target){target.setAttribute('aria-invalid','true');target.setAttribute('aria-describedby',error.id);target.focus({preventScroll:true})}
 }
 form.addEventListener('change',schedule);form.addEventListener('input',schedule);
+form.addEventListener('invalid',event=>{if(['dateFrom','dateTo','daysFrom','daysTill','count_people','child_count','child_age[]','price_from','price_till'].includes(event.target.name)){event.preventDefault();showValidation(event.target.name,event.target.validationMessage)}},true);
 new MutationObserver(records=>{schedule();const invalid=records.find(record=>record.type==='attributes'&&record.target.getAttribute('aria-invalid')==='true');if(invalid){const life=window.V2SearchLifecycle;showValidation(invalid.target.name,life?life.validate(life.params()):'Проверьте параметры поездки.')}}).observe(form,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-invalid']});
-media.addEventListener('change',()=>{const kind=active;if(dialog.open)close();summaries();if(kind&&!media.matches)field(kind==='dates'?'dateFrom':kind==='nights'?'daysFrom':'count_people')?.focus({preventScroll:true})});
+media.addEventListener('change',summaries);
 window.addEventListener('v2:search-error',event=>{if(event.detail?.phase==='validation')showValidation(event.detail.error?.field,event.detail.error?.message)});
 ['v2:search-reset','v2:search-resumed','v2:search-started'].forEach(name=>window.addEventListener(name,()=>{if(dialog.open)close();schedule()}));
 summaries();const invalid=form.querySelector('[aria-invalid="true"]'),life=window.V2SearchLifecycle;if(invalid&&life)showValidation(invalid.name,life.validate(life.params()));
