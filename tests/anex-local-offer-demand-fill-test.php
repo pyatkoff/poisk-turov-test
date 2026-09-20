@@ -18,9 +18,13 @@ $summary=AnyTourAnexDemandFillV1::summarize($scope,['grouped_candidates'=>4,'exp
  'apd_batch_items'=>24,'final_price_ready_offers'=>24,'retryable_offers'=>0,'discovered_set_drained'=>true,
  'search_client_instances'=>5,'apd_client_instances'=>0,'snapshot_finalize'=>['published'=>true]]);
 ck($summary['finalPriceReadyOffers']===24&&$summary['discoveredSetDrained']===true&&$summary['scope']['regionId']===20,'summary');
+$queueMeta=AnyTourAnexDemandFillV1::queueReceipt([
+    'selectionStatus'=>'source_exhausted','scannedRowCount'=>17,'scannedPageCount'=>1,'freshScopesSkipped'=>4,
+]);
+ck($queueMeta===['selectionStatus'=>'source_exhausted','scannedRowCount'=>17,'scannedPageCount'=>1,'freshScopesSkipped'=>4],'queue metadata');
 // Exercise the unchanged CLI entrypoint, not a second implementation of its runner.
 // All queue/collector programs below are local fixtures: no supplier, DB or credentials.
-function cliFixture(array $scopes,string $queueBody,string $collectorBody,int $limit=3):array
+function cliFixture(array $scopes,string $queueBody,string $collectorBody,int $limit=3,array $queueMeta=[]):array
 {
     $root=sys_get_temp_dir().'/anex demand worker '.bin2hex(random_bytes(8));
     $ops=$root.'/scripts/ops';$process=null;
@@ -28,7 +32,11 @@ function cliFixture(array $scopes,string $queueBody,string $collectorBody,int $l
     try{
         ck(copy(__DIR__.'/../scripts/ops/anex_local_offer_demand_fill.php',$ops.'/anex_local_offer_demand_fill.php'),'copy real worker');
         ck(copy(__DIR__.'/../app/integrations/anex-local-offer-demand.php',$root.'/app/integrations/anex-local-offer-demand.php'),'copy real normalizer');
-        $queue=json_encode(['source'=>'offline-fixture','scopes'=>$scopes],JSON_THROW_ON_ERROR);
+        $baseQueue=[
+            'source'=>'offline-fixture','scopes'=>$scopes,'selectionStatus'=>'source_exhausted',
+            'scannedRowCount'=>count($scopes),'scannedPageCount'=>1,'freshScopesSkipped'=>0,
+        ];
+        $queue=json_encode(array_replace($baseQueue,$queueMeta),JSON_THROW_ON_ERROR);
         file_put_contents($ops.'/anex_local_offer_demand_queue.php',"<?php\n".$queueBody.'echo '.var_export($queue,true).';');
         $trace='file_put_contents(__DIR__."/calls.jsonl",json_encode(array_slice($argv,1))."\n",FILE_APPEND);';
         file_put_contents($ops.'/anex_local_offer_collect.php',"<?php\n".$trace.$collectorBody);
@@ -61,6 +69,7 @@ $success=static function(array $run,string $label,int $count=1):array{
     ck($r['status']==='complete'&&$r['completedScopes']===$count&&$r['readyOffersAcrossScopes']===7*$count,$label.' exact receipt');
     ck(count($run['calls'])===$count,$label.' no replay');
     ck($r['browserSupplierCalls']===0&&$r['bookingCalls']===0&&$r['leadCalls']===0,$label.' authority');
+    ck(in_array($r['queueSelectionStatus'],['source_exhausted','limit_reached'],true),$label.' complete queue status');
     return $r;
 };
 $success(cliFixture([$scope],'',$emit),'quiet');
@@ -71,7 +80,25 @@ $interleaved='echo '.var_export(substr($receiptJson,0,$split),true).';'.$flood.'
 $success(cliFixture([$scope],'',$interleaved),'interleaved streams');
 $closedOut=$emit.'fclose(STDOUT);'.$flood;
 $success(cliFixture([$scope],'',$closedOut),'stderr after stdout closes');
+$limitScopes=[$scope,$family,array_replace($scope,['nights'=>9])];
+$success(cliFixture($limitScopes,'',$emit,3,[
+    'selectionStatus'=>'limit_reached','scannedRowCount'=>57,'scannedPageCount'=>1,'freshScopesSkipped'=>12,
+]),'queue limit reached',3);
 
+// #3204 can intentionally stop after its bounded 1000-row metadata scan. The worker
+// may process the stale scopes it did find, but must not advertise that partial frontier as complete.
+$scanIncomplete=cliFixture([$scope],'',$emit,3,[
+    'selectionStatus'=>'scan_limit_reached','scannedRowCount'=>1000,'scannedPageCount'=>10,'freshScopesSkipped'=>999,
+]);
+ck($scanIncomplete['code']===1&&count($scanIncomplete['calls'])===1,'scan-capped queue processes known scope once');
+$scanReceipt=json_decode($scanIncomplete['stdout'],true,64,JSON_THROW_ON_ERROR);
+ck($scanReceipt['status']==='queue_scan_incomplete'&&$scanReceipt['completedScopes']===1
+    &&$scanReceipt['readyOffersAcrossScopes']===7&&$scanReceipt['error']===null,'scan cap cannot claim complete');
+ck($scanReceipt['queueSelectionStatus']==='scan_limit_reached'&&$scanReceipt['queueScannedRowCount']===1000
+    &&$scanReceipt['queueScannedPageCount']===10&&$scanReceipt['queueFreshScopesSkipped']===999,'scan cap evidence preserved');
+$badQueueMeta=cliFixture([$scope],'',$emit,3,['selectionStatus'=>'unknown']);
+ck($badQueueMeta['code']!==0&&$badQueueMeta['calls']===[]&&str_contains($badQueueMeta['stderr'],'ANEX_DEMAND_FILL_QUEUE'),
+    'invalid queue completeness fails before supplier collector');
 
 // An exit-zero collector may still carry an explicit persistence failure. Keep
 // that exact evidence and do not count the failed scope or invoke its successor.
@@ -149,4 +176,4 @@ ck(in_array('--generation=261900001',$failed['calls'][1],true),'sequential next 
 $queueFailed=cliFixture([$scope],$flood.'exit(19);',$emit);
 ck($queueFailed['code']!==0&&$queueFailed['code']!==124&&$queueFailed['code']!==137,'failed queue exits rather than hangs');
 ck(str_contains($queueFailed['stderr'],'ANEX_DEMAND_FILL_QUEUE')&&$queueFailed['calls']===[],'queue failure never launches collector');
-echo "ANEX_LOCAL_OFFER_DEMAND_FILL_OK command=1 children=1 summary=1 cli_stream_cases=8 structured_nonzero=1\n";
+echo "ANEX_LOCAL_OFFER_DEMAND_FILL_OK command=1 children=1 summary=1 cli_stream_cases=10 queue_completeness=1 structured_nonzero=1\n";

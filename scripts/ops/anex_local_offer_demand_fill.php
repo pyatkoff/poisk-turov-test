@@ -48,6 +48,26 @@ final class AnyTourAnexDemandFillV1
             'snapshotFinalize'=>$result['snapshot_finalize']??null,
         ];
     }
+
+    public static function queueReceipt(array $payload): array
+    {
+        $status=$payload['selectionStatus']??null;
+        $rows=$payload['scannedRowCount']??null;
+        $pages=$payload['scannedPageCount']??null;
+        $fresh=$payload['freshScopesSkipped']??null;
+        if(!in_array($status,['limit_reached','source_exhausted','scan_limit_reached'],true)
+            ||!is_int($rows)||$rows<0||$rows>1000
+            ||!is_int($pages)||$pages<1||$pages>10
+            ||!is_int($fresh)||$fresh<0||$fresh>$rows){
+            throw new RuntimeException('ANEX_DEMAND_FILL_QUEUE');
+        }
+        return [
+            'selectionStatus'=>$status,
+            'scannedRowCount'=>$rows,
+            'scannedPageCount'=>$pages,
+            'freshScopesSkipped'=>$fresh,
+        ];
+    }
 }
 
 if(realpath($_SERVER['SCRIPT_FILENAME']??'')!==__FILE__)return;
@@ -94,6 +114,7 @@ $q=$run([PHP_BINARY,$queue,'--limit='.$limit,'--lookback-hours='.$lookback,'--ho
 if($q['code']!==0)throw new RuntimeException('ANEX_DEMAND_FILL_QUEUE');
 $queuePayload=json_decode(trim($q['stdout']),true,64,JSON_THROW_ON_ERROR);
 $scopes=$queuePayload['scopes']??null;if(!is_array($scopes)||!array_is_list($scopes))throw new RuntimeException('ANEX_DEMAND_FILL_QUEUE');
+$queueReceipt=AnyTourAnexDemandFillV1::queueReceipt($queuePayload);
 
 $results=[];$ready=0;$status='complete';$error=null;
 foreach(array_slice($scopes,0,$limit) as $index=>$scope){
@@ -132,8 +153,16 @@ foreach(array_slice($scopes,0,$limit) as $index=>$scope){
     }
     $summary=AnyTourAnexDemandFillV1::summarize($scope,$value);$results[]=$summary;$ready+=$summary['finalPriceReadyOffers'];
 }
+// A bounded metadata scan that did not reach the requested stale-scope limit is
+// not an exhaustive demand receipt. Preserve completed supplier work but surface
+// incompleteness instead of silently claiming the whole CURRENT frontier is done.
+if($status==='complete'&&$queueReceipt['selectionStatus']==='scan_limit_reached'){
+    $status='queue_scan_incomplete';
+}
 $receipt=[
     'source'=>'anex-local-offer-demand-fill-v1','status'=>$status,'queueSource'=>$queuePayload['source']??null,
+    'queueSelectionStatus'=>$queueReceipt['selectionStatus'],'queueScannedRowCount'=>$queueReceipt['scannedRowCount'],
+    'queueScannedPageCount'=>$queueReceipt['scannedPageCount'],'queueFreshScopesSkipped'=>$queueReceipt['freshScopesSkipped'],
     'requestedScopes'=>$limit,'completedScopes'=>count($results),'readyOffersAcrossScopes'=>$ready,'results'=>$results,'error'=>$error,
     'browserSupplierCalls'=>0,'bookingCalls'=>0,'leadCalls'=>0,
 ];
