@@ -82,6 +82,23 @@ context. The current DB response intentionally grants no selection authority.
 Neither a cached ID nor a previously verified listing is used as a quote locator;
 the existing LOCAL ANEX restriction and protected provider contracts remain intact.
 
+Saved rows now say “Смотреть условия” instead of promising immediate selection or
+flight availability. Their explicit “Найти актуальные туры” action starts one new
+search for the same canonical hotel, exact departure date and nights, origin,
+country, adults and child ages. Existing filters remain applied. The form, search
+summary and URL use those same exact conditions. This is a current-offer search,
+not a quote of the cached provider row: the returned room, meal, operator and price
+may differ and the traveler must explicitly select a new offer. Merely inspecting
+or cancelling saved details makes no supplier request. No-current-offers completion
+is visible even when cached rows remain; it does not auto-retry or quote them.
+
+`tests/search3-prototype-cached-selection.cjs` reproduces the previous broad-window
+refresh defect and checks the existing UI at 390/1440 px with fictional ANEX and
+Andromeda cached rows. It verifies exact date/nights, Kazan departure, children 0/17,
+canonical legacy hotel IDs, retained filters, no automatic selection, fresh price
+ownership and the empty-current result. This does not prove a direct provider quote
+or live supplier availability. No provider, DB or publication boundary is widened.
+
 Source visual assets and logo remain from the immutable baseline. The controller
 gains a presentation entry and its shared build map is regenerated; legacy defaults
 are retained. DB readers, supplier APIs, pricing, lead transport/mapping, Metrika
