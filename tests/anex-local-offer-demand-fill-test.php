@@ -117,6 +117,23 @@ ck($partialReceipt['completedScopes']===1&&$partialReceipt['readyOffersAcrossSco
 ck($partialReceipt['error']['index']===1&&$partialReceipt['error']['collectorResult']===$badSecond,'second persistence failure retained exactly');
 echo "ANEX_DEMAND_PERSISTENCE_CASES_OK failed=".count($persistenceFailures)." already=1 zero_yield=1 partial_success=1\n";
 
+// New collector contract: failed/unknown persistence now exits nonzero but prints
+// one structured receipt. The demand worker must preserve that exact receipt for
+// reconciliation, stop immediately and never invoke a second scope.
+$structuredFailure=[
+    'source'=>'anex-local-offer-collector-v1','status'=>'incomplete','selection_authority'=>false,
+    'autosave_failure'=>['phase'=>'batch','receipt'=>['published'=>false,'reason'=>'autosave_failed','writeOutcome'=>'unknown']],
+    'browser_supplier_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,
+];
+$structuredBody='echo '.var_export(json_encode($structuredFailure,JSON_THROW_ON_ERROR),true).';fwrite(STDERR,"fixture persistence refused");exit(17);';
+$structured=cliFixture([$scope,$family],'',$structuredBody);
+ck($structured['code']===1&&count($structured['calls'])===1,'structured nonzero failure stops without replay');
+$structuredReceipt=json_decode($structured['stdout'],true,64,JSON_THROW_ON_ERROR);
+ck($structuredReceipt['status']==='stopped_on_error'&&$structuredReceipt['completedScopes']===0&&$structuredReceipt['results']===[],'structured failure not counted');
+ck($structuredReceipt['error']['index']===0&&$structuredReceipt['error']['code']===17
+    &&$structuredReceipt['error']['stderr']==='fixture persistence refused','structured failure code/stderr preserved');
+ck($structuredReceipt['error']['collectorResult']===$structuredFailure,'structured collector receipt retained exactly');
+
 $third=array_replace($scope,['nights'=>9]);
 $secondFailure='if(in_array("--generation=261900001",$argv,true)){fclose(STDOUT);fwrite(STDERR,str_repeat("ошибка",200000));exit(23);}'.$emit;
 $failed=cliFixture([$family,$scope,$third],'',$secondFailure);
@@ -125,10 +142,11 @@ $failedReceipt=json_decode($failed['stdout'],true,64,JSON_THROW_ON_ERROR);
 ck($failedReceipt['status']==='stopped_on_error'&&$failedReceipt['completedScopes']===1&&$failedReceipt['readyOffersAcrossScopes']===7,'partial success preserved');
 ck($failedReceipt['error']['index']===1&&$failedReceipt['error']['code']===23,'exact failing child code');
 ck($failedReceipt['error']['stderr']===mb_substr(str_repeat('ошибка',200000),0,500),'existing unicode error bound preserved');
+ck(!array_key_exists('collectorResult',$failedReceipt['error']),'arbitrary/non-JSON stdout not surfaced');
 ck(count($failed['calls'])===2,'no retry and no third scope after failure');
 ck(in_array('--child-ages=3,7',$failed['calls'][0],true)&&in_array('--generation=261900000',$failed['calls'][0],true),'family context and first generation');
 ck(in_array('--generation=261900001',$failed['calls'][1],true),'sequential next generation');
 $queueFailed=cliFixture([$scope],$flood.'exit(19);',$emit);
 ck($queueFailed['code']!==0&&$queueFailed['code']!==124&&$queueFailed['code']!==137,'failed queue exits rather than hangs');
 ck(str_contains($queueFailed['stderr'],'ANEX_DEMAND_FILL_QUEUE')&&$queueFailed['calls']===[],'queue failure never launches collector');
-echo "ANEX_LOCAL_OFFER_DEMAND_FILL_OK command=1 children=1 summary=1 cli_stream_cases=7\n";
+echo "ANEX_LOCAL_OFFER_DEMAND_FILL_OK command=1 children=1 summary=1 cli_stream_cases=8 structured_nonzero=1\n";
