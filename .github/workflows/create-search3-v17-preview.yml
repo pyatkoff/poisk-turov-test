@@ -1,4 +1,4 @@
-name: Create separate public v17 Search3 preview
+name: Create separate public v18 Search3 preview
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 jobs:
-  v17-preview-contracts:
+  v18-preview-contracts:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -30,7 +30,7 @@ jobs:
           python3 tests/search3_v17_preview_test.py -v
           python3 tests/search3_preview_publish_test.py -v
 
-  prepare-v17-preview:
+  prepare-v18-preview:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' &&
       github.ref == 'refs/heads/main' &&
@@ -38,7 +38,7 @@ jobs:
       github.event_name == 'issue_comment' && github.event.issue.number == 2530 &&
       !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      startsWith(github.event.comment.body, '/create-search3-v17-preview ')
+      startsWith(github.event.comment.body, '/create-search3-v18-preview ')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -70,13 +70,13 @@ jobs:
         id: retain
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: search3-v17-ready-${{ github.run_id }}
-          path: ${{ runner.temp }}/search3-v17-prepare/retained/
+          name: search3-v18-ready-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-v18-prepare/retained/
           if-no-files-found: error
           retention-days: 30
 
-  publish-v17-preview:
-    needs: prepare-v17-preview
+  publish-v18-preview:
+    needs: prepare-v18-preview
     if: >-
       github.ref == 'refs/heads/main' &&
       github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
@@ -95,12 +95,12 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Recheck v17 preview transaction
+      - name: Recheck v18 preview transaction
         run: python3 tests/search3_v17_preview_test.py
-      - name: Create only the new v17 preview from retained bytes
+      - name: Create only the new v18 preview from retained bytes
         env:
           GH_TOKEN: ${{ github.token }}
-          READY_ARTIFACT_ID: ${{ needs.prepare-v17-preview.outputs.artifact_id }}
+          READY_ARTIFACT_ID: ${{ needs.prepare-v18-preview.outputs.artifact_id }}
           PREVIEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           PREVIEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           PREVIEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -109,7 +109,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: search3-v17-deployment-${{ github.run_id }}
-          path: ${{ runner.temp }}/search3-v17-publish/evidence.json
+          name: search3-v18-deployment-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-v18-publish/evidence.json
           if-no-files-found: warn
           retention-days: 30
