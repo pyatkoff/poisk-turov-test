@@ -149,7 +149,8 @@ function assert_confirmation_dto(array $dto, string $amount = '185125'): void {
     aassert($dto['finalPriceReady'] === false && $dto['finalPrice'] === null
         && $dto['price'] === $amount && $dto['currency'] === 'RUB', 'confirmation used a full or derived price');
     aassert($dto['money']['fuel_charge_reported'] === null
-        && $dto['money']['search_price_with_surcharge'] === null
+        && !array_key_exists('search_price_with_surcharge', $dto['money'])
+        && $dto['money']['arithmetic_applied'] === false
         && $dto['quote_state'] === 'unknown' && $dto['final_price_verified'] === false
         && $dto['selection_state'] === 'disabled' && $dto['booking_enabled'] === false,
         'confirmation gained fuel/final/selection authority');
