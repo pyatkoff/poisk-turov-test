@@ -133,12 +133,22 @@ $loadCohort=static function(string $ref,int $generation)use($directory):array{
     return $rows;
 };
 
-$candidateAllowed=static function(array $selection,array $offer)use($pdo):bool{
+// Canonical eligibility is a hotel-level fact for this invocation. One supplier
+// cohort may contain many offers for the same local hotel. Lazily prepare the query
+// only when a candidate actually reaches this gate, then memoize both positive and
+// negative answers. Never persist this cache: every new CLI run re-reads the bridge.
+$canonicalEligibility=[];
+$canonicalCheck=null;
+$candidateAllowed=static function(array $selection,array $offer)use($pdo,&$canonicalCheck,&$canonicalEligibility):bool{
     $local=$selection['local_id']??null;
     if(!is_int($local)||$local<1)return false;
-    $q=$pdo->prepare("SELECT COUNT(*) FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id WHERE s.namespace='legacy_catalog' AND s.external_key=? AND h.is_active=1");
-    $q->execute([(string)$local]);
-    return (int)$q->fetchColumn()===1;
+    if(array_key_exists($local,$canonicalEligibility))return $canonicalEligibility[$local];
+    if(!$canonicalCheck instanceof PDOStatement){
+        $canonicalCheck=$pdo->prepare("SELECT COUNT(*) FROM anytour_hotel_sources s JOIN anytour_hotels h ON h.id=s.anytour_hotel_id WHERE s.namespace='legacy_catalog' AND s.external_key=? AND h.is_active=1");
+    }
+    $canonicalCheck->execute([(string)$local]);
+    $canonicalEligibility[$local]=(int)$canonicalCheck->fetchColumn()===1;
+    return $canonicalEligibility[$local];
 };
 
 $capture=static function(array $selection)use($config,$saved,$pdo,$source):array{
