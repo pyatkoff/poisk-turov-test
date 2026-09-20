@@ -401,6 +401,7 @@ async function run(engine, width, height) {
     await openFilters();
     await meal.selectOption({label:'HB'});
     await cap.fill('130000');
+    await cap.press('Tab'); // Native change commits the existing price input.
     await closeFilters();
     assert.equal(await first.locator('a.tour-more-toggle, a.search3-hotel-title-link').count(),0,'filtered count must not link to a broader hotel group');
     const filteredToggle=first.locator('button.tour-more-toggle');
@@ -418,11 +419,13 @@ async function run(engine, width, height) {
     await openFilters();
     await nights.selectOption('8');
     await cap.fill('127499');
+    await cap.press('Tab');
     await closeFilters();
     assert.equal(await page.locator('.hotel-card:visible').count(),0,'one rouble below the exact matching offer gives an actionable empty result');
     assert.equal(await page.locator('.search3-local-empty-reset').isVisible(),true);
     await openFilters();
     await cap.fill('127500');
+    await cap.press('Tab');
     await closeFilters();
     assert.deepEqual(await offerIds(),['hotel-1-offer-1'],'inclusive cap returns only the exact eight-night offer');
     await page.locator('#sortResults').selectOption('stars');
