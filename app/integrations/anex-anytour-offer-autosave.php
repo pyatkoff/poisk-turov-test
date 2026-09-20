@@ -411,7 +411,10 @@ function anytour_anex_anytour_offer_autosave_execute(array $plan, array &$state,
             },
             $resolver,
             static function (string $provider, array $search, array $rows, DateTimeImmutable $at) use ($db): array {
-                return AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db, $provider, $search, $rows, $at);
+                // A bounded APD accumulator is not an authoritative full search.
+                // Preserve unseen eligible rows for their existing LOCAL listing TTL.
+                // Missing additive support must fail closed, never replace the cohort.
+                return AnyTourOfferSnapshotIngestV1::mergePartialSnapshot($db, $provider, $search, $rows, $at);
             }
         );
         if (($result['published'] ?? false) === true) {
