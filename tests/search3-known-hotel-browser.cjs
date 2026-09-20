@@ -379,6 +379,7 @@ const viewports = [
         assert.equal(panned.scrollY, shrunk.scrollY, 'viewport panning does not force a page-scroll loop');
         assert.equal(hotelQueries.length, lookupCount, 'viewport updates do not repeat catalog lookup');
         assert.deepEqual(await tripContext(), keyboardTrip);
+        await page.mouse.move(0,0); // keyboard journey: a parked pointer must not hover a newly scrolled option
         await input.press('ArrowUp');
         assert.equal(await input.getAttribute('aria-activedescendant'), 'hotelAutocompleteOption9');
         const last = await list.locator('[role="option"]').last().boundingBox();

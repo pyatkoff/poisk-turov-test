@@ -54,8 +54,8 @@ async function inspect(browser, width, previous) {
     await page.waitForTimeout(100); // Drain native toggle event before lifecycle snapshots.
     const initial = await state();
     if (!previous) {
-      const controls = await page.locator('#tourSearch .main-fields input,#tourSearch .main-fields select').evaluateAll(nodes => nodes.filter(n => n.getClientRects().length).map(n => ({height:n.getBoundingClientRect().height,font:parseFloat(getComputedStyle(n).fontSize)})));
-      assert.ok(controls.length >= 8 && controls.every(n => n.height >= 44 && n.font >= 16), 'native primary controls stay readable and touchable');
+      const controls = await page.locator('#tourSearch .search-group input,#tourSearch .search-group select,#tourSearch .search-group [data-search3-parameter]').evaluateAll(nodes => nodes.filter(n => n.getClientRects().length).map(n => ({height:n.getBoundingClientRect().height,font:parseFloat(getComputedStyle(n.querySelector('strong')||n).fontSize)})));
+      assert.ok(controls.length === 5 && controls.every(n => n.height >= 44 && n.font >= 16), 'the five visible primary editors stay readable and touchable: '+JSON.stringify(controls));
       if (width === 375 || width === 1440) await page.screenshot({ path: path.join(process.env.SEARCH3_GEOMETRY_OUTPUT, `entry-current-${width}.png`), fullPage: true });
     }
     // The fixed historical reference predates the current shared header/footer
