@@ -265,9 +265,6 @@ async function checkJourney(browser, width) {
     assert.match(compact(await shortlist.locator('.search3-shortlist-status').innerText()), /3|тр[её]х|максим/i, 'max-three limit is announced');
 
     await render(page, 732);
-    await openFilters(page, width);
-    await meal.selectOption('meal:label:всё включено');
-    await discloseMatchingOffers(page);
     await addOffer(page, 'offer-standard');
     assert.equal(await shortlist.locator('.search3-shortlist-item').count(), 3, 'the same provider, hotel and offer from a refreshed search reuses its comparison slot');
     assert.deepEqual(await shortlist.locator('.search3-shortlist-item[data-offer-id="offer-standard"]').evaluateAll(nodes => nodes.map(node => node.dataset.searchId)), ['732'], 'the reused slot keeps the newest exact search snapshot');
