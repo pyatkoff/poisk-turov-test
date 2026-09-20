@@ -8,9 +8,42 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/deploy'))
 import search3_v17_preview as pub
 import search3_v17_preview_remote as remote
+
+
+class LiveReadback(unittest.TestCase):
+    def test_local_boundary_uses_canonical_query_and_rejects_exposure(self):
+        assets = {name: b'checked asset' for name in (
+            'search3-results-filters-v1.css', 'search3-results-filters-v1.js', 'site-header-v2.css')}
+        files = {name: remote.digest(body) for name, body in assets.items()}
+        html = ('<meta name="robots" content="noindex,follow,max-image-preview:large' +
+            ' id="tourSearch" metrikaCounter:0 leadApi:"' + pub.ROUTE + 'preview-lead-disabled.php"')
+        canonical = pub.ROUTE + 'data/hotel-details-read-v1.php?catalog=anytour&anytourHotelId=1'
+        responses = {
+            pub.ROUTE + 'data/hotel-details-read-v1.php': (400, '{"ok":false,"error":"Invalid hotel id"}'),
+            canonical: (403, '{"ok":false,"error":"Canonical catalogue is isolated to local preview"}'),
+            pub.ROUTE + 'data/search3-local-results-read-v1.php':
+                (403, '{"ok":false,"error":"Local DB results are isolated to local preview"}'),
+            pub.ROUTE + 'preview-lead-disabled.php': (403, 'PREVIEW_LEAD_DISABLED'),
+        }
+        def http(path, data=None, binary=False):
+            if path in responses: return responses[path]
+            for name, body in assets.items():
+                if path == pub.ROUTE + name + '?sha=' + files[name]: return 200, body
+            if path.endswith('.php'): return 403, 'denied'
+            return 200, html
+        with patch('search3_preview_publish.http', side_effect=http) as request:
+            self.assertEqual(pub.live_checks(files)['LOCAL_only_data_HTTP'], 403)
+            self.assertIn(canonical, [call.args[0] for call in request.call_args_list])
+            self.assertNotIn(pub.ROUTE + 'data/hotel-details-read-v1.php',
+                [call.args[0] for call in request.call_args_list])
+            for response in [(200, '{"ok":true}'), (403, '{"ok":false,"error":"unrelated"}')]:
+                responses[canonical] = response
+                with self.subTest(response=response), self.assertRaisesRegex(ValueError, 'LOCAL_only_data_boundary'):
+                    pub.live_checks(files)
 
 
 def request():
