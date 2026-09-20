@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/three-provider-search-handoff.php';
+require_once __DIR__ . '/three-provider-money-facts.php';
+require_once __DIR__ . '/three-provider-offer-context.php';
 
 /**
  * INT-owned bridge from one complete provider refresh to the LOCAL snapshot ingestor.
@@ -135,13 +137,39 @@ final class AnyTourIntOfferSnapshotProducerV1
                     $nowTs,
                     $pricedMoney
                 );
-                // The current Andromeda estimate contract proves flight markup,
-                // not fuel inclusion. Validate it above, but do not persist it as
-                // a full customer price. Verified totals and explicit confirmation
-                // rows use their separate, unchanged branches.
                 if ($provider === 'andromeda') {
-                    ++$notReady;
-                    continue;
+                    // Historical get_flights evidence is still validated above so stale,
+                    // tampered or arithmetically inconsistent facts stay fail-closed. It is
+                    // not customer pricing authority: do not let its presence hide an
+                    // otherwise valid mapped PRICE row, and do not copy that surcharge into
+                    // canonical money. Re-project the exact search offer with search-only
+                    // money and the same identity/generation/page/TTL as confirmation-only.
+                    $cleanOffer = $offer;
+                    $cleanOffer['money'] = AnyTourThreeProviderMoneyFacts::fromSearch(
+                        'andromeda',
+                        $offer['money']['search_price'] ?? null,
+                        null,
+                        []
+                    );
+                    $issued = $retained['issued_at'] ?? null;
+                    $expires = $retained['expires_at'] ?? null;
+                    if (!is_int($issued) || !is_int($expires)) {
+                        throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_RETAINED');
+                    }
+                    $cleanRetained = AnyTourThreeProviderOfferContext::retain(
+                        $cleanOffer,
+                        $retained['generation'] ?? 0,
+                        $retained['page'] ?? 0,
+                        $issued,
+                        $expires - $issued
+                    );
+                    $dto = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
+                        $cleanOffer,
+                        $cleanRetained,
+                        $current,
+                        $nowTs
+                    );
+                    $confirmationRequired = true;
                 }
             }
             $ready = ($dto['finalPriceReady'] ?? null) === true
