@@ -2,7 +2,7 @@
 declare(strict_types=1);
 const OP='hotel-match-residual2041-search30-common4-1971-20260921-v1';
 const OPS=[13=>'anex',18=>'operator_115',25=>'operator_315',43=>'operator_342'];
-const PROTECTED=[420,1244,81154,68705,72755];
+const PROTECTED_HOTEL_IDS=[420,1244,81154,68705,72755];
 function rr(PDO $db,string $sql,array $p=[]):array{$s=$db->prepare($sql);$s->execute(array_values($p));return $s->fetchAll(PDO::FETCH_ASSOC)?:[];}
 function js(array $x):string{return json_encode($x,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";}
 function loadp(string $env):array{$p=realpath((string)getenv($env));if(!$p)throw new RuntimeException('missing_'.$env);$x=json_decode((string)file_get_contents($p),true,512,JSON_THROW_ON_ERROR);if(!is_array($x))throw new RuntimeException('shape_'.$env);return$x;}
@@ -14,7 +14,7 @@ $census=loadp('MATCH_CENSUS_PATH');$r20=loadp('MATCH_REVERSE20_PATH');$r21=loadp
 if(($census['operation_id']??'')!=='hotel-match-userseen-coverage-1971-20260920-v1'||($r21['operation']??'')!=='hotel-match-reverse110-live-anex-continuation-1971-20260921-v2'||($detail['operation']??'')!=='hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v4')throw new RuntimeException('input_operation');
 $residual=[];foreach(($census['rows']??[])as$r){if(!is_array($r)||empty($r['is_active'])||!empty($r['excluded_market'])||!in_array((string)($r['bucket']??''),['anex_only','samo_only','neither'],true))continue;$id=(int)$r['tv_hotel_id'];if($id<1||isset($residual[$id]))throw new RuntimeException('census_id');$residual[$id]=['tv_hotel_id'=>$id,'name'=>(string)$r['name'],'country_id'=>(int)$r['country_id'],'country_name'=>(string)$r['country_name'],'bucket'=>(string)$r['bucket']];}
 if(count($residual)!==2041)throw new RuntimeException('census_2041');
-$attempted=attempted($r20)+attempted($r21);foreach(PROTECTED as$id)$attempted[$id]=true;
+$attempted=attempted($r20)+attempted($r21);foreach(PROTECTED_HOTEL_IDS as$id)$attempted[$id]=true;
 $detailLinks=[];foreach(($detail['edges']??[])as$e){if(!is_array($e))continue;$id=(int)($e['tv_hotel_id']??0);$op=(int)($e['operator_id']??0);if($id>0&&isset(OPS[$op])&&str_starts_with((string)($e['link_state']??''),'captured'))$detailLinks["$id|$op"]=true;}
 require_once $root.'/scripts/diagnostics/hotel_match_anex_effective_coverage.php';
 require_once (is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php');
@@ -28,7 +28,7 @@ try{
  if($has)foreach(rr($db,"SELECT hotel_id,operator_id FROM tour_operator_identity_observations WHERE source='user_search' AND operator_id IN (13,18,25,43) AND operator_link IS NOT NULL AND operator_link<>''")as$r)$saved[(int)$r['hotel_id'].'|'.(int)$r['operator_id']]=true;
  $targets=[];$stats=['input'=>2041,'prior_search_attempted'=>0,'protected'=>0,'inactive_or_excluded'=>0,'all_edges_already_evidenced'=>0,'search_targets'=>0,'missing_edges'=>[]];
  foreach($residual as$id=>$base){
-  if(in_array($id,PROTECTED,true)){$stats['protected']++;continue;}
+  if(in_array($id,PROTECTED_HOTEL_IDS,true)){$stats['protected']++;continue;}
   if(isset($attempted[$id])){$stats['prior_search_attempted']++;continue;}
   if(!isset($active[$id])){$stats['inactive_or_excluded']++;continue;}
   $missing=[];foreach(array_keys(OPS)as$op)if(!isset($accepted["$id|$op"])&&!isset($saved["$id|$op"])&&!isset($detailLinks["$id|$op"])){$missing[]=$op;$stats['missing_edges'][(string)$op]=($stats['missing_edges'][(string)$op]??0)+1;}
