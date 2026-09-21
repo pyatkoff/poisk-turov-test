@@ -27,7 +27,7 @@ def _current_andromeda_library(here):
                "foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-pagination','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';\n"
                "$andromedaAutosave=$andromedaApp.'/andromeda-anytour-offer-autosave.php';\n"
                "if(is_file($andromedaAutosave)&&!is_link($andromedaAutosave))require_once $andromedaAutosave;\n")
-    trailer="\nif(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__)anytour_andromeda_search3_http();\n"
+    trailer="\nif(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__)anytour_andromeda_search3_http();"
     if not endpoint.startswith(bootstrap) or not endpoint.endswith(trailer):
         raise ValueError('three_source_andromeda_source_contract_changed')
     body=endpoint[len(bootstrap):-len(trailer)]
