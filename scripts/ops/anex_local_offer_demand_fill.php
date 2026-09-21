@@ -30,6 +30,13 @@ final class AnyTourAnexDemandFillV1
 
     public static function summarize(array $scope,array $result): array
     {
+        $finalize=$result['snapshot_finalize']??null;
+        $confirmation=null;
+        if(is_array($finalize)
+            &&is_int($finalize['confirmationRequiredOfferCount']??null)
+            &&$finalize['confirmationRequiredOfferCount']>=0){
+            $confirmation=$finalize['confirmationRequiredOfferCount'];
+        }
         return [
             'scope'=>[
                 'departureId'=>$scope['departureId'],'countryId'=>$scope['countryId'],'regionId'=>$scope['regionId'],
@@ -41,11 +48,14 @@ final class AnyTourAnexDemandFillV1
             'charterConcreteCandidates'=>(int)($result['charter_concrete_candidates']??0),
             'apdBatchItems'=>(int)($result['apd_batch_items']??0),
             'finalPriceReadyOffers'=>(int)($result['final_price_ready_offers']??0),
+            // Only a fresh autosave receipt can prove how many non-final regular/GDS
+            // offers were retained. Older/no-write/error receipts must stay unknown.
+            'confirmationRequiredOffers'=>$confirmation,
             'retryableOffers'=>(int)($result['retryable_offers']??0),
             'discoveredSetDrained'=>($result['discovered_set_drained']??false)===true,
             'searchClientInstances'=>(int)($result['search_client_instances']??0),
             'apdClientInstances'=>(int)($result['apd_client_instances']??0),
-            'snapshotFinalize'=>$result['snapshot_finalize']??null,
+            'snapshotFinalize'=>$finalize,
         ];
     }
 
@@ -116,7 +126,7 @@ $queuePayload=json_decode(trim($q['stdout']),true,64,JSON_THROW_ON_ERROR);
 $scopes=$queuePayload['scopes']??null;if(!is_array($scopes)||!array_is_list($scopes))throw new RuntimeException('ANEX_DEMAND_FILL_QUEUE');
 $queueReceipt=AnyTourAnexDemandFillV1::queueReceipt($queuePayload);
 
-$results=[];$ready=0;$status='complete';$error=null;
+$results=[];$ready=0;$confirmation=0;$confirmationKnown=true;$status='complete';$error=null;
 foreach(array_slice($scopes,0,$limit) as $index=>$scope){
     $command=AnyTourAnexDemandFillV1::collectorCommand($scope,$collector,$generationBase+$index,$maxExpands,$maxApd);
     $child=$run($command);
@@ -152,6 +162,8 @@ foreach(array_slice($scopes,0,$limit) as $index=>$scope){
         break;
     }
     $summary=AnyTourAnexDemandFillV1::summarize($scope,$value);$results[]=$summary;$ready+=$summary['finalPriceReadyOffers'];
+    if($summary['confirmationRequiredOffers']===null)$confirmationKnown=false;
+    else $confirmation+=$summary['confirmationRequiredOffers'];
 }
 // A bounded metadata scan that did not reach the requested stale-scope limit is
 // not an exhaustive demand receipt. Preserve completed supplier work but surface
@@ -163,7 +175,9 @@ $receipt=[
     'source'=>'anex-local-offer-demand-fill-v1','status'=>$status,'queueSource'=>$queuePayload['source']??null,
     'queueSelectionStatus'=>$queueReceipt['selectionStatus'],'queueScannedRowCount'=>$queueReceipt['scannedRowCount'],
     'queueScannedPageCount'=>$queueReceipt['scannedPageCount'],'queueFreshScopesSkipped'=>$queueReceipt['freshScopesSkipped'],
-    'requestedScopes'=>$limit,'completedScopes'=>count($results),'readyOffersAcrossScopes'=>$ready,'results'=>$results,'error'=>$error,
+    'requestedScopes'=>$limit,'completedScopes'=>count($results),'readyOffersAcrossScopes'=>$ready,
+    'confirmationRequiredOffersAcrossScopes'=>$results!==[]&&$confirmationKnown?$confirmation:null,
+    'results'=>$results,'error'=>$error,
     'browserSupplierCalls'=>0,'bookingCalls'=>0,'leadCalls'=>0,
 ];
 echo json_encode($receipt,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
