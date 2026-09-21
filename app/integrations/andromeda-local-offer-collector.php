@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/andromeda-surcharge-group-key.php';
+require_once __DIR__ . '/andromeda-surcharge-evidence.php';
 
 /**
  * INT-owned orchestration for a complete Andromeda cohort followed by a bounded
@@ -116,11 +117,17 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             $freightExternal = self::freightExternal($offer);
             $reusableGroup = $freightExternal === true
                 ? AndromedaSurchargeGroupKey::build($offer, $request) : null;
+            // This is only a candidate broader key. It does NOT collapse the initial
+            // queue. Authority appears later in this invocation only after the same
+            // evidence owner validates a returned fact as program-fixed.
+            $programFixedGroup = $freightExternal === true
+                ? AndromedaSurchargeGroupKey::buildProgramFixed($offer, $request) : null;
             $eligible[$key] = [
                 'selection' => $selection,
                 'offer' => $offer,
                 'freight_external' => $freightExternal,
                 'reusable_surcharge_group' => $reusableGroup,
+                'program_fixed_group' => $programFixedGroup,
                 'transport_group' => $freightExternal === true
                     ? ($reusableGroup ?? 'offer:' . $key)
                     : self::legacyTransportGroup($offer, (string)$operatorRef, $key),
@@ -151,10 +158,10 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             }
             foreach ($eligible as $key => $candidate) {
                 if ($candidate['freight_external'] !== $priority || isset($captureQueue[$key])) continue;
-                // A proven compatible surcharge group gets one representative attempt,
-                // not one attempt per hotel/room/SPO. Failure is not permission to retry
-                // another sibling. Unknown/non-external legacy groups are only ordering
-                // hints: they do NOT establish transferable surcharge evidence.
+                // A proven compatible strict surcharge group gets one representative
+                // attempt, not one attempt per hotel/room/SPO. Different nights remain
+                // separate here until one actual returned fact proves the broader fixed-
+                // program class during this invocation.
                 if ($candidate['reusable_surcharge_group'] !== null) {
                     ++$sameGroupSkips;
                     continue;
@@ -167,6 +174,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         $surchargeReady = 0;
         $cacheChecks = 0;
         $cacheHits = 0;
+        $programFixedGroups = [];
+        $programFixedDynamicSkips = 0;
         $captured = [];
         $readClock = null;
         $captureStartedAt = null;
@@ -184,6 +193,15 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             $captureStartedAt = $readClock();
         }
         foreach ($captureQueue as $key => $selection) {
+            $programGroup = $eligible[$key]['program_fixed_group'];
+            if ($programGroup !== null && isset($programFixedGroups[$programGroup])) {
+                // The same invocation has already observed an exact fact that the
+                // durable evidence owner would accept for this broader program scope.
+                // Skip only supplier capture; full autosave below still rereads/persists
+                // every original offer with its own base price.
+                ++$programFixedDynamicSkips;
+                continue;
+            }
             if ($attempted >= $maxCaptures) break;
             if ($captureStartedAt !== null && ($attempted > 0 || $cacheChecks > 0)) {
                 $elapsed = $readClock() - $captureStartedAt;
@@ -230,6 +248,13 @@ final class AnyTourAndromedaLocalOfferCollectorV1
                 ++$surchargeReady;
                 $captured[$key] = ($surcharge['final_price_verified'] ?? null) === true
                     ? 'verified' : 'ready';
+                $fact = $surcharge['fact'] ?? null;
+                if ($programGroup !== null && is_array($fact)
+                    && AnyTourAndromedaSurchargeEvidenceV1::isProgramFixedFactForOffer(
+                        $eligible[$key]['offer'], $fact
+                    )) {
+                    $programFixedGroups[$programGroup] = true;
+                }
             } else {
                 $captured[$key] = 'not_ready';
             }
@@ -267,6 +292,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             'surcharge_group_duplicate_skips' => $sameGroupSkips,
             'surcharge_cache_checks' => $cacheChecks,
             'surcharge_cache_hits' => $cacheHits,
+            'program_fixed_groups_proven' => count($programFixedGroups),
+            'program_fixed_dynamic_skips' => $programFixedDynamicSkips,
             'capture_time_budget_seconds' => $maxCaptureSeconds > 0 ? $maxCaptureSeconds : null,
             'capture_time_budget_exhausted' => $timeBudgetExhausted,
             'surcharge_capture_attempts' => $attempted,
