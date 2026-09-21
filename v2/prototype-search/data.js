@@ -11,7 +11,20 @@
   const amount = value => { const n = Number(value && typeof value === 'object' ? value.value : value); return Number.isFinite(n) && n > 0 ? n : null; };
   const date = value => { const s = String(value || '').slice(0, 10), p = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/); return p ? `${p[3]}-${p[2]}-${p[1]}` : /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''; };
   const plus = (d, n) => new Date(new Date(d + 'T12:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
-  function meal(value){const label=text(value),record=catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)||text(x).toLocaleLowerCase('ru-RU')===label.toLocaleLowerCase('ru-RU')),full=text(value?.fullName)||text(record?.fullName);return full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?full:label;}
+  const mealToken = value => text(value).trim().replace(/\s+/g,' ').toLocaleLowerCase('ru-RU').replace(/ё/g,'е');
+  function mealKey(value){
+    const key=mealToken(value);
+    if(['ai','all inclusive','all-inclusive','все включено'].includes(key))return 'ai';
+    if(['uai','ultra all inclusive','ultra-all-inclusive','ультра все включено'].includes(key))return 'uai';
+    return key;
+  }
+  function meal(value){
+    const label=text(value),full=text(value?.fullName),key=mealKey(label||full);
+    // Use the same catalogue spelling for choices and offers; never merge AI with UAI.
+    const record=catalog.meals.find(x=>[text(x),text(x.name),text(x.fullName)].some(name=>name&&mealKey(name)===key))||catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id));
+    if(record)return text(record.fullName)||text(record);
+    return full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?full:label;
+  }
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
   function params(s, hotelIds = [], filters = {}) {
     const departure = catalog.departures.find(x => text(x) === s.origin || String(x.id) === s.origin);
