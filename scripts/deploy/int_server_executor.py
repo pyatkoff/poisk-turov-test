@@ -277,6 +277,19 @@ def reconcile_target(target_name):
                                         actualization=raw.get('actualization')
                                         if isinstance(actualization,dict):
                                             item['actualization']={k:actualization.get(k) for k in ('state','failure_class','actions_used') if isinstance(actualization.get(k),(str,int,type(None)))}
+                                        store=raw.get('store')
+                                        snapshot=store.get('snapshot') if isinstance(store,dict) else None
+                                        rejected=snapshot.get('rejected') if isinstance(snapshot,dict) else None
+                                        if isinstance(rejected,list):
+                                            classes={}
+                                            valid=0
+                                            for row in rejected[:2000]:
+                                                if not isinstance(row,dict): continue
+                                                reason=row.get('reason');missing=row.get('missing_field');ownership=row.get('ownership_class')
+                                                if not all(isinstance(v,str) and len(v)<=96 for v in (reason,missing,ownership)): continue
+                                                key=reason+'|'+missing+'|'+ownership
+                                                classes[key]=classes.get(key,0)+1;valid+=1
+                                            item['rejection_summary']={'count':len(rejected),'classified':valid,'classes':classes}
                                         item['top_level_keys']=sorted(str(k) for k in raw.keys())[:80]
                                 except Exception:
                                     item['json_status']='unparseable'
