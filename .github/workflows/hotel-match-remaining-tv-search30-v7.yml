@@ -38,9 +38,9 @@ jobs:
           php -l payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v7.php
           php payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v7.php --self-test
           PYTHONPATH=payload/scripts/diagnostics python3 - <<'PY'
-p='payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v7.php';s=open(p).read();s=s.replace("$prior=loadp('MATCH_SEARCH30_PATH');","$prior=loadp('MATCH_SEARCH30_PATH');$v6=loadp('MATCH_V6_PATH');");s=s.replace("$sent=attempted($r20)+attempted($r21)+attempted($prior);","if(($v6['operation']??'')!=='hotel-match-remaining-tv-search30-1971-20260921-v6'||($v6['state']??'')!=='terminal_failed_no_replay')throw new RuntimeException('v6_input');$sent=attempted($r20)+attempted($r21)+attempted($prior)+attempted($v6);");open(p,'w').write(s)
-p='payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v7.py';s=open(p).read();s=s.replace('for _ in range(10):','for _ in range(40):');open(p,'w').write(s)
-PY
+          p='payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v7.php';s=open(p).read();s=s.replace("$prior=loadp('MATCH_SEARCH30_PATH');","$prior=loadp('MATCH_SEARCH30_PATH');$v6=loadp('MATCH_V6_PATH');");s=s.replace("$sent=attempted($r20)+attempted($r21)+attempted($prior);","if(($v6['operation']??'')!=='hotel-match-remaining-tv-search30-1971-20260921-v6'||($v6['state']??'')!=='terminal_failed_no_replay')throw new RuntimeException('v6_input');$sent=attempted($r20)+attempted($r21)+attempted($prior)+attempted($v6);");open(p,'w').write(s)
+          p='payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v7.py';s=open(p).read();s=s.replace('for _ in range(10):','for _ in range(40):');open(p,'w').write(s)
+          PY
           python3 -m py_compile payload/scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v7.py payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v7.py
           PYTHONPATH=payload/scripts/diagnostics python3 payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v7.py --self-test
           grep -q 'hotel-match-reverse110-live-anex-continuation-1971-20260921-v2' payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v7.php
