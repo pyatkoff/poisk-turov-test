@@ -68,7 +68,8 @@ class ContractTest(unittest.TestCase):
                   "local-readback","local_readback_exit","stderr_sha256",
                   "LOCAL_READER_MISSING","LOCAL_DB_CONNECTION","LOCAL_DB_NOT_CONFIGURED",
                   "require_once $config","errorSha256","attempt_state","package_record",
-                  "diagnostic_code","actualization","failure_class","actions_used"]:
+                  "diagnostic_code","actualization","failure_class","actions_used",
+                  "supplier_error_facts","reason_category","code_field","error_sha256"]:
             self.assertIn(x,text)
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)
