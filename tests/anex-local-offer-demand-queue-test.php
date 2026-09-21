@@ -27,7 +27,7 @@ reject(fn()=>AnyTourAnexLocalOfferDemandV1::normalizeRows([$base],0),'bad-limit'
 echo "ANEX_LOCAL_OFFER_DEMAND_OK exact=1 dedupe=1 children=1 fresh_skip=1 invalid=1\n";
 
 /** Run the actual CLI against an in-memory SQL double; no database/network connection. */
-function queueFixture(array $rows,array $freshIds,int $limit=3,string $failure=''): array
+function queueFixture(array $rows,array $freshIds,int $limit=3,string $failure='',array $freshStateOverrides=[]): array
 {
     $dir=sys_get_temp_dir().'/anex-demand-queue-'.bin2hex(random_bytes(8));
     $root=$dir.'/anytoour.ru';
@@ -37,7 +37,9 @@ function queueFixture(array $rows,array $freshIds,int $limit=3,string $failure='
     copy(__DIR__.'/../scripts/ops/anex_local_offer_demand_queue.php',$dir.'/scripts/ops/anex_local_offer_demand_queue.php');
     copy(__DIR__.'/../app/integrations/anex-local-offer-demand.php',$dir.'/app/integrations/anex-local-offer-demand.php');
     file_put_contents($root.'/config.php',"<?php\n");
-    file_put_contents($root.'/data/fixture.json',json_encode(['rows'=>$rows,'fresh'=>$freshIds,'failure'=>$failure],JSON_THROW_ON_ERROR));
+    file_put_contents($root.'/data/fixture.json',json_encode([
+        'rows'=>$rows,'fresh'=>$freshIds,'fresh_states'=>$freshStateOverrides,'failure'=>$failure,
+    ],JSON_THROW_ON_ERROR));
     $double= <<<'CODE'
 <?php
 final class DemandDbDouble
@@ -72,6 +74,14 @@ final class DemandStatementDouble
         if(str_contains($this->sql,'FROM anytour_offer_scope_state')){
             if($this->db->data['failure']==='fresh')throw new RuntimeException('fixture_freshness_failure');
             if(!isset($GLOBALS['fixtureScopes'][$params['scope']]))throw new RuntimeException('fixture_scope_digest');
+            if(!str_contains($this->sql,'JOIN anytour_offer_refreshes r')
+                ||str_contains($this->sql,'JOIN anytour_offers o')
+                ||!str_contains($this->sql,"r.status='completed'")
+                ||!str_contains($this->sql,'r.completed_at>:fresh_after')
+                ||!str_contains($this->sql,'r.completed_at<=:now')
+                ||!isset($params['fresh_after'],$params['now']))throw new RuntimeException('fixture_complete_refresh_freshness');
+            $after=strtotime($params['fresh_after'].' UTC');$now=strtotime($params['now'].' UTC');
+            if($after===false||$now===false||$now-$after!==86400)throw new RuntimeException('fixture_freshness_window');
             $this->db->trace['fresh'][]=$GLOBALS['fixtureScopes'][$params['scope']];
         }
     }
@@ -83,8 +93,13 @@ final class DemandStatementDouble
         return array_slice($this->db->data['rows'],$offset,(int)$m[1]);
     }
     public function fetchColumn(): int{
-        $params=$GLOBALS['fixtureScopes'][$this->params['scope']];
-        return in_array((int)$params['departureId'],$this->db->data['fresh'],true)?1:0;
+        $params=$GLOBALS['fixtureScopes'][$this->params['scope']];$id=(int)$params['departureId'];
+        $override=$this->db->data['fresh_states'][(string)$id]??null;
+        if(is_array($override)){
+            $status=$override['status']??null;$age=$override['age_seconds']??null;
+            return $status==='completed'&&is_int($age)&&$age>=0&&$age<86400?1:0;
+        }
+        return in_array($id,$this->db->data['fresh'],true)?1:0;
     }
 }
 function v2_data_db(): DemandDbDouble{return new DemandDbDouble();}
@@ -141,6 +156,19 @@ $maximum=queueFixture(queueRows(201),[],100);
 $m=json_decode($maximum['stdout'],true,64,JSON_THROW_ON_ERROR);
 ck($maximum['code']===0&&$maximum['trace']['offsets']===[0]&&$m['scopeCount']===100,'original maximum queue limit retained');
 
+// A complete exact refresh is fresh even when its physical cohort is empty or
+// confirmation-only. Stale/aborted/running refreshes must not suppress demand.
+$completeStates=queueFixture(queueRows(4),[],3,'',[
+    '1'=>['status'=>'completed','age_seconds'=>0],
+    '2'=>['status'=>'completed','age_seconds'=>86401],
+    '3'=>['status'=>'aborted','age_seconds'=>0],
+    '4'=>['status'=>'running','age_seconds'=>0],
+]);
+$cs=json_decode($completeStates['stdout'],true,64,JSON_THROW_ON_ERROR);
+ck($completeStates['code']===0&&$cs['freshScopesSkipped']===1,'recent completed exact snapshot is fresh independent of offer rows');
+ck(array_column($cs['scopes'],'departureId')===[2,3,4],'stale or non-completed refresh does not hide demand');
+ck($cs['selectionStatus']==='limit_reached'&&count($completeStates['trace']['fresh'])===4,'complete refresh freshness evaluated before queue limit');
+
 foreach([0,99,100,101] as $count){
     $freshRun=queueFixture(queueRows($count),$count===0?[]:range(1,$count),3);
     $f=json_decode($freshRun['stdout'],true,64,JSON_THROW_ON_ERROR);
@@ -176,4 +204,4 @@ foreach(['page','fresh','invalid'] as $failure){
     ck($failed['code']!==0&&$failed['code']!==124&&$failed['stdout']==='','failure emits no executable partial queue: '.$failure);
     ck($failed['trace']['commits']===0&&$failed['trace']['rollbacks']===1,'failure rolls back read snapshot: '.$failure);
 }
-echo "ANEX_DEMAND_FRONTIER_PAGES_OK cli_cases=13 later_page=1 early_stop=1 canonical_dedupe=1 bounded=1 rollback=1\n";
+echo "ANEX_DEMAND_FRONTIER_PAGES_OK cli_cases=14 later_page=1 early_stop=1 canonical_dedupe=1 bounded=1 complete_refresh_freshness=1 rollback=1\n";
