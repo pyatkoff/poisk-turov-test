@@ -71,7 +71,7 @@ async function nativeRecovery(){
  assert.deepEqual(Array.from(payload.childAges),[0,17]);assert.equal(payload.childs,2);assert.equal(payload.adults,2);
  for(const [name,value]of Object.entries(values))assert.equal(payload[name],value);
  const beforeValidation=[calls.length,requests.length];await recovered.fire('submit');
- assert.equal(recovered.form.dataset.checked,'1');assert.match(recovered.message.textContent(),/не отправлена/);assert.deepEqual([calls.length,requests.length],beforeValidation,'Real preview validation does not call HTTP or delivery');
+ assert.equal(recovered.form.dataset.checked,'1');assert.match(recovered.message.textContent,/не отправлена/);assert.deepEqual([calls.length,requests.length],beforeValidation,'Real preview validation does not call HTTP or delivery');
  const quoteCalls=calls.length;await assert.rejects(data.quote({...offer,cached:true}),/обновите/);assert.equal(calls.length,quoteCalls,'Cached listings cannot obtain authority from contact recovery');
  flightReply=[];offer.variants=await data.flights(offer.tour);offer.flightChoiceId=null;
  assert.equal(data.leadSession(offer).payload(new FormDataFixture(recovered.form)).flight,'','Genuine empty flights keep the original fallback');
