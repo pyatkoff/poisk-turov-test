@@ -233,16 +233,29 @@ def reconcile_target(target_name):
                 'mtime_in_target_window': start-2 <= mtime <= end+2}
         searches=base/'searches'
         observed=[]
+        retained=[]
+        allowed_keys={'status','state','error','error_code','search_id','searchId','request_id','requestId','page','pages','page_count','pageCount','count','total','total_count','totalCount','created_at','createdAt','updated_at','updatedAt','expires_at','expiresAt'}
         if searches.is_dir() and not searches.is_symlink():
             for p in searches.iterdir():
                 try:
                     if p.is_file() and not p.is_symlink():
                         mt=int(p.stat().st_mtime)
-                        if start-2 <= mt <= end+2: observed.append(mt)
+                        if start-2 <= mt <= end+2:
+                            observed.append(mt)
+                            item={'name_sha256':hashlib.sha256(p.name.encode()).hexdigest(),'mtime':mt,'size':p.stat().st_size}
+                            if safe_file(p,2*1024*1024):
+                                try:
+                                    raw=json.loads(p.read_text())
+                                    if isinstance(raw,dict):
+                                        item['fields']={k:raw.get(k) for k in sorted(allowed_keys) if k in raw and isinstance(raw.get(k),(str,int,float,bool,type(None)))}
+                                        item['top_level_keys']=sorted(str(k) for k in raw.keys())[:80]
+                                except Exception:
+                                    item['json_status']='unparseable'
+                            retained.append(item)
                 except OSError: pass
         out['andromeda_search_files_in_target_window']={
             'count':len(observed),'first_mtime':min(observed) if observed else None,
-            'last_mtime':max(observed) if observed else None}
+            'last_mtime':max(observed) if observed else None,'retained':retained}
     return out
 def local_read(scopes):
     rows=[]
