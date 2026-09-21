@@ -271,6 +271,9 @@ def reconcile_target(target_name):
                                         record=raw.get('record')
                                         if isinstance(record,dict):
                                             item['package_record']={k:record.get(k) for k in ('status','diagnostic_code') if isinstance(record.get(k),(str,type(None)))}
+                                            facts=record.get('supplier_error_facts')
+                                            if isinstance(facts,dict):
+                                                item['supplier_error_facts']={k:facts.get(k) for k in ('shape','reason_category','code','code_field','error_sha256') if isinstance(facts.get(k),(str,type(None)))}
                                         actualization=raw.get('actualization')
                                         if isinstance(actualization,dict):
                                             item['actualization']={k:actualization.get(k) for k in ('state','failure_class','actions_used') if isinstance(actualization.get(k),(str,int,type(None)))}
