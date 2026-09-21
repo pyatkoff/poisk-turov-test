@@ -6,7 +6,7 @@ name: SEARCH condition mappings current read-only audit
     paths:
       - scripts/diagnostics/search3_condition_mapping_current_audit_v2.php
       - .github/workflows/search3-condition-mapping-current-audit-v2.yml
-permissions: {contents: read, actions: read, issues: read}
+permissions: {contents: read, actions: read, issues: write}
 concurrency: {group: search3-condition-mapping-current-audit-3353-20260921-v2, cancel-in-progress: false}
 env:
   OPERATION_ID: search3-condition-mapping-current-audit-3353-20260921-v2
@@ -46,8 +46,11 @@ jobs:
           r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db','source_sha':os.environ['HEAD_SHA'],'script_sha256':pathlib.Path('input/script.sha').read_text().strip(),'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
           pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
           PY
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: {name: 'condition-mapping-reservation-${{ github.run_id }}', path: reservation/, retention-days: 30, if-no-files-found: error}
+      - name: Persist reservation to canonical coordination
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          sha=$(sha256sum reservation/reservation.json | cut -d' ' -f1)
+          gh api "repos/$GITHUB_REPOSITORY/issues/2530/comments" --method POST -f body="RESERVATION $OPERATION_ID source=$HEAD_SHA sha256=$sha state=reserved_before_db no_replay=1 database_writes=0 mapping_writes=0 provider_calls=0"
       - name: Require exact-head Security
         env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
         run: |
@@ -89,6 +92,19 @@ jobs:
           assert all(r[k]==0 for k in ['provider_calls','database_writes','mapping_writes','site_file_writes'])
           print(json.dumps({'meal_rows':len(r['meal_mapping_rows']),'mapping_counts':r['mapping_counts'],'schema_tables':list(r['dictionary_schema'])},ensure_ascii=False))
           PY
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - name: Persist terminal summary to canonical coordination
         if: always()
-        with: {name: 'search3-condition-mapping-current-audit-${{ github.run_id }}', path: terminal/, retention-days: 30, if-no-files-found: error}
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          if test -f terminal/result.json; then
+            sha=$(sha256sum terminal/result.json | cut -d' ' -f1)
+            summary=$(python3 - <<'PY'
+          import collections,json
+          r=json.load(open('terminal/result.json')); g=collections.Counter((x['namespace'],x['key_kind'],str(x['meal_id']),x['state']) for x in r['meal_mapping_rows'])
+          print(json.dumps({'meal_counts':{'|'.join(k):v for k,v in g.items()},'schema_tables':list(r['dictionary_schema']),'schema':r['dictionary_schema'],'runtime_files':r['runtime_files']},ensure_ascii=False,separators=(',',':')))
+          PY
+            )
+            gh api "repos/$GITHUB_REPOSITORY/issues/2530/comments" --method POST -f body="TERMINAL $OPERATION_ID source=$HEAD_SHA state=completed_read_only result_sha256=$sha database_writes=0 mapping_writes=0 provider_calls=0 $summary"
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/2530/comments" --method POST -f body="TERMINAL $OPERATION_ID source=$HEAD_SHA state=no-result"
+          fi
