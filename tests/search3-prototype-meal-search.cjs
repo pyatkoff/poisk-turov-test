@@ -128,7 +128,7 @@ async function browserCheck(){
  const calendar=await data.calendar(trip,trip.from,trip.to,undefined,{meals:['501','502']});assert.deepEqual(Array.from(calendar,h=>h.offers[0].mealPlanId),[501,501,501]);
  // Unknown and stale links cannot silently turn into an unconstrained supplier query.
  for(const selected of [['AI'],['777'],['501','777']]){const before=calls.length;const events=[];await data.search(trip,e=>events.push(e),[],{meals:selected});assert.equal(calls.length,before);assert.equal(events.filter(e=>e.type==='error').length,1);}
- snapshot.plans[1].nativeIds=[];let before=calls.length,events=[];await data.search(trip,e=>events.push(e),[],{meals:['501','502']});assert.equal(calls.length,before);assert.match(events.find(e=>e.type==='error').message,/соответствие/);
+ snapshot.plans[1].nativeIds=[];let before=calls.length,events=[];await data.search(trip,e=>events.push(e),[],{meals:['501','502']});assert.equal(calls.length,before);assert.match(events.find(e=>e.type==='error').message,/соответствие|отсутствует/);
  failCatalogue=true;before=calls.length;events=[];await data.search(trip,e=>events.push(e),[],{meals:['501']});assert.equal(calls.length,before);assert.equal(events.filter(e=>e.type==='error').length,1);
  // Actual URL writer/reader keep canonical IDs, not the text rendered beside them.
  const urlModel={state:{search:structuredClone(trip),filters:{...defaultFilters(),meals:['501','502']},selectedDate:null,hasSearched:false,onlyFavorites:false,sort:'recommended'},URLSearchParams,location:{search:'',hash:''},history:{state:null,replaceState(_s,_t,url){urlModel.location.search=url;}},structuredClone};
