@@ -29,6 +29,19 @@ $again=$handler->resume('dynamic1',1,time());
 if($again!==$out||count($dynamicCalls)!==2)throw new RuntimeException('resume requested supplier');
 echo "Dynamic handler checkpoint and resume passed\n";
 
+$failureState=[];$failureSaved=[];
+$failureClient=new AnyTourAndromedaClient(static function($url){
+    parse_str(parse_url($url,PHP_URL_QUERY),$q);
+    if(($q['action']??null)==='login')return ['status'=>200,'body'=>json_encode(['sid'=>'failure_fixture_session'])];
+    return ['status'=>503,'body'=>'{}'];
+},true);
+$failureHandler=new AnyTourAndromedaSearch($failureState,static function($s)use(&$failureSaved){$failureSaved=$s;return true;},true,true);
+$failed=$failureHandler->start($params,'failure1',2,time(),$failureClient,'test','test');
+if($failed['status']!=='unavailable'||($failureSaved['error']??null)!=='supplier_result_unavailable'
+    ||($failureSaved['error_code']??null)!=='ANDROMEDA_HTTP_ERROR')throw new RuntimeException('safe supplier error code missing');
+if(str_contains(json_encode($failureSaved),'503')||str_contains(json_encode($failureSaved),'failure_fixture_session'))throw new RuntimeException('unsafe supplier detail persisted');
+echo "Dynamic handler safe failure category passed\n";
+
 require_once $argv[1].'/v2/api-andromeda-search3-preview.php';
 $pdo=new PDO('sqlite::memory:');$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 $pdo->exec("CREATE TABLE catalog_hotels(id INTEGER,name TEXT,country_id INTEGER,is_active INTEGER); CREATE TABLE andromeda_hotel_identities(local_hotel_id INTEGER,external_hotel_id TEXT,supplier_namespace TEXT,decision_status TEXT); CREATE TABLE catalog_departures(id INTEGER,name TEXT,is_active INTEGER)");
