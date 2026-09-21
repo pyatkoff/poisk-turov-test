@@ -24,9 +24,21 @@ final class AnyTourAndromedaSurchargeEvidenceV1
     public static function captureProgramFixed(
         array $offer,array $request,array $fact,int $observedAt,int $expiresAt
     ):?array {
-        if(!self::programFixedFact($fact))return null;
+        if(!self::isProgramFixedFactForOffer($offer,$fact))return null;
         $key=AndromedaSurchargeGroupKey::buildProgramFixed($offer,$request);
         return self::captureScoped($key,$offer,$fact,$observedAt,$expiresAt,'program_fixed');
+    }
+
+    /**
+     * True only when this exact normalized offer could seed program-fixed evidence
+     * from the supplied estimate. Collector orchestration uses the same predicate as
+     * the cache writer so an in-run skip cannot obtain broader authority than the
+     * durable evidence path would accept.
+     */
+    public static function isProgramFixedFactForOffer(array $offer,array $fact):bool
+    {
+        $price=self::price($offer);
+        return $price!==null&&self::factMatches($fact,$price)&&self::programFixedFact($fact);
     }
 
     private static function captureScoped(
