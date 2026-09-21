@@ -166,15 +166,27 @@ final class AnyTourAndromedaOfferAutosaveV1
                 'search_ref' => $searchRef, 'generation' => $generation,
                 'pages' => $target, 'owned' => [],
             ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
-            if (self::alreadyPublished($directory, $searchRef, $firstCreated, $generation, $digest)) {
-                return self::receipt(false, 'already_published', 0, 0, count($offers));
+            $publishedReadyCount = null;
+            $publishedConfirmationCount = null;
+            if (self::alreadyPublished(
+                $directory, $searchRef, $firstCreated, $generation, $digest,
+                $publishedReadyCount, $publishedConfirmationCount
+            )) {
+                return self::receipt(
+                    false, 'already_published', $publishedReadyCount, 0, count($offers),
+                    $publishedConfirmationCount
+                );
             }
             $result = AnyTourIntOfferSnapshotProducerV1::produce('andromeda', $request['params'], [
                 'complete' => true, 'authoritative_empty' => true, 'offers' => [],
             ], $now, $ingest);
             if (($result['published'] ?? null) === true) {
-                self::saveCheckpoint($directory, $searchRef, $firstCreated, $generation, $digest, $nowTs,
-                    (int)($result['readyOfferCount'] ?? 0), $save);
+                self::saveCheckpoint(
+                    $directory, $searchRef, $firstCreated, $generation, $digest, $nowTs,
+                    (int)($result['readyOfferCount'] ?? 0),
+                    (int)($result['confirmationRequiredOfferCount'] ?? 0),
+                    $save
+                );
             }
             return self::producerReceipt($result, count($owned), count($offers));
         }
@@ -250,10 +262,17 @@ final class AnyTourAndromedaOfferAutosaveV1
             'pages' => $target, 'offers' => $digestRows,
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
         $publishedReadyCount = null;
-        if (self::alreadyPublished($directory, $searchRef, $firstCreated, $generation, $digest, $publishedReadyCount)) {
-            // The checkpoint records the producer's actual ready count. Counting all
-            // entries here would turn stored confirmation-required rows into ready ones.
-            return self::receipt(false, 'already_published', $publishedReadyCount, count($owned), count($offers));
+        $publishedConfirmationCount = null;
+        if (self::alreadyPublished(
+            $directory, $searchRef, $firstCreated, $generation, $digest,
+            $publishedReadyCount, $publishedConfirmationCount
+        )) {
+            // The checkpoint records the producer's actual counts. Counting entries
+            // would turn confirmation-required rows into final-price-ready rows.
+            return self::receipt(
+                false, 'already_published', $publishedReadyCount, count($owned), count($offers),
+                $publishedConfirmationCount
+            );
         }
 
         $result = AnyTourIntOfferSnapshotProducerV1::produce('andromeda', $request['params'], [
@@ -262,8 +281,12 @@ final class AnyTourAndromedaOfferAutosaveV1
             'offers' => $entries,
         ], $now, $ingest);
         if (($result['published'] ?? null) === true) {
-            self::saveCheckpoint($directory, $searchRef, $firstCreated, $generation, $digest, $nowTs,
-                (int)($result['readyOfferCount'] ?? 0), $save);
+            self::saveCheckpoint(
+                $directory, $searchRef, $firstCreated, $generation, $digest, $nowTs,
+                (int)($result['readyOfferCount'] ?? 0),
+                (int)($result['confirmationRequiredOfferCount'] ?? 0),
+                $save
+            );
         }
         return self::producerReceipt($result, count($owned), count($offers));
     }
@@ -523,19 +546,34 @@ final class AnyTourAndromedaOfferAutosaveV1
         return $directory . '/' . $ref . '-' . $created . '-anytour-offer-autosave-v1.json';
     }
 
-    private static function alreadyPublished(string $directory, string $ref, int $created, int $generation, string $digest, ?int &$publishedReadyCount = null): bool
-    {
+    private static function alreadyPublished(
+        string $directory,
+        string $ref,
+        int $created,
+        int $generation,
+        string $digest,
+        ?int &$publishedReadyCount = null,
+        ?int &$publishedConfirmationCount = null
+    ): bool {
         $path = self::checkpointPath($directory, $ref, $created);
         if (!file_exists($path)) return false;
         $value = self::readState($path, false);
+        $hasConfirmationCount = array_key_exists('confirmation_required_offer_count', $value);
         if (($value['version'] ?? null) !== self::CHECKPOINT_VERSION || ($value['provider'] ?? null) !== 'andromeda'
             || ($value['search_ref'] ?? null) !== $ref || ($value['generation'] ?? null) !== $generation
             || !is_string($value['cohort_digest'] ?? null) || !preg_match('/\A[a-f0-9]{64}\z/D', $value['cohort_digest'])
-            || !is_int($value['published_at'] ?? null) || !is_int($value['ready_offer_count'] ?? null)) {
+            || !is_int($value['published_at'] ?? null)
+            || !is_int($value['ready_offer_count'] ?? null) || $value['ready_offer_count'] < 0
+            || ($hasConfirmationCount && (!is_int($value['confirmation_required_offer_count'])
+                || $value['confirmation_required_offer_count'] < 0))) {
             throw new DomainException('ANDROMEDA_ANYTOUR_CHECKPOINT_INVALID');
         }
         $matches = hash_equals($value['cohort_digest'], $digest);
-        if ($matches) $publishedReadyCount = $value['ready_offer_count'];
+        if ($matches) {
+            $publishedReadyCount = $value['ready_offer_count'];
+            $publishedConfirmationCount = $hasConfirmationCount
+                ? $value['confirmation_required_offer_count'] : null;
+        }
         return $matches;
     }
 
@@ -547,8 +585,12 @@ final class AnyTourAndromedaOfferAutosaveV1
         string $digest,
         int $publishedAt,
         int $readyCount,
+        int $confirmationCount,
         callable $save
     ): void {
+        if ($readyCount < 0 || $confirmationCount < 0) {
+            throw new RuntimeException('ANDROMEDA_ANYTOUR_CHECKPOINT_COUNT');
+        }
         $path = self::checkpointPath($directory, $ref, $created);
         $value = [
             'version' => self::CHECKPOINT_VERSION,
@@ -558,6 +600,7 @@ final class AnyTourAndromedaOfferAutosaveV1
             'cohort_digest' => $digest,
             'published_at' => $publishedAt,
             'ready_offer_count' => $readyCount,
+            'confirmation_required_offer_count' => $confirmationCount,
         ];
         if ($save($path, $value) !== true) throw new RuntimeException('ANDROMEDA_ANYTOUR_CHECKPOINT_WRITE');
         $read = self::readState($path, false);
@@ -578,9 +621,15 @@ final class AnyTourAndromedaOfferAutosaveV1
         ];
     }
 
-    private static function receipt(bool $published, string $reason, int $ready, int $owned, int $received): array
-    {
-        return [
+    private static function receipt(
+        bool $published,
+        string $reason,
+        int $ready,
+        int $owned,
+        int $received,
+        ?int $confirmation = null
+    ): array {
+        $receipt = [
             'source' => 'andromeda-anytour-offer-autosave-v1',
             'published' => $published,
             'reason' => $reason,
@@ -589,6 +638,10 @@ final class AnyTourAndromedaOfferAutosaveV1
             'receivedOfferCount' => $received,
             'selectionAuthority' => false,
         ];
+        if ($confirmation !== null) {
+            $receipt['confirmationRequiredOfferCount'] = $confirmation;
+        }
+        return $receipt;
     }
 }
 
