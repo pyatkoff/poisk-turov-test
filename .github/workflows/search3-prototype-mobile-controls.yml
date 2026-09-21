@@ -1,0 +1,24 @@
+name: Search3 prototype mobile controls
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'v2/prototype-search/index.html'
+      - 'v2/prototype-search/mobile-controls-v1.css'
+      - 'tests/search3-prototype-mobile-controls.cjs'
+      - '.github/workflows/search3-prototype-mobile-controls.yml'
+permissions:
+  contents: read
+jobs:
+  mobile-controls-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Mobile native controls contract
+        run: |
+          node --check tests/search3-prototype-mobile-controls.cjs
+          node tests/search3-prototype-mobile-controls.cjs
