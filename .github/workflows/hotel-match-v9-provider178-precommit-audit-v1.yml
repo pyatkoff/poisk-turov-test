@@ -56,6 +56,8 @@ jobs:
           test "$(sha256sum input/ch2.zip|cut -d' ' -f1)" = 5a19a8c11ddc05f6cbb1af6b17c4ac8b4b09d378100d0b31528ab96e9d9ccef9
           unzip -q input/ch2.zip -d input/ch2
           test "$(sha256sum input/ch2/result.json|cut -d' ' -f1)" = 3e5893d0e8580f3060cd1e8d947b1fa10e99d1e1f6a2398a6dc8617121ac1ba2
+          cp input/ch1/result.json input/chunk1-result.json
+          cp input/ch2/result.json input/chunk2-result.json
       - name: Reserve before CURRENT DB read
         env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
         run: |
@@ -87,8 +89,8 @@ jobs:
           chmod 600 "$key"; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
           remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
           ssh "${opts[@]}" "$remote" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\""
-          scp "${opts[@]}" scripts/diagnostics/hotel_match_v9_provider178_precommit_audit_v1.php input/ch1/result.json input/ch2/result.json reservation/reservation.json "$remote:$op/payload/"
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_CHUNK1_PATH=\"\$HOME/$op/payload/result.json\" MATCH_CHUNK2_PATH=\"\$HOME/$op/payload/result.json.2\" php \"\$HOME/$op/payload/hotel_match_v9_provider178_precommit_audit_v1.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_v9_provider178_precommit_audit_v1.php input/chunk1-result.json input/chunk2-result.json reservation/reservation.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_CHUNK1_PATH=\"\$HOME/$op/payload/chunk1-result.json\" MATCH_CHUNK2_PATH=\"\$HOME/$op/payload/chunk2-result.json\" php \"\$HOME/$op/payload/hotel_match_v9_provider178_precommit_audit_v1.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
           ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' >terminal/server.tgz
       - name: Verify result
         run: |
