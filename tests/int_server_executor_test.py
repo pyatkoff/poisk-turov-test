@@ -16,6 +16,8 @@ class ParseTest(unittest.TestCase):
     def test_andromeda(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v1 1 4 2026-10-10 2026-10-12 7 2 - 0 0')
         self.assertEqual('',v['meal']);self.assertEqual(0,v['max_captures'])
+        bounded=m.parse_command(f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v2 1 4 2026-10-13 2026-10-14 7 2 - 0 10')
+        self.assertEqual(10,bounded['max_captures'])
     def test_reconcile(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} reconcile int-andromeda-reconcile-turkey-20260921-v1 int-andromeda-current-turkey-20260921-v1')
         self.assertEqual('reconcile',v['mode'])
@@ -25,6 +27,7 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} anex-demand int-anex-current-demand-20260921-v1 0',
           f'/run-int-server-v1 {SHA} anex-demand int-anex-current-demand-20260921-v1 21',
           f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v1 1 4 2026-99-10 2026-10-12 7 2 - 0 0',
+          f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v3 1 4 2026-10-13 2026-10-14 7 2 - 0 11',
           f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v1 1 4 2026-10-10 2026-10-12 7 2 ";rm" 0 0',
           f'/run-int-server-v1 {SHA[:-1]} anex-demand int-anex-current-demand-20260921-v1 3',
           f'/run-int-server-v1 {SHA} anex-demand ../../bad 3',
