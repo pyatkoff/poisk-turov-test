@@ -1,0 +1,260 @@
+name: MATCH append verified provider178 identities
+'on':
+  pull_request:
+    types: [synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_v9_provider178_write_v1.php
+      - .github/workflows/hotel-match-v9-provider178-write-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency:
+  group: hotel-match-v9-provider178-write-1971-20260921-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-v9-provider178-write-1971-20260921-v1
+  BASE_SHA: 3c470019a3b9f4ea3ece9a7bfcef070a992b6596
+  SCRIPT_PATH: scripts/diagnostics/hotel_match_v9_provider178_write_v1.php
+  WORKFLOW_PATH: .github/workflows/hotel-match-v9-provider178-write-v1.yml
+  RESOLVER_PATH: app/integrations/andromeda-hotel-resolver.php
+  SCRIPT_BLOB: b78965fc6e3bfc97a7e37754692bf1a7088ad9cd
+  RESOLVER_BLOB: d49d0eaf8d6abccefd84c0c3921edde94ef50a68
+  INPUT_ARTIFACT: '10635515907'
+  INPUT_ZIP_SHA256: ecb6c14ecfcb97c7a8c6b10076d1ecbc5e91c191578d4d9c54111a7f3f0b6fb9
+  INPUT_RESULT_SHA256: 8cb977214acf20bd93226103d752119d0615bb49692aa95191ede30bec4a0d1d
+  CLAIM: '5759714488'
+jobs:
+  write:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 3340 && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.event.pull_request.head.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact source and owner authority
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git rev-parse "HEAD:$SCRIPT_PATH")" = "$SCRIPT_BLOB"
+          test "$(git rev-parse "HEAD:$RESOLVER_PATH")" = "$RESOLVER_BLOB"
+          python3 - <<'PY'
+          import os, subprocess
+          actual=set(subprocess.check_output(
+              ['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],
+              text=True
+          ).splitlines())
+          assert actual == {os.environ['SCRIPT_PATH'], os.environ['WORKFLOW_PATH']}, actual
+          PY
+          php -l "$SCRIPT_PATH"
+          php "$SCRIPT_PATH" --self-test
+          php -l "$RESOLVER_PATH"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json, os
+          c=json.load(open('input/claim.json'))
+          assert c['id'] == int(os.environ['CLAIM'])
+          assert c['user']['id'] == 226193297
+          assert c['author_association'] == 'OWNER'
+          b=c['body']
+          for s in [
+              os.environ['OPERATION_ID'],
+              os.environ['SCRIPT_PATH'],
+              os.environ['WORKFLOW_PATH'],
+              '>=100',
+              'post-COMMIT',
+              'supplier/Tourvisor/SAMO/Andromeda HTTP0'
+          ]:
+              assert s in b, s
+          PY
+
+      - name: Verify immutable precommit input
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$INPUT_ARTIFACT/zip" > input/precommit.zip
+          echo "$INPUT_ZIP_SHA256  input/precommit.zip" | sha256sum -c -
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, zipfile
+          with zipfile.ZipFile('input/precommit.zip') as z:
+              assert z.namelist().count('result.json') == 1
+              body=z.read('result.json')
+          assert hashlib.sha256(body).hexdigest() == os.environ['INPUT_RESULT_SHA256']
+          r=json.loads(body)
+          assert r['operation'] == 'hotel-match-v9-provider178-precommit-audit-1971-20260921-v1'
+          assert r['state'] == 'completed_read_only'
+          assert r['seed_candidates'] == 178
+          assert r['current_core_safe'] == 178
+          assert r['writer_threshold_met'] is True
+          rows=r['rows']
+          assert len(rows) == 178
+          keys=[x['supplier_namespace']+'|'+str(x['native_hotel_id']) for x in rows]
+          target_pairs=[str(x['tv_hotel_id'])+'|'+x['supplier_namespace'] for x in rows]
+          assert len(set(keys)) == 178
+          assert len(set(target_pairs)) == 178
+          pathlib.Path('input/precommit.json').write_bytes(body)
+          PY
+
+      - name: Reserve exactly178 candidate keys before database access
+        env:
+          HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import datetime, hashlib, json, os, pathlib
+          r=json.load(open('input/precommit.json'))
+          keys=sorted(x['supplier_namespace']+'|'+str(x['native_hotel_id']) for x in r['rows'])
+          pairs=sorted(str(x['tv_hotel_id'])+'|'+x['supplier_namespace'] for x in r['rows'])
+          assert len(keys)==178 and len(set(keys))==178
+          assert len(pairs)==178 and len(set(pairs))==178
+          v={
+              'operation':os.environ['OPERATION_ID'],
+              'state':'reserved_before_db',
+              'source_sha':os.environ['HEAD_SHA'],
+              'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              'input_result_sha256':os.environ['INPUT_RESULT_SHA256'],
+              'candidate_count':178,
+              'candidate_keys':keys,
+              'target_namespace_pairs':pairs,
+              'candidate_keys_sha256':hashlib.sha256(('\n'.join(keys)+'\n').encode()).hexdigest(),
+              'no_replay':True,
+              'provider_calls':0,
+              'database_writes':0,
+              'mapping_writes':0
+          }
+          with pathlib.Path('reservation/reservation.json').open('x') as f:
+              f.write(json.dumps(v,sort_keys=True)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'match-provider178-reservation-${{ github.run_id }}'
+          path: reservation/
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Require exact-head Security before private server execution
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(72):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f:
+                  runs=[r for r in json.load(f)['workflow_runs'] if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD_SHA']]
+              if runs and max(runs,key=lambda r:r['id'])['status']=='completed':
+                  x=max(runs,key=lambda r:r['id'])
+                  assert x['conclusion']=='success', x
+                  break
+              time.sleep(5)
+          else:
+              raise SystemExit('security_not_green')
+          PY
+
+      - name: Execute one guarded transaction and collect readback
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/match178-key"
+          known="$RUNNER_TEMP/match178-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          test -n "$KEY"
+          test -n "$HOST"
+          test -n "$USER"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          remote="$USER@$HOST"
+          script="${SCRIPT_PATH##*/}"
+          resolver="${RESOLVER_PATH##*/}"
+          op=".anytoour-match/operations/$OPERATION_ID"
+          script_sha="$(sha256sum "$SCRIPT_PATH" | awk '{print $1}')"
+          resolver_sha="$(sha256sum "$RESOLVER_PATH" | awk '{print $1}')"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/.anytoour-match/operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+          scp "${opts[@]}" "$SCRIPT_PATH" "$RESOLVER_PATH" input/precommit.json reservation/reservation.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op/payload\" && echo '$script_sha  $script' | sha256sum -c - && echo '$resolver_sha  $resolver' | sha256sum -c - && php -l '$script' && php '$script' --self-test" > terminal/server-preflight.txt
+          printf '%s\n' 'current_transaction_started_no_replay' > terminal/stage.txt
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/precommit.json\" MATCH_SOURCE_SHA='$HEAD_SHA' php \"\$HOME/$op/payload/$script\" --execute" > terminal/remote.stdout 2> terminal/remote.stderr
+          code=$?
+          set -e
+          printf '%s\n' "$code" > terminal/exit-code.txt
+          ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && find . -maxdepth 1 -type f -name "*.json" -print0 | tar --null -T - -czf -' > terminal/server.tgz
+          exit "$code"
+
+      - name: Verify terminal readback
+        if: always()
+        run: |
+          set -euo pipefail
+          test -s terminal/server.tgz
+          python3 - <<'PY'
+          import hashlib, json, pathlib, tarfile
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  name=m.name.removeprefix('./')
+                  assert m.isfile() and '/' not in name and name.endswith('.json')
+                  pathlib.Path('terminal',name).write_bytes(t.extractfile(m).read())
+          if pathlib.Path('terminal/result.json').exists():
+              r=json.load(open('terminal/result.json'))
+              q=json.load(open('terminal/receipt.json'))
+              assert r['operation']==q['operation']=='hotel-match-v9-provider178-write-1971-20260921-v1'
+              assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+              assert r['input_candidates']==178
+              assert all(r[k]==0 for k in ['provider_calls','tourvisor_calls','samo_calls','andromeda_calls'])
+              assert r['state'] in ['committed_verified','completed_no_write_below_threshold']
+              if r['state']=='committed_verified':
+                  n=r['current_safe']
+                  assert n>=100
+                  assert r['database_writes']==r['mapping_writes']==r['accepted_delta']==n
+                  assert r['post_commit_verified']==r['resolver_verified']==n
+                  assert r['readback_verified'] is True
+                  assert q['database_writes']==q['mapping_writes']==n
+                  assert q['post_commit_verified']==q['resolver_verified']==n
+                  assert q['readback_verified'] is True
+              else:
+                  assert r['current_safe']<100
+                  assert r['database_writes']==r['mapping_writes']==0
+              pathlib.Path('terminal/verified-summary.json').write_text(json.dumps({
+                  k:r.get(k) for k in [
+                      'operation','state','input_candidates','current_safe','hold_counts',
+                      'database_writes','mapping_writes','accepted_delta',
+                      'post_commit_verified','resolver_verified','readback_verified',
+                      'provider_calls','tourvisor_calls','samo_calls','andromeda_calls'
+                  ]
+              },ensure_ascii=False,indent=2)+'\n')
+          else:
+              f=json.load(open('terminal/failure.json'))
+              assert f['operation']=='hotel-match-v9-provider178-write-1971-20260921-v1'
+              assert f['provider_calls']==f['tourvisor_calls']==f['samo_calls']==f['andromeda_calls']==0
+              pathlib.Path('terminal/verified-summary.json').write_text(json.dumps(f,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'match-provider178-terminal-${{ github.run_id }}'
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
