@@ -4,7 +4,7 @@ on:
     types: [opened]
     branches: [feature/anex-search-adapter-20260907]
     paths:
-      - scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v1.php
+      - scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v3.php
       - .github/workflows/hotel-match-v9-single-native-samo-chunk4-v3.yml
 permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-v9-single-native-samo-chunk4-1971-20260921-v3, cancel-in-progress: false}
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
-      - name: Validate exact source and owner authorization
+      - name: Validate exact source and owner continuation
         env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
         run: |
           set -euo pipefail; umask 077; mkdir -p input reservation terminal
@@ -32,37 +32,37 @@ jobs:
           test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
           python3 - <<'PY'
           import subprocess,os
-          want={'.github/workflows/hotel-match-v9-single-native-samo-chunk4-v3.yml','scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v2.php'}
+          want={'.github/workflows/hotel-match-v9-single-native-samo-chunk4-v3.yml','scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v3.php'}
           got=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
           assert got==want,(got,want)
           PY
-          php -l scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v1.php
-          php scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v1.php --self-test
-          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > input/claim.json
+          php -l scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v3.php
+          php scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v3.php --self-test
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
           python3 - <<'PY'
           import json
           c=json.load(open('input/claim.json')); b=c['body'].lower()
           assert c['id']==5760430505 and c['user']['id']==226193297 and c['author_association']=='OWNER'
-          for s in ['chunk4','country9','maximum90','current db read only','http0','writes0','fresh operation/branch/workflow']:
+          for s in ['fresh v3 operation/branch/pr','same first90 country9 semantics','owner continuation remains active']:
             assert s in b,s
           PY
       - name: Download immutable no-replay inputs
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
           set -euo pipefail
-          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$V9_ARTIFACT/zip" > input/v9.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$V9_ARTIFACT/zip" > input/v9.zip
           test "$(sha256sum input/v9.zip|cut -d' ' -f1)" = 0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0
           unzip -q input/v9.zip -d input/v9
           test "$(sha256sum input/v9/reconciliation.json|cut -d' ' -f1)" = 0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814
-          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$CH1_ARTIFACT/zip" > input/ch1.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$CH1_ARTIFACT/zip" > input/ch1.zip
           test "$(sha256sum input/ch1.zip|cut -d' ' -f1)" = 0a115458ac2fb4608bc62b835fefada979a246a9d891ce96ed4ef725c6dd3d2a
           unzip -q input/ch1.zip -d input/ch1
           test "$(sha256sum input/ch1/result.json|cut -d' ' -f1)" = 488b3b9c28cb6f6fd429a6a1925e86217b90022d9372b142ba6e3981c77bc351
-          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$CH2_ARTIFACT/zip" > input/ch2.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$CH2_ARTIFACT/zip" > input/ch2.zip
           test "$(sha256sum input/ch2.zip|cut -d' ' -f1)" = 5a19a8c11ddc05f6cbb1af6b17c4ac8b4b09d378100d0b31528ab96e9d9ccef9
           unzip -q input/ch2.zip -d input/ch2
           test "$(sha256sum input/ch2/result.json|cut -d' ' -f1)" = 3e5893d0e8580f3060cd1e8d947b1fa10e99d1e1f6a2398a6dc8617121ac1ba2
-          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$CH3_ARTIFACT/zip" > input/ch3.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$CH3_ARTIFACT/zip" > input/ch3.zip
           test "$(sha256sum input/ch3.zip|cut -d' ' -f1)" = 4a77c1309d13ada9be2bb26531118139300f9ea0b46baa82604916b90ff9903f
           unzip -q input/ch3.zip -d input/ch3
           test "$(sha256sum input/ch3/result.json|cut -d' ' -f1)" = 26c42c8910a396deb1359cd29998a827d165fb7c16329e862edbfcd6bad8cf44
@@ -101,8 +101,8 @@ jobs:
           chmod 600 "$key"; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
           remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
           ssh "${opts[@]}" "$remote" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\""
-          scp "${opts[@]}" scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v1.php input/v9-reconciliation.json input/chunk1-result.json input/chunk2-result.json input/chunk3-result.json reservation/reservation.json "$remote:$op/payload/"
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_V9_PATH=\"\$HOME/$op/payload/v9-reconciliation.json\" MATCH_CHUNK1_PATH=\"\$HOME/$op/payload/chunk1-result.json\" MATCH_CHUNK2_PATH=\"\$HOME/$op/payload/chunk2-result.json\" MATCH_CHUNK3_PATH=\"\$HOME/$op/payload/chunk3-result.json\" php \"\$HOME/$op/payload/hotel_match_v9_single_native_samo_chunk4_v1.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v3.php input/v9-reconciliation.json input/chunk1-result.json input/chunk2-result.json input/chunk3-result.json reservation/reservation.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_V9_PATH=\"\$HOME/$op/payload/v9-reconciliation.json\" MATCH_CHUNK1_PATH=\"\$HOME/$op/payload/chunk1-result.json\" MATCH_CHUNK2_PATH=\"\$HOME/$op/payload/chunk2-result.json\" MATCH_CHUNK3_PATH=\"\$HOME/$op/payload/chunk3-result.json\" php \"\$HOME/$op/payload/hotel_match_v9_single_native_samo_chunk4_v3.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
           ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' >terminal/server.tgz
       - name: Verify terminal result
         run: |
