@@ -13,12 +13,33 @@
 
   .drawer-trigger,
   .quick-chips .chip,
-  .active-filter {
+  .active-filter,
+  .hotel-links .text-button,
+  .compare-btn,
+  .hotel-more .text-button,
+  .offer-price .primary,
+  .compare-tray > .primary {
     min-height:44px;
   }
 
-  .filter-top .mobile-close {
+  .applied-search > .secondary,
+  .compact-search .secondary {
     width:44px;
+    min-width:44px;
+    min-height:44px;
+  }
+
+  .filter-top .mobile-close,
+  .favorite-button,
+  .card-photo-arrow,
+  .compare-tray .icon-button,
+  .modal-header .icon-button,
+  #modal-back,
+  .counter button,
+  .favorite-item .icon-button {
+    width:44px;
+    min-width:44px;
     height:44px;
+    min-height:44px;
   }
 }

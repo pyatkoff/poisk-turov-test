@@ -28,11 +28,14 @@ assert.match(normalized,
   /\.offer-list-toolbar \{ font-size:16px; \}/,
   'Offer-list toolbar label must remain readable on mobile');
 assert.match(normalized,
-  /\.drawer-trigger, \.quick-chips \.chip, \.active-filter \{ min-height:44px; \}/,
-  'Frequent mobile filter actions need 44px minimum tap height');
+  /\.drawer-trigger, \.quick-chips \.chip, \.active-filter, \.hotel-links \.text-button, \.compare-btn, \.hotel-more \.text-button, \.offer-price \.primary, \.compare-tray > \.primary \{ min-height:44px; \}/,
+  'Frequent mobile filter and tour actions need 44px minimum tap height');
 assert.match(normalized,
-  /\.filter-top \.mobile-close \{ width:44px; height:44px; \}/,
-  'Mobile filter close action needs a 44 by 44 tap target');
+  /\.applied-search > \.secondary, \.compact-search \.secondary \{ width:44px; min-width:44px; min-height:44px; \}/,
+  'Mobile edit-search controls need a 44px minimum tap target');
+assert.match(normalized,
+  /\.filter-top \.mobile-close, \.favorite-button, \.card-photo-arrow, \.compare-tray \.icon-button, \.modal-header \.icon-button, #modal-back, \.counter button, \.favorite-item \.icon-button \{ width:44px; min-width:44px; height:44px; min-height:44px; \}/,
+  'Mobile icon and counter actions need 44 by 44 tap targets');
 
 const forbiddenDesktopMedia = /@media\s*\(min-width/i;
 assert.equal(forbiddenDesktopMedia.test(css), false, 'This focused layer must not alter desktop widths');
@@ -43,6 +46,11 @@ console.log(JSON.stringify({
   selectFontSizePx: 16,
   minTapHeightPx: 44,
   filterTapTargets: ['drawer', 'preset-chip', 'active-filter', 'drawer-close'],
+  tourTapTargets: [
+    'edit-search', 'hotel-link', 'compare', 'expand-offers', 'choose-offer',
+    'favorite', 'photo-arrow', 'compare-tray', 'modal-close', 'modal-back',
+    'party-counter', 'favorite-remove'
+  ],
   supplierRequests: 0,
   leadRequests: 0,
   status: 'passed'
