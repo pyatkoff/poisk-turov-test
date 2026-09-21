@@ -14,6 +14,7 @@ on:
       - 'tests/andromeda-stored-offer-http-smoke.php'
       - 'v2/api-andromeda-stored-quote-preview.php'
       - 'tests/andromeda-stored-quote-http-smoke.php'
+      - 'tests/andromeda-private-runtime-capability-smoke.php'
       - 'tests/stored-provider-offer-context-smoke.php'
       - '.github/workflows/stored-provider-offer-context-contracts.yml'
 permissions:
@@ -35,5 +36,7 @@ jobs:
           php -l tests/andromeda-stored-offer-http-smoke.php
           php -l v2/api-andromeda-stored-quote-preview.php
           php -l tests/andromeda-stored-quote-http-smoke.php
+          php -l tests/andromeda-private-runtime-capability-smoke.php
           php tests/andromeda-stored-offer-http-smoke.php --native
           php tests/andromeda-stored-quote-http-smoke.php
+          php tests/andromeda-private-runtime-capability-smoke.php
