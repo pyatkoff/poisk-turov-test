@@ -5,7 +5,6 @@ require_once __DIR__.'/andromeda-surcharge-evidence.php';
 final class AnyTourAndromedaSurchargeEvidenceStoreV1
 {
     private const PREFIX='andromeda-surcharge-group-v1-';
-    private const PROGRAM_FIXED_PREFIX='andromeda-program-surcharge-group-v1-';
     private const MAX_BYTES=16384;
 
     public static function save(string $directory,array $evidence,array $provenance,callable $write):array
@@ -37,36 +36,18 @@ final class AnyTourAndromedaSurchargeEvidenceStoreV1
     {
         try{
             self::assertDirectory($directory);
-
-            // Existing exact flight-context evidence remains first priority. If the
-            // strict file exists but is corrupt, fail closed and do not fall through
-            // to a broader scope. A valid but expired strict entry is no longer
-            // authority, so a separately fresh program-fixed fact may still apply.
-            $strictKey=AndromedaSurchargeGroupKey::build($offer,$request);
-            if($strictKey===null)return null;
-            $strict=self::readEnvelope(self::path($directory,$strictKey),true);
-            if($strict!==null){
-                self::assertEnvelope($strict,$strictKey);
-                $applied=AnyTourAndromedaSurchargeEvidenceV1::apply($offer,$request,$strict['evidence'],$now);
-                if($applied!==null)return $applied;
-            }
-
-            $programKey=AndromedaSurchargeGroupKey::buildProgramFixed($offer,$request);
-            if($programKey===null)return null;
-            $program=self::readEnvelope(self::path($directory,$programKey),true);
-            if($program===null)return null;
-            self::assertEnvelope($program,$programKey);
-            return AnyTourAndromedaSurchargeEvidenceV1::apply($offer,$request,$program['evidence'],$now);
+            $key=AndromedaSurchargeGroupKey::build($offer,$request);if($key===null)return null;
+            $envelope=self::readEnvelope(self::path($directory,$key),true);if($envelope===null)return null;
+            self::assertEnvelope($envelope,$key);
+            return AnyTourAndromedaSurchargeEvidenceV1::apply($offer,$request,$envelope['evidence'],$now);
         }catch(Throwable $ignored){return null;}
     }
 
     private static function path(string $directory,string $groupKey):string
     {
-        if(preg_match('/^andromeda-surcharge-v2:([a-f0-9]{64})$/D',$groupKey,$m)===1)
-            return rtrim($directory,'/').'/'.self::PREFIX.$m[1].'.json';
-        if(preg_match('/^andromeda-program-surcharge-v1:([a-f0-9]{64})$/D',$groupKey,$m)===1)
-            return rtrim($directory,'/').'/'.self::PROGRAM_FIXED_PREFIX.$m[1].'.json';
-        throw new InvalidArgumentException('ANDROMEDA_SURCHARGE_EVIDENCE_STORE_INPUT');
+        if(preg_match('/^andromeda-surcharge-v2:([a-f0-9]{64})$/D',$groupKey,$m)!==1)
+            throw new InvalidArgumentException('ANDROMEDA_SURCHARGE_EVIDENCE_STORE_INPUT');
+        return rtrim($directory,'/').'/'.self::PREFIX.$m[1].'.json';
     }
 
     private static function assertDirectory(string $directory):void
