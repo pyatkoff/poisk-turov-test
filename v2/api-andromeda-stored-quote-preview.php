@@ -170,3 +170,107 @@ function anytour_stored_quote_actualize(
         'reused' => $receipt['reused'],
     ];
 }
+
+
+function anytour_stored_quote_http(): never
+{
+    $out = static function(array $data, int $status): never {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        header('X-Content-Type-Options: nosniff');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        exit;
+    };
+    if (($_SERVER['SCRIPT_NAME'] ?? '') !== '/_preview/search3-anex-candidate/api-andromeda-stored-quote-preview.php'
+        || is_link(__DIR__ . '/.andromeda-private.php') || !is_file(__DIR__ . '/.andromeda-private.php')) {
+        $out(['ok'=>false,'error'=>'not_found'],404);
+    }
+    $config = require __DIR__ . '/.andromeda-private.php';
+    if (!is_array($config) || ($config['enabled'] ?? false) !== true) {
+        $out(['ok'=>false,'error'=>'not_found'],404);
+    }
+    $raw = (string)file_get_contents('php://input', false, null, 0, 4097);
+    require_once __DIR__ . '/api-andromeda-stored-offer-preview.php';
+    [$status,$error] = anytour_stored_samo_http_guard($_SERVER,$raw);
+    if ($status !== 200) $out(['ok'=>false,'error'=>$error],$status);
+    try {
+        $request=json_decode($raw,true,12,JSON_THROW_ON_ERROR);
+        if (!is_array($request) || array_keys($request)!==['action','handle']
+            || ($request['action'] ?? null)!=='quote'
+            || !is_string($request['handle'] ?? null)
+            || preg_match('/\Astored_[a-f0-9]{64}\z/D',$request['handle'])!==1) {
+            throw new InvalidArgumentException();
+        }
+        $root=realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
+        if (!$root || basename($root)!=='anytoour.ru') throw new RuntimeException();
+        require_once __DIR__ . '/api-andromeda-search3-preview.php';
+        $app=is_file(__DIR__.'/app/integrations/stored-provider-offer-context.php')
+            ? __DIR__.'/app/integrations' : __DIR__.'/../app/integrations';
+        require_once $app.'/stored-provider-offer-context.php';
+        require_once $app.'/andromeda-saved-package-runtime.php';
+        require_once $app.'/andromeda-transport.php';
+        require_once $root.'/_preview/search3-local-candidate/data/search3-local-results-read-v1.php';
+        $pdo=v2_data_db();
+        if (!is_string($config['catalog_path'] ?? null)) throw new RuntimeException();
+        $directory=dirname($config['catalog_path']).'/searches';
+
+        session_name('ANYTOUR_ANDROMEDA_SEARCH3');
+        ini_set('session.use_strict_mode','1'); ini_set('session.use_only_cookies','1');
+        session_set_cookie_params(['secure'=>true,'httponly'=>true,'samesite'=>'Lax','path'=>'/_preview/search3-anex-candidate/']);
+        if (!session_start()) throw new RuntimeException();
+        try {
+            $handles=is_array($_SESSION['andromeda_stored_offers_v1'] ?? null)
+                ? $_SESSION['andromeda_stored_offers_v1'] : [];
+            $handle=$request['handle'];
+            $viewer=$handles[$handle] ?? null;
+            if (!is_array($viewer) || !is_array($viewer['request']['params'] ?? null)) {
+                throw new DomainException('Stored quote unavailable');
+            }
+            $params=$viewer['request']['params'];
+            $scope=AnyTourSearchScopeV1::fromParams($params);
+            $country=(int)$scope['params']['countryId'];
+            $readLocal=static fn(array $p):array => search3_local_results_build(
+                $pdo,$p,new DateTimeImmutable('now',new DateTimeZone('UTC')));
+            $canonical=static fn(string $provider,string $digest,int $legacy,int $own):bool =>
+                AnyTourProviderIdentityBridgeV1::allowsOffer($pdo,$provider,$digest,$legacy,$own);
+            $mapping=static fn(array $offer):bool =>
+                anytour_andromeda_search3_mapping_allows($pdo,$country,$offer);
+
+            // CURRENT reread first. It must reproduce the exact private context stored at prepare.
+            $stored=anytour_stored_samo_request(
+                ['action'=>'read','handle'=>$handle],$handles,$directory,$readLocal,$canonical,$mapping,time());
+            $viewer=$handles[$handle] ?? null;
+            if (!is_array($viewer)) throw new DomainException('Stored quote unavailable');
+            $decision=anytour_stored_quote_actualize(
+                $stored,$viewer,$config,$directory,$mapping,
+                'anytour_andromeda_capture_saved_package',time());
+
+            if (in_array($decision['state'] ?? null,['actualized_verified','actualized_unverified'],true)) {
+                // Read only the persisted evidence after the owner returns; never trust its receipt as money.
+                $stored=anytour_stored_samo_request(
+                    ['action'=>'read','handle'=>$handle],$handles,$directory,$readLocal,$canonical,$mapping,time());
+                $decision=anytour_stored_quote_gate($stored,null,time());
+            }
+            $_SESSION['andromeda_stored_offers_v1']=$handles;
+        } finally { session_write_close(); }
+
+        $out(['ok'=>true,'data'=>[
+            'state'=>$decision['state'],
+            'finalPriceReady'=>$decision['finalPriceReady'],
+            'finalPrice'=>$decision['finalPrice'],
+            'sameCriteria'=>$decision['sameCriteria'],
+            'anytourHotelId'=>$stored['anytourHotelId'],
+            'handle'=>$stored['handle'],
+            'bookingEnabled'=>false,
+        ]],200);
+    } catch (JsonException|InvalidArgumentException $e) {
+        $out(['ok'=>false,'error'=>'invalid_request'],400);
+    } catch (DomainException $e) {
+        $out(['ok'=>false,'error'=>'stored_offer_unavailable'],409);
+    } catch (Throwable $e) {
+        $out(['ok'=>false,'error'=>'quote_unavailable'],502);
+    }
+}
+
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) anytour_stored_quote_http();
