@@ -9,7 +9,7 @@ env:
   OPERATION_ID: hotel-match-remaining-tv-search30-1971-20260921-v8
   BASE_SHA: cde183f7d33cef6bd1df4d0ff16dad0904d53570
   V2_SOURCE: 863ca82c9b5431f755ef3dadcd3e340e23039f21
-  CLAIM: '5758123697'
+  CLAIM: '5758280798'
 jobs:
   acquire:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
