@@ -52,6 +52,7 @@ const arrivalCity=h=>data.text(h.raw?.arrival)||h.resort||countryNames[h.country
 function minimumOfferSummary(o){return `<div class="card-minimum-offer" data-minimum-key="${esc(o.key)}"><strong>${dateText(o.day)} → ${dateText(o.returnDay)} · ${nightsText(o.nights)}</strong><p class="minimum-stay"><span>${esc(mealLabel(o))}</span><span>${esc(o.room)}</span></p><div class="card-offer-flight"><span class="flight-tag ${o.flight}">${flightLabel(o)}</span>${operatorBadge(o.operator)}</div></div>`;}
 const startDay=addDays(iso(new Date()),1),endDay=addDays(startDay,180);
 let hotels=[];
+let resultCalendar={key:null,hotels:[],phase:'idle',controller:null};
 
 const defaultFilters=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],min:0,max:600000,rating:false,beach:false,family:false,spa:false});
 const getStored=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
@@ -226,10 +227,22 @@ function renderFilters(){const model=editingFilterModel(),f=model.filters,hs=hot
  <div class="filter-hint">${icon('info')}<span>${!state.hasSearched&&!state.onlyFavorites?'Условия применятся после нажатия «Найти туры». Доступные курорты и туроператоры появятся в выдаче.':'Фильтры применяются к найденным предложениям. Актуальная цена и сборы уточняются при выборе.'}</span></div>`;
  $('#beach-chip').hidden=true;$('#family-chip').hidden=true;$('#rating-chip').hidden=!hs.length||hs.some(h=>h.rating===null);
 }
+function loadResultCalendar(){
+ if(!catalogReady||!state.hasSearched)return;
+ const s=structuredClone(state.search),f=state.filters,filters={stars:[...f.stars],meals:[...f.meals],min:f.min,max:f.max};
+ const key=JSON.stringify([s,filters]);if(resultCalendar.key===key)return;
+ resultCalendar.controller?.abort();const request={key,hotels:[],phase:'loading',controller:new AbortController()};resultCalendar=request;
+ data.calendar(s,s.from,s.to,request.controller.signal,filters).then(rows=>{
+  if(resultCalendar!==request)return;request.hotels=rows;request.phase='complete';renderCalendarStrip();
+ }).catch(error=>{if(resultCalendar!==request||error.name==='AbortError')return;request.phase='error';renderCalendarStrip();});
+}
 function renderCalendarStrip(){
+ loadResultCalendar();
  const s=state.search,days=[];for(let day=s.from;day<=s.to;day=addDays(day,1))days.push(day);
- const prices=days.map(day=>minimumForDay(day)),known=prices.filter(p=>p!==null),min=Math.min(...known),max=Math.max(...known);
- $('#calendar-caption').textContent=`Цена от за ${guestsText()} · ${durationText()} · по найденным предложениям · прочерк — нет сохранённой цены`;
+ const calendarRows=[...hotels,...resultCalendar.hotels],prices=days.map(day=>minimumForDay(day,{calendarHotels:calendarRows})),known=prices.filter(p=>p!==null),min=Math.min(...known),max=Math.max(...known);
+ const source=resultCalendar.phase==='loading'?'Загружаем цены из базы…':resultCalendar.phase==='error'?'База цен временно недоступна · показаны найденные предложения':'Из базы и найденных предложений · цена требует проверки';
+ $('#calendar-caption').textContent=`Цена от за ${guestsText()} · ${durationText()} · ${source} · прочерк — нет цены`;
+ $('#price-strip').setAttribute('aria-busy',String(resultCalendar.phase==='loading'));
  $('#price-strip').innerHTML=days.map((day,i)=>`<button class="date-price ${prices[i]!==null&&prices[i]===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${prices[i]!==null?', от '+money(prices[i]):', цена пока неизвестна'}"><span class="date">${dateText(day)}</span><strong>${prices[i]===null?'—':money(prices[i])}</strong><span class="calendar-bar" style="--bar-height:${prices[i]===null?5:12+Math.round((prices[i]-min)/Math.max(1,max-min)*22)}px"></span></button>`).join('');
  $('#clear-date').hidden=!state.selectedDate;
 }
@@ -616,6 +629,7 @@ function renderSearchStatus(items,total){
 }
 function runSearch(options={}){
  if(state.filters.hotelId&&!destinationHotel(state.filters.hotelId)?.legacyIds.length){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return;}
+ resultCalendar.controller?.abort();resultCalendar={key:null,hotels:[],phase:'idle',controller:null};
  selectionGeneration++;selectedOffer=null;savedSelection=null;removedSelectedTour=null;window.AnyTourPrototypeLead.reset();updateNav();state.hasSearched=true;
  const key=searchKey(state.search);searchResponse={key,phase:'loading',operators:[],pending:true,exactRefresh:options.exactRefresh===true};collapseSearch();
  data.search(state.search,event=>{
