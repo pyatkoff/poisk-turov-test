@@ -176,9 +176,18 @@ $autosave=static function(array $req,string $ref,int $generation)use($pdo,$saved
     );
 };
 
+// A current compatible group entry already contains the reusable transport fact.
+// This is a read of the existing store, not another package/get_flights request.
+// Autosave rereads it per target and never promotes an estimate to verified money.
+$hasReusableSurcharge=static function(array $selection,array $offer,array $req)use($directory):bool{
+    return AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied(
+        $directory,$offer,$req,time()
+    )!==null;
+};
+
 $result=AnyTourAndromedaLocalOfferCollectorV1::collect(
     $request,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
-    $maxCaptures,$captureMode,$maxCaptureSeconds
+    $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
 );
 echo json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
 if (($result['status'] ?? null) !== 'complete') exit(1);
