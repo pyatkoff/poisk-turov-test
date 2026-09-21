@@ -8,9 +8,10 @@ require_once __DIR__ . '/andromeda-surcharge-evidence-store.php';
  * Supplier-free pricing bridge used by the Andromeda AnyTour autosave path.
  *
  * Exact per-offer pricing is always authoritative. A valid exact estimated fact may
- * seed the strict transport-group cache when the caller supplies the original
- * bounded timing/provenance. Only when exact pricing is absent may a cached group
- * surcharge be rebased to the target offer's own search PRICE.
+ * seed the existing evidence store with its strict transport group and, only when
+ * explicitly classified as one fixed program-level party surcharge, a separate
+ * cross-night program scope. Only when exact pricing is absent may cached evidence
+ * be rebased to the target offer's own search PRICE.
  *
  * Cached evidence is estimate-only and can never create a verified/final price or
  * selection/booking authority.
@@ -20,7 +21,7 @@ final class AnyTourAndromedaSurchargeCacheAutosaveV1
     /**
      * @param array<string,mixed>|null $exactPricing Existing exact per-offer pricing envelope.
      * @param array<string,mixed> $offer Normalized Andromeda PRICE offer.
-     * @param array<string,mixed> $request Search request or params block used by the strict group key.
+     * @param array<string,mixed> $request Search request or params block used by evidence keys.
      * @param array<string,mixed>|null $seedMeta Original sidecar timing/provenance for optional persistence.
      * @param callable(string,array):bool|null $write Existing atomic private writer.
      * @return array<string,mixed>|null
@@ -95,24 +96,47 @@ final class AnyTourAndromedaSurchargeCacheAutosaveV1
                 || $now < $observedAt || $now >= $expiresAt) {
                 return;
             }
-            $evidence = AnyTourAndromedaSurchargeEvidenceV1::capture(
+            $provenance = [
+                'source_sha' => $sourceSha,
+                'source_search_ref' => $searchRef,
+                'source_offer_ref' => $offerRef,
+            ];
+
+            // Preserve the established strict cache exactly. It remains the primary
+            // read path and still includes nights.
+            $strict = AnyTourAndromedaSurchargeEvidenceV1::capture(
                 $offer,
                 $request,
                 $fact,
                 $observedAt,
                 $expiresAt
             );
-            if ($evidence === null) return;
+            if ($strict === null) return;
             AnyTourAndromedaSurchargeEvidenceStoreV1::save(
                 $directory,
-                $evidence,
-                [
-                    'source_sha' => $sourceSha,
-                    'source_search_ref' => $searchRef,
-                    'source_offer_ref' => $offerRef,
-                ],
+                $strict,
+                $provenance,
                 $write
             );
+
+            // A second entry in the SAME evidence store is permitted only for the
+            // explicit fixed-program fact class. Choice-dependent fallback facts do
+            // not qualify, so removing nights cannot broaden their applicability.
+            $programFixed = AnyTourAndromedaSurchargeEvidenceV1::captureProgramFixed(
+                $offer,
+                $request,
+                $fact,
+                $observedAt,
+                $expiresAt
+            );
+            if ($programFixed !== null) {
+                AnyTourAndromedaSurchargeEvidenceStoreV1::save(
+                    $directory,
+                    $programFixed,
+                    $provenance,
+                    $write
+                );
+            }
         } catch (Throwable $ignored) {
             // Autosave is best-effort. Cache I/O/provenance conflicts never suppress
             // an otherwise valid exact per-offer pricing result.
