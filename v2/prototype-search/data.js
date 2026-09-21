@@ -122,6 +122,19 @@
       return hotel({...raw,canonicalLegacyIds:legacyIds},{country});
     });
   }
+  async function restoreHotel(id,country){
+    if(!owner)throw new Error('Hotel catalogue unavailable');
+    const request=new AbortController(),timeout=setTimeout(()=>request.abort(),15000);
+    try{
+      const profile=await owner.readProfile(id);
+      if(!profile||request.signal.aborted)throw new Error('Hotel profile unavailable');
+      // A saved own ID is not a supplier ID. Recover only a currently verified
+      // catalogue link in this country, never a similarly named replacement.
+      const rows=await lookupHotels(profile.name,country,request.signal),match=rows.find(h=>h.id===id);
+      if(!match)throw new Error('Hotel search identity unavailable');
+      return match;
+    }finally{clearTimeout(timeout);}
+  }
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
     const run=generation,id=searchId;
@@ -153,5 +166,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,lookupHotels,catalog,get searchId(){return searchId;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;}});
 })(window);
