@@ -31,7 +31,7 @@ FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <div style=\"display:flex;gap:8px;align-items:center\"><button class=\"favorite-button\" style=\"position:static\" aria-label=\"В избранное\">♥</button><button class=\"card-photo-arrow next\" style=\"position:static;margin:0\" aria-label=\"Следующее фото\">›</button></div>
 <div class=\"hotel-more\"><button class=\"text-button\">Показать все туры</button></div>
 <div class=\"offer-price\" style=\"text-align:left\"><button class=\"primary\">Выбрать тур</button></div>
-<div class=\"compare-tray\" style=\"position:static;transform:none;width:max-content;max-width:100%\"><button class=\"primary\">Сравнить</button><button class=\"icon-button\" aria-label=\"Закрыть сравнение\">×</button></div>
+<div class=\"compare-tray\" style=\"position:static;transform:none\"><button class=\"primary\">Сравнить</button><button class=\"icon-button\" aria-label=\"Закрыть сравнение\">×</button></div>
 <div class=\"modal-header\" style=\"display:flex\"><button id=\"modal-back\" class=\"icon-button\" aria-label=\"Назад\">←</button><button class=\"icon-button modal-close-probe\" aria-label=\"Закрыть\">×</button></div>
 <div class=\"counter\"><button aria-label=\"Увеличить количество туристов\">+</button></div>
 <div class=\"favorite-item\"><button class=\"icon-button\" aria-label=\"Удалить из избранного\">×</button></div>
