@@ -265,6 +265,15 @@ def reconcile_target(target_name):
                                     raw=json.loads(p.read_text())
                                     if isinstance(raw,dict):
                                         item['fields']={k:raw.get(k) for k in sorted(allowed_keys) if k in raw and isinstance(raw.get(k),(str,int,float,bool,type(None)))}
+                                        state=raw.get('state')
+                                        if isinstance(state,dict):
+                                            item['attempt_state']={k:state.get(k) for k in ('status','failure_class','attempt') if isinstance(state.get(k),(str,int,type(None)))}
+                                        record=raw.get('record')
+                                        if isinstance(record,dict):
+                                            item['package_record']={k:record.get(k) for k in ('status','diagnostic_code') if isinstance(record.get(k),(str,type(None)))}
+                                        actualization=raw.get('actualization')
+                                        if isinstance(actualization,dict):
+                                            item['actualization']={k:actualization.get(k) for k in ('state','failure_class','actions_used') if isinstance(actualization.get(k),(str,int,type(None)))}
                                         item['top_level_keys']=sorted(str(k) for k in raw.keys())[:80]
                                 except Exception:
                                     item['json_status']='unparseable'
