@@ -17,7 +17,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
  const browser=await chromium.launch({headless:true});
  try{for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],calls=[],dbCalls=[];
-  let releaseCountries;const countriesReady=new Promise(resolve=>{releaseCountries=resolve});let countriesBlocked=true;
+  let releaseCountries;let countriesReady=new Promise(resolve=>{releaseCountries=resolve});let countriesBlocked=true;
   let delayedFailure=null;
   const lookupCalls=[],searchQueries=[];let failLookup=true,releaseLookup;const lookupReady=new Promise(resolve=>{releaseLookup=resolve});
   let slowStarted,releaseSlow,slowDone;const slowRequest=new Promise(resolve=>{slowStarted=resolve}),slowReady=new Promise(resolve=>{releaseSlow=resolve}),slowFinished=new Promise(resolve=>{slowDone=resolve});
@@ -64,8 +64,18 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   assert.equal(calls.filter(x=>x==='search_start').length,0,'Calendar never starts a supplier search');
   assert.ok(dbCalls.every(p=>p.adults===2&&p.childs.length===0&&p.nightsFrom===7),'Calendar keeps party and duration');
   await page.locator('[data-action="close-modal"]').click();await page.waitForTimeout(100);
-  await page.locator('[data-action="destination"]').click();const hotelQuery=page.locator('#destination-query');
-  await hotelQuery.fill('Rixos');await page.getByText('Ищем отели в каталоге…').waitFor();
+  await page.locator('[data-action="destination"]').click();
+  countriesBlocked=true;countriesReady=new Promise(resolve=>{releaseCountries=resolve});await page.reload();
+  const hotelQuery=page.locator('#destination-query');await hotelQuery.waitFor();
+  assert.equal(await page.locator('#destination-selection').textContent(),'Загружаем направления…','A restored destination waits for catalogue hydration');
+  assert.doesNotMatch(await page.locator('#modal').textContent(),/undefined/);
+  await hotelQuery.fill('Rixos');await page.waitForTimeout(250);
+  assert.equal(lookupCalls.length,0,'No hotel request is sent with an uninitialized country');
+  assert.equal(await page.locator('[data-action="apply-destination"]').isEnabled(),false);
+  await page.screenshot({path:path.join(evidence,`destination-initializing-${width}.png`)});
+  countriesBlocked=false;releaseCountries();await page.getByText('Ищем отели в каталоге…').waitFor();
+  assert.equal(await hotelQuery.inputValue(),'Rixos','Catalogue hydration retains the typed hotel query');
+  assert.equal(await page.locator('#destination-selection').textContent(),'ТурцияВсе курорты');
   assert.equal(await page.locator('[data-action="apply-destination"]').isEnabled(),false,'Typed text cannot silently apply the whole country');
   releaseLookup();await page.getByRole('button',{name:'Повторить поиск отеля'}).waitFor();
   assert.equal(await hotelQuery.inputValue(),'Rixos');failLookup=false;await page.getByRole('button',{name:'Повторить поиск отеля'}).click();

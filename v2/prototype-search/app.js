@@ -107,7 +107,7 @@ function updateSearchUI(){
 const normalizeSearch=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ё/g,'е').trim();
 const destinationHotels=new Map();
 const destinationHotel=id=>hotels.find(h=>h.id===id)||destinationHotels.get(id);
-let destinationLookup={status:'idle',rows:[]},destinationRequest=null,destinationTimer=null;
+let destinationLookup={status:'idle',rows:[]},destinationRequest=null,destinationTimer=null,catalogError='';
 function cancelDestinationLookup(){clearTimeout(destinationTimer);destinationRequest?.abort();destinationRequest=null;destinationLookup={status:'idle',rows:[]};}
 function syncDestinationViewport(){
  const m=$('#modal'),v=window.visualViewport,keyboard=modalType==='destination'&&m.open&&innerWidth<=760&&v&&v.height<innerHeight-120;
@@ -119,7 +119,7 @@ window.visualViewport?.addEventListener('resize',syncDestinationViewport);
 window.visualViewport?.addEventListener('scroll',syncDestinationViewport);
 function lookupDestination(){
  cancelDestinationLookup();const q=$('#destination-query').value.trim(),country=destinationChoice.country;
- if(q.length<2){renderDestination();return;}
+ if(!countryNames[country]||q.length<2){renderDestination();return;}
  const request=new AbortController();destinationRequest=request;destinationLookup={status:'loading',rows:[]};renderDestination();
  destinationTimer=setTimeout(async()=>{const timeout=setTimeout(()=>request.abort(),15000);try{
   const rows=await data.lookupHotels(q,country,request.signal);if(destinationRequest!==request||modalType!=='destination')return;
@@ -136,6 +136,11 @@ function rememberDestination(){const d=appliedDestination(),key=x=>JSON.stringif
 function openDestination(){cancelDestinationLookup();destinationChoice=structuredClone(currentDraftDestination());showModal('destination','Куда отправимся?','СТРАНА, КУРОРТ ИЛИ ОТЕЛЬ',`<div class="destination-search"><label class="sr-only" for="destination-query">Страна, курорт или отель</label>${icon('search')}<input class="input" type="search" id="destination-query" placeholder="Страна, курорт или отель" autocomplete="off" aria-controls="destination-results"></div><div id="destination-selection" class="destination-selection"></div><div id="destination-results" aria-live="polite"></div>`);$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-destination"></button>';renderDestination();if(innerWidth>760)$('#destination-query').focus({preventScroll:true});}
 function renderDestination(){
  const d=destinationChoice,q=normalizeSearch($('#destination-query').value),recent=recentDestinations();
+ if(!countryNames[d.country]){
+  $('#destination-selection').textContent=catalogError?'Направления пока недоступны':'Загружаем направления…';
+  $('#destination-results').innerHTML=catalogError?`<div class="destination-empty" role="status"><p>${esc(catalogError)}</p><button class="secondary" data-action="retry-catalog">Повторить загрузку направлений</button></div>`:'<p role="status">Название можно ввести сейчас. Поиск начнётся после загрузки направлений.</p>';
+  const apply=$('[data-action="apply-destination"]');apply.disabled=true;apply.textContent=catalogError?'Выбор пока недоступен':'Загружаем направления…';return;
+ }
  $('#destination-selection').innerHTML=`<span>${esc(destinationLabel(d,true))}</span><button class="text-button" data-action="destination-all">Все курорты</button>`;
  const countryRows=Object.entries(countryNames).filter(([k,n])=>!q||normalizeSearch(n).includes(q));
  let html=!q&&recent.length?`<section class="destination-section"><h3>Недавние направления</h3><div class="destination-recents">${recent.map((x,i)=>`<button class="chip" data-action="destination-recent" data-value="${i}">${esc(destinationLabel(x))}</button>`).join('')}</div></section>`:'';
@@ -740,9 +745,9 @@ async function restoreSavedHotels(){
  const favorites=validIds(getStored('anytour.real.favorites.v1',[])),compare=validIds(getStored('anytour.real.compare.v1',[])).slice(0,3),ids=[...new Set([...favorites,...compare])];if(!ids.length)return;const rows=await data.savedHotels(ids,state.search);if(state.hasSearched)return;hotels=rows;state.favorites=favorites.filter(id=>rows.some(h=>h.id===id));state.compare=compare.filter(id=>rows.some(h=>h.id===id));updateNav();
 }
 async function bootRealData(){
- const button=$('.search-submit');button.disabled=true;
- try{applyCatalog(await data.init(new URLSearchParams(location.search).get('origin')||draft.origin));state.search=structuredClone(draft);restoreURL();updateSearchUI();renderResults();button.disabled=false;if(modalType==='dates'){dateContext=createDateContext(dateContext?.source==='results'?'results':'form');$('.calendar-context').textContent=dateContextLabel(dateContext.search);loadCalendarPrices();}await restoreSavedHotels();}
- catch(error){$('#cards').innerHTML=`<div class="empty"><h3>Не удалось загрузить направления</h3><p>${esc(error.message)}</p><button class="primary" data-action="retry-catalog">Повторить</button></div>`;}
+ const button=$('.search-submit');button.disabled=true;catalogError='';if(modalType==='destination')renderDestination();
+ try{applyCatalog(await data.init(new URLSearchParams(location.search).get('origin')||draft.origin));state.search=structuredClone(draft);restoreURL();updateSearchUI();renderResults();button.disabled=false;if(modalType==='destination'){if(!countryNames[destinationChoice.country])destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}if(modalType==='dates'){dateContext=createDateContext(dateContext?.source==='results'?'results':'form');$('.calendar-context').textContent=dateContextLabel(dateContext.search);loadCalendarPrices();}await restoreSavedHotels();}
+ catch(error){catalogError=error.message;$('#cards').innerHTML=`<div class="empty"><h3>Не удалось загрузить направления</h3><p>${esc(error.message)}</p><button class="primary" data-action="retry-catalog">Повторить</button></div>`;if(modalType==='destination')renderDestination();}
 }
 document.addEventListener('click',event=>{const b=event.target.closest('[data-action]');if(!b||b.disabled)return;if(b.dataset.action==='refresh-hotel')refreshHotel(Number(b.dataset.id));if(b.dataset.action==='retry-flights')loadRealFlights();if(b.dataset.action==='retry-catalog')bootRealData();});
 document.addEventListener('error',event=>{const img=event.target;if(img.tagName==='IMG'&&img.classList.contains('hotel-image')){img.closest('.hotel-photos')?.classList.add('photo-unavailable');img.removeAttribute('src');img.alt='Фото пока недоступно';}},true);
