@@ -73,8 +73,9 @@ $nights=$int($args['nights']??'7',1,28);
 $adults=$int($args['adults']??'2',1,6);
 $meal=$args['meal']??'7';
 $generation=$int($args['generation']??'17171801',1,2147483647);
-// Zero skips new package/quote captures, not the normal supplier search or autosave.
-$maxCaptures=$int($args['max-captures']??'2',0,300);
+// Background collection persists fresh PRICE results and reuses retained pricing;
+// package/quote actualization is opt-in only and never enabled by the default CLI.
+$maxCaptures=$int($args['max-captures']??'0',0,300);
 $maxCaptureSeconds=$int($args['max-capture-seconds']??'0',0,240);
 // Background collection must not discover flights merely to derive money evidence.
 // External/unknown freight remains eligible for normal snapshot autosave, while an

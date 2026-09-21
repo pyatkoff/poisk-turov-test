@@ -118,7 +118,7 @@ foreach($positive as $index=>[$args,$ages]) {
     foreach(['pages','search','autosave'] as $stage) familyCheck($events[$stage]===$request,'same exact family request at '.$stage);
     familyCheck($events['collector']['request']===$request,'collector receives family request');
     familyCheck($events['collector']['mode']===($index===8?'all':'non_external_only'),'capture mode unchanged');
-    familyCheck($events['collector']['maxCaptures']===($index===8?3:2)&&$events['collector']['seconds']===($index===8?7:0),'capture limits unchanged');
+    familyCheck($events['collector']['maxCaptures']===($index===8?3:0)&&$events['collector']['seconds']===($index===8?7:0),'capture limits unchanged');
 }
 $invalid=['18','-1','1,2,3,4','7,','7,,3','x','3.5','07',' 7','7, 3','[]','7;echo invalid'];
 foreach($invalid as $value) {
@@ -155,7 +155,7 @@ foreach($destinations as $index=>[$args,$regions,$subregions]) {
         'destination preserves party and all other criteria '.$index);
     foreach(['pages','search','autosave'] as $stage) familyCheck($events[$stage]===$request,'same exact destination request at '.$stage);
     familyCheck($events['collector']['request']===$request&&$events['collector']['mode']==='non_external_only'
-        &&$events['collector']['maxCaptures']===2&&$events['collector']['seconds']===0,'destination does not expand capture policy');
+        &&$events['collector']['maxCaptures']===0&&$events['collector']['seconds']===0,'destination does not expand capture policy');
     $destinationRequests[]=$request;
 }
 familyCheck($destinationRequests[0]===$destinationRequests[1],'explicit empty keeps broad-country request');
