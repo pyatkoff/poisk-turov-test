@@ -16,7 +16,8 @@ function fixture(preview){
    async submit(form,options){submissions.push({form,options});return submitResult;}
   };}},V2LeadFormGuard:{validatePhone(){return phoneValid;}}};
  const document={getElementById(){return current?.form||null;},querySelector(){return current?.button||null;}};
- vm.runInNewContext(source,{window,document,URL,FormData:FormDataFixture});
+ const sandbox=vm.createContext({window,document,URL,FormData:FormDataFixture});
+ vm.runInContext(source,sandbox);
  function mount(){
   const listeners=new Map(),button={disabled:false},message={textContent:'',role:'status',scrolls:0,setAttribute(name,value){this[name]=value;},scrollIntoView(){this.scrolls++;}};
   const elements=Object.fromEntries(['name','phone','comment','consent'].map(name=>[name,{value:name==='consent'?'1':'',checked:false,reportValidity(){return phoneValid;}}]));
@@ -24,8 +25,59 @@ function fixture(preview){
   async function fire(type){let prevented=false;for(const fn of listeners.get(type)||[])await fn({preventDefault(){prevented=true;}});return prevented;}
   current={form,button,message,fire};return current;
  }
- return{api:window.AnyTourPrototypeLead,mount,payloads,submissions,receivedOffers,
+ return{api:window.AnyTourPrototypeLead,mount,payloads,submissions,receivedOffers,window,document,sandbox,FormDataFixture,
   setSessionError(value){sessionError=value;},setPayloadError(value){payloadError=value;},setPhoneValid(value){phoneValid=value;},setSubmitResult(value){submitResult=value;}};
+}
+async function nativeRecovery(){
+ const f=fixture(true),{window,document,sandbox,FormDataFixture}=f;
+ const calls=[],requests=[],flight={price:{value:133500.5},fuelCharge:0,forward:[{number:'TT 211'}],backward:[{number:'TT 212'}]};
+ const tour={id:'exact-second-room',provider:'tourvisor',price:120000,hotel:{name:'Тестовый отель'},date:'2026-10-01',nights:7,adults:2,childs:2,meal:{name:'AI'},roomType:'FAMILY SEA VIEW',placement:'DBL+2CH',operator:{name:'ANEX'}};
+ let flightReply={},nextSearch=321;
+ window.location.search='';window.addEventListener=()=>{};
+ document.cookie='';document.addEventListener=()=>{};
+ const query=document.querySelector;document.querySelector=selector=>selector==='#tourSearch input[name="sessid"]'?null:query();
+ window.fetch=async(url,options)=>{requests.push({url,options});assert.match(String(url),/\/data\/search3-local-results-read-v1\.php$/,'Only the fictional LOCAL read is permitted');return{ok:false,status:503};};
+ window.V2Runtime={state:{searchId:0},setSearchId(id){this.state.searchId=id;},async api(action,params){
+  calls.push({action,params});
+  if(action==='search_start')return{searchId:nextSearch++};
+  if(action==='tour')return structuredClone(tour);
+  if(action==='flights')return structuredClone(flightReply);
+  throw Error('Unexpected fixture action '+action);
+ }};
+ window.Search3CanonicalProfilesV1={create:()=>({reset(){},read:()=>[]})};
+ Object.assign(sandbox,{location:window.location,URLSearchParams,structuredClone,fetch:(...args)=>window.fetch(...args),setTimeout:()=>0,clearTimeout(){}});
+ for(const file of ['lead-search-context.js','tour-controller-v4.js','prototype-search/data.js'])vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../v2',file),'utf8'),sandbox,{filename:file});
+ const data=window.AnyTourPrototypeData;data.catalog.departures.push({id:1,name:'Москва'});data.catalog.countries.push({id:4,name:'Турция'});
+ const trip={origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-01',minNights:7,maxNights:7,adults:2,ages:[17,0]};
+ await data.search(trip,()=>{});
+ const offer={raw:{id:tour.id},provider:'tourvisor',cached:false,flightChoiceId:null};offer.tour=await data.quote(offer);
+ await assert.rejects(data.flights(offer.tour),/рейс/,'The real adapter rejects malformed flights');
+ offer.flightsError='Не удалось загрузить рейсы.';
+ const blocked=f.mount();f.api.bind(offer);
+ assert.equal(blocked.button.disabled,true);assert.match(blocked.message.textContent,/рейс/);
+ for(const [name,value]of Object.entries(values))blocked.form.elements[name].value=value;
+ await blocked.fire('input');
+ const beforeBlocked=[calls.length,requests.length];await blocked.fire('submit');assert.deepEqual([calls.length,requests.length],beforeBlocked);
+ flightReply=[flight];const beforeRetry=calls.length;offer.variants=await data.flights(offer.tour);offer.flightsError='';offer.flightChoiceId='0';
+ assert.deepEqual(calls.slice(beforeRetry).map(c=>c.action),['flights'],'Recovery repeats flights only, not the search or exact-tour quote');
+ const recovered=f.mount();f.api.bind(offer);
+ for(const [name,value]of Object.entries(values))assert.equal(recovered.form.elements[name].value,value,'Real controller handoff retains contacts after failure');
+ assert.equal(recovered.form.elements.consent.checked,false);assert.equal(recovered.button.disabled,false);
+ recovered.form.elements.consent.checked=true;
+ const session=data.leadSession(offer),payload=session.payload(new FormDataFixture(recovered.form));
+ assert.deepEqual([payload.tourId,payload.searchId,payload.roomType,payload.meal,payload.placement,payload.date,payload.nights],['exact-second-room',321,'FAMILY SEA VIEW','AI','DBL+2CH','2026-10-01',7]);
+ assert.equal(payload.price,120000,'The original base-price field is not rewritten');assert.equal(payload.flightPrice,133500.5,'The selected whole-tour flight price is not added to the base or rounded');
+ assert.match(payload.flight,/TT 211/);assert.match(payload.flight,/TT 212/);
+ assert.deepEqual(Array.from(payload.childAges),[0,17]);assert.equal(payload.childs,2);assert.equal(payload.adults,2);
+ for(const [name,value]of Object.entries(values))assert.equal(payload[name],value);
+ const beforeValidation=[calls.length,requests.length];await recovered.fire('submit');
+ assert.equal(recovered.form.dataset.checked,'1');assert.match(recovered.message.textContent(),/не отправлена/);assert.deepEqual([calls.length,requests.length],beforeValidation,'Real preview validation does not call HTTP or delivery');
+ const quoteCalls=calls.length;await assert.rejects(data.quote({...offer,cached:true}),/обновите/);assert.equal(calls.length,quoteCalls,'Cached listings cannot obtain authority from contact recovery');
+ flightReply=[];offer.variants=await data.flights(offer.tour);offer.flightChoiceId=null;
+ assert.equal(data.leadSession(offer).payload(new FormDataFixture(recovered.form)).flight,'','Genuine empty flights keep the original fallback');
+ data.stop();assert.throws(()=>session.payload(new FormDataFixture(recovered.form)),/изменились/);
+ const beforeStale=[calls.length,requests.length];await recovered.fire('submit');assert.equal(recovered.message.role,'alert');assert.match(recovered.message.textContent,/изменились/);assert.deepEqual([calls.length,requests.length],beforeStale);
+ console.log('Native data adapter + tour controller + search-context + binder: exact room/flight/price/child ages, failed-to-valid recovery, cached/stale refusal and preview no-delivery PASS');
 }
 (async()=>{
  for(const preview of [true,false]){
@@ -74,5 +126,6 @@ function fixture(preview){
   f.api.reset();const reset=f.mount();f.api.bind(offer);for(const name of Object.keys(values))assert.equal(reset.form.elements[name].value,'');
   console.log(`Lead binder ${preview?'preview':'delivery-stub'}: rejected/pending/stale draft, submit containment, recovery, consent, validation and reset PASS`);
  }
+ await nativeRecovery();
  console.log('Unit harness only; real browser/supplier/network/delivery calls: 0.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
