@@ -406,12 +406,12 @@ async function openOffer(key,restored=null,chooseFlight=false){
  if(needsRefresh(initial))return;
  selectedOffer.loading=true;renderRealOffer();
  try{const tour=await data.quote(initial);if(run!==selectionGeneration||!$('#modal').open||modalType!=='offer'||selectedOffer?.key!==key)return;selectedOffer={...initial,tour,total:data.amount(tour.price)||initial.total,room:data.text(tour.roomType)||initial.room,meal:data.meal(tour.meal)||initial.meal,loading:false,flightsLoading:true};renderRealOffer();await loadRealFlights(run);if(chooseFlight&&run===selectionGeneration&&selectedOffer?.variants?.length)openFlightPicker();}
- catch(error){if(run===selectionGeneration&&$('#modal').open){selectedOffer={...initial,quoteError:error.message,loading:false};renderRealOffer();}}
+ catch(error){if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===key){selectedOffer={...initial,quoteError:error.message,loading:false};renderRealOffer();}}
 }
 async function loadRealFlights(run=selectionGeneration){
  const o=selectedOffer;if(!o?.tour)return;selectedOffer.flightsLoading=true;renderRealOffer();
  try{const variants=await data.flights(o.tour);if(run!==selectionGeneration||selectedOffer?.key!==o.key||!$('#modal').open||modalType!=='offer')return;const index=Math.max(0,variants.findIndex(v=>v.isDefault));selectedOffer={...selectedOffer,variants,flightsLoading:false,flightsError:''};if(variants.length)selectedOffer=withFlightPair(selectedOffer,String(index));renderRealOffer();}
- catch(error){if(run===selectionGeneration&&$('#modal').open){selectedOffer={...selectedOffer,flightsLoading:false,flightsError:'Не удалось загрузить рейсы. Попробуйте ещё раз.'};renderRealOffer();}}
+ catch(error){if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===o.key){selectedOffer={...selectedOffer,flightsLoading:false,flightsError:'Не удалось загрузить рейсы. Попробуйте ещё раз.'};renderRealOffer();}}
 }
 function renderRealOffer(){
  const o=selectedOffer,h=hotels.find(h=>h.id===o?.hotelId);if(!o||!h)return;

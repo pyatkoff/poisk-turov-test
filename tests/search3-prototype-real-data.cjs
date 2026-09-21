@@ -18,6 +18,8 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
  try{for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],calls=[],dbCalls=[];
   let releaseCountries;const countriesReady=new Promise(resolve=>{releaseCountries=resolve});let countriesBlocked=true;
+  let delayedFailure=null;
+  function failNext(action){let started,release;const requested=new Promise(resolve=>{started=resolve}),ready=new Promise(resolve=>{release=resolve});delayedFailure={action,started,ready};return {requested,release};}
   page.on('pageerror',error=>{errors.push(error.message);console.error('browser:',error.message);});
   await context.route('**/*',async route=>{
    const url=new URL(route.request().url());
@@ -28,6 +30,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
    if(url.pathname.endsWith('/search3-local-results-read-v1.php')){const p=route.request().postDataJSON().params;dbCalls.push(p);return json({ok:true,data:{source:'anytour-db-first-results-v1',scopeVersion:1,scope:{scopeVersion:1,...p},scopeDigest:'c'.repeat(64),selectionAuthority:false,hotels:[{anytourHotelId:1,hotel:profiles[0],offers:[stored(p)]}]}});}
    if(url.pathname==='/api-v2.php'){
     const action=url.searchParams.get('action');calls.push(action);
+    if(delayedFailure?.action===action){const pending=delayedFailure;delayedFailure=null;pending.started();await pending.ready;return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Временная ошибка проверки тура'})});}
     if(action==='meals')return json([{id:7,name:'AI'},{id:5,name:'HB'}]);
     if(action==='countries'){if(countriesBlocked)await countriesReady;return json([{id:4,name:'Турция'},{id:5,name:'Египет'}]);}
     if(action==='search_start')return json({searchId:123});
@@ -137,6 +140,27 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   assert.match(await page.locator('#modal-body').textContent(),/TT 211/);
   assert.equal(calls.length,beforeContactHistory,'Contact and saved-detail restoration never reload quotes or flights');
   await page.screenshot({path:path.join(evidence,`history-selection-${width}.png`)});
+  await page.locator('[data-action="close-modal"]').click();await page.waitForTimeout(100);
+  await page.locator('.hotel-price [data-action="all-offers"]').first().click();
+  for(const action of ['tour','flights']){
+   const {requested,release}=failNext(action);
+   await real.click();await requested;
+   await page.locator('#modal-back').click();
+   const list=await page.locator('#modal-body').textContent(),beforeReply=calls.length;
+   const response=page.waitForResponse(r=>new URL(r.url()).searchParams.get('action')===action&&r.status()===503);
+   release();await (await response).finished();await page.waitForTimeout(100);
+   assert.equal(await page.locator('#modal-body').textContent(),list,`Late ${action} failure must not replace the returned offer list`);
+   assert.equal(await real.isVisible(),true);
+   assert.equal(calls.length,beforeReply,'Returning does not retry the supplier request');
+   await page.screenshot({path:path.join(evidence,`late-${action}-return-${width}.png`)});
+   const current=failNext(action);await real.click();await current.requested;current.release();
+   const retry=action==='tour'?page.getByRole('button',{name:'Повторить проверку'}):page.getByRole('button',{name:'Повторить загрузку'});
+   await retry.waitFor();await page.waitForFunction(()=>!document.querySelector('[data-action="retry-flights"]')?.disabled);
+   assert.match(await page.locator('#modal-body').textContent(),action==='tour'?/Временная ошибка проверки тура/:/Не удалось загрузить рейсы/,'The current offer still shows its own error');
+   const beforeRetry=calls.length;await retry.click();await page.locator('[data-action="choose-flight"]').waitFor();
+   assert.deepEqual(calls.slice(beforeRetry),action==='tour'?['tour','flights']:['flights'],'Only an explicit retry repeats the failed step');
+   await page.locator('#modal-back').click();
+  }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'No document overflow');
   const scopeCheck=await page.evaluate(async()=>{const d=window.AnyTourPrototypeData,p=d.params({origin:'Москва',country:'4',from:new Date(Date.now()+86400000).toISOString().slice(0,10),to:new Date(Date.now()+2*86400000).toISOString().slice(0,10),minNights:7,maxNights:7,adults:2,ages:[0,17]}),r={scopeVersion:1,...p};return {same:d.sameScope(p,r),party:d.sameScope(p,{...r,childs:[7,10]}),departure:d.sameScope(p,{...r,departureId:'2'}),cached:await d.quote({cached:true}).then(()=>false,()=>true)};});
   assert.deepEqual(scopeCheck,{same:true,party:false,departure:false,cached:true});
