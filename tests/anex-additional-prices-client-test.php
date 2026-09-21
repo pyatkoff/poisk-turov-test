@@ -174,4 +174,33 @@ try{
     @rmdir($rateDir);
 }
 
+// A configured cache is part of the no-replay boundary for the production
+// page-1/pageSize10 APD read. If its durable reservation directory cannot be
+// used, supplier transport must not start. A symlink gives a deterministic
+// unavailable private-store fixture without relying on filesystem permissions.
+$cacheFixture=sys_get_temp_dir().'/anex-b2b-cache-unavailable-'.bin2hex(random_bytes(6));
+$cacheTarget=$cacheFixture.'-target';
+mkdir($cacheTarget,0700,true);
+if(!symlink($cacheTarget,$cacheFixture))throw new RuntimeException('cache symlink fixture');
+$blockedTransportCalls=0;
+try{
+    $blocked=new AnyTourAnexAdditionalPricesClient(
+        'blocked-token',
+        static function () use (&$blockedTransportCalls): array {
+            ++$blockedTransportCalls;
+            return ['status'=>200,'body'=>'{}'];
+        },
+        $cacheFixture,
+        static fn():int=>(new DateTimeImmutable('2026-09-20T12:00:00Z'))->getTimestamp()
+    );
+    $expect('ANEX_B2B_DAILY_CACHE_UNAVAILABLE',static function()use($blocked,$criteria):void{
+        $blocked->additionalPricesDaily($criteria);
+    });
+    $assert($blockedTransportCalls===0&&$blocked->requestsMade()===0,'unavailable durable reservation blocks supplier transport');
+    $assert(($blocked->lastRequestDiagnostics()['cache_status']??null)==='unavailable','unavailable cache diagnosis preserved');
+}finally{
+    @unlink($cacheFixture);
+    @rmdir($cacheTarget);
+}
+
 fwrite(STDOUT, "ANEX AdditionalPricesDaily client/context: {$checks} checks passed; network=0.\n");
