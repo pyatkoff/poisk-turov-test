@@ -1,0 +1,13 @@
+/* Search3 prototype: keep native mobile controls readable and easy to tap. */
+@media (max-width:760px) {
+  .sort-label select,
+  .offer-list-toolbar select,
+  .offer-controls select {
+    font-size:16px;
+    min-height:44px;
+  }
+
+  .offer-list-toolbar {
+    font-size:16px;
+  }
+}
