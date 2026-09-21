@@ -35,6 +35,11 @@ $now=new DateTimeImmutable('now',new DateTimeZone('UTC'));
 $since=$now->modify('-'.$lookback.' hours')->format('Y-m-d H:i:s');
 $today=$now->format('Y-m-d');
 $until=$now->modify('+'.$horizon.' days')->format('Y-m-d');
+// LOCAL keeps completed provider listings for 24h. A completed exact refresh is
+// fresh demand evidence for the same window even when it authoritatively stored
+// zero offers or only confirmation-required rows.
+$freshAfter=$now->modify('-24 hours')->format('Y-m-d H:i:s');
+$nowSql=$now->format('Y-m-d H:i:s');
 
 $db=v2_data_db();
 if($db->inTransaction())throw new RuntimeException('ANEX_DEMAND_TRANSACTION');
@@ -50,10 +55,11 @@ try{
         .'ORDER BY searches DESC,last_seen DESC,observations DESC,'
         .'departure_id,country_id,region_id,departure_date,nights,adults,children_count,child_ages_signature';
     $fresh=$db->prepare(
-        'SELECT COUNT(*) FROM anytour_offer_scope_state s JOIN anytour_offers o '
-        .'ON o.provider=s.provider AND o.scope_sha256=s.scope_sha256 AND o.last_refresh_token=s.latest_complete_refresh_token '
+        'SELECT COUNT(*) FROM anytour_offer_scope_state s JOIN anytour_offer_refreshes r '
+        .'ON r.refresh_token=s.latest_complete_refresh_token AND r.provider=s.provider AND r.scope_sha256=s.scope_sha256 '
         .'WHERE s.provider=\'anex\' AND s.scope_sha256=:scope AND s.latest_complete_refresh_token IS NOT NULL '
-        .'AND o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now LIMIT 1'
+        .'AND r.status=\'completed\' AND r.completed_at IS NOT NULL '
+        .'AND r.completed_at>:fresh_after AND r.completed_at<=:now LIMIT 1'
     );
     // Fresh popular scopes must not hide lower-ranked uncovered demand. Page only
     // metadata in this one read-only snapshot; supplier execution remains elsewhere.
@@ -70,7 +76,7 @@ try{
             $digest=$canonical['digest'];
             if(isset($seen[$digest]))continue;
             $seen[$digest]=true;++$rankedCount;
-            $fresh->execute(['scope'=>$digest,'now'=>$now->format('Y-m-d H:i:s')]);
+            $fresh->execute(['scope'=>$digest,'fresh_after'=>$freshAfter,'now'=>$nowSql]);
             if((int)$fresh->fetchColumn()>0){++$freshCount;continue;}
             $scopes[]=$scope;
             if(count($scopes)>=$limit){$selectionStatus='limit_reached';break 2;}
