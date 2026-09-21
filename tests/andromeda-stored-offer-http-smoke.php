@@ -59,17 +59,24 @@ try {
     $result = $run($prepare); $handle = $result['handle'];
     check($dbReads===1 && $canonicalCalls>0 && $nativeCalls>0,'CURRENT reader + canonical + native mapping all used');
     check((bool)preg_match('/^stored_[a-f0-9]{64}$/D',$handle),'Opaque viewer handle');
+    check(($handles[$handle]['private_context']['search_ref'] ?? null)===$ref,'Server session retains exact private search ref');
+    check(($handles[$handle]['private_context']['offer_ref'] ?? null)===$keys[1],'Server session retains exact private offer ref');
+    check(($handles[$handle]['private_context']['generation'] ?? null)===$second['generation']
+        && ($handles[$handle]['private_context']['page'] ?? null)===2,'Server session retains exact native generation/page');
     check($result['hotel']['name']==='Название из нашего каталога','Supplier cannot replace canonical hotel presentation');
     check($result['tour']['room']['raw']==='DELUXE SEA VIEW','Exact second-page offer, not the cheaper STANDARD');
     check($result['tour']['party']['child_ages']===[0,17],'Child ages 0/17 retained');
     check($result['listingPrice']['amount']==='133500.50','Listing precision unchanged');
     check($result['quote']===['state'=>'confirmation_required','finalPrice'=>null,'expiresAt'=>null],'No invented quote when evidence missing');
     check($result['selectionEnabled']===false && $result['bookingEnabled']===false,'Context read is not booking authority');
-    check(!str_contains(json_encode($result),$ref) && !str_contains(json_encode($result),'private-package-'),'No private source or supplier package identity in browser response');
+    check(!str_contains(json_encode($result),$ref) && !str_contains(json_encode($result),$keys[1])
+        && !str_contains(json_encode($result),'private-package-'),'No private source/offer or supplier package identity in browser response');
     check(!str_contains(json_encode($handles),'private-package-'),'Session handle needs no raw supplier package ID');
     $again = $run(['action'=>'read','handle'=>$handle]);
     check($dbReads===2 && $again===$result,'Read uses CURRENT DB again and retains handle and expiry');
     check(count($handles)===1,'Read does not allocate another handle');
+    check(($handles[$handle]['private_context']['search_ref'] ?? null)===$ref
+        && ($handles[$handle]['private_context']['offer_ref'] ?? null)===$keys[1],'Read revalidates same exact private context');
     check($filesBefore===[hash_file('sha256',$firstPath),hash_file('sha256',$secondPath)],'Original retained snapshots unchanged');
 
     $otherViewer=[];
