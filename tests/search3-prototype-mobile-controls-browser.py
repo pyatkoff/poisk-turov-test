@@ -1,4 +1,4 @@
-"""Focused browser evidence for the Search3 prototype mobile native controls layer.
+"""Focused browser evidence for the Search3 prototype mobile controls layer.
 
 This test serves only repository CSS plus a fictional control fixture. It performs no
 supplier, database or lead request and does not claim live-preview publication.
@@ -22,6 +22,9 @@ FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <label class=\"sort-label\">Сортировка отелей <select><option>Рекомендуемые</option></select></label>
 <div class=\"offers-section\" style=\"margin-top:24px\"><div class=\"offer-list-toolbar\">Сортировка предложений <select><option>Сначала дешевле</option></select></div>
 <div class=\"offer-controls\" style=\"margin-top:16px\"><select><option>Номер FAMILY SEA VIEW · AI · 7 ночей</option></select></div></div>
+<div class=\"results-toolbar\" style=\"margin-top:24px\"><button class=\"secondary drawer-trigger\">Фильтры</button><div class=\"quick-chips\"><button class=\"chip\">Первая линия</button><button class=\"chip\">Для семьи</button></div></div>
+<div class=\"active-filters\"><button class=\"active-filter\">5 ★</button></div>
+<aside class=\"filter-panel open\" style=\"position:static;display:block;width:100%;max-height:none;margin-top:16px\"><div class=\"filter-top\"><h3>Фильтры</h3><button class=\"icon-button mobile-close\" aria-label=\"Закрыть\">×</button></div></aside>
 </main></body></html>"""
 
 
@@ -53,7 +56,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def inspect_width(browser, origin, width, screenshot=False):
-    page = browser.new_page(viewport={"width": width, "height": 520})
+    page = browser.new_page(viewport={"width": width, "height": 720})
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     try:
@@ -62,13 +65,17 @@ def inspect_width(browser, origin, width, screenshot=False):
         values = page.evaluate("""() => {
           const style = selector => {
             const value = getComputedStyle(document.querySelector(selector));
-            return {fontSize:value.fontSize, minHeight:value.minHeight, height:value.height};
+            return {fontSize:value.fontSize, minHeight:value.minHeight, width:value.width, height:value.height};
           };
           return {
             hotelSort: style('.sort-label select'),
             offerSort: style('.offer-list-toolbar select'),
             offerCondition: style('.offer-controls select'),
             toolbarFont: getComputedStyle(document.querySelector('.offer-list-toolbar')).fontSize,
+            drawer: style('.drawer-trigger'),
+            preset: style('.quick-chips .chip'),
+            activeFilter: style('.active-filter'),
+            drawerClose: style('.filter-top .mobile-close'),
             overflow: document.documentElement.scrollWidth > innerWidth
           };
         }""")
@@ -78,8 +85,15 @@ def inspect_width(browser, origin, width, screenshot=False):
                 assert values[key]["fontSize"] == "16px", (width, key, values[key])
                 assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
             assert values["toolbarFont"] == "16px", (width, values)
+            for key in ("drawer", "preset", "activeFilter"):
+                assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
+            assert float(values["drawerClose"]["width"].removesuffix("px")) >= 44, (width, values["drawerClose"])
+            assert float(values["drawerClose"]["height"].removesuffix("px")) >= 44, (width, values["drawerClose"])
         else:
             assert mobile is False, width
+            assert values["drawer"]["minHeight"] != "44px", (width, values["drawer"])
+            assert values["preset"]["minHeight"] != "44px", (width, values["preset"])
+            assert values["activeFilter"]["minHeight"] != "44px", (width, values["activeFilter"])
         assert values["overflow"] is False, (width, values)
         assert not errors, errors
         if screenshot:
