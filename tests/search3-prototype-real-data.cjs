@@ -64,6 +64,25 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   await page.locator('[data-action="close-modal"]').click();await page.waitForTimeout(100);
   assert.equal(await page.locator('#destination-label').textContent(),'Турция');
   await page.screenshot({path:path.join(evidence,`form-${width}.png`),fullPage:true});
+  const beforeInitialFilters=calls.length;
+  await page.locator('#search [data-action="filters"]').click();
+  assert.equal(await page.locator('#filter-panel').isVisible(),true,'All filters opens the existing controls before the first search');
+  assert.equal(await page.locator('#price-calendar').isVisible(),false,'Opening filter settings does not reveal an empty results calendar');
+  assert.equal(await page.locator('#filter-panel .check-row small:visible').count(),0,'Pre-search filters do not claim zero matching offers');
+  if(width<1100){
+   assert.equal(await page.locator('#apply-filters').textContent(),'Сохранить условия');
+   assert.equal(await page.locator('#filter-preview-count').textContent(),'Условия для следующего поиска');
+   await page.locator('#filter-panel [data-action="star"][data-value="5"]').click();
+   await page.getByRole('button',{name:'Отмена',exact:true}).click();
+   assert.equal(await page.locator('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'false','Closing discards unconfirmed initial filter edits');
+   await page.locator('#search [data-action="filters"]').click();
+  }
+  await page.locator('#filter-panel [data-action="star"][data-value="5"]').click();
+  await page.screenshot({path:path.join(evidence,`initial-filters-${width}.png`),fullPage:true});
+  if(width<1100){await page.locator('[data-action="apply-filters"]').click();assert.equal(await page.locator('.search-submit').evaluate(el=>document.activeElement===el),true,'Saving initial conditions returns focus to the search action');}
+  assert.equal(await page.locator('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'true');
+  assert.equal(calls.length,beforeInitialFilters,'Editing initial filters never starts a supplier search');
+  await page.locator('[data-action="any-stars"]').click();
   await page.locator('[data-action="dates"]').click();await page.waitForFunction(()=>document.querySelectorAll('.month-day.is-cheap').length>0);
   assert.equal(await page.locator('.month-day:not(.is-cheap):not([disabled])').first().isEnabled(),true,'A day without a saved price remains selectable');
   assert.equal(calls.filter(x=>x==='search_start').length,0,'Calendar never starts a supplier search');
