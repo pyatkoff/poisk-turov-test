@@ -398,11 +398,26 @@ try {
     assert_confirmation_dto($ingests[0]['rows'][0]['dto']);
 } finally { cleanup_dir($dir); }
 
+// A row-local room-label normalization failure withholds only that malformed offer.
+$dir = temp_searches();
+try {
+    $ref = hash('sha256', 'safe-room-label-rejection'); $created = time() - 30; $ingests = [];
+    $roomRejected = [['index' => 1, 'reason' => 'THREE_PROVIDER_ROOM_LABEL']];
+    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 1, $created, [normalized_offer('room-safe')], $roomRejected));
+    [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
+    $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+        new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
+    aassert($result['published'] === true && $result['confirmationRequiredOfferCount'] === 1
+        && $result['ownedOfferCount'] === 1 && count($ingests[0]['rows']) === 1,
+        'room-label rejection poisoned valid sibling offers');
+} finally { cleanup_dir($dir); }
+
 // Owned, unknown, legacy or payload-bearing rejected rows stay fail-closed.
 foreach ([
     'owned' => [['index' => 1, 'reason' => 'MISSING_FIELD', 'missing_field' => 'mealKey', 'ownership_class' => 'andromeda_owned']],
     'unknown' => [['index' => 1, 'reason' => 'MISSING_FIELD', 'missing_field' => 'operator', 'ownership_class' => 'unknown']],
     'legacy' => [['index' => 1, 'reason' => 'MISSING_FIELD']],
+    'other-short' => [['index' => 1, 'reason' => 'INVALID_TRANSPORT_CONTEXT']],
     'payload' => [['index' => 1, 'reason' => 'MISSING_FIELD', 'missing_field' => 'mealKey', 'ownership_class' => 'excluded_direct_or_tv', 'operator' => 'ANEX']],
 ] as $case => $rejected) {
     $dir = temp_searches();
