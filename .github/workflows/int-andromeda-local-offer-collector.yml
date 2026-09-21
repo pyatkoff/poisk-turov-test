@@ -6,6 +6,7 @@ on:
       - 'app/integrations/andromeda-surcharge-evidence.php'
       - 'app/integrations/anytour-offer-snapshot-producer.php'
       - 'tests/andromeda-local-offer-collector-test.php'
+      - 'tests/andromeda-collector-group-reuse-test.php'
       - 'tests/andromeda-local-offer-collector-cli-test.php'
       - 'tests/andromeda-zero-capture-collection-test.php'
       - 'tests/andromeda-local-offer-collector-ready-receipt-test.php'
@@ -29,6 +30,7 @@ jobs:
           php -l app/integrations/andromeda-surcharge-evidence.php
           php -l app/integrations/anytour-offer-snapshot-producer.php
           php -l tests/andromeda-local-offer-collector-test.php
+          php -l tests/andromeda-collector-group-reuse-test.php
           php -l tests/andromeda-surcharge-evidence-test.php
           php -l tests/andromeda-confirmation-snapshot-producer-test.php
           php -l scripts/ops/andromeda_local_offer_collect.php
@@ -36,6 +38,7 @@ jobs:
           php -l tests/andromeda-zero-capture-collection-test.php
           php -l tests/andromeda-local-offer-collector-ready-receipt-test.php
           php tests/andromeda-local-offer-collector-test.php
+          php -d allow_url_fopen=0 tests/andromeda-collector-group-reuse-test.php
           php tests/andromeda-local-offer-collector-cli-test.php
           php tests/andromeda-zero-capture-collection-test.php
           php tests/andromeda-local-offer-collector-ready-receipt-test.php

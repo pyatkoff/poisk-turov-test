@@ -21,7 +21,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         int $maxCaptures = 2,
         string $captureMode = 'all',
         int $maxCaptureSeconds = 0,
-        ?callable $clock = null
+        ?callable $clock = null,
+        ?callable $hasReusableSurcharge = null
     ): array {
         if (!is_int($request['generation'] ?? null) || $request['generation'] < 1
             || !is_array($request['params'] ?? null)
@@ -113,12 +114,16 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             if ($candidateAllowed($selection, $offer) !== true) continue;
             $key = $offerRef . ':' . $local;
             $freightExternal = self::freightExternal($offer);
+            $reusableGroup = $freightExternal === true
+                ? AndromedaSurchargeGroupKey::build($offer, $request) : null;
             $eligible[$key] = [
                 'selection' => $selection,
+                'offer' => $offer,
                 'freight_external' => $freightExternal,
-                'transport_group' => self::captureGroup(
-                    $offer, $request, (string)$operatorRef, $key, $freightExternal
-                ),
+                'reusable_surcharge_group' => $reusableGroup,
+                'transport_group' => $freightExternal === true
+                    ? ($reusableGroup ?? 'offer:' . $key)
+                    : self::legacyTransportGroup($offer, (string)$operatorRef, $key),
             ];
         }
 
@@ -131,6 +136,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         // fail-closed into unique-offer buckets. Historical unknown/non-external ordering
         // stays unchanged until its separate pricing contract is replaced.
         $captureQueue = [];
+        $reusableGroups = [];
+        $sameGroupSkips = 0;
         $priorities = $captureMode === 'non_external_only' ? [false] : [true, null, false];
         foreach ($priorities as $priority) {
             $groups = [];
@@ -139,16 +146,27 @@ final class AnyTourAndromedaLocalOfferCollectorV1
                 $group = $candidate['transport_group'];
                 if (isset($groups[$group])) continue;
                 $groups[$group] = true;
+                if ($candidate['reusable_surcharge_group'] !== null) $reusableGroups[$group] = true;
                 $captureQueue[$key] = $candidate['selection'];
             }
             foreach ($eligible as $key => $candidate) {
                 if ($candidate['freight_external'] !== $priority || isset($captureQueue[$key])) continue;
+                // A proven compatible surcharge group gets one representative attempt,
+                // not one attempt per hotel/room/SPO. Failure is not permission to retry
+                // another sibling. Unknown/non-external legacy groups are only ordering
+                // hints: they do NOT establish transferable surcharge evidence.
+                if ($candidate['reusable_surcharge_group'] !== null) {
+                    ++$sameGroupSkips;
+                    continue;
+                }
                 $captureQueue[$key] = $candidate['selection'];
             }
         }
 
         $attempted = 0;
         $surchargeReady = 0;
+        $cacheChecks = 0;
+        $cacheHits = 0;
         $captured = [];
         $readClock = null;
         $captureStartedAt = null;
@@ -167,12 +185,24 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         }
         foreach ($captureQueue as $key => $selection) {
             if ($attempted >= $maxCaptures) break;
-            if ($captureStartedAt !== null && $attempted > 0) {
+            if ($captureStartedAt !== null && ($attempted > 0 || $cacheChecks > 0)) {
                 $elapsed = $readClock() - $captureStartedAt;
                 if ($elapsed < 0) throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_CLOCK');
                 if ($elapsed >= $maxCaptureSeconds) {
                     $timeBudgetExhausted = true;
                     break;
+                }
+            }
+            if ($hasReusableSurcharge !== null && $eligible[$key]['reusable_surcharge_group'] !== null) {
+                ++$cacheChecks;
+                // Trusted caller uses the EXISTING evidence-store reader with this
+                // target's own base and the current clock. A hit avoids capture only;
+                // autosave independently rechecks freshness, money and persistence.
+                $cached = $hasReusableSurcharge($selection, $eligible[$key]['offer'], $request);
+                if (!is_bool($cached)) throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_CACHE_RESULT');
+                if ($cached) {
+                    ++$cacheHits;
+                    continue;
                 }
             }
             ++$attempted;
@@ -233,6 +263,10 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             'eligible_offers' => count($eligible),
             'capture_mode' => $captureMode,
             'capture_queue_offers' => count($captureQueue),
+            'reusable_surcharge_groups' => count($reusableGroups),
+            'surcharge_group_duplicate_skips' => $sameGroupSkips,
+            'surcharge_cache_checks' => $cacheChecks,
+            'surcharge_cache_hits' => $cacheHits,
             'capture_time_budget_seconds' => $maxCaptureSeconds > 0 ? $maxCaptureSeconds : null,
             'capture_time_budget_exhausted' => $timeBudgetExhausted,
             'surcharge_capture_attempts' => $attempted,
@@ -263,20 +297,6 @@ final class AnyTourAndromedaLocalOfferCollectorV1
     {
         $value = $offer['transport_context']['freight_external'] ?? null;
         return is_bool($value) ? $value : null;
-    }
-
-    private static function captureGroup(
-        array $offer,
-        array $request,
-        string $operatorRef,
-        string $fallback,
-        ?bool $freightExternal
-    ): string {
-        if ($freightExternal === true) {
-            $strict = AndromedaSurchargeGroupKey::build($offer, $request);
-            return $strict ?? 'offer:' . $fallback;
-        }
-        return self::legacyTransportGroup($offer, $operatorRef, $fallback);
     }
 
     private static function legacyTransportGroup(array $offer, string $operatorRef, string $fallback): string
