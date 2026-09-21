@@ -79,7 +79,7 @@ def parse_command(body: str) -> dict:
         meal = parts[9]
         need(re.fullmatch(r'(?:-|[A-Za-z0-9_,&]{1,32})', meal) is not None, 'meal')
         region = integer(parts[10], 0, 999999999, 'region')
-        captures = integer(parts[11], 0, 0, 'captures')
+        captures = integer(parts[11], 0, 10, 'captures')
         return {
             'source_sha': source, 'mode': mode, 'operation_id': operation,
             'departure': departure, 'country': country, 'date_from': date_from,
@@ -349,7 +349,7 @@ try:
           '--date-from='+payload['date_from'],'--date-to='+payload['date_to'],
           '--nights='+str(payload['nights']),'--adults='+str(payload['adults']),
           '--meal='+payload['meal'],'--generation='+generation,
-          '--max-captures='+str(payload['max_captures']),'--max-capture-seconds=0',
+          '--max-captures='+str(payload['max_captures']),'--max-capture-seconds='+('120' if payload['max_captures']>0 else '0'),
           '--capture-mode=non_external_only']
         if payload['region']: command.append('--region='+str(payload['region']))
     if mode!='reconcile':
