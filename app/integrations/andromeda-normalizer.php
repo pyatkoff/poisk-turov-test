@@ -57,7 +57,13 @@ final class AnyTourAndromedaNormalizer {
                 $key=$offer['offer_ref'];
                 if (isset($seen[$key])) throw new InvalidArgumentException('DUPLICATE_OFFER');
                 $seen[$key]=true; $offers[]=$offer;
-            } catch (InvalidArgumentException $e) { $rejected[]=['index'=>$index,'reason'=>$e->getMessage()]; }
+            } catch (InvalidArgumentException $e) {
+                $rejected[]=[
+                    'index'=>$index,
+                    'reason'=>$e->getMessage(),
+                    'ownership_class'=>is_array($row??null)?self::rejectionOwnershipClass($row):'unknown',
+                ];
+            }
         }
         return ['provider'=>'andromeda','search_ref'=>$searchRef,'generation'=>$generation,
             'page'=>$payload['PAGE'],'pages_count'=>$payload['PAGES_COUNT'],
