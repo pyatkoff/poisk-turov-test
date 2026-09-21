@@ -54,14 +54,14 @@ ck($batchCalls===1,'batch-once');
 ck($result['charter_concrete_candidates']===2,'charter-per-hotel-identity');
 ck($result['regular_concrete_candidates']===3,'regular-observed');
 ck($result['final_price_ready_offers']===2,'ready-count');
-ck($result['grouped_drained']===true && $result['concrete_drained']===true && $result['discovered_set_drained']===true,'small-drained');
+ck($result['status']==='complete'&&$result['grouped_drained']===true && $result['concrete_drained']===true && $result['discovered_set_drained']===true,'small-drained');
 
 $state=[];
 $expandCalls=0;
 $result2=AnyTourAnexLocalOfferCollectorV1::collect($request,$state,$search,$expand,$record,$batch,0,6);
 ck($result2['expand_calls']===0,'zero-expand');
 ck($result2['apd_batch_items']===0,'no-charter-no-batch');
-ck($result2['grouped_drained']===false && $result2['discovered_set_drained']===false,'zero-expand-not-drained');
+ck($result2['status']==='incomplete'&&$result2['grouped_drained']===false && $result2['discovered_set_drained']===false,'zero-expand-not-drained');
 
 
 $massState=[];
@@ -99,7 +99,7 @@ ck($mass['charter_concrete_candidates']===60,'mass-charters');
 ck($mass['apd_batch_items']===60 && $mass['apd_batch_calls']===10,'mass-apd-chunks');
 ck($mass['final_price_ready_offers']===60,'mass-ready');
 ck($massBatchCalls===10,'mass-batch-call-count');
-ck($mass['discovered_set_drained']===true,'mass-drained');
+ck($mass['status']==='complete'&&$mass['discovered_set_drained']===true,'mass-drained');
 
 $defaultState=[];$defaultBatchCalls=0;
 $defaultSearch=static function(array $request,array &$state):array{
@@ -120,10 +120,10 @@ $defaultBatch=static function(array $request,array &$state)use(&$defaultBatchCal
 };
 $default=AnyTourAnexLocalOfferCollectorV1::collect($request,$defaultState,$defaultSearch,$defaultExpand,$massRecord,$defaultBatch);
 ck($default['expand_calls']===130 && $default['apd_batch_items']===130,'default-not-old-60-300-cap');
-ck($default['discovered_set_drained']===true,'default-drains-retained-set');
+ck($default['status']==='complete'&&$default['discovered_set_drained']===true,'default-drains-retained-set');
 ck($defaultBatchCalls===22,'default-chunks');
 
-echo "ANEX_LOCAL_OFFER_COLLECTOR_OK search=1 explicit_bound=1 chunking=1 mass60=1 default130_drained=1 ready=1\n";
+echo "ANEX_LOCAL_OFFER_COLLECTOR_OK search=1 explicit_bound=1 chunking=1 mass60=1 default130_drained=1 incomplete_status=1 ready=1\n";
 
 /** Supplier-free orchestration fixture; "persisted" is a local callback log, not a DB. */
 function incrementalCase(int $initial,int $groups,int $perGroup,int $maxExpands=600,int $maxItems=600,
@@ -171,7 +171,7 @@ function incrementalCase(int $initial,int $groups,int $perGroup,int $maxExpands=
 }
 
 $stream=incrementalCase(0,130,1);
-ck($stream['error']===null&&$stream['receipt']['apd_batch_calls']===22,'stream unchanged batch total');
+ck($stream['error']===null&&$stream['receipt']['status']==='complete'&&$stream['receipt']['apd_batch_calls']===22,'stream unchanged batch total');
 ck(array_search('apd:6@6',$stream['events'],true)<array_search('expand:7',$stream['events'],true)
     &&in_array('apd:6@6',$stream['events'],true),'first full batch before later expansions');
 ck(end($stream['events'])==='apd:4@130'&&count($stream['state']['persisted'])===130,'one terminal tail');
@@ -191,7 +191,7 @@ ck($initial['events'][1]==='apd:6@0','initial full batch before any expansion');
 $pending=incrementalCase(0,10,1,600,600,8);
 ck(count($pending['state']['persisted'])===6&&end($pending['events'])==='expand:8','no forced tail after failure');
 $unknown=incrementalCase(0,13,1,600,600,0,0,false,false);
-ck($unknown['receipt']['final_price_ready_offers']===0&&$unknown['receipt']['retryable_offers']===13
+ck($unknown['receipt']['status']==='complete'&&$unknown['receipt']['final_price_ready_offers']===0&&$unknown['receipt']['retryable_offers']===13
     &&count($unknown['batches'])===3&&$unknown['state']['persisted']===[],'unknown prices never made ready or retried');
 
 $bounds=0;
@@ -205,8 +205,10 @@ foreach([[0,5,4,600,8],[0,5,4,2,600],[0,5,4,600,5],[13,5,4,0,7],[3,0,0,0,600],
     $actual=[];foreach($r['batches'] as $b)array_push($actual,...$b['items']);
     ck($r['error']===null&&$r['expands']===$expectedExpands&&$actual===$expected,'same bounded ordered unique items');
     ck($r['receipt']['apd_batch_items']===$n&&$r['receipt']['apd_batch_calls']===intdiv($n+5,6),'same bounded batch count');
+    $expectedDrained=$expectedExpands===$groups&&$total<=$itemLimit;
     ck($r['receipt']['grouped_drained']===($expectedExpands===$groups)
-        &&$r['receipt']['concrete_drained']===($total<=$itemLimit),'same discovery flags');
+        &&$r['receipt']['concrete_drained']===($total<=$itemLimit)
+        &&$r['receipt']['status']===($expectedDrained?'complete':'incomplete'),'same discovery flags/status');
     ++$bounds;
 }
-echo "ANEX_INCREMENTAL_APD_OK first_batch_at_expand=6 total130_batches=22 late_failure_saved=6 bounds=".$bounds."\n";
+echo "ANEX_INCREMENTAL_APD_OK first_batch_at_expand=6 total130_batches=22 late_failure_saved=6 bounds=".$bounds." incomplete_status=1\n";
