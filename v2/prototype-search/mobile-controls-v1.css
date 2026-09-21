@@ -10,4 +10,15 @@
   .offer-list-toolbar {
     font-size:16px;
   }
+
+  .drawer-trigger,
+  .quick-chips .chip,
+  .active-filter {
+    min-height:44px;
+  }
+
+  .filter-top .mobile-close {
+    width:44px;
+    height:44px;
+  }
 }
