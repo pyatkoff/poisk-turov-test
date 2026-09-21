@@ -1,8 +1,7 @@
 name: MATCH SAMO direct27 CURRENT guards v1
 on:
-  pull_request:
-    types: [opened]
-    branches: [feature/anex-search-adapter-20260907]
+  push:
+    branches: [match/samo-direct27-current-guards-1971-20260921-v1]
     paths:
       - scripts/diagnostics/hotel_match_samo_direct27_current_guards_v1.php
       - .github/workflows/hotel-match-samo-direct27-current-guards-v1.yml
@@ -14,14 +13,14 @@ env:
   CLAIM: '5759431080'
 jobs:
   current:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
       - name: Validate exact source and immutable direct27 input
-        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.sha }}'}
         run: |
           set -euo pipefail; umask 077; mkdir -p input reservation terminal
           test "$(git rev-parse HEAD)" = "$HEAD_SHA"
@@ -51,7 +50,7 @@ jobs:
           assert len(x['candidates'])==27 and x['result']['unique_samo_targets']==27
           PY
       - name: Reserve before CURRENT DB read
-        env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        env: {HEAD_SHA: '${{ github.sha }}'}
         run: |
           python3 - <<'PY'
           import json,os,datetime,pathlib
@@ -61,7 +60,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with: {name: 'samo-direct27-current-v1-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90}
       - name: Require exact-head Security
-        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.sha }}'}
         run: |
           python3 - <<'PY'
           import json,os,time,urllib.request
