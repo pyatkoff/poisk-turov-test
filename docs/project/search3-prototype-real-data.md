@@ -104,3 +104,12 @@ gains a presentation entry and its shared build map is regenerated; legacy defau
 are retained. DB readers, supplier APIs, pricing, lead transport/mapping, Metrika
 and production entrypoints remain unchanged. Production lead activation and live
 supplier acceptance are separate from this isolated preview.
+
+Browser Forward now restores a completed in-memory exact-tour selection with its
+chosen flight pair and full price, without another quote or flight request. The
+contact step also restores through the existing lead binder: its draft survives,
+but consent must be selected again. No quote authority is persisted to storage or
+history. A new search still clears the selection; if a quote was interrupted or
+is no longer retained, details offer an explicit recheck rather than a dead button
+or an automatic supplier request. The existing 390/1440 journey covers restored
+tour details, contacts and saved-tour details with unchanged request counts.

@@ -279,13 +279,19 @@ function reopenUIRoute(route){
  case 'meals':openMeals();break;
  case 'budget':openBudget();break;
  case 'saved-tour':openSelectedTour();break;
- case 'saved-details':{const o=readSelectedTour();if(o)openOffer(o.key,o);else openSelectedTour();break;}
+ case 'saved-details':{const o=readSelectedTour();if(o){selectedOffer=o;renderRealOffer();}else openSelectedTour();break;}
+ case 'selected-tour':{const o=readSelectedTour();if(o){selectedOffer=o;openLeadPreview();}else openSelectedTour();break;}
  case 'favorites':openFavorites();break;
  case 'compare':openCompare();break;
  case 'hotel-details':if(!hotel)return false;openHotelDetails(hotel.id);break;
  case 'all-offers':if(!hotel)return false;openAllOffers(hotel.id,route);break;
  case 'gallery':if(!hotel)return false;openGallery(hotel.id,Number.isInteger(route.index)&&route.index>=0&&route.index<hotel.photos.length?route.index:0);break;
- case 'offer':{const o=offerFromKey(route.key);if(!o)return false;selectedOffer=o;renderRealOffer();break;}
+ case 'offer':{
+  const o=offerFromKey(route.key);if(!o)return false;
+  const retained=selectedOffer?.key===route.key?selectedOffer:null;
+  selectedOffer=retained&&!retained.loading&&!retained.flightsLoading?retained:{...o,quoteError:needsRefresh(o)?'':'Проверьте актуальность тура, чтобы продолжить выбор.'};
+  renderRealOffer();break;
+ }
  case 'about':$('[data-action="about"]').click();break;
  default:return false;
  }
