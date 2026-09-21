@@ -96,6 +96,13 @@ final class AnyTourAnexAdditionalPricesClient
         if ($this->cacheDir !== null && $criteria['page'] === 1 && $criteria['pageSize'] === 10) {
             $cached = $this->dailyCacheRead($criteria);
             if ($cached !== null) return $cached;
+            // A real page-1 supplier read is replay-sensitive. If the private
+            // same-day store could not durably seal an `unknown` reservation,
+            // do not spend supplier budget: a later process could otherwise
+            // repeat an outcome whose HTTP result was lost.
+            if (($this->lastRequest['cache_status'] ?? null) === 'unavailable') {
+                throw new RuntimeException('ANEX_B2B_DAILY_CACHE_UNAVAILABLE');
+            }
         }
 
         $payload = $this->supplierRead($criteria);
