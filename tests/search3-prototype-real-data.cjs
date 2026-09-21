@@ -52,6 +52,11 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   const earlyDate=day(10);await page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`).click();
   countriesBlocked=false;releaseCountries();
   await page.locator('.search-submit:not([disabled])').waitFor({timeout:10000}).catch(async error=>{console.error(await page.locator('#cards').textContent());throw error;});
+  assert.equal(await page.locator('#results').getAttribute('class'),'results-section wrap results-pristine','Initial results stay in a distinct pre-search state');
+  assert.equal(await page.locator('#results-summary').textContent(),'Задайте направление, даты и состав туристов — предложения появятся после поиска.');
+  assert.doesNotMatch(await page.locator('#results').textContent(),/0 отелей|0 вариантов тура/,'Initial state is not presented as an empty search result');
+  assert.equal(await page.locator('#price-calendar').isVisible(),false,'Result-only calendar stays hidden before the first search');
+  assert.equal(await page.locator('#filter-panel').isVisible(),false,'Result-only filters stay hidden before the first search');
   await page.waitForFunction(()=>document.querySelectorAll('.month-day.is-cheap').length>0);
   assert.equal(await page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`).getAttribute('aria-pressed'),'true','Catalog retry preserves the early date draft');
   assert.equal(await page.locator('.calendar-legend span').first().textContent(),'Цены из базы за всех, от · пробелы означают отсутствие сохранённой цены','Open calendar retries after catalogs load');
