@@ -12,6 +12,8 @@ on:
       - 'app/integrations/three-provider-anex-offer.php'
       - 'v2/api-andromeda-stored-offer-preview.php'
       - 'tests/andromeda-stored-offer-http-smoke.php'
+      - 'v2/api-andromeda-stored-quote-preview.php'
+      - 'tests/andromeda-stored-quote-http-smoke.php'
       - 'tests/stored-provider-offer-context-smoke.php'
       - '.github/workflows/stored-provider-offer-context-contracts.yml'
 permissions:
@@ -31,4 +33,7 @@ jobs:
           php -l tests/stored-provider-offer-context-smoke.php
           php -l v2/api-andromeda-stored-offer-preview.php
           php -l tests/andromeda-stored-offer-http-smoke.php
+          php -l v2/api-andromeda-stored-quote-preview.php
+          php -l tests/andromeda-stored-quote-http-smoke.php
           php tests/andromeda-stored-offer-http-smoke.php --native
+          php tests/andromeda-stored-quote-http-smoke.php
