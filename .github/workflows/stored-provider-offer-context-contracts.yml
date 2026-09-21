@@ -7,8 +7,11 @@ on:
       - 'app/integrations/stored-provider-offer-context.php'
       - 'app/integrations/andromeda-selected-offer.php'
       - 'app/integrations/andromeda-offer-store.php'
+      - 'app/integrations/andromeda-saved-package-runtime.php'
       - 'app/integrations/anex-preview-gateway.php'
       - 'app/integrations/three-provider-anex-offer.php'
+      - 'v2/api-andromeda-stored-offer-preview.php'
+      - 'tests/andromeda-stored-offer-http-smoke.php'
       - 'tests/stored-provider-offer-context-smoke.php'
       - '.github/workflows/stored-provider-offer-context-contracts.yml'
 permissions:
@@ -26,4 +29,6 @@ jobs:
         run: |
           php -l app/integrations/stored-provider-offer-context.php
           php -l tests/stored-provider-offer-context-smoke.php
-          php tests/stored-provider-offer-context-smoke.php --native
+          php -l v2/api-andromeda-stored-offer-preview.php
+          php -l tests/andromeda-stored-offer-http-smoke.php
+          php tests/andromeda-stored-offer-http-smoke.php --native
