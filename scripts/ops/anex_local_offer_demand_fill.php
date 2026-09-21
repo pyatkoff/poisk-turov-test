@@ -156,15 +156,14 @@ foreach(array_slice($scopes,0,$limit) as $index=>$scope){
     if(($value['browser_supplier_calls']??null)!==0||($value['booking_calls']??null)!==0||($value['lead_calls']??null)!==0){
         throw new RuntimeException('ANEX_DEMAND_FILL_AUTHORITY');
     }
-    // A successful process exit is not proof of a persisted snapshot. Preserve
-    // the original receipt on failure: a commit may be unknown, so never retry it.
+    // A successful process exit is not proof of a persisted snapshot. After the
+    // authoritative-empty contract, `no_final_price_ready` means a nonempty scope
+    // produced no publishable canonical row; it intentionally remains unfresh.
+    // Only a real publication or exact idempotent publication proof may advance.
     $finalize=$value['snapshot_finalize']??null;
     $persisted=is_array($finalize)&&(($finalize['published']??null)===true
         ||(($finalize['published']??null)===false&&($finalize['reason']??null)==='already_published'));
-    $empty=is_array($finalize)&&($finalize['published']??null)===false
-        &&($finalize['reason']??null)==='no_final_price_ready'
-        &&($finalize['readyOfferCount']??null)===0&&($value['final_price_ready_offers']??null)===0;
-    if(!$persisted&&!$empty){
+    if(!$persisted){
         $status='stopped_on_error';
         $error=['index'=>$index,'code'=>$child['code'],'reason'=>'snapshot_not_published','collectorResult'=>$value];
         break;
