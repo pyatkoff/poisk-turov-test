@@ -154,18 +154,30 @@ ck($legacyRun['code']===0,'published legacy receipt remains accepted');
 $legacyReceipt=json_decode($legacyRun['stdout'],true,64,JSON_THROW_ON_ERROR);
 ck($legacyReceipt['readyOffersAcrossScopes']===7&&$legacyReceipt['persistedReadyOffersAcrossScopes']===null
     &&$legacyReceipt['results'][0]['persistedReadyOffers']===null,'missing persisted-ready evidence stays unknown');
-$zero=array_replace($childReceipt,['final_price_ready_offers'=>0,
+$noFinal=array_replace($childReceipt,['final_price_ready_offers'=>0,
     'snapshot_finalize'=>['published'=>false,'reason'=>'no_final_price_ready','readyOfferCount'=>0,'accumulatedOfferCount'=>0]]);
-$zeroThenReady='if(in_array("--generation=261900000",$argv,true)){echo '.var_export(json_encode($zero,JSON_THROW_ON_ERROR),true).';}else{'.$emit.'}';
+$noFinalThenReady='if(in_array("--generation=261900000",$argv,true)){echo '.var_export(json_encode($noFinal,JSON_THROW_ON_ERROR),true).';}else{'.$emit.'}';
+$noFinalRun=cliFixture([$scope,$family],'',$noFinalThenReady);
+ck($noFinalRun['code']===1&&count($noFinalRun['calls'])===1,'unpublished no-final stops before next scope');
+$noFinalReceipt=json_decode($noFinalRun['stdout'],true,64,JSON_THROW_ON_ERROR);
+ck($noFinalReceipt['status']==='stopped_on_error'&&$noFinalReceipt['completedScopes']===0
+    &&$noFinalReceipt['readyOffersAcrossScopes']===0&&$noFinalReceipt['persistedReadyOffersAcrossScopes']===null
+    &&$noFinalReceipt['confirmationRequiredOffersAcrossScopes']===null&&$noFinalReceipt['results']===[],
+    'unpublished no-final is not counted complete');
+ck($noFinalReceipt['error']===['index'=>0,'code'=>0,'reason'=>'snapshot_not_published','collectorResult'=>$noFinal],
+    'unpublished no-final receipt preserved exactly');
+$authoritativeZero=array_replace($childReceipt,['final_price_ready_offers'=>0,
+    'snapshot_finalize'=>['published'=>true,'reason'=>null,'readyOfferCount'=>0,'confirmationRequiredOfferCount'=>0,'accumulatedOfferCount'=>0]]);
+$zeroThenReady='if(in_array("--generation=261900000",$argv,true)){echo '.var_export(json_encode($authoritativeZero,JSON_THROW_ON_ERROR),true).';}else{'.$emit.'}';
 $zeroRun=cliFixture([$scope,$family],'',$zeroThenReady);
-ck($zeroRun['code']===0&&count($zeroRun['calls'])===2,'legitimate zero yield continues without retry');
+ck($zeroRun['code']===0&&count($zeroRun['calls'])===2,'authoritative zero continues to next scope once');
 $zeroReceipt=json_decode($zeroRun['stdout'],true,64,JSON_THROW_ON_ERROR);
 ck($zeroReceipt['status']==='complete'&&$zeroReceipt['completedScopes']===2&&$zeroReceipt['readyOffersAcrossScopes']===7
-    &&$zeroReceipt['persistedReadyOffersAcrossScopes']===5&&$zeroReceipt['confirmationRequiredOffersAcrossScopes']===null,
-    'zero yield distinguishes raw/persisted/unknown confirmation');
-ck($zeroReceipt['results'][0]['snapshotFinalize']===$zero['snapshot_finalize']&&$zeroReceipt['results'][0]['finalPriceReadyOffers']===0
-    &&$zeroReceipt['results'][0]['persistedReadyOffers']===0&&$zeroReceipt['results'][0]['confirmationRequiredOffers']===null,
-    'zero no-write receipt unchanged');
+    &&$zeroReceipt['persistedReadyOffersAcrossScopes']===5&&$zeroReceipt['confirmationRequiredOffersAcrossScopes']===0,
+    'authoritative zero and ready aggregate exact');
+ck($zeroReceipt['results'][0]['snapshotFinalize']===$authoritativeZero['snapshot_finalize']
+    &&$zeroReceipt['results'][0]['finalPriceReadyOffers']===0&&$zeroReceipt['results'][0]['persistedReadyOffers']===0
+    &&$zeroReceipt['results'][0]['confirmationRequiredOffers']===0,'authoritative zero publication receipt retained');
 $mixedBody='if(in_array("--generation=261900001",$argv,true)){echo '.var_export(json_encode($confirmationOnly,JSON_THROW_ON_ERROR),true).';}else{'.$emit.'}';
 $mixedRun=cliFixture([$scope,$family],'',$mixedBody);
 ck($mixedRun['code']===0&&count($mixedRun['calls'])===2,'mixed ready/confirmation scopes run once each');
@@ -182,7 +194,7 @@ ck($partialReceipt['completedScopes']===1&&$partialReceipt['readyOffersAcrossSco
     &&$partialReceipt['persistedReadyOffersAcrossScopes']===5&&$partialReceipt['confirmationRequiredOffersAcrossScopes']===0
     &&count($partialReceipt['results'])===1,'earlier persisted result preserved');
 ck($partialReceipt['error']['index']===1&&$partialReceipt['error']['collectorResult']===$badSecond,'second persistence failure retained exactly');
-echo "ANEX_DEMAND_PERSISTENCE_CASES_OK failed=".count($persistenceFailures)." already=1 confirmation_only=1 legacy_unknown=1 mixed=1 zero_yield=1 partial_success=1\n";
+echo "ANEX_DEMAND_PERSISTENCE_CASES_OK failed=".count($persistenceFailures)." already=1 confirmation_only=1 legacy_unknown=1 mixed=1 no_final_stop=1 authoritative_zero=1 partial_success=1\n";
 
 $structuredFailure=[
     'source'=>'anex-local-offer-collector-v1','status'=>'incomplete','selection_authority'=>false,
