@@ -66,7 +66,8 @@ class ContractTest(unittest.TestCase):
                   "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero",
                   "php=\"$c=require $argv[1];","allowed_keys={'status'","name_sha256","top_level_keys",
                   "local-readback","local_readback_exit","stderr_sha256",
-                  "LOCAL_READER_MISSING","LOCAL_DB_CONNECTION","errorSha256"]:
+                  "LOCAL_READER_MISSING","LOCAL_DB_CONNECTION","LOCAL_DB_NOT_CONFIGURED",
+                  "require_once $config","errorSha256"]:
             self.assertIn(x,text)
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)
