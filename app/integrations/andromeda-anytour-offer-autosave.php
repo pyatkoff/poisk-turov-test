@@ -488,14 +488,24 @@ final class AnyTourAndromedaOfferAutosaveV1
             if (!is_array($row)) return false;
             $keys = array_keys($row);
             sort($keys);
-            if ($keys !== ['index', 'missing_field', 'ownership_class', 'reason']) return false;
             $index = $row['index'] ?? null;
             if (!is_int($index) || $index < 0 || $index >= 2000 || isset($seen[$index])) return false;
             $seen[$index] = true;
-            if (($row['reason'] ?? null) !== 'MISSING_FIELD'
-                || !is_string($row['missing_field'] ?? null)
-                || !in_array($row['missing_field'], self::REJECTION_REQUIRED_FIELDS, true)
-                || ($row['ownership_class'] ?? null) !== 'excluded_direct_or_tv') return false;
+            if ($keys === ['index', 'missing_field', 'ownership_class', 'reason']) {
+                if (($row['reason'] ?? null) !== 'MISSING_FIELD'
+                    || !is_string($row['missing_field'] ?? null)
+                    || !in_array($row['missing_field'], self::REJECTION_REQUIRED_FIELDS, true)
+                    || ($row['ownership_class'] ?? null) !== 'excluded_direct_or_tv') return false;
+                continue;
+            }
+            // A supplier-owned row whose room label cannot produce any normalized
+            // display text is not listable. Quarantine that one row instead of
+            // poisoning every valid sibling in the authoritative PRICE cohort.
+            // Do not synthesize a room label and do not broaden this allowlist.
+            if ($keys === ['index', 'ownership_class', 'reason']
+                && ($row['ownership_class'] ?? null) === 'andromeda_owned'
+                && ($row['reason'] ?? null) === 'THREE_PROVIDER_ROOM_LABEL') continue;
+            return false;
         }
         return true;
     }
