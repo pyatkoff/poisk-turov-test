@@ -44,6 +44,8 @@ function anytour_stored_samo_snapshot(array $row, string $directory, ?array $loc
     if (is_link($directory) || !is_dir($directory) || basename($directory) !== 'searches') throw new DomainException('Stored source unavailable');
     $directory = realpath($directory);
     if ($directory === false) throw new DomainException('Stored source unavailable');
+    $app = is_file(__DIR__.'/app/integrations/andromeda-pagination.php') ? __DIR__.'/app/integrations' : __DIR__.'/../app/integrations';
+    require_once $app . '/andromeda-pagination.php';
     $identity = anytour_stored_samo_identity($row['offer']['identity'] ?? null);
     $ref = $locator['search_ref'] ?? null;
     if ($locator === null) {
@@ -79,17 +81,29 @@ function anytour_stored_samo_snapshot(array $row, string $directory, ?array $loc
             || $now < $created || $now >= $created + 900 || !is_int($pages) || $pages < 1 || $pages > 1000) throw new DomainException('Stored source unavailable');
         if ($locator !== null && (($locator['created_at'] ?? null) !== $created
             || ($locator['generation'] ?? null) !== $generation || !is_int($locator['page'] ?? null)
-            || $locator['page'] < 1 || $locator['page'] > $pages)) throw new DomainException('Stored source unavailable');
+            || $locator['page'] < 1 || $locator['page'] > 1000)) throw new DomainException('Stored source unavailable');
         $selected = null;
-        $numbers = $locator === null ? range(1, $pages) : [$locator['page']];
-        foreach ($numbers as $number) {
+        $criteria = $store['criteria']; unset($criteria['PAGE']);
+        $start = $locator === null ? 1 : $locator['page'];
+        $target = $locator === null ? $pages : $start;
+        for ($number = $start; $number <= $target; ++$number) {
             $state = $number === 1 ? $first : anytour_stored_samo_json($directory . '/' . $ref . '-' . $created . '-' . $number . '.json', $remaining);
             $page = $state['store'] ?? null;
             if (!in_array($state['status'] ?? null, ['complete', 'partial'], true) || !is_array($page)
                 || ($page['search_ref'] ?? null) !== $ref || ($page['generation'] ?? null) !== $generation
-                || ($page['created_at'] ?? null) !== $created || ($page['expires_at'] ?? null) !== $created + 900
+                // Each native page has its own capture timestamp; filenames retain the FIRST page timestamp.
+                || !is_int($page['created_at'] ?? null) || $page['created_at'] < $created || $page['created_at'] > $now
+                || ($page['expires_at'] ?? null) !== $page['created_at'] + 900 || $now >= $page['expires_at']
+                || !is_array($page['criteria'] ?? null) || ($page['criteria']['PAGE'] ?? 1) !== $number
                 || ($page['snapshot']['page'] ?? null) !== $number || !is_array($page['snapshot']['offers'] ?? null)
+                || !is_int($page['snapshot']['pages_count'] ?? null) || !is_array($page['snapshot']['rejected'] ?? [])
                 || count($page['snapshot']['offers']) > 5000) throw new DomainException('Stored source unavailable');
+            $pageCriteria = $page['criteria']; unset($pageCriteria['PAGE']);
+            if ($pageCriteria !== $criteria) throw new DomainException('Stored source unavailable');
+            $decision = AnyTourAndromedaPaginationV1::nextTarget($number, $page['snapshot']['pages_count'],
+                count($page['snapshot']['offers']), $state['status'], count($page['snapshot']['rejected'] ?? []), $target);
+            if ($decision['terminal']) break;
+            if ($locator === null) $target = $decision['target'];
             foreach ($page['snapshot']['offers'] as $offer) {
                 $offerRef = $offer['offer_ref'] ?? null;
                 if (!is_string($offerRef)) throw new DomainException('Stored source unavailable');
@@ -107,13 +121,13 @@ function anytour_stored_samo_snapshot(array $row, string $directory, ?array $loc
 
 /** Read existing verified evidence only; never call package/calc to fill a missing quote. */
 function anytour_stored_samo_pricing(string $directory, array $state, array $resolved,
-    callable $mappingAllows, int $now): ?array
+    callable $mappingAllows, int $now, int $firstCreated): ?array
 {
     $context = array_intersect_key($resolved['context'], array_flip(['provider','search_ref','generation','page','offer_ref']));
-    $pricing = anytour_andromeda_read_saved_pricing($directory, $state, $state['created_at'], $context, $mappingAllows, $now);
+    $pricing = anytour_andromeda_read_saved_pricing($directory, $state, $firstCreated, $context, $mappingAllows, $now);
     if (($pricing['state'] ?? null) !== 'verified') return null;
     $remaining = 16384;
-    $path = $directory . '/' . $context['search_ref'] . '-' . $state['created_at'] . '-' . $context['page'] . '-' . $context['offer_ref'] . '-surcharge-v1.json';
+    $path = $directory . '/' . $context['search_ref'] . '-' . $firstCreated . '-' . $context['page'] . '-' . $context['offer_ref'] . '-surcharge-v1.json';
     $record = anytour_stored_samo_json($path, $remaining);
     if (($record['verified_quote'] ?? null) !== ($pricing['verified_quote'] ?? null)) return null;
     return ['value' => $pricing['verified_quote'], 'expires_at' => $record['expires_at'] ?? null];
@@ -160,7 +174,7 @@ function anytour_stored_samo_request(array $request, array &$handles, string $di
     $readPricing ??= 'anytour_stored_samo_pricing';
     $located = anytour_stored_samo_snapshot($row, $directory, $previous['locator'] ?? null, $canonicalAllows, $mappingAllows,
         static function (array $state, array $resolved, array $locator, int $expires) use ($directory, $readPricing, $mappingAllows, $now): array {
-            return ['locator' => $locator, 'expires_at' => $expires, 'pricing' => $readPricing($directory, $state, $resolved, $mappingAllows, $now)];
+            return ['locator' => $locator, 'expires_at' => $expires, 'pricing' => $readPricing($directory, $state, $resolved, $mappingAllows, $now, $locator['created_at'])];
         }, $now);
     $quote = ['state' => 'confirmation_required', 'finalPrice' => null, 'expiresAt' => null];
     $evidence = $located['pricing']; $verified = $evidence['value'] ?? null; $expires = $evidence['expires_at'] ?? null;

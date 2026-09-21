@@ -21,7 +21,9 @@ try {
     $first = $second; $first['criteria']['PAGE'] = 1; $first['snapshot']['page'] = 1;
     $first['snapshot']['offers'] = [$second['snapshot']['offers'][0]];
     $second['snapshot']['offers'] = [$second['snapshot']['offers'][1]];
-    $ref = $second['search_ref']; $created = $second['created_at'];
+    $ref = $second['search_ref']; $created = $first['created_at'];
+    // Native start() timestamps each page separately; its filename still uses the first page's time.
+    $second['created_at'] += 30; $second['expires_at'] += 30;
     $firstPath = $directory . '/' . $ref . '-1.json';
     $secondPath = $directory . '/' . $ref . '-' . $created . '-2.json';
     $lockPath = $directory . '/' . $ref . '.lock';
@@ -99,6 +101,23 @@ try {
     rename($secondPath,$secondPath.'.saved'); symlink($secondPath.'.saved',$secondPath);
     stored_http_refuses(fn()=>$run($prepare),'Symlinked source refused'); unlink($secondPath); rename($secondPath.'.saved',$secondPath);
     rename($lockPath,$lockPath.'.saved'); stored_http_refuses(fn()=>$run($prepare),'Missing source lock not recreated'); check(!file_exists($lockPath),'No new native lock'); rename($lockPath.'.saved',$lockPath);
+
+    // Reuse the actual pagination contract: a later page can grow the count or end early with PAGES_COUNT=0.
+    $third=$second; $third['criteria']['PAGE']=3; $third['snapshot']['page']=3; $third['snapshot']['pages_count']=3;
+    $thirdPath=$directory.'/'.$ref.'-'.$created.'-3.json';
+    $growing=$second; $growing['snapshot']['offers']=[]; $growing['snapshot']['pages_count']=3;
+    $put($secondPath,['status'=>'partial','store'=>$growing]); $put($thirdPath,['status'=>'complete','store'=>$third]);
+    $grown=$run($prepare);
+    check($handles[$grown['handle']]['locator']['page']===3,'Follow native page-count growth to the exact offer');
+    check($run(['action'=>'read','handle'=>$grown['handle']])['tour']===$result['tour'],'Handle beyond first advertised page count remains readable');
+    check($grown['expiresAt']===gmdate('Y-m-d\TH:i:s\Z',$created+900),'Later page timestamp does not renew source/handle expiry');
+    $eof=$third; $eof['snapshot']['offers']=[]; $eof['snapshot']['pages_count']=0;
+    $advertised=$second; $advertised['snapshot']['pages_count']=5;
+    $put($secondPath,['status'=>'partial','store'=>$advertised]); $put($thirdPath,['status'=>'complete','store'=>$eof]);
+    check($run($prepare)['tour']===$result['tour'],'Native terminal empty page ends scan without requiring imaginary pages');
+    unlink($thirdPath); $put($secondPath,['status'=>'complete','store'=>$second]);
+    $changed=$second; $changed['criteria']['HOTELS']='501'; $put($secondPath,['status'=>'complete','store'=>$changed]);
+    stored_http_refuses(fn()=>$run($prepare),'Later page cannot change the source search criteria'); $put($secondPath,['status'=>'complete','store'=>$second]);
 
     // Produce actual reader-shaped evidence; use the unchanged native pricing validator.
     $resolved=AnyTourStoredProviderOfferContext::resolveAndromeda($row,$second,$canonical,$mapping,$now);
