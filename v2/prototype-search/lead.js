@@ -19,15 +19,15 @@
     for(const name of ['name','phone','comment'])form.elements[name].value=draft[name];
     let session;
     try{session=root.AnyTourPrototypeData.leadSession(offer);}
-    catch(error){message.textContent=error.message;message.setAttribute('role','alert');button.disabled=true;return;}
+    catch(error){message.textContent=error.message;message.setAttribute('role','alert');button.disabled=true;}
     form.addEventListener('input',()=>{
       for(const name of ['name','phone','comment'])draft[name]=form.elements[name].value;
       root.V2LeadFormGuard.validatePhone(phone);
-      if(preview){message.textContent='';delete form.dataset.checked;}
+      if(preview&&session){message.textContent='';delete form.dataset.checked;}
     });
     form.addEventListener('submit',async event=>{
       event.preventDefault();
-      if(form.dataset.sent==='1'||button.disabled)return;
+      if(!session||form.dataset.sent==='1'||button.disabled)return;
       if(!root.V2LeadFormGuard.validatePhone(phone)||!form.reportValidity()){phone.reportValidity();return;}
       try{
         // Construct through the same owner even in preview; no preview request is sent.
