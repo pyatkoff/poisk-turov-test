@@ -32,7 +32,7 @@ jobs:
           test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
           python3 - <<'PY'
           import subprocess,os
-          want={'.github/workflows/hotel-match-v9-single-native-samo-chunk4-v2.yml','scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v1.php'}
+          want={'.github/workflows/hotel-match-v9-single-native-samo-chunk4-v2.yml','scripts/diagnostics/hotel_match_v9_single_native_samo_chunk4_v2.php'}
           got=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
           assert got==want,(got,want)
           PY
