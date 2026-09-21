@@ -1,0 +1,78 @@
+name: SEARCH destination seed plan read-only
+'on':
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - scripts/diagnostics/search3_destination_seed_plan_v1.php
+      - .github/workflows/search3-destination-seed-plan-v1.yml
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: search3-destination-seed-plan-20260921-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: search3-destination-seed-plan-20260921-v1
+  BASE_SHA: 4b7d0ecfed628e94fb99586a2022b65b9393c1c8
+  SCRIPT_PATH: scripts/diagnostics/search3_destination_seed_plan_v1.php
+  CLAIM: '5766921164'
+jobs:
+  plan:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source and claim
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir reservation terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA"..HEAD | wc -l)" = 2
+          php -l "$SCRIPT_PATH"; php "$SCRIPT_PATH" --self-test
+          body=$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" --jq .body)
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" --jq .user.id)" = 226193297
+          [[ "$body" == *"$OPERATION_ID"* ]] && [[ "$body" == *"READ ONLY"* ]]
+          sha=$(sha256sum "$SCRIPT_PATH"|cut -d' ' -f1)
+          printf '{"operation":"%s","source_sha":"%s","script_sha256":"%s","state":"reserved_before_db","database_writes":0,"mapping_writes":0,"provider_calls":0}\n' "$OPERATION_ID" "$HEAD_SHA" "$sha" > reservation/reservation.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/2530/comments" --method POST -f body="RESERVATION $OPERATION_ID source=$HEAD_SHA script=$sha state=reserved_before_db database_writes=0 mapping_writes=0 provider_calls=0"
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(60):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(q,timeout=30) as f:r=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard']
+              if r and max(r,key=lambda x:x['id'])['status']=='completed':
+                  assert max(r,key=lambda x:x['id'])['conclusion']=='success';break
+              time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Execute CURRENT read-only plan
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          remote="$USER@$HOST"; op=".anytoour-search/operations/$OPERATION_ID"; script="${SCRIPT_PATH##*/}"
+          ssh "${opts[@]}" "$remote" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/.anytoour-search/operations\"; mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" "$SCRIPT_PATH" "$remote:$op/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" SEARCH3_OPERATION_DIR=\"\$HOME/$op\" SEARCH3_SOURCE_SHA='$HEAD_SHA' php \"\$HOME/$op/$script\" --execute"
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"; printf '\n---RECEIPT---\n'; cat \"\$HOME/$op/receipt.json\"" > terminal/result.txt
+      - name: Persist terminal summary
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          if test -s terminal/result.txt; then
+            summary=$(python3 - <<'PY'
+          import json,pathlib
+          s=pathlib.Path('terminal/result.txt').read_text(); r=json.loads(s.split('\n---RECEIPT---\n')[0])
+          print(json.dumps({k:r[k] for k in ['state','sourceCounts','plannedRows','plannedBridges','errors','safeToApply','destinationTablesPresent','turkeyRows','ownerVisibleResorts','planSha256']},ensure_ascii=False,separators=(',',':')))
+          PY
+            )
+            gh api "repos/$GITHUB_REPOSITORY/issues/2530/comments" --method POST -f body="TERMINAL $OPERATION_ID source=$HEAD_SHA $summary"
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/2530/comments" --method POST -f body="TERMINAL $OPERATION_ID source=$HEAD_SHA state=no-result"
+          fi
