@@ -1,0 +1,101 @@
+name: INT permanent server executor
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/int-server-executor.yml'
+      - 'scripts/deploy/int_server_executor.py'
+      - 'tests/int_server_executor_test.py'
+  workflow_dispatch:
+    inputs:
+      owner_command:
+        description: Exact /run-int-server-v1 command
+        required: true
+        type: string
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+
+concurrency:
+  group: anytoour-int-server-executor
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate permanent INT executor contract
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/deploy/int_server_executor.py
+          python3 tests/int_server_executor_test.py -v
+
+  execute:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      ((github.event_name == 'issue_comment' && github.event.action == 'created' &&
+        github.event.issue.number == 2530 && !github.event.issue.pull_request &&
+        github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
+        startsWith(github.event.comment.body, '/run-int-server-v1 ')) ||
+       github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Trusted main control code only
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Recheck executor contract
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/deploy/int_server_executor.py
+          python3 tests/int_server_executor_test.py -v
+      - name: Parse and authorize exact current-source command
+        id: command
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INT_OWNER_COMMAND: ${{ inputs.owner_command }}
+        run: |
+          set -euo pipefail
+          python3 scripts/deploy/int_server_executor.py --parse-only > "$RUNNER_TEMP/int-command.txt"
+          source_sha="$(sed -n 's/^source_sha=//p' "$RUNNER_TEMP/int-command.txt")"
+          test "${#source_sha}" = 40
+          printf 'source_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact authorized INT source privately on runner
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ steps.command.outputs.source_sha }}
+          path: source
+          persist-credentials: false
+      - name: Execute bounded private INT operation and DB/LOCAL readback
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INT_OWNER_COMMAND: ${{ inputs.owner_command }}
+          INT_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          INT_SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          INT_SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 scripts/deploy/int_server_executor.py --source-root source
+      - name: Preserve sanitized terminal receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: int-server-executor-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/int-server-executor/result.json
+          if-no-files-found: warn
+          retention-days: 30
