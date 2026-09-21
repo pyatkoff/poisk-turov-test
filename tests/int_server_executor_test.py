@@ -56,7 +56,8 @@ class ContractTest(unittest.TestCase):
                   "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
                   "search3-local-results-read-v1.php","--max-captures=","--capture-mode=non_external_only",
-                  "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero"]:
+                  "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero",
+                  "php=\"$c=require $argv[1];"]:
             self.assertIn(x,text)
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)
