@@ -98,9 +98,13 @@ final class AnyTourAnexLocalOfferCollectorV1
 
         $groupedDrained = $expanded >= count($grouped);
         $concreteDrained = count($charters) <= $maxBatchItems;
+        $discoveredSetDrained = $groupedDrained && $concreteDrained;
         return [
             'source' => 'anex-local-offer-collector-v1',
-            'status' => 'complete',
+            // A bounded invocation may safely preserve batches it already completed,
+            // but it must not claim the scope itself was completed until every grouped
+            // candidate and discovered concrete charter fit inside the caller's bounds.
+            'status' => $discoveredSetDrained ? 'complete' : 'incomplete',
             'search_hotels' => count($searchData['hotels']),
             'grouped_candidates' => count($grouped),
             'expand_calls' => $expanded,
@@ -113,7 +117,7 @@ final class AnyTourAnexLocalOfferCollectorV1
             'retryable_offers' => $retryable,
             'grouped_drained' => $groupedDrained,
             'concrete_drained' => $concreteDrained,
-            'discovered_set_drained' => $groupedDrained && $concreteDrained,
+            'discovered_set_drained' => $discoveredSetDrained,
             'selection_authority' => false,
         ];
     }
