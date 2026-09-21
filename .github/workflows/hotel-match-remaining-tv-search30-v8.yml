@@ -1,0 +1,123 @@
+name: MATCH remaining Tourvisor search30 v8
+on:
+  push:
+    branches: [ops/match-remaining-tv-search30-1971-20260921-v8]
+    paths: [.github/workflows/hotel-match-remaining-tv-search30-v8.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-remaining-tv-search30-1971-20260921-v8, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-remaining-tv-search30-1971-20260921-v8
+  BASE_SHA: cde183f7d33cef6bd1df4d0ff16dad0904d53570
+  V2_SOURCE: 863ca82c9b5431f755ef3dadcd3e340e23039f21
+  CLAIM: '5758123697'
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Stage and validate exact v8 payload
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail; umask 077
+          mkdir -p input reservation result/server payload/scripts/diagnostics payload/app/integrations source
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git merge-base "$BASE_SHA" "$V2_SOURCE")" = "$BASE_SHA"
+          test "$(git rev-parse "$BASE_SHA:scripts/diagnostics/hotel_match_anex_effective_coverage.php")" = 1b5190727690f50a4cdd606c48afa575978ec48e
+          test "$(git rev-parse "$BASE_SHA:app/integrations/anex-search-mapping-registry.php")" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          git show "$BASE_SHA:scripts/diagnostics/hotel_match_anex_effective_coverage.php" >payload/scripts/diagnostics/hotel_match_anex_effective_coverage.php
+          git show "$BASE_SHA:app/integrations/anex-search-mapping-registry.php" >payload/app/integrations/anex-search-mapping-registry.php
+          git show "$V2_SOURCE:scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v2.php" >source/plan_v2.php
+          git show "$V2_SOURCE:scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v2.py" >source/provider_v2.py
+          git show "$V2_SOURCE:scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v2.py" >source/execute_v2.py
+          sed -e 's/hotel-match-remaining-tv-search30-1971-20260921-v2/hotel-match-remaining-tv-search30-1971-20260921-v8/g' -e 's/REMAINING_SEARCH30_PLAN_V2_SELFTEST_OK/REMAINING_SEARCH30_PLAN_V8_SELFTEST_OK/g' source/plan_v2.php >payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v8.php
+          sed -e 's/hotel-match-remaining-tv-search30-1971-20260921-v2/hotel-match-remaining-tv-search30-1971-20260921-v8/g' source/provider_v2.py >payload/scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v8.py
+          sed -e 's/hotel_match_remaining_tv_search30_provider_v2/hotel_match_remaining_tv_search30_provider_v8/g' -e 's/REMAINING_SEARCH30_EXEC_V2_SELFTEST_OK/REMAINING_SEARCH30_EXEC_V8_SELFTEST_OK/g' source/execute_v2.py >payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v8.py
+          php -l payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v8.php
+          php payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v8.php --self-test
+          PYTHONPATH=payload/scripts/diagnostics python3 - <<'PY'
+          p='payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v8.php';s=open(p).read();s=s.replace("$prior=loadp('MATCH_SEARCH30_PATH');","$prior=loadp('MATCH_SEARCH30_PATH');$v6=loadp('MATCH_V6_PATH');");s=s.replace("$sent=attempted($r20)+attempted($r21)+attempted($prior);","if(($v6['operation']??'')!=='hotel-match-remaining-tv-search30-1971-20260921-v6'||($v6['state']??'')!=='terminal_failed_no_replay')throw new RuntimeException('v6_input');$sent=attempted($r20)+attempted($r21)+attempted($prior)+attempted($v6);");open(p,'w').write(s)
+          p='payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v8.py';s=open(p).read();s=s.replace('for _ in range(10):','for _ in range(40):');open(p,'w').write(s)
+          PY
+          php -l payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v8.php
+          python3 -m py_compile payload/scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v8.py payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v8.py
+          PYTHONPATH=payload/scripts/diagnostics python3 payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v8.py --self-test
+          grep -q 'hotel-match-reverse110-live-anex-continuation-1971-20260921-v2' payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v8.php
+          ! grep -q 'hotel-match-reverse110-live-anex-continuation-1971-20260921-v3' payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v8.php
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,subprocess
+          assert set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())=={'.github/workflows/hotel-match-remaining-tv-search30-v8.yml'}
+          c=json.load(open('input/claim.json'));b=c['body'];assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for t in [os.environ['OPERATION_ID'],'attempted batch of30','provider HTTP0/tariff0','CURRENT recompute','<=30 real TV hotelIds[]','bounded status wait extended from10 to40']: assert t in b,t
+          PY
+      - name: Download immutable no-replay inputs
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          for spec in "10612519331 reverse20" "10614070651 reverse21" "10615368679 search30" "10628883563 v6"; do set -- $spec; gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$1/zip" >"input/$2.zip"; done
+          python3 - <<'PY'
+          import zipfile,pathlib,json
+          for n in ['reverse20','reverse21','search30','v6']:
+            with zipfile.ZipFile('input/'+n+'.zip') as z:b=z.read('server/result.json')
+            pathlib.Path('input/'+n+'.json').write_bytes(b)
+          a=json.load(open('input/reverse20.json'));b=json.load(open('input/reverse21.json'));c=json.load(open('input/search30.json'));v=json.load(open('input/v6.json'))
+          assert a['operation']=='hotel-match-reverse686-live-anex-batches-1971-20260920-v1'
+          assert b['operation']=='hotel-match-reverse110-live-anex-continuation-1971-20260921-v2'
+          assert c['operation']=='hotel-match-residual2041-search30-common4-1971-20260921-v3' and c['state']=='completed_read_only'
+          assert v['operation']=='hotel-match-remaining-tv-search30-1971-20260921-v6' and v['state']=='terminal_failed_no_replay' and v['reason']=='RuntimeError:search_timeout'
+          PY
+      - name: Reserve before server/provider
+        run: |
+          python3 - <<'PY'
+          import json,os,datetime
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_server_provider','source_sha':os.environ['GITHUB_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'hotel_ids_max':30,'operator_filter':None,'tariff_definition':'start+continue+flights','database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True}
+          with open('reservation/reservation.json','x') as f:json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'remaining-tv-v8-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(90):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(q) as f:xs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+            if xs and max(xs,key=lambda x:x['id'])['status']=='completed':
+              x=max(xs,key=lambda x:x['id']);assert x['conclusion']=='success',x;break
+            time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Plan CURRENT remainder and execute
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
+          scp "${opts[@]}" reservation/reservation.json input/{reverse20,reverse21,search30,v6}.json "$remote:$op/"
+          scp "${opts[@]}" payload/scripts/diagnostics/hotel_match_anex_effective_coverage.php payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v8.php payload/scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v8.py payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v8.py "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" payload/app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/app/integrations/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_REVERSE20_PATH=\"\$HOME/$op/reverse20.json\" MATCH_REVERSE21_PATH=\"\$HOME/$op/reverse21.json\" MATCH_SEARCH30_PATH=\"\$HOME/$op/search30.json\" MATCH_V6_PATH=\"\$HOME/$op/v6.json\" php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v8.php\" --execute >\"\$HOME/$op/plan.json\";PYTHONPATH=\"\$HOME/$op/payload/scripts/diagnostics\" ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_PLAN_PATH=\"\$HOME/$op/plan.json\" python3 \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v8.py\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?;scp -r "${opts[@]}" "$remote:$op/." result/server/;trc=$?;set -e;printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          p=pathlib.Path('result/server');plan=json.load(open(p/'plan.json'));r=json.load(open(p/'result.json'));q=json.load(open(p/'receipt.json'))
+          assert plan['operation']==r['operation']==q['operation']==os.environ['OPERATION_ID']
+          assert q['result_sha256']==hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert r['database_writes']==r['mapping_writes']==r['samo_calls']==0
+          assert all(1<=len(g['hotel_ids'])<=30 for g in plan['groups'])
+          assert r['action_counts'].get('tour_flights',0)==0 and r['action_counts'].get('search_continue',0)==0
+          assert r['state'] in ('completed_read_only','terminal_failed_no_replay')
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps({'plan_stats':plan['stats'],**{k:r.get(k) for k in ['state','reason','planned_groups','completed_batches','target_hotels','found_unique_hotels','physical_http_attempts','tariff_search_units_after','action_counts','operator_detail_counts','link_state_counts']}},ensure_ascii=False,indent=2)+'\n')
+          print(pathlib.Path('result/verified-summary.json').read_text())
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-remaining-tv-v8-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
