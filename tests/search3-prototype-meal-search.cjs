@@ -14,7 +14,7 @@ const c=vm.createContext({window,structuredClone,URL,URLSearchParams,DOMExceptio
 for(const file of ['search3-local-db-provider-v1.js','prototype-search/data.js'])vm.runInContext(read(file),c,{filename:file});
 const data=window.AnyTourPrototypeData,parser=window.AnyTourLocalDbProviderV1,trip={origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-02',minNights:7,maxNights:7,adults:2,ages:[]};
 data.catalog.departures.push({id:1,name:'Москва'});data.catalog.countries.push({id:4,name:'Турция'});
-const profile={id:4234,anytourHotelId:4234,catalog:'anytour',name:'Наш отель',category:5,region:{name:'Курорт'}};
+const profile={id:4234,anytourHotelId:4234,catalog:'anytour',revision:1,name:'Наш отель',category:5,region:{name:'Курорт'}};
 const raw=[{id:'ai',price:110000,meal:{id:7,name:'Arbitrary vendor AI text'}},{id:'uai',price:130000,meal:{id:9,name:'ULTRA (different label)'}},{id:'bb',price:50000,meal:{id:2,name:'Breakfast'}},{id:'unknown',price:1,meal:{name:'Всё включено'}}].map(t=>({...t,provider:'tourvisor',date:trip.from,nights:7}));
 function storedReply(){
  return{source:'anytour-db-first-results-v1',scopeVersion:1,scopeDigest:'e'.repeat(64),selectionAuthority:false,hotels:['tourvisor','anex','andromeda'].map((provider,i)=>{
@@ -76,7 +76,10 @@ async function browserCheck(){
    await page.screenshot({path:path.join(evidence,`meal-catalogue-${width}.png`)});
    await page.locator('[data-action="apply-meals"]').click();await page.waitForTimeout(100);
    await page.locator('.search-submit').click();
-   await page.waitForFunction(()=>document.querySelector('.hotel-offer-count')?.textContent.startsWith('2 '));
+   await page.waitForFunction(()=>document.querySelector('.hotel-offer-count')?.textContent.startsWith('2 ')).catch(async error=>{
+    console.error(JSON.stringify({width,started,errors,body:await page.locator('body').innerText()}));
+    await page.screenshot({path:path.join(evidence,`meal-failure-${width}.png`),fullPage:true});throw error;
+   });
    assert.equal(started.length,1);assert.equal(started[0].meal,'7');
    await page.screenshot({path:path.join(evidence,`meal-results-${width}.png`),fullPage:true});
    for(const [ids,count,price] of [[['501'],1,110000],[['502'],1,130000],[['501','502'],2,110000],[[],4,1]]){
