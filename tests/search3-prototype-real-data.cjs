@@ -7,6 +7,8 @@ const evidence=process.env.SEARCH3_PROTOTYPE_EVIDENCE||'/tmp/search3-prototype-e
 const day=n=>new Date(Date.now()+n*86400000).toISOString().slice(0,10);
 const photo='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>');
 const profiles=[1,2].map(id=>({id,catalog:'anytour',revision:1,name:id===1?'Rixos — тестовый отель «Море»':'Отель для проверки «Сад»',category:id===1?5:4,rating:id===1?4.7:4.2,region:{name:'Анталья'},country:{name:'Турция'},description:'Описание отеля из собственной базы.',images:['http://127.0.0.1/test-photo.svg'],hotelInformation:{}}));
+// Catalogue-only matches must not become available tours in the result fixtures.
+const lookupProfiles=[3,4,5,6].map(id=>({...profiles[0],id,name:`Rixos — тестовый отель ${id} с длинным названием для проверки выбора`}));
 const tours=[{id:'exact-1',price:120000,date:day(8),nights:7,adults:2,childs:0,meal:{name:'AI'},roomType:'STANDARD',placement:'DBL',operator:{name:'ANEX'},fuelCharge:null},{id:'exact-2',price:133000,date:day(8),nights:7,adults:2,childs:0,meal:{name:'HB'},roomType:'SUPERIOR',placement:'DBL',operator:{name:'Coral Travel'},fuelCharge:0}];
 const segment=(number,time)=>({company:{name:'Тестовая авиакомпания'},number,departure:{date:day(8),time,port:{name:'Москва',id:'SVO'}},arrival:{date:day(8),time:'14:00',port:{name:'Анталья',id:'AYT'}},baggage:20,carryOn:'5 кг'});
 const variants=[{price:{value:120000},fuelCharge:null,forward:[segment('TT 111','10:00')],backward:[segment('TT 112','12:00')]},{price:{value:133500.5},fuelCharge:0,forward:[segment('TT 211','14:00')],backward:[segment('TT 212','16:00')]},{isDefault:true,price:null,fuelCharge:null,forward:[segment('TT 311','18:00')],backward:[segment('TT 312','20:00')]}];
@@ -28,8 +30,8 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
    const json=data=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
    if(url.pathname==='/test-photo.svg')return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});
    if(url.pathname==='/data/departures-v1.php')return json({ok:true,items:[{id:1,name:'Москва'},{id:2,name:'Казань'}]});
-   if(url.pathname==='/data/hotel-search-v1.php'){lookupCalls.push(Object.fromEntries(url.searchParams));await lookupReady;if(url.searchParams.get('q')==='Slow'){slowStarted();await slowReady;try{return await json({ok:true,items:[{id:102,country:{id:4}}]});}finally{slowDone();}}if(failLookup)return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});return json({ok:true,items:url.searchParams.get('q')==='Rixos'?[{id:101,name:'Legacy Rixos name',country:{id:4}}]:[]});}
-   if(url.pathname.endsWith('/hotel-details-read-v1.php')){const ids=url.searchParams.getAll('legacyHotelIds[]');return json({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:profiles.filter(p=>ids.includes(String(100+p.id))),links:ids.map(id=>({legacyHotelId:Number(id),anytourHotelId:Number(id)-100}))});}
+   if(url.pathname==='/data/hotel-search-v1.php'){lookupCalls.push(Object.fromEntries(url.searchParams));await lookupReady;if(url.searchParams.get('q')==='Slow'){slowStarted();await slowReady;try{return await json({ok:true,items:[{id:102,country:{id:4}}]});}finally{slowDone();}}if(failLookup)return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});return json({ok:true,items:url.searchParams.get('q')==='Rixos'?[101,...lookupProfiles.map(p=>100+p.id)].map(id=>({id,name:'Legacy Rixos name',country:{id:4}})):[]});}
+   if(url.pathname.endsWith('/hotel-details-read-v1.php')){const ids=url.searchParams.getAll('legacyHotelIds[]');return json({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:[...profiles,...lookupProfiles].filter(p=>ids.includes(String(100+p.id))),links:ids.map(id=>({legacyHotelId:Number(id),anytourHotelId:Number(id)-100}))});}
    if(url.pathname.endsWith('/search3-local-results-read-v1.php')){const p=route.request().postDataJSON().params;dbCalls.push(p);return json({ok:true,data:{source:'anytour-db-first-results-v1',scopeVersion:1,scope:{scopeVersion:1,...p},scopeDigest:'c'.repeat(64),selectionAuthority:false,hotels:[{anytourHotelId:1,hotel:profiles[0],offers:[stored(p)]}]}});}
    if(url.pathname==='/api-v2.php'){
     const action=url.searchParams.get('action');calls.push(action);
@@ -83,13 +85,42 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   assert.deepEqual(lookupCalls.at(-1),{q:'Rixos',countryId:'4',limit:'10'});
   assert.match(await page.locator('#destination-results').textContent(),/Rixos — тестовый отель/,'Suggestions use the own canonical profile, not a supplier name');
   await page.screenshot({path:path.join(evidence,`destination-catalog-${width}.png`)});
+  assert.equal(await page.locator('.destination-hotel').count(),5,'The keyboard scenario contains several real DOM catalogue rows');
   if(width===390){
-   await page.evaluate(()=>{Object.defineProperty(visualViewport,'height',{configurable:true,value:440});Object.defineProperty(visualViewport,'offsetTop',{configurable:true,value:30});visualViewport.dispatchEvent(new Event('resize'));});
-   const geometry=await page.locator('#modal').evaluate(m=>{const r=m.getBoundingClientRect(),q=document.querySelector('#destination-query').getBoundingClientRect(),f=document.querySelector('#modal-footer').getBoundingClientRect(),body=document.querySelector('#modal-body').getBoundingClientRect(),rows=[...document.querySelectorAll('.destination-hotel')].map(x=>x.getBoundingClientRect()).filter(x=>x.bottom>body.top&&x.top<body.bottom);return {top:r.top,bottom:r.bottom,query:q.top,footer:f.bottom,visibleHotelRows:rows.length};});
-   assert.ok(geometry.top>=30&&geometry.bottom<=470&&geometry.query>=30&&geometry.footer<=470,'Destination controls fit the keyboard-reduced visual viewport');
-   assert.ok(geometry.visibleHotelRows>=2,'Keyboard-open destination keeps multiple hotel rows reachable instead of collapsing to one result');
-   await page.screenshot({path:path.join(evidence,'destination-keyboard-390.png')});
+   const beforeKeyboard=calls.length,lookupBeforeKeyboard=lookupCalls.length;
+   for(const height of [440,400]){
+    await page.evaluate(height=>{document.querySelector('#modal-body').scrollTop=0;Object.defineProperty(visualViewport,'height',{configurable:true,value:height});Object.defineProperty(visualViewport,'offsetTop',{configurable:true,value:30});visualViewport.dispatchEvent(new Event('resize'));},height);
+    const geometry=await page.locator('#modal').evaluate(m=>{
+     const r=m.getBoundingClientRect(),q=document.querySelector('#destination-query').getBoundingClientRect(),f=document.querySelector('#modal-footer').getBoundingClientRect(),body=document.querySelector('#modal-body').getBoundingClientRect();
+     const rows=[...document.querySelectorAll('.destination-hotel')].map(x=>x.getBoundingClientRect());
+     return {top:r.top,bottom:r.bottom,queryTop:q.top,queryBottom:q.bottom,footer:f.bottom,fullyVisible:rows.filter(x=>x.top>=body.top&&x.bottom<=body.bottom).length,tappableRows:rows.filter(x=>Math.min(x.bottom,body.bottom)-Math.max(x.top,body.top)>=44).length};
+    });
+    assert.ok(geometry.top>=30&&geometry.bottom<=height+30&&geometry.queryTop>=30&&geometry.queryBottom<=height+30&&geometry.footer<=height+30,'Search and footer fit the keyboard-reduced viewport');
+    assert.ok(geometry.tappableRows>=2,'At least two hotel rows have a visible 44px tap area with the keyboard open');
+    if(height===440)assert.ok(geometry.fullyVisible>=2,'Two complete hotel rows remain visible, not just a sliver of the second row');
+    assert.equal(await page.locator('[data-action="apply-destination"]').isEnabled(),false,'Several suggestions do not select a hotel implicitly');
+    await page.screenshot({path:path.join(evidence,`destination-keyboard-${height}-390.png`)});
+    const scrollBefore=await page.evaluate(()=>scrollY);
+    await page.locator('#modal-body').evaluate(el=>{el.scrollTop=el.scrollHeight;});
+    assert.equal(await page.locator('.destination-hotel').last().evaluate(el=>{const r=el.getBoundingClientRect(),b=document.querySelector('#modal-body').getBoundingClientRect();return r.top>=b.top&&r.bottom<=b.bottom;}),true,'The last long-named hotel is reachable in the scroll container');
+    assert.equal(await page.evaluate(()=>scrollY),scrollBefore,'Scrolling results does not move the background document');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await page.screenshot({path:path.join(evidence,`destination-keyboard-last-${height}-390.png`)});
+   }
+   await page.locator('.destination-hotel').last().click();
+   assert.equal(await hotelQuery.inputValue(),'','Only an explicit hotel tap clears the query');
+   assert.equal(await page.locator('[data-action="apply-destination"]').isEnabled(),true);
+   assert.match(await page.locator('[data-action="apply-destination"]').textContent(),/Выбрать Rixos — тестовый отель 6/,'The CTA names the explicitly selected hotel');
+   assert.match(await page.locator('#destination-selection').textContent(),/Rixos — тестовый отель 6/);
    await page.evaluate(()=>{delete visualViewport.height;delete visualViewport.offsetTop;visualViewport.dispatchEvent(new Event('resize'));});
+   assert.equal(await page.locator('#modal').evaluate(el=>el.classList.contains('destination-keyboard')),false,'Dismissal restores normal modal sizing');
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'A long selected hotel does not widen the document');
+   assert.equal(calls.length,beforeKeyboard,'Viewport, scrolling and selection never start a supplier request');
+   assert.equal(lookupCalls.length,lookupBeforeKeyboard,'Viewport and selection never repeat the catalogue lookup');
+   await page.screenshot({path:path.join(evidence,'destination-selected-long-390.png')});
+   await page.locator('[data-action="close-modal"]').click();await page.waitForTimeout(100);
+   assert.equal(await page.locator('#destination-label').textContent(),'Турция','Cancel does not apply the draft hotel');
+   await page.locator('[data-action="destination"]').click();
   }
   await hotelQuery.fill('No-such-hotel');await page.getByText('По названию ничего не нашли',{exact:true}).waitFor();
   assert.equal(await page.locator('[data-action="apply-destination"]').isEnabled(),false);
