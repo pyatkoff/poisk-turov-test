@@ -1,15 +1,18 @@
 name: MATCH remaining Tourvisor search30 v4
 on:
   push:
-    branches: [ops/match-remaining-tv-search30-1971-20260921-v4]
-    paths: [.github/workflows/hotel-match-remaining-tv-search30-v4.yml]
+    branches: [ops/match-remaining-tv-search30-1971-20260921-v3]
+    paths:
+      - scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php
+      - scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v4.py
+      - scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v4.py
+      - .github/workflows/hotel-match-remaining-tv-search30-v4.yml
 permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-remaining-tv-search30-1971-20260921-v4, cancel-in-progress: false}
 env:
   OPERATION_ID: hotel-match-remaining-tv-search30-1971-20260921-v4
   BASE_SHA: cde183f7d33cef6bd1df4d0ff16dad0904d53570
-  V2_SOURCE: 863ca82c9b5431f755ef3dadcd3e340e23039f21
-  CLAIM: '5757549584'
+  CLAIM: '5757855352'
 jobs:
   acquire:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
@@ -18,35 +21,26 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
-      - name: Stage and validate exact v4 payload
+      - name: Validate exact source and owner authority
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
-          set -euo pipefail; umask 077
-          mkdir -p input reservation result/server payload/scripts/diagnostics payload/app/integrations source
+          set -euo pipefail; umask 077; mkdir -p input reservation result/server payload/scripts/diagnostics payload/app/integrations
           test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
-          test "$(git merge-base "$BASE_SHA" "$V2_SOURCE")" = "$BASE_SHA"
+          php -l scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php
+          php scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php --self-test
+          python3 -m py_compile scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v4.py scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v4.py
+          python3 scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v4.py --self-test
           test "$(git rev-parse "$BASE_SHA:scripts/diagnostics/hotel_match_anex_effective_coverage.php")" = 1b5190727690f50a4cdd606c48afa575978ec48e
-          test "$(git rev-parse "$BASE_SHA:app/integrations/anex-search-mapping-registry.php")" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
           git show "$BASE_SHA:scripts/diagnostics/hotel_match_anex_effective_coverage.php" >payload/scripts/diagnostics/hotel_match_anex_effective_coverage.php
-          git show "$BASE_SHA:app/integrations/anex-search-mapping-registry.php" >payload/app/integrations/anex-search-mapping-registry.php
-          git show "$V2_SOURCE:scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v2.php" >source/plan_v2.php
-          git show "$V2_SOURCE:scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v2.py" >source/provider_v2.py
-          git show "$V2_SOURCE:scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v2.py" >source/execute_v2.py
-          sed -e 's/hotel-match-remaining-tv-search30-1971-20260921-v2/hotel-match-remaining-tv-search30-1971-20260921-v4/g' -e 's/REMAINING_SEARCH30_PLAN_V2_SELFTEST_OK/REMAINING_SEARCH30_PLAN_V4_SELFTEST_OK/g' source/plan_v2.php >payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php
-          sed -e 's/hotel-match-remaining-tv-search30-1971-20260921-v2/hotel-match-remaining-tv-search30-1971-20260921-v4/g' source/provider_v2.py >payload/scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v4.py
-          sed -e 's/hotel_match_remaining_tv_search30_provider_v2/hotel_match_remaining_tv_search30_provider_v4/g' -e 's/REMAINING_SEARCH30_EXEC_V2_SELFTEST_OK/REMAINING_SEARCH30_EXEC_V4_SELFTEST_OK/g' source/execute_v2.py >payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v4.py
-          php -l payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php
-          php payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php --self-test
-          PYTHONPATH=payload/scripts/diagnostics python3 -m py_compile payload/scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v4.py payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v4.py
-          PYTHONPATH=payload/scripts/diagnostics python3 payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v4.py --self-test
-          grep -q 'hotel-match-reverse110-live-anex-continuation-1971-20260921-v2' payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php
-          ! grep -q 'hotel-match-reverse110-live-anex-continuation-1971-20260921-v3' payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php
+          cp scripts/diagnostics/hotel_match_remaining_tv_search30_{plan_v4.php,provider_v4.py,execute_v4.py} payload/scripts/diagnostics/
           gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
           python3 - <<'PY'
           import json,os,subprocess
-          assert set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())=={'.github/workflows/hotel-match-remaining-tv-search30-v4.yml'}
-          c=json.load(open('input/claim.json'));b=c['body'];assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          for t in ['NEW remaining-TV v4','863ca82c9b5431f755ef3dadcd3e340e23039f21','reverse110-v2','5757346452','DB/mapping writes0']: assert t in b,t
+          want={'.github/workflows/hotel-match-remaining-tv-search30-v4.yml','scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php','scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v4.py','scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v4.py'}
+          got=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines());assert got==want,(got,want)
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for t in ['NEW v4','historical','reverse21','v2','Provider HTTP0','tariff0']: assert t in b,t
           PY
       - name: Download immutable no-replay inputs
         env: {GH_TOKEN: '${{ github.token }}'}
@@ -71,7 +65,7 @@ jobs:
           with open('reservation/reservation.json','x') as f:json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: {name: 'remaining-tv-v4-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90}
+        with: {name: 'remaining-tv-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90}
       - name: Require exact-head Security
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
@@ -92,10 +86,9 @@ jobs:
           set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
           if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
           remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
-          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
           scp "${opts[@]}" reservation/reservation.json input/{reverse20,reverse21,search30}.json "$remote:$op/"
           scp "${opts[@]}" payload/scripts/diagnostics/* "$remote:$op/payload/scripts/diagnostics/"
-          scp "${opts[@]}" payload/app/integrations/* "$remote:$op/payload/app/integrations/"
           set +e
           ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_REVERSE20_PATH=\"\$HOME/$op/reverse20.json\" MATCH_REVERSE21_PATH=\"\$HOME/$op/reverse21.json\" MATCH_SEARCH30_PATH=\"\$HOME/$op/search30.json\" php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v4.php\" --execute >\"\$HOME/$op/plan.json\";PYTHONPATH=\"\$HOME/$op/payload/scripts/diagnostics\" ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_PLAN_PATH=\"\$HOME/$op/plan.json\" python3 \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_remaining_tv_search30_execute_v4.py\" --execute" >result/remote.stdout 2>result/remote.stderr
           rc=$?;scp -r "${opts[@]}" "$remote:$op/." result/server/;trc=$?;set -e;printf '{"remote":%s,"readback":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
@@ -114,4 +107,4 @@ jobs:
           test "$rc" -eq 0
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        with: {name: 'match-remaining-tv-v4-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
+        with: {name: 'match-remaining-tv-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
