@@ -19,10 +19,10 @@
     return key;
   }
   function meal(value){
-    const label=text(value),full=text(value?.fullName),key=mealKey(label||full);
+    const label=text(value),full=text(value?.fullName),key=mealKey(full||label);
     // Use the same catalogue spelling for choices and offers; never merge AI with UAI.
-    const record=catalog.meals.find(x=>[text(x),text(x.name),text(x.fullName)].some(name=>name&&mealKey(name)===key))||catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id));
-    if(record)return text(record.fullName)||text(record);
+    const record=catalog.meals.find(x=>[text(x),text(x.name),text(x.fullName)].some(name=>name&&mealKey(name)===key))||(!full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)):null);
+    if(record)return text(record.russianName)||text(record.fullName)||text(record);
     return full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?full:label;
   }
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
