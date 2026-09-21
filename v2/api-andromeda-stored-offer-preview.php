@@ -174,8 +174,19 @@ function anytour_stored_samo_request(array $request, array &$handles, string $di
     $readPricing ??= 'anytour_stored_samo_pricing';
     $located = anytour_stored_samo_snapshot($row, $directory, $previous['locator'] ?? null, $canonicalAllows, $mappingAllows,
         static function (array $state, array $resolved, array $locator, int $expires) use ($directory, $readPricing, $mappingAllows, $now): array {
-            return ['locator' => $locator, 'expires_at' => $expires, 'pricing' => $readPricing($directory, $state, $resolved, $mappingAllows, $now, $locator['created_at'])];
+            return ['locator' => $locator, 'expires_at' => $expires,
+                'private_context' => $resolved['context'],
+                'pricing' => $readPricing($directory, $state, $resolved, $mappingAllows, $now, $locator['created_at'])];
         }, $now);
+    $privateContext = $located['private_context'] ?? null;
+    if (!is_array($privateContext) || ($privateContext['provider'] ?? null) !== 'andromeda'
+        || !is_string($privateContext['search_ref'] ?? null) || !is_string($privateContext['offer_ref'] ?? null)
+        || !is_int($privateContext['generation'] ?? null) || !is_int($privateContext['page'] ?? null)) {
+        throw new DomainException('Stored offer unavailable');
+    }
+    if ($previous !== null && ($previous['private_context'] ?? null) !== $privateContext) {
+        throw new DomainException('Stored offer unavailable');
+    }
     $quote = ['state' => 'confirmation_required', 'finalPrice' => null, 'expiresAt' => null];
     $evidence = $located['pricing']; $verified = $evidence['value'] ?? null; $expires = $evidence['expires_at'] ?? null;
     if (is_array($verified) && ($verified['provider'] ?? null) === 'andromeda'
@@ -192,7 +203,9 @@ function anytour_stored_samo_request(array $request, array &$handles, string $di
         foreach ($handles as $key => $entry) if (!is_array($entry) || ($entry['expires_at'] ?? 0) <= $now) unset($handles[$key]);
         while (count($handles) >= 12) unset($handles[array_key_first($handles)]);
         $handle = 'stored_' . bin2hex(random_bytes(32));
-        $handles[$handle] = ['request' => $request, 'scope_digest' => $current['scopeDigest'], 'locator' => $located['locator'], 'expires_at' => $located['expires_at']];
+        $handles[$handle] = ['request' => $request, 'scope_digest' => $current['scopeDigest'],
+            'locator' => $located['locator'], 'private_context' => $privateContext,
+            'expires_at' => $located['expires_at']];
     }
     return ['source' => 'andromeda-stored-offer-v1', 'provider' => 'andromeda', 'handle' => $handle,
         'anytourHotelId' => $row['anytourHotelId'], 'scopeDigest' => $current['scopeDigest'], 'identity' => $identity,
