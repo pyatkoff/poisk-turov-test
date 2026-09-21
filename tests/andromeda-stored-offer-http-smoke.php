@@ -77,6 +77,10 @@ try {
     check(count($handles)===1,'Read does not allocate another handle');
     check(($handles[$handle]['private_context']['search_ref'] ?? null)===$ref
         && ($handles[$handle]['private_context']['offer_ref'] ?? null)===$keys[1],'Read revalidates same exact private context');
+    $savedPrivate=$handles[$handle]['private_context'];
+    $handles[$handle]['private_context']['generation']++;
+    stored_http_refuses(fn()=>$run(['action'=>'read','handle'=>$handle]),'Tampered private session context cannot be rebound');
+    $handles[$handle]['private_context']=$savedPrivate;
     check($filesBefore===[hash_file('sha256',$firstPath),hash_file('sha256',$secondPath)],'Original retained snapshots unchanged');
 
     $otherViewer=[];
