@@ -286,8 +286,10 @@ def reconcile_target(target_name):
                                             for row in rejected[:2000]:
                                                 if not isinstance(row,dict): continue
                                                 reason=row.get('reason');missing=row.get('missing_field');ownership=row.get('ownership_class')
-                                                if not all(isinstance(v,str) and len(v)<=96 for v in (reason,missing,ownership)): continue
-                                                key=reason+'|'+missing+'|'+ownership
+                                                if not isinstance(reason,str) or len(reason)>96: continue
+                                                if missing is not None and (not isinstance(missing,str) or len(missing)>96): continue
+                                                if ownership is not None and (not isinstance(ownership,str) or len(ownership)>96): continue
+                                                key=reason+'|'+(missing or '-')+'|'+(ownership or '-')
                                                 classes[key]=classes.get(key,0)+1;valid+=1
                                             item['rejection_summary']={'count':len(rejected),'classified':valid,'classes':classes}
                                         item['top_level_keys']=sorted(str(k) for k in raw.keys())[:80]
