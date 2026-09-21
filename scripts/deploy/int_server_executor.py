@@ -68,6 +68,23 @@ def parse_command(body: str) -> dict:
         need(OP_RE.fullmatch(target) is not None and target != operation, 'target_operation_id')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'target_operation_id': target}
+    if mode == 'local-readback':
+        need(len(parts) == 11, 'command_shape')
+        departure = integer(parts[3], 1, 999999999, 'departure')
+        country = integer(parts[4], 1, 999999999, 'country')
+        date_from, date_to = date(parts[5]), date(parts[6])
+        need(date_to >= date_from, 'date_range')
+        nights = integer(parts[7], 1, 28, 'nights')
+        adults = integer(parts[8], 1, 6, 'adults')
+        meal = parts[9]
+        need(re.fullmatch(r'(?:-|[A-Za-z0-9_,&]{1,32})', meal) is not None, 'meal')
+        region = integer(parts[10], 0, 999999999, 'region')
+        return {
+            'source_sha': source, 'mode': mode, 'operation_id': operation,
+            'departure': departure, 'country': country, 'date_from': date_from,
+            'date_to': date_to, 'nights': nights, 'adults': adults,
+            'meal': '' if meal == '-' else meal, 'region': region,
+        }
     if mode == 'andromeda-scope':
         need(len(parts) == 12, 'command_shape')
         departure = integer(parts[3], 1, 999999999, 'departure')
@@ -281,8 +298,21 @@ echo json_encode(['scopeDigest'=>$r['scopeDigest'],'hotelCount'=>$r['hotelCount'
           'currency':'RUB','onlyCharter':False,'onlyDirect':False}
         run=subprocess.run(['php','-r',php,json.dumps(params,separators=(',',':'))],
                            cwd=project,capture_output=True,text=True,timeout=30)
-        if run.returncode or run.stderr: fail('local_readback_failed')
-        rows.append(json.loads(run.stdout))
+        stderr=run.stderr.strip()
+        meta={'stderr_nonempty':bool(stderr),
+              'stderr_sha256':hashlib.sha256(stderr.encode()).hexdigest() if stderr else None}
+        if run.returncode:
+            rows.append({'status':'failed','reason':'local_readback_exit','exit':run.returncode,**meta})
+            continue
+        try: parsed=json.loads(run.stdout)
+        except Exception:
+            rows.append({'status':'failed','reason':'local_readback_json',**meta})
+            continue
+        required={'scopeDigest','hotelCount','offerCount','storedOfferCount','providerOfferCounts','withheldOfferCount','matchMode'}
+        if not isinstance(parsed,dict) or not required.issubset(parsed):
+            rows.append({'status':'failed','reason':'local_readback_shape',**meta})
+            continue
+        parsed['status']='complete';parsed.update(meta);rows.append(parsed)
     return rows
 try:
     if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):
@@ -317,6 +347,21 @@ try:
             fail('source_hash')
     (op/'installed-source.json').write_text(json.dumps({'source_sha':source,'files':files},sort_keys=True))
     os.chmod(op/'installed-source.json',0o600)
+    if mode=='local-readback':
+        result['before_db']=db_summary('andromeda')
+        scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
+                 'regionId':payload['region'] or None,'dateFrom':payload['date_from'],
+                 'dateTo':payload['date_to'],'nights':payload['nights'],
+                 'adults':payload['adults'],'childAges':[]}]
+        result['local_readback']=local_read(scopes)
+        result['after_db']=db_summary('andromeda')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
+        __LOCAL_READBACK__=True
     if mode=='reconcile':
         target_name=payload['target_operation_id']
         provider='anex' if target_name.startswith('int-anex-') else 'andromeda'
@@ -330,7 +375,7 @@ try:
         result['database_writes']=0
         result['production_unchanged']=True
         __RECONCILED__=True
-    if mode!='reconcile':
+    if mode not in ('reconcile','local-readback'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -352,7 +397,7 @@ try:
           '--max-captures='+str(payload['max_captures']),'--max-capture-seconds='+('120' if payload['max_captures']>0 else '0'),
           '--capture-mode=non_external_only']
         if payload['region']: command.append('--region='+str(payload['region']))
-    if mode!='reconcile':
+    if mode not in ('reconcile','local-readback'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()

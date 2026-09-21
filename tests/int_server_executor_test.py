@@ -18,6 +18,10 @@ class ParseTest(unittest.TestCase):
         self.assertEqual('',v['meal']);self.assertEqual(0,v['max_captures'])
         bounded=m.parse_command(f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v2 1 4 2026-10-13 2026-10-14 7 2 - 0 10')
         self.assertEqual(10,bounded['max_captures'])
+    def test_local_readback(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} local-readback int-andromeda-local-readback-20260921-v1 1 4 2026-09-24 2026-09-25 7 2 - 0')
+        self.assertEqual('local-readback',v['mode'])
+        self.assertEqual(4,v['country'])
     def test_reconcile(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} reconcile int-andromeda-reconcile-turkey-20260921-v1 int-andromeda-current-turkey-20260921-v1')
         self.assertEqual('reconcile',v['mode'])
@@ -60,7 +64,8 @@ class ContractTest(unittest.TestCase):
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
                   "search3-local-results-read-v1.php","--max-captures=","--capture-mode=non_external_only",
                   "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero",
-                  "php=\"$c=require $argv[1];","allowed_keys={'status'","name_sha256","top_level_keys"]:
+                  "php=\"$c=require $argv[1];","allowed_keys={'status'","name_sha256","top_level_keys",
+                  "local-readback","local_readback_exit","stderr_sha256"]:
             self.assertIn(x,text)
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)
