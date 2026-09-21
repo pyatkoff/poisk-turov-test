@@ -97,7 +97,7 @@ async function browserCheck(){
    assert.equal(new URL(page.url()).searchParams.get('meals'),'501|502');
    await page.reload();await page.locator('.search-submit:not([disabled])').waitFor();
    await page.locator('#quick-meal').click();assert.equal(await page.locator('[data-meal-choice]:checked').evaluateAll(xs=>xs.map(x=>x.value).sort().join('|')),'501|502');await page.locator('[data-action="apply-meals"]').click();await page.waitForTimeout(100);
-   missing=true;await page.locator('.search-submit').click();await page.getByText('Не настроено соответствие выбранного питания для Tourvisor.',{exact:false}).waitFor();
+   missing=true;await page.locator('.search-submit').click();await page.getByText('Выбранное питание отсутствует в нашем справочнике.',{exact:false}).waitFor();
    assert.equal(started.length,1,'A newly missing mapping blocks the next provider request');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    assert.deepEqual(errors,[]);await page.screenshot({path:path.join(evidence,`meal-mapping-missing-${width}.png`),fullPage:true});
