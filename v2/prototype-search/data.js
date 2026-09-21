@@ -146,13 +146,16 @@
   }
   async function flights(t) {
     const data=await rt.api('flights',{tourId:t.id,currency:'RUB'});
-    return Array.isArray(data)?data:Array.isArray(data?.flights)?data.flights:[];
+    if(Array.isArray(data))return data;
+    if(Array.isArray(data?.flights))return data.flights;
+    throw new Error('Не удалось загрузить рейсы. Попробуйте ещё раз.');
   }
   function leadSession(o) {
     if(!o?.tour||o.cached||o.provider!=='tourvisor'||String(o.tour.id)!==String(o.raw.id)||!searchId||!searchParams)throw new Error('Сначала подтвердите актуальное предложение.');
     const run=generation,id=searchId;
     const receipt=quoteReceipts.get(o.tour);
     if(!receipt||receipt.generation!==run||receipt.searchId!==id)throw new Error('Предложение устарело. Откройте условия тура и проверьте цену заново.');
+    if(o.flightsLoading||o.flightsError)throw new Error(o.flightsLoading?'Дождитесь загрузки рейсов.':'Не удалось загрузить рейсы. Повторите загрузку перед выбором тура.');
     if(o.pricePending||!amount(o.tour.price))throw new Error('Цена тура пока не подтверждена. Проверьте условия заново.');
     let flight=null;
     if(o.flightChoiceId!==null){

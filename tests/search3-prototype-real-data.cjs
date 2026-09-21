@@ -18,6 +18,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
  try{for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],calls=[],dbCalls=[];
   let releaseCountries;let countriesReady=new Promise(resolve=>{releaseCountries=resolve});let countriesBlocked=true;
+  let flightResponse='variants';
   let delayedFailure=null,failProfile=false,mismatchedRestoration=false,calendarFixture=false,calendarFails=false;
   const lookupCalls=[],searchQueries=[];let failLookup=true,releaseLookup;const lookupReady=new Promise(resolve=>{releaseLookup=resolve});
   let slowStarted,releaseSlow,slowDone;const slowRequest=new Promise(resolve=>{slowStarted=resolve}),slowReady=new Promise(resolve=>{releaseSlow=resolve}),slowFinished=new Promise(resolve=>{slowDone=resolve});
@@ -40,7 +41,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
     if(action==='search_status')return json({progress:100,status:'complete'});
     if(action==='search_results')return json([{id:101,provider:'tourvisor',tours}, {id:102,provider:'tourvisor',tours:[{...tours[0],id:'exact-3',price:99000}]}]);
     if(action==='tour'){const t=tours.find(t=>t.id===url.searchParams.get('tourId'));return json({...t,hotel:{name:profiles[0].name}});}
-    if(action==='flights')return json(variants);
+    if(action==='flights')return json(flightResponse==='malformed'?{}:flightResponse==='empty'?[]:variants);
     throw new Error('Unexpected API action '+action);
    }
    if(url.origin!==origin)throw new Error('Unexpected external URL '+url.href);
@@ -248,6 +249,37 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
    assert.deepEqual(calls.slice(beforeRetry),action==='tour'?['tour','flights']:['flights'],'Only an explicit retry repeats the failed step');
    await page.locator('#modal-back').click();
   }
+  for(const flightCase of ['error','malformed','empty']){
+   flightResponse=flightCase;const pending=flightCase==='error'?failNext('flights'):null;
+   await real.click();if(pending){await pending.requested;pending.release();}
+   await page.locator('[data-action="retry-flights"]:not([disabled])').waitFor();
+   const beforeContact=calls.length;await page.locator('[data-action="confirm-tour"]').click();
+   const submit=page.locator('#modal-footer [type="submit"]');
+   if(flightCase==='empty'){
+    assert.equal(await submit.isEnabled(),true,'A successful explicit empty flight list retains the existing no-flight handoff');
+    assert.equal(await page.locator('.lead-message[role="alert"]').count(),0);
+   }else{
+    assert.equal(await submit.isEnabled(),false,`${flightCase} flights cannot become a no-flight contact handoff`);
+    assert.match(await page.locator('.lead-message[role="alert"]').textContent(),/Не удалось загрузить рейсы/);
+    assert.equal(calls.length,beforeContact,'Failed handoff never automatically retries or sends a lead');
+    await page.screenshot({path:path.join(evidence,`flight-${flightCase}-handoff-${width}.png`)});
+    await page.locator('[data-action="selected-tour-details"]').click();
+    flightResponse='variants';const beforeRetry=calls.length;
+    await page.locator('[data-action="retry-flights"]').click();
+    await page.locator('[data-action="choose-flight"]').waitFor();
+    assert.deepEqual(calls.slice(beforeRetry),['flights'],'Recovery repeats only the explicitly requested flight step');
+    await page.locator('[data-action="choose-flight"]').click();await page.locator('input[name="flight-pair"][value="1"]').check();
+    await page.locator('[data-action="apply-flight"]').click();
+    assert.match(await page.locator('#detail-total').textContent(),/133\s?500,5/,'Recovered pair keeps its full decimal price');
+    await page.locator('[data-action="confirm-tour"]').click();
+    assert.equal(await submit.isEnabled(),true,'A recovered priced pair can reach preview contact validation');
+    assert.match(await page.locator('.verification-tour').textContent(),/TT 211/);
+   }
+   await page.screenshot({path:path.join(evidence,`flight-${flightCase}-ready-${width}.png`)});
+   await page.locator('[data-action="close-modal"]').click();await page.waitForTimeout(100);
+   await page.locator('.hotel-price [data-action="all-offers"]').first().click();
+  }
+  flightResponse='variants';
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'No document overflow');
   const scopeCheck=await page.evaluate(async()=>{const d=window.AnyTourPrototypeData,p=d.params({origin:'Москва',country:'4',from:new Date(Date.now()+86400000).toISOString().slice(0,10),to:new Date(Date.now()+2*86400000).toISOString().slice(0,10),minNights:7,maxNights:7,adults:2,ages:[0,17]}),r={scopeVersion:1,...p};return {same:d.sameScope(p,r),party:d.sameScope(p,{...r,childs:[7,10]}),departure:d.sameScope(p,{...r,departureId:'2'}),cached:await d.quote({cached:true}).then(()=>false,()=>true)};});
   assert.deepEqual(scopeCheck,{same:true,party:false,departure:false,cached:true});
