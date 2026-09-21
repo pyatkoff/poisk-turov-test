@@ -44,6 +44,7 @@ jobs:
         run: |
           cp change/v2/api-andromeda-search3-preview.php runtime/v2/api-andromeda-search3-preview.php
           cp change/app/integrations/andromeda-client.php runtime/app/integrations/andromeda-client.php
+          cp change/app/integrations/andromeda-search.php runtime/app/integrations/andromeda-search.php
           cp change/app/integrations/andromeda-normalizer.php runtime/app/integrations/andromeda-normalizer.php
           cp change/app/integrations/andromeda-pagination.php runtime/app/integrations/andromeda-pagination.php
           cp change/app/integrations/three-provider-meal-family.php runtime/app/integrations/three-provider-meal-family.php
