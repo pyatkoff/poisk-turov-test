@@ -1,7 +1,7 @@
 name: MATCH remaining Tourvisor search30 v2
 on:
   push:
-    branches: [ops/match-remaining-tv-search30-1971-20260921-v1]
+    branches: [ops/match-remaining-tv-search30-1971-20260921-v2]
     paths:
       - scripts/diagnostics/hotel_match_remaining_tv_search30_plan_v2.php
       - scripts/diagnostics/hotel_match_remaining_tv_search30_provider_v2.py
