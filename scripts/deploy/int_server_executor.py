@@ -278,6 +278,7 @@ def local_read(scopes):
     rows=[]
     for scope in scopes[:20]:
         php=r'''declare(strict_types=1);error_reporting(0);ini_set('display_errors','0');
+try{
 $root=getenv('HOME').'/www/anytoour.ru';
 $f=$root.'/_preview/search3-local-candidate/data/search3-local-results-read-v1.php';
 if(!is_file($f)||is_link($f))throw new RuntimeException('local_reader_missing');
@@ -286,7 +287,17 @@ $r=search3_local_results_build(v2_data_db(),$p,new DateTimeImmutable('now',new D
 echo json_encode(['scopeDigest'=>$r['scopeDigest'],'hotelCount'=>$r['hotelCount'],
 'offerCount'=>$r['offerCount'],'storedOfferCount'=>$r['storedOfferCount'],
 'providerOfferCounts'=>(array)$r['providerOfferCounts'],
-'withheldOfferCount'=>$r['withheldOfferCount'],'matchMode'=>$r['matchMode']],JSON_THROW_ON_ERROR);'''
+'withheldOfferCount'=>$r['withheldOfferCount'],'matchMode'=>$r['matchMode']],JSON_THROW_ON_ERROR);
+}catch(Throwable $e){$m=$e->getMessage();$code=match(true){
+$m==='local_reader_missing'=>'LOCAL_READER_MISSING',
+$m==='Dedicated MySQL connection required'=>'LOCAL_DB_CONNECTION',
+$m==='Unsupported AnyTour offer-store schema'=>'LOCAL_SCHEMA',
+$m==='Offer-store scope mismatch'=>'LOCAL_SCOPE_MISMATCH',
+$m==='Stay mapping batch mismatch'=>'LOCAL_STAY_MAPPING',
+str_contains($m,'undefined function v2_data_db')=>'LOCAL_DB_FUNCTION_MISSING',
+default=>'LOCAL_UNCLASSIFIED'};
+echo json_encode(['readbackError'=>$code,'errorClass'=>get_class($e),
+'errorSha256'=>hash('sha256',$m)],JSON_THROW_ON_ERROR);}'''
         params={'departureId':str(scope['departureId']),'countryId':str(scope['countryId']),
           'dateFrom':scope['dateFrom'],'dateTo':scope['dateTo'],
           'nightsFrom':scope['nights'],'nightsTo':scope['nights'],
@@ -307,6 +318,10 @@ echo json_encode(['scopeDigest'=>$r['scopeDigest'],'hotelCount'=>$r['hotelCount'
         try: parsed=json.loads(run.stdout)
         except Exception:
             rows.append({'status':'failed','reason':'local_readback_json',**meta})
+            continue
+        if isinstance(parsed,dict) and isinstance(parsed.get('readbackError'),str):
+            rows.append({'status':'failed','reason':parsed['readbackError'],
+                         'errorClass':parsed.get('errorClass'),'errorSha256':parsed.get('errorSha256'),**meta})
             continue
         required={'scopeDigest','hotelCount','offerCount','storedOfferCount','providerOfferCounts','withheldOfferCount','matchMode'}
         if not isinstance(parsed,dict) or not required.issubset(parsed):
