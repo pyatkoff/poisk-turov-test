@@ -219,7 +219,7 @@ def reconcile_target(target_name):
     if target_name.startswith('int-andromeda-'):
         config=project/'_preview/search3-anex-candidate/.andromeda-private.php'
         if not safe_file(config,65536): fail('andromeda_private_config_missing')
-        php="\$c=require \$argv[1];\$p=\$c['catalog_path']??null;if(!is_string(\$p)||\$p==='')exit(2);echo dirname(\$p);"
+        php="$c=require $argv[1];$p=$c['catalog_path']??null;if(!is_string($p)||$p==='')exit(2);echo dirname($p);"
         q=subprocess.run(['php','-r',php,str(config)],capture_output=True,text=True,timeout=20)
         if q.returncode or not q.stdout.strip(): fail('andromeda_catalog_root')
         base=pathlib.Path(q.stdout.strip())
