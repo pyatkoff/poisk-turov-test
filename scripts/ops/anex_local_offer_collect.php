@@ -110,11 +110,19 @@ $programRecorder=static function(array &$collectorState)use($pdo):array{
 };
 $persistenceFailure=null;
 $requireAutosave=static function(mixed $receipt,string $phase)use(&$persistenceFailure):void{
-    if(is_array($receipt)&&(($receipt['published']??null)===true
-        ||(($receipt['published']??null)===false
-            &&in_array($receipt['reason']??null,['already_published','no_final_price_ready','staged'],true))))return;
-    // A write failure may be an unknown committed outcome. Stop this invocation;
-    // do not spend more supplier budget or retry it through finalization.
+    if(is_array($receipt)){
+        $published=($receipt['published']??null)===true;
+        $reason=($receipt['published']??null)===false?($receipt['reason']??null):null;
+        // During a bounded APD batch, a known no-final receipt is only an
+        // intermediate no-write state and may safely continue discovery. Final
+        // completion is stricter: after authoritative-empty support, an exact
+        // zero scope publishes, so final no_final_price_ready proves that no
+        // canonical snapshot/refresh was written and must not exit successfully.
+        if($published||$reason==='already_published'||$reason==='staged'
+            ||($phase==='batch'&&$reason==='no_final_price_ready'))return;
+    }
+    // A failed or unpersisted finalization must stop this invocation. Preserve the
+    // exact receipt so a parent/operator can reconcile it without replaying supplier work.
     $persistenceFailure=['phase'=>$phase,'receipt'=>$receipt];
     throw new RuntimeException('ANEX_COLLECTOR_AUTOSAVE');
 };
