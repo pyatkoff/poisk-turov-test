@@ -131,7 +131,13 @@ try{
         $request,$state,$searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch
     );
     if(($result['status']??null)==='complete'&&function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
-        $result['snapshot_finalize']=anytour_anex_anytour_offer_autosave_finalize_runtime($state);
+        // Only literal zero discovery can expire a prior exact scope as authoritative empty.
+        // Any grouped/charter/regular candidate, even if unmapped or not price-ready,
+        // keeps the previous canonical snapshot unless normal entries are published.
+        $authoritativeEmpty=($result['grouped_candidates']??null)===0
+            &&($result['charter_concrete_candidates']??null)===0
+            &&($result['regular_concrete_candidates']??null)===0;
+        $result['snapshot_finalize']=anytour_anex_anytour_offer_autosave_finalize_runtime($state,$authoritativeEmpty);
         $requireAutosave($result['snapshot_finalize'],'finalize');
     }elseif(function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
         // A bounded/incomplete discovery is not authoritative for canonical freshness.
