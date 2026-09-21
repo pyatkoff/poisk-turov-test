@@ -215,6 +215,10 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         $autosaveComplete = ($save['published'] ?? null) === true
             || (($save['published'] ?? null) === false
                 && ($save['reason'] ?? null) === 'already_published');
+        $confirmationRequiredCount = $save['confirmationRequiredOfferCount'] ?? null;
+        if (!is_int($confirmationRequiredCount) || $confirmationRequiredCount < 0) {
+            $confirmationRequiredCount = null;
+        }
 
         return [
             'source' => 'andromeda-local-offer-collector-v1',
@@ -232,6 +236,7 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             'autosave_published' => ($save['published'] ?? false) === true,
             'autosave_reason' => $save['reason'] ?? null,
             'ready_offer_count' => (int)($save['readyOfferCount'] ?? 0),
+            'confirmation_required_offer_count' => $confirmationRequiredCount,
             'autosave' => $save,
             'selection_authority' => false,
             'booking_calls' => 0,
