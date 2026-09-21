@@ -23,9 +23,11 @@ final class AnyTourAnexOfferAutosaveV1
     }
 
     /**
-     * Consume one APD batch and publish the union of all price-ready offers observed
-     * in this search session. Non-ready/empty/unknown APD rows remain excluded without
-     * blocking unrelated ready charter offers.
+     * Consume one APD batch and retain the union of all price-ready offers observed
+     * in this search session. Bounded background batches can stage only; canonical
+     * publication is reserved for a caller that has independently proved full drain.
+     * Non-ready/empty/unknown APD rows remain excluded without blocking unrelated
+     * ready charter offers.
      *
      * @param callable(array,array):array $applyAdditional existing anytour_anex_search3_additional_application
      * @param callable(string,string):?int $supplierResolver current accepted ANEX->legacy resolver
@@ -39,7 +41,8 @@ final class AnyTourAnexOfferAutosaveV1
         DateTimeImmutable $now,
         callable $applyAdditional,
         callable $supplierResolver,
-        callable $ingest
+        callable $ingest,
+        bool $publish = true
     ): array {
         if (!self::applicable($state)) {
             return self::receipt(false, 'not_applicable', 0, 0);
@@ -217,6 +220,23 @@ final class AnyTourAnexOfferAutosaveV1
         }
 
         if ($entries === []) return self::receipt(false, 'no_final_price_ready', 0, count($state['anytour_offer_autosave']['offers'] ?? []));
+        $confirmationCount = count(array_filter(
+            $entries,
+            static fn(array $entry): bool => ($entry['confirmation_required'] ?? false) === true
+        ));
+        $readyCount = count($entries) - $confirmationCount;
+        if (!$publish) {
+            return [
+                'source' => 'anex-anytour-offer-autosave-v1',
+                'published' => false,
+                'reason' => 'staged',
+                'readyOfferCount' => $readyCount,
+                'confirmationRequiredOfferCount' => $confirmationCount,
+                'accumulatedOfferCount' => count($state['anytour_offer_autosave']['offers'] ?? []),
+                'selectionAuthority' => false,
+            ];
+        }
+
         $auto = $state['anytour_offer_autosave'];
         $publishDigest = hash('sha256', json_encode(array_map(static function (array $entry): array {
             return [
@@ -229,13 +249,7 @@ final class AnyTourAnexOfferAutosaveV1
             ];
         }, $entries), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
         if (($auto['last_published_digest'] ?? null) === $publishDigest) {
-            // A persisted regular offer still requires price confirmation. Keep the
-            // two states separate even when no new intake is necessary.
-            $confirmationCount = count(array_filter(
-                $entries,
-                static fn(array $entry): bool => ($entry['confirmation_required'] ?? false) === true
-            ));
-            return self::receipt(false, 'already_published', count($entries) - $confirmationCount, count($auto['offers']))
+            return self::receipt(false, 'already_published', $readyCount, count($auto['offers']))
                 + ['confirmationRequiredOfferCount' => $confirmationCount];
         }
 
@@ -387,8 +401,12 @@ final class AnyTourAnexOfferAutosaveV1
  * Best-effort runtime adapter. Persistence failure must never turn a valid supplier
  * response into a user-visible search failure.
  */
-function anytour_anex_anytour_offer_autosave_execute(array $plan, array &$state, array $contextResults): array
-{
+function anytour_anex_anytour_offer_autosave_execute(
+    array $plan,
+    array &$state,
+    array $contextResults,
+    bool $publishComplete = false
+): array {
     if (!AnyTourAnexOfferAutosaveV1::applicable($state)) {
         return ['published' => false, 'reason' => 'not_applicable'];
     }
@@ -397,22 +415,24 @@ function anytour_anex_anytour_offer_autosave_execute(array $plan, array &$state,
             || !function_exists('anytour_anex_search3_additional_application')) {
             return ['published' => false, 'reason' => 'runtime_dependency_unavailable'];
         }
-        $localIngest = getenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE');
-        $candidates = [];
-        if (is_string($localIngest) && $localIngest !== '') $candidates[] = $localIngest;
-        $docroot = $_SERVER['DOCUMENT_ROOT'] ?? null;
-        if (is_string($docroot) && $docroot !== '') {
-            $candidates[] = rtrim($docroot, '/') . '/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php';
-        }
-        $candidates[] = dirname(__DIR__, 2) . '/v2/data/anytour-offer-snapshot-ingest-v1.php';
-        foreach ($candidates as $candidate) {
-            if (is_string($candidate) && is_file($candidate)) {
-                require_once $candidate;
-                break;
+        if ($publishComplete) {
+            $localIngest = getenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE');
+            $candidates = [];
+            if (is_string($localIngest) && $localIngest !== '') $candidates[] = $localIngest;
+            $docroot = $_SERVER['DOCUMENT_ROOT'] ?? null;
+            if (is_string($docroot) && $docroot !== '') {
+                $candidates[] = rtrim($docroot, '/') . '/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php';
             }
-        }
-        if (!class_exists('AnyTourOfferSnapshotIngestV1')) {
-            return ['published' => false, 'reason' => 'local_ingest_unavailable'];
+            $candidates[] = dirname(__DIR__, 2) . '/v2/data/anytour-offer-snapshot-ingest-v1.php';
+            foreach ($candidates as $candidate) {
+                if (is_string($candidate) && is_file($candidate)) {
+                    require_once $candidate;
+                    break;
+                }
+            }
+            if (!class_exists('AnyTourOfferSnapshotIngestV1')) {
+                return ['published' => false, 'reason' => 'local_ingest_unavailable'];
+            }
         }
 
         $db = v2_data_db();
@@ -428,12 +448,14 @@ function anytour_anex_anytour_offer_autosave_execute(array $plan, array &$state,
                 return anytour_anex_search3_additional_application($evidence, $offer);
             },
             $resolver,
-            static function (string $provider, array $search, array $rows, DateTimeImmutable $at) use ($db): array {
-                // A bounded APD accumulator is not an authoritative full search.
-                // Preserve unseen eligible rows for their existing LOCAL listing TTL.
-                // Missing additive support must fail closed, never replace the cohort.
-                return AnyTourOfferSnapshotIngestV1::mergePartialSnapshot($db, $provider, $search, $rows, $at);
-            }
+            $publishComplete
+                ? static function (string $provider, array $search, array $rows, DateTimeImmutable $at) use ($db): array {
+                    return AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db, $provider, $search, $rows, $at);
+                }
+                : static function (): array {
+                    throw new LogicException('ANEX_ANYTOUR_STAGED_INGEST_CALLED');
+                },
+            $publishComplete
         );
         if (($result['published'] ?? false) === true) {
             error_log('ANEX_ANYTOUR_AUTOSAVE_OK offers=' . (int)($result['readyOfferCount'] ?? 0));
@@ -445,13 +467,12 @@ function anytour_anex_anytour_offer_autosave_execute(array $plan, array &$state,
     }
 }
 
-
 function anytour_anex_anytour_offer_autosave_runtime(array $plan, array &$state, array $contextResults): array
 {
-    return anytour_anex_anytour_offer_autosave_execute($plan,$state,$contextResults);
+    return anytour_anex_anytour_offer_autosave_execute($plan,$state,$contextResults,false);
 }
 
 function anytour_anex_anytour_offer_autosave_finalize_runtime(array &$state): array
 {
-    return anytour_anex_anytour_offer_autosave_execute(['offers'=>[]],$state,[]);
+    return anytour_anex_anytour_offer_autosave_execute(['offers'=>[]],$state,[],true);
 }

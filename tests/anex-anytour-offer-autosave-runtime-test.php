@@ -106,20 +106,16 @@ $oldOverride = getenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE');
 putenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE=' . __FILE__);
 try {
     $first = anytour_anex_anytour_offer_autosave_runtime($firstPlan, $runtimeState, $terminal);
-    $kept = isset(AnyTourOfferSnapshotIngestV1::$snapshots[$key][$previousRef]);
     echo 'ANEX_RUNTIME_FIRST_BATCH ' . json_encode([
-        'mode' => AnyTourOfferSnapshotIngestV1::$calls[0]['mode'] ?? null,
-        'prior_preserved' => $kept,
-        'visible_fixture_rows' => count(AnyTourOfferSnapshotIngestV1::$snapshots[$key]),
+        'published' => $first['published'] ?? null,
+        'reason' => $first['reason'] ?? null,
+        'local_calls' => count(AnyTourOfferSnapshotIngestV1::$calls),
+        'prior_preserved' => isset(AnyTourOfferSnapshotIngestV1::$snapshots[$key][$previousRef]),
     ], JSON_THROW_ON_ERROR) . "\n";
-    runtimeCheck($first['published'] === true && $first['readyOfferCount'] === 1, 'first batch really reaches runtime intake');
-    runtimeCheck($kept && count(AnyTourOfferSnapshotIngestV1::$snapshots[$key]) === 2, 'first partial batch preserves prior offer');
-    runtimeCheck(AnyTourOfferSnapshotIngestV1::$calls[0]['mode'] === 'partial_additive', 'existing additive method selected');
-    runtimeCheck(AnyTourOfferSnapshotIngestV1::$calls[0]['provider'] === 'anex'
-        && AnyTourOfferSnapshotIngestV1::$calls[0]['params'] === $params, 'exact provider and search forwarded');
-    $firstRow = AnyTourOfferSnapshotIngestV1::$calls[0]['rows'][0];
-    runtimeCheck($firstRow['anytour_hotel_id'] === 502 && $firstRow['dto']['finalPrice'] === '110000'
-        && $firstRow['dto']['finalPriceReady'] === true, 'real canonical DTO and protected price unchanged');
+    runtimeCheck($first['published'] === false && $first['reason'] === 'staged'
+        && $first['readyOfferCount'] === 1, 'first batch stages exact ready count');
+    runtimeCheck(AnyTourOfferSnapshotIngestV1::$calls === [], 'first bounded batch must not create LOCAL refresh');
+    runtimeCheck(AnyTourOfferSnapshotIngestV1::$snapshots[$key] === $previousIndex, 'first staged batch keeps prior canonical snapshot untouched');
 
     $secondRef = 'anex_online:' . str_repeat('e', 64);
     $secondEntry = $baseState['gateway']['saved_offers']['offers'][$offerRef];
@@ -127,28 +123,41 @@ try {
     $runtimeState['gateway']['saved_offers']['offers'][$secondRef] = $secondEntry;
     $secondPlan = ['offers' => [['offer_ref' => $secondRef, 'local_hotel_id' => 3417, 'context_digest' => $digest]]];
     $second = anytour_anex_anytour_offer_autosave_runtime($secondPlan, $runtimeState, $terminal);
-    runtimeCheck($second['published'] === true && $second['readyOfferCount'] === 2, 'later cumulative batch published');
-    runtimeCheck(count(AnyTourOfferSnapshotIngestV1::$snapshots[$key]) === 3, 'prior plus both fresh offers preserved');
-    runtimeCheck(AnyTourOfferSnapshotIngestV1::$snapshots[$key][$previousRef] === $previousIndex[$previousRef], 'prior DTO and expiry untouched');
-    runtimeCheck(AnyTourOfferSnapshotIngestV1::$snapshots['unrelated-scope'] === $previousIndex, 'unrelated scope untouched');
+    runtimeCheck($second['published'] === false && $second['reason'] === 'staged'
+        && $second['readyOfferCount'] === 2, 'later cumulative batch remains staged');
+    runtimeCheck(AnyTourOfferSnapshotIngestV1::$calls === []
+        && AnyTourOfferSnapshotIngestV1::$snapshots[$key] === $previousIndex, 'second staged batch still has no canonical side effect');
+    runtimeCheck(AnyTourOfferSnapshotIngestV1::$snapshots['unrelated-scope'] === $previousIndex, 'unrelated scope untouched while staging');
+
     $final = anytour_anex_anytour_offer_autosave_finalize_runtime($runtimeState);
-    runtimeCheck($final['published'] === false && $final['reason'] === 'already_published'
-        && count(AnyTourOfferSnapshotIngestV1::$calls) === 2, 'finalize does not repeat or replace partial intake');
+    runtimeCheck($final['published'] === true && $final['readyOfferCount'] === 2
+        && count(AnyTourOfferSnapshotIngestV1::$calls) === 1, 'finalize publishes accumulated union exactly once');
+    runtimeCheck(AnyTourOfferSnapshotIngestV1::$calls[0]['mode'] === 'complete_replace', 'finalize must create authoritative complete refresh');
+    runtimeCheck(AnyTourOfferSnapshotIngestV1::$calls[0]['provider'] === 'anex'
+        && AnyTourOfferSnapshotIngestV1::$calls[0]['params'] === $params, 'final exact provider and search forwarded');
+    runtimeCheck(count(AnyTourOfferSnapshotIngestV1::$snapshots[$key]) === 2
+        && !isset(AnyTourOfferSnapshotIngestV1::$snapshots[$key][$previousRef]), 'complete final replaces stale prior scope with exact accumulated union');
+    $finalAgain = anytour_anex_anytour_offer_autosave_finalize_runtime($runtimeState);
+    runtimeCheck($finalAgain['published'] === false && $finalAgain['reason'] === 'already_published'
+        && count(AnyTourOfferSnapshotIngestV1::$calls) === 1, 'identical finalization does not repeat intake');
 
     $before = AnyTourOfferSnapshotIngestV1::$snapshots;
     $unknownState = $baseState;
     $unknown = anytour_anex_anytour_offer_autosave_runtime($plan, $unknownState, []);
     runtimeCheck($unknown['published'] === false && $unknown['reason'] === 'no_final_price_ready'
-        && count(AnyTourOfferSnapshotIngestV1::$calls) === 2, 'unknown fuel never makes an empty destructive intake');
-    AnyTourOfferSnapshotIngestV1::$fail = true;
+        && count(AnyTourOfferSnapshotIngestV1::$calls) === 1, 'unknown fuel never makes an empty destructive intake');
+
     $failedState = $baseState;
-    $failed = anytour_anex_anytour_offer_autosave_runtime($plan, $failedState, $terminal);
-    runtimeCheck($failed['published'] === false && $failed['reason'] === 'autosave_failed', 'intake failure remains fail-closed');
-    runtimeCheck(count(AnyTourOfferSnapshotIngestV1::$calls) === 3
-        && ($failedState['anytour_offer_autosave']['last_published_digest'] ?? null) === null, 'failed intake not marked published or retried');
+    $staged = anytour_anex_anytour_offer_autosave_runtime($plan, $failedState, $terminal);
+    runtimeCheck($staged['reason'] === 'staged' && count(AnyTourOfferSnapshotIngestV1::$calls) === 1, 'failure fixture stages before final intake');
+    AnyTourOfferSnapshotIngestV1::$fail = true;
+    $failed = anytour_anex_anytour_offer_autosave_finalize_runtime($failedState);
+    runtimeCheck($failed['published'] === false && $failed['reason'] === 'autosave_failed', 'final complete intake failure remains fail-closed');
+    runtimeCheck(count(AnyTourOfferSnapshotIngestV1::$calls) === 2
+        && ($failedState['anytour_offer_autosave']['last_published_digest'] ?? null) === null, 'failed final intake not marked published or retried');
     runtimeCheck(AnyTourOfferSnapshotIngestV1::$snapshots === $before, 'fixture failure leaves earlier results intact');
-    runtimeCheck(array_unique(array_column(AnyTourOfferSnapshotIngestV1::$calls, 'mode')) === ['partial_additive'], 'no replacement fallback');
+    runtimeCheck(array_unique(array_column(AnyTourOfferSnapshotIngestV1::$calls, 'mode')) === ['complete_replace'], 'bounded batches never fall back to partial LOCAL intake');
 } finally {
     putenv($oldOverride === false ? 'ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE' : 'ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE=' . $oldOverride);
 }
-echo "ANEX_RUNTIME_PARTIAL_PRESERVATION_OK batches=2 prior=1 final_no_replay=1 unknown=1 failed_intake=1 supplier=0 real_db=0\n";
+echo "ANEX_RUNTIME_FINAL_ONLY_OK staged_batches=2 local_before_final=0 final_complete_replace=1 final_idempotent=1 unknown=1 failed_final=1 supplier=0 real_db=0\n";
