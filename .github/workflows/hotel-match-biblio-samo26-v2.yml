@@ -1,0 +1,161 @@
+name: MATCH Biblio SAMO26 v2 identity acquisition
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_biblio_samo26_v2.php
+      - .github/workflows/hotel-match-biblio-samo26-v2.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-biblio-samo26-1971-20260922-v2, cancel-in-progress: false}
+env:
+  OP: hotel-match-biblio-samo26-1971-20260922-v2
+  BASE: e35c53a3846252ece9da882e37e8394014e41d16
+  SCRIPT: scripts/diagnostics/hotel_match_biblio_samo26_v2.php
+  CLAIM: '5768304851'
+  V1_RUN: '35661898681'
+  V9_ARTIFACT: '10634643226'
+  RECON_ARTIFACT: '10661395178'
+  RECON_RUN: '35647446686'
+  RECON_HEAD: '27d4742b37286eb21fc5b4a21db951da25c1a47b'
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source, predecessor pre-access failure and no-replay membership
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE"..HEAD | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-biblio-samo26-v2.yml scripts/diagnostics/hotel_match_biblio_samo26_v2.php "
+          php -l "$SCRIPT"; php "$SCRIPT" --self-test
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$V1_RUN/jobs" > input/v1-jobs.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RECON_RUN" > input/recon-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$RECON_ARTIFACT/zip" > input/recon.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$V9_ARTIFACT/zip" > input/v9.zip
+          echo '0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0  input/v9.zip' | sha256sum -c -
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,urllib.parse,zipfile
+          c=json.load(open('input/claim.json'))
+          assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url']=='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/issues/2530'
+          for text in [os.environ['OP'],'PRE-ACCESS failure','supplier/Tourvisor/SAMO/Andromeda calls0','Exact26 membership','max26','DB READ ONLY/writes0']:
+              assert text in c['body'],text
+          v1=json.load(open('input/v1-jobs.json'))['jobs'];assert len(v1)==1
+          steps={s['number']:s for s in v1[0]['steps']}
+          assert v1[0]['conclusion']=='failure' and steps[3]['conclusion']=='failure'
+          assert steps[5]['conclusion']=='skipped' and steps[7]['conclusion']=='skipped'
+          rr=json.load(open('input/recon-run.json'))
+          assert str(rr['id'])==os.environ['RECON_RUN'] and rr['head_sha']==os.environ['RECON_HEAD'] and rr['status']=='completed' and rr['conclusion']=='success'
+          with zipfile.ZipFile('input/recon.zip') as z:
+              names=[n for n in z.namelist() if n.endswith('summary.json')];assert len(names)==1,names;r=json.loads(z.read(names[0]))
+          assert r['remote_operation']=='hotel-match-biblio-samo30-1971-20260921-v3' and r['state']=='terminal_failed_no_replay' and r['durable_andromeda_calls']==5
+          assert r['login_reserved'] is True and r['login_result'] is True and r['price_reserved']==4 and r['price_results']==3
+          files=set(r['remote_files']);assert {'call-1096-reserved.json','call-1096-result.json','call-1098-reserved.json','call-1098-result.json','call-1102-reserved.json','call-1102-result.json','call-1105-reserved.json','failure.json','login-reserved.json','login-result.json','started.json'} <= files
+          ids=[1108,1111,1113,1114,1118,1134,1137,1139,1140,1141,1143,1146,1161,1162,1177,1245,1246,1249,1250,1252,1257,1262,1279,1282,1284,1292];excluded={1096,1098,1102,1105};assert not (set(ids)&excluded)
+          with zipfile.ZipFile('input/v9.zip') as z:b=z.read('reconciliation.json')
+          assert hashlib.sha256(b).hexdigest()=='0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814'
+          v=json.loads(b);found={}
+          for e in v['source_result']['edges']:
+              tv=int(e.get('tv_hotel_id') or 0)
+              if e.get('operator_id')!=18 or tv not in ids:continue
+              link=e['operator_link'];assert hashlib.sha256(link.encode()).hexdigest()==e['operator_link_sha256']
+              q=urllib.parse.parse_qs(urllib.parse.urlsplit(link).query)
+              if len(q.get('F4',[]))==1 and q.get('data')==['07.10.2026'] and q.get('f7')==['7']:
+                  assert tv not in found;found[tv]={'tv':tv,'f4':q['F4'][0],'operator_link_sha256':e['operator_link_sha256'],'tour_id':e.get('tour_id'),'search_id':e.get('search_id'),'batch':e.get('batch')}
+          assert sorted(found)==ids and len({x['f4'] for x in found.values()})==26
+          pathlib.Path('input/cohort.json').write_text(json.dumps([found[i] for i in ids],ensure_ascii=False,separators=(',',':'))+'\n')
+          PY
+          export SCRIPT_SHA=$(sha256sum "$SCRIPT"|cut -d' ' -f1)
+          export COHORT_SHA=$(sha256sum input/cohort.json|cut -d' ' -f1)
+          export DEP_CLIENT_SHA=$(sha256sum app/integrations/andromeda-client.php|cut -d' ' -f1)
+          export DEP_TRANSPORT_SHA=$(sha256sum app/integrations/andromeda-transport.php|cut -d' ' -f1)
+          export DEP_FAILURE_SHA=$(sha256sum app/integrations/andromeda-network-transport-failure.php|cut -d' ' -f1)
+          printf 'SCRIPT_SHA=%s\nCOHORT_SHA=%s\nDEP_CLIENT_SHA=%s\nDEP_TRANSPORT_SHA=%s\nDEP_FAILURE_SHA=%s\n' "$SCRIPT_SHA" "$COHORT_SHA" "$DEP_CLIENT_SHA" "$DEP_TRANSPORT_SHA" "$DEP_FAILURE_SHA" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          import datetime,json,os,pathlib
+          r={'operation':os.environ['OP'],'state':'reserved_before_db_and_supplier','source_sha':os.environ['HEAD'],'script_sha256':os.environ['SCRIPT_SHA'],'cohort_sha256':os.environ['COHORT_SHA'],'tv_count':26,'excluded_consumed':[1096,1098,1102,1105],'max_supplier_calls':27,'database_writes':0,'mapping_writes':0,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'no_replay':True}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-biblio-samo26-v2-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f:r=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if r and max(r,key=lambda x:x['id'])['status']=='completed':assert max(r,key=lambda x:x['id'])['conclusion']=='success';break
+              time.sleep(5)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Fail closed on concurrent supplier acquisition
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?status=in_progress&per_page=100'
+          req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+          with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+          blocked=[]
+          for r in runs:
+              if str(r['id'])==os.environ['GITHUB_RUN_ID'] or r['name']=='Security guard':continue
+              text=(r.get('name','')+' '+r.get('path','')+' '+r.get('head_branch','')).lower()
+              if ('andromeda' in text or 'anex' in text or 'tourvisor' in text or 'hotel-match' in text or 'match-biblio' in text):blocked.append((r['id'],r['name'],r.get('head_branch')))
+          assert not blocked,blocked
+          PY
+      - name: Execute bounded supplier acquisition and always recover durable state
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/k";known="$RUNNER_TEMP/h";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          r="$USER@$HOST";op=".anytoour-match/operations/$OP";s="${SCRIPT##*/}";a=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          ssh "${a[@]}" "$r" "set -eu; test -f \"\$HOME/www/anytoour.ru/_preview/search3-anex-candidate/.andromeda-private.php\"; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/.anytoour-match/operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+          cp input/cohort.json terminal/cohort.json;cp reservation/reservation.json terminal/reservation.json
+          scp "${a[@]}" "$SCRIPT" app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php input/cohort.json reservation/reservation.json "$r:$op/payload/"
+          ssh "${a[@]}" "$r" "cd \"\$HOME/$op/payload\" && echo '$SCRIPT_SHA  $s'|sha256sum -c - && echo '$COHORT_SHA  cohort.json'|sha256sum -c - && echo '$DEP_CLIENT_SHA  andromeda-client.php'|sha256sum -c - && echo '$DEP_TRANSPORT_SHA  andromeda-transport.php'|sha256sum -c - && echo '$DEP_FAILURE_SHA  andromeda-network-transport-failure.php'|sha256sum -c - && php -l '$s' && php '$s' --self-test" >terminal/preflight
+          set +e
+          ssh "${a[@]}" "$r" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/$s\" --execute" >terminal/stdout 2>terminal/stderr
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/remote-exit.txt
+          ssh "${a[@]}" "$r" "set -eu; cd \"\$HOME/$op\"; for f in started.json failure.json login-reserved.json login-result.json result.json receipt.json call-*-reserved.json call-*-result.json; do if [ -f \"\$f\" ]; then printf '%s\\0' \"\$f\"; fi; done | tar --null -T - -czf -" >terminal/server.tgz
+      - name: Verify terminal evidence and exact no-replay accounting
+        env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          root=pathlib.Path('terminal/extracted');root.mkdir()
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              names=t.getnames();assert names and all('/' not in n for n in names)
+              for m in t.getmembers():assert m.isfile();(root/m.name).write_bytes(t.extractfile(m).read())
+          docs={p.name:json.loads(p.read_text()) for p in root.glob('*.json')};started=docs.get('started.json');assert started and started['operation']==os.environ['OP'] and started['source_sha']==os.environ['HEAD']
+          ids=[1108,1111,1113,1114,1118,1134,1137,1139,1140,1141,1143,1146,1161,1162,1177,1245,1246,1249,1250,1252,1257,1262,1279,1282,1284,1292];excluded={1096,1098,1102,1105}
+          reserved=sorted(root.glob('call-*-reserved.json'));results=sorted(root.glob('call-*-result.json'));result=docs.get('result.json');receipt=docs.get('receipt.json');failure=docs.get('failure.json')
+          if result and receipt:
+              assert not failure and result['state']==receipt['state']=='completed_read_only';assert result['database_writes']==result['mapping_writes']==0 and result['tourvisor_calls']==result['anex_calls']==0
+              assert [int(x['tv']) for x in result['rows']]==ids and not ({int(x['tv']) for x in result['rows']}&excluded);assert sum(result['counts'].values())==26
+              assert receipt['result_sha256']==hashlib.sha256((root/'result.json').read_bytes()).hexdigest();attempts=int(result.get('supplier_price_attempts',0));assert len(reserved)==len(results)==attempts
+              assert set(p.name.replace('call-','').replace('-reserved.json','') for p in reserved)==set(p.name.replace('call-','').replace('-result.json','') for p in results);assert result['andromeda_calls']==(1+attempts if attempts else 0)
+              for row in result['rows']:
+                  if row['state']=='confirmed_f4_equal':assert row['operator_native_ids']==[row['f4']]
+              state='terminal_completed';summary={'operation':os.environ['OP'],'state':state,'andromeda_calls':result['andromeda_calls'],'supplier_price_attempts':attempts,'counts':result['counts'],'price_reserved':len(reserved),'price_results':len(results),'database_writes':0,'mapping_writes':0,'result_sha256':receipt['result_sha256'],'no_replay':True}
+          elif failure:
+              assert not result and not receipt and failure['state']=='failed_no_replay' and failure['database_writes']==failure['mapping_writes']==0;state='terminal_failed_no_replay';summary={'operation':os.environ['OP'],'state':state,'andromeda_calls':failure.get('andromeda_calls'),'failure_at_tv':failure.get('failure_at_tv'),'error_class':failure.get('error_class'),'price_reserved':len(reserved),'price_results':len(results),'database_writes':0,'mapping_writes':0,'no_replay':True}
+          else:raise AssertionError('unknown_durable_state')
+          summary['file_sha256']={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in root.glob('*.json')};pathlib.Path('terminal/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          if state!='terminal_completed':raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-biblio-samo26-v2-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
