@@ -27,7 +27,8 @@ final class AnyTourAnexOfferAutosaveV1
      * in this search session. Bounded background batches can stage only; canonical
      * publication is reserved for a caller that has independently proved full drain.
      * Non-ready/empty/unknown APD rows remain excluded without blocking unrelated
-     * ready charter offers.
+     * ready charter offers. Authoritative empty is accepted only as an explicit final
+     * caller assertion after collector-level zero-candidate drain proof.
      *
      * @param callable(array,array):array $applyAdditional existing anytour_anex_search3_additional_application
      * @param callable(string,string):?int $supplierResolver current accepted ANEX->legacy resolver
@@ -42,7 +43,8 @@ final class AnyTourAnexOfferAutosaveV1
         callable $applyAdditional,
         callable $supplierResolver,
         callable $ingest,
-        bool $publish = true
+        bool $publish = true,
+        bool $authoritativeEmpty = false
     ): array {
         if (!self::applicable($state)) {
             return self::receipt(false, 'not_applicable', 0, 0);
@@ -219,7 +221,9 @@ final class AnyTourAnexOfferAutosaveV1
             ];
         }
 
-        if ($entries === []) return self::receipt(false, 'no_final_price_ready', 0, count($state['anytour_offer_autosave']['offers'] ?? []));
+        if ($entries === [] && !$authoritativeEmpty) {
+            return self::receipt(false, 'no_final_price_ready', 0, count($state['anytour_offer_autosave']['offers'] ?? []));
+        }
         $confirmationCount = count(array_filter(
             $entries,
             static fn(array $entry): bool => ($entry['confirmation_required'] ?? false) === true
@@ -255,7 +259,7 @@ final class AnyTourAnexOfferAutosaveV1
 
         $result = AnyTourIntOfferSnapshotProducerV1::produce('anex', $state['params'], [
             'complete' => true,
-            'authoritative_empty' => false,
+            'authoritative_empty' => $authoritativeEmpty && $entries === [],
             'offers' => $entries,
         ], $now, $ingest);
         if (($result['published'] ?? null) === true) {
@@ -405,7 +409,8 @@ function anytour_anex_anytour_offer_autosave_execute(
     array $plan,
     array &$state,
     array $contextResults,
-    bool $publishComplete = false
+    bool $publishComplete = false,
+    bool $authoritativeEmpty = false
 ): array {
     if (!AnyTourAnexOfferAutosaveV1::applicable($state)) {
         return ['published' => false, 'reason' => 'not_applicable'];
@@ -414,6 +419,9 @@ function anytour_anex_anytour_offer_autosave_execute(
         if (!function_exists('v2_data_db') || !class_exists('AnyTourAnexSearchMappingRegistry')
             || !function_exists('anytour_anex_search3_additional_application')) {
             return ['published' => false, 'reason' => 'runtime_dependency_unavailable'];
+        }
+        if ($authoritativeEmpty && !$publishComplete) {
+            return ['published' => false, 'reason' => 'authoritative_empty_requires_finalization'];
         }
         if ($publishComplete) {
             $localIngest = getenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE');
@@ -455,7 +463,8 @@ function anytour_anex_anytour_offer_autosave_execute(
                 : static function (): array {
                     throw new LogicException('ANEX_ANYTOUR_STAGED_INGEST_CALLED');
                 },
-            $publishComplete
+            $publishComplete,
+            $authoritativeEmpty
         );
         if (($result['published'] ?? false) === true) {
             error_log('ANEX_ANYTOUR_AUTOSAVE_OK offers=' . (int)($result['readyOfferCount'] ?? 0));
@@ -469,10 +478,10 @@ function anytour_anex_anytour_offer_autosave_execute(
 
 function anytour_anex_anytour_offer_autosave_runtime(array $plan, array &$state, array $contextResults): array
 {
-    return anytour_anex_anytour_offer_autosave_execute($plan,$state,$contextResults,false);
+    return anytour_anex_anytour_offer_autosave_execute($plan,$state,$contextResults,false,false);
 }
 
-function anytour_anex_anytour_offer_autosave_finalize_runtime(array &$state): array
+function anytour_anex_anytour_offer_autosave_finalize_runtime(array &$state, bool $authoritativeEmpty = false): array
 {
-    return anytour_anex_anytour_offer_autosave_execute(['offers'=>[]],$state,[],true);
+    return anytour_anex_anytour_offer_autosave_execute(['offers'=>[]],$state,[],true,$authoritativeEmpty);
 }
