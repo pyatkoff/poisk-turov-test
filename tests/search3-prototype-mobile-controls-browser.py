@@ -18,13 +18,23 @@ EVIDENCE.mkdir(parents=True, exist_ok=True)
 FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
 <link rel=\"stylesheet\" href=\"/styles.css\"><link rel=\"stylesheet\" href=\"/mobile-controls-v1.css\">
-</head><body><main style=\"padding:16px\">
+</head><body><main style=\"padding:16px;display:grid;gap:18px\">
 <label class=\"sort-label\">Сортировка отелей <select><option>Рекомендуемые</option></select></label>
-<div class=\"offers-section\" style=\"margin-top:24px\"><div class=\"offer-list-toolbar\">Сортировка предложений <select><option>Сначала дешевле</option></select></div>
-<div class=\"offer-controls\" style=\"margin-top:16px\"><select><option>Номер FAMILY SEA VIEW · AI · 7 ночей</option></select></div></div>
-<div class=\"results-toolbar\" style=\"margin-top:24px\"><button class=\"secondary drawer-trigger\">Фильтры</button><div class=\"quick-chips\"><button class=\"chip\">Первая линия</button><button class=\"chip\">Для семьи</button></div></div>
+<div class=\"offers-section\"><div class=\"offer-list-toolbar\">Сортировка предложений <select><option>Сначала дешевле</option></select></div>
+<div class=\"offer-controls\" style=\"margin-top:12px\"><select><option>Номер FAMILY SEA VIEW · AI · 7 ночей</option></select></div></div>
+<div class=\"results-toolbar\"><button class=\"secondary drawer-trigger\">Фильтры</button><div class=\"quick-chips\"><button class=\"chip\">Первая линия</button><button class=\"chip\">Для семьи</button></div></div>
 <div class=\"active-filters\"><button class=\"active-filter\">5 ★</button></div>
-<aside class=\"filter-panel open\" style=\"position:static;display:block;width:100%;max-height:none;margin-top:16px\"><div class=\"filter-top\"><h3>Фильтры</h3><button class=\"icon-button mobile-close\" aria-label=\"Закрыть\">×</button></div></aside>
+<aside class=\"filter-panel open\" style=\"position:static;display:block;width:100%;max-height:none\"><div class=\"filter-top\"><h3>Фильтры</h3><button class=\"icon-button mobile-close\" aria-label=\"Закрыть фильтры\">×</button></div></aside>
+<div class=\"applied-search\" style=\"display:flex\"><button class=\"secondary\" aria-label=\"Изменить поиск\">✎</button></div>
+<div class=\"compact-search\" style=\"position:static;display:flex\"><button class=\"secondary\" aria-label=\"Изменить поиск в закреплённой панели\">✎</button></div>
+<div class=\"hotel-links\"><button class=\"text-button\">Об отеле</button><button class=\"compare-btn\">Сравнить</button></div>
+<div style=\"display:flex;gap:8px;align-items:center\"><button class=\"favorite-button\" style=\"position:static\" aria-label=\"В избранное\">♥</button><button class=\"card-photo-arrow next\" style=\"position:static;margin:0\" aria-label=\"Следующее фото\">›</button></div>
+<div class=\"hotel-more\"><button class=\"text-button\">Показать все туры</button></div>
+<div class=\"offer-price\" style=\"text-align:left\"><button class=\"primary\">Выбрать тур</button></div>
+<div class=\"compare-tray\" style=\"position:static;transform:none;width:max-content;max-width:100%\"><button class=\"primary\">Сравнить</button><button class=\"icon-button\" aria-label=\"Закрыть сравнение\">×</button></div>
+<div class=\"modal-header\" style=\"display:flex\"><button id=\"modal-back\" class=\"icon-button\" aria-label=\"Назад\">←</button><button class=\"icon-button modal-close-probe\" aria-label=\"Закрыть\">×</button></div>
+<div class=\"counter\"><button aria-label=\"Увеличить количество туристов\">+</button></div>
+<div class=\"favorite-item\"><button class=\"icon-button\" aria-label=\"Удалить из избранного\">×</button></div>
 </main></body></html>"""
 
 
@@ -56,7 +66,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def inspect_width(browser, origin, width, screenshot=False):
-    page = browser.new_page(viewport={"width": width, "height": 720})
+    page = browser.new_page(viewport={"width": width, "height": 980})
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     try:
@@ -65,7 +75,7 @@ def inspect_width(browser, origin, width, screenshot=False):
         values = page.evaluate("""() => {
           const style = selector => {
             const value = getComputedStyle(document.querySelector(selector));
-            return {fontSize:value.fontSize, minHeight:value.minHeight, width:value.width, height:value.height};
+            return {fontSize:value.fontSize, minWidth:value.minWidth, minHeight:value.minHeight, width:value.width, height:value.height};
           };
           return {
             hotelSort: style('.sort-label select'),
@@ -76,6 +86,20 @@ def inspect_width(browser, origin, width, screenshot=False):
             preset: style('.quick-chips .chip'),
             activeFilter: style('.active-filter'),
             drawerClose: style('.filter-top .mobile-close'),
+            appliedEdit: style('.applied-search > .secondary'),
+            compactEdit: style('.compact-search .secondary'),
+            hotelLink: style('.hotel-links .text-button'),
+            compare: style('.compare-btn'),
+            favorite: style('.favorite-button'),
+            photoArrow: style('.card-photo-arrow'),
+            expandOffers: style('.hotel-more .text-button'),
+            offerCta: style('.offer-price .primary'),
+            compareCta: style('.compare-tray > .primary'),
+            compareClose: style('.compare-tray .icon-button'),
+            modalBack: style('#modal-back'),
+            modalClose: style('.modal-close-probe'),
+            counter: style('.counter button'),
+            favoriteRemove: style('.favorite-item .icon-button'),
             overflow: document.documentElement.scrollWidth > innerWidth
           };
         }""")
@@ -85,15 +109,24 @@ def inspect_width(browser, origin, width, screenshot=False):
                 assert values[key]["fontSize"] == "16px", (width, key, values[key])
                 assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
             assert values["toolbarFont"] == "16px", (width, values)
-            for key in ("drawer", "preset", "activeFilter"):
+            for key in (
+                "drawer", "preset", "activeFilter", "hotelLink", "compare",
+                "expandOffers", "offerCta", "compareCta"
+            ):
                 assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
-            assert float(values["drawerClose"]["width"].removesuffix("px")) >= 44, (width, values["drawerClose"])
-            assert float(values["drawerClose"]["height"].removesuffix("px")) >= 44, (width, values["drawerClose"])
+            for key in (
+                "drawerClose", "appliedEdit", "compactEdit", "favorite", "photoArrow",
+                "compareClose", "modalBack", "modalClose", "counter", "favoriteRemove"
+            ):
+                assert float(values[key]["width"].removesuffix("px")) >= 44, (width, key, values[key])
+                assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
         else:
             assert mobile is False, width
             assert values["drawer"]["minHeight"] != "44px", (width, values["drawer"])
             assert values["preset"]["minHeight"] != "44px", (width, values["preset"])
             assert values["activeFilter"]["minHeight"] != "44px", (width, values["activeFilter"])
+            for key in ("favorite", "photoArrow", "compareClose", "modalBack", "counter", "favoriteRemove"):
+                assert values[key]["width"] != "44px", (width, key, values[key])
         assert values["overflow"] is False, (width, values)
         assert not errors, errors
         if screenshot:
