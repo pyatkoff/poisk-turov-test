@@ -85,8 +85,9 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   await page.screenshot({path:path.join(evidence,`destination-catalog-${width}.png`)});
   if(width===390){
    await page.evaluate(()=>{Object.defineProperty(visualViewport,'height',{configurable:true,value:440});Object.defineProperty(visualViewport,'offsetTop',{configurable:true,value:30});visualViewport.dispatchEvent(new Event('resize'));});
-   const geometry=await page.locator('#modal').evaluate(m=>{const r=m.getBoundingClientRect(),q=document.querySelector('#destination-query').getBoundingClientRect(),f=document.querySelector('#modal-footer').getBoundingClientRect();return {top:r.top,bottom:r.bottom,query:q.top,footer:f.bottom};});
+   const geometry=await page.locator('#modal').evaluate(m=>{const r=m.getBoundingClientRect(),q=document.querySelector('#destination-query').getBoundingClientRect(),f=document.querySelector('#modal-footer').getBoundingClientRect(),body=document.querySelector('#modal-body').getBoundingClientRect(),rows=[...document.querySelectorAll('.destination-hotel')].map(x=>x.getBoundingClientRect()).filter(x=>x.bottom>body.top&&x.top<body.bottom);return {top:r.top,bottom:r.bottom,query:q.top,footer:f.bottom,visibleHotelRows:rows.length};});
    assert.ok(geometry.top>=30&&geometry.bottom<=470&&geometry.query>=30&&geometry.footer<=470,'Destination controls fit the keyboard-reduced visual viewport');
+   assert.ok(geometry.visibleHotelRows>=2,'Keyboard-open destination keeps multiple hotel rows reachable instead of collapsing to one result');
    await page.screenshot({path:path.join(evidence,'destination-keyboard-390.png')});
    await page.evaluate(()=>{delete visualViewport.height;delete visualViewport.offsetTop;visualViewport.dispatchEvent(new Event('resize'));});
   }
