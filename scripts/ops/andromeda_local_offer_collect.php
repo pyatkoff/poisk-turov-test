@@ -99,9 +99,20 @@ $session='intdb'.bin2hex(random_bytes(12));
 $directory=dirname((string)$config['catalog_path']).'/searches';
 if(!is_dir($directory)||is_link($directory))throw new RuntimeException('ANDROMEDA_COLLECTOR_SEARCH_DIR');
 
-$searchComplete=static function(array $req)use($pdo,$saved,$config,$session):array{
+$lastPageFinishedAt=0.0;
+$searchComplete=static function(array $req)use($pdo,$saved,$config,$session,&$lastPageFinishedAt):array{
     return anytour_andromeda_search3_run_pages($req,
-        static fn(array $pageRequest):array=>anytour_andromeda_search3_run($pageRequest,$pdo,$saved,$config,$session)
+        static function(array $pageRequest)use($pdo,$saved,$config,$session,&$lastPageFinishedAt):array{
+            if($lastPageFinishedAt>0.0){
+                $wait=1.05-(microtime(true)-$lastPageFinishedAt);
+                if($wait>0.0)usleep((int)ceil($wait*1000000));
+            }
+            try{
+                return anytour_andromeda_search3_run($pageRequest,$pdo,$saved,$config,$session);
+            }finally{
+                $lastPageFinishedAt=microtime(true);
+            }
+        }
     );
 };
 

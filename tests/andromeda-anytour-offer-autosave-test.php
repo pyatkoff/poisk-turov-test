@@ -181,6 +181,15 @@ aassert(($normalizedMissing['rejected'][2] ?? null) === [
 ], 'unknown missing-field provenance mismatch');
 aassert(!str_contains(json_encode($normalizedMissing['rejected'], JSON_THROW_ON_ERROR), 'Secret Label'), 'raw rejected operator leaked');
 
+$invalidRoom=$missingBase;
+$invalidRoom['operator']='Biblio Globus';$invalidRoom['mealKey']='1';$invalidRoom['room']='-';
+$normalizedInvalidRoom=AnyTourAndromedaNormalizer::page([
+    'PAGE'=>1,'PAGES_COUNT'=>1,'PRICES'=>[$invalidRoom],
+],$criteria,'invalid_room_contract',1);
+aassert(($normalizedInvalidRoom['rejected'][0]??null)===[
+    'index'=>0,'reason'=>'THREE_PROVIDER_ROOM_LABEL','ownership_class'=>'andromeda_owned',
+], 'owned invalid-room provenance mismatch');
+
 // Synthetic flight estimate arithmetic remains available; this is not fuel proof.
 $andromeda = AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',
     ['amount' => '185125', 'currency' => 'RUB', 'source' => 'andromeda_search'], null, [[
@@ -396,6 +405,19 @@ try {
         && $result['confirmationRequiredOfferCount'] === 1
         && $result['ownedOfferCount'] === 1 && count($ingests[0]['rows']) === 1, 'safe rejection changed completeness or retention');
     assert_confirmation_dto($ingests[0]['rows'][0]['dto']);
+} finally { cleanup_dir($dir); }
+
+// One sanitized Andromeda-owned invalid room is quarantined without poisoning valid siblings.
+$dir = temp_searches();
+try {
+    $ref=hash('sha256','owned-invalid-room-quarantine');$created=time()-30;$ingests=[];
+    $rejected=[['index'=>1,'reason'=>'THREE_PROVIDER_ROOM_LABEL','ownership_class'=>'andromeda_owned']];
+    write_state($dir,$ref,$created,1,state($ref,1,1,1,$created,[normalized_offer('valid-sibling')],$rejected));
+    [$mapping,$canonical,$surcharge,$save,$ingest]=callbacks($ingests,party_surcharge());
+    $result=AnyTourAndromedaOfferAutosaveV1::consume(search_request(),$dir,$ref,1,
+        new DateTimeImmutable('now',new DateTimeZone('UTC')),$mapping,$canonical,$surcharge,$save,$ingest);
+    aassert($result['published']===true && $result['confirmationRequiredOfferCount']===1
+        && count($ingests)===1 && count($ingests[0]['rows'])===1,'owned invalid room poisoned valid cohort');
 } finally { cleanup_dir($dir); }
 
 // Owned, unknown, legacy or payload-bearing rejected rows stay fail-closed.
