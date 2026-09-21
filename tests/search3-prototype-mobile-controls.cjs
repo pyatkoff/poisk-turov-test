@@ -27,6 +27,12 @@ assert.match(normalized,
 assert.match(normalized,
   /\.offer-list-toolbar \{ font-size:16px; \}/,
   'Offer-list toolbar label must remain readable on mobile');
+assert.match(normalized,
+  /\.drawer-trigger, \.quick-chips \.chip, \.active-filter \{ min-height:44px; \}/,
+  'Frequent mobile filter actions need 44px minimum tap height');
+assert.match(normalized,
+  /\.filter-top \.mobile-close \{ width:44px; height:44px; \}/,
+  'Mobile filter close action needs a 44 by 44 tap target');
 
 const forbiddenDesktopMedia = /@media\s*\(min-width/i;
 assert.equal(forbiddenDesktopMedia.test(css), false, 'This focused layer must not alter desktop widths');
@@ -36,6 +42,7 @@ console.log(JSON.stringify({
   mobileMaxWidth: 760,
   selectFontSizePx: 16,
   minTapHeightPx: 44,
+  filterTapTargets: ['drawer', 'preset-chip', 'active-filter', 'drawer-close'],
   supplierRequests: 0,
   leadRequests: 0,
   status: 'passed'
