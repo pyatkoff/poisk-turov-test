@@ -4,46 +4,23 @@ declare(strict_types=1);
 final class AndromedaSurchargeGroupKey
 {
     private const PREFIX = 'andromeda-surcharge-v2:';
-    private const PROGRAM_FIXED_PREFIX = 'andromeda-program-surcharge-v1:';
     private const ID_PATTERN = '/^[A-Za-z0-9_-]{1,128}$/';
     private const CURRENCY_PATTERN = '/^[A-Z]{3}$/';
 
     /**
-     * Build the existing fail-closed key for flight-context surcharge evidence.
+     * Build a fail-closed cache/group key for external-freight surcharge evidence.
      *
      * Money experiment v1 proved SPO-invariance for the observed supplier contract,
      * so spo_ref is deliberately outside the key. Nights/tour/route/date/full party
-     * remain strict discriminators here. Existing callers and retained v2 cache files
-     * keep exactly this behavior.
+     * are retained until isolated evidence proves that they can be removed safely.
+     * Hotel/room/meal/offer/search-price fields are presentation/package variants,
+     * not transport-group discriminators.
      *
      * @param array<string,mixed> $offer Normalized Andromeda PRICE offer.
      * @param array<string,mixed> $request Public search request or its params block.
      */
     public static function build(array $offer, array $request): ?string
     {
-        return self::buildScoped($offer, $request, true, self::PREFIX);
-    }
-
-    /**
-     * Build a separate key only for evidence explicitly classified as one fixed
-     * program-level party surcharge. Nights are validated but deliberately excluded
-     * from this key; every other existing discriminator stays intact. A distinct
-     * prefix prevents old strict evidence from being reinterpreted as broader proof.
-     *
-     * @param array<string,mixed> $offer Normalized Andromeda PRICE offer.
-     * @param array<string,mixed> $request Public search request or its params block.
-     */
-    public static function buildProgramFixed(array $offer, array $request): ?string
-    {
-        return self::buildScoped($offer, $request, false, self::PROGRAM_FIXED_PREFIX);
-    }
-
-    private static function buildScoped(
-        array $offer,
-        array $request,
-        bool $includeNights,
-        string $prefix
-    ): ?string {
         if (($offer['provider'] ?? null) !== 'andromeda') {
             return null;
         }
@@ -56,7 +33,7 @@ final class AndromedaSurchargeGroupKey
             return null;
         }
 
-        // Program identity is mandatory for all reusable surcharge evidence.
+        // Program identity is mandatory for reusable surcharge evidence.
         $program = self::id($transport['program_ref'] ?? null);
         if ($program === null) {
             return null;
@@ -75,9 +52,6 @@ final class AndromedaSurchargeGroupKey
         $departure = self::positiveInt($scope['departureId'] ?? $scope['departure_id'] ?? null);
         $country = self::positiveInt($scope['countryId'] ?? $scope['country_id'] ?? null);
         $date = self::date($offer['check_in'] ?? null);
-        // Even program-fixed evidence must originate from a valid normalized offer.
-        // Nights are therefore validated, but they are not a grouping discriminator
-        // for this one explicit reuse scope.
         $nights = self::positiveInt($offer['nights'] ?? null);
         $adults = self::positiveInt($offer['adults'] ?? null);
         $children = self::nonNegativeInt($offer['children'] ?? null);
@@ -99,18 +73,14 @@ final class AndromedaSurchargeGroupKey
             'departure' => $departure,
             'country' => $country,
             'date' => $date,
-        ];
-        if ($includeNights) {
-            $canonical['nights'] = $nights;
-        }
-        $canonical += [
+            'nights' => $nights,
             'adults' => $adults,
             'children' => $children,
             'child_ages' => $childAges,
             'currency' => $currency,
         ];
 
-        return $prefix . hash('sha256', json_encode(
+        return self::PREFIX . hash('sha256', json_encode(
             $canonical,
             JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         ));
