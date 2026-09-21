@@ -1,6 +1,6 @@
 name: MATCH Biblio SAMO30 identity acquisition
 'on':
-  pull_request: {types: [opened], branches: [feature/anex-search-adapter-20260907]}
+  pull_request: {types: [opened, synchronize], branches: [feature/anex-search-adapter-20260907]}
 permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: match-biblio-samo30-v1, cancel-in-progress: false}
 env:
@@ -43,8 +43,8 @@ jobs:
           assert sorted(seen)==ids and len(set(seen.values()))==30
           PY
           python3 - <<'PY'
-          import json,os,datetime
-          r={'operation':os.environ['OP'],'state':'reserved_before_db_and_supplier','source_sha':os.environ['HEAD'],'script_sha256':os.environ['SCRIPT_SHA'],'tv_count':30,'max_supplier_calls':31,'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'database_writes':0,'mapping_writes':0,'no_replay':True}
+          import json,os,datetime,hashlib
+          r={'operation':os.environ['OP'],'state':'reserved_before_db_and_supplier','source_sha':os.environ['HEAD'],'script_sha256':hashlib.sha256(open(os.environ['SCRIPT'],'rb').read()).hexdigest(),'tv_count':30,'max_supplier_calls':31,'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'database_writes':0,'mapping_writes':0,'no_replay':True}
           open('reservation/reservation.json','x').write(json.dumps(r,sort_keys=True)+'\n')
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
