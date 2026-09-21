@@ -18,23 +18,23 @@ EVIDENCE.mkdir(parents=True, exist_ok=True)
 FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
 <link rel=\"stylesheet\" href=\"/styles.css\"><link rel=\"stylesheet\" href=\"/mobile-controls-v1.css\">
-</head><body><main style=\"padding:16px;display:grid;gap:18px\">
+</head><body><main style=\"padding:16px\">
 <label class=\"sort-label\">Сортировка отелей <select><option>Рекомендуемые</option></select></label>
-<div class=\"offers-section\"><div class=\"offer-list-toolbar\">Сортировка предложений <select><option>Сначала дешевле</option></select></div>
+<div class=\"offers-section\" style=\"margin-top:18px\"><div class=\"offer-list-toolbar\">Сортировка предложений <select><option>Сначала дешевле</option></select></div>
 <div class=\"offer-controls\" style=\"margin-top:12px\"><select><option>Номер FAMILY SEA VIEW · AI · 7 ночей</option></select></div></div>
-<div class=\"results-toolbar\"><button class=\"secondary drawer-trigger\">Фильтры</button><div class=\"quick-chips\"><button class=\"chip\">Первая линия</button><button class=\"chip\">Для семьи</button></div></div>
+<div class=\"results-toolbar\" style=\"margin-top:18px\"><button class=\"secondary drawer-trigger\">Фильтры</button><div class=\"quick-chips\"><button class=\"chip\">Первая линия</button><button class=\"chip\">Для семьи</button></div></div>
 <div class=\"active-filters\"><button class=\"active-filter\">5 ★</button></div>
-<aside class=\"filter-panel open\" style=\"position:static;display:block;width:100%;max-height:none\"><div class=\"filter-top\"><h3>Фильтры</h3><button class=\"icon-button mobile-close\" aria-label=\"Закрыть фильтры\">×</button></div></aside>
-<div class=\"applied-search\" style=\"display:flex\"><button class=\"secondary\" aria-label=\"Изменить поиск\">✎</button></div>
-<div class=\"compact-search\" style=\"position:static;display:flex\"><button class=\"secondary\" aria-label=\"Изменить поиск в закреплённой панели\">✎</button></div>
-<div class=\"hotel-links\"><button class=\"text-button\">Об отеле</button><button class=\"compare-btn\">Сравнить</button></div>
-<div style=\"display:flex;gap:8px;align-items:center\"><button class=\"favorite-button\" style=\"position:static\" aria-label=\"В избранное\">♥</button><button class=\"card-photo-arrow next\" style=\"position:static;margin:0\" aria-label=\"Следующее фото\">›</button></div>
-<div class=\"hotel-more\"><button class=\"text-button\">Показать все туры</button></div>
-<div class=\"offer-price\" style=\"text-align:left\"><button class=\"primary\">Выбрать тур</button></div>
-<div class=\"compare-tray\" style=\"position:static;transform:none\"><button class=\"primary\">Сравнить</button><button class=\"icon-button\" aria-label=\"Закрыть сравнение\">×</button></div>
-<div class=\"modal-header\" style=\"display:flex\"><button id=\"modal-back\" class=\"icon-button\" aria-label=\"Назад\">←</button><button class=\"icon-button modal-close-probe\" aria-label=\"Закрыть\">×</button></div>
-<div class=\"counter\"><button aria-label=\"Увеличить количество туристов\">+</button></div>
-<div class=\"favorite-item\"><button class=\"icon-button\" aria-label=\"Удалить из избранного\">×</button></div>
+<aside class=\"filter-panel open\" style=\"position:static;display:block;width:100%;max-height:none;margin-top:18px\"><div class=\"filter-top\"><h3>Фильтры</h3><button class=\"icon-button mobile-close\" aria-label=\"Закрыть фильтры\">×</button></div></aside>
+<div class=\"applied-search\" style=\"display:flex;margin-top:18px\"><button class=\"secondary\" aria-label=\"Изменить поиск\">✎</button></div>
+<div class=\"compact-search\" style=\"position:static;display:flex;margin-top:18px\"><button class=\"secondary\" aria-label=\"Изменить поиск в закреплённой панели\">✎</button></div>
+<div class=\"hotel-links\" style=\"margin-top:18px\"><button class=\"text-button\">Об отеле</button><button class=\"compare-btn\">Сравнить</button></div>
+<div style=\"display:flex;gap:8px;align-items:center;margin-top:18px\"><button class=\"favorite-button\" style=\"position:static\" aria-label=\"В избранное\">♥</button><button class=\"card-photo-arrow next\" style=\"position:static;margin:0\" aria-label=\"Следующее фото\">›</button></div>
+<div class=\"hotel-more\" style=\"margin-top:18px\"><button class=\"text-button\">Показать все туры</button></div>
+<div class=\"offer-price\" style=\"text-align:left;margin-top:18px\"><button class=\"primary\">Выбрать тур</button></div>
+<div class=\"compare-tray\" style=\"position:static;transform:none;margin-top:18px\"><button class=\"primary\">Сравнить</button><button class=\"icon-button\" aria-label=\"Закрыть сравнение\">×</button></div>
+<div class=\"modal-header\" style=\"display:flex;margin-top:18px\"><button id=\"modal-back\" class=\"icon-button\" aria-label=\"Назад\">←</button><button class=\"icon-button modal-close-probe\" aria-label=\"Закрыть\">×</button></div>
+<div class=\"counter\" style=\"margin-top:18px\"><button aria-label=\"Увеличить количество туристов\">+</button></div>
+<div class=\"favorite-item\" style=\"margin-top:18px\"><button class=\"icon-button\" aria-label=\"Удалить из избранного\">×</button></div>
 </main></body></html>"""
 
 
