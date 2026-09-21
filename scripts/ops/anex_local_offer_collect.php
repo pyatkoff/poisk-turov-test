@@ -112,7 +112,7 @@ $persistenceFailure=null;
 $requireAutosave=static function(mixed $receipt,string $phase)use(&$persistenceFailure):void{
     if(is_array($receipt)&&(($receipt['published']??null)===true
         ||(($receipt['published']??null)===false
-            &&in_array($receipt['reason']??null,['already_published','no_final_price_ready'],true))))return;
+            &&in_array($receipt['reason']??null,['already_published','no_final_price_ready','staged'],true))))return;
     // A write failure may be an unknown committed outcome. Stop this invocation;
     // do not spend more supplier budget or retry it through finalization.
     $persistenceFailure=['phase'=>$phase,'receipt'=>$receipt];
@@ -130,9 +130,13 @@ try{
     $result=AnyTourAnexLocalOfferCollectorV1::collect(
         $request,$state,$searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch
     );
-    if(function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
+    if(($result['status']??null)==='complete'&&function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
         $result['snapshot_finalize']=anytour_anex_anytour_offer_autosave_finalize_runtime($state);
         $requireAutosave($result['snapshot_finalize'],'finalize');
+    }elseif(function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
+        // A bounded/incomplete discovery is not authoritative for canonical freshness.
+        // Preserve staged supplier/APD state but never create a completed LOCAL refresh.
+        $result['snapshot_finalize']=['published'=>false,'reason'=>'collector_incomplete'];
     }
 }catch(RuntimeException $error){
     if($error->getMessage()!=='ANEX_COLLECTOR_AUTOSAVE'||$persistenceFailure===null)throw $error;
