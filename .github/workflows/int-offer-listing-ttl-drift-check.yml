@@ -1,0 +1,27 @@
+name: INT offer listing TTL drift diagnostic
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/anytour_offer_listing_ttl_drift_v1.php'
+      - 'tests/anytour-offer-listing-ttl-drift-v1-test.php'
+      - '.github/workflows/int-offer-listing-ttl-drift-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Supplier-free TTL contract diagnostic
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/anytour_offer_listing_ttl_drift_v1.php
+          php -l tests/anytour-offer-listing-ttl-drift-v1-test.php
+          php -d allow_url_fopen=0 tests/anytour-offer-listing-ttl-drift-v1-test.php
