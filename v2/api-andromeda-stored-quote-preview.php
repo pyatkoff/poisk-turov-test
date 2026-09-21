@@ -138,7 +138,10 @@ function anytour_stored_quote_actualize(
         throw new DomainException('Stored quote unavailable');
     }
 
-    $source = sha1_file(__DIR__ . '/../app/integrations/andromeda-saved-package-runtime.php');
+    $runtimePath = is_file(__DIR__ . '/app/integrations/andromeda-saved-package-runtime.php')
+        ? __DIR__ . '/app/integrations/andromeda-saved-package-runtime.php'
+        : __DIR__ . '/../app/integrations/andromeda-saved-package-runtime.php';
+    $source = sha1_file($runtimePath);
     if (!is_string($source) || preg_match('/\A[a-f0-9]{40}\z/D', $source) !== 1) {
         throw new RuntimeException('Stored quote runtime unavailable');
     }
