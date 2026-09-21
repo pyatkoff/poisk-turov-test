@@ -113,3 +113,10 @@ history. A new search still clears the selection; if a quote was interrupted or
 is no longer retained, details offer an explicit recheck rather than a dead button
 or an automatic supplier request. The existing 390/1440 journey covers restored
 tour details, contacts and saved-tour details with unchanged request counts.
+
+Returning to the offer list while a quote or flight request is pending also keeps
+that list open if the request later fails. Error handlers use the same current
+modal and offer identity checks as successful replies. A failure on the still-open
+offer remains visible and can be retried explicitly. The existing fixture journey
+reproduces both late failures and checks recovery at 390/1440 px; no automatic
+supplier retry, pricing change or new navigation layer is introduced.
