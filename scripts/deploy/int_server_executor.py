@@ -280,6 +280,9 @@ def local_read(scopes):
         php=r'''declare(strict_types=1);error_reporting(0);ini_set('display_errors','0');
 try{
 $root=getenv('HOME').'/www/anytoour.ru';
+$config=$root.'/config.php';
+if(!is_file($config)||is_link($config))throw new RuntimeException('site_config_missing');
+require_once $config;
 $f=$root.'/_preview/search3-local-candidate/data/search3-local-results-read-v1.php';
 if(!is_file($f)||is_link($f))throw new RuntimeException('local_reader_missing');
 require_once $f;$p=json_decode($argv[1],true,32,JSON_THROW_ON_ERROR);
@@ -290,6 +293,8 @@ echo json_encode(['scopeDigest'=>$r['scopeDigest'],'hotelCount'=>$r['hotelCount'
 'withheldOfferCount'=>$r['withheldOfferCount'],'matchMode'=>$r['matchMode']],JSON_THROW_ON_ERROR);
 }catch(Throwable $e){$m=$e->getMessage();$code=match(true){
 $m==='local_reader_missing'=>'LOCAL_READER_MISSING',
+$m==='site_config_missing'=>'LOCAL_SITE_CONFIG_MISSING',
+$m==='AnyTour data database is not configured'=>'LOCAL_DB_NOT_CONFIGURED',
 $m==='Dedicated MySQL connection required'=>'LOCAL_DB_CONNECTION',
 $m==='Unsupported AnyTour offer-store schema'=>'LOCAL_SCHEMA',
 $m==='Offer-store scope mismatch'=>'LOCAL_SCOPE_MISMATCH',
