@@ -6,7 +6,7 @@ const root=path.resolve(__dirname,'../v2'),base='/_preview/search3-local-candida
 const evidence=process.env.SEARCH3_PROTOTYPE_EVIDENCE||'/tmp/search3-prototype-evidence';fs.mkdirSync(evidence,{recursive:true});
 const day=n=>new Date(Date.now()+n*86400000).toISOString().slice(0,10);
 const photo='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>');
-const profiles=[1,2].map(id=>({id,catalog:'anytour',revision:1,name:id===1?'Rixos — тестовый отель «Море»':'Отель для проверки «Сад»',category:id===1?5:4,rating:id===1?4.7:4.2,region:{name:'Анталья'},country:{name:'Турция'},description:'Описание отеля из собственной базы.',images:['http://127.0.0.1/test-photo.svg'],hotelInformation:{}}));
+const profiles=[1,2,3].map(id=>({id,catalog:'anytour',revision:1,name:id===1?'Rixos — тестовый отель «Море»':id===2?'Rixos — тестовый отель «Сад»':'Отель для проверки устаревшего ответа',category:id===1?5:4,rating:id===1?4.7:4.2,region:{name:'Анталья'},country:{name:'Турция'},description:'Описание отеля из собственной базы.',images:['http://127.0.0.1/test-photo.svg'],hotelInformation:{}}));
 const tours=[{id:'exact-1',price:120000,date:day(8),nights:7,adults:2,childs:0,meal:{name:'AI'},roomType:'STANDARD',placement:'DBL',operator:{name:'ANEX'},fuelCharge:null},{id:'exact-2',price:133000,date:day(8),nights:7,adults:2,childs:0,meal:{name:'HB'},roomType:'SUPERIOR',placement:'DBL',operator:{name:'Coral Travel'},fuelCharge:0}];
 const segment=(number,time)=>({company:{name:'Тестовая авиакомпания'},number,departure:{date:day(8),time,port:{name:'Москва',id:'SVO'}},arrival:{date:day(8),time:'14:00',port:{name:'Анталья',id:'AYT'}},baggage:20,carryOn:'5 кг'});
 const variants=[{price:{value:120000},fuelCharge:null,forward:[segment('TT 111','10:00')],backward:[segment('TT 112','12:00')]},{price:{value:133500.5},fuelCharge:0,forward:[segment('TT 211','14:00')],backward:[segment('TT 212','16:00')]},{isDefault:true,price:null,fuelCharge:null,forward:[segment('TT 311','18:00')],backward:[segment('TT 312','20:00')]}];
@@ -28,7 +28,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
    const json=data=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
    if(url.pathname==='/test-photo.svg')return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});
    if(url.pathname==='/data/departures-v1.php')return json({ok:true,items:[{id:1,name:'Москва'},{id:2,name:'Казань'}]});
-   if(url.pathname==='/data/hotel-search-v1.php'){lookupCalls.push(Object.fromEntries(url.searchParams));await lookupReady;if(url.searchParams.get('q')==='Slow'){slowStarted();await slowReady;try{return await json({ok:true,items:[{id:102,country:{id:4}}]});}finally{slowDone();}}if(failLookup)return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});return json({ok:true,items:url.searchParams.get('q')==='Rixos'?[{id:101,name:'Legacy Rixos name',country:{id:4}}]:[]});}
+   if(url.pathname==='/data/hotel-search-v1.php'){lookupCalls.push(Object.fromEntries(url.searchParams));await lookupReady;if(url.searchParams.get('q')==='Slow'){slowStarted();await slowReady;try{return await json({ok:true,items:[{id:103,country:{id:4}}]});}finally{slowDone();}}if(failLookup)return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});return json({ok:true,items:url.searchParams.get('q')==='Rixos'?[{id:101,name:'Legacy Rixos name',country:{id:4}},{id:102,name:'Legacy Rixos garden',country:{id:4}}]:[]});}
    if(url.pathname.endsWith('/hotel-details-read-v1.php')){const ids=url.searchParams.getAll('legacyHotelIds[]');return json({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:profiles.filter(p=>ids.includes(String(100+p.id))),links:ids.map(id=>({legacyHotelId:Number(id),anytourHotelId:Number(id)-100}))});}
    if(url.pathname.endsWith('/search3-local-results-read-v1.php')){const p=route.request().postDataJSON().params;dbCalls.push(p);return json({ok:true,data:{source:'anytour-db-first-results-v1',scopeVersion:1,scope:{scopeVersion:1,...p},scopeDigest:'c'.repeat(64),selectionAuthority:false,hotels:[{anytourHotelId:1,hotel:profiles[0],offers:[stored(p)]}]}});}
    if(url.pathname==='/api-v2.php'){
@@ -52,6 +52,11 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   const earlyDate=day(10);await page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`).click();
   countriesBlocked=false;releaseCountries();
   await page.locator('.search-submit:not([disabled])').waitFor({timeout:10000}).catch(async error=>{console.error(await page.locator('#cards').textContent());throw error;});
+  assert.equal(await page.locator('#results').getAttribute('class'),'results-section wrap results-pristine','Initial results stay in a distinct pre-search state');
+  assert.equal(await page.locator('#results-summary').textContent(),'Задайте направление, даты и состав туристов — предложения появятся после поиска.');
+  assert.doesNotMatch(await page.locator('#results').textContent(),/0 отелей|0 вариантов тура/,'Initial state is not presented as an empty search result');
+  assert.equal(await page.locator('#price-calendar').isVisible(),false,'Result-only calendar stays hidden before the first search');
+  assert.equal(await page.locator('#filter-panel').isVisible(),false,'Result-only filters stay hidden before the first search');
   await page.waitForFunction(()=>document.querySelectorAll('.month-day.is-cheap').length>0);
   assert.equal(await page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`).getAttribute('aria-pressed'),'true','Catalog retry preserves the early date draft');
   assert.equal(await page.locator('.calendar-legend span').first().textContent(),'Цены из базы за всех, от · пробелы означают отсутствие сохранённой цены','Open calendar retries after catalogs load');
@@ -96,7 +101,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   await hotelQuery.fill('Slow');await slowRequest;
   await hotelQuery.fill('Rixos');await page.locator('[data-action="destination-hotel"][data-id="1"]').waitFor();
   releaseSlow();await slowFinished;await page.waitForTimeout(100);
-  assert.equal(await hotelQuery.inputValue(),'Rixos');assert.equal(await page.locator('[data-action="destination-hotel"][data-id="2"]').count(),0,'A stale catalogue reply cannot replace the current query');
+  assert.equal(await hotelQuery.inputValue(),'Rixos');assert.equal(await page.locator('[data-action="destination-hotel"][data-id="3"]').count(),0,'A stale catalogue reply cannot replace the current query');
   await hotelQuery.fill('Rixos');await page.locator('[data-action="destination-hotel"][data-id="1"]').click();
   await page.locator('[data-action="apply-destination"]').click();await page.waitForTimeout(100);
   assert.match(await page.locator('#destination-label').textContent(),/Rixos — тестовый отель/);
