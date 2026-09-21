@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Complete the original, never-executed provider178 operation; append-only, no HTTP.
+// Retired terminal operation: pure planning/regression only; --execute is disabled.
 const OP = 'hotel-match-v9-provider178-write-1971-20260921-v1';
 const MIN_WRITE = 100;
 const NS = [25 => 'operator_315', 43 => 'operator_342'];
@@ -16,6 +16,19 @@ function ordered(mixed $v): mixed {
 }
 function canon(mixed $v): string { return json_encode(ordered($v), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR); }
 function rh(array $v): string { return hash('sha256', canon($v) . "\n"); }
+// #3327 hashes exactly seven fields in SELECT order, not a sorted full current row.
+function precommitAnchorHashV1(array $row): string {
+    $fields = ['supplier_namespace', 'external_hotel_id', 'local_hotel_id', 'decision_status', 'catalog_sha256', 'evidence_sha256', 'evidence_json'];
+    $projection = [];
+    foreach ($fields as $field) {
+        if (!array_key_exists($field, $row)) {
+            throw new RuntimeException('precommit_anchor_missing_field:' . $field);
+        }
+        $projection[$field] = $row[$field];
+    }
+    return hash('sha256', json_encode($projection, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
+}
+
 function loadj(string $path): array { $v = json_decode((string)file_get_contents($path), true, 512, JSON_THROW_ON_ERROR); need(is_array($v), 'json'); return $v; }
 function savej(string $path, array $v): string {
     $b = json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n";
@@ -80,7 +93,7 @@ function reason(array $s, array $keys, array $targets, array $hotels, array $man
     if (count($aa) !== 1) return 'canonical_anchor_not_unique';
     $a = $aa[0]; $expected = $s['expected_anchor'];
     foreach (['external_hotel_id', 'catalog_sha256', 'evidence_sha256'] as $f) if ((string)$a[$f] !== (string)$expected[$f]) return 'canonical_anchor_changed';
-    if (rh($a) !== $expected['row_sha256']) return 'canonical_anchor_row_changed';
+    if (precommitAnchorHashV1($a) !== $expected['row_sha256']) return 'canonical_anchor_row_changed';
     if (!preg_match('/^[0-9a-f]{64}$/D', $a['catalog_sha256']) || hash('sha256', $a['evidence_json']) !== $a['evidence_sha256']) return 'anchor_hash_invalid';
     return null;
 }
@@ -150,20 +163,26 @@ function writeMappings(PDO $db, array $seeds, string $dir, string $sha): array {
 }
 function selfTest(): void {
     need(canon(['b' => 1, 'a' => 2]) === '{"a":2,"b":1}', 'canonical_json');
-    $a = ['external_hotel_id' => '7', 'catalog_sha256' => str_repeat('a', 64), 'evidence_sha256' => hash('sha256', '{}'), 'evidence_json' => '{}'];
-    $s = ['supplier_namespace' => 'operator_315', 'native_hotel_id' => '1', 'tv_hotel_id' => 9, 'expected_target' => ['id' => 9, 'name' => 'A', 'is_active' => 1, 'country_name' => 'Турция'], 'expected_anchor' => $a + ['row_sha256' => rh($a)]];
+    $a = ['supplier_namespace' => 'andromeda_catalog', 'external_hotel_id' => '7', 'local_hotel_id' => 9, 'decision_status' => 'accepted', 'catalog_sha256' => str_repeat('a', 64), 'evidence_sha256' => hash('sha256', '{}'), 'evidence_json' => '{}'];
+    $s = ['supplier_namespace' => 'operator_315', 'native_hotel_id' => '1', 'tv_hotel_id' => 9, 'expected_target' => ['id' => 9, 'name' => 'A', 'is_active' => 1, 'country_name' => 'Турция'], 'expected_anchor' => $a + ['row_sha256' => precommitAnchorHashV1($a)]];
     $h = [9 => $s['expected_target']]; $t = ['andromeda_catalog|9' => [$a]];
     need(reason($s, [], $t, $h, []) === null, 'safe');
     need(reason($s, ['operator_315|1' => []], $t, $h, []) === 'provider_source_present', 'occupied');
     need(reason($s, [], $t, $h, [9 => true]) === 'manual_target_protected', 'manual');
     need(reason($s, [], ['andromeda_catalog|9' => [$a, $a]], $h, []) === 'canonical_anchor_not_unique', 'ambiguous');
-    $a['created_at'] = 'changed'; need(reason($s, [], ['andromeda_catalog|9' => [$a]], $h, []) === 'canonical_anchor_row_changed', 'row_drift');
+    $before = rh($a); $a['created_at'] = 'changed';
+    need(reason($s, [], ['andromeda_catalog|9' => [$a]], $h, []) === null, 'old_contract_ignores_new_metadata');
+    need(rh($a) !== $before, 'full_current_row_still_protected');
+    $a['evidence_json'] = '{"changed":true}';
+    need(reason($s, [], ['andromeda_catalog|9' => [$a]], $h, []) === 'canonical_anchor_row_changed', 'identity_drift');
     echo "PROVIDER178_SELFTEST_OK\n";
 }
 if (defined('MATCH_UNIT_TEST')) return;
 need(PHP_SAPI === 'cli', 'cli_only'); $mode = $argv[1] ?? '';
 if ($mode === '--self-test') { selfTest(); exit; }
-need(in_array($mode, ['--plan', '--execute'], true), 'disabled');
+// The source operation has a terminal no-write receipt. Never replay it.
+need($mode !== '--execute', 'TERMINAL_OPERATION_EXECUTION_DISABLED');
+need($mode === '--plan', 'disabled');
 $input = realpath((string)getenv('MATCH_INPUT_DIR')); need(is_string($input), 'input_directory'); $seeds = seeds($input);
 if ($mode === '--plan') { echo json_encode(['operation' => OP, 'candidates' => count($seeds), 'unique_hotels' => count(array_unique(array_column($seeds, 'tv_hotel_id'))), 'keys' => array_map('keyOf', $seeds), 'supplier_calls' => 0, 'database_writes' => 0], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n"; exit; }
 $root = realpath((string)getenv('ANYTOUR_ROOT')); $dir = realpath((string)getenv('MATCH_OPERATION_DIR')); $sha = (string)getenv('MATCH_SOURCE_SHA');
