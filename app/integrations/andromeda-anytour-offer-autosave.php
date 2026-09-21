@@ -488,10 +488,13 @@ final class AnyTourAndromedaOfferAutosaveV1
             if (!is_array($row)) return false;
             $keys = array_keys($row);
             sort($keys);
-            if ($keys !== ['index', 'missing_field', 'ownership_class', 'reason']) return false;
             $index = $row['index'] ?? null;
             if (!is_int($index) || $index < 0 || $index >= 2000 || isset($seen[$index])) return false;
             $seen[$index] = true;
+            // A malformed room label is row-local presentation data: that offer cannot
+            // enter the canonical store, but it does not invalidate sibling PRICE rows.
+            if ($keys === ['index', 'reason'] && ($row['reason'] ?? null) === 'THREE_PROVIDER_ROOM_LABEL') continue;
+            if ($keys !== ['index', 'missing_field', 'ownership_class', 'reason']) return false;
             if (($row['reason'] ?? null) !== 'MISSING_FIELD'
                 || !is_string($row['missing_field'] ?? null)
                 || !in_array($row['missing_field'], self::REJECTION_REQUIRED_FIELDS, true)
