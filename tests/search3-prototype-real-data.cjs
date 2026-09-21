@@ -48,7 +48,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   });
   await page.goto(origin+base+'prototype-search/');
   await page.locator('[data-action="dates"]').click();
-  await page.getByText('Цены пока недоступны. Даты можно выбрать без цены.').waitFor();
+  await page.getByText('Не все цены загрузились. Даты можно выбрать без цены.').waitFor();
   const earlyDate=day(10);await page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`).click();
   countriesBlocked=false;releaseCountries();
   await page.locator('.search-submit:not([disabled])').waitFor({timeout:10000}).catch(async error=>{console.error(await page.locator('#cards').textContent());throw error;});
@@ -59,7 +59,17 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   assert.equal(await page.locator('#filter-panel').isVisible(),false,'Result-only filters stay hidden before the first search');
   await page.waitForFunction(()=>document.querySelectorAll('.month-day.is-cheap').length>0);
   assert.equal(await page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`).getAttribute('aria-pressed'),'true','Catalog retry preserves the early date draft');
-  assert.equal(await page.locator('.calendar-legend span').first().textContent(),'Цены из базы за всех, от · пробелы означают отсутствие сохранённой цены','Open calendar retries after catalogs load');
+  await page.getByText('Цены из базы и текущей выдачи за всех, от · прочерк — нет цены',{exact:true}).waitFor();
+  assert.equal(await page.locator('.calendar-legend span').first().textContent(),'Цены из базы и текущей выдачи за всех, от · прочерк — нет цены','Open calendar retries after catalogs load');
+  const nextMonth=new Date(day(1)+'T12:00:00Z');nextMonth.setUTCDate(1);nextMonth.setUTCMonth(nextMonth.getUTCMonth()+1);const nextMonthDay=nextMonth.toISOString().slice(0,10);
+  const nextMonthCell=page.locator(`[data-action="day-pick"][data-date="${nextMonthDay}"]`);
+  await nextMonthCell.scrollIntoViewIfNeeded();
+  await page.waitForFunction(d=>document.querySelector(`[data-action="day-pick"][data-date="${d}"] small`)?.textContent==='110',nextMonthDay,{timeout:3000});
+  assert.ok(dbCalls.some(p=>p.dateFrom<=nextMonthDay&&p.dateTo>=nextMonthDay),'Every displayed desktop month / visible mobile month is actually requested from DB');
+  assert.equal(calls.filter(x=>x==='search_start').length,0,'Reading another calendar month never searches a supplier');
+  assert.equal(await page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`).getAttribute('aria-pressed'),'true','Loading another month preserves the date selection');
+  const selectedCell=page.locator(`[data-action="day-pick"][data-date="${earlyDate}"]`);await selectedCell.hover();
+  assert.equal(await selectedCell.locator("span").evaluate(el=>getComputedStyle(el).color),"rgb(255, 255, 255)","Selected date remains readable on hover after prices load");
   await page.screenshot({path:path.join(evidence,`calendar-retry-${width}.png`),fullPage:true});
   await page.locator('[data-action="close-modal"]').click();await page.waitForTimeout(100);
   assert.equal(await page.locator('#destination-label').textContent(),'Турция');
@@ -319,6 +329,10 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   await page.waitForFunction(d=>document.querySelector(`[data-action="select-date"][data-date="${d}"] strong`)?.textContent.replace(/\s/g,'')==='107000₽',day(15),{timeout:3000});
   assert.match(await page.locator('#calendar-caption').textContent(),/базы/);
   assert.equal(await page.locator('.hotel-offer-count').textContent(),'1 вариантов тура','Calendar-only rows do not gain result or quote authority');
+  await page.locator('[data-action="calendar"]').first().click();
+  await page.waitForFunction(d=>document.querySelector(`[data-action="day-pick"][data-date="${d}"]`)?.getAttribute('aria-label').includes('110'),day(14));
+  assert.match(await page.locator(`[data-action="day-pick"][data-date="${day(14)}"]`).getAttribute('aria-label'),/110\s?000/,'Reopening a calendar keeps matching already-found offers even before database persistence');
+  await page.locator('[data-action="close-modal"]').click();await page.waitForTimeout(100);
   const beforeCalendarFilter=calls.filter(x=>['search_start','tour','flights'].includes(x)).length,readsBeforeFilter=dbCalls.length;
   if(width<1100)await page.locator('.drawer-trigger').click();
   await page.locator('[data-filter="operators"][value="ANEX"]').check();
