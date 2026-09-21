@@ -18,7 +18,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
  try{for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],calls=[],dbCalls=[];
   let releaseCountries;let countriesReady=new Promise(resolve=>{releaseCountries=resolve});let countriesBlocked=true;
-  let delayedFailure=null,failProfile=false,mismatchedRestoration=false;
+  let delayedFailure=null,failProfile=false,mismatchedRestoration=false,calendarFixture=false,calendarFails=false;
   const lookupCalls=[],searchQueries=[];let failLookup=true,releaseLookup;const lookupReady=new Promise(resolve=>{releaseLookup=resolve});
   let slowStarted,releaseSlow,slowDone;const slowRequest=new Promise(resolve=>{slowStarted=resolve}),slowReady=new Promise(resolve=>{releaseSlow=resolve}),slowFinished=new Promise(resolve=>{slowDone=resolve});
   function failNext(action){let started,release;const requested=new Promise(resolve=>{started=resolve}),ready=new Promise(resolve=>{release=resolve});delayedFailure={action,started,ready};return {requested,release};}
@@ -30,7 +30,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
    if(url.pathname==='/data/departures-v1.php')return json({ok:true,items:[{id:1,name:'Москва'},{id:2,name:'Казань'}]});
    if(url.pathname==='/data/hotel-search-v1.php'){lookupCalls.push(Object.fromEntries(url.searchParams));await lookupReady;if(url.searchParams.get('q')==='Slow'){slowStarted();await slowReady;try{return await json({ok:true,items:[{id:103,country:{id:4}}]});}finally{slowDone();}}if(failLookup)return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});const q=url.searchParams.get('q'),items=q==='Rixos'?[{id:101,name:'Legacy Rixos name',country:{id:4}},{id:102,name:'Legacy Rixos garden',country:{id:4}}]:q===profiles[0].name?[{id:mismatchedRestoration?102:101,country:{id:4}}]:[];return json({ok:true,items});}
    if(url.pathname.endsWith('/hotel-details-read-v1.php')){if(url.searchParams.has('anytourHotelId')){if(failProfile)return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});return json({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',item:profiles.find(p=>String(p.id)===url.searchParams.get('anytourHotelId'))});}const ids=url.searchParams.getAll('legacyHotelIds[]');return json({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:profiles.filter(p=>ids.includes(String(100+p.id))),links:ids.map(id=>({legacyHotelId:Number(id),anytourHotelId:Number(id)-100}))});}
-   if(url.pathname.endsWith('/search3-local-results-read-v1.php')){const p=route.request().postDataJSON().params;dbCalls.push(p);return json({ok:true,data:{source:'anytour-db-first-results-v1',scopeVersion:1,scope:{scopeVersion:1,...p},scopeDigest:'c'.repeat(64),selectionAuthority:false,hotels:[{anytourHotelId:1,hotel:profiles[0],offers:[stored(p)]}]}});}
+   if(url.pathname.endsWith('/search3-local-results-read-v1.php')){const p=route.request().postDataJSON().params;dbCalls.push(p);if(calendarFixture&&!p.hotelIds.length&&calendarFails)return route.fulfill({status:503,body:'{}'});const row=stored(p);if(calendarFixture&&!p.hotelIds.length){row.listing.tour.checkin=new Date(new Date(p.dateFrom+'T12:00:00Z').getTime()+86400000).toISOString().slice(0,10);row.price=107000;row.listing.listingPrice.amount='107000';}return json({ok:true,data:{source:'anytour-db-first-results-v1',scopeVersion:1,scope:{scopeVersion:1,...p},scopeDigest:'c'.repeat(64),selectionAuthority:false,hotels:[{anytourHotelId:1,hotel:profiles[0],offers:[row]}]}});}
    if(url.pathname==='/api-v2.php'){
     const action=url.searchParams.get('action');calls.push(action);
     if(delayedFailure?.action===action){const pending=delayedFailure;delayedFailure=null;pending.started();await pending.ready;return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Временная ошибка проверки тура'})});}
@@ -310,6 +310,36 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   assert.equal(searchQueries.at(-1).get('meal'),'5','Explicit search uses the existing HB catalogue mapping');
   assert.match(await page.locator('.card-minimum-offer').textContent(),/HB/);
   assert.match(await page.locator('.hotel-price').textContent(),/133\s?000/,'Restored meal, operator and budget constrain the same concrete offer');
+  // Result calendar reads the same database independently of the currently loaded cards.
+  calendarFixture=true;
+  const calendarURL=new URL(hotelURL);calendarURL.searchParams.set('from',day(14));calendarURL.searchParams.set('to',day(15));
+  await page.goto(calendarURL.href);await page.locator('.search-submit:not([disabled])').waitFor();
+  await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('.hotel-offer-count')?.textContent.startsWith('1 '));
+  const dbDay=page.locator(`[data-action="select-date"][data-date="${day(15)}"] strong`);
+  await page.waitForFunction(d=>document.querySelector(`[data-action="select-date"][data-date="${d}"] strong`)?.textContent.replace(/\s/g,'')==='107000₽',day(15),{timeout:3000});
+  assert.match(await page.locator('#calendar-caption').textContent(),/базы/);
+  assert.equal(await page.locator('.hotel-offer-count').textContent(),'1 вариантов тура','Calendar-only rows do not gain result or quote authority');
+  const beforeCalendarFilter=calls.filter(x=>['search_start','tour','flights'].includes(x)).length,readsBeforeFilter=dbCalls.length;
+  if(width<1100)await page.locator('.drawer-trigger').click();
+  await page.locator('[data-filter="operators"][value="ANEX"]').check();
+  if(width<1100)await page.locator('[data-action="apply-filters"]').click();
+  assert.match(await dbDay.textContent(),/107\s?000/);
+  assert.equal(dbCalls.length,readsBeforeFilter,'Local operator filtering reuses the calendar rows');
+  await page.screenshot({path:path.join(evidence,`database-strip-${width}.png`),fullPage:true});
+  if(width<1100)await page.locator('.drawer-trigger').click();
+  await page.locator('[data-filter="meals"][value="HB"]').check();
+  if(width<1100)await page.locator('[data-action="apply-filters"]').click();
+  await page.waitForFunction(()=>!document.querySelector('#calendar-caption').textContent.includes('Загружаем'));
+  assert.equal(await dbDay.textContent(),'—','Database minimum respects the meal on the same offer');
+  assert.equal(calls.filter(x=>['search_start','tour','flights'].includes(x)).length,beforeCalendarFilter,'Calendar reads and filters do not start supplier searches or quotes');
+  calendarFails=true;
+  await page.goto(calendarURL.href);await page.locator('.search-submit:not([disabled])').waitFor();
+  await page.locator('.search-submit').click();await page.getByText(/База цен временно недоступна/).waitFor();
+  assert.equal(await dbDay.textContent(),'—','A failed database read is not a fabricated price');
+  assert.equal(await page.locator('.hotel-card').count(),1,'Calendar failure does not discard the existing result');
+  await page.screenshot({path:path.join(evidence,`database-strip-error-${width}.png`),fullPage:true});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  calendarFixture=false;calendarFails=false;
   const label='Питание "особое" <test>',customURL=new URL(filterURL);customURL.searchParams.set('meals','HB|'+label+'|HB');customURL.searchParams.set('sort','invalid');
   await page.goto(customURL.href);await page.locator('.search-submit:not([disabled])').waitFor();
   assert.equal(await page.locator('#meal-label').textContent(),'2 варианта');
