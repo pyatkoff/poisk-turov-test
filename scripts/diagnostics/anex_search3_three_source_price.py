@@ -24,7 +24,9 @@ def _current_andromeda_library(here):
     bootstrap=("<?php\ndeclare(strict_types=1);\n"
                "require_once __DIR__.'/api-anex-search3-preview.php';\n"
                "$andromedaApp=is_file(__DIR__.'/app/integrations/andromeda-client.php')?__DIR__.'/app/integrations':__DIR__.'/../app/integrations';\n"
-               "foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';\n")
+               "foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-pagination','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';\n"
+               "$andromedaAutosave=$andromedaApp.'/andromeda-anytour-offer-autosave.php';\n"
+               "if(is_file($andromedaAutosave)&&!is_link($andromedaAutosave))require_once $andromedaAutosave;\n")
     trailer="\nif(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__)anytour_andromeda_search3_http();\n"
     if not endpoint.startswith(bootstrap) or not endpoint.endswith(trailer):
         raise ValueError('three_source_andromeda_source_contract_changed')
@@ -47,7 +49,8 @@ def source():
     stale=re.compile(r"\$_SERVER\['SCRIPT_FILENAME'\]\s*=\s*'';\s*require_once\s+\$preview\s*\.\s*'/api-andromeda-search3-preview\.php';")
     dependencies=("$_SERVER['SCRIPT_FILENAME']='';require_once $preview.'/api-anex-search3-preview.php';"
                   "$andromedaApp=is_file($preview.'/app/integrations/andromeda-client.php')?$preview.'/app/integrations':dirname($preview).'/app/integrations';"
-                  "foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file)require_once $andromedaApp.'/'.$file.'.php';")
+                  "foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-pagination','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file)require_once $andromedaApp.'/'.$file.'.php';"
+                  "$andromedaAutosave=$andromedaApp.'/andromeda-anytour-offer-autosave.php';if(is_file($andromedaAutosave)&&!is_link($andromedaAutosave))require_once $andromedaAutosave;")
     new_body,count=stale.subn(lambda unused: dependencies,new_body)
     if count!=2: raise ValueError('three_source_andromeda_runtime_contract_changed')
     andromeda=_current_andromeda_library(here)
