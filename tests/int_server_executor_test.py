@@ -16,6 +16,10 @@ class ParseTest(unittest.TestCase):
     def test_andromeda(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v1 1 4 2026-10-10 2026-10-12 7 2 - 0 0')
         self.assertEqual('',v['meal']);self.assertEqual(0,v['max_captures'])
+    def test_reconcile(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} reconcile int-andromeda-reconcile-turkey-20260921-v1 int-andromeda-current-turkey-20260921-v1')
+        self.assertEqual('reconcile',v['mode'])
+        self.assertEqual('int-andromeda-current-turkey-20260921-v1',v['target_operation_id'])
     def test_rejects_unsafe_or_unbounded(self):
         bad=[
           f'/run-int-server-v1 {SHA} anex-demand int-anex-current-demand-20260921-v1 0',
@@ -24,6 +28,8 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v1 1 4 2026-10-10 2026-10-12 7 2 ";rm" 0 0',
           f'/run-int-server-v1 {SHA[:-1]} anex-demand int-anex-current-demand-20260921-v1 3',
           f'/run-int-server-v1 {SHA} anex-demand ../../bad 3',
+          f'/run-int-server-v1 {SHA} reconcile int-andromeda-reconcile-turkey-20260921-v1 ../../bad',
+          f'/run-int-server-v1 {SHA} reconcile int-andromeda-current-turkey-20260921-v1 int-andromeda-current-turkey-20260921-v1',
         ]
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
@@ -49,7 +55,8 @@ class ContractTest(unittest.TestCase):
         for x in ["ISSUE = 2530","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
                   "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
-                  "search3-local-results-read-v1.php","--max-captures=","--capture-mode=non_external_only"]:
+                  "search3-local-results-read-v1.php","--max-captures=","--capture-mode=non_external_only",
+                  "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero"]:
             self.assertIn(x,text)
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)

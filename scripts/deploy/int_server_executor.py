@@ -62,6 +62,12 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 4, 'command_shape')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'limit': integer(parts[3], 1, 20, 'anex_limit')}
+    if mode == 'reconcile':
+        need(len(parts) == 4, 'command_shape')
+        target = parts[3]
+        need(OP_RE.fullmatch(target) is not None and target != operation, 'target_operation_id')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'target_operation_id': target}
     if mode == 'andromeda-scope':
         need(len(parts) == 12, 'command_shape')
         departure = integer(parts[3], 1, 999999999, 'departure')
@@ -193,6 +199,51 @@ echo json_encode($r,JSON_THROW_ON_ERROR);'''
     run=subprocess.run(['php','-r',php,provider],cwd=project,capture_output=True,text=True,timeout=30)
     if run.returncode or run.stderr: fail('db_readback_failed')
     return json.loads(run.stdout)
+def safe_json(path,max_size=1024*1024):
+    if not safe_file(path,max_size): fail('safe_json')
+    value=json.loads(path.read_text())
+    if not isinstance(value,dict): fail('safe_json')
+    return value
+def reconcile_target(target_name):
+    target=private/target_name
+    if not target.is_dir() or target.is_symlink(): fail('reconcile_target_missing')
+    reservation=safe_json(target/'reservation.json',65536)
+    prior=safe_json(target/'result.json',1024*1024)
+    if reservation.get('operation_id')!=target_name or prior.get('operation_id')!=target_name: fail('reconcile_target_identity')
+    start=reservation.get('reserved_at')
+    if not isinstance(start,int) or start<1: fail('reconcile_target_time')
+    end=int((target/'result.json').stat().st_mtime)+1
+    out={'target_operation_id':target_name,'target_mode':reservation.get('mode'),
+         'target_status':prior.get('status'),'reserved_at':start,'result_mtime':end-1,
+         'target_source_sha':reservation.get('source_sha')}
+    if target_name.startswith('int-andromeda-'):
+        config=project/'_preview/search3-anex-candidate/.andromeda-private.php'
+        if not safe_file(config,65536): fail('andromeda_private_config_missing')
+        php="\$c=require \$argv[1];\$p=\$c['catalog_path']??null;if(!is_string(\$p)||\$p==='')exit(2);echo dirname(\$p);"
+        q=subprocess.run(['php','-r',php,str(config)],capture_output=True,text=True,timeout=20)
+        if q.returncode or not q.stdout.strip(): fail('andromeda_catalog_root')
+        base=pathlib.Path(q.stdout.strip())
+        counter=base/'monthly-requests.json'
+        if safe_file(counter,65536):
+            c=safe_json(counter,65536)
+            mtime=int(counter.stat().st_mtime)
+            out['andromeda_monthly_counter']={
+                'month':c.get('month'),'reserved_requests':c.get('reserved_requests'),
+                'monthly_limit':c.get('monthly_limit'),'mtime':mtime,
+                'mtime_in_target_window': start-2 <= mtime <= end+2}
+        searches=base/'searches'
+        observed=[]
+        if searches.is_dir() and not searches.is_symlink():
+            for p in searches.iterdir():
+                try:
+                    if p.is_file() and not p.is_symlink():
+                        mt=int(p.stat().st_mtime)
+                        if start-2 <= mt <= end+2: observed.append(mt)
+                except OSError: pass
+        out['andromeda_search_files_in_target_window']={
+            'count':len(observed),'first_mtime':min(observed) if observed else None,
+            'last_mtime':max(observed) if observed else None}
+    return out
 def local_read(scopes):
     rows=[]
     for scope in scopes[:20]:
@@ -253,16 +304,30 @@ try:
             fail('source_hash')
     (op/'installed-source.json').write_text(json.dumps({'source_sha':source,'files':files},sort_keys=True))
     os.chmod(op/'installed-source.json',0o600)
-    provider='anex' if mode=='anex-demand' else 'andromeda'
-    result['before_db']=db_summary(provider)
-    env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
-    env['ANYTOUR_PROJECT_ROOT']=str(project)
-    generation=str(2100000000-(int(hashlib.sha256(operation.encode()).hexdigest()[:6],16)%1000000))
+    if mode=='reconcile':
+        target_name=payload['target_operation_id']
+        provider='anex' if target_name.startswith('int-anex-') else 'andromeda'
+        result['before_db']=db_summary(provider)
+        result['reconciliation']=reconcile_target(target_name)
+        result['after_db']=db_summary(provider)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='reconciled_read_only'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
+        __RECONCILED__=True
+    if mode!='reconcile':
+        provider='anex' if mode=='anex-demand' else 'andromeda'
+        result['before_db']=db_summary(provider)
+        env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
+        env['ANYTOUR_PROJECT_ROOT']=str(project)
+        generation=str(2100000000-(int(hashlib.sha256(operation.encode()).hexdigest()[:6],16)%1000000))
     if mode=='anex-demand':
         command=['php',str(stage/'scripts/ops/anex_local_offer_demand_fill.php'),
           '--limit='+str(payload['limit']),'--lookback-hours=168','--horizon-days=21',
           '--max-expands=600','--max-apd=600','--generation-base='+generation]
-    else:
+    elif mode=='andromeda-scope':
         config=project/'_preview/search3-anex-candidate/.andromeda-private.php'
         if not safe_file(config,65536): fail('andromeda_private_config_missing')
         command=['php',str(stage/'scripts/ops/andromeda_local_offer_collect.php'),
@@ -274,28 +339,40 @@ try:
           '--max-captures='+str(payload['max_captures']),'--max-capture-seconds=0',
           '--capture-mode=non_external_only']
         if payload['region']: command.append('--region='+str(payload['region']))
-    run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
-    result['collector_exit']=run.returncode
-    try: collector=json.loads(run.stdout.strip())
-    except Exception: collector={'status':'unparseable'}
-    result['collector']=collector
-    result['collector_stderr_nonempty']=bool(run.stderr.strip())
-    result['after_db']=db_summary(provider)
-    if mode=='anex-demand':
-        scopes=[x.get('scope',{}) for x in collector.get('results',[])
-                if isinstance(x,dict) and isinstance(x.get('scope'),dict)]
-    else:
-        scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
-                 'regionId':payload['region'] or None,'dateFrom':payload['date_from'],
-                 'dateTo':payload['date_to'],'nights':payload['nights'],
-                 'adults':payload['adults'],'childAges':[]}]
-    result['local_readback']=local_read(scopes) if scopes else []
-    result['production_after']=fingerprints()
-    if result['production_after']!=before: fail('production_drift')
-    result['status']='complete' if run.returncode==0 else 'terminal_nonzero_no_replay'
-    result['supplier_calls']='bounded_by_collector'
-    result['database_writes']='collector_owned'
-    result['production_unchanged']=True
+    if mode!='reconcile':
+        run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
+        result['collector_exit']=run.returncode
+        stderr=run.stderr.strip()
+        result['collector_stderr_nonempty']=bool(stderr)
+        result['collector_stderr_sha256']=hashlib.sha256(stderr.encode()).hexdigest() if stderr else None
+        code_match=re.search(r'(?:RuntimeException|DomainException|InvalidArgumentException):\s*([A-Z][A-Z0-9_]{2,80})',stderr)
+        result['collector_error_code']=code_match.group(1) if code_match else ('PHP_FATAL' if 'PHP Fatal error' in stderr else None)
+        try: collector=json.loads(run.stdout.strip())
+        except Exception: collector={'status':'unparseable'}
+        result['collector']=collector
+        result['after_db']=db_summary(provider)
+        parseable=collector.get('status')!='unparseable'
+        if run.returncode==0 and parseable:
+            if mode=='anex-demand':
+                scopes=[x.get('scope',{}) for x in collector.get('results',[])
+                        if isinstance(x,dict) and isinstance(x.get('scope'),dict)]
+            else:
+                scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
+                         'regionId':payload['region'] or None,'dateFrom':payload['date_from'],
+                         'dateTo':payload['date_to'],'nights':payload['nights'],
+                         'adults':payload['adults'],'childAges':[]}]
+            try:
+                result['local_readback']=local_read(scopes) if scopes else []
+            except Exception as exc:
+                result['local_readback']={'status':'failed','reason':str(exc)}
+        else:
+            result['local_readback']={'status':'skipped_after_collector_nonzero'}
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete' if run.returncode==0 and parseable else 'unknown_no_replay'
+        result['supplier_calls']='bounded_by_collector' if result['status']=='complete' else 'unknown'
+        result['database_writes']='collector_owned' if result['status']=='complete' else 'unknown'
+        result['production_unchanged']=True
 except Exception as exc:
     if result.get('status')=='reserved':
         result['status']='unknown_no_replay';result['reason']=str(exc)
@@ -396,7 +473,7 @@ def main() -> None:
         return
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
-    if result.get('status') not in ('complete','terminal_nonzero_no_replay'):
+    if result.get('status') not in ('complete','reconciled_read_only'):
         raise SystemExit(1)
 
 if __name__ == '__main__':

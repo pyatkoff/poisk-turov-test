@@ -22,10 +22,6 @@ permissions:
   checks: read
   issues: read
 
-concurrency:
-  group: anytoour-int-server-executor
-  cancel-in-progress: false
-
 jobs:
   contract:
     if: github.event_name == 'pull_request'
@@ -43,6 +39,9 @@ jobs:
           python3 tests/int_server_executor_test.py -v
 
   execute:
+    concurrency:
+      group: anytoour-int-server-executor
+      cancel-in-progress: false
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' &&
       github.ref == 'refs/heads/main' &&
