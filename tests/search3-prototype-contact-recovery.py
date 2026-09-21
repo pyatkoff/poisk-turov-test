@@ -163,6 +163,14 @@ def check_width(browser, origin, width):
             if case != "empty":
                 assert submit.is_disabled(), case
                 assert "Не удалось загрузить рейсы" in alert.inner_text()
+                visible_alert = alert.evaluate("""element => {
+                    const box = element.getBoundingClientRect();
+                    const body = document.querySelector('#modal-body').getBoundingClientRect();
+                    const footer = document.querySelector('#modal-footer').getBoundingClientRect();
+                    return box.top >= body.top - 1 && box.bottom <= Math.min(body.bottom, footer.top) + 1;
+                }""")
+                assert visible_alert, "The disabled form's reason must be visible without guessing to scroll"
+                page.screenshot(path=str(EVIDENCE / f"visible-error-{case}-{width}.png"))
                 for key, value in draft.items():
                     form.locator(f'[name="{key}"]').fill(value)
                 assert "Не удалось загрузить рейсы" in alert.inner_text(), "Editing erased verification error"

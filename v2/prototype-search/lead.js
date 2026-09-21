@@ -19,7 +19,7 @@
     for(const name of ['name','phone','comment'])form.elements[name].value=draft[name];
     let session;
     try{session=root.AnyTourPrototypeData.leadSession(offer);}
-    catch(error){message.textContent=error.message;message.setAttribute('role','alert');button.disabled=true;}
+    catch(error){message.textContent=error.message;message.setAttribute('role','alert');button.disabled=true;message.scrollIntoView({block:'nearest'});}
     form.addEventListener('input',()=>{
       for(const name of ['name','phone','comment'])draft[name]=form.elements[name].value;
       root.V2LeadFormGuard.validatePhone(phone);
