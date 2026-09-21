@@ -73,6 +73,7 @@ function restoreURL(){
  if(data.catalog.departures.some(x=>data.text(x)===p.get('origin')))s.origin=p.get('origin');
  const valid=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')&&v>=startDay&&v<=endDay&&data.date(v)===v;
  if(valid(p.get('from'))&&valid(p.get('to'))&&p.get('from')<=p.get('to')&&(dateObj(p.get('to'))-dateObj(p.get('from')))/86400000<=21){s.from=p.get('from');s.to=p.get('to');}
+ const selectedDay=p.get('date');state.selectedDate=valid(selectedDay)&&selectedDay>=s.from&&selectedDay<=s.to?selectedDay:null;
  for(const k of ['minNights','maxNights','adults']){const n=Number(p.get(k));if(Number.isInteger(n)&&n>=1&&n<=(k==='adults'?6:28))s[k]=n;}
  if(s.maxNights<s.minNights||s.maxNights-s.minNights>10)s.maxNights=s.minNights;
  if(p.has('ages'))s.ages=p.get('ages').split(',').filter(x=>/^\d+$/.test(x)&&Number(x)<=17).slice(0,3).map(Number);
@@ -102,9 +103,10 @@ function results(){return hotels.map(h=>({hotel:h,offers:hotelOffers(h)})).filte
 function minimumForDay(day,options={}){let min=Infinity;const source=options.calendarHotels||hotels;source.forEach(h=>{const offers=hotelOffers(h,{...options,day,ignoreDate:true,onlyFavorites:false});if(offers.length)min=Math.min(min,offers[0].total)});return Number.isFinite(min)?min:null;}
 function filterCount(){return Object.entries(state.filters).reduce((n,[k,v])=>n+(Array.isArray(v)?v.length:k==='max'?(v<600000?1:0):k==='min'?(v>0?1:0):v?1:0),0);}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.hidden=true,3600);}
+const draftSelectedDate=()=>draft.from===state.search.from&&draft.to===state.search.to?state.selectedDate:null;
 function updateSearchUI(){
  $('#origin').value=draft.origin;const place=currentDraftDestination();$('#destination-label').textContent=destinationLabel(place);$('#country').title=destinationLabel(place,true);$('#country').setAttribute('aria-label','Направление: '+destinationLabel(place,true));
- $('#dates-label').textContent=rangeText(draft.from,draft.to);$('#nights-label').textContent=durationText(draft);$('#guests-label').textContent=guestsText(draft);
+ $('#dates-label').textContent=draftSelectedDate()?dateText(draftSelectedDate()):rangeText(draft.from,draft.to);$('#nights-label').textContent=durationText(draft);$('#guests-label').textContent=guestsText(draft);
  $$('#quick-stars button').forEach(b=>{const active=b.dataset.action==='any-stars'?!state.filters.stars.length:state.filters.stars.includes(+b.dataset.value);b.setAttribute('aria-pressed',active);b.classList.toggle('active',active)});
  const meals=state.filters.meals.join(' · ');$('#meal-label').textContent=state.filters.meals.length>1?state.filters.meals.length+' варианта':meals||'Любое';$('#quick-meal').setAttribute('aria-label','Питание: '+(meals||'любое'));$('#quick-meal').title=meals||'Любое питание';
  $('#budget-label').textContent=budgetText();
@@ -403,8 +405,8 @@ function openMeals(){
 }
 function openBudget(){showModal('budget','Бюджет на весь тур','НА ВСЕХ ТУРИСТОВ',`<p class="modal-intro">Полная стоимость с перелётом и обязательными сборами.</p><div class="form-row"><label>От, ₽<input type="number" class="input" id="budget-min" min="0" max="600000" step="1000" value="${state.filters.min}"></label><label>До, ₽<input type="number" class="input" id="budget-max" min="0" max="600000" step="1000" value="${state.filters.max}"></label></div><div class="budget-presets">${[150000,200000,300000,600000].map(n=>`<button class="chip" data-action="budget-preset" data-value="${n}">${n===600000?'Без ограничений':'До '+money(n)}</button>`).join('')}</div><p class="error-text" id="budget-error" role="alert"></p>`);$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-budget">Применить бюджет</button>';}
 function openDates(source='form'){
- dateContext=createDateContext(source);const s=dateContext.search;
- dateDraft={from:source==='results'&&state.selectedDate?state.selectedDate:s.from,to:source==='results'&&state.selectedDate?state.selectedDate:s.to,phase:0,flex:0};
+ dateContext=createDateContext(source);const s=dateContext.search,selectedDay=source==='results'?state.selectedDate:draftSelectedDate();
+ dateDraft={from:selectedDay||s.from,to:selectedDay||s.to,phase:0,flex:0};
  dateAnchor=dateDraft.from;datePrices=new Map();calendarMonth=dateDraft.from.slice(0,7)+'-01';
  showModal('dates','Даты вылета','ЦЕНЫ ИЗ БАЗЫ · ЗА ВСЕХ',`<p class="calendar-context">${esc(dateContextLabel(s))}</p><div class="calendar-legend"><span>Сохранённая цена от, тыс. ₽</span><span><i class="legend-dot"></i>Минимум среди сохранённых цен</span></div><div id="date-calendar"></div><details class="manual-dates"><summary>Ввести даты вручную</summary><div class="form-row"><label>Вылет от<input class="input" id="date-from" type="date" min="${startDay}" max="${endDay}" value="${dateDraft.from}"></label><label>Вылет до<input class="input" id="date-to" type="date" min="${startDay}" max="${endDay}" value="${dateDraft.to}"></label></div></details>`);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="date-footer"><div class="flex-dates" aria-label="Гибкие даты">${[0,1,2,3].map(n=>`<button data-action="flex-date" data-value="${n}" aria-pressed="${!n}">${n?'±'+n+' '+(n===1?'день':'дня'):'Точно'}</button>`).join('')}</div><p id="date-selection-hint" aria-live="polite"></p><p class="error-text" id="date-error" role="alert"></p><button class="primary picker-apply" data-action="apply-dates"></button></div>`;
@@ -634,10 +636,11 @@ function runSearch(options={}){
 }
 
 function search(){
+ const selectedDay=draftSelectedDate();
  draft.origin=$('#origin').value;const countryChanged=draft.country!==state.search.country;state.search=structuredClone(draft);state.hasSearched=true;
  if(countryChanged){state.filters.resorts=[];state.filters.hotelId=0;state.filters.q='';state.onlyFavorites=false;}
  if(draftDestination){state.filters.resorts=[...draftDestination.resorts];state.filters.hotelId=draftDestination.hotelId;state.filters.q='';draftDestination=null;}
- rememberDestination();state.selectedDate=null;state.openHotel=null;updateURL();renderFilters();runSearch();
+ rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();renderFilters();runSearch();
  $('#search-status').scrollIntoView({behavior:scrollBehavior(),block:'start'});
 }
 
@@ -699,12 +702,12 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'remove-draft-filter':if(filterDraft){removeModelFilter(filterDraft,b.dataset.key,b.dataset.value);filterEdited(true);$('#filter-panel .mobile-close').focus({preventScroll:true})}break;
  case 'recover-filters':{const choice=(b.dataset.source==='drawer'?drawerSuggestions:emptySuggestions)[+b.dataset.value];if(!choice)break;if(b.dataset.source==='drawer'&&filterDraft){filterDraft=structuredClone(choice.model);filterEdited(true);$('#filter-panel .mobile-close').focus({preventScroll:true})}else{state.filters=structuredClone(choice.model.filters);state.onlyFavorites=choice.model.onlyFavorites;state.selectedDate=choice.model.selectedDate;state.openHotel=null;syncFilters();$('#results').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#results').focus({preventScroll:true})}break;}
 
- case 'clear-date':state.selectedDate=null;renderResults({keepFilters:true});updateURL();break;
+ case 'clear-date':state.selectedDate=null;renderResults({keepFilters:true});updateSearchUI();break;
  case 'select-date':selectDate(b.dataset.date);break;
  case 'month-prev':case 'month-next':{const d=dateObj(calendarMonth);d.setUTCMonth(d.getUTCMonth()+(action==='month-next'?1:-1));calendarMonth=iso(d);renderDateCalendar();loadCalendarPrices();break}
  case 'day-pick':{const day=b.dataset.date;dateDraft.flex=0;if(dateDraft.phase===0){dateDraft.from=day;dateDraft.to=day;dateDraft.phase=1;dateAnchor=day}else{if(day<dateDraft.from){dateDraft.to=dateDraft.from;dateDraft.from=day}else dateDraft.to=day;dateDraft.phase=0}updateDateSelection();break}
  case 'flex-date':{const n=+b.dataset.value;dateDraft.flex=n;dateDraft.from=addDays(dateAnchor,-n)<startDay?startDay:addDays(dateAnchor,-n);dateDraft.to=addDays(dateAnchor,n)>endDay?endDay:addDays(dateAnchor,n);dateDraft.phase=0;updateDateSelection();break}
- case 'apply-dates':{const from=$('#date-from').value,to=$('#date-to').value;if(!from||!to||from<startDay||to>endDay||from>to||(dateObj(to)-dateObj(from))/86400000>21){$('#date-error').textContent='Выберите корректный диапазон не больше 21 дня между датами.';return}draft.from=from;draft.to=to;if(dateContext.source==='results'){state.search.from=from;state.search.to=to;state.selectedDate=from===to?from:null;state.openHotel=null;renderResults({keepFilters:true})}closeModal();updateSearchUI();break}
+ case 'apply-dates':{const from=$('#date-from').value,to=$('#date-to').value;if(!from||!to||from<startDay||to>endDay||from>to||(dateObj(to)-dateObj(from))/86400000>21){$('#date-error').textContent='Выберите корректный диапазон не больше 21 дня между датами.';return}draft.from=from;draft.to=to;if(dateContext.source==='results'){state.search.from=from;state.search.to=to;state.selectedDate=from===to?from:null;state.openHotel=null;renderResults({keepFilters:true})}else if(state.selectedDate){state.selectedDate=null;renderResults({keepFilters:true})}closeModal();updateSearchUI();break}
  case 'adults-minus':guestDraft.adults=Math.max(1,guestDraft.adults-1);renderGuests();break;
  case 'adults-plus':guestDraft.adults=Math.min(6,guestDraft.adults+1);renderGuests();break;
  case 'children-minus':guestDraft.ages.pop();renderGuests();break;
