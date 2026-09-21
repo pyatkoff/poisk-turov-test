@@ -1,0 +1,155 @@
+name: MATCH reconcile v9 no-replay
+on:
+  push:
+    branches: [ops/match-v9-reconcile-1971-20260921-v1]
+    paths: [.github/workflows/hotel-match-v9-reconcile-1971-20260921-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-v9-reconcile-1971-20260921-v1, cancel-in-progress: false}
+env:
+  SOURCE_RUN: '35583604420'
+  SOURCE_OPERATION: hotel-match-remaining-tv-search30-1971-20260921-v9
+  CLAIM: '5759364636'
+jobs:
+  reconcile:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD cde183f7d33cef6bd1df4d0ff16dad0904d53570)" = cde183f7d33cef6bd1df4d0ff16dad0904d53570
+          test "$(git diff --name-only cde183f7d33cef6bd1df4d0ff16dad0904d53570..HEAD)" = ".github/workflows/hotel-match-v9-reconcile-1971-20260921-v1.yml"
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for s in ['read-only reconciliation lane','35583604420','WAIT until run35583604420 is completed','No Tourvisor/ANEX/Andromeda calls','no DB access','no writes','no rerun']:
+              assert s in b,s
+          PY
+      - name: Wait for v9 to become terminal
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 180); do
+            gh api "repos/pyatkoff/poisk-turov-test/actions/runs/$SOURCE_RUN" > source-run.json
+            status="$(jq -r .status source-run.json)"
+            if [ "$status" = completed ]; then
+              jq '{id,status,conclusion,run_attempt,head_sha,created_at,run_started_at,updated_at}' source-run.json
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "source_run_not_terminal" >&2
+          exit 1
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 90); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100" > security-runs.json
+            conclusion="$(jq -r '[.workflow_runs[]|select(.name=="Security guard" and .head_sha==env.GITHUB_SHA and .status=="completed")]|sort_by(.id)|last|.conclusion // empty' security-runs.json)"
+            if [ "$conclusion" = success ]; then exit 0; fi
+            if [ -n "$conclusion" ]; then echo "security_$conclusion" >&2; exit 1; fi
+            sleep 5
+          done
+          echo security_not_green >&2
+          exit 1
+      - name: Read sealed v9 remote operation
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p result
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r' >"$key"; else printf '%s' "$KEY"|base64 --decode >"$key"; fi
+          chmod 600 "$key"
+          ssh-keyscan -T 15 -t ed25519 "$HOST" >"$known" 2>/dev/null
+          remote="$USER@$HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "OPDIR=\"\$HOME/.anytoour-match/operations/$SOURCE_OPERATION\" OP=\"$SOURCE_OPERATION\" python3 -" <<'PY' > result/reconciliation.json
+          import collections,glob,json,os,pathlib,hashlib
+          opdir=pathlib.Path(os.environ['OPDIR']); op=os.environ['OP']
+          if not opdir.is_dir(): raise SystemExit('remote_operation_missing')
+          def read(p):
+              try:
+                  x=json.loads(pathlib.Path(p).read_text())
+                  return x if isinstance(x,dict) else {}
+              except Exception:
+                  return {}
+          reserved=[]
+          for p in sorted(opdir.glob('batch-*-reserved.json')):
+              x=read(p)
+              reserved.append({'file':p.name,'batch':x.get('batch'),'country_id':x.get('country_id'),'hotel_ids':x.get('hotel_ids',[]),'context':x.get('context',{})})
+          completed=[]
+          for p in sorted(opdir.glob('batch-*.json')):
+              if p.name.endswith('-reserved.json'): continue
+              x=read(p)
+              completed.append({'file':p.name,'batch':x.get('batch'),'country_id':x.get('country_id'),'hotel_ids':x.get('hotel_ids',[]),'search_id':x.get('search_id'),'returned_hotels':x.get('returned_hotels'),'captured_edges':x.get('captured_edges'),'unresolved_edges':x.get('unresolved_edges')})
+          actions=collections.Counter(); requests=[]
+          for p in sorted(opdir.glob('request-*.json')):
+              x=read(p); a=str(x.get('action','')); actions[a]+=1
+              requests.append({'file':p.name,'seq':x.get('seq'),'action':a,'tariff_unit':x.get('tariff_unit'),'tariff_after':x.get('tariff_after')})
+          metas=[]
+          for p in sorted(opdir.glob('response-*-meta.json')):
+              x=read(p); metas.append({'file':p.name,'seq':x.get('seq'),'http_status':x.get('http_status'),'bytes':x.get('bytes'),'raw_sha256':x.get('raw_sha256')})
+          result=read(opdir/'result.json') if (opdir/'result.json').is_file() else None
+          receipt=read(opdir/'receipt.json') if (opdir/'receipt.json').is_file() else None
+          plan=read(opdir/'plan.json') if (opdir/'plan.json').is_file() else None
+          tariff_path=pathlib.Path.home()/'.anytour-match/provider-quotas/tourvisor-tariff-2026-09-21.json'
+          tariff=read(tariff_path) if tariff_path.is_file() else {}
+          out={
+            'operation':'hotel-match-v9-reconcile-1971-20260921-v1',
+            'source_operation':op,
+            'state':'completed_read_only_reconciliation',
+            'remote_result_present':result is not None,
+            'remote_receipt_present':receipt is not None,
+            'plan_stats':(plan or {}).get('stats'),
+            'planned_groups':len((plan or {}).get('groups') or []),
+            'attempted_batch_count':len(reserved),
+            'attempted_batches':reserved,
+            'completed_batch_count':len(completed),
+            'completed_batches':completed,
+            'physical_http_attempts':len(requests),
+            'action_counts':dict(actions),
+            'requests':requests,
+            'response_meta_count':len(metas),
+            'response_metas':metas,
+            'source_result':result,
+            'source_receipt':receipt,
+            'tariff_search_units_current':tariff.get('tariff_search_units'),
+            'tariff_operation_counts':(tariff.get('operations') or {}).get(op,{}),
+            'provider_calls':0,'database_access':0,'database_writes':0,'mapping_writes':0,
+            'safe_to_replay_attempted_batches':False,
+          }
+          print(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2))
+          PY
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          p=pathlib.Path('result/reconciliation.json'); x=json.loads(p.read_text())
+          assert x['state']=='completed_read_only_reconciliation'
+          assert x['provider_calls']==x['database_access']==x['database_writes']==x['mapping_writes']==0
+          assert x['safe_to_replay_attempted_batches'] is False
+          pathlib.Path('result/receipt.json').write_text(json.dumps({
+            'operation':x['operation'],'state':x['state'],'source_operation':x['source_operation'],
+            'attempted_batch_count':x['attempted_batch_count'],'completed_batch_count':x['completed_batch_count'],
+            'physical_http_attempts':x['physical_http_attempts'],'action_counts':x['action_counts'],
+            'tariff_search_units_current':x['tariff_search_units_current'],
+            'result_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+            'provider_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True
+          },sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-v9-reconciliation-${{ github.run_id }}
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
