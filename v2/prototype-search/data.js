@@ -11,20 +11,7 @@
   const amount = value => { const n = Number(value && typeof value === 'object' ? value.value : value); return Number.isFinite(n) && n > 0 ? n : null; };
   const date = value => { const s = String(value || '').slice(0, 10), p = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/); return p ? `${p[3]}-${p[2]}-${p[1]}` : /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''; };
   const plus = (d, n) => new Date(new Date(d + 'T12:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
-  const mealToken = value => text(value).trim().replace(/\s+/g,' ').toLocaleLowerCase('ru-RU').replace(/ё/g,'е');
-  function mealKey(value){
-    const key=mealToken(value);
-    if(['ai','all inclusive','all-inclusive','все включено'].includes(key))return 'ai';
-    if(['uai','ultra all inclusive','ultra-all-inclusive','ультра все включено'].includes(key))return 'uai';
-    return key;
-  }
-  function meal(value){
-    const label=text(value),full=text(value?.fullName),key=mealKey(full||label);
-    // Use the same catalogue spelling for choices and offers; never merge AI with UAI.
-    const record=catalog.meals.find(x=>[text(x),text(x.name),text(x.fullName)].some(name=>name&&mealKey(name)===key))||(!full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)):null);
-    if(record)return text(record.russianName)||text(record.fullName)||text(record);
-    return full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?full:label;
-  }
+  function meal(value){const label=text(value),record=catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)||text(x).toLocaleLowerCase('ru-RU')===label.toLocaleLowerCase('ru-RU')),full=text(value?.fullName)||text(record?.fullName);return full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?full:label;}
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
   function params(s, hotelIds = [], filters = {}) {
     const departure = catalog.departures.find(x => text(x) === s.origin || String(x.id) === s.origin);
@@ -63,7 +50,9 @@
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
     if(!price || !day || !Number.isInteger(nights) || nights<1) return null;
     const provider=String(t.provider||'tourvisor').toLowerCase();
-    return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),room:text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,meal:meal(t.meal)||'Питание уточняется',operator:text(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
+    const stay=t.cachedListing===true&&t.localStay?.source==='anytour-hotel-stay-v2'?t.localStay:null;
+    const localMeal=stay?.meal?.hotelId===h.id?stay.meal:null,localRoom=stay?.room?.hotelId===h.id?stay.room:null;
+    return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),roomId:localRoom?.id??null,mealId:localMeal?.id??null,stayCatalog:stay?.source??null,room:localRoom?.nameRu||text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,meal:localMeal?.nameRu||meal(t.meal)||'Питание уточняется',operator:text(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
   function project(list,s) { return list.map(rawHotel=>{const h=hotel(rawHotel,s);h.offers=(rawHotel.tours||[]).map((t,i)=>offer(t,h,s,i)).filter(Boolean);return h;}).filter(h=>h.offers.length); }
   function publish() {if(owner&&context)notify({type:'results',hotels:project(owner.read(raw,{}),context)});}

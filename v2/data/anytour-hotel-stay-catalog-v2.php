@@ -470,6 +470,85 @@ final class AnyTourHotelStayCatalogV2
     }
 
     /**
+     * Reverse the EXISTING reviewed mapping: local concepts -> native search codes.
+     * Scope must come from the provider adapter, not from a display label. A label-only
+     * observation is never a searchable code. An incomplete selection is not "any".
+     * Read-only: no mapping acceptance, supplier I/O or transaction ownership.
+     */
+    public function searchCodes(array $scope, int $hotelId, string $kind, array $localIds): array
+    {
+        $scope=self::scope($scope);self::id($hotelId);
+        if (!in_array($kind,['room','meal'],true) || !array_is_list($localIds)
+            || count($localIds)>self::BATCH_LIMIT) {
+            throw new InvalidArgumentException('HOTEL_STAY_V2_SEARCH_SELECTION');
+        }
+        $ids=[];
+        foreach ($localIds as $id) $ids[self::id($id)]=true;
+        $ids=array_keys($ids);
+        $result=['source'=>'anytour-hotel-stay-v2','scope'=>$scope,'hotelId'=>$hotelId,
+            'kind'=>$kind,'complete'=>true,'items'=>[],'codes'=>[]];
+        if ($ids===[]) return $result;
+
+        $table=$kind==='meal'?'anytour_hotel_meal_concepts_v2':'anytour_hotel_room_concepts_v2';
+        $target=$kind==='meal'?'meal_concept_id':'room_concept_id';
+        $slots=implode(',',array_fill(0,count($ids),'?'));
+        // One SQL snapshot keeps source, target and mappings coherent. LEFT JOINs
+        // retain explicit missing/inactive outcomes rather than dropping a selection.
+        $sql='SELECT c.*,h.is_active AS hotel_active,s.anytour_hotel_id AS source_hotel,
+                s.acquired_via,s.source_json,s.source_sha256,
+                m.id AS mapping_id,m.state AS mapping_state,m.key_kind,m.external_key
+            FROM '.$table.' c JOIN anytour_hotels h ON h.id=c.anytour_hotel_id
+            LEFT JOIN anytour_hotel_sources s ON s.namespace=? AND s.external_key=?
+            LEFT JOIN anytour_hotel_stay_mappings_v2 m
+                ON m.namespace=s.namespace AND m.external_hotel_key=s.external_key
+                AND m.anytour_hotel_id=c.anytour_hotel_id AND m.'.$target.'=c.id
+                AND m.operator_key=? AND m.kind=? AND m.key_kind=\'code\'
+            WHERE c.anytour_hotel_id=? AND c.id IN ('.$slots.')
+            ORDER BY c.id,m.external_key LIMIT 10001';
+        $stmt=$this->pdo->prepare($sql);
+        $stmt->execute([$scope['namespace'],$scope['hotelKey'],$scope['operatorKey'],$kind,$hotelId,...$ids]);
+        $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (count($rows)>10000) throw new RuntimeException('HOTEL_STAY_V2_SEARCH_LIMIT');
+        $items=[];$seen=[];
+        foreach ($ids as $id) $items[$id]=['localId'=>$id,'status'=>'target-unavailable','canonical'=>null,'codes'=>[]];
+        foreach ($rows as $row) {
+            $id=self::id($row['id']);
+            if (!isset($items[$id]) || (int)$row['anytour_hotel_id']!==$hotelId) {
+                throw new RuntimeException('HOTEL_STAY_V2_SEARCH_SCOPE');
+            }
+            if ((int)$row['hotel_active']!==1 || (int)$row['is_active']!==1) continue;
+            if ($row['source_hotel']===null) {$items[$id]['status']='hotel-unresolved';continue;}
+            if ((int)$row['source_hotel']!==$hotelId
+                || ($scope['namespace']==='anytour_local_id' && !self::localAliasValid($row,$scope['hotelKey'],$hotelId))) {
+                $items[$id]['status']='source-drift';continue;
+            }
+            $canonical=self::conceptDto($row,$kind);
+            if ($items[$id]['canonical']!==null && $items[$id]['canonical']!==$canonical) {
+                throw new RuntimeException('HOTEL_STAY_V2_CONFLICTING_MAPPING');
+            }
+            $items[$id]['canonical']=$canonical;
+            if ($items[$id]['status']!=='accepted') $items[$id]['status']='unmapped';
+            if ($row['mapping_id']===null || $row['mapping_state']!=='accepted') continue;
+            if ($row['key_kind']!=='code') throw new RuntimeException('HOTEL_STAY_V2_SEARCH_CODE');
+            $code=self::reference(['kind'=>$kind,'keyKind'=>'code','externalKey'=>$row['external_key']])['externalKey'];
+            // Prefix avoids PHP converting numeric-looking keys. Codes remain bytes,
+            // e.g. "007" and "7" are not collapsed into one supplier identity.
+            $key='code:'.$code;
+            if (isset($seen[$key])) throw new RuntimeException('HOTEL_STAY_V2_CONFLICTING_MAPPING');
+            $seen[$key]=true;$items[$id]['codes'][]=$code;$items[$id]['status']='accepted';
+        }
+        foreach ($items as $item) {
+            $result['items'][]=$item;
+            if ($item['status']!=='accepted') $result['complete']=false;
+            foreach ($item['codes'] as $code) $result['codes'][]=$code;
+        }
+        // Do not issue an accidentally broadened/partial request when one selected
+        // concept has no code in this exact provider/hotel/operator scope.
+        if (!$result['complete']) $result['codes']=[];
+        return $result;
+    }
+
+    /**
      * Resolve only exact reviewed facts inside the exact source hotel/operator scope.
      * Missing/unresolved source identity never creates a canonical concept.
      */

@@ -1,67 +1,56 @@
 'use strict';
-// Exercises the real projection, LOCAL parser and existing pure result predicates.
-// Fictional offers only; no browser or live supplier acceptance is claimed.
+// Real LOCAL parser and prototype projection; fictional server replies, no network.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-const v2=path.resolve(__dirname,'../v2');
-const window={location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),V2Runtime:{api(){throw Error('Unexpected supplier call');}},Search3CanonicalProfilesV1:{create:()=>({})}};
-const context=vm.createContext({window,URL,structuredClone,console});
-for(const file of ['search3-local-db-provider-v1.js','prototype-search/data.js'])vm.runInContext(fs.readFileSync(path.join(v2,file),'utf8'),context,{filename:file});
-const data=window.AnyTourPrototypeData;
-data.catalog.meals.push({id:7,name:'AI',fullName:'Все Включено'},{id:8,name:'UAI',fullName:'Ультра Все Включено'},{id:5,name:'HB',fullName:'Полупансион'},{id:2,name:'BB',fullName:'Завтраки'});
-data.catalog.departures.push({id:1,name:'Москва'});data.catalog.countries.push({id:4,name:'Турция'});
-const search={origin:'Москва',country:'4',from:'2026-09-29',to:'2026-10-05',minNights:7,maxNights:7,adults:2,ages:[]};
-const filters={hotelId:0,q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],min:0,max:600000,rating:false,beach:false,family:false,spa:false};
-context.state={search,filters,selectedDate:null,onlyFavorites:false,favorites:[],sort:'recommended'};
-context.ratingValue=h=>h.rating;
-const app=fs.readFileSync(path.join(v2,'prototype-search/app.js'),'utf8');
-const start=app.indexOf('function hotelMatch('),end=app.indexOf('function filterCount(',start);
-assert.ok(start>=0&&end>start,'Use the actual app predicates, never copy their implementation into the test');
-vm.runInContext(app.slice(start,end),context,{filename:'app.js:result-predicates'});
-const base={date:'2026-09-29',nights:7,adults:2,childs:0,roomType:'STANDARD',placement:'DBL',operator:{name:'ANEX'},price:120000};
-const rawHotel={id:4234,anytourHotelId:4234,canonicalLegacyIds:[101],name:'Fictional meal regression hotel',country:{name:'Турция'},region:{name:'Бодрум'},category:5,rating:4.7,tours:[]};
-const aiValues=['AI','all inclusive','All Inclusive','всё включено',' ВСЕ  ВКЛЮЧЕНО ',{name:'AI',fullName:'Все включено'}];
-const ultraValues=['UAI','Ultra All Inclusive','ультра всё включено',' УЛЬТРА  ВСЕ ВКЛЮЧЕНО ',{name:'UAI',fullName:'Ультра все включено'}];
-rawHotel.tours=[...aiValues.map((meal,i)=>({...base,id:'ai-'+i,meal,price:120000+i})),...ultraValues.map((meal,i)=>({...base,id:'uai-'+i,meal,price:140000+i})),{...base,id:'breakfast',meal:{name:'BB'},price:80000},{...base,id:'unknown',meal:{name:'Питание уточняется'},price:70000}];
-const original=JSON.stringify(rawHotel);
-const h=data.project([rawHotel],search)[0];context.hotels=[h];
-const choiceAI=data.meal(data.catalog.meals[0]),choiceUAI=data.meal(data.catalog.meals[1]);
-filters.meals=[choiceAI,choiceUAI];
-const matched=context.hotelOffers(h);
-const aliasOnly={...h,offers:h.offers.filter(o=>/^(?:ai-[1-5]|uai-[1-4])$/.test(o.raw.id))};
-console.log(JSON.stringify({aliasOnlyBeforeFilter:aliasOnly.offers.length,aliasOnlyAfterBoth:context.hotelOffers(aliasOnly).length}));
-console.log(JSON.stringify({choices:filters.meals,projected:h.offers.map(o=>o.meal),all:h.offers.length,both:matched.length}));
-assert.equal(context.hotelOffers(aliasOnly).length,9,'All raw-alias offers must not disappear when AI/UAI are selected');
-assert.equal(matched.length,aiValues.length+ultraValues.length,'AI plus UAI must retain their union despite raw labels, without breakfast/unknown');
-filters.meals=[choiceAI];assert.equal(context.hotelOffers(h).length,aiValues.length,'AI alone remains distinct from UAI');
-filters.meals=[choiceUAI];assert.equal(context.hotelOffers(h).length,ultraValues.length,'UAI alone must not admit plain AI');
-filters.meals=[];assert.equal(context.hotelOffers(h).length,rawHotel.tours.length,'Clearing meals restores all other eligible offers');
-assert.equal(JSON.stringify(rawHotel),original,'Raw source labels/room/price/identity must never be rewritten');
-for(const value of aiValues)assert.equal(data.meal(value),choiceAI);
-for(const value of ultraValues)assert.equal(data.meal(value),choiceUAI);
-for(const unknown of ['Premium AI','AI+','Ultra special','Без всё включено','NOT ALL INCLUSIVE'])assert.equal(data.meal({name:unknown}),unknown,'Do not guess unknown/premium categories from substrings');
-assert.equal(data.params(search,[],{meals:[choiceAI]}).meal,'7');
-assert.equal(data.params(search,[],{meals:[choiceUAI]}).meal,'8');
-assert.equal(data.params(search,[],{meals:[choiceAI,choiceUAI]}).meal,'','Do not put two IDs in the existing single-meal API contract');
-assert.equal(data.params(search,[],{meals:[]}).meal,'');
-assert.equal(data.meal({id:7,name:'Premium AI'}),'Premium AI','A shared numeric id must not rewrite a specific unknown label');
-assert.equal(data.meal({id:7,name:'AI',fullName:'Premium All Inclusive'}),'Premium All Inclusive','An explicit different fullName stays specific');
-assert.equal(data.meal({id:7}),choiceAI,'An id-only record still resolves through the catalogue');
-const originalMealRecords=[...data.catalog.meals];
-data.catalog.meals.splice(0,data.catalog.meals.length,{id:7,name:'AI',russianName:'Всё включено',fullName:'All Inclusive'},{id:8,name:'UAI',russianName:'Ультра всё включено',fullName:'Ultra All Inclusive'});
-assert.equal(data.meal('All Inclusive'),'Всё включено','Prefer catalogue Russian display text');
-assert.equal(data.meal('UAI'),'Ультра всё включено');
-data.catalog.meals.splice(0,data.catalog.meals.length,...originalMealRecords);
-
-// Read each source through the actual DB parser, then the shared projection/filter/calendar.
-for(const provider of ['tourvisor','anex','andromeda']){
- const tours=['all inclusive','Ultra All Inclusive','Завтраки'].map((meal,i)=>{
-  const row={provider,legacyHotelId:101,price:[125000,155000,80000][i],currency:'RUB',listing:{schema_version:1,provider,currency:'RUB',selection_state:'refresh_required',booking_enabled:false,listingPriceReady:true,listingPrice:{amount:String([125000,155000,80000][i]),currency:'RUB'},identity:{search_ref_digest:'a'.repeat(64),offer_ref_digest:String(i+1).repeat(64),provider_hotel_ref_digest:'b'.repeat(64)},tour:{checkin:'2026-09-29',nights:7,meal:{raw:meal},room:{raw:'STANDARD'},placement:{raw:'DBL'},party:{adults:2,children:0,child_ages:[]}},operator:{raw:'Fictional operator'}}};
-  const tour=window.AnyTourLocalDbProviderV1.offerTour(row);assert.ok(tour);assert.equal(tour.selectionEnabled,false);return tour;
- });
- const group=data.project([{...rawHotel,tours}],search)[0];context.hotels=[group];filters.meals=[choiceAI,choiceUAI];
- assert.equal(context.hotelOffers(group).length,2,provider+' stored meals join by normalized label, not raw spelling');
- assert.equal(context.minimumForDay('2026-09-29'),125000,'Calendar minimum excludes cheaper breakfast');
- filters.max=130000;filters.meals=[choiceUAI];assert.equal(context.hotelOffers(group).length,0,'Meal+budget must apply to the same offer, not two different hotel rows');
- filters.max=600000;filters.meals=[choiceAI];assert.equal(context.hotelOffers(group).length,1);
+const own=4234,legacy=101,source='anytour-hotel-stay-v2';
+const profile={id:own,catalog:'anytour',name:'Наш отель',category:5,country:{name:'Турция'}};
+const trip={origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-02',minNights:7,maxNights:7,adults:2,ages:[]};
+const concept=(kind,id,nameRu)=>({kind,id,hotelId:own,nameRu,localKey:`local-${id}`,revision:3,facts:{}});
+function row(provider,id,price=133500.5){
+ return{provider,legacyHotelId:legacy,price,currency:'RUB',
+  listing:{schema_version:1,provider,currency:'RUB',selection_state:'refresh_required',booking_enabled:false,listingPriceReady:true,listingPrice:{amount:String(price),currency:'RUB'},
+   identity:{offer_ref_digest:String(id).padStart(64,'0'),search_ref_digest:'b'.repeat(64),provider_hotel_ref_digest:'c'.repeat(64)},operator:{raw:'ANEX'},
+   tour:{checkin:'2026-10-01',nights:7,party:{adults:2,children:0,child_ages:[]},meal:{raw:`native-meal-${provider}-${id}`},room:{raw:`native-room-${provider}`},placement:{raw:'DBL'}}},
+  stayMatch:{source,exactScope:true,room:{status:'accepted',canonical:concept('room',901,'Семейный с видом на море')},meal:{status:'accepted',canonical:concept('meal',id,'Одинаковая подпись, разные ID')}}};
 }
-console.log('Prototype meals: AI, UAI, OR, reset, same-offer budget, TV/ANEX/SAMO stored rows and calendar PASS; supplier/lead/DB writes 0.');
+const rows=['tourvisor','anex','andromeda'].flatMap(p=>[row(p,501),row(p,502,153500.5)]);
+function reply(items=rows){return{source:'anytour-db-first-results-v1',scopeVersion:1,scopeDigest:'e'.repeat(64),selectionAuthority:false,hotels:[{anytourHotelId:own,hotel:profile,offers:items}]};}
+let readCalls=0;
+const window={location:{href:'https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'},V2Runtime:{api(){throw Error('No supplier request allowed');}},Search3CanonicalProfilesV1:{create:()=>({})}};
+const context=vm.createContext({window,URL,structuredClone,DOMException,AbortController,setTimeout,clearTimeout,fetch:async(url,options)=>{
+ readCalls++;assert.match(url,/search3-local-results-read-v1.php$/);const params=JSON.parse(options.body).params;
+ return{ok:true,json:async()=>({ok:true,data:{...reply(),scope:{scopeVersion:1,...params}}})};
+}});
+for(const file of ['search3-local-db-provider-v1.js','prototype-search/data.js'])vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../v2',file),'utf8'),context,{filename:file});
+const parser=window.AnyTourLocalDbProviderV1,data=window.AnyTourPrototypeData;
+data.catalog.departures.push({id:1,name:'Москва'});data.catalog.countries.push({id:4,name:'Турция'});
+function projected(input){const p=parser.parse(input);assert.ok(p);return data.project(p.hotels.map(g=>({...g.hotel,anytourHotelId:g.anytourHotelId,tours:g.offers.map(x=>x.tour)})),trip);}
+(async()=>{
+ const before=JSON.stringify(rows),parsed=parser.parse(reply());assert.equal(parsed.offerCount,6);
+ for(const {tour}of parsed.hotels[0].offers){
+  assert.equal(tour.localStay?.meal?.id,tour.meal.name.endsWith('501')?501:502,'Accepted local meal ID survives parsing');
+  assert.equal(tour.localStay.room.id,901);assert.equal(tour.localStay.meal.hotelId,own);
+  assert.equal(tour.meal.name.startsWith('native-meal-'),true,'Raw supplier label stays intact');
+  assert.equal(tour.roomType,`native-room-${tour.provider}`);
+  assert.equal(tour.selectionEnabled,false);assert.equal(tour.cachedListing,true);
+ }
+ const offers=projected(reply())[0].offers;
+ assert.deepEqual(Array.from(offers,x=>x.mealId),[501,502,501,502,501,502]);
+ for(const offer of offers){assert.equal(offer.roomId,901);assert.equal(offer.stayCatalog,source);assert.equal(offer.room,'Семейный с видом на море');assert.equal(offer.meal,'Одинаковая подпись, разные ID');assert.equal(offer.fuel,null);assert.equal(offer.cached,true);}
+ assert.deepEqual(Array.from(offers,x=>x.total),[133500.5,153500.5,133500.5,153500.5,133500.5,153500.5]);
+ assert.equal(JSON.stringify(rows),before,'Neither parser nor projection mutates source facts');
+ for(const change of [
+  x=>delete x.stayMatch,x=>x.stayMatch.exactScope=false,x=>x.stayMatch.source='unknown',
+  x=>x.stayMatch.meal.status='pending',x=>x.stayMatch.meal.status='conflict',
+  x=>x.stayMatch.meal.canonical.hotelId=own+1,x=>x.stayMatch.meal.canonical.kind='room',
+  x=>x.stayMatch.meal.canonical.id='AI',x=>x.stayMatch.meal.canonical.revision=0,
+  x=>x.stayMatch.meal.canonical.nameRu='',x=>x.stayMatch.meal.canonical.localKey=''
+ ]){const item=structuredClone(rows[0]);change(item);const offer=projected(reply([item]))[0].offers[0];assert.equal(offer.mealId,null,'No label, foreign hotel, malformed or unreviewed fact becomes a local ID');assert.equal(offer.meal,item.listing.tour.meal.raw);}
+ const wrongRoom=structuredClone(rows[0]);wrongRoom.stayMatch.room.canonical.hotelId=own+1;
+ const isolated=projected(reply([wrongRoom]))[0].offers[0];assert.equal(isolated.roomId,null);assert.equal(isolated.mealId,501,'An invalid room does not erase an independent accepted meal');
+ const calendar=await data.calendar(trip,trip.from,trip.to);
+ assert.equal(readCalls,1);assert.deepEqual(Array.from(calendar[0].offers,x=>x.mealId),[501,502,501,502,501,502],'The real DB calendar path retains the same local IDs');
+ const received=[];const owner={clearOffers(){},upsertHotel(){},upsertOffer(h,t){received.push([h,t.localStay?.meal?.id]);},refresh(){}};parser.apply(owner,reply());
+ assert.deepEqual(received,[[String(own),501],[String(own),502],[String(own),501],[String(own),502],[String(own),501],[String(own),502]],'Canonical owner receives the mapped IDs');
+ console.log('LOCAL parser → canonical owner/prototype/calendar: local meal/room IDs, exact hotel scope, unchanged raw facts/prices/quote guards PASS');
+ console.log('Not a browser or native-request acceptance; supplier HTTP/DB writes/leads: 0.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
