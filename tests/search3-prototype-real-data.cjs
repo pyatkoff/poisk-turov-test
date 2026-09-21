@@ -18,7 +18,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
  try{for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],calls=[],dbCalls=[];
   let releaseCountries;let countriesReady=new Promise(resolve=>{releaseCountries=resolve});let countriesBlocked=true;
-  let delayedFailure=null;
+  let delayedFailure=null,failProfile=false,mismatchedRestoration=false;
   const lookupCalls=[],searchQueries=[];let failLookup=true,releaseLookup;const lookupReady=new Promise(resolve=>{releaseLookup=resolve});
   let slowStarted,releaseSlow,slowDone;const slowRequest=new Promise(resolve=>{slowStarted=resolve}),slowReady=new Promise(resolve=>{releaseSlow=resolve}),slowFinished=new Promise(resolve=>{slowDone=resolve});
   function failNext(action){let started,release;const requested=new Promise(resolve=>{started=resolve}),ready=new Promise(resolve=>{release=resolve});delayedFailure={action,started,ready};return {requested,release};}
@@ -28,8 +28,8 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
    const json=data=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
    if(url.pathname==='/test-photo.svg')return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});
    if(url.pathname==='/data/departures-v1.php')return json({ok:true,items:[{id:1,name:'Москва'},{id:2,name:'Казань'}]});
-   if(url.pathname==='/data/hotel-search-v1.php'){lookupCalls.push(Object.fromEntries(url.searchParams));await lookupReady;if(url.searchParams.get('q')==='Slow'){slowStarted();await slowReady;try{return await json({ok:true,items:[{id:103,country:{id:4}}]});}finally{slowDone();}}if(failLookup)return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});return json({ok:true,items:url.searchParams.get('q')==='Rixos'?[{id:101,name:'Legacy Rixos name',country:{id:4}},{id:102,name:'Legacy Rixos garden',country:{id:4}}]:[]});}
-   if(url.pathname.endsWith('/hotel-details-read-v1.php')){const ids=url.searchParams.getAll('legacyHotelIds[]');return json({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:profiles.filter(p=>ids.includes(String(100+p.id))),links:ids.map(id=>({legacyHotelId:Number(id),anytourHotelId:Number(id)-100}))});}
+   if(url.pathname==='/data/hotel-search-v1.php'){lookupCalls.push(Object.fromEntries(url.searchParams));await lookupReady;if(url.searchParams.get('q')==='Slow'){slowStarted();await slowReady;try{return await json({ok:true,items:[{id:103,country:{id:4}}]});}finally{slowDone();}}if(failLookup)return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});const q=url.searchParams.get('q'),items=q==='Rixos'?[{id:101,name:'Legacy Rixos name',country:{id:4}},{id:102,name:'Legacy Rixos garden',country:{id:4}}]:q===profiles[0].name?[{id:mismatchedRestoration?102:101,country:{id:4}}]:[];return json({ok:true,items});}
+   if(url.pathname.endsWith('/hotel-details-read-v1.php')){if(url.searchParams.has('anytourHotelId')){if(failProfile)return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});return json({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',item:profiles.find(p=>String(p.id)===url.searchParams.get('anytourHotelId'))});}const ids=url.searchParams.getAll('legacyHotelIds[]');return json({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:profiles.filter(p=>ids.includes(String(100+p.id))),links:ids.map(id=>({legacyHotelId:Number(id),anytourHotelId:Number(id)-100}))});}
    if(url.pathname.endsWith('/search3-local-results-read-v1.php')){const p=route.request().postDataJSON().params;dbCalls.push(p);return json({ok:true,data:{source:'anytour-db-first-results-v1',scopeVersion:1,scope:{scopeVersion:1,...p},scopeDigest:'c'.repeat(64),selectionAuthority:false,hotels:[{anytourHotelId:1,hotel:profiles[0],offers:[stored(p)]}]}});}
    if(url.pathname==='/api-v2.php'){
     const action=url.searchParams.get('action');calls.push(action);
@@ -110,6 +110,14 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   assert.deepEqual(searchQueries[0].getAll('hotelIds[]'),['101'],'Selected own hotel1 searches its mapped legacy101 only');
   assert.ok(dbCalls.some(p=>p.hotelIds.join(',')==='101'),'The DB search receives the same selected hotel');
   await page.waitForFunction(()=>document.querySelector('.hotel-offer-count')?.textContent.startsWith('3 '));
+  const hotelURL=page.url(),beforeReload=calls.filter(x=>['search_start','tour','flights'].includes(x)).length;
+  await page.reload();await page.locator('.search-submit:not([disabled])').waitFor();
+  assert.equal(await page.locator('#destination-label').textContent(),profiles[0].name,'Reload retains the concrete hotel, not just its country');
+  assert.equal(new URL(page.url()).searchParams.get('hotel'),'1','The canonical hotel stays in a reusable URL');
+  assert.equal(calls.filter(x=>['search_start','tour','flights'].includes(x)).length,beforeReload,'Restoring a hotel never starts a search or quote');
+  await page.screenshot({path:path.join(evidence,`hotel-restored-${width}.png`),fullPage:true});
+  await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('.hotel-offer-count')?.textContent.startsWith('3 '));
+  assert.deepEqual(searchQueries.at(-1).getAll('hotelIds[]'),['101'],'An explicit search after reload retains the verified hotel identity');
   const beforeClearHotel=calls.length;await page.locator('[data-action="remove-filter"][data-key="hotelId"]').click();
   await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length===2);assert.equal(calls.length,beforeClearHotel,'Clearing a local filter does not repeat a supplier search');
   await page.waitForTimeout(100);assert.equal(await page.locator('.hotel-card').count(),2);
@@ -216,6 +224,26 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   assert.deepEqual(scopeCheck,{same:true,party:false,departure:false,cached:true});
   const primary=await page.evaluate(()=>window.AnyTourPrototypeData.params({origin:'Москва',country:'4',from:new Date(Date.now()+86400000).toISOString().slice(0,10),to:new Date(Date.now()+86400000).toISOString().slice(0,10),minNights:7,maxNights:7,adults:2,ages:[]},['101'],{stars:[4,5],meals:['AI'],min:80000,max:200000}));
   assert.deepEqual([primary.hotelCategory,primary.meal,primary.priceFrom,primary.priceTo,primary.hotelIds],['4','7','80000','200000',['101']],'Primary constraints use existing API fields; exact star set remains local');
+  const familyURL=new URL(hotelURL);familyURL.searchParams.set('origin','Казань');familyURL.searchParams.set('adults','3');familyURL.searchParams.set('ages','0,17');familyURL.searchParams.set('minNights','8');familyURL.searchParams.set('maxNights','10');
+  const beforeRestore=calls.filter(x=>['search_start','tour','flights'].includes(x)).length;
+  failProfile=true;await page.goto(familyURL.href);await page.getByRole('heading',{name:'Не удалось восстановить отель',exact:true}).waitFor();
+  assert.equal(await page.locator('.search-submit').isEnabled(),false,'A failed hotel restore cannot submit a broader country search');
+  assert.equal(new URL(page.url()).searchParams.get('hotel'),'1','An unavailable hotel is not silently removed');
+  await page.screenshot({path:path.join(evidence,`hotel-restore-error-${width}.png`),fullPage:true});
+  failProfile=false;mismatchedRestoration=true;await page.getByRole('button',{name:'Повторить загрузку отеля'}).click();
+  await page.getByRole('heading',{name:'Не удалось восстановить отель',exact:true}).waitFor();
+  assert.equal(await page.locator('.search-submit').isEnabled(),false,'A different canonical hotel returned by name cannot substitute for the selected ID');
+  mismatchedRestoration=false;await page.getByRole('button',{name:'Повторить загрузку отеля'}).click();await page.locator('.search-submit:not([disabled])').waitFor();
+  assert.equal(await page.locator('#destination-label').textContent(),profiles[0].name);
+  const restored=new URL(page.url()).searchParams;
+  for(const key of ['hotel','origin','from','to','minNights','maxNights','adults','ages'])assert.equal(restored.get(key),familyURL.searchParams.get(key),`Hotel recovery preserves ${key}`);
+  assert.equal(calls.filter(x=>['search_start','tour','flights'].includes(x)).length,beforeRestore,'URL recovery and retries perform catalogue reads only');
+  failProfile=true;await page.reload();await page.getByRole('button',{name:'Выбрать другой отель',exact:true}).click();
+  await page.locator('[data-action="destination-all"]').click();await page.locator('[data-action="apply-destination"]').click();
+  assert.equal(await page.locator('.search-submit').isEnabled(),true,'Explicitly choosing all resorts releases the unavailable hotel');
+  assert.equal(await page.locator('#cards').getByRole('heading',{name:'Не удалось восстановить отель',exact:true}).count(),0);
+  assert.equal(calls.filter(x=>['search_start','tour','flights'].includes(x)).length,beforeRestore);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Recovery controls fit the viewport');
   assert.deepEqual(errors,[],'No browser errors');
   console.log(JSON.stringify({width,calls,dbReads:dbCalls.length,status:'passed'}));await context.close();
  }}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
