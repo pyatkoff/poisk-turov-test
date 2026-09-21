@@ -249,12 +249,21 @@ final class AnyTourAndromedaOfferAutosaveV1
 
         $digestRows = [];
         foreach ($entries as $entry) {
+            $verifiedQuote = $entry['verified_quote'] ?? null;
             $digestRows[] = [
                 'anytour_hotel_id' => $entry['anytour_hotel_id'],
                 'identity' => $entry['current']['identity'],
                 'page' => $entry['current']['page'],
                 'priced' => $entry['priced_money']['search_price_with_surcharge'] ?? null,
-                'verified_final' => $entry['verified_quote']['final_price'] ?? null,
+                'verified_final' => is_array($verifiedQuote) ? ($verifiedQuote['final_price'] ?? null) : null,
+                // Idempotency must advance when already-validated supplier evidence changes,
+                // even if the verified customer total remains byte-for-byte unchanged.
+                'verified_quote_digest' => is_array($verifiedQuote)
+                    ? hash('sha256', json_encode(
+                        $verifiedQuote,
+                        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+                    ))
+                    : null,
             ];
         }
         $digest = hash('sha256', json_encode([
