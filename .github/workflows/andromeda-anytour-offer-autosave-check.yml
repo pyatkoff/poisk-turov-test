@@ -12,6 +12,7 @@ on:
       - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-party-criteria-fallback-test.php'
       - 'tests/andromeda-anytour-offer-autosave-test.php'
+      - 'tests/andromeda-anytour-offer-autosave-checkpoint-count-test.php'
       - 'tests/andromeda-surcharge-cache-autosave-test.php'
       - 'tests/andromeda-surcharge-evidence-test.php'
       - 'tests/andromeda-surcharge-evidence-store-test.php'
@@ -44,11 +45,13 @@ jobs:
           php -l v2/api-andromeda-search3-preview.php
           php -l tests/andromeda-party-criteria-fallback-test.php
           php -l tests/andromeda-anytour-offer-autosave-test.php
+          php -l tests/andromeda-anytour-offer-autosave-checkpoint-count-test.php
           php -l tests/andromeda-surcharge-cache-autosave-test.php
           php -l tests/andromeda-surcharge-evidence-test.php
           php -l tests/andromeda-surcharge-evidence-store-test.php
           php tests/andromeda-party-criteria-fallback-test.php
           php tests/andromeda-anytour-offer-autosave-test.php
+          php tests/andromeda-anytour-offer-autosave-checkpoint-count-test.php
           php tests/andromeda-surcharge-cache-autosave-test.php
           php tests/andromeda-surcharge-evidence-test.php
           php tests/andromeda-surcharge-evidence-store-test.php
