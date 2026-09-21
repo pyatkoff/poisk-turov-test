@@ -106,6 +106,22 @@
     catalog.countries=rows;return {departures:catalog.departures,countries:rows,origin:text(departure)};
   }
   async function savedHotels(ids,s){if(!owner)return[];const rows=await Promise.allSettled(ids.slice(0,20).map(id=>owner.readProfile(id)));return rows.filter(r=>r.status==='fulfilled'&&r.value).map(r=>hotel({...r.value,anytourHotelId:r.value.id},s));}
+  async function lookupHotels(q,country,signal){
+    if(q.trim().length<2)return[];
+    const read=async url=>{const r=await fetch(url,{signal,credentials:'same-origin',headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Hotel catalogue unavailable');const p=await r.json();if(p?.ok!==true||!Array.isArray(p.items))throw new Error('Invalid hotel catalogue');return p;};
+    const found=await read('/data/hotel-search-v1.php?'+new URLSearchParams({q:q.trim(),countryId:country,limit:'10'}));
+    const ids=[...new Set(found.items.filter(h=>String(h.country?.id)===String(country)&&Number.isSafeInteger(Number(h.id))&&Number(h.id)>0).map(h=>String(h.id)))].slice(0,10);
+    if(!ids.length)return[];
+    const query=new URLSearchParams({catalog:'anytour'});ids.forEach(id=>query.append('legacyHotelIds[]',id));
+    const p=await read(local+'data/hotel-details-read-v1.php?'+query);
+    if(p.source!=='anytour-canonical-catalog'||p.catalog!=='anytour'||!Array.isArray(p.links)||!Array.isArray(p.requestedLegacyIds)||p.requestedLegacyIds.map(String).join(',')!==ids.join(','))throw new Error('Invalid canonical hotel lookup');
+    return p.items.map(raw=>{
+      if(raw.catalog!=='anytour'||!Number.isSafeInteger(raw.id)||raw.id<1||typeof raw.name!=='string'||!raw.name.trim())throw new Error('Invalid canonical hotel');
+      const legacyIds=p.links.filter(link=>Number(link.anytourHotelId)===raw.id&&ids.includes(String(link.legacyHotelId))).map(link=>String(link.legacyHotelId));
+      if(!legacyIds.length)throw new Error('Missing hotel search identity');
+      return hotel({...raw,canonicalLegacyIds:legacyIds},{country});
+    });
+  }
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
     const run=generation,id=searchId;
@@ -137,5 +153,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,catalog,get searchId(){return searchId;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,lookupHotels,catalog,get searchId(){return searchId;}});
 })(window);

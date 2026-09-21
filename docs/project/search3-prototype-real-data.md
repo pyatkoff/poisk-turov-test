@@ -120,3 +120,16 @@ modal and offer identity checks as successful replies. A failure on the still-op
 offer remains visible and can be retried explicitly. The existing fixture journey
 reproduces both late failures and checks recovery at 390/1440 px; no automatic
 supplier retry, pricing change or new navigation layer is introduced.
+
+The destination picker now searches the existing local hotel catalogue before any
+tour search. It resolves its bounded legacy-ID suggestions through the existing
+LOCAL canonical reader, shows own hotel names and preserves the returned legacy
+IDs for the later explicit tour/DB search. It does not insert catalogue rows as
+available tours. Loading, catalogue failure with explicit retry and an actual
+empty result are separate states; unselected typed text cannot apply the entire
+country. Cancelling or replacing a query invalidates its pending response.
+Selected metadata remains in memory independently of result updates. The existing
+390/1440 journey checks pre-search lookup, failure/retry, empty, exact own-to-legacy
+selection and the subsequent search. Mobile destination controls also follow the
+keyboard-reduced VisualViewport; the fixture models that geometry, not physical
+iPhone/Safari acceptance. No catalogue, matching or supplier API is modified.
