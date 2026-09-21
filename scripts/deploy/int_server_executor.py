@@ -257,6 +257,13 @@ try:
     result['before_db']=db_summary(provider)
     env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
     env['ANYTOUR_PROJECT_ROOT']=str(project)
+    if mode=='anex-demand':
+        api_path=pathlib.Path(payload.get('anex_api_file','')); b2b_path=pathlib.Path(payload.get('anex_b2b_file',''))
+        if not safe_file(api_path,16384) or not safe_file(b2b_path,16384) or api_path.is_symlink() or b2b_path.is_symlink(): fail('anex_secret_handoff_missing')
+        os.chmod(api_path,0o600); os.chmod(b2b_path,0o600)
+        api_token=api_path.read_text(); b2b_token=b2b_path.read_text()
+        if not api_token or not b2b_token: fail('anex_secret_handoff_empty')
+        env['ANEX_API_TOKEN']=api_token; env['ANEX_B2B_TOKEN']=b2b_token
     generation=str(2100000000-(int(hashlib.sha256(operation.encode()).hexdigest()[:6],16)%1000000))
     if mode=='anex-demand':
         command=['php',str(stage/'scripts/ops/anex_local_offer_demand_fill.php'),
@@ -310,6 +317,12 @@ finally:
             os.chmod(op/'result.json',0o600)
     except Exception:
         pass
+    for secret_key in ('anex_api_file','anex_b2b_file'):
+        try:
+            secret_path=payload.get(secret_key)
+            if secret_path: pathlib.Path(secret_path).unlink(missing_ok=True)
+        except Exception:
+            pass
 print(json.dumps(result,separators=(',',':')))
 """
 
@@ -326,6 +339,9 @@ def execute(command: dict, source_root: Path) -> dict:
         os.environ.get(name, '').strip()
         for name in ('INT_SSH_HOST','INT_SSH_USER','INT_SSH_KEY')
     )
+    anex_api=os.environ.get('ANEX_API_TOKEN','') if command['mode']=='anex-demand' else ''
+    anex_b2b=os.environ.get('ANEX_B2B_TOKEN','') if command['mode']=='anex-demand' else ''
+    if command['mode']=='anex-demand': need(bool(anex_api and anex_b2b),'anex_secret_handoff')
     need(bool(host and user and raw_key), 'ssh_config')
     need(not host.startswith('-') and not user.startswith('-')
          and not any(c.isspace() for c in host + user), 'ssh_identity')
@@ -333,6 +349,7 @@ def execute(command: dict, source_root: Path) -> dict:
     output = Path(os.environ['RUNNER_TEMP']) / 'int-server-executor'
     output.mkdir(mode=0o700, exist_ok=True)
     key, known, archive = output/'key', output/'known_hosts', output/'source.tar.gz'
+    api_local, b2b_local = output/'anex-api-token', output/'anex-b2b-token'
     key.write_text(raw_key.rstrip() + '\n'); key.chmod(0o600)
     subprocess.run(['ssh-keygen','-y','-f',str(key)], stdout=subprocess.DEVNULL,
                    stderr=subprocess.PIPE, check=True, timeout=10)
@@ -341,6 +358,9 @@ def execute(command: dict, source_root: Path) -> dict:
     need(bool(scan), 'ssh_hostkey')
     known.write_bytes(scan); known.chmod(0o600)
     archive.write_bytes(bundle); archive.chmod(0o600)
+    if command['mode']=='anex-demand':
+        api_local.write_text(anex_api); b2b_local.write_text(anex_b2b)
+        api_local.chmod(0o600); b2b_local.chmod(0o600)
     options = ssh_options(key, known)
     remote_archive = (
         '/tmp/' + command['operation_id'] + '-' +
@@ -349,8 +369,14 @@ def execute(command: dict, source_root: Path) -> dict:
     subprocess.run(['scp',*options,str(archive),user+'@'+host+':'+remote_archive],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                    timeout=60)
+    remote_api=remote_archive+'.api'; remote_b2b=remote_archive+'.b2b'
+    if command['mode']=='anex-demand':
+        subprocess.run(['scp',*options,str(api_local),user+'@'+host+':'+remote_api],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=60)
+        subprocess.run(['scp',*options,str(b2b_local),user+'@'+host+':'+remote_b2b],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=60)
     payload = dict(command)
     payload['archive'] = remote_archive
+    if command['mode']=='anex-demand':
+        payload['anex_api_file']=remote_api; payload['anex_b2b_file']=remote_b2b
     payload['manifest_sha256'] = hashlib.sha256(
         json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()
     ).hexdigest()
@@ -376,10 +402,10 @@ def execute(command: dict, source_root: Path) -> dict:
         return result
     finally:
         subprocess.run(
-            ['ssh',*options,'-l',user,host,'rm -f -- '+shlex.quote(remote_archive)],
+            ['ssh',*options,'-l',user,host,'rm -f -- '+shlex.quote(remote_archive)+' '+shlex.quote(remote_api)+' '+shlex.quote(remote_b2b)],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30
         )
-        key.unlink(missing_ok=True); known.unlink(missing_ok=True)
+        key.unlink(missing_ok=True); known.unlink(missing_ok=True); api_local.unlink(missing_ok=True); b2b_local.unlink(missing_ok=True)
 
 def main() -> None:
     parser = argparse.ArgumentParser()
