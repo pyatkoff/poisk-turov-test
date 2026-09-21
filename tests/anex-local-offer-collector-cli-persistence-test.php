@@ -156,25 +156,35 @@ $late=persistenceCli(['groups'=>18,'receipts'=>[$success,$failures[0]]]);
 persistenceCheck($late['code']===1&&$late['counts']['expand']===12&&$late['counts']['apd']===12
     &&$late['counts']['save']===2&&!isset($late['counts']['finalize']),'late refusal stops next batch without retry');
 persistenceCheck(array_values(array_filter($late['trace'],static fn(array $e):bool=>$e[0]==='save'))[0][1]===$success,'earlier successful receipt untouched');
-foreach([$success,['published'=>false,'reason'=>'already_published'],['published'=>false,'reason'=>'no_final_price_ready']] as $receipt){
+foreach([$success,['published'=>false,'reason'=>'already_published']] as $receipt){
     $r=persistenceCli(['receipts'=>[$receipt,$receipt],'final'=>$receipt]);
     persistenceCheck($r['code']===0&&$r['result']['status']==='complete'&&$r['counts']['expand']===12
-        &&$r['counts']['batch']===2&&$r['counts']['finalize']===1,'nonfailure paths still drain and finalize');
-    persistenceCheck($r['result']['snapshot_finalize']===$receipt,'exact final receipt unchanged');
+        &&$r['counts']['batch']===2&&$r['counts']['finalize']===1,'persisted paths still drain and finalize');
+    persistenceCheck($r['result']['snapshot_finalize']===$receipt,'exact persisted final receipt unchanged');
 }
+$noFinalReceipt=['published'=>false,'reason'=>'no_final_price_ready','readyOfferCount'=>0,'confirmationRequiredOfferCount'=>0];
+$noFinal=persistenceCli(['receipts'=>[$noFinalReceipt,$noFinalReceipt],'final'=>$noFinalReceipt]);
+persistenceCheck($noFinal['code']===1&&$noFinal['result']['status']==='incomplete'
+    &&$noFinal['counts']['expand']===12&&$noFinal['counts']['batch']===2&&$noFinal['counts']['finalize']===1,
+    'final no-final receipt cannot claim direct collector success');
+persistenceCheck($noFinal['result']['snapshot_finalize']===$noFinalReceipt
+    &&$noFinal['result']['autosave_failure']===['phase'=>'finalize','receipt'=>$noFinalReceipt],
+    'final no-final receipt preserved without replay');
 $final=persistenceCli(['final'=>$failures[0]]);
 persistenceCheck($final['code']===1&&$final['result']['status']==='incomplete'&&$final['counts']['finalize']===1
     &&$final['result']['autosave_failure']===['phase'=>'finalize','receipt'=>$failures[0]],'failed finalization not success or replayed');
 $missing=persistenceCli(['omit_receipt_at'=>2]);
 persistenceCheck($missing['code']===1&&!isset($missing['counts']['finalize'])
     &&$missing['result']['autosave_failure']===['phase'=>'batch','receipt'=>null],'absent receipt cannot reuse previous success');
-foreach([['groups'=>0,'final'=>['published'=>false,'reason'=>'no_final_price_ready']],
-    ['groups'=>0,'regular'=>true,'final'=>['published'=>true,'reason'=>null,'readyOfferCount'=>0,'confirmationRequiredOfferCount'=>1]]] as $scenario){
+foreach([
+    ['groups'=>0,'final'=>['published'=>true,'reason'=>null,'readyOfferCount'=>0,'confirmationRequiredOfferCount'=>0]],
+    ['groups'=>0,'regular'=>true,'final'=>['published'=>true,'reason'=>null,'readyOfferCount'=>0,'confirmationRequiredOfferCount'=>1]],
+] as $scenario){
     $r=persistenceCli($scenario);
     persistenceCheck($r['code']===0&&$r['result']['status']==='complete'&&!isset($r['counts']['apd'])
-        &&$r['counts']['finalize']===1,'zero/regular-only finalize supported without APD');
+        &&$r['counts']['finalize']===1,'authoritative-zero/regular-only publication succeeds without APD');
 }
 $other=persistenceCli(['expand_error'=>7]);
 persistenceCheck($other['code']!==0&&$other['result']===null&&str_contains($other['stderr'],'FIXTURE_EXPAND_INVARIANT')
     &&!isset($other['counts']['finalize']),'unrelated invariant not swallowed');
-echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=3 late=1 final=1 missing=1 empty_regular=2 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
+echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=2 late=1 final_no_ready=1 final=1 missing=1 empty_regular=2 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
