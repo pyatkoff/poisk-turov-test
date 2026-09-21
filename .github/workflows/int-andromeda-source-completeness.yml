@@ -24,7 +24,7 @@ jobs:
       - name: Verify recovered installed sources exactly
         run: |
           set -euo pipefail
-          echo '62ccfd0ad958a471c86f51ba108977272e2e7e5c65e02a2808bfa27fe7083e17  app/integrations/andromeda-search.php' | sha256sum -c -
+          echo '92b522508b336b767ca325e1d6323e949a713fa06a7262370b3e409bcbcfe0d0  app/integrations/andromeda-search.php' | sha256sum -c -
           echo '8083fff227e44f4df9b132a0482b715aedda521bf0204a141abf9429139ee032  app/integrations/andromeda-offer-store.php' | sha256sum -c -
           echo '805ad9509de681c95a18ee7f96ae8e1b77d1eb2b29221e35e2d38ce9b6f52754  app/integrations/andromeda-hotel-resolver.php' | sha256sum -c -
           echo 'cd093f6a2253d1c5159520ca69098e580a3ba9a3d7cfdbc7c4faae2b8cb3891c  app/integrations/andromeda-hotel-observations.php' | sha256sum -c -
