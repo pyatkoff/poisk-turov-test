@@ -3,7 +3,7 @@
   // Presentation adapter only. Existing API actions, source DTOs and DB guards stay authoritative.
   const rt = root.V2Runtime;
   const local = '/_preview/search3-local-candidate/';
-  const catalog = { departures: [], countries: [], meals: [] };
+  const catalog = { departures: [], countries: [], meals: [], mealCatalogueAvailable:false, mealCatalogueError:'' };
   const quoteReceipts = new WeakMap();
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
@@ -11,7 +11,46 @@
   const amount = value => { const n = Number(value && typeof value === 'object' ? value.value : value); return Number.isFinite(n) && n > 0 ? n : null; };
   const date = value => { const s = String(value || '').slice(0, 10), p = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/); return p ? `${p[3]}-${p[2]}-${p[1]}` : /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''; };
   const plus = (d, n) => new Date(new Date(d + 'T12:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
-  function meal(value){const label=text(value),record=catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)||text(x).toLocaleLowerCase('ru-RU')===label.toLocaleLowerCase('ru-RU')),full=text(value?.fullName)||text(record?.fullName);return full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?full:label;}
+  let mealLoadGeneration=0, mealByNative=new Map();
+  const mealId = value => /^(?:[1-9][0-9]*)$/.test(String(value??''))&&Number.isSafeInteger(Number(value))?String(value):'';
+  function mealPlanId(value,provider='tourvisor') { return provider==='tourvisor'?mealByNative.get(String(value?.id??''))?.id??null:null; }
+  function meal(value){return mealByNative.get(String(value?.id??''))?.nameRu||text(value);}
+  function selectedMealPlans(values=[]) {
+    if(!Array.isArray(values)||values.length>100)throw new Error('Проверьте выбранное питание.');
+    return [...new Set(values.map(v=>{const id=mealId(v);if(!id)throw new Error('Сохранённое питание недоступно. Выберите его заново из нашего справочника.');return id;}))].map(id=>{
+      const plan=catalog.meals.find(p=>String(p.id)===id);
+      if(!plan)throw new Error('Выбранное питание отсутствует в нашем справочнике. Выберите его заново.');
+      return plan;
+    });
+  }
+  function requestMeal(values=[]) {
+    const plans=selectedMealPlans(values);if(!plans.length)return '';
+    if(!catalog.mealCatalogueAvailable||plans.some(p=>!p.nativeIds.length))throw new Error('Не настроено соответствие выбранного питания для Tourvisor. Повторите загрузку справочника или измените питание.');
+    const ids=plans.flatMap(p=>p.nativeIds);
+    if(ids.some(id=>!mealId(id)))throw new Error('Некорректное соответствие питания Tourvisor.');
+    // Tourvisor accepts one integer MINIMUM. Exact selected categories are ORed
+    // locally after the response maps back to our own meal-plan IDs.
+    return String(Math.min(...ids.map(Number)));
+  }
+  async function loadMealCatalogue() {
+    const run=++mealLoadGeneration;
+    try{
+      const response=await fetch(local+'data/search3-local-results-read-v1.php',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({action:'meal_catalog',provider:'tourvisor',scopeKey:'global'})});
+      const payload=await response.json(),c=payload?.data;
+      if(!response.ok||payload?.ok!==true||c?.source!=='anytour-search-meal-v1'||c.provider!=='tourvisor'||c.scopeKey!=='global'||typeof c.available!=='boolean'||!Array.isArray(c.plans)||c.plans.length>1000||(c.available&&!/^[0-9a-f]{64}$/.test(c.revision)))throw new Error('Справочник питания временно недоступен.');
+      const seen=new Set(),native=new Map();let count=0;
+      const plans=c.plans.map(p=>{
+        const id=mealId(p?.id);
+        if(!id||seen.has(id)||typeof p.nameRu!=='string'||!p.nameRu.trim()||p.nameRu.length>255||/[\u0000-\u001f\u007f]/.test(p.nameRu)||!Array.isArray(p.nativeIds)||(!c.available&&p.nativeIds.length))throw new Error('Некорректный справочник питания.');
+        seen.add(id);const plan={id:Number(id),nameRu:p.nameRu,nativeIds:[...p.nativeIds]};
+        for(const n of plan.nativeIds){if(++count>10000||typeof n!=='string'||!n||n.length>128||native.has(n))throw new Error('Неоднозначное соответствие питания.');native.set(n,plan);}
+        return plan;
+      });
+      if(run!==mealLoadGeneration)return false;
+      catalog.meals=plans;catalog.mealCatalogueAvailable=c.available;catalog.mealCatalogueError=c.available?'':'Соответствия питания ещё не подключены.';catalog.mealCatalogueRevision=c.revision;
+      mealByNative=native;return true;
+    }catch(error){if(run===mealLoadGeneration){catalog.mealCatalogueAvailable=false;catalog.mealCatalogueError=error.message;mealByNative=new Map();}throw error;}
+  }
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
   function params(s, hotelIds = [], filters = {}) {
     const departure = catalog.departures.find(x => text(x) === s.origin || String(x.id) === s.origin);
@@ -19,9 +58,9 @@
     if (!date(s.from) || !date(s.to) || s.from > s.to || (new Date(s.to) - new Date(s.from)) / 86400000 > 21) throw new Error('Выберите диапазон вылета не больше 21 дня.');
     if (!Number.isInteger(s.adults) || s.adults < 1 || s.adults > 6 || !Array.isArray(s.ages) || s.ages.length > 3 || s.ages.some(x => !Number.isInteger(x) || x < 0 || x > 17)) throw new Error('Укажите возраст каждого ребёнка.');
     if (!Number.isInteger(s.minNights) || !Number.isInteger(s.maxNights) || s.minNights < 1 || s.maxNights > 28 || s.maxNights < s.minNights || s.maxNights - s.minNights > 10) throw new Error('Проверьте диапазон ночей.');
-    const chosenMeal=filters.meals?.length===1?catalog.meals.find(x=>meal(x)===filters.meals[0]):null;
+    const mappedMeal=requestMeal(filters.meals);
     const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
-    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:chosenMeal?String(chosenMeal.id):'',hotelCategory:stars.length?String(Math.min(...stars)):'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max>0&&filters.max<600000?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
+    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:mappedMeal,hotelCategory:stars.length?String(Math.min(...stars)):'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max>0&&filters.max<600000?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
   }
   function sameScope(request, response) {
     if (!response || response.scopeVersion !== 1 || Object.keys(response).length !== Object.keys(request).length + 1) return false;
@@ -32,7 +71,9 @@
     });
   }
   async function db(s, signal, hotelIds=[], filters={}) {
-    const p = params(s, hotelIds,filters);
+    selectedMealPlans(filters.meals);
+    // DB cohorts use their trip scope; exact local category filtering happens on offers.
+    const p = params(s, hotelIds,{...filters,meals:[]});
     const response = await fetch(local+'data/search3-local-results-read-v1.php', {method:'POST',credentials:'same-origin',cache:'no-store',signal,headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({params:p})});
     if (!response.ok) throw new Error('Цены из базы временно недоступны.');
     const payload=await response.json(),data=payload?.data;
@@ -52,16 +93,22 @@
     const provider=String(t.provider||'tourvisor').toLowerCase();
     const stay=t.cachedListing===true&&t.localStay?.source==='anytour-hotel-stay-v2'?t.localStay:null;
     const localMeal=stay?.meal?.hotelId===h.id?stay.meal:null,localRoom=stay?.room?.hotelId===h.id?stay.room:null;
-    return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),roomId:localRoom?.id??null,mealId:localMeal?.id??null,stayCatalog:stay?.source??null,room:localRoom?.nameRu||text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,meal:localMeal?.nameRu||meal(t.meal)||'Питание уточняется',operator:text(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
+    const plan=t.cachedListing===true?t.searchMealPlan:provider==='tourvisor'?mealByNative.get(String(t.meal?.id??'')):null;
+    return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),roomId:localRoom?.id??null,mealId:localMeal?.id??null,mealPlanId:plan?.id??null,stayCatalog:stay?.source??null,room:localRoom?.nameRu||text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,meal:localMeal?.nameRu||plan?.nameRu||text(t.meal)||'Питание уточняется',operator:text(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
   function project(list,s) { return list.map(rawHotel=>{const h=hotel(rawHotel,s);h.offers=(rawHotel.tours||[]).map((t,i)=>offer(t,h,s,i)).filter(Boolean);return h;}).filter(h=>h.offers.length); }
   function publish() {if(owner&&context)notify({type:'results',hotels:project(owner.read(raw,{}),context)});}
   function stop(){generation++;clearTimeout(timer);timer=null;return generation;}
   async function search(s, callback, hotelIds=[], filters={}) {
-    const p=params(s,hotelIds,filters),run=stop();notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
+    const run=stop();notify=callback;context=structuredClone(s);searchParams=null;raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
     callback({type:'loading'});
-    db(s,undefined,hotelIds,filters).then(data=>{if(run!==generation||!owner)return;root.AnyTourLocalDbProviderV1.apply(owner,data);callback({type:'database'});}).catch(error=>{if(run===generation)callback({type:'database-error',message:error.message});});
     try {
+      try{await loadMealCatalogue();}catch(error){if(filters.meals?.length)throw error;}
+      if(run!==generation)return;
+      callback({type:'meal-catalog'});
+      selectedMealPlans(filters.meals);
+      db(s,undefined,hotelIds,filters).then(data=>{if(run!==generation||!owner)return;root.AnyTourLocalDbProviderV1.apply(owner,data);callback({type:'database'});}).catch(error=>{if(run===generation)callback({type:'database-error',message:error.message});});
+      const p=params(s,hotelIds,filters);searchParams=structuredClone(p);
       const started=await rt.api('search_start',p);
       if(run!==generation)return;
       searchId=Number(started.searchId);if(!searchId)throw new Error('Не удалось запустить поиск.');rt.setSearchId(searchId);
@@ -97,7 +144,7 @@
     try{const response=await fetch('/data/departures-v1.php',{credentials:'same-origin'});const data=await response.json();if(response.ok&&data.ok&&Array.isArray(data.items))catalog.departures=data.items;}catch{}
     if(!catalog.departures.length)catalog.departures=await rt.api('departures',{departureCountryId:1});
     if(!Array.isArray(catalog.departures)||!catalog.departures.length)throw new Error('Не удалось загрузить города вылета.');
-    try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
+    try{await loadMealCatalogue();}catch{/* Unfiltered search remains available; selected meals fail explicitly. */}
     return countries(origin);
   }
   let catalogGeneration=0;
@@ -171,5 +218,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,leadSession,params,sameScope,project,loadMealCatalogue,mealPlanId,selectedMealPlans,amount,date,text,meal,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;}});
 })(window);

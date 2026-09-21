@@ -8,6 +8,9 @@ on:
       - 'tests/search3-local-db-provider-v1.test.js'
       - 'tests/search3-local-db-price-states-browser.py'
       - 'tests/search3-lean-base-bundle-smoke.php'
+      - 'v2/prototype-search/app.js'
+      - 'v2/prototype-search/data.js'
+      - 'tests/search3-prototype-meal-search.cjs'
       - '.github/workflows/search3-local-db-browser.yml'
 permissions:
   contents: read
@@ -24,6 +27,7 @@ jobs:
         run: |
           node --check v2/search3-local-db-provider-v1.js
           node tests/search3-local-db-provider-v1.test.js
+          node tests/search3-prototype-meal-search.cjs
       - name: Search3-only dependency order and legacy isolation
         run: php tests/search3-lean-base-bundle-smoke.php
       - name: Install pinned browser tools
@@ -32,6 +36,13 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Cached price states in the canonical renderer at mobile and desktop widths
         run: python tests/search3-local-db-price-states-browser.py
+      - name: Local meal IDs through the prototype form and results
+        env:
+          SEARCH3_MEAL_BROWSER: '1'
+          SEARCH3_MEAL_EVIDENCE: local-db-price-evidence/meals
+        run: |
+          export PLAYWRIGHT_NODE_PATH="$(python -c 'import pathlib,playwright; print(pathlib.Path(playwright.__file__).parent / "driver" / "package")')"
+          node tests/search3-prototype-meal-search.cjs
       - name: Retain visual acceptance
         if: always()
         uses: actions/upload-artifact@v4
