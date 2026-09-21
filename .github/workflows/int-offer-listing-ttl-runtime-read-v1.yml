@@ -1,0 +1,173 @@
+name: INT offer listing TTL runtime read v1
+
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php'
+      - '.github/workflows/int-offer-listing-ttl-runtime-read-v1.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/int-offer-listing-ttl-runtime-read-20260922-v1' &&
+      github.event.pull_request.base.ref == 'feature/anex-search-adapter-20260907' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      INT_BASE_SHA: 7a1823a1f9628c3807cc42b831ee919fb2e40647
+      RELEASE_SHA: 03a5666e5cc0b242ba9d795f03dd83d82fee3ce1
+      OPERATION_ID: int-offer-listing-ttl-runtime-read-1493-20260922-v1
+      CLAIM_COMMENT_ID: '5769235526'
+      SCRIPT_SHA256: b3a60e9ee9191fdb7298f53e692027ae135cc3fa936276fe68898ce76721e815
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          path: ops
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          path: release
+          persist-credentials: false
+      - name: Verify exact claim, source and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C ops rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git -C release rev-parse HEAD)" = "$RELEASE_SHA"
+          test "$(git -C ops merge-base "$HEAD_SHA" "$INT_BASE_SHA")" = "$INT_BASE_SHA"
+          mapfile -t changed < <(git -C ops diff --name-only "$INT_BASE_SHA...$HEAD_SHA" | sort)
+          expected=(.github/workflows/int-offer-listing-ttl-runtime-read-v1.yml scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php)
+          test "${#changed[@]}" = 2
+          test "${changed[0]}" = "${expected[0]}" && test "${changed[1]}" = "${expected[1]}"
+          echo "$SCRIPT_SHA256  ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php" | sha256sum -c -
+          php -l ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php
+          php ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php --self-test
+          php -l ops/scripts/diagnostics/anytour_offer_listing_ttl_drift_v1.php
+          php -d allow_url_fopen=0 ops/tests/anytour-offer-listing-ttl-drift-v1-test.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM_COMMENT_ID" > "$RUNNER_TEMP/claim.json"
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open(os.environ['RUNNER_TEMP']+'/claim.json'))
+          body=c.get('body','')
+          assert c.get('user',{}).get('login')=='pyatkoff', c.get('user')
+          assert os.environ['OPERATION_ID'] in body
+          for p in ['scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php','.github/workflows/int-offer-listing-ttl-runtime-read-v1.yml']:
+              assert p in body,p
+          PY
+          security_ok=false
+          for _ in $(seq 1 36); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$HEAD_SHA&event=pull_request&per_page=100" > "$RUNNER_TEMP/runs.json"
+            state=$(python3 - <<'PY'
+          import json,os
+          runs=json.load(open(os.environ['RUNNER_TEMP']+'/runs.json')).get('workflow_runs',[])
+          sec=[r for r in runs if r.get('name')=='Security guard']
+          if any(r.get('status')=='completed' and r.get('conclusion')=='success' for r in sec): print('success')
+          elif any(r.get('status')=='completed' and r.get('conclusion') not in (None,'success') for r in sec): print('failed')
+          else: print('waiting')
+          PY
+            )
+            if [ "$state" = success ]; then security_ok=true; break; fi
+            test "$state" != failed
+            sleep 5
+          done
+          test "$security_ok" = true
+          for f in \
+            release/v2/api-v2.php \
+            release/app/integrations/tourvisor-anytour-offer-autosave.php \
+            release/app/integrations/anytour-offer-snapshot-producer.php \
+            release/v2/data/anytour-offer-snapshot-ingest-v1.php \
+            release/v2/data/anytour-offer-store-v1.php; do
+            test -s "$f"; test ! -L "$f"
+          done
+          ! grep -Eiq -- '\b(INSERT|UPDATE|DELETE|REPLACE|CREATE|ALTER|DROP|TRUNCATE)\b' ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php
+          grep -Fq "START TRANSACTION READ ONLY" ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php
+          grep -Fq "rollBack" ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php
+      - name: Build bounded read-only runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/stage"
+          mkdir -p "$stage/scripts/diagnostics" "$stage/expected/app/integrations" "$stage/expected/v2/data" "$stage/expected/v2"
+          cp ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php "$stage/scripts/diagnostics/"
+          cp ops/scripts/diagnostics/anytour_offer_listing_ttl_drift_v1.php "$stage/scripts/diagnostics/"
+          cp release/app/integrations/tourvisor-anytour-offer-autosave.php "$stage/expected/app/integrations/"
+          cp release/app/integrations/anytour-offer-snapshot-producer.php "$stage/expected/app/integrations/"
+          cp release/v2/data/anytour-offer-snapshot-ingest-v1.php "$stage/expected/v2/data/"
+          cp release/v2/data/anytour-offer-store-v1.php "$stage/expected/v2/data/"
+          cp release/v2/api-v2.php "$stage/expected/v2/"
+          tar -C "$stage" -czf "$RUNNER_TEMP/runtime.tar.gz" .
+          sha256sum "$RUNNER_TEMP/runtime.tar.gz" > "$RUNNER_TEMP/runtime.sha256"
+      - name: Read installed hashes and TTL metadata only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          archive="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.tar.gz"
+          archive_sha=$(awk '{print $1}' "$RUNNER_TEMP/runtime.sha256")
+          scp "${opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$REMOTE_USER@$HOST:$archive"
+          set +e
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$OPERATION_ID" "$archive" "$archive_sha" "$HEAD_SHA" "$RELEASE_SHA" > "$RUNNER_TEMP/result/receipt.json" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          operation="$1"; archive="$2"; archive_sha="$3"; source="$4"; release="$5"
+          test "$(sha256sum "$archive" | awk '{print $1}')" = "$archive_sha"
+          site="$HOME/www/anytoour.ru"; test -d "$site"; test -s "$site/config.php"
+          ledger="$HOME/.anytour-ops/$operation"; test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d /tmp/anytour-ttl-runtime-read.XXXXXX)"; trap 'rm -rf "$work"; rm -f "$archive"' EXIT
+          tar -C "$work" -xzf "$archive"
+          set +e
+          php -d display_errors=0 "$work/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php" \
+            --site-root="$site" --expected-root="$work/expected" \
+            --classifier="$work/scripts/diagnostics/anytour_offer_listing_ttl_drift_v1.php" \
+            --operation-id="$operation" > "$ledger/result.json" 2> "$ledger/error.log"
+          rc=$?; set -e
+          RC="$rc" php -r '$p=$argv[1];$v=is_file($p)&&filesize($p)>0?json_decode(file_get_contents($p),true,128,JSON_THROW_ON_ERROR):null;$r=["operation"=>$argv[2],"source"=>$argv[3],"release"=>$argv[4],"status"=>(int)getenv("RC")===0?"completed_read_only":"failed_read_only","result_sha256"=>is_file($p)?hash_file("sha256",$p):null,"result"=>$v,"replay_allowed"=>false];file_put_contents($argv[5],json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL);' "$ledger/result.json" "$operation" "$source" "$release" "$ledger/receipt.json"
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed_read_only || echo failed_read_only)" > "$ledger/state"
+          cat "$ledger/receipt.json"; exit "$rc"
+          REMOTE
+          rc=$?; set -e
+          test -s "$RUNNER_TEMP/result/receipt.json"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/readback.json"
+          cmp "$RUNNER_TEMP/result/receipt.json" "$RUNNER_TEMP/result/readback.json"
+          test "$rc" = 0
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/result/receipt.json'))
+          assert r['status']=='completed_read_only' and r['source']==os.environ['HEAD_SHA'] and r['release']==os.environ['RELEASE_SHA'] and r['replay_allowed'] is False,r
+          d=r['result']; assert d['status']=='completed_read_only' and d['operation']==os.environ['OPERATION_ID'],d
+          assert d['db_transaction']=='read_only_rolled_back'
+          for k in ['supplier_calls','db_writes','site_writes','mapping_writes','lead_calls','booking_calls']: assert d[k]==0,(k,d[k])
+          assert d['replay_allowed'] is False
+          print('TTL_RUNTIME_RESULT '+json.dumps({'contract':d['expected_contract'],'provider_counts':d['provider_counts'],'distribution':d['recent_ttl_distribution'],'classifier':d['tourvisor_classifier'],'runtime_files':d['runtime_files']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-offer-listing-ttl-runtime-read-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
