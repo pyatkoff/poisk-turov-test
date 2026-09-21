@@ -215,6 +215,10 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         $autosaveComplete = ($save['published'] ?? null) === true
             || (($save['published'] ?? null) === false
                 && ($save['reason'] ?? null) === 'already_published');
+        $readyCount = $save['readyOfferCount'] ?? null;
+        if (!is_int($readyCount) || $readyCount < 0) {
+            $readyCount = null;
+        }
         $confirmationRequiredCount = $save['confirmationRequiredOfferCount'] ?? null;
         if (!is_int($confirmationRequiredCount) || $confirmationRequiredCount < 0) {
             $confirmationRequiredCount = null;
@@ -235,7 +239,7 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             'surcharge_ready' => $surchargeReady,
             'autosave_published' => ($save['published'] ?? false) === true,
             'autosave_reason' => $save['reason'] ?? null,
-            'ready_offer_count' => (int)($save['readyOfferCount'] ?? 0),
+            'ready_offer_count' => $readyCount,
             'confirmation_required_offer_count' => $confirmationRequiredCount,
             'autosave' => $save,
             'selection_authority' => false,
