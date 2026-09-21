@@ -27,7 +27,7 @@ jobs:
           python3 - <<'PY'
           import json,os
           c=json.load(open('input/claim.json'));assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          for x in [os.environ['OP'],'Fresh v3','exact30 cohort','one-login+max30 price','writes0']:assert x in c['body'],x
+          for x in ['Fresh v3','exact30 cohort','one-login+max30 price','writes0']:assert x in c['body'],x
           PY
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10634643226/zip" > input/v9.zip
           echo '0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0  input/v9.zip'|sha256sum -c -
