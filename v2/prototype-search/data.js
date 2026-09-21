@@ -47,7 +47,10 @@
         return plan;
       });
       if(run!==mealLoadGeneration)return false;
-      catalog.meals=plans;catalog.mealCatalogueAvailable=c.available;catalog.mealCatalogueError=c.available?'':'Соответствия питания ещё не подключены.';catalog.mealCatalogueRevision=c.revision;
+      // Show only categories that can actually constrain the current Tourvisor search.
+      // Unmapped local categories remain in the DB taxonomy but are not offered as a
+      // working filter until a reviewed provider ID exists.
+      catalog.meals=plans.filter(p=>p.nativeIds.length);catalog.mealCatalogueAvailable=c.available;catalog.mealCatalogueError=c.available?'':'Соответствия питания ещё не подключены.';catalog.mealCatalogueRevision=c.revision;
       mealByNative=native;return true;
     }catch(error){if(run===mealLoadGeneration){catalog.mealCatalogueAvailable=false;catalog.mealCatalogueError=error.message;mealByNative=new Map();}throw error;}
   }

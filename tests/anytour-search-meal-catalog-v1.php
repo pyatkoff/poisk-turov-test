@@ -12,7 +12,7 @@ final class MealRows extends PDOStatement
     public function execute(?array $params=null): bool
     {
         $params??=[];$this->db->queries[]=[$this->sql,$params];
-        $this->rows=str_contains($this->sql,'information_schema')?[[count($params)]]:$this->db->rows;
+        $this->rows=str_contains($this->sql,'information_schema')?[[count(array_intersect($params,$this->db->tables))]]:$this->db->rows;
         return true;
     }
     public function fetchColumn(int $column=0): mixed {return $this->rows[0][$column]??null;}
@@ -20,7 +20,7 @@ final class MealRows extends PDOStatement
 }
 final class MealPdo extends PDO
 {
-    public array $queries=[],$rows=[];
+    public array $queries=[],$rows=[],$tables=['anytour_meal_plans','anytour_search_meal_provider_mappings_v1','anytour_search_meal_memberships_v1','anytour_hotel_meal_concepts_v2','anytour_stay_mappings'];
     public function __construct(){}
     public function prepare(string $query,array $options=[]): PDOStatement|false
     {if(!str_starts_with($query,'SELECT '))throw new RuntimeException('Writes forbidden');return new MealRows($this,$query);}
@@ -40,6 +40,15 @@ sm_error(fn()=>$reader->catalogue('tourvisor','../secret'),'SEARCH_MEAL_SCOPE');
 $fake->rows[1]['external_id']='7';sm_error(fn()=>$reader->catalogue('tourvisor','global'),'SEARCH_MEAL_CONFLICT');
 $fake->rows[1]['external_id']=null;sm_error(fn()=>$reader->nativeIds('tourvisor','global',[501,502]),'SEARCH_MEAL_UNMAPPED');
 $fake->rows[0]['evidence_sha256']='invalid';sm_error(fn()=>$reader->nativeIds('tourvisor','global',[501]),'SEARCH_MEAL_UNMAPPED');
+// CURRENT fallback: reviewed legacy_catalog rows explicitly carry tv-meal evidence.
+// Equal labels remain irrelevant; UAI is Tourvisor 9, not local plan ID 8.
+$fake->tables=['anytour_meal_plans','anytour_stay_mappings'];
+$fake->rows=[['id'=>7,'code'=>'all-inclusive','name_ru'=>'Всё включено','external_id'=>'7','evidence_ref'=>'stay-v4:x;tv-meal:7->all-inclusive','evidence_sha256'=>hash('sha256','ai'),'reviewed_by'=>'fixture'],
+ ['id'=>8,'code'=>'ultra-all-inclusive','name_ru'=>'Ультра всё включено','external_id'=>'9','evidence_ref'=>'stay-v4:x;tv-meal:9->ultra-all-inclusive','evidence_sha256'=>hash('sha256','uai'),'reviewed_by'=>'fixture']];
+sm_check($reader->nativeIds('tourvisor','global',[7,8])===['7','9'],'CURRENT reviewed legacy Tourvisor fallback');
+sm_check($reader->catalogue('tourvisor','global')['available']===true,'CURRENT fallback is an installed read authority');
+sm_check($reader->catalogue('anex','global')['available']===false,'CURRENT Tourvisor evidence is never borrowed by ANEX');
+$fake->tables=['anytour_meal_plans'];sm_check($reader->catalogue('tourvisor','global')['available']===false,'no mapping authority stays unavailable');
 echo "SEARCH_MEAL_PURE_OK checks=$checks no_writes=1\n";
 
 $dsn=(string)getenv('ANYTOUR_HOTEL_STAY_V2_TEST_DSN');if($dsn==='')exit(0);
@@ -53,8 +62,8 @@ function sm_sql(PDO $db,string $name): void
 sm_check(str_contains($dsn,'anytour_hotel_stay_v2_fixture'),'fixture DSN required');
 sm_sql($db,'20260916-anytour-stay-catalog.sql');
 $live=new AnyTourSearchMealCatalogV1($db);
-sm_check($live->catalogue('tourvisor','global')['available']===false,'missing new schema reported, no automatic install');
-sm_error(fn()=>$live->nativeIds('tourvisor','global',[7]),'SEARCH_MEAL_UNAVAILABLE');
+sm_check($live->catalogue('tourvisor','global')['available']===true,'existing stay mapping table is a read-only CURRENT Tourvisor authority');
+sm_error(fn()=>$live->nativeIds('tourvisor','global',[7]),'SEARCH_MEAL_UNMAPPED');
 sm_sql($db,'20260921-anytour-search-meal-mappings.sql');
 $db->beginTransaction();
 try{

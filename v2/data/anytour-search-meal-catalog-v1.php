@@ -44,13 +44,33 @@ final class AnyTourSearchMealCatalogV1
         $result=['source'=>self::SOURCE,'provider'=>$provider,'scopeKey'=>$scopeKey,'available'=>false,'plans'=>[]];
         if (!$this->tables(['anytour_meal_plans'])) return $result+['revision'=>null];
         $ready=$this->tables(['anytour_search_meal_provider_mappings_v1']);
-        $sql=$ready?
-            "SELECT p.id,p.code,p.name_ru,m.external_id,m.evidence_ref,m.evidence_sha256,m.reviewed_by
+        // CURRENT compatibility: the reviewed legacy catalogue already contains
+        // exact Tourvisor meal-code decisions. Reuse only a globally consistent
+        // tv-meal decision; do not infer from labels or expose it as ANEX/SAMO.
+        $legacyTourvisor=!$ready && $provider==='tourvisor' && $scopeKey==='global'
+            && $this->tables(['anytour_stay_mappings']);
+        if ($ready) {
+            $sql="SELECT p.id,p.code,p.name_ru,m.external_id,m.evidence_ref,m.evidence_sha256,m.reviewed_by
              FROM anytour_meal_plans p LEFT JOIN anytour_search_meal_provider_mappings_v1 m
              ON m.meal_plan_id=p.id AND m.state='accepted' AND m.provider=? AND m.scope_key=?
-             WHERE p.is_active=1 ORDER BY p.id,m.external_id LIMIT 10001":
-            'SELECT id,code,name_ru FROM anytour_meal_plans WHERE is_active=1 ORDER BY id LIMIT 1001';
-        $stmt=$this->pdo->prepare($sql);$stmt->execute($ready?[$provider,$scopeKey]:[]);
+             WHERE p.is_active=1 ORDER BY p.id,m.external_id LIMIT 10001";
+            $args=[$provider,$scopeKey];
+        } elseif ($legacyTourvisor) {
+            $sql="SELECT p.id,p.code,p.name_ru,CONVERT(m.external_key USING utf8mb4) AS external_id,
+                    MIN(m.evidence_ref) AS evidence_ref,MIN(m.evidence_sha256) AS evidence_sha256,MIN(m.reviewed_by) AS reviewed_by
+                FROM anytour_meal_plans p
+                LEFT JOIN anytour_stay_mappings m ON m.meal_id=p.id AND m.state='accepted'
+                    AND m.namespace='legacy_catalog' AND m.kind='meal' AND m.key_kind='code'
+                    AND m.evidence_ref LIKE CONCAT('%;tv-meal:',CONVERT(m.external_key USING utf8mb4),'->',p.code)
+                WHERE p.is_active=1
+                GROUP BY p.id,p.code,p.name_ru,m.external_key
+                ORDER BY p.id,m.external_key LIMIT 10001";
+            $args=[];
+        } else {
+            $sql='SELECT id,code,name_ru FROM anytour_meal_plans WHERE is_active=1 ORDER BY id LIMIT 1001';
+            $args=[];
+        }
+        $stmt=$this->pdo->prepare($sql);$stmt->execute($args);
         $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
         if (count($rows)>10000) throw new RuntimeException('SEARCH_MEAL_LIMIT');
         $plans=[];$ids=[];
@@ -65,7 +85,7 @@ final class AnyTourSearchMealCatalogV1
             $ids['id:'.$native]=$id;$plans[$id]['nativeIds'][]=$native;
         }
         if (count($plans)>self::LIMIT) throw new RuntimeException('SEARCH_MEAL_LIMIT');
-        $result['available']=$ready;$result['plans']=array_values($plans);
+        $result['available']=$ready||$legacyTourvisor;$result['plans']=array_values($plans);
         $result['revision']=hash('sha256',json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
         return $result;
     }
