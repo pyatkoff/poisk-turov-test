@@ -5,40 +5,86 @@ require_once __DIR__.'/andromeda-surcharge-group-key.php';
 final class AnyTourAndromedaSurchargeEvidenceV1
 {
     private const SOURCES=['andromeda_get_flights_transport','andromeda_get_flights_transport_converted'];
+    private const PROGRAM_FIXED_AGGREGATION='single_distinct_party_markup';
 
+    /** Existing strict evidence path. Its shape/key remain backward-compatible. */
     public static function capture(array $offer,array $request,array $fact,int $observedAt,int $expiresAt):?array
     {
         $key=AndromedaSurchargeGroupKey::build($offer,$request);
+        return self::captureScoped($key,$offer,$fact,$observedAt,$expiresAt,null);
+    }
+
+    /**
+     * Capture the narrower owner-approved program-fixed reuse class.
+     *
+     * Only an already-derived single distinct party markup is eligible. Choice-
+     * dependent minimums, unknown surcharge and verified quote totals must never
+     * seed this cross-night scope. The evidence remains an estimate, not final price.
+     */
+    public static function captureProgramFixed(
+        array $offer,array $request,array $fact,int $observedAt,int $expiresAt
+    ):?array {
+        if(!self::programFixedFact($fact))return null;
+        $key=AndromedaSurchargeGroupKey::buildProgramFixed($offer,$request);
+        return self::captureScoped($key,$offer,$fact,$observedAt,$expiresAt,'program_fixed');
+    }
+
+    private static function captureScoped(
+        ?string $key,array $offer,array $fact,int $observedAt,int $expiresAt,?string $reuseScope
+    ):?array {
         $price=self::price($offer);
         if($key===null||$price===null||$observedAt<1||$expiresAt<=$observedAt||$expiresAt>$observedAt+300
             ||!self::factMatches($fact,$price))return null;
         $party=$fact['party_surcharge'];
-        return ['schema_version'=>1,'provider'=>'andromeda','state'=>'estimated','group_key'=>$key,
+        $evidence=['schema_version'=>1,'provider'=>'andromeda','state'=>'estimated','group_key'=>$key,
             'party_surcharge'=>['amount'=>$party['amount'],'currency'=>$party['currency'],'source'=>$party['source']],
             'observed_at'=>$observedAt,'expires_at'=>$expiresAt];
+        if($reuseScope!==null)$evidence['reuse_scope']=$reuseScope;
+        return $evidence;
     }
 
     public static function apply(array $offer,array $request,array $evidence,int $now):?array
     {
-        $key=AndromedaSurchargeGroupKey::build($offer,$request);$price=self::price($offer);
-        if($key===null||$price===null||!self::valid($evidence)||$evidence['group_key']!==$key
+        if(!self::valid($evidence))return null;
+        $programFixed=($evidence['reuse_scope']??null)==='program_fixed';
+        $key=$programFixed
+            ? AndromedaSurchargeGroupKey::buildProgramFixed($offer,$request)
+            : AndromedaSurchargeGroupKey::build($offer,$request);
+        $price=self::price($offer);
+        if($key===null||$price===null||$evidence['group_key']!==$key
             ||$now<$evidence['observed_at']||$now>=$evidence['expires_at'])return null;
         $party=$evidence['party_surcharge'];
         if($party['currency']!==$price['currency'])return null;
         $total=self::add($price['amount'],$party['amount']);if($total===null)return null;
-        return ['schema_version'=>1,'provider'=>'andromeda','state'=>'estimated','search_price'=>$price,
+        $result=['schema_version'=>1,'provider'=>'andromeda','state'=>'estimated','search_price'=>$price,
             'party_surcharge'=>$party,'search_price_with_surcharge'=>['amount'=>$total,'currency'=>$price['currency'],'source'=>'derived_search_estimate'],
             'surcharge_scope'=>'party','arithmetic_applied'=>true,'final_price_verified'=>false];
+        if($programFixed)$result['reuse_scope']='program_fixed';
+        return $result;
     }
 
     public static function valid(array $e):bool
     {
         $party=$e['party_surcharge']??null;
+        $scope=$e['reuse_scope']??null;
+        $key=$e['group_key']??null;
+        $keyValid=is_string($key)&&(
+            ($scope===null&&preg_match('/^andromeda-surcharge-v2:[a-f0-9]{64}$/D',$key)===1)
+            ||($scope==='program_fixed'&&preg_match('/^andromeda-program-surcharge-v1:[a-f0-9]{64}$/D',$key)===1)
+        );
         return ($e['schema_version']??null)===1&&($e['provider']??null)==='andromeda'&&($e['state']??null)==='estimated'
-            &&is_string($e['group_key']??null)&&preg_match('/^andromeda-surcharge-v2:[a-f0-9]{64}$/D',$e['group_key'])===1
+            &&$keyValid
             &&is_int($e['observed_at']??null)&&$e['observed_at']>0&&is_int($e['expires_at']??null)&&$e['expires_at']>$e['observed_at']
             &&$e['expires_at']<=$e['observed_at']+300&&is_array($party)&&is_string($party['amount']??null)&&self::money($party['amount'],true)
             &&is_string($party['currency']??null)&&preg_match('/^[A-Z]{3}$/D',$party['currency'])===1&&in_array($party['source']??null,self::SOURCES,true);
+    }
+
+    private static function programFixedFact(array $fact):bool
+    {
+        $reported=$fact['transport_markup_reported']??null;
+        return is_array($reported)
+            &&($reported['aggregation']??null)===self::PROGRAM_FIXED_AGGREGATION
+            &&($reported['source']??null)==='andromeda_get_flights_transport';
     }
 
     private static function price(array $offer):?array
