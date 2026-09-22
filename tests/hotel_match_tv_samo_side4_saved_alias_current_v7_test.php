@@ -10,8 +10,11 @@ $pairs=array_map(fn($x)=>$x['tv_hotel_id'].'|'.$x['samo_hotel_id'],$r['strong_co
 a7($pairs===['1|11','4|14'],'strong_pairs');
 a7(count(array_filter($r['strong_common3'],fn($x)=>$x['tv_hotel_id']==='2'))===0,'qualifier_hold');
 a7(count(array_filter($r['strong_common3'],fn($x)=>$x['tv_hotel_id']==='3'))===0,'biblio_only_hold');
-$q=hma7_name_score('ROYAL FAMILY RESORT','ROYAL RESORT');a7($q['qualifier_conflict']&&$q['score']<0.90,'meaningful_qualifier');
-$long=str_repeat('ALPHA ',50);$q=hma7_name_score($long.'HOTEL',$long.'HOTEL');a7($q['exact']&&$q['score']===1.0,'long_name_token_fallback');
+$q=hma7_name_score('ROYAL FAMILY RESORT','ROYAL RESORT');a7($q['qualifier_conflict']&&$q['score']<0.90,'meaningful_qualifier');\n$long=str_repeat('ALPHA ',50);$q=hma7_name_score($long.'HOTEL',$long.'HOTEL');a7($q['exact']&&$q['score']===1.0,'long_name_token_fallback');
+$base=hma7_baseline_pairs(['hotel_candidates'=>[['tv_hotel_id'=>'1','samo_hotel_id'=>'11','tv_name'=>'A','samo_name'=>'A','name_exact'=>true,'operator_overlap'=>['operators'=>['funsun']],'hotel_evidence_class'=>'exact']]]);
+a7(count($base)===1&&$base[0]['tier']==='baseline_exact_common3','baseline_common3');
+$sample=[$row(1,'A','funsun'),$row(2,'B','funsun'),$row(2,'B','anex'),$row(3,'C','intourist')];
+$tail=hma7_unresolved_rows($sample,$base);a7(count(hma7_hotels($tail))===2,'unresolved_unique_hotels');
 $source=(string)file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_tv_samo_side4_saved_alias_current_v7.php');
 a7(!str_contains($source,'hmc_tv_call(')&&!str_contains($source,'->price('),'no_provider_calls');
 echo "MATCH_TV_SAMO_SIDE4_SAVED_ALIAS_CURRENT_V7_TEST_OK\n";
