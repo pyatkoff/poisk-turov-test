@@ -17,6 +17,18 @@ MANIFEST = json.loads((ROOT / 'docs/project/search3-production-import.json').rea
 
 
 class Search3HalfSizeResetTest(unittest.TestCase):
+    def test_prototype_comparison_columns_have_visual_separation(self):
+        css = (ROOT / 'v2/prototype-search/styles.css').read_text()
+        self.assertIn(
+            '.comparison-dialog .comparison tr>:not(.compare-key)+*{border-left:1px solid #E5EAF4}',
+            css,
+        )
+        self.assertNotIn(
+            '.comparison-dialog .comparison tr>*{border-left:',
+            css,
+            'do not put a divider before the first hotel column / metric-key column',
+        )
+
     def setUp(self):
         self.source = json.loads((ROOT / 'src/search3/manifest.json').read_text())
         self.bundle = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
