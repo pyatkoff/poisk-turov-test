@@ -10,6 +10,11 @@ function tvfi_reject(array $row, string $message): void {
     catch (InvalidArgumentException|DomainException $expected) { return; }
     throw new RuntimeException($message);
 }
+function tvfi_search_reject(array $row, string $message): void {
+    try { AnyTourTourvisorOperatorFuelRetainedIntakeV1::observationFromSearchRow($row); }
+    catch (InvalidArgumentException|DomainException $expected) { return; }
+    throw new RuntimeException($message);
+}
 
 $segment = static function(string $from, string $to, string $date, string $flight): array {
     return [
@@ -49,6 +54,51 @@ $base = [
     'observed_at'=>1000,'expires_at'=>5000,
     'valid_from'=>'2026-10-01','valid_to'=>'2026-10-31',
 ];
+
+$searchBase = $base;
+unset($searchBase['tour'], $searchBase['tour_response_sha256']);
+$searchBase['search_row'] = [
+    'tour_id'=>'43282561000937','operator_name'=>'Интурист','date'=>'2026-10-11',
+    'adults'=>2,'children'=>0,'currency'=>'RUB','fuel_charge'=>33748,
+    // These fields deliberately differ across offers and must not enter fuel scope.
+    'hotel_id'=>'1006','nights'=>7,'room_raw'=>'standard','meal_raw'=>'AI','price'=>176951,
+];
+$searchBase['search_response_sha256'] = tvfi_hash('search-1');
+$searchObs = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observationFromSearchRow($searchBase);
+tvfi_ok($searchObs['amount'] === '33748' && $searchObs['unit'] === 'party_roundtrip', 'search row fuel retained');
+tvfi_ok($searchObs['scope']['outbound']['flight'] === 'ZF1001' && $searchObs['scope']['return']['flight'] === 'ZF1002', 'search row still requires exact flights');
+
+$searchOther = $searchBase;
+$searchOther['tour_id'] = '43282575574005';
+$searchOther['search_row']['tour_id'] = '43282575574005';
+$searchOther['search_row']['hotel_id'] = '1010';
+$searchOther['search_row']['nights'] = 10;
+$searchOther['search_row']['room_raw'] = 'family';
+$searchOther['search_row']['meal_raw'] = 'UAI';
+$searchOther['search_row']['price'] = 202269;
+$searchOther['search_response_sha256'] = tvfi_hash('search-2');
+$searchOther['flights_response_sha256'] = tvfi_hash('flights-2');
+$searchObs2 = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observationFromSearchRow($searchOther);
+tvfi_ok($searchObs2['scope'] === $searchObs['scope'], 'search hotel nights room meal and base do not split rule');
+tvfi_ok($searchObs2['offer_ref_digest'] !== $searchObs['offer_ref_digest'], 'search rows remain independent offers');
+
+$searchTarget = [
+    'provider'=>'tourvisor','operator'=>'Интурист','scope'=>[
+        'market'=>'RU-MOW','outbound'=>$searchObs['scope']['outbound'],'return'=>$searchObs['scope']['return'],'party'=>$searchObs['scope']['party'],
+    ],
+    'offer_ref_digest'=>tvfi_hash('search-target'),'flight_dates'=>['2026-10-11','2026-10-18'],
+];
+tvfi_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($searchTarget, [$searchObs,$searchObs2], 2000) !== null, 'two search+flights rows confirm rule without tour detail');
+
+$searchConflict = $searchBase;
+$searchConflict['search_row']['fuel_charge'] = 30000;
+tvfi_search_reject($searchConflict, 'search and flights fuel conflict must reject');
+$searchWrongParty = $searchBase;
+$searchWrongParty['search_row']['adults'] = 1;
+tvfi_search_reject($searchWrongParty, 'search row party mismatch must reject');
+$searchAnex = $searchBase;
+$searchAnex['search_row']['operator_name'] = 'ANEX';
+tvfi_search_reject($searchAnex, 'ANEX search row must stay outside this intake');
 
 $obs = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($base);
 tvfi_ok($obs['operator_family'] === 'intourist', 'operator retained');
