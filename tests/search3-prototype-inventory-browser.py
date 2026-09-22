@@ -190,7 +190,13 @@ def check_width(browser, origin, width):
             elif action == "regions":
                 reply([{"id": 20, "name": "Анталья", "countryId": 4}, {"id": 23, "name": "Сиде", "countryId": 4}])
             elif action == "meals":
-                reply([{"id": 7, "name": "AI"}])
+                reply([
+                    {"id": 7, "name": "AI", "fullName": "AI - Все Включено"},
+                    {"id": 8, "name": "Все Включено"},
+                    {"id": 9, "name": "BB", "fullName": "BB - Только завтрак"},
+                    {"id": 10, "name": "Завтрак"},
+                    {"id": 11, "name": "Ультра Все Вкл"},
+                ])
             elif action == "search_start":
                 reply({"searchId": 123})
             elif action == "search_status":
@@ -235,6 +241,13 @@ def check_width(browser, origin, width):
                             "minNights": 7, "maxNights": 7, "adults": 2, "ages": ""})
         page.goto(origin + BASE + "prototype-search/?" + params)
         page.locator(".search-submit:not([disabled])").wait_for()
+        page.locator('#quick-meal').click()
+        meal_text = page.locator('#modal-body').inner_text()
+        assert meal_text.count('Всё включено') == 1, meal_text
+        assert meal_text.count('Завтраки') == 1, meal_text
+        assert meal_text.count('Ультра всё включено') == 1, meal_text
+        assert 'Все Включено' not in meal_text and 'BB - Только завтрак' not in meal_text and 'Завтрак\n' not in meal_text
+        page.locator('[data-action="close-modal"]').click()
         page.locator('#country').click()
         assert page.locator('[data-action="destination-resort"]').count() == 2
         page.locator('[data-action="destination-resort"][data-value="Анталья"]').click()
