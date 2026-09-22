@@ -11,7 +11,7 @@ $base=['TOWNFROMINC'=>1,'STATEINC'=>5,'CHECKIN_BEG'=>'20261005','CHECKIN_END'=>'
     'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>643,'STARS'=>'4','OPERATORS'=>'5,115,315,342','TOWNTOINC'=>'20','PACKETTYPE'=>0,'GROUP_BY'=>32];
 $put=function(int $seq,int $page,array $reply)use($tmp,$base){$raw=json_encode($reply);$name=sprintf('%04d-samo-price',$seq);
     file_put_contents($tmp.'/evidence-private/'.$name.'.bin',$raw);file_put_contents($tmp.'/evidence-private/'.$name.'.meta.json',json_encode([
-        'source'=>'samo-price','http_status'=>200,'raw_sha256'=>hash('sha256',$raw),'meta'=>['star'=>4,'page'=>$page,'params'=>$base+['PAGE'=>$page]]]]));};
+        'source'=>'samo-price','http_status'=>200,'raw_sha256'=>hash('sha256',$raw),'meta'=>['star'=>4,'page'=>$page,'params'=>$base+['PAGE'=>$page]]]));};
 $row=['id'=>'x','hotelKey'=>'900','hotel'=>'ALPHA HOTEL','operatorKey'=>115,'operator'=>'Biblio Globus','price'=>'100000','currency'=>'RUB',
     'checkIn'=>'05.10.2026','nights'=>'7','room'=>'Standard','meal'=>'AI','adult'=>'2','child'=>'0'];
 $put(1,1,['PAGE'=>1,'PAGES_COUNT'=>2,'PRICES'=>[$row]]);$put(2,2,['PAGE'=>2,'PAGES_COUNT'=>2,'PRICES'=>[$row+['id'=>'y']]]);
