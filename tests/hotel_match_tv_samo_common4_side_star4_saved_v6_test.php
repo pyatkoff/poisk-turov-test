@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__.'/hotel_match_tv_samo_common4_side_star4_saved_v6.php';
+require_once __DIR__.'/../scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_saved_v6.php';
 function h6(bool $ok,string $m):void{if(!$ok)throw new RuntimeException($m);}
 $tmp=sys_get_temp_dir().'/hmc6-'.bin2hex(random_bytes(4));mkdir($tmp.'/evidence-private',0700,true);
 file_put_contents($tmp.'/result.json',json_encode(['operation'=>HMC6_SOURCE_OP,'state'=>'terminal_failed_no_replay','reason'=>'samo_zero_page_shape']));
@@ -19,6 +19,6 @@ $put(3,3,['PAGE'=>3,'PAGES_COUNT'=>0,'PRICES'=>[]]);
 $x=hmc6_samo_rows($tmp);h6(count($x['rows'])===2,'rows');h6(count($x['pages'])===3&&$x['terminal_page']===3,'terminal');
 h6($x['pages'][2]['terminal_empty']===true,'empty');
 foreach(glob($tmp.'/evidence-private/*')?:[] as $f)unlink($f);rmdir($tmp.'/evidence-private');foreach(['result.json','receipt.json','search-plan.json'] as $f)unlink($tmp.'/'.$f);rmdir($tmp);
-$source=(string)file_get_contents(__DIR__.'/hotel_match_tv_samo_common4_side_star4_saved_v6.php');
+$source=(string)file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_saved_v6.php');
 h6(!str_contains($source,'hmc_tv_call('),'no_tv_http');h6(!str_contains($source,'->price('),'no_samo_http');
 echo "MATCH_TV_SAMO_COMMON4_SIDE_STAR4_SAVED_V6_TEST_OK\n";
