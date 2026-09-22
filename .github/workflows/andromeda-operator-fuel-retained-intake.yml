@@ -1,0 +1,42 @@
+name: Andromeda retained operator fuel intake
+
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'app/integrations/andromeda-operator-fuel-retained-intake.php'
+      - 'app/integrations/operator-fuel-rule-evidence.php'
+      - 'app/integrations/operator-fuel-rule-store.php'
+      - 'tests/andromeda-operator-fuel-retained-intake-test.php'
+      - '.github/workflows/andromeda-operator-fuel-retained-intake.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Validate saved-only SAMO fuel intake
+        run: |
+          set -euo pipefail
+          php -l app/integrations/andromeda-operator-fuel-retained-intake.php
+          php -l tests/andromeda-operator-fuel-retained-intake-test.php
+          php -d allow_url_fopen=0 tests/andromeda-operator-fuel-retained-intake-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('app/integrations/andromeda-operator-fuel-retained-intake.php').read_text()
+          assert 'curl_' not in src and 'http://' not in src and 'https://' not in src
+          assert 'AnyTourOperatorFuelRuleStoreV1::append' in src
+          assert "route_reported_unknown" in src
+          assert "andromeda_claim_service" in src
+          print('Andromeda retained fuel intake boundary: PASS')
+          PY
