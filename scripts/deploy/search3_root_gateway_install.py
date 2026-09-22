@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import base64,hashlib,io,json,os,pathlib,re,subprocess,sys,urllib.request,zipfile
 REPO='pyatkoff/poisk-turov-test'; ISSUE=3419
-CMD=re.compile(r'^/(install|inspect)-search3-root-gateway(?: ([a-f0-9]{40}) ([a-f0-9]{40}) ([a-f0-9]{40}) ([a-f0-9]{64}))?
+CMD=re.compile(r'^/(install|inspect)-search3-root-gateway(?: ([a-f0-9]{40}) ([a-f0-9]{40}) ([a-f0-9]{40}) ([a-f0-9]{64}))?$')
 def need(v,m):
  if not v: raise RuntimeError(m)
 def sha(b):return hashlib.sha256(b).hexdigest()
