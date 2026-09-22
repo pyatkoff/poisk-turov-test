@@ -120,6 +120,13 @@ def check_width(browser, origin, width):
             body = request.post_data_json
             assert body["generation"] >= 1
             reply({"ok": True, "data": {"provider": "andromeda", "generation": body["generation"], "hotels": []}})
+        elif url.path == "/_preview/search3-anex-candidate/api-anex-search3-preview.php" and request.method == "POST":
+            body = request.post_data_json
+            assert body["action"] == "search" and body["generation"] >= 1
+            reply({"ok": True, "data": {"provider": "anex", "generation": body["generation"],
+                   "date_range": {"from": body["params"]["dateFrom"], "to": body["params"]["dateTo"]},
+                   "search_ref": "d" * 32, "external_search_pending": False,
+                   "pages_read": 1, "first_page_only": True, "hotels": []}})
         elif url.path == "/api-v2.php" and request.method == "GET":
             action = query.get("action", [""])[0]
             calls.append(action)
