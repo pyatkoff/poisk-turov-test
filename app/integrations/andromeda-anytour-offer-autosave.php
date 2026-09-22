@@ -258,6 +258,7 @@ final class AnyTourAndromedaOfferAutosaveV1
         $digestRows = [];
         foreach ($entries as $entry) {
             $verifiedQuote = $entry['verified_quote'] ?? null;
+            $operatorFuel = $entry['operator_fuel'] ?? null;
             $searchMoney = $entry['offer']['money'] ?? null;
             if (!is_array($searchMoney)) {
                 throw new RuntimeException('ANDROMEDA_ANYTOUR_MONEY_DIGEST');
@@ -281,6 +282,12 @@ final class AnyTourAndromedaOfferAutosaveV1
                 'verified_quote_digest' => is_array($verifiedQuote)
                     ? hash('sha256', json_encode(
                         $verifiedQuote,
+                        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+                    ))
+                    : null,
+                'operator_fuel_digest' => is_array($operatorFuel)
+                    ? hash('sha256', json_encode(
+                        $operatorFuel,
                         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
                     ))
                     : null,
@@ -361,8 +368,13 @@ final class AnyTourAndromedaOfferAutosaveV1
             );
             $surcharge = null;
             $verifiedQuote = null;
+            $operatorFuel = null;
             if ($pricing !== null) {
-                if (($pricing['state'] ?? null) === 'verified'
+                if (($pricing['state'] ?? null) === 'operator_fuel'
+                    && count($pricing) === 2
+                    && is_array($pricing['operator_fuel'] ?? null)) {
+                    $operatorFuel = $pricing['operator_fuel'];
+                } elseif (($pricing['state'] ?? null) === 'verified'
                     && array_key_exists('verified_quote', $pricing)
                     && is_array($pricing['verified_quote'])
                     && ($pricing['fact'] ?? null) === null) {
@@ -446,6 +458,12 @@ final class AnyTourAndromedaOfferAutosaveV1
                 // the retained fact remains intact and no derived total is published.
                 $entry['priced_money'] = null;
                 $entry['confirmation_required'] = true;
+            }
+            if ($operatorFuel !== null) {
+                // The producer owns fuel arithmetic and fail-closed compatibility.
+                // Autosave only transports a source-bound confirmed rule input.
+                $entry['priced_money'] = null;
+                $entry['operator_fuel'] = $operatorFuel;
             }
             if ($verifiedQuote !== null) $entry['verified_quote'] = $verifiedQuote;
             return $entry;
