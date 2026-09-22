@@ -18,7 +18,11 @@
   .compare-btn,
   .hotel-more .text-button,
   .offer-price .primary,
-  .compare-tray > .primary {
+  .compare-tray > .primary,
+  .calendar-heading .text-button,
+  .calendar-foot .text-button,
+  .destination-selection button,
+  .flex-dates button {
     min-height:44px;
   }
 
@@ -36,7 +40,8 @@
   .modal-header .icon-button,
   #modal-back,
   .counter button,
-  .favorite-item .icon-button {
+  .favorite-item .icon-button,
+  .compare-hotel-card .compare-remove {
     width:44px;
     min-width:44px;
     height:44px;
