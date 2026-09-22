@@ -1,0 +1,55 @@
+name: INT Tourvisor API autosave wiring
+
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'v2/api-v2.php'
+      - 'tests/tourvisor-api-autosave-wiring-int-test.php'
+      - '.github/workflows/int-tourvisor-api-autosave-wiring.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'fix/int-tourvisor-root-autosave-source-20260922' &&
+      github.event.pull_request.base.ref == 'feature/anex-search-adapter-20260907'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Exact bounded source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=7a1823a1f9628c3807cc42b831ee919fb2e40647
+          test "$(git merge-base HEAD "$base")" = "$base"
+          mapfile -t changed < <(git diff --name-only "$base...HEAD" | sort)
+          expected=(
+            .github/workflows/int-tourvisor-api-autosave-wiring.yml
+            tests/tourvisor-api-autosave-wiring-int-test.php
+            v2/api-v2.php
+          )
+          test "${#changed[@]}" = "${#expected[@]}"
+          for i in "${!expected[@]}"; do test "${changed[$i]}" = "${expected[$i]}"; done
+          php -l v2/api-v2.php
+          php -l tests/tourvisor-api-autosave-wiring-int-test.php
+          php -d allow_url_fopen=0 tests/tourvisor-api-autosave-wiring-int-test.php
+          ! grep -Fq '86400' v2/api-v2.php
+          ! grep -Fq 'finalPrice' v2/api-v2.php
+          ! grep -Fq 'fuelCharge' v2/api-v2.php
+          ! grep -Fq 'replaceCompleteSnapshot' v2/api-v2.php
+          grep -Fq "class_exists('AnyTourTourvisorOfferAutosaveV1', false)" v2/api-v2.php
+          grep -Fq "__DIR__ . '/app/integrations/tourvisor-anytour-offer-autosave.php'" v2/api-v2.php
+          grep -Fq "dirname(__DIR__) . '/app/integrations/tourvisor-anytour-offer-autosave.php'" v2/api-v2.php
+          echo INT_TOURVISOR_API_AUTOSAVE_WIRING_OK
