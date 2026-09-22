@@ -135,6 +135,9 @@
     return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),room:text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,meal:meal(t.meal)||'Питание уточняется',operator:operator(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
   function project(list,s) { return list.map(rawHotel=>{const h=hotel(rawHotel,s);h.offers=(rawHotel.tours||[]).map((t,i)=>offer(t,h,s,i)).filter(Boolean);return h;}).filter(h=>h.offers.length); }
+  function tourvisorInventory(){
+    return {hotels:raw.length,offers:raw.reduce((sum,h)=>sum+(Array.isArray(h?.tours)?h.tours.length:0),0)};
+  }
   function canonicalUnion(){
     if(!owner||!context)return {hotels:0,offers:0,hotelsByProvider:{},offersByProvider:{},providerSets:{}};
     const rows=project(owner.read(raw,{}),context),hotelsByProvider={},offersByProvider={},providerSets={};let offers=0;
@@ -159,16 +162,16 @@
     // evidence that search_continue failed: subsequent recovery only reads it.
     if(error?.status===404||error?.status===410)run.expired=true;
     if(!run.continued){
-      run.sourceCounts.tourvisor={status:'error',hotels:raw.length,offers:raw.reduce((sum,h)=>sum+(Array.isArray(h?.tours)?h.tours.length:0),0)};
+      run.sourceCounts.tourvisor={status:'error',...tourvisorInventory()};
       notify({type:'provider',provider:'tourvisor',status:'error'});
       await settleInitialSources(run);if(!current(run))return;
-      run.pending=false;
-      notify({type:'complete',partial:true,message:error.message,canContinue:!!run.searchId&&!run.expired,
+      run.pending=false;run.canContinue=!!run.searchId&&!run.expired;
+      notify({type:'complete',partial:true,message:error.message,canContinue:run.canContinue,
         retryRead:run.resumeOnly,continued:false,resultLimitReached:false,sources:structuredClone(run.sourceCounts),union:canonicalUnion()});
       return;
     }
-    run.pending=false;
-    notify({type:'error',message:error.message,canContinue:!!run.searchId&&!run.expired,retryRead:run.resumeOnly});
+    run.pending=false;if(run.expired)run.canContinue=false;
+    notify({type:'error',message:error.message,canContinue:run.canContinue&&!run.expired,retryRead:run.resumeOnly});
   }
   function readDatabase(run){
     return db(run.search,run.controller.signal,run.hotelIds,run.filters).then(data=>{
@@ -353,13 +356,17 @@
         raw=rows;run.lastProgress=progress;run.lastRead=Date.now();publish();if(!current(run))return;
       }
       if(complete){
-        const tvOffers=raw.reduce((sum,h)=>sum+(Array.isArray(h?.tours)?h.tours.length:0),0);
-        run.sourceCounts.tourvisor={status:'complete',hotels:raw.length,offers:tvOffers};
+        const inventory=tourvisorInventory();
+        run.sourceCounts.tourvisor={status:'complete',...inventory};
         notify({type:'provider',provider:'tourvisor',...run.sourceCounts.tourvisor});
         await refreshDatabase(run);if(!current(run))return;
         if(!run.continued&&!(await settleInitialSources(run)))return;
-        run.pending=false;run.resumeOnly=false;
-        notify({type:'complete',canContinue:true,continued:run.continued,resultLimitReached:raw.length>=5000,sources:structuredClone(run.sourceCounts),union:canonicalUnion()});return;
+        const resultLimitReached=inventory.hotels>=5000,baseline=run.continueBaseline;
+        const grew=!run.continued||!baseline||inventory.hotels>baseline.hotels||inventory.offers>baseline.offers;
+        run.pending=false;run.resumeOnly=false;run.canContinue=!resultLimitReached&&(!run.continued||grew);
+        notify({type:'complete',canContinue:run.canContinue,continued:run.continued,resultLimitReached,
+          continuationGrowth:run.continued&&baseline?{before:structuredClone(baseline),after:structuredClone(inventory),grew}:null,
+          sources:structuredClone(run.sourceCounts),union:canonicalUnion()});return;
       }
       if(run.deadline&&Date.now()>=run.deadline)throw new Error('Продолжение поиска ещё не завершено. Проверьте результат повторно.');
       timer=setTimeout(()=>pollSearch(run),2500);
@@ -367,7 +374,7 @@
   }
   async function search(s, callback, hotelIds=[], filters={}) {
     const p=params(s,hotelIds,filters),epoch=stop();notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
-    const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,lastProgress:-10,lastRead:0,deadline:0,sourceCounts:{}};
+    const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:true,continueBaseline:null,lastProgress:-10,lastRead:0,deadline:0,sourceCounts:{}};
     activeSearch=run;callback({type:'loading'});if(!current(run))return;
     run.database=readDatabase(run);
     run.andromeda=enrichAndromeda(run,p);
@@ -383,10 +390,10 @@
   }
   async function continueSearch(){
     const run=activeSearch;
-    if(!run||!current(run)||run.pending||!run.searchId||run.expired)return false;
+    if(!run||!current(run)||run.pending||!run.searchId||run.expired||!run.canContinue)return false;
     // Lock before the first await: double clicks never spend a second request.
     run.pending=true;run.continued=true;run.lastProgress=-10;run.lastRead=0;run.deadline=Date.now()+75000;
-    const retryRead=run.resumeOnly;run.resumeOnly=true;
+    const retryRead=run.resumeOnly;if(!retryRead)run.continueBaseline=tourvisorInventory();run.resumeOnly=true;
     notify({type:'loading',continued:true,retryRead});if(!current(run))return false;
     try{
       if(!retryRead){await rt.api('search_continue',{searchId:run.searchId});if(!current(run))return false;}
