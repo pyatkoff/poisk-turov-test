@@ -1,0 +1,203 @@
+name: MATCH TV-SAMO Side star4 live v4b
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-tv-samo-common4-side-star4-live-v4b.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: match-tv-samo-common4-side-star4-1971-20260922-v4b, cancel-in-progress: false}
+env:
+  OP: hotel-match-tv-samo-common4-side-star4-1971-20260922-v4b
+  OLD_OP: hotel-match-tv-samo-common4-side-star4-1971-20260922-v4
+  BASE: 86f8fe1c96d7cd1b65c37e0685466b84011876aa
+  SOURCE_HEAD: bb7925316529e2f25817b879ec7fd7ff05cb6fdb
+  CLAIM: '5781109219'
+  DAY: '2026-09-22'
+  LIMIT: '3000'
+  RESERVE: '101'
+jobs:
+  live:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-tv-samo-common4-side-star4-live-1971-20260922-v4b' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 58
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source, claim and checked head
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"; test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD")" = ".github/workflows/hotel-match-tv-samo-common4-side-star4-live-v4b.yml"
+          php -l scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php
+          php tests/hotel_match_tv_samo_common4_side_star4_v4_test.php
+          ! grep -Fq 'v2_data_tv_get(' scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php
+          ! grep -Fq '$td=$star===3?hmc3_tv_resume' scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > terminal/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/commits/$SOURCE_HEAD/check-runs" > terminal/source-checks.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('terminal/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for s in [os.environ['OP'],os.environ['BASE'],'2026-10-05..2026-10-11','Side','TV_RESERVE=101','TV_LIMIT=3000','NO_DETAIL_FLIGHTS_CALC']:assert s in b,s
+          xs=json.load(open('terminal/source-checks.json'))['check_runs'];ok={(x['name'],x['conclusion']) for x in xs}
+          assert ('guard','success') in ok and ('test','success') in ok,ok
+          PY
+          python3 - <<'PY'
+          import datetime,json,os,pathlib
+          r={'operation':os.environ['OP'],'state':'reserved_before_provider_access','source_merge':os.environ['BASE'],
+             'ops_head':os.environ['HEAD'],'run_id':int(os.environ['GITHUB_RUN_ID']),'route':'Moscow-Turkey-Side','acquisition_scope':'fresh_full_pair_star4_only',
+             'date_from':'2026-10-05','date_to':'2026-10-11','nights':7,'adults':2,'children':0,
+             'tv_daily_limit':3000,'tv_tariff_reserve':int(os.environ['RESERVE']),'database_writes':0,'mapping_writes':0,
+             'raw_evidence_private_only':True,'no_replay_after_provider_access':True,
+             'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-tv-samo-side-star4-v4-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90}
+      - name: Require Security and supplier capability isolation
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          repo=os.environ['GITHUB_REPOSITORY'];tok=os.environ['GH_TOKEN'];head=os.environ['HEAD']
+          def api(p):
+            q=urllib.request.Request('https://api.github.com/repos/'+repo+'/'+p,headers={'Authorization':'Bearer '+tok})
+            with urllib.request.urlopen(q,timeout=30) as f:return json.load(f)
+          for _ in range(90):
+            xs=[x for x in api('actions/runs?head_sha='+head+'&per_page=100')['workflow_runs'] if x['name']=='Security guard']
+            if xs and max(xs,key=lambda x:x['id'])['status']=='completed':
+              assert max(xs,key=lambda x:x['id'])['conclusion']=='success';break
+            time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          allowed={34749653232,34749520387,34749487242,34748879779,34748810487,34748759293,34748759378,34748759364,34748666253,34748580297,34748580107,34748580152,34748580180}
+          words=('andromeda','anex','tourvisor','hotel-match','tv-samo')
+          def relevant(r):
+            if r['id']==int(os.environ['GITHUB_RUN_ID']) or r['name']=='Security guard':return False
+            txt=' '.join(str(r.get(k,'')) for k in ('name','path','head_branch')).lower()
+            return any(w in txt for w in words)
+          for rid in allowed:
+            try:
+              r=api('actions/runs/'+str(rid))
+            except Exception:
+              continue
+            if r.get('status')=='queued':
+              assert api('actions/runs/'+str(rid)+'/jobs?per_page=100')['total_count']==0
+              if rid==34748580297:assert api('actions/artifacts/10266054879')['expired'] is True
+          for attempt in range(31):
+            active=[]
+            for status in ('in_progress','queued'):
+              d=api('actions/runs?status='+status+'&per_page=100');assert d['total_count']<=100
+              for r in d['workflow_runs']:
+                if not relevant(r):continue
+                if status=='queued' and r['id'] in allowed:continue
+                active.append(r['id'])
+            if not active:break
+            if attempt==30:raise SystemExit('supplier_capability_timeout_'+','.join(map(str,sorted(set(active)))))
+            time.sleep(10)
+          PY
+      - name: Stage, reserve quota, execute once and verify
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          ANDROMEDA_USERNAME: '${{ secrets.ANDROMEDA_USERNAME }}'
+          ANDROMEDA_PASSWORD: '${{ secrets.ANDROMEDA_PASSWORD }}'
+        run: |
+          set -euo pipefail; umask 077; test -n "$KEY";test -n "$HOST";test -n "$USER";test -n "$ANDROMEDA_USERNAME";test -n "$ANDROMEDA_PASSWORD"
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          cat >"$RUNNER_TEMP/reconcile-preprovider.py" <<'PY'
+          import fcntl,json,os,pathlib,tempfile
+          home=pathlib.Path.home();day=os.environ['DAY'];limit=int(os.environ['LIMIT']);old=os.environ['OLD_OP'];claim=os.environ['CLAIM']
+          od=home/'.anytoour-match/operations'/old;q=home/'.anytour-match/provider-quotas';ledger=q/('tourvisor-tariff-'+day+'.json');lock=q/(ledger.name+'.lock')
+          assert od.is_dir();reservation=json.loads((od/'reservation.json').read_text())
+          assert reservation['operation']==old and reservation['run_id']==35761399853 and reservation['tv_tariff_reserve']==101
+          assert reservation['state']=='reserved_before_provider_access'
+          for name in ('result.json','receipt.json','search-plan.json','tariff-reconcile.json'):assert not (od/name).exists(),name
+          ev=od/'evidence-private';assert not ev.exists() or not any(ev.iterdir())
+          assert (od/'payload/hotel_match_tv_samo_common4_side_star4_v4.php').is_file()
+          assert not (od/'payload/hotel_match_tv_samo_common4_weekly_resume_v3.php').exists()
+          with open(lock,'a+') as lf:
+            fcntl.flock(lf,fcntl.LOCK_EX);x=json.loads(ledger.read_text())
+            assert x['provider_day']==day and int(x['owner_daily_limit'])==limit and int(x['tariff_search_units'])==450
+            entry=x['operations'][old];assert int(entry['reserved'])==101 and 'actual' not in entry and 'refunded' not in entry
+            receipt={'operation':old,'state':'pre_provider_reservation_reconciled','source_run_id':35761399853,'claim':int(claim),'reserved':101,'actual':0,'refunded':101,'ledger_before':450,'ledger_after':349,'reason':'pre_provider_entrypoint_failure','provider_http_calls':0}
+            prep=od/'tariff-reconcile.prepare.json';prep.write_text(json.dumps(receipt,sort_keys=True)+'\\n');os.chmod(prep,0o600)
+            x['tariff_search_units']=349;entry['actual']=0;entry['refunded']=101;entry['reconciliation']='pre_provider_entrypoint_failure';entry['claim']=int(claim)
+            raw=(json.dumps(x,sort_keys=True)+'\\n').encode();fd,tmp=tempfile.mkstemp(dir=str(q),prefix=ledger.name+'.');os.write(fd,raw);os.fsync(fd);os.close(fd);os.replace(tmp,ledger)
+            os.replace(prep,od/'tariff-reconcile.json')
+            assert json.loads(ledger.read_text())['tariff_search_units']==349
+            assert json.loads((od/'tariff-reconcile.json').read_text())==receipt
+          print(json.dumps(receipt,sort_keys=True))
+          PY
+          old=".anytoour-match/operations/$OLD_OP"
+          scp "${opts[@]}" "$RUNNER_TEMP/reconcile-preprovider.py" "$remote:$old/payload/reconcile-preprovider.py"
+          ssh "${opts[@]}" "$remote" "DAY='$DAY' LIMIT='$LIMIT' OLD_OP='$OLD_OP' CLAIM='$CLAIM' python3 \"\\$HOME/$old/payload/reconcile-preprovider.py\"" >terminal/preprovider-reconcile.json
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php v2/data/tourvisor-client-v1.php "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          cat >"$RUNNER_TEMP/quota.py" <<'PY'
+          import fcntl,json,os,pathlib,tempfile,sys
+          home=pathlib.Path.home();day=os.environ['DAY'];limit=int(os.environ['LIMIT']);reserve=int(os.environ['RESERVE']);op=os.environ['OP'];mode=sys.argv[1]
+          q=home/'.anytour-match/provider-quotas';q.mkdir(parents=True,exist_ok=True);ledger=q/('tourvisor-tariff-'+day+'.json');lock=q/(ledger.name+'.lock');od=home/'.anytoour-match/operations'/op
+          with open(lock,'a+') as lf:
+            fcntl.flock(lf,fcntl.LOCK_EX)
+            if mode=='reserve':
+              if ledger.exists():x=json.loads(ledger.read_text());cur=int(x['tariff_search_units']);assert x['provider_day']==day and int(x['owner_daily_limit'])==limit
+              else:
+                prior=[]
+                for p in q.glob('tourvisor-*.json'):
+                  if p.name.startswith(('tourvisor-tariff-','tourvisor-test-')):continue
+                  try:o=json.loads(p.read_text())
+                  except:continue
+                  if o.get('provider_day')==day and int(o.get('used',0) or 0)>0:prior.append(p.name)
+                assert not prior,('unreconciled_prior_usage',prior);cur=0;x={'provider_day':day,'owner_daily_limit':limit,'tariff_search_units':0,'accounting_definition':'start+continue+flights only','operations':{}}
+              assert cur+reserve<=limit,(cur,reserve,limit);x['tariff_search_units']=cur+reserve;x.setdefault('operations',{}).setdefault(op,{})['reserved']=reserve
+              out={'opening':cur,'reserved':reserve,'after_reservation':cur+reserve,'limit':limit};(od/'tariff-reservation.json').write_text(json.dumps(out,sort_keys=True)+'\n')
+            else:
+              r=json.loads((od/'result.json').read_text());actual=int(r['tv_tariff_search_units']);assert 0<=actual<=reserve
+              x=json.loads(ledger.read_text());entry=x['operations'][op];assert int(entry['reserved'])==reserve
+              x['tariff_search_units']=int(x['tariff_search_units'])-(reserve-actual);entry['actual']=actual
+              out={'reserved':reserve,'actual':actual,'refunded':reserve-actual,'ledger_after':x['tariff_search_units']};(od/'tariff-reconcile.json').write_text(json.dumps(out,sort_keys=True)+'\n')
+            raw=(json.dumps(x,sort_keys=True)+'\n').encode();fd,tmp=tempfile.mkstemp(dir=str(q),prefix=ledger.name+'.');os.write(fd,raw);os.fsync(fd);os.close(fd);os.replace(tmp,ledger)
+          print(json.dumps(out,sort_keys=True))
+          PY
+          scp "${opts[@]}" "$RUNNER_TEMP/quota.py" "$remote:$op/payload/quota.py"
+          ssh "${opts[@]}" "$remote" "DAY='$DAY' LIMIT='$LIMIT' RESERVE='$RESERVE' OP='$OP' python3 \"\$HOME/$op/payload/quota.py\" reserve" >terminal/tariff-reservation.json
+          set +e
+          printf '%s\n%s\n' "$ANDROMEDA_USERNAME" "$ANDROMEDA_PASSWORD"|ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" php \"\$HOME/$op/payload/hotel_match_tv_samo_common4_side_star4_v4.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?;set -e;printf '%s\n' "$rc">terminal/exit-code.txt
+          if test "$rc" -eq 0;then ssh "${opts[@]}" "$remote" "DAY='$DAY' LIMIT='$LIMIT' RESERVE='$RESERVE' OP='$OP' python3 \"\$HOME/$op/payload/quota.py\" reconcile" >terminal/tariff-reconcile.json;fi
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";sha256sum evidence-private/*.bin >private-evidence-sha256.txt;mkdir export;for f in reservation.json search-plan.json result.json receipt.json tariff-reservation.json tariff-reconcile.json private-evidence-sha256.txt;do test -f \"\$f\"&&cp \"\$f\" export/;done;tar -czf - -C export ." >terminal/server.tgz
+          python3 - <<'PY'
+          import hashlib,json,tarfile,pathlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+            names={n.lstrip('./') for n in t.getnames() if n not in ('.','./')};assert not any('evidence-private' in n for n in names)
+            for m in t.getmembers():
+              n=m.name.lstrip('./')
+              if m.isfile():pathlib.Path('terminal',n).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'));p=json.load(open('terminal/search-plan.json'))
+          assert r['state']==q['state']=='completed_read_only' and q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['route']['resort']=='Side' and r['route']['date_from']=='2026-10-05' and r['route']['date_to']=='2026-10-11'
+          assert r['scope_provenance']=='hotel-match-tv-samo-common4-weekly-1971-20260922-v2'
+          assert r['acquisition_scope']=='fresh_full_pair_star4_only'
+          assert set(r['stars'])=={'4'}
+          assert p['tourvisor_dates_endpoint_used'] is False and r['tourvisor_detail_calls']==r['flight_calls']==r['calc_calls']==0
+          assert r['database_writes']==r['mapping_writes']==r['booking_calls']==r['lead_writes']==r['metrika_writes']==0
+          assert r['private_evidence']['raw_payload_exported'] is False and len(r['private_evidence']['response_hashes'])>0
+          assert 0<r['tv_tariff_search_units']<=286
+          for x in r['stars'].values():
+            assert x['tourvisor']['fully_drained'] is True and x['tourvisor']['continue_rounds'][-1]['request_count']==0
+            pc=x['andromeda']['pages_count'];pd=x['andromeda']['pages_drained'];assert (pc==0 and pd==0) or pc==pd
+          qr=json.load(open('terminal/tariff-reconcile.json'));assert qr['actual']==r['tv_tariff_search_units'] and qr['reserved']==101
+          hashes=[line.split()[0] for line in pathlib.Path('terminal/private-evidence-sha256.txt').read_text().splitlines() if line.strip()]
+          assert sorted(hashes)==sorted(r['private_evidence']['response_hashes'])
+          print(json.dumps({'state':r['state'],'tv_tariff_units':r['tv_tariff_search_units'],'tv_calls':r['tv_calls'],'samo_calls':r['andromeda_calls'],'stars':{k:{'tv_hotels':v['tourvisor']['source_hotels'],'tv_offers':v['tourvisor']['evidence_rows'],'samo_rows':v['andromeda']['evidence_rows'],'candidates':v['resolver']['hotel_candidate_count']} for k,v in r['stars'].items()}}))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-tv-samo-side-star4-v4-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
