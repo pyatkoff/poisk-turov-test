@@ -3,18 +3,22 @@ declare(strict_types=1);
 
 final class AndromedaSurchargeGroupKey
 {
-    private const PREFIX = 'andromeda-surcharge-v2:';
+    private const PREFIX = 'andromeda-surcharge-v3:';
     private const ID_PATTERN = '/^[A-Za-z0-9_-]{1,128}$/';
     private const CURRENCY_PATTERN = '/^[A-Z]{3}$/';
 
     /**
      * Build a fail-closed cache/group key for external-freight surcharge evidence.
      *
+     * Owner rule 2026-09-22: number of nights is NOT a discriminator for reusable
+     * program surcharge evidence. Offers for 7/10/14 nights share one group when
+     * the remaining active supplier/route/date/party/currency conditions match.
+     * Do not reintroduce nights indirectly through a computed return date.
+     *
      * Money experiment v1 proved SPO-invariance for the observed supplier contract,
-     * so spo_ref is deliberately outside the key. Nights/tour/route/date/full party
-     * are retained until isolated evidence proves that they can be removed safely.
-     * Hotel/room/meal/offer/search-price fields are presentation/package variants,
-     * not transport-group discriminators.
+     * so spo_ref is deliberately outside the key. Tour/route/check-in date/full party
+     * remain conservative discriminators. Hotel/room/meal/offer/search-price fields
+     * are presentation/package variants, not transport-group discriminators.
      *
      * @param array<string,mixed> $offer Normalized Andromeda PRICE offer.
      * @param array<string,mixed> $request Public search request or its params block.
@@ -33,7 +37,6 @@ final class AndromedaSurchargeGroupKey
             return null;
         }
 
-        // Program identity is mandatory for reusable surcharge evidence.
         $program = self::id($transport['program_ref'] ?? null);
         if ($program === null) {
             return null;
@@ -52,12 +55,11 @@ final class AndromedaSurchargeGroupKey
         $departure = self::positiveInt($scope['departureId'] ?? $scope['departure_id'] ?? null);
         $country = self::positiveInt($scope['countryId'] ?? $scope['country_id'] ?? null);
         $date = self::date($offer['check_in'] ?? null);
-        $nights = self::positiveInt($offer['nights'] ?? null);
         $adults = self::positiveInt($offer['adults'] ?? null);
         $children = self::nonNegativeInt($offer['children'] ?? null);
         $currency = self::currency($price['currency'] ?? null);
 
-        if ($departure === null || $country === null || $date === null || $nights === null
+        if ($departure === null || $country === null || $date === null
             || $adults === null || $children === null || $currency === null) {
             return null;
         }
@@ -73,7 +75,6 @@ final class AndromedaSurchargeGroupKey
             'departure' => $departure,
             'country' => $country,
             'date' => $date,
-            'nights' => $nights,
             'adults' => $adults,
             'children' => $children,
             'child_ages' => $childAges,
@@ -102,7 +103,6 @@ final class AndromedaSurchargeGroupKey
             }
             $ages[] = $parsed;
         }
-        // Child position is not semantic supplier evidence; the exact age multiset is.
         sort($ages, SORT_NUMERIC);
         return $ages;
     }
