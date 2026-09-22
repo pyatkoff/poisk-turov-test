@@ -28,8 +28,9 @@ def test_source_contract():
     assert text.count("->getFlights(") == 1
     for forbidden in ("->changeService(", "->calc(", "bron_ticket", "action=bron", "action=bron_ticket"):
         assert forbidden not in text
-    for forbidden_output in ("supplier_id'=>$", "'uid'=>", "'groupId'=>", "claimDocument"):
-        assert forbidden_output not in re.sub(r"\$doc = \$package\['claimDocument'\]\[0\] \?\? null;", "", text)
+    public_text = re.sub(r"\$doc = \$package\['claimDocument'\]\[0\] \?\? null;", "", text)
+    for forbidden_output in ("'supplier_offer_id'=>", "'uid'=>", "'groupId'=>", "claimDocument"):
+        assert forbidden_output not in public_text
 
 def test_workflow_contract():
     text = WF.read_text()
