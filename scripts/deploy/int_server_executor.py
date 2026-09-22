@@ -421,7 +421,7 @@ def rollback_install(op):
             target.unlink(missing_ok=True)
         restored.append(relative)
     for relative,prior in install_previous.items():
-        target=project/relative
+        target=runtime/relative
         if prior['exists']:
             if (not safe_file(target,2*1024*1024)
                     or hashlib.sha256(target.read_bytes()).hexdigest()!=prior['sha256']):
