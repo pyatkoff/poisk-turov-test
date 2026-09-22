@@ -19,9 +19,9 @@ class SavedRecovery(unittest.TestCase):
             with zipfile.ZipFile(p,'w') as z:z.writestr('result.json',rb);z.writestr('receipt.json',json.dumps(receipt))
             return m.run(self.bg,m.BG_ZIP_SHA,p,hashlib.sha256(p.read_bytes()).hexdigest())
     def test_exact_counts_and_membership(self):
-        self.assertEqual(self.result['counts'],{'input_residual':32,'recovery_supported':15,'remaining_residual':17,'evidence_supported_after':384,'candidate_union_after':401})
+        self.assertEqual(self.result['counts'],{'input_residual':114,'recovery_supported':18,'remaining_residual':96,'evidence_supported_after':387,'candidate_union_after':404})
         ids=[r['tv_hotel_id'] for r in self.result['rows'] if r['recovery_supported']]
-        self.assertEqual(ids,[594,2650,3073,4142,4163,8335,15835,41894,46770,51530,52232,112029,124871,129740,156439])
+        self.assertEqual(ids,[594,2650,3073,4142,4163,8335,15803,15835,41894,46770,51530,52232,68686,112029,124871,129740,143045,156439])
     def test_zero_authority(self):
         for k in ['provider_calls','supplier_http_requests','database_reads','mapping_writes','accepted_links_added']:self.assertEqual(self.result[k],0)
         self.assertFalse(self.result['safe_to_write_now']);self.assertFalse(self.result['visibility_verified'])

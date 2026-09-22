@@ -1,13 +1,13 @@
 {
-  "schema": "match-bg-saved-catalog-recovery/1",
+  "schema": "match-bg-saved-catalog-recovery/2",
   "counts": {
-    "input_residual": 32,
-    "recovery_supported": 15,
-    "remaining_residual": 17,
-    "evidence_supported_after": 384,
-    "candidate_union_after": 401
+    "input_residual": 114,
+    "recovery_supported": 18,
+    "remaining_residual": 96,
+    "evidence_supported_after": 387,
+    "candidate_union_after": 404
   },
-  "full_result_sha256": "cf03f25a7ed7516022d1114dd2eff5a8cef05048cbc36c0548afae781d49ac95",
+  "full_result_sha256": "64b2b77e2e57daf142e266836dbbe94fb93149fa6e473baa29cc6dae762b722d",
   "recovered_tuple_schema": ["tv_hotel_id", "bgoperator_raw_f4", "accepted_andromeda_catalog_id"],
   "recovered_tuples": [
     [594, "102610001151", "10206"],
@@ -16,14 +16,17 @@
     [4142, "102670440000", "2000028171"],
     [4163, "102675304970", "411391"],
     [8335, "102668706258", "241291"],
+    [15803, "102623782625", "414202"],
     [15835, "102623741859", "388563"],
     [41894, "102616539725", "2000036131"],
     [46770, "102610116876", "2000034933"],
     [51530, "102610245738", "2000055842"],
     [52232, "102610085676", "2000037587"],
+    [68686, "102610126467", "2000046769"],
     [112029, "102610235906", "2000088518"],
     [124871, "102610273072", "2000093820"],
     [129740, "102610247264", "2000090108"],
+    [143045, "102610310295", "2000113706"],
     [156439, "102610302648", "2000119292"]
   ]
 }
