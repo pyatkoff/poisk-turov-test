@@ -81,7 +81,8 @@ $maxCaptureSeconds=$int($args['max-capture-seconds']??'0',0,240);
 // External/unknown freight remains eligible for normal snapshot autosave, while an
 // explicit caller can still opt into `all` for a separately owned quote-selection flow.
 $captureMode=$args['capture-mode']??'non_external_only';
-if(!in_array($captureMode,['all','non_external_only'],true))throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_CAPTURE_MODE');
+if(!in_array($captureMode,['all','non_external_only','single_reusable_group'],true))throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_CAPTURE_MODE');
+if($captureMode==='single_reusable_group'&&$maxCaptures>1)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_CAPTURE_MODE');
 
 $params=[
     'departureId'=>(string)$departure,'countryId'=>(string)$country,
