@@ -14,7 +14,7 @@ const HMC_CHILDREN = 0;
 const HMC_DATE_FROM = '2026-10-05';
 const HMC_DATE_TO = '2026-10-11';
 const HMC_MAX_TV_CALLS = 140;
-const HMC_MAX_CONTINUE = 16;
+const HMC_MAX_CONTINUE = 100;
 const HMC_MAX_SAMO_PAGES = 120;
 const HMC_MAX_SAMO_CALLS = 180;
 const HMC_MAX_DETAIL_CALLS = 40;
@@ -493,7 +493,7 @@ function hmc3_previous_checkpoint(string $prevDir): array {
             $union=hmc_tv_merge_rows($union,hmc_tv_result_rows($reply));
         }
     }
-    if(!$sid||$continues!==20||$lastRequests===null||$lastRequests<=0||!$union)throw new RuntimeException('previous_checkpoint_incomplete');
+    if(!$sid||$continues!==16||$lastRequests===null||$lastRequests<=0||!$union)throw new RuntimeException('previous_checkpoint_incomplete');
     return ['search_id'=>$sid,'rows'=>$union,'prior_continue_calls'=>$continues,'last_request_count'=>$lastRequests,'plan'=>$plan];
 }
 function hmc3_tv_resume(array $cp,array &$counter): array {
