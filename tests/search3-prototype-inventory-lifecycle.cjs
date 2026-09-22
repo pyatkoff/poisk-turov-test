@@ -90,7 +90,9 @@ test('first search unions direct ANEX once and waits for it before complete',asy
  gate.resolve();await completing;await flush();
  assert.deepEqual(h.providers(),['anex','tourvisor']);assert.equal(h.latest().length,1,'same canonical hotel is deduplicated');
  const final=h.events.filter(e=>e.type==='complete').at(-1);assert.equal(final.sources.anex.hotels,1);assert.equal(final.sources.anex.offers,1);
- assert.equal(final.sources.tourvisor.hotels,1);assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='complete'));
+ assert.equal(final.sources.tourvisor.hotels,1);assert.equal(final.union.hotels,1);assert.ok(final.union.offers>=2);
+ assert.equal(final.union.hotelsByProvider.anex,1);assert.equal(final.union.hotelsByProvider.tourvisor,1);assert.equal(final.union.providerSets['anex+tourvisor'],1);
+ assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='complete'));
  await h.data.continueSearch();await flush();assert.equal(h.anexCalls.length,1,'Continue never replays direct ANEX');
 });
 test('direct ANEX failure preserves Tourvisor and LOCAL inventory',async()=>{
