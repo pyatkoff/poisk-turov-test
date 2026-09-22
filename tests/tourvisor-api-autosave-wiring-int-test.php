@@ -19,12 +19,30 @@ check_true(str_contains($source, "class_exists('AnyTourTourvisorOfferAutosaveV1'
 foreach (['86400', 'finalPrice', 'fuelCharge', 'replaceCompleteSnapshot', 'party_surcharge'] as $forbidden) {
     check_true(!str_contains($source, $forbidden), 'protected arithmetic/TTL leaked into gateway: ' . $forbidden);
 }
-check_true(str_contains($source, "https://api.tourvisor.ru/search/api/v1"), 'supplier endpoint changed');
+check_true(str_contains($source, 'https://api.tourvisor.ru/search/api/v1'), 'supplier endpoint changed');
 
 $cases = [
-    'search_start' => ['next' => 'search_continue', 'fetch' => "$data = tv_get('/tours/search', $searchParams);", 'hook' => 'tourvisor_autosave_start($searchParams, $data);'],
-    'search_status' => ['next' => 'search_results', 'fetch' => "$data = tv_get('/tours/search/' . $id . '/status', ['operatorStatus' => false]);", 'hook' => 'tourvisor_autosave_status($id, $data);'],
-    'search_results' => ['next' => 'tour', 'fetch' => "$data = tv_get('/tours/search/' . $id, ['limit' => $limit]);", 'hook' => 'tourvisor_autosave_results($id, $limit, $data);'],
+    'search_start' => [
+        'next' => 'search_continue',
+        'fetch' => <<<'PHP'
+$data = tv_get('/tours/search', $searchParams);
+PHP,
+        'hook' => 'tourvisor_autosave_start($searchParams, $data);',
+    ],
+    'search_status' => [
+        'next' => 'search_results',
+        'fetch' => <<<'PHP'
+$data = tv_get('/tours/search/' . $id . '/status', ['operatorStatus' => false]);
+PHP,
+        'hook' => 'tourvisor_autosave_status($id, $data);',
+    ],
+    'search_results' => [
+        'next' => 'tour',
+        'fetch' => <<<'PHP'
+$data = tv_get('/tours/search/' . $id, ['limit' => $limit]);
+PHP,
+        'hook' => 'tourvisor_autosave_results($id, $limit, $data);',
+    ],
 ];
 foreach ($cases as $name => $spec) {
     $start = strpos($source, "case '" . $name . "':");
@@ -44,17 +62,21 @@ $continueBody = substr($source, $continueStart, $continueEnd - $continueStart);
 check_true(!str_contains($continueBody, 'tourvisor_autosave_'), 'search_continue must not invent persistence authority');
 
 // Execute the ACTUAL wrapper definitions in isolation. With no helper class they are
-// strict no-ops; with the existing class present each handoff happens exactly once.
+// strict no-ops. Define the fixture helper only afterwards through eval so PHP cannot
+// predeclare it while compiling this test file.
 $wrapperStart = strpos($source, 'function tourvisor_autosave_start');
 $wrapperEnd = strpos($source, '$action =', $wrapperStart === false ? 0 : $wrapperStart + 1);
 check_true($wrapperStart !== false && $wrapperEnd !== false && $wrapperEnd > $wrapperStart, 'wrapper source missing');
 $wrapperSource = substr($source, $wrapperStart, $wrapperEnd - $wrapperStart);
 eval($wrapperSource);
 
+check_true(!class_exists('AnyTourTourvisorOfferAutosaveV1', false), 'fixture helper leaked into missing-helper phase');
 tourvisor_autosave_start(['departureId' => 1], ['searchId' => 11]);
 tourvisor_autosave_status(11, ['progress' => 100]);
 tourvisor_autosave_results(11, 100, [['id' => 'offer']]);
+check_true(!class_exists('AnyTourTourvisorOfferAutosaveV1', false), 'missing-helper calls must remain no-op');
 
+eval(<<<'PHP'
 final class AnyTourTourvisorOfferAutosaveV1
 {
     public static array $calls = [];
@@ -81,6 +103,8 @@ final class AnyTourTourvisorOfferAutosaveV1
         self::record(__FUNCTION__, [$searchId, $limit, $response, $now]);
     }
 }
+PHP);
+check_true(class_exists('AnyTourTourvisorOfferAutosaveV1', false), 'fixture helper was not defined');
 
 $scope = ['departureId' => 1, 'countryId' => 4, 'nightsFrom' => 7, 'nightsTo' => 14];
 $startResponse = ['searchId' => 91, 'opaque' => ['preserve' => true]];
