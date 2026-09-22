@@ -28,7 +28,7 @@ assert.match(normalized,
   /\.offer-list-toolbar \{ font-size:16px; \}/,
   'Offer-list toolbar label must remain readable on mobile');
 assert.match(normalized,
-  /\.drawer-trigger, \.quick-chips \.chip, \.active-filter, \.hotel-links \.text-button, \.compare-btn, \.hotel-more \.text-button, \.offer-price \.primary, \.compare-tray > \.primary, \.calendar-heading \.text-button, \.calendar-foot \.text-button, \.destination-selection button, \.flex-dates button \{ min-height:44px; \}/,
+  /\.drawer-trigger, \.quick-chips \.chip, \.active-filter, \.hotel-links \.text-button, \.compare-btn, \.hotel-more \.text-button, \.offer-price \.primary, \.compare-tray > \.primary, \.calendar-heading \.text-button, \.calendar-foot \.text-button, \.destination-selection button, \.flex-dates button, \.filter-panel \.check-row, \.filter-panel \.star-options button, \.filter-top \.text-button \{ min-height:44px; \}/,
   'Frequent mobile filter, tour, calendar and destination actions need 44px minimum tap height');
 assert.match(normalized,
   /\.applied-search > \.secondary, \.compact-search \.secondary \{ width:44px; min-width:44px; min-height:44px; \}/,
@@ -45,7 +45,10 @@ console.log(JSON.stringify({
   mobileMaxWidth: 760,
   selectFontSizePx: 16,
   minTapHeightPx: 44,
-  filterTapTargets: ['drawer', 'preset-chip', 'active-filter', 'drawer-close'],
+  filterTapTargets: [
+    'drawer', 'preset-chip', 'active-filter', 'drawer-close',
+    'filter-checkbox-row', 'filter-star-option', 'filter-reset'
+  ],
   tourTapTargets: [
     'edit-search', 'hotel-link', 'compare', 'expand-offers', 'choose-offer',
     'favorite', 'photo-arrow', 'compare-tray', 'modal-close', 'modal-back',
