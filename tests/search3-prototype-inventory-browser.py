@@ -1,7 +1,7 @@
 """Actual prototype inventory/budget/continuation acceptance, fictional HTTP only.
 
-Reuse the existing prototype fixture server. No native supplier search, live DB,
-lead, price authority or physical-device acceptance is claimed by this test.
+Reuse the existing prototype fixture server. Direct supplier endpoints are mocked;
+no live supplier search, live DB, lead, price authority or physical-device acceptance is claimed by this test.
 """
 import copy
 import hashlib
@@ -67,11 +67,32 @@ def stored(old, provider, price, checkin=DATE):
     }]}
 
 
+def direct_anex(body):
+    search_ref = "a" * 32
+    return {"ok": True, "data": {
+        "generation": body["generation"], "provider": "anex",
+        "date_range": {"from": body["params"]["dateFrom"], "to": body["params"]["dateTo"]},
+        "search_ref": search_ref, "external_search_pending": False, "pages_read": 1, "first_page_only": True,
+        "hotels": [{
+            "local_id": 101, "name": "Вымышленный отель 101", "category": 5, "rating": 4.7,
+            "country": "Турция", "region": "Анталья",
+            "catalog": {"hotel_id": 101, "source": "tourvisor"},
+            "tours": [{
+                "price": {"amount": "185451", "currency": "RUB"},
+                "checkin": body["params"]["dateFrom"], "nights": 7, "adults": 2, "children": 0,
+                "meal": "AI", "room": "STANDARD", "kind": "group_minimum", "flight_type": "charter",
+                "final_price_verified": False, "search_ref": search_ref,
+                "offer_ref": "anex_online:" + "b" * 64, "selection_enabled": False,
+            }],
+        }],
+    }}
+
+
 def check_width(browser, origin, width):
     context = browser.new_context(viewport={"width": width, "height": 900})
     page = context.new_page()
     page.set_default_timeout(15000)
-    calls, native_calls, calendar_calls, observation_calls, forbidden, errors, held = [], [], [], [], [], [], []
+    calls, native_calls, anex_calls, calendar_calls, observation_calls, forbidden, errors, held = [], [], [], [], [], [], [], []
     state = {"native": False, "continued": False, "hold": False, "calendar_partial": False,
              "native_failure": False, "database_failure": False}
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -130,6 +151,13 @@ def check_width(browser, origin, width):
                 return
             state["native"] = True
             reply({"ok": True, "data": {"provider": "andromeda", "generation": body["generation"], "hotels": []}})
+        elif url.path == "/_preview/search3-anex-candidate/api-anex-search3-preview.php" and request.method == "POST":
+            body = request.post_data_json
+            anex_calls.append(body)
+            assert body["action"] == "search"
+            assert body["generation"] >= 1
+            assert body["params"]["countryId"] == "4"
+            reply(direct_anex(body))
         elif url.path == "/api-v2.php" and request.method == "GET":
             action = query.get("action", [""])[0]
             calls.append({"action": action, "params": query})
@@ -235,6 +263,7 @@ def check_width(browser, origin, width):
         count(5)
         assert len([c for c in calls if c['action'] == 'search_start']) == 1
         assert len(native_calls) == 1
+        assert len(anex_calls) == 1
         assert any("103" in name for name in page.locator('.hotel-card').all_inner_texts()), "Premium tour hidden without budget"
         first_start = next(c for c in calls if c["action"] == "search_start")
         assert first_start["params"].get("priceTo", [""]) == [""]
@@ -244,6 +273,7 @@ def check_width(browser, origin, width):
         }""")
         assert providers == ["andromeda", "anex", "tourvisor"], providers
         assert len(native_calls) == 1
+        assert len(anex_calls) == 1
         state["hold"] = True
         page.locator('[data-action="continue-search"]').click()
         page.wait_for_timeout(100)
@@ -276,6 +306,7 @@ def check_width(browser, origin, width):
         assert parse_qs(urlparse(page.url).query)["max"] == ["600000"]
         assert len([c for c in calls if c["action"] == "search_start"]) == 1
         assert len([c for c in calls if c["action"] == "search_continue"]) == 1
+        assert len(anex_calls) == 1, "Continue must not replay direct ANEX"
         page.screenshot(path=str(EVIDENCE / f"budget-continue-{width}.png"))
         page.reload()
         page.locator(".search-submit:not([disabled])").wait_for()
@@ -285,6 +316,7 @@ def check_width(browser, origin, width):
         last_start = [c for c in calls if c["action"] == "search_start"][-1]
         assert last_start["params"].get("priceTo") == ["600000"]
         assert len(native_calls) == 2
+        assert len(anex_calls) == 2
         state["calendar_partial"] = True
         page.locator('[data-action="edit-search"]').first.click()
         page.locator('[data-action="dates"]').click()
@@ -319,6 +351,7 @@ def check_width(browser, origin, width):
         page.screenshot(path=str(EVIDENCE / f"partial-source-error-{width}.png"))
         return {"width": width, "status": "passed", "providers": providers,
                 "calls": calls, "mocked_andromeda_requests": native_calls,
+                "mocked_anex_requests": anex_calls,
                 "calendar_requests": calendar_calls, "calendar_partial_day": CALENDAR_DAY,
                 "forbidden": forbidden, "browser_errors": errors}
     except Exception:
