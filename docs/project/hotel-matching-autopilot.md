@@ -1,7 +1,7 @@
 # AnyTour MATCH — автономное сопоставление отелей
 
 Направление выделено 2026-09-11. Исполняемая очередь: **#1971**.
-Каноническая координация: **#2530**; #996 и #1759 — только history/no-replay.
+Каноническая координация: **#3419**; #2530, #996 и #1759 — только history/no-replay.
 Постоянная логика уточнена владельцем 2026-09-19:
 [поручение и границы](https://github.com/pyatkoff/poisk-turov-test/issues/2530#issuecomment-5738102955).
 Состав Tourvisor расширен владельцем в тот же день до **ANEX, FUN&SUN,
@@ -10,7 +10,7 @@
 
 MATCH — отдельное направление, не INT #1717 и не SEARCH. Этот документ задаёт
 алгоритм и границы, но не доказывает, что все его режимы уже реализованы или запущены.
-Текущие source/CI/execution/DB receipts и active claims находятся в #1971/#2530.
+Текущие source/CI/execution/DB receipts и active claims находятся в #1971/#3419.
 Изменение документа или задания автопилота не равно запуску постоянного серверного worker.
 
 ## Миссия и приоритет
@@ -29,14 +29,14 @@ CURRENT unresolved catalog. Использовать уже сохранённы
 ## Старт каждого запуска
 
 1. Прочитать свежие `AGENTS.md`, scoped инструкции затрагиваемых файлов,
-   `docs/project/anytour-development.md`, этот документ и #1971/#2530.
+   `docs/project/anytour-development.md`, этот документ и #1971/#3419.
    Организационные документы читать на свежей release, если их нет на feature.
 2. Проверить fresh head `feature/anex-search-adapter-20260907`, открытые PR,
    CI/actions, active claims, завершённые receipts и фактический доступ к execution.
    Документация MATCH живёт на release; это не разрешение менять SEARCH runtime.
 3. Не исполнять старый `next_action`/snapshot как новую очередь. Состояние данных,
    owner decisions и закрытые операции перепроверять перед новой работой.
-4. Claim в #2530: #1971, branch/PR, exact owned paths, входное evidence,
+4. Claim в #3419: #1971, branch/PR, exact owned paths, входное evidence,
    граница provider/DB access. Не дублировать active operation или чужой shared writer.
 5. Terminal/unknown operations не replay. Потеря receipt требует отдельной
    reconciliation, а не повтора. Отказ security/tool gate нельзя обходить новым
@@ -250,7 +250,7 @@ TV room ↔ SAMO room ↔ direct ANEX room. Raw names сохранять; уби
 MATCH владеет matching/evidence diagnostics, cross-provider bridge tooling,
 operatorLink/hotelCode extraction, review datasets/reason taxonomy, bounded
 registry-delta importer/manifest, coverage reports и hotel-local correspondences.
-Shared registry runtime-файл — только после exact-path claim в #2530, один writer.
+Shared registry runtime-файл — только после exact-path claim в #3419, один writer.
 
 Не менять INT supplier auth/transport/search/package/price/fuel, SEARCH renderer/UI,
 LOCAL presentation, SITE/SEO, Metrika/goals, lead delivery/booking/manager routing,
@@ -266,7 +266,7 @@ protected public API payloads, main/production или соседние прое�
 CI fixture не называть live readback; ссылки/число туров/число PR не заменяют accepted.
 Когортные числа не складывать в global frontier без дедупликации и CURRENT recount.
 
-Следующий шаг выбирается из свежих #1971/#2530 по текущим новым наблюдениям и
+Следующий шаг выбирается из свежих #1971/#3419 по текущим новым наблюдениям и
 недостающим provider-связям согласно A/B/C. Сначала закончить полезную проверку
 сохранённого evidence, затем выполнять только необходимые новые queries.
 Не зацикливаться на одном HOLD: другие независимые строки продолжаются.

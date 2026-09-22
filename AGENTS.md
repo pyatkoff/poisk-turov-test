@@ -1,9 +1,17 @@
 # poisk-turov-test — Autopilot Rules
 
+## Текущий журнал координации — 2026-09-22
+
+Все новые claims, handoff, результаты и разрешённые команды: [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419).
+#2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
+При блокере зафиксировать причину и продолжать следующую доступную независимую задачу.
+Маршрутизация и действующие исполнители: [coordination-journal.md](docs/project/coordination-journal.md).
+Перенос журнала не разрешает повтор операций и не расширяет доступ или production-допуск.
+
 ## Development routing — owner direction 2026-09-09
 
 Start with [AnyTour development](docs/project/anytour-development.md): four workstreams,
-one coordinator in #996, one owner per shared component. Use the fresh release
+one coordinator in #3419, one owner per shared component. Use the fresh release
 `AUTOPILOT_STATE.json.current_task` for product execution; its historical snapshots
 and the inherited ANEX root state are not new queues. Integrations use their scoped
 ANEX plan; SITE #1719 and SEO #1720 remain independent within existing permissions.

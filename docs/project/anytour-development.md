@@ -10,7 +10,7 @@
 2. Выбрать направление в таблице ниже; прочитать его актуальный state/план и issue.
 3. Освежить head ветки, открытые PR, последние сообщения владельца/координатора и
    активные CI/deploy. Исторический SHA или старый автоматический prompt не заменяет свежую точку.
-4. Объявить задачу и точные общие файлы в [#996](https://github.com/pyatkoff/poisk-turov-test/issues/996).
+4. Объявить задачу и точные общие файлы в [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419).
    Если их уже меняет другой исполнитель — передать ему требование либо взять независимый файл.
 
 Этот документ владеет распределением работы. `AGENTS.md` и `OWNER_PRIORITY.json`
@@ -20,7 +20,7 @@
 
 | Что нужно узнать | Авторитетная точка |
 | --- | --- |
-| Общие приоритеты, владение общими файлами, передача между направлениями | Этот документ и #996 |
+| Общие приоритеты, владение общими файлами, передача между направлениями | Этот документ и #3419 |
 | Текущий исполняемый продуктовый пакет общего Search3/сайта | Свежая release: `AUTOPILOT_STATE.json.current_task`; конкретные evidence — профильный audit |
 | Порядок продуктовых этапов | `docs/project/search3-product-development-plan.md` на свежей release |
 | Текущие supplier/API задачи и доказательства | `docs/integrations/anex-search3-autopilot.md` на свежей ANEX-ветке |
@@ -40,11 +40,11 @@
 | --- | --- | --- | --- |
 | INT — интеграции и provider data | Supplier transport/auth/search/package/price, provider response normalization, сохранённые supplier observations и контракты границы с SEARCH | umbrella draft #1493; Андромеда #1717; состав цены #1685 отдельным пакетом | Сейчас `feature/anex-search-adapter-20260907`; перенос в release отдельным согласованным пакетом |
 | MATCH — hotel identity | Массовое Tourvisor ↔ ANEX ↔ Andromeda сопоставление, evidence, accepted/manual/conflict/exclusion registry delta и остаточный review | #1971; история выполненных пакетов #1759 | Matching source на свежей `feature/anex-search-adapter-20260907`; организационный план в release |
-| SEARCH — поиск и выдача | Форма, lifecycle, карточки/фильтры/сортировка, общая выдача, выбор/возврат и контекст конкретного предложения | #1646; текущий release-пакет в `current_task`, координация #996 | `release/search3-production-ready-v1`; существующий ANEX addon временно остаётся в своей ветке |
+| SEARCH — поиск и выдача | Форма, lifecycle, карточки/фильтры/сортировка, общая выдача, выбор/возврат и контекст конкретного предложения | #1646; текущий release-пакет в `current_task`, координация #3419 | `release/search3-production-ready-v1`; существующий ANEX addon временно остаётся в своей ветке |
 | SITE — сайт и путь к покупке | Общий shell, главная и страницы, навигация, правдивый контент, переходы в поиск | #1719; существующий продуктовый план | Свежая release |
 | SEO — органический поиск | Типы посадочных, URL/metadata, ссылки, содержательность и правила будущей индексации | #1720; существующий #395 — зависимость данных/история | Свежая release; сначала read-only аудит и требования |
 
-Координатор в #996 выбирает ближайшие пакеты по пользе, устраняет пересечения,
+Координатор в #3419 выбирает ближайшие пакеты по пользе, устраняет пересечения,
 собирает совместимые результаты и ведёт единое опубликованное состояние.
 Рабочие чаты/агенты — исполнители этих задач; переписка не создаёт новую ветку продукта.
 INT может иметь независимые задачи ANEX и Андромеды, но не владеет очередью hotel identity.
@@ -60,7 +60,7 @@ MATCH не меняет supplier transport/search/price/package и получа�
 | Оформление формы, карточек и selected | SEARCH | `src/search3/styles/entry-native-controls.css`, `styles/results-layout.css` |
 | Общие results/selected/lifecycle | SEARCH | `v2/results-renderer-v5.js`, `tour-controller-v4.js`, `runtime-v3.js`, `search-lifecycle-v6.js`, `search-continue-v6.js`, `catalogs-v2.js` |
 | Supplier transport и response normalization | INT | `app/integrations/anex-client.php`, `anex-search.php`, `anex-preview-gateway.php`, `anex-normalizer.php` |
-| Принятые ANEX/Andromeda hotel identities / manual / pair exclusions | MATCH | действующие mapping/identity registries; сохранять текущую БД, manual решения и exclusions; shared path только после claim #996 |
+| Принятые ANEX/Andromeda hotel identities / manual / pair exclusions | MATCH | действующие mapping/identity registries; сохранять текущую БД, manual решения и exclusions; shared path только после claim #3419 |
 | Matching diagnostics / bridge / review datasets | MATCH | существующие `scripts/diagnostics/*matching*`, Andromeda/ANEX bridge diagnostics и новый bounded MATCH tooling; не создавать дублирующий resolver без необходимости |
 | Граница provider → Search3 | INT + SEARCH, один исполнитель на пакет | `v2/api-anex-search3-preview.php` и соответствующая Andromeda projection; input/projection меняются по согласованному контракту |
 | Временный own-preview addon | SEARCH в ANEX-ветке | `v2/anex-search3-preview-v1.js`; не копировать поверх актуального UI и не добавлять третий renderer |
@@ -97,7 +97,7 @@ identity и нормализованные данные. Карточки/фил
 список файлов, поля/fixtures и неизвестные сведения, supplier budget, проверки,
 checked/published/deferred, issue принимающего владельца. MATCH передаёт только проверенную
 hotel identity/provenance и не подменяет offer/search/package identity. Затем:
-1. SEARCH/INT фиксируют один provider contract и владельца общих файлов в #996; MATCH отдельно claim-ит shared registry paths, если они нужны.
+1. SEARCH/INT фиксируют один provider contract и владельца общих файлов в #3419; MATCH отдельно claim-ит shared registry paths, если они нужны.
 2. Короткая ветка от свежей release получает только необходимый bounded пакет.
 3. Актуальные UI-владельцы подключают данные; календарь/фильтры/выбор проходят узкий
    совместный сценарий. Новый поиск инвалидирует старые ответы каждого источника.
@@ -132,7 +132,7 @@ implemented, checked, preview-published и production-approved; они не вз
 Перед каждым интегрированием освежать head и проверять чужие изменения; без force-push.
 На один общий файл — один активный writer, на одну задачу — один source PR.
 Чтение/подготовка независимых компонентов параллельны; shared edits и deploy последовательны.
-В #996 claim включает issue, branch/PR, paths и последний подтверждённый шаг.
+В #3419 claim включает issue, branch/PR, paths и последний подтверждённый шаг.
 Зависший claim не снимается по таймеру: сначала проверить PR/CI и текущего исполнителя.
 
 Автопилотные очереди разделены по пяти направлениям. MATCH #1971 — самостоятельная очередь,

@@ -1,6 +1,6 @@
 # SEO — подробный план органического развития AnyTour
 
-Направление [#1720](https://github.com/pyatkoff/poisk-turov-test/issues/1720), координация #996. Основа — свежая `release/search3-production-ready-v1`; проверенный при подготовке source `cf3f4b6fc0a1b82b7e6b4f3e3ae6818c5d198c90`, 9 сентября 2026. Общие правила — [anytour-development.md](../anytour-development.md), AGENTS и OWNER_PRIORITY. Это исполнимый roadmap; current issue/PR хранит статус и точный следующий шаг. Исторический #395 — зависимость данных и старые evidence, а не текущая очередь или основание вернуть DS1.
+Направление [#1720](https://github.com/pyatkoff/poisk-turov-test/issues/1720), координация #3419. Основа — свежая `release/search3-production-ready-v1`; проверенный при подготовке source `cf3f4b6fc0a1b82b7e6b4f3e3ae6818c5d198c90`, 9 сентября 2026. Общие правила — [anytour-development.md](../anytour-development.md), AGENTS и OWNER_PRIORITY. Это исполнимый roadmap; current issue/PR хранит статус и точный следующий шаг. Исторический #395 — зависимость данных и старые evidence, а не текущая очередь или основание вернуть DS1.
 
 ## Цель и подтверждённая основа
 
@@ -25,7 +25,7 @@ SEO передаёт требования SITE/INT; mixed renderer меняет 
 Production-indexation и масштабирование остаются за отдельным допуском SEO-07;
 само расширение продуктового плана не включает их.
 
-- SEO владеет intent/content/URL/metadata policy и требованиями перелинковки. SITE реализует mixed PHP renderers и shell; SEARCH — параметры поиска/состояние; INT — данные/происхождение/свежесть. На совместный файл один заранее объявленный writer в #996.
+- SEO владеет intent/content/URL/metadata policy и требованиями перелинковки. SITE реализует mixed PHP renderers и shell; SEARCH — параметры поиска/состояние; INT — данные/происхождение/свежесть. На совместный файл один заранее объявленный writer в #3419.
 - Адресные владельцы: `seo-page-contract-v1.php`, `seo-page-registry-v1.php`, `seo-page-types-v1.php`, `seo-page-primitives-v1.php`, `seo-internal-links-v1.php`, `seo-structured-data-v1.php`, `seo-content-catalog-v1.php`. Префикс `v2/seo-*` не даёт разрешение менять все data/runtime/publication guards.
 - `seo-config.php`, `seo-launch-slice-v1.php`, `seo-sitemap-candidates-v1.php`, `sitemap.xml`, `robots.txt` — отдельный protected publication пакет. `seo-publication-manifest-v1.php` и readiness reports не заменяют решение владельца.
 - ARCH выбирает архитектуру/границы, BUILD внедряет bounded пакет, REVIEW независимо проверяет факты и unintended indexation, ASSIST собирает инвентарь/brief/документацию. Конкретные модели назначаются [общей матрицей](models.md). Генерация текста моделью не подтверждает его истинность и не даёт допуск публикации.
