@@ -29,6 +29,12 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(10,bounded['max_captures'])
         scaled=m.parse_command(f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v4 1 4 2026-10-15 2026-10-16 7 2 - 0 30')
         self.assertEqual(30,scaled['max_captures'])
+    def test_andromeda_external_group(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} andromeda-external-group int-andromeda-external-group-turkey-20260922-v1 1 4 2026-10-20 2026-10-20 7 2 - 0')
+        self.assertEqual('andromeda-external-group',v['mode'])
+        self.assertEqual(1,v['max_captures'])
+        self.assertEqual(0,v['region'])
+
     def test_local_readback(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} local-readback int-andromeda-local-readback-20260921-v1 1 4 2026-09-24 2026-09-25 7 2 - 0')
         self.assertEqual('local-readback',v['mode'])
@@ -49,6 +55,7 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} reconcile int-andromeda-reconcile-turkey-20260921-v1 ../../bad',
           f'/run-int-server-v1 {SHA} reconcile int-andromeda-current-turkey-20260921-v1 int-andromeda-current-turkey-20260921-v1',
           f'/run-int-server-v1 {SHA} install-runtime int-andromeda-runtime-install-20260922-v1 extra',
+          f'/run-int-server-v1 {SHA} andromeda-external-group int-andromeda-external-group-turkey-20260922-v1 1 4 2026-10-20 2026-10-20 7 2 - 0 2',
         ]
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
@@ -159,7 +166,8 @@ class ContractTest(unittest.TestCase):
                   "install-runtime","install-plan.json","install-state.json","rollback_install",
                   "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
-                  "search3-local-results-read-v1.php","--max-captures=","--capture-mode=non_external_only",
+                  "search3-local-results-read-v1.php","--max-captures=","non_external_only",
+                  "andromeda-external-group","external_group_only",
                   "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero",
                   "php=\"$c=require $argv[1];","allowed_keys={'status'","name_sha256","top_level_keys",
                   "local-readback","local_readback_exit","stderr_sha256",

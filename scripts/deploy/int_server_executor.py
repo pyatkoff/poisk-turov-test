@@ -94,6 +94,26 @@ def parse_command(body: str) -> dict:
             'date_to': date_to, 'nights': nights, 'adults': adults,
             'meal': '' if meal == '-' else meal, 'region': region,
         }
+    if mode == 'andromeda-external-group':
+        # Owner-authorized one-group evidence probe. The caller cannot widen the
+        # supplier budget or change the capture mode through the command text.
+        need(len(parts) == 11, 'command_shape')
+        departure = integer(parts[3], 1, 999999999, 'departure')
+        country = integer(parts[4], 1, 999999999, 'country')
+        date_from, date_to = date(parts[5]), date(parts[6])
+        need(date_to >= date_from, 'date_range')
+        nights = integer(parts[7], 1, 28, 'nights')
+        adults = integer(parts[8], 1, 6, 'adults')
+        meal = parts[9]
+        need(re.fullmatch(r'(?:-|[A-Za-z0-9_,&]{1,32})', meal) is not None, 'meal')
+        region = integer(parts[10], 0, 999999999, 'region')
+        return {
+            'source_sha': source, 'mode': mode, 'operation_id': operation,
+            'departure': departure, 'country': country, 'date_from': date_from,
+            'date_to': date_to, 'nights': nights, 'adults': adults,
+            'meal': '' if meal == '-' else meal, 'region': region,
+            'max_captures': 1,
+        }
     if mode == 'andromeda-scope':
         need(len(parts) == 12, 'command_shape')
         departure = integer(parts[3], 1, 999999999, 'departure')
@@ -583,7 +603,7 @@ try:
         command=['php',str(stage/'scripts/ops/anex_local_offer_demand_fill.php'),
           '--limit='+str(payload['limit']),'--lookback-hours=168','--horizon-days=21',
           '--max-expands=600','--max-apd=600','--generation-base='+generation]
-    elif mode=='andromeda-scope':
+    elif mode in ('andromeda-scope','andromeda-external-group'):
         config=project/'_preview/search3-anex-candidate/.andromeda-private.php'
         if not safe_file(config,65536): fail('andromeda_private_config_missing')
         command=['php',str(stage/'scripts/ops/andromeda_local_offer_collect.php'),
@@ -593,7 +613,7 @@ try:
           '--nights='+str(payload['nights']),'--adults='+str(payload['adults']),
           '--meal='+payload['meal'],'--generation='+generation,
           '--max-captures='+str(payload['max_captures']),'--max-capture-seconds='+('240' if payload['max_captures']>0 else '0'),
-          '--capture-mode=non_external_only']
+          '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
     if mode not in ('reconcile','local-readback','install-runtime'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
