@@ -141,8 +141,73 @@ function verified_evidence_checkpoint_case(array $basePricing): void
     }
 }
 
+function estimated_evidence_checkpoint_case(): void
+{
+    $dir = temp_searches();
+    try {
+        $ref = hash('sha256', 'checkpoint-estimated-evidence-change');
+        $created = time() - 30;
+        $ingests = [];
+        write_state($dir, $ref, $created, 1, state(
+            $ref, 1, 1, 1, $created, [normalized_offer('checkpoint-estimated-evidence')]
+        ));
+        [$mapping, $canonical, , $save, $ingest] = callbacks($ingests, null);
+        $pricing = party_surcharge('185125', '14265', '199390');
+        $reader = static function(array $state, int $createdAt, array $offer, array $current) use (&$pricing): array {
+            return $pricing;
+        };
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
+        $first = AnyTourAndromedaOfferAutosaveV1::consume(
+            search_request(), $dir, $ref, 1, $now, $mapping, $canonical, $reader, $save, $ingest
+        );
+        aassert($first['published'] === true && $first['readyOfferCount'] === 0
+            && $first['confirmationRequiredOfferCount'] === 1 && count($ingests) === 1,
+            'initial estimated evidence published');
+        $firstDto = $ingests[0]['rows'][0]['dto'] ?? null;
+        aassert(is_array($firstDto), 'initial estimated dto missing');
+        assert_confirmation_dto($firstDto, '185125');
+        aassert(($firstDto['money']['additional_prices_reported'][0]['amount'] ?? null) === '14265'
+            && ($firstDto['money']['search_price_fuel_relation'] ?? null) === 'unknown',
+            'initial estimated money provenance missing');
+
+        $same = AnyTourAndromedaOfferAutosaveV1::consume(
+            search_request(), $dir, $ref, 1, $now, $mapping, $canonical, $reader, $save, $ingest
+        );
+        aassert($same['published'] === false && $same['reason'] === 'already_published'
+            && count($ingests) === 1, 'identical estimated evidence republished');
+
+        // A newer retained program-level surcharge must refresh persisted money facts,
+        // while customer display price remains the supplier base and fuel stays unknown.
+        $pricing = party_surcharge('185125', '15265', '200390');
+        $changed = AnyTourAndromedaOfferAutosaveV1::consume(
+            search_request(), $dir, $ref, 1, $now, $mapping, $canonical, $reader, $save, $ingest
+        );
+        aassert($changed['published'] === true && $changed['readyOfferCount'] === 0
+            && $changed['confirmationRequiredOfferCount'] === 1 && count($ingests) === 2,
+            'changed estimated evidence was suppressed by checkpoint');
+        $changedDto = $ingests[1]['rows'][0]['dto'] ?? null;
+        aassert(is_array($changedDto), 'changed estimated dto missing');
+        assert_confirmation_dto($changedDto, '185125');
+        aassert(($changedDto['money']['additional_prices_reported'][0]['amount'] ?? null) === '15265'
+            && ($changedDto['money']['search_price_fuel_relation'] ?? null) === 'unknown'
+            && $changedDto['finalPriceReady'] === false && $changedDto['final_price_verified'] === false,
+            'changed surcharge gained final/fuel authority or failed to reach dto');
+
+        $after = AnyTourAndromedaOfferAutosaveV1::consume(
+            search_request(), $dir, $ref, 1, $now, $mapping, $canonical, $reader, $save, $ingest
+        );
+        aassert($after['published'] === false && $after['reason'] === 'already_published'
+            && count($ingests) === 2, 'identical changed estimated evidence republished');
+        echo "ANDROMEDA_AUTOSAVE_ESTIMATED_EVIDENCE_REFRESH_OK initial=1 same=0 changed=1 repeated=0 base=185125 surcharge=15265 fuel=unknown supplier=0 live_db=0\n";
+    } finally {
+        cleanup_dir($dir);
+    }
+}
+
 checkpoint_count_case('confirmation', party_surcharge(), 0, 1);
 checkpoint_count_case('verified', $verifiedPricing, 1, 0);
 verified_evidence_checkpoint_case($verifiedPricing);
+estimated_evidence_checkpoint_case();
 
 echo "ANDROMEDA_AUTOSAVE_CHECKPOINT_COUNTS_OK new=2 idempotent=2 legacy=2 supplier=0 live_db=0\n";
