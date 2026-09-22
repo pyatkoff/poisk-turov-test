@@ -172,4 +172,50 @@ class ContractTest(unittest.TestCase):
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)
 
+class SingleGroupProbeTest(unittest.TestCase):
+    def command(self, budget='1', end='2026-10-05', prefix='andromeda'):
+        return (f'/run-int-server-v1 {SHA} andromeda-group-probe '
+                f'int-{prefix}-single-group-fixture-20260922-v1 '
+                f'1 4 2026-10-05 {end} 7 2 - 20 {budget}')
+
+    def test_probe_is_explicit_and_bounded(self):
+        for budget in ('0','1'):
+            value=m.parse_command(self.command(budget))
+            self.assertEqual('andromeda-group-probe',value['mode'])
+            self.assertEqual(int(budget),value['max_captures'])
+            self.assertEqual(value['date_from'],value['date_to'])
+        for budget in ('2','30','-1','01','1.0'):
+            with self.subTest(budget=budget),self.assertRaisesRegex(ValueError,'captures'):
+                m.parse_command(self.command(budget))
+        with self.assertRaisesRegex(ValueError,'probe_single_date'):
+            m.parse_command(self.command(end='2026-10-06'))
+        with self.assertRaisesRegex(ValueError,'probe_operation'):
+            m.parse_command(self.command(prefix='anex'))
+
+    def test_actual_remote_command_branch_without_execution(self):
+        # Execute only the real AST statement that builds argv; no SSH/PHP/DB/API.
+        import ast
+        remote=ast.parse(m.REMOTE)
+        matches=[n for n in ast.walk(remote) if isinstance(n,ast.If)
+                 and 'andromeda-group-probe' in ast.unparse(n.test)]
+        self.assertEqual(1,len(matches))
+        code=compile(ast.Module(body=[matches[0]],type_ignores=[]),'<remote argv>','exec')
+        for mode,budget in [('andromeda-group-probe',0),('andromeda-group-probe',1),
+                            ('andromeda-scope',0),('andromeda-scope',30)]:
+            payload=m.parse_command(self.command(str(min(budget,1))))
+            payload.update(mode=mode,max_captures=budget)
+            namespace={'mode':mode,'payload':payload,'stage':Path('/fixture/stage'),
+                       'project':Path('/fixture/anytoour.ru'),'source':SHA,'generation':'71',
+                       'safe_file':lambda *args:True,
+                       'fail':lambda reason:self.fail(reason)}
+            exec(code,namespace)
+            args=namespace['command']
+            expected='single_reusable_group' if mode=='andromeda-group-probe' else 'non_external_only'
+            self.assertEqual(['--capture-mode='+expected],[x for x in args if x.startswith('--capture-mode=')])
+            self.assertIn('--max-captures='+str(budget),args)
+            self.assertIn('--max-capture-seconds='+('240' if budget else '0'),args)
+            self.assertIn('--region=20',args)
+            self.assertNotIn('--capture-mode=all',args)
+            self.assertFalse(any(x in ('calc','changeservice','booking') for x in args))
+
 if __name__=='__main__':unittest.main(verbosity=2)
