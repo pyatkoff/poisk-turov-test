@@ -383,9 +383,40 @@ def program_fuel_readback():
         fail('program_fuel_readback_source_encoding')
     if not script or len(script)>1024*1024 or hashlib.sha256(script).hexdigest()!=expected:
         fail('program_fuel_readback_source_hash')
+
+    marker=b'declare(strict_types=1);'
+    if script.count(marker)!=1:
+        fail('program_fuel_readback_source_contract')
+    # The strict diagnostic intentionally throws on acceptance mismatch. Install a
+    # safe uncaught-exception handler before its body so the permanent executor can
+    # retain the already-sanitized partial counters instead of collapsing them to a
+    # generic nonzero PHP exit. This mode is supplier-free and read-only.
+    handler=b"""
+$out=null;
+set_exception_handler(function(Throwable $__pf_error) use (&$out): void {
+    $__pf_reason=$__pf_error->getMessage();
+    if(!is_string($__pf_reason)
+        || preg_match('/\\A[A-Za-z0-9_.:-]{1,96}\\z/D',$__pf_reason)!==1) {
+        $__pf_reason='readback_failed';
+    }
+    echo json_encode([
+        'schema_version'=>1,
+        'source'=>'int-program-fuel-readback-wrapper-v1',
+        'diagnostic_status'=>'failed',
+        'reason'=>$__pf_reason,
+        'supplier_calls'=>0,
+        'database_reads'=>1,
+        'database_writes'=>0,
+        'filesystem_writes'=>0,
+        'partial'=>isset($out)&&is_array($out)?$out:null,
+    ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\\n";
+    exit(0);
+});
+"""
+    wrapped=script.replace(marker,marker+handler,1)
     run=subprocess.run(
         ['php','-d','display_errors=0','-d','log_errors=0'],
-        input=script,cwd=project,capture_output=True,timeout=90
+        input=wrapped,cwd=project,capture_output=True,timeout=90
     )
     if run.returncode!=0 or run.stderr.strip():
         fail('program_fuel_readback_failed')
@@ -393,19 +424,43 @@ def program_fuel_readback():
         data=json.loads(run.stdout.decode().strip())
     except Exception:
         fail('program_fuel_readback_unparseable')
-    if not isinstance(data,dict) or data.get('schema_version')!=1 or data.get('source')!='int-program-fuel-cohort-v3-readback':
+    if not isinstance(data,dict) or data.get('schema_version')!=1:
+        fail('program_fuel_readback_contract')
+
+    if data.get('source')=='int-program-fuel-readback-wrapper-v1':
+        if (data.get('diagnostic_status')!='failed' or data.get('supplier_calls')!=0
+                or data.get('database_reads')!=1 or data.get('database_writes')!=0
+                or data.get('filesystem_writes')!=0
+                or not isinstance(data.get('reason'),str)):
+            fail('program_fuel_readback_wrapper_contract')
+        partial=data.get('partial')
+        if partial is not None and (not isinstance(partial,dict)
+                or partial.get('source')!='int-program-fuel-cohort-v3-readback'):
+            fail('program_fuel_readback_partial_contract')
+        return {
+            'acceptance_pass':False,
+            'failure_reason':data['reason'],
+            'partial':partial,
+            'supplier_calls':0,'database_reads':1,'database_writes':0,'filesystem_writes':0,
+        }
+
+    if data.get('source')!='int-program-fuel-cohort-v3-readback':
         fail('program_fuel_readback_contract')
     if (data.get('supplier_calls')!=0 or data.get('database_reads')!=1
             or data.get('database_writes')!=0 or data.get('filesystem_writes')!=0):
         fail('program_fuel_readback_authority')
     target=data.get('target',{})
     stored=data.get('stored',{})
-    if (target.get('ready_count')!=12 or target.get('ready_valid_rule_count')!=12
-            or target.get('ready_non_target_count')!=0 or target.get('bad_ready_boundary_count')!=0
-            or stored.get('ready_count')!=12 or stored.get('verified_count')!=0
-            or stored.get('payload_hash_invalid_count')!=0 or stored.get('retained_missing_count')!=0):
-        fail('program_fuel_readback_acceptance')
-    return data
+    passed=(target.get('ready_count')==12 and target.get('ready_valid_rule_count')==12
+            and target.get('ready_non_target_count')==0 and target.get('bad_ready_boundary_count')==0
+            and stored.get('ready_count')==12 and stored.get('verified_count')==0
+            and stored.get('payload_hash_invalid_count')==0 and stored.get('retained_missing_count')==0)
+    return {
+        'acceptance_pass':passed,
+        'failure_reason':None if passed else 'program_fuel_readback_acceptance',
+        'data':data,
+        'supplier_calls':0,'database_reads':1,'database_writes':0,'filesystem_writes':0,
+    }
 def program_fuel_probe():
     encoded=payload.get('program_fuel_probe_php_b64')
     expected=payload.get('program_fuel_probe_php_sha256')
@@ -970,12 +1025,14 @@ try:
         result['public_ui_entrypoints_unchanged']=True
     if mode=='program-fuel-readback':
         result['before_db']=db_summary('andromeda')
-        result['program_fuel_readback']=program_fuel_readback()
+        readback=program_fuel_readback()
+        result['program_fuel_readback']=readback
         result['after_db']=db_summary('andromeda')
         result['production_after']=fingerprints()
         if result['production_after']!=before: fail('production_drift')
         if result['before_db']!=result['after_db']: fail('program_fuel_readback_db_drift')
-        result['status']='complete'
+        result['status']='complete' if readback.get('acceptance_pass') is True else 'blocked'
+        result['reason']=None if readback.get('acceptance_pass') is True else readback.get('failure_reason','program_fuel_readback_acceptance')
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
