@@ -18,6 +18,17 @@ const directAnex=body=>{
    tours:[{price:{amount:'1490000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,meal:'AI',room:'STANDARD',
     kind:'group_minimum',flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:offerRef,selection_enabled:false}]}]}};
 };
+const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),localId=101}={})=>{
+ const searchRef='c'.repeat(64),hotels=empty?[]:[{local_id:localId,mapping_status:'resolved',tours:[{
+  provider:'andromeda',price:{amount:'1480000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,
+  meal:'AI',room:'STANDARD',placement:'DBL',operator:{name:'FUN&SUN'},offer_ref:offerRef,
+  offer_context:{provider:'andromeda',search_ref:searchRef,generation:body.generation,page:1,offer_ref:offerRef},
+  listing_price_ref:'listing_'+'e'.repeat(64),selection_enabled:false
+ }]}];
+ return {ok:true,data:{provider:'andromeda',generation:body.generation,hotels,date_range:{from:body.params.dateFrom,to:body.params.dateTo},
+  grouped:true,first_page_only:false,page:1,pages_count:1,external_search_pending:false,search_ref:searchRef,status:'complete',
+  received_offers:hotels.length,mapped_offers:hotels.length,selection_enabled:false}};
+};
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.now()}={}){
@@ -34,7 +45,7 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
    const body=JSON.parse(options.body);nativeCalls.push(structuredClone(body));
    const result=await native(body,options.signal,nativeCalls);
    if(result&&result.response)return result.response;
-   return {ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:body.generation,hotels:[]}})};
+   return {ok:true,json:async()=>directAndromeda(body,{empty:true})};
   }
   if(target.pathname==='/_preview/search3-anex-candidate/api-anex-search3-preview.php'){
    assert.ok(anex,'unexpected direct ANEX request');
@@ -211,7 +222,7 @@ test('offers stored during a search are loaded without another search start',asy
 test('one user search invokes Andromeda autosave once and rereads LOCAL after it completes',async()=>{
  let saved=false;const gate=defer();
  const h=harness({
-  native:async body=>{await gate.promise;saved=true;return {response:{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:body.generation,hotels:[{local_id:777}]}})}};},
+  native:async body=>{await gate.promise;saved=true;return {response:{ok:true,json:async()=>directAndromeda(body)}};},
   database:(i,p)=>snapshot(p,saved?['tourvisor','andromeda']:['tourvisor'])
  });
  await h.start();assert.equal(h.nativeCalls.length,1);assert.equal(h.nativeCalls[0].generation,1);
@@ -219,6 +230,26 @@ test('one user search invokes Andromeda autosave once and rereads LOCAL after it
  const completing=h.poll();await flush();assert.deepEqual(h.providers(),['tourvisor']);assert.equal(h.events.some(e=>e.type==='complete'),false);
  gate.resolve();await completing;await flush();assert.equal(h.nativeCalls.length,1);assert.deepEqual(h.providers(),['andromeda','tourvisor']);
  assert.equal(h.dbBodies.length,3);assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='complete'));assert.equal(h.events.at(-1).type,'complete');
+});
+test('native Andromeda offers are visible even when LOCAL reread fails',async()=>{
+ const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),database:async()=>{throw new Error('fictional LOCAL outage');}});
+ await h.start();await flush();assert.ok(h.providers().includes('andromeda'),'successful native Andromeda must not wait for autosave readback');
+ await h.poll();assert.deepEqual(h.providers(),['andromeda','tourvisor']);
+ assert.ok(h.events.some(e=>e.type==='database-error'));
+ const final=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.equal(final.sources.andromeda.status,'complete');assert.equal(final.sources.andromeda.hotels,1);assert.equal(final.sources.andromeda.offers,1);
+ assert.equal(final.union.hotelsByProvider.andromeda,1);assert.equal(final.union.offersByProvider.andromeda,1);
+});
+test('native Andromeda and LOCAL autosave dedupe the same offer identity',async()=>{
+ const offerRef='offer_'+'d'.repeat(64);
+ const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body,{offerRef})}}),database:(i,p)=>{
+  const row=snapshot(p,['andromeda']);row.hotels[0].offers[0].listing.identity.offer_ref_digest=hash(offerRef);return row;
+ }});
+ await h.start();await h.poll();
+ const offers=h.latest()[0].offers.filter(o=>o.provider==='andromeda');
+ assert.equal(offers.length,1,'same native+stored Andromeda offer must collapse by canonical digest');
+ const final=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.equal(final.union.offersByProvider.andromeda,1);
 });
 test('Andromeda failure is isolated from TV and LOCAL inventory',async()=>{
  const h=harness({native:async()=>({response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}})});
