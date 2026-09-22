@@ -42,7 +42,7 @@
     }
   },
   "protectedSha256": {
-    "api-v2.php": "828354f69bfc2fafa7e2afb2a2955e0e67858920ba967be196301b7a01baca98",
+    "api-v2.php": "8f592a633d69f702ec91bb4b5e278503b49fcdacc3880847990ecf42bc2794b5",
     "lead-adapter-v2.php": "8eb0c75a5ccad219190fddc31f9d254545f9c7566e459f169231481cebe4e069",
     "analytics-config.php": "1cdb2d53eda3e52c5ba1480f3df5d184c3b51ecf707952cb49560c395e463a82",
     "analytics-v4.js": "9f91622ad81d1812753083008d8225e1619dd7fd7fb7ba8f0fdea0e7c65e8602",
