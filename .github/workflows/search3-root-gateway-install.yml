@@ -66,9 +66,13 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: "${{ github.sha }}", persist-credentials: false}
       - run: python3 tests/search3_root_gateway_install_test.py
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: "${{ needs.prepare.outputs.artifact_id }}"
+          path: "${{ runner.temp }}/search3-root-gateway-ready/"
       - env:
           GH_TOKEN: "${{ github.token }}"
-          READY_ARTIFACT_ID: "${{ needs.prepare.outputs.artifact_id }}"
+          READY_ARTIFACT_ID: "${{ needs.prepare.outputs.artifact_id }}"\n          READY_DIR: "${{ runner.temp }}/search3-root-gateway-ready/"
           PREVIEW_HOST: "${{ secrets.ANYTOOUR_DEPLOY_HOST }}"
           PREVIEW_USER: "${{ secrets.ANYTOOUR_DEPLOY_USER }}"
           PREVIEW_KEY: "${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}"
