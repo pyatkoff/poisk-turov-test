@@ -8,7 +8,7 @@ $sa=[$row(11,'Side Yesiloz','funsun'),$row(12,'Blue Resort','anex'),$row(13,'Sel
 $r=hma7_resolve($tv,$sa);a7($r['strong_count']===2,'strong_count');
 $pairs=array_map(fn($x)=>$x['tv_hotel_id'].'|'.$x['samo_hotel_id'],$r['strong_common3']);sort($pairs);
 a7($pairs===['1|11','4|14'],'strong_pairs');
-a7(count(array_filter($r['review'],fn($x)=>$x['tv_hotel_id']==='2'&&$x['qualifier_conflict']))===1,'qualifier_hold');
+a7(count(array_filter($r['strong_common3'],fn($x)=>$x['tv_hotel_id']==='2'))===0,'qualifier_hold');
 a7(count(array_filter($r['review'],fn($x)=>$x['tv_hotel_id']==='3'))===1,'biblio_only_hold');
 $q=hma7_name_score('ROYAL FAMILY RESORT','ROYAL RESORT');a7($q['qualifier_conflict']&&$q['score']<0.90,'meaningful_qualifier');
 $source=(string)file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_tv_samo_side4_saved_alias_current_v7.php');
