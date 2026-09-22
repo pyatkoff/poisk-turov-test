@@ -22,6 +22,9 @@ FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <label class=\"sort-label\">Сортировка отелей <select><option>Рекомендуемые</option></select></label>
 <div class=\"offers-section\" style=\"margin-top:18px\"><div class=\"offer-list-toolbar\">Сортировка предложений <select><option>Сначала дешевле</option></select></div>
 <div class=\"offer-controls\" style=\"margin-top:12px\"><select><option>Номер FAMILY SEA VIEW · AI · 7 ночей</option></select></div></div>
+<div class=\"calendar-card\" style=\"margin-top:18px\"><div class=\"calendar-heading\"><button class=\"text-button calendar-choose-probe\">Выбрать даты</button></div><div class=\"calendar-foot\"><button class=\"text-button calendar-clear-probe\">Все даты</button></div></div>
+<div class=\"destination-selection\" style=\"margin-top:18px\"><span>Турция · Анталья</span><button class=\"text-button\">Изменить</button></div>
+<div class=\"flex-dates\" style=\"margin-top:18px\"><button>7 ночей</button><button>10 ночей</button></div>
 <div class=\"results-toolbar\" style=\"margin-top:18px\"><button class=\"secondary drawer-trigger\">Фильтры</button><div class=\"quick-chips\"><button class=\"chip\">Первая линия</button><button class=\"chip\">Для семьи</button></div></div>
 <div class=\"active-filters\"><button class=\"active-filter\">5 ★</button></div>
 <aside class=\"filter-panel open\" style=\"position:static;display:block;width:100%;max-height:none;margin-top:18px\"><div class=\"filter-top\"><h3>Фильтры</h3><button class=\"icon-button mobile-close\" aria-label=\"Закрыть фильтры\">×</button></div></aside>
@@ -32,6 +35,7 @@ FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <div class=\"hotel-more\" style=\"margin-top:18px\"><button class=\"text-button\">Показать все туры</button></div>
 <div class=\"offer-price\" style=\"text-align:left;margin-top:18px\"><button class=\"primary\">Выбрать тур</button></div>
 <div class=\"compare-tray\" style=\"position:static;transform:none;margin-top:18px\"><button class=\"primary\">Сравнить</button><button class=\"icon-button\" aria-label=\"Закрыть сравнение\">×</button></div>
+<div class=\"compare-hotel-card\" style=\"position:relative;min-height:54px;margin-top:18px\"><button class=\"icon-button compare-remove\" aria-label=\"Убрать отель из сравнения\">×</button></div>
 <div class=\"modal-header\" style=\"display:flex;margin-top:18px\"><button id=\"modal-back\" class=\"icon-button\" aria-label=\"Назад\">←</button><button class=\"icon-button modal-close-probe\" aria-label=\"Закрыть\">×</button></div>
 <div class=\"counter\" style=\"margin-top:18px\"><button aria-label=\"Увеличить количество туристов\">+</button></div>
 <div class=\"favorite-item\" style=\"margin-top:18px\"><button class=\"icon-button\" aria-label=\"Удалить из избранного\">×</button></div>
@@ -66,7 +70,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def inspect_width(browser, origin, width, screenshot=False):
-    page = browser.new_page(viewport={"width": width, "height": 980})
+    page = browser.new_page(viewport={"width": width, "height": 1180})
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     try:
@@ -82,6 +86,10 @@ def inspect_width(browser, origin, width, screenshot=False):
             offerSort: style('.offer-list-toolbar select'),
             offerCondition: style('.offer-controls select'),
             toolbarFont: getComputedStyle(document.querySelector('.offer-list-toolbar')).fontSize,
+            calendarChoose: style('.calendar-choose-probe'),
+            calendarClear: style('.calendar-clear-probe'),
+            destinationAction: style('.destination-selection button'),
+            dateLengthShortcut: style('.flex-dates button'),
             drawer: style('.drawer-trigger'),
             preset: style('.quick-chips .chip'),
             activeFilter: style('.active-filter'),
@@ -96,6 +104,7 @@ def inspect_width(browser, origin, width, screenshot=False):
             offerCta: style('.offer-price .primary'),
             compareCta: style('.compare-tray > .primary'),
             compareClose: style('.compare-tray .icon-button'),
+            compareRemove: style('.compare-hotel-card .compare-remove'),
             modalBack: style('#modal-back'),
             modalClose: style('.modal-close-probe'),
             counter: style('.counter button'),
@@ -110,13 +119,14 @@ def inspect_width(browser, origin, width, screenshot=False):
                 assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
             assert values["toolbarFont"] == "16px", (width, values)
             for key in (
+                "calendarChoose", "calendarClear", "destinationAction", "dateLengthShortcut",
                 "drawer", "preset", "activeFilter", "hotelLink", "compare",
                 "expandOffers", "offerCta", "compareCta"
             ):
                 assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
             for key in (
                 "drawerClose", "appliedEdit", "compactEdit", "favorite", "photoArrow",
-                "compareClose", "modalBack", "modalClose", "counter", "favoriteRemove"
+                "compareClose", "compareRemove", "modalBack", "modalClose", "counter", "favoriteRemove"
             ):
                 assert float(values[key]["width"].removesuffix("px")) >= 44, (width, key, values[key])
                 assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
@@ -125,7 +135,9 @@ def inspect_width(browser, origin, width, screenshot=False):
             assert values["drawer"]["minHeight"] != "44px", (width, values["drawer"])
             assert values["preset"]["minHeight"] != "44px", (width, values["preset"])
             assert values["activeFilter"]["minHeight"] != "44px", (width, values["activeFilter"])
-            for key in ("favorite", "photoArrow", "compareClose", "modalBack", "counter", "favoriteRemove"):
+            for key in ("calendarChoose", "calendarClear", "destinationAction", "dateLengthShortcut"):
+                assert values[key]["minHeight"] != "44px", (width, key, values[key])
+            for key in ("favorite", "photoArrow", "compareClose", "compareRemove", "modalBack", "counter", "favoriteRemove"):
                 assert values[key]["width"] != "44px", (width, key, values[key])
         assert values["overflow"] is False, (width, values)
         assert not errors, errors

@@ -28,14 +28,14 @@ assert.match(normalized,
   /\.offer-list-toolbar \{ font-size:16px; \}/,
   'Offer-list toolbar label must remain readable on mobile');
 assert.match(normalized,
-  /\.drawer-trigger, \.quick-chips \.chip, \.active-filter, \.hotel-links \.text-button, \.compare-btn, \.hotel-more \.text-button, \.offer-price \.primary, \.compare-tray > \.primary \{ min-height:44px; \}/,
-  'Frequent mobile filter and tour actions need 44px minimum tap height');
+  /\.drawer-trigger, \.quick-chips \.chip, \.active-filter, \.hotel-links \.text-button, \.compare-btn, \.hotel-more \.text-button, \.offer-price \.primary, \.compare-tray > \.primary, \.calendar-heading \.text-button, \.calendar-foot \.text-button, \.destination-selection button, \.flex-dates button \{ min-height:44px; \}/,
+  'Frequent mobile filter, tour, calendar and destination actions need 44px minimum tap height');
 assert.match(normalized,
   /\.applied-search > \.secondary, \.compact-search \.secondary \{ width:44px; min-width:44px; min-height:44px; \}/,
   'Mobile edit-search controls need a 44px minimum tap target');
 assert.match(normalized,
-  /\.filter-top \.mobile-close, \.favorite-button, \.card-photo-arrow, \.compare-tray \.icon-button, \.modal-header \.icon-button, #modal-back, \.counter button, \.favorite-item \.icon-button \{ width:44px; min-width:44px; height:44px; min-height:44px; \}/,
-  'Mobile icon and counter actions need 44 by 44 tap targets');
+  /\.filter-top \.mobile-close, \.favorite-button, \.card-photo-arrow, \.compare-tray \.icon-button, \.modal-header \.icon-button, #modal-back, \.counter button, \.favorite-item \.icon-button, \.compare-hotel-card \.compare-remove \{ width:44px; min-width:44px; height:44px; min-height:44px; \}/,
+  'Mobile icon, counter and compare-remove actions need 44 by 44 tap targets');
 
 const forbiddenDesktopMedia = /@media\s*\(min-width/i;
 assert.equal(forbiddenDesktopMedia.test(css), false, 'This focused layer must not alter desktop widths');
@@ -49,7 +49,11 @@ console.log(JSON.stringify({
   tourTapTargets: [
     'edit-search', 'hotel-link', 'compare', 'expand-offers', 'choose-offer',
     'favorite', 'photo-arrow', 'compare-tray', 'modal-close', 'modal-back',
-    'party-counter', 'favorite-remove'
+    'party-counter', 'favorite-remove', 'compare-remove'
+  ],
+  secondaryTapTargets: [
+    'calendar-choose-dates', 'calendar-clear-date', 'destination-selection-action',
+    'date-length-shortcut'
   ],
   supplierRequests: 0,
   leadRequests: 0,
