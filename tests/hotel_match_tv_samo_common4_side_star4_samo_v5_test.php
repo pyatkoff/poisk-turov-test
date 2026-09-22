@@ -139,7 +139,7 @@ hmc_need(hmc_date('26.10.2026','x')==='2026-10-26','date_normalization');
 $week=hmc_week_dates();
 hmc_need($week===['2026-10-05','2026-10-06','2026-10-07','2026-10-08','2026-10-09','2026-10-10','2026-10-11'],'weekly_window');
 
-$source=(string)file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php');
+$source=(string)file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_samo_v5.php');
 hmc_need(!str_contains($source,"/tours/dates"),'no_tv_dates');
 hmc_need(str_contains($source,"'dateFrom'=>\$date,'dateTo'=>\$dateTo"),'tv_week_window');
 hmc_need(str_contains($source,"'CHECKIN_BEG'=>\$ymd,'CHECKIN_END'=>\$ymdTo"),'samo_week_window');
