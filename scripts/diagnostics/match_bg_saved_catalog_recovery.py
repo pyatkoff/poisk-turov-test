@@ -65,9 +65,9 @@ def run(bg_archive: Path, bg_digest: str, recovery_archive: Path, recovery_diges
         raise ValueError('unexpected_base_output')
     recovery = recovery_rows(recovery_archive, recovery_digest)
     residual = [r for r in evidence['rows']
-                if r['baseline_compound_evidence'] is True
-                and r['alias_evidence_supported'] is False]
-    if len(residual) != 32 or any(r['evidence_holds'] != ['canonical_category_or_country_not_confirmed'] for r in residual):
+                if r['alias_evidence_supported'] is False
+                and r['evidence_holds'] == ['canonical_category_or_country_not_confirmed']]
+    if len(residual) != 114:
         raise ValueError('unexpected_base_residual')
     source = json.loads(zipfile.ZipFile(bg_archive).read('result.json'))
     rows = []
@@ -146,8 +146,11 @@ def run(bg_archive: Path, bg_digest: str, recovery_archive: Path, recovery_diges
         })
     rows.sort(key=lambda r: r['tv_hotel_id'])
     recovered = [r for r in rows if r['recovery_supported']]
+    base_union = {r['tv_hotel_id'] for r in evidence['rows']
+                  if r['baseline_compound_evidence'] or r['new_alias_evidence_candidate']}
+    union_after = base_union | {r['tv_hotel_id'] for r in recovered}
     return {
-        'schema': 'match-bg-saved-catalog-recovery/1',
+        'schema': 'match-bg-saved-catalog-recovery/2',
         'state': 'completed_offline_saved_recovery_not_accepted',
         'inputs': {
             'bg_zip_sha256': bg_digest.removeprefix('sha256:'),
@@ -160,7 +163,7 @@ def run(bg_archive: Path, bg_digest: str, recovery_archive: Path, recovery_diges
             'recovery_supported': len(recovered),
             'remaining_residual': len(rows) - len(recovered),
             'evidence_supported_after': evidence['counts']['alias_evidence_supported'] + len(recovered),
-            'candidate_union_after': evidence['counts']['candidate_union_not_accepted'],
+            'candidate_union_after': len(union_after),
         },
         'rows': rows,
         'provider_calls': 0, 'supplier_http_requests': 0, 'database_reads': 0,
