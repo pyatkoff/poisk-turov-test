@@ -35,6 +35,12 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(1,v['max_captures'])
         self.assertEqual(0,v['region'])
 
+    def test_match_live942_modes(self):
+        tv=m.parse_command(f'/run-int-server-v1 {SHA} match-tv942 int-anex-match-tv942-20260923-v1 0 350')
+        self.assertEqual('match-tv942',tv['mode']);self.assertEqual(0,tv['offset']);self.assertEqual(350,tv['limit'])
+        samo=m.parse_command(f'/run-int-server-v1 {SHA} match-samo942 int-andromeda-match-samo942-20260923-v1 700 242')
+        self.assertEqual('match-samo942',samo['mode']);self.assertEqual(700,samo['offset']);self.assertEqual(242,samo['limit'])
+
     def test_local_readback(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} local-readback int-andromeda-local-readback-20260921-v1 1 4 2026-09-24 2026-09-25 7 2 - 0')
         self.assertEqual('local-readback',v['mode'])
@@ -56,6 +62,10 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} reconcile int-andromeda-current-turkey-20260921-v1 int-andromeda-current-turkey-20260921-v1',
           f'/run-int-server-v1 {SHA} install-runtime int-andromeda-runtime-install-20260922-v1 extra',
           f'/run-int-server-v1 {SHA} andromeda-external-group int-andromeda-external-group-turkey-20260922-v1 1 4 2026-10-20 2026-10-20 7 2 - 0 2',
+          f'/run-int-server-v1 {SHA} match-tv942 int-andromeda-match-tv942-20260923-v1 0 100',
+          f'/run-int-server-v1 {SHA} match-samo942 int-anex-match-samo942-20260923-v1 0 100',
+          f'/run-int-server-v1 {SHA} match-tv942 int-anex-match-tv942-20260923-v1 900 43',
+          f'/run-int-server-v1 {SHA} match-samo942 int-andromeda-match-samo942-20260923-v1 0 351',
         ]
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
@@ -175,7 +185,12 @@ class ContractTest(unittest.TestCase):
                   "require_once $config","errorSha256","attempt_state","package_record",
                   "diagnostic_code","actualization","failure_class","actions_used",
                   "supplier_error_facts","reason_category","code_field","error_sha256",
-                  "rejection_summary","ownership_class","missing_field","classified"]:
+                  "rejection_summary","ownership_class","missing_field","classified",
+                  "match-tv942","match-samo942","supplier_slot_busy",
+                  "hotel_match_live942_frontier_plan_v1.php",
+                  "hotel_match_live942_tv_anex_refresh_v1.py",
+                  "hotel_match_live942_samo_anex_refresh_v1.php",
+                  ".anytoour-match/operations","match_terminal_hash"]:
             self.assertIn(x,text)
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)
