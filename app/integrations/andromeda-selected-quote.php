@@ -47,7 +47,7 @@ final class AnyTourAndromedaSelectedQuote
                     'flights' => $public,
                     // Current fuel services are evidence even before calc; neither
                     // their presence nor flight markup proves a complete total.
-                    'fuel_surcharges_reported' => self::fuelSurcharges($claim),
+                    'fuel_surcharges_reported' => self::reportedFuelSurcharges($claim),
                     'operator_currency_rates_reported' => self::operatorCurrencyRates($claim),
                     'calc_money_facts_reported' => [],
                     'booking_enabled' => false,
@@ -149,7 +149,7 @@ final class AnyTourAndromedaSelectedQuote
             'final_price_verified' => true,
             'flight_selection_required' => false,
             'flights' => array_values(array_map([self::class, 'publicFlight'], $selectedFlights)),
-            'fuel_surcharges_reported' => self::fuelSurcharges($calculated),
+            'fuel_surcharges_reported' => self::reportedFuelSurcharges($calculated),
             'operator_currency_rates_reported' => self::operatorCurrencyRates($calculated),
             'calc_money_facts_reported' => self::calcMoneyFacts($calculated),
             'booking_enabled' => false,
@@ -289,7 +289,7 @@ final class AnyTourAndromedaSelectedQuote
     }
 
     /** Supplier-reported fuel services are evidence only; do not aggregate or apply them to prices here. */
-    private static function fuelSurcharges(array $claim): array
+    public static function reportedFuelSurcharges(array $claim): array
     {
         $doc = self::document($claim);
         $out = [];
