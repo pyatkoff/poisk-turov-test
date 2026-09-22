@@ -8,6 +8,11 @@ on:
       - 'app/integrations/andromeda-surcharge-evidence.php'
       - 'app/integrations/andromeda-surcharge-evidence-store.php'
       - 'app/integrations/andromeda-local-offer-collector.php'
+      - 'app/integrations/andromeda-surcharge-cache-autosave.php'
+      - 'app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php'
+      - 'app/integrations/andromeda-anytour-offer-autosave.php'
+      - 'app/integrations/andromeda-saved-pricing-evidence.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
       - 'tests/andromeda-surcharge-group-key-test.php'
       - 'tests/andromeda-surcharge-evidence-test.php'
       - 'tests/andromeda-surcharge-evidence-store-test.php'
@@ -19,6 +24,11 @@ on:
       - 'app/integrations/andromeda-surcharge-evidence.php'
       - 'app/integrations/andromeda-surcharge-evidence-store.php'
       - 'app/integrations/andromeda-local-offer-collector.php'
+      - 'app/integrations/andromeda-surcharge-cache-autosave.php'
+      - 'app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php'
+      - 'app/integrations/andromeda-anytour-offer-autosave.php'
+      - 'app/integrations/andromeda-saved-pricing-evidence.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
       - 'tests/andromeda-surcharge-group-key-test.php'
       - 'tests/andromeda-surcharge-evidence-test.php'
       - 'tests/andromeda-surcharge-evidence-store-test.php'
@@ -32,21 +42,128 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      INT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Syntax and contract
         shell: bash
         run: |
           set -euo pipefail
-          php -l app/integrations/andromeda-surcharge-group-key.php
-          php -l app/integrations/andromeda-surcharge-evidence.php
-          php -l app/integrations/andromeda-surcharge-evidence-store.php
-          php -l app/integrations/andromeda-local-offer-collector.php
-          php -l tests/andromeda-surcharge-group-key-test.php
-          php -l tests/andromeda-surcharge-evidence-test.php
-          php -l tests/andromeda-surcharge-evidence-store-test.php
-          php -l tests/andromeda-surcharge-night-reuse-test.php
-          php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-group-key-test.php
-          php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-test.php
-          php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-store-test.php
-          php -d allow_url_fopen=0 -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-night-reuse-test.php
+          test "$(git rev-parse HEAD)" = "$INT_SOURCE_SHA"
+          {
+            php -l app/integrations/andromeda-surcharge-group-key.php
+            php -l app/integrations/andromeda-surcharge-evidence.php
+            php -l app/integrations/andromeda-surcharge-evidence-store.php
+            php -l app/integrations/andromeda-local-offer-collector.php
+            php -l tests/andromeda-surcharge-group-key-test.php
+            php -l tests/andromeda-surcharge-evidence-test.php
+            php -l tests/andromeda-surcharge-evidence-store-test.php
+            php -l tests/andromeda-surcharge-night-reuse-test.php
+            php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-group-key-test.php
+            php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-test.php
+            php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-store-test.php
+            php -d allow_url_fopen=0 -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-night-reuse-test.php
+            php -d allow_url_fopen=0 tests/andromeda-collector-group-reuse-test.php
+            php tests/andromeda-local-offer-collector-cli-test.php
+            php -d allow_url_fopen=0 tests/andromeda-zero-capture-collection-test.php
+            php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-cache-autosave-test.php
+          } 2>&1 | tee "$RUNNER_TEMP/int-surcharge-contracts.log"
+      - name: Export exact checked source handoff (no installation)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+
+          root = Path.cwd().resolve()
+          source = os.environ['INT_SOURCE_SHA']
+          def git(*args):
+              return subprocess.check_output(['git', *args], cwd=root)
+          if not re.fullmatch(r'[a-f0-9]{40}', source) or git('rev-parse', 'HEAD').decode().strip() != source:
+              raise SystemExit('handoff_source_mismatch')
+          # This is the existing INT surcharge/collector update, not a deploy allowlist.
+          # It cannot be passed to the old native-web publisher as a full runtime.
+          paths = [
+              'app/integrations/andromeda-surcharge-group-key.php',
+              'app/integrations/andromeda-surcharge-evidence.php',
+              'app/integrations/andromeda-surcharge-evidence-store.php',
+              'app/integrations/andromeda-local-offer-collector.php',
+              'app/integrations/andromeda-surcharge-cache-autosave.php',
+              'app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php',
+              'app/integrations/andromeda-anytour-offer-autosave.php',
+              'app/integrations/andromeda-saved-pricing-evidence.php',
+              'scripts/ops/andromeda_local_offer_collect.php',
+          ]
+          # Immediate runtime boundaries are recorded, not copied or changed.
+          # This deliberately does not claim a complete transitive dependency closure.
+          support = [
+              'app/integrations/andromeda-search-surcharge.php',
+              'app/integrations/anytour-offer-snapshot-producer.php',
+              'app/integrations/andromeda-saved-package-runtime.php',
+              'v2/api-andromeda-search3-preview.php',
+          ]
+          def checked_bytes(name):
+              path = root / name
+              if not path.is_file() or path.is_symlink() or path.resolve() != path:
+                  raise SystemExit('handoff_source_path:' + name)
+              data = path.read_bytes()
+              if not 0 < len(data) <= 2097152 or data != git('show', source + ':' + name):
+                  raise SystemExit('handoff_source_changed:' + name)
+              blob = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+              return data, {'sha256': hashlib.sha256(data).hexdigest(), 'git_blob_sha': blob, 'bytes': len(data)}
+          payload = {name: checked_bytes(name) for name in paths}
+          dependencies = {name: checked_bytes(name)[1] for name in support}
+          out = Path(os.environ['RUNNER_TEMP']) / 'int-surcharge-handoff'
+          out.mkdir(mode=0o700, exist_ok=False)
+          for name, (data, _) in payload.items():
+              target = out / 'source' / name
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(data)
+              if target.read_bytes() != data:
+                  raise SystemExit('handoff_copy_mismatch:' + name)
+              subprocess.run(['php', '-l', str(target)], check=True, stdout=subprocess.DEVNULL)
+          log = (Path(os.environ['RUNNER_TEMP']) / 'int-surcharge-contracts.log').read_bytes()
+          (out / 'contracts.log').write_bytes(log)
+          receipt = {
+              'schema_version': 1, 'kind': 'int-surcharge-source-handoff',
+              'repository': 'pyatkoff/poisk-turov-test', 'issue': 2506,
+              'source_sha': source, 'source_tree': git('rev-parse', 'HEAD^{tree}').decode().strip(),
+              'run_id': int(os.environ['GITHUB_RUN_ID']), 'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'files': {name: meta for name, (_, meta) in payload.items()},
+              'immediate_support_only': dependencies, 'complete_runtime': False,
+              'contracts_log_sha256': hashlib.sha256(log).hexdigest(),
+              'group_key_version': 3, 'evidence_file_namespace_version': 2,
+              'nights_discriminator': False, 'default_background_captures': 0,
+              'runtime_root': None, 'installed': False, 'activation_authorized': False,
+              'live_reuse_verified': False, 'supplier_http': 0, 'live_db_writes': 0,
+              'installation_requirements': [
+                  'existing isolated INT installation owner must approve exact destination and support versions',
+                  'retain private config, ledgers and old cache; do not relabel old evidence',
+                  'resolve queued native publisher/supplier operations before activation',
+                  'verify installed hashes and current collector entrypoint before live acceptance',
+                  'no root gateway, SEARCH, LOCAL, MATCH, cron or publisher permission change in this handoff',
+              ],
+          }
+          encoded = (json.dumps(receipt, sort_keys=True, indent=2) + '\n').encode()
+          (out / 'receipt.json').write_bytes(encoded)
+          (out / 'receipt.sha256').write_text(hashlib.sha256(encoded).hexdigest() + '  receipt.json\n')
+          assert json.loads((out / 'receipt.json').read_bytes()) == receipt
+          assert {p.relative_to(out / 'source').as_posix() for p in (out / 'source').rglob('*') if p.is_file()} == set(paths)
+          print(json.dumps({'status': 'handoff_prepared', 'source_sha': source, 'files': len(paths),
+                            'installed': False, 'supplier_http': 0, 'live_db_writes': 0}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: int-surcharge-handoff-${{ env.INT_SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/int-surcharge-handoff/
+          if-no-files-found: error
+          retention-days: 30
