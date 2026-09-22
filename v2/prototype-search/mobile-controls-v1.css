@@ -122,3 +122,15 @@
     scroll-snap-align:start;
   }
 }
+
+/* The shared comparison toggle also emits a text label for saved-list buttons.
+   Photo overlays remain icon-only; their explicit accessible name and pressed
+   state are unchanged. Do not suppress labels on full-width .compare-btn. */
+.compare-photo-button {
+  font-size:0;
+  line-height:0;
+}
+
+.compare-photo-button svg {
+  flex-shrink:0;
+}
