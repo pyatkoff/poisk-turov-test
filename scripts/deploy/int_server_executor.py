@@ -506,6 +506,7 @@ $allowed=['country_not_loaded','meal_not_supported','meal_dictionary_missing','m
 'stars_not_supported','stars_dictionary_missing','stars_not_loaded','operator_dictionary_missing',
 'operator_not_loaded','destination_dictionary_missing','destination_not_loaded','departure_not_loaded',
 'no_operators','operator_not_supported','filter_not_supported'];
+$name=null;$dictionaryId=null;
 try{
 $api=$argv[1];$configPath=$argv[2];$request=json_decode($argv[3],true,32,JSON_THROW_ON_ERROR);
 if(!is_file($api)||is_link($api)||!is_file($configPath)||is_link($configPath))throw new RuntimeException('preflight_runtime_missing');
@@ -515,16 +516,20 @@ $root=getenv('HOME').'/www/anytoour.ru';require_once $root.'/config.php';
 $dbPath=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';
 require_once $dbPath;$pdo=v2_data_db();$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 $saved=anytour_andromeda_search3_catalog($config,$request);$saved['excluded_operator_ids']=$config['excluded_operator_ids']??[];
-$name=null;
 try{$q=$pdo->prepare("SELECT operator_name FROM tour_operator_identity_observations WHERE operator_id=? AND operator_name IS NOT NULL AND operator_name<>'' ORDER BY last_seen_at DESC,id DESC LIMIT 1");$q->execute([(string)$request['params']['operatorIds'][0]]);$v=$q->fetchColumn();if(is_string($v)&&$v!=='')$name=$v;}catch(Throwable $ignored){}
+if($name!==null){
+    try{$dictionaryId=anytour_andromeda_search3_dictionary_id($saved['all']['payload']['OPERATORS']??[],anytour_andromeda_search3_operator_aliases($name),'operator_not_loaded');}
+    catch(Throwable $ignored){}
+}
 $params=anytour_andromeda_search3_params($request,$pdo,$saved);
 echo json_encode(['status'=>'resolved','operator_id'=>(string)$request['params']['operatorIds'][0],
-'operator_name'=>$name,'andromeda_operators'=>$params['OPERATORS']??null,
+'operator_name'=>$name,'dictionary_operator_id'=>$dictionaryId,'andromeda_operators'=>$params['OPERATORS']??null,
 'supplier_calls'=>0,'database_writes'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
 }catch(Throwable $e){$m=$e->getMessage();$code=in_array($m,$allowed,true)?$m:'preflight_unclassified';
 echo json_encode(['status'=>'failed','error_code'=>$code,'error_class'=>get_class($e),
+'operator_name'=>$name,'dictionary_operator_id'=>$dictionaryId,
 'error_sha256'=>hash('sha256',$m),'supplier_calls'=>0,'database_writes'=>0],
-JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}'''
+JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}'''
     run=subprocess.run(['php','-r',php,str(api),str(config),json.dumps(request,separators=(',',':'))],
                        cwd=project,capture_output=True,text=True,timeout=30)
     if run.returncode or run.stderr.strip(): fail('operator_preflight_process')
