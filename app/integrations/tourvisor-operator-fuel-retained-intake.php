@@ -9,6 +9,51 @@ require_once __DIR__ . '/operator-fuel-rule-evidence.php';
  */
 final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
 {
+    /**
+     * Compile an already-retained normalized Tourvisor search row together with a
+     * retained/default flights response. This avoids a redundant /tours/{id} HTTP
+     * request when the search response already carried the same operator/date/party/
+     * currency/fuel facts. Exact flight scope still comes only from /flights.
+     */
+    public static function observationFromSearchRow(array $retained): array
+    {
+        $row = self::map($retained['search_row'] ?? null, 'TV_FUEL_SEARCH_ROW');
+        $tourId = self::identifier($retained['tour_id'] ?? null, 'TV_FUEL_TOUR_ID');
+        if (self::identifier($row['tour_id'] ?? null, 'TV_FUEL_TOUR_ID') !== $tourId) {
+            throw new InvalidArgumentException('TV_FUEL_TOUR_ID');
+        }
+        $party = self::party($retained['party'] ?? null);
+        if (($row['adults'] ?? null) !== $party['adults'] || ($row['children'] ?? null) !== $party['children']) {
+            throw new InvalidArgumentException('TV_FUEL_PARTY');
+        }
+        $operator = self::label($row['operator_name'] ?? null, 'TV_FUEL_OPERATOR');
+        if (AnyTourOperatorFuelRuleEvidenceV1::operatorFamily($operator) === null) {
+            throw new InvalidArgumentException('TV_FUEL_OPERATOR');
+        }
+        $fuel = self::money($row['fuel_charge'] ?? null);
+        if ((float)$fuel <= 0.0) throw new InvalidArgumentException('TV_FUEL_AMOUNT');
+        $currency = self::currency($row['currency'] ?? null);
+        $date = self::date($row['date'] ?? null, 'TV_FUEL_DATE');
+        $searchDigest = self::digest($retained['search_response_sha256'] ?? null, 'TV_FUEL_SOURCE_DIGEST');
+
+        $copy = $retained;
+        unset($copy['search_row'], $copy['search_response_sha256']);
+        $copy['tour'] = [
+            'id' => $tourId,
+            'adults' => $party['adults'],
+            'childs' => $party['children'],
+            'currency' => $currency,
+            'date' => $date,
+            'fuelCharge' => $fuel,
+            'operator' => ['name' => $operator],
+        ];
+        // observation() needs one source digest paired with the flights digest. The
+        // digest is provenance only; here it intentionally identifies the search
+        // response instead of pretending that a /tours/{id} response was fetched.
+        $copy['tour_response_sha256'] = $searchDigest;
+        return self::observation($copy);
+    }
+
     public static function observation(array $retained): array
     {
         $tour = self::map($retained['tour'] ?? null, 'TV_FUEL_TOUR');
