@@ -199,6 +199,7 @@ class ContractTest(unittest.TestCase):
                   "andromeda-operator-scope","--operator-id=","operatorId",
                   "andromeda-operator-preflight","operator_preflight","operator_not_loaded",
                   "operator_dictionary_missing","andromeda_operators","operator_preflight_db_drift",
+                  "operator_name","dictionary_operator_id",
                   "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero",
                   "php=\"$c=require $argv[1];","allowed_keys={'status'","name_sha256","top_level_keys",
                   "local-readback","local_readback_exit","stderr_sha256",
