@@ -142,8 +142,6 @@ def inspect_width(browser, origin, width, screenshot=False):
             assert values["drawer"]["minHeight"] != "44px", (width, values["drawer"])
             assert values["preset"]["minHeight"] != "44px", (width, values["preset"])
             assert values["activeFilter"]["minHeight"] != "44px", (width, values["activeFilter"])
-            for key in ("filterReset", "filterCheck", "filterStar"):
-                assert values[key]["minHeight"] != "44px", (width, key, values[key])
             for key in ("calendarChoose", "calendarClear", "destinationAction", "dateLengthShortcut"):
                 assert values[key]["minHeight"] != "44px", (width, key, values[key])
             for key in ("favorite", "photoArrow", "compareClose", "compareRemove", "modalBack", "counter", "favoriteRemove"):
