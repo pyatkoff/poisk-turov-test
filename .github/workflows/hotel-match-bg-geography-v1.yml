@@ -1,0 +1,52 @@
+name: MATCH BG official geography and retained hotel evidence v1
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_bg_geography_v1.py
+      - .github/workflows/hotel-match-bg-geography-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: anytour-match-bg-dictionary-acquisition, cancel-in-progress: false}
+env:
+  SCRIPT: scripts/diagnostics/hotel_match_bg_geography_v1.py
+  HEAD: '${{ github.event.pull_request.head.sha }}'
+jobs:
+  geography:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-bg-geography-1971-20260922-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Verify exact source and retained evidence then reserve at most two geography requests
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD 740bc609d110ac37ad32233b4ad205244ab5e39e)" = 740bc609d110ac37ad32233b4ad205244ab5e39e
+          test "$(git diff --name-only 740bc609d110ac37ad32233b4ad205244ab5e39e..HEAD | sort | tr '\n' ' ')" = '.github/workflows/hotel-match-bg-geography-v1.yml scripts/diagnostics/hotel_match_bg_geography_v1.py '
+          echo "1c8e3c76b39229bc14d9b310e963f1b325e8df4c2dbe66b137ce8db0f3a51b8a  $SCRIPT" | sha256sum -c -
+          python3 -m py_compile "$SCRIPT"
+          python3 "$SCRIPT" test
+          python3 "$SCRIPT" prepare
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-bg-geography-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Read countries once after fresh Security and supplier capability verification
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: python3 "$SCRIPT" countries
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-bg-geography-countries-${{ github.run_id }}', path: 'terminal/countries*', retention-days: 90, if-no-files-found: warn}
+      - name: Read cities once after fresh Security and supplier capability verification
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: python3 "$SCRIPT" cities
+      - name: Match all retained hotels to official geography without DB writes
+        run: python3 "$SCRIPT" analyze
+      - name: Preserve receipt including partial or unknown access
+        if: always()
+        run: python3 "$SCRIPT" finish
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-bg-geography-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
