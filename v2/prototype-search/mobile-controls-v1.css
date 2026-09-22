@@ -22,7 +22,11 @@
   .calendar-heading .text-button,
   .calendar-foot .text-button,
   .destination-selection button,
-  .flex-dates button {
+  .flex-dates button,
+  .filter-panel .check-row,
+  .filter-panel .star-options button,
+  .filter-top .text-button,
+  .mobile-filter-footer .secondary {
     min-height:44px;
   }
 
