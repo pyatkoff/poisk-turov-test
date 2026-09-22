@@ -1,0 +1,24 @@
+name: INT Andromeda operator-scope collector
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/ops/andromeda_local_offer_collect.php'
+      - 'tests/andromeda_operator_scope_collector_test.py'
+      - '.github/workflows/andromeda-operator-scope-collector.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - run: |
+          set -euo pipefail
+          php -l scripts/ops/andromeda_local_offer_collect.php
+          python3 tests/andromeda_operator_scope_collector_test.py -v
