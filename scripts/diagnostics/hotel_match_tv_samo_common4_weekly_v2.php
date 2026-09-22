@@ -62,8 +62,10 @@ function hmc_private_evidence_record(string $source,array $meta,array $payload):
     return $sha;
 }
 function hmc_week_dates(): array {
-    $from=new DateTimeImmutable('!'.HMC_DATE_FROM,new DateTimeZone('UTC'));
-    $to=new DateTimeImmutable('!'.HMC_DATE_TO,new DateTimeZone('UTC'));
+    $tz=new DateTimeZone('UTC');
+    $from=DateTimeImmutable::createFromFormat('!Y-m-d',HMC_DATE_FROM,$tz);
+    $to=DateTimeImmutable::createFromFormat('!Y-m-d',HMC_DATE_TO,$tz);
+    if(!$from||!$to)throw new RuntimeException('date_window_parse');
     $out=[];
     for($d=$from;$d<=$to;$d=$d->modify('+1 day'))$out[]=$d->format('Y-m-d');
     if(count($out)!==7)throw new RuntimeException('date_window_not_week');
