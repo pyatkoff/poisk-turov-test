@@ -8,6 +8,7 @@ import hashlib
 import importlib.util
 import json
 import threading
+from datetime import datetime, timedelta, timezone
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -20,6 +21,11 @@ SPEC.loader.exec_module(FIXTURE)
 BASE, DATE, ROOT = FIXTURE.BASE, FIXTURE.DATE, FIXTURE.ROOT
 EVIDENCE = Path("local-db-price-evidence/inventory")
 EVIDENCE.mkdir(parents=True, exist_ok=True)
+FIXTURE_DAY = datetime.fromisoformat(DATE).date()
+CALENDAR_MONTH = (FIXTURE_DAY.replace(day=28) + timedelta(days=4)).replace(day=1)
+CALENDAR_FIRST = CALENDAR_MONTH.isoformat()
+CALENDAR_DAY = (CALENDAR_MONTH + timedelta(days=4)).isoformat()
+CALENDAR_SECOND = (CALENDAR_MONTH + timedelta(days=22)).isoformat()
 
 
 def profile(old):
@@ -34,9 +40,10 @@ def tour(old, price):
     return {"id": old, "provider": "tourvisor", "tours": [item]}
 
 
-def stored(old, provider, price):
+def stored(old, provider, price, checkin=DATE):
     return {"anytourHotelId": old + 400, "hotel": profile(old), "offers": [{
         "provider": provider, "legacyHotelId": str(old), "currency": "RUB", "price": price,
+        "expiresAt": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat().replace("+00:00", "Z"),
         "listing": {"schema_version": 1, "provider": provider, "currency": "RUB",
                     "selection_state": "refresh_required", "booking_enabled": False,
                     "listingPrice": price, "listingPriceState": "search_price_confirmation_required",
@@ -44,7 +51,7 @@ def stored(old, provider, price):
                     "quoteState": "unknown", "finalPriceVerified": False, "quoteEvidenceDigest": None,
                     "identity": {key: hashlib.sha256((key + provider).encode()).hexdigest()
                                  for key in ("offer_ref_digest", "search_ref_digest", "provider_hotel_ref_digest")},
-                    "tour": {"checkin": DATE, "nights": 7, "meal": {"raw": "AI"},
+                    "tour": {"checkin": checkin, "nights": 7, "meal": {"raw": "AI"},
                              "room": {"raw": "STANDARD"}, "placement": {"raw": "DBL"},
                              "party": {"adults": 2, "children": 0}},
                     "operator": {"raw": "ANEX" if provider == "anex" else "Библио-Глобус"}}
@@ -55,8 +62,8 @@ def check_width(browser, origin, width):
     context = browser.new_context(viewport={"width": width, "height": 900})
     page = context.new_page()
     page.set_default_timeout(15000)
-    calls, native_calls, forbidden, errors, held = [], [], [], [], []
-    state = {"native": False, "continued": False, "hold": False}
+    calls, native_calls, calendar_calls, forbidden, errors, held = [], [], [], [], [], []
+    state = {"native": False, "continued": False, "hold": False, "calendar_partial": False}
     page.on("pageerror", lambda error: errors.append(str(error)))
 
     def intercept(route):
@@ -79,7 +86,14 @@ def check_width(browser, origin, width):
                    "links": [{"legacyHotelId": i, "anytourHotelId": int(i) + 400} for i in ids]})
         elif url.path.endswith("/search3-local-results-read-v1.php"):
             params = request.post_data_json["params"]
-            rows = [stored(104, "anex", 250000), stored(105, "andromeda", 300000)] if state["native"] else []
+            if state["calendar_partial"]:
+                calendar_calls.append(params)
+                if params["dateFrom"] == CALENDAR_SECOND:
+                    reply({"ok": False, "error": "fictional later calendar window unavailable"}, 503)
+                    return
+                rows = [stored(120, "anex", 275000, CALENDAR_DAY)] if params["dateFrom"] == CALENDAR_FIRST else []
+            else:
+                rows = [stored(104, "anex", 250000), stored(105, "andromeda", 300000)] if state["native"] else []
             reply({"ok": True, "data": {"source": "anytour-db-first-results-v1", "scopeVersion": 1,
                    "scope": {"scopeVersion": 1, **params}, "scopeDigest": "c" * 64,
                    "selectionAuthority": False, "hotels": rows}})
@@ -204,12 +218,31 @@ def check_width(browser, origin, width):
         last_start = [c for c in calls if c["action"] == "search_start"][-1]
         assert last_start["params"].get("priceTo") == ["600000"]
         assert len(native_calls) == 2
+        state["calendar_partial"] = True
+        page.locator('[data-action="edit-search"]').click()
+        page.locator('[data-action="dates"]').click()
+        calendar_price = page.locator(f'[data-action="day-pick"][data-date="{CALENDAR_DAY}"] small')
+        calendar_price.wait_for()
+        page.wait_for_function(
+            "day => document.querySelector(`[data-action=day-pick][data-date='${day}'] small`)?.textContent.includes('275')",
+            arg=CALENDAR_DAY,
+        )
+        page.wait_for_function(
+            "() => document.querySelector('.calendar-legend span')?.textContent.includes('Не все цены загрузились')"
+        )
+        assert page.locator('.calendar-legend span').first.inner_text() == 'Не все цены загрузились. Даты можно выбрать без цены.'
+        assert any(item["dateFrom"] == CALENDAR_FIRST for item in calendar_calls), calendar_calls
+        assert any(item["dateFrom"] == CALENDAR_SECOND for item in calendar_calls), calendar_calls
+        assert not page.evaluate("document.documentElement.scrollWidth > innerWidth"), "Calendar partial state overflows"
+        page.screenshot(path=str(EVIDENCE / f"calendar-partial-{width}.png"))
         assert not page.evaluate("document.documentElement.scrollWidth > innerWidth"), "Document overflow"
         assert not forbidden, forbidden
         assert not errors, errors
         page.screenshot(path=str(EVIDENCE / f"restored-budget-{width}.png"))
         return {"width": width, "status": "passed", "providers": providers,
-                "calls": calls, "mocked_andromeda_requests": native_calls, "forbidden": forbidden, "browser_errors": errors}
+                "calls": calls, "mocked_andromeda_requests": native_calls,
+                "calendar_requests": calendar_calls, "calendar_partial_day": CALENDAR_DAY,
+                "forbidden": forbidden, "browser_errors": errors}
     except Exception:
         page.screenshot(path=str(EVIDENCE / f"failure-{width}.png"))
         print(json.dumps({"width": width, "calls": calls, "forbidden": forbidden,
