@@ -5,6 +5,7 @@ on:
     branches: ['feature/anex-search-adapter-20260907']
     paths:
       - 'v2/api-v2.php'
+      - 'docs/project/search3-production-import.json'
       - 'tests/tourvisor-api-autosave-wiring-int-test.php'
       - '.github/workflows/int-tourvisor-api-autosave-wiring.yml'
 
@@ -37,6 +38,7 @@ jobs:
           mapfile -t changed < <(git diff --name-only "$base...HEAD" | sort)
           expected=(
             .github/workflows/int-tourvisor-api-autosave-wiring.yml
+            docs/project/search3-production-import.json
             tests/tourvisor-api-autosave-wiring-int-test.php
             v2/api-v2.php
           )
@@ -45,6 +47,15 @@ jobs:
           php -l v2/api-v2.php
           php -l tests/tourvisor-api-autosave-wiring-int-test.php
           php -d allow_url_fopen=0 tests/tourvisor-api-autosave-wiring-int-test.php
+          test "$(python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          manifest=json.loads(Path('docs/project/search3-production-import.json').read_text())
+          actual=hashlib.sha256(Path('v2/api-v2.php').read_bytes()).hexdigest()
+          assert manifest['protectedSha256']['api-v2.php']==actual
+          print(actual)
+          PY
+          )" = "8f592a633d69f702ec91bb4b5e278503b49fcdacc3880847990ecf42bc2794b5"
           ! grep -Fq '86400' v2/api-v2.php
           ! grep -Fq 'finalPrice' v2/api-v2.php
           ! grep -Fq 'fuelCharge' v2/api-v2.php
