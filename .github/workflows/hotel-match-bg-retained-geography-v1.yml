@@ -1,0 +1,52 @@
+name: MATCH BG retained geography evidence offline
+'on':
+  pull_request:
+    types: [synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_bg_retained_geography_v1.py
+      - .github/workflows/hotel-match-bg-retained-geography-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+env:
+  SCRIPT: scripts/diagnostics/hotel_match_bg_retained_geography_v1.py
+  HEAD: '${{ github.event.pull_request.head.sha }}'
+jobs:
+  retained:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 3411 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-bg-geography-1971-20260922-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Check exact source and claim; download only completed evidence archive
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD 740bc609d110ac37ad32233b4ad205244ab5e39e)" = 740bc609d110ac37ad32233b4ad205244ab5e39e
+          echo "631e05f821057ea4e2834679a85835cfbdd9fb8be0852608d15e9cabed400919  $SCRIPT" | sha256sum -c -
+          test "$(git diff --name-only 740bc609d110ac37ad32233b4ad205244ab5e39e..HEAD | sort | tr '\n' ' ')" = '.github/workflows/hotel-match-bg-geography-v1.yml .github/workflows/hotel-match-bg-retained-geography-v1.yml scripts/diagnostics/hotel_match_bg_geography_v1.py scripts/diagnostics/hotel_match_bg_retained_geography_v1.py '
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5774628573 > claim.json
+          python3 -c 'import json; c=json.load(open("claim.json")); assert c["user"]["id"]==226193297 and c["author_association"]=="OWNER" and c["issue_url"].endswith("/issues/2530") and "offline-only synchronize" in c["body"] and "supplier URLs/SSH/DB" in c["body"]'
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10688006443/zip > input.zip
+          echo 'b43709917b9ad5c33718addc8243843b1e69f78a41a694445a5b37b3950d22f2  input.zip' | sha256sum -c -
+      - name: Test and reconcile all retained hotel evidence; no network in classifier
+        run: |
+          set -euo pipefail
+          python3 -m py_compile "$SCRIPT"
+          python3 "$SCRIPT" test
+          mkdir output
+          python3 "$SCRIPT" input.zip output/result.json
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          raw=Path('output/result.json').read_bytes(); result=json.loads(raw)
+          assert result['supplier_http_requests']==0 and result['mapping_writes']==0
+          assert all(row['safe_to_write_now'] is False for row in result['rows'])
+          receipt={'state':'completed_offline_geography_evidence','source_sha':os.environ['HEAD'],'input_artifact_id':10688006443,'result_sha256':hashlib.sha256(raw).hexdigest(),'counts':result['counts'],'supplier_http_requests':0,'database_writes':0,'mapping_writes':0,'prior_acquisition_replayed':False}
+          Path('output/receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-bg-retained-geography-${{ github.run_id }}', path: output/, retention-days: 90, if-no-files-found: warn}
