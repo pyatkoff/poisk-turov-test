@@ -55,6 +55,13 @@ class ParseTest(unittest.TestCase):
         samo=m.parse_command(f'/run-int-server-v1 {SHA} match-samo942 int-andromeda-match-samo942-20260923-v1 700 242')
         self.assertEqual('match-samo942',samo['mode']);self.assertEqual(700,samo['offset']);self.assertEqual(242,samo['limit'])
 
+    def test_match_readback_mode(self):
+        tv=m.parse_command(f'/run-int-server-v1 {SHA} match-readback int-anex-match-tv942-readback-20260923-v1 tv 0 350')
+        self.assertEqual('match-readback',tv['mode']);self.assertEqual('tv',tv['lane'])
+        self.assertEqual(0,tv['offset']);self.assertEqual(350,tv['limit'])
+        samo=m.parse_command(f'/run-int-server-v1 {SHA} match-readback int-andromeda-match-samo942-readback-20260923-v1 samo 700 242')
+        self.assertEqual('samo',samo['lane']);self.assertEqual(700,samo['offset']);self.assertEqual(242,samo['limit'])
+
     def test_local_readback(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} local-readback int-andromeda-local-readback-20260921-v1 1 4 2026-09-24 2026-09-25 7 2 - 0')
         self.assertEqual('local-readback',v['mode'])
@@ -84,6 +91,9 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} match-samo942 int-anex-match-samo942-20260923-v1 0 100',
           f'/run-int-server-v1 {SHA} match-tv942 int-anex-match-tv942-20260923-v1 900 43',
           f'/run-int-server-v1 {SHA} match-samo942 int-andromeda-match-samo942-20260923-v1 0 351',
+          f'/run-int-server-v1 {SHA} match-readback int-anex-match-tv942-readback-20260923-v1 nope 0 100',
+          f'/run-int-server-v1 {SHA} match-readback int-andromeda-match-tv942-readback-20260923-v1 tv 0 100',
+          f'/run-int-server-v1 {SHA} match-readback int-anex-match-tv942-readback-20260923-v1 tv 900 43',
         ]
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
@@ -212,7 +222,10 @@ class ContractTest(unittest.TestCase):
                   "hotel_match_live942_frontier_plan_v1.php",
                   "hotel_match_live942_tv_anex_refresh_v1.py",
                   "hotel_match_live942_samo_anex_refresh_v1.php",
-                  ".anytoour-match/operations","match_terminal_hash"]:
+                  ".anytoour-match/operations","match_terminal_hash",
+                  "match-readback","match942_child_name","read_match942",
+                  "provider_attempted_without_terminal","pre_provider_reservation_only",
+                  "match_readback_hash"]:
             self.assertIn(x,text)
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)
