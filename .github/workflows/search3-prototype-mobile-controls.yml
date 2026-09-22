@@ -7,6 +7,7 @@ on:
       - 'v2/prototype-search/mobile-controls-v1.css'
       - 'tests/search3-prototype-mobile-controls.cjs'
       - 'tests/search3-prototype-mobile-controls-browser.py'
+      - 'tests/search3-prototype-mobile-header-browser.py'
       - '.github/workflows/search3-prototype-mobile-controls.yml'
 permissions:
   contents: read
@@ -24,12 +25,15 @@ jobs:
           node --check tests/search3-prototype-mobile-controls.cjs
           node tests/search3-prototype-mobile-controls.cjs
           python -m py_compile tests/search3-prototype-mobile-controls-browser.py
+          python -m py_compile tests/search3-prototype-mobile-header-browser.py
       - name: Install pinned browser tools
         run: |
           python -m pip install playwright==1.57.0
           python -m playwright install --with-deps chromium
       - name: Browser acceptance at mobile boundary and desktop
-        run: python tests/search3-prototype-mobile-controls-browser.py
+        run: |
+          python tests/search3-prototype-mobile-controls-browser.py
+          python tests/search3-prototype-mobile-header-browser.py
       - name: Retain responsive evidence
         if: always()
         uses: actions/upload-artifact@v4
