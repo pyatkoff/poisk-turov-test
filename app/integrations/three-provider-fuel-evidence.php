@@ -88,7 +88,6 @@ final class AnyTourThreeProviderFuelEvidenceV1
                     return $hold('fuel_exchange_unavailable');
                 }
                 $converted = self::convert($native, $fx['rate'] ?? null);
-                $freshUntil = min($freshUntil, $fx['expires_at']);
                 $fxEvidence = array_intersect_key($fx, array_flip([
                     'from','to','rate','observed_at','expires_at','evidence_sha256'
                 ]));
@@ -113,7 +112,9 @@ final class AnyTourThreeProviderFuelEvidenceV1
             $out = $dto;
             $out['money']['fuel_charge_reported'] = ['amount'=>self::format($converted),
                 'currency'=>'RUB', 'source'=>'operator_fuel_rule'];
-            $out['money']['operator_fuel_rule'] = $rule + ['rule_sha256'=>self::hash($rule), 'exchange'=>$fxEvidence];
+            $out['money']['operator_fuel_rule'] = $rule + ['rule_sha256'=>self::hash($rule),
+                'price_evidence_expires_at'=>$fxEvidence === null ? $freshUntil : min($freshUntil, $fxEvidence['expires_at']),
+                'exchange'=>$fxEvidence];
             $out['money']['search_price_fuel_relation'] = $relation;
             $out['money']['search_price_with_surcharge'] = ['amount'=>$total,'currency'=>'RUB','source'=>'derived_search_estimate'];
             $out['money']['arithmetic_applied'] = $relation === 'excluded';

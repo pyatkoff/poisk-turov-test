@@ -56,6 +56,15 @@ fuel_check($r['dto']['money']['operator_fuel_rule']['amount']==='280.00','retain
 $reverse=$i;$reverse['observations']=array_reverse($i['observations']);
 fuel_check(AnyTourThreeProviderFuelEvidenceV1::apply($d,$reverse,$now)===$r,'evidence-order-idempotent');
 fuel_hold($r['dto'],$i,$now,'fuel_overlap_or_nonbase_state');
+// A fresh exchange rate changes RUB, not the native fuel rule.
+$nextFx=$i;$nextFx['exchange']['rate']='105';$nextFx['exchange']['expires_at']=$now+200;
+$nextFx['exchange']['evidence_sha256']=hash('sha256','next-fx');
+$fxResult=AnyTourThreeProviderFuelEvidenceV1::apply($d,$nextFx,$now);
+fuel_check($fxResult['applied'] && $fxResult['dto']['price']==='129400.00', 'fx-updates-rubles');
+fuel_check($fxResult['dto']['money']['operator_fuel_rule']['rule_sha256']
+    ===$r['dto']['money']['operator_fuel_rule']['rule_sha256'], 'fx-not-native-rule-version');
+fuel_check($fxResult['dto']['money']['operator_fuel_rule']['expires_at']===$now+3600
+    && $fxResult['dto']['money']['operator_fuel_rule']['price_evidence_expires_at']===$now+200, 'separate-freshness');
 $groups=[];$covered=0;
 foreach (['ANEX','Библио-Глобус','FUN&SUN','Интурист'] as $op) {
     foreach ([7,10,14] as $nights) {
@@ -153,7 +162,8 @@ $bad['retained']=AnyTourThreeProviderOfferContext::retain($bad['offer'],1,1,$now
 $bad['current']=array_intersect_key($bad['retained'],array_flip(['provider','operator','local_hotel_id','identity','generation','page']));
 $bad['operator_fuel']['offer_ref_digest']=$bad['offer']['identity']['offer_ref_digest'];$entries[]=$bad;
 $before=$entries;$ingests=0;$passedRows=[];
-$result=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',producer_params(),[
+$search=producer_params();$search['nightsTo']=14;
+$result=AnyTourIntOfferSnapshotProducerV1::produce('andromeda',$search,[
     'complete'=>true,'authoritative_empty'=>false,'offers'=>$entries],$at,
     static function(string $provider,array $params,array $rows,DateTimeImmutable $time)use(&$ingests,&$passedRows,$validate,$projection,&$rules):array{
         ++$ingests;$passedRows=$rows;
