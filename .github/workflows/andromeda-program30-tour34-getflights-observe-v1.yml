@@ -1,0 +1,158 @@
+name: INT targeted Intourist charter getFlights v1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/andromeda-program30-tour34-getflights-observe-v1.yml'
+      - 'scripts/diagnostics/andromeda_program30_tour34_getflights_observe_v1.php'
+      - 'tests/andromeda_program30_tour34_getflights_observe_v1_test.py'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: int-andromeda-program30-tour34-getflights-v1
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.number == 3419 &&
+       github.event.comment.body == '/observe-andromeda-program30-tour34-getflights-3419-v1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify one-shot targeted observer
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/andromeda_program30_tour34_getflights_observe_v1.php
+          python3 tests/andromeda_program30_tour34_getflights_observe_v1_test.py
+
+  observe:
+    needs: contract
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      github.event.issue.number == 3419 &&
+      !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/observe-andromeda-program30-tour34-getflights-3419-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Bind exact owner command
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=226193297;
+            const command='/observe-andromeda-program30-tour34-getflights-3419-v1';
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1' || context.actor!=='pyatkoff' ||
+               context.payload.sender?.id!==owner || process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') {
+              throw new Error('owner/attempt mismatch');
+            }
+            if(context.repo.owner!=='pyatkoff' || context.repo.repo!=='poisk-turov-test' ||
+               context.payload.issue?.number!==3419 || context.payload.issue?.pull_request ||
+               context.payload.comment?.body!==command) throw new Error('command scope mismatch');
+            const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:3419,per_page:100});
+            const commands=comments.filter(c=>c.body===command && c.user?.id===owner && c.author_association==='OWNER');
+            if(commands.length!==1 || commands[0].id!==context.payload.comment.id) throw new Error('duplicate/edited command');
+            const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+            if(main.object.sha!==context.sha) throw new Error('main advanced');
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+
+      - name: Run exact retained program30/tour34 getFlights observation
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          ANYTOOUR_DEPLOY_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          ANYTOOUR_DEPLOY_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          from anex_search3_owner_decisions import ssh_php
+
+          source=Path('scripts/diagnostics/andromeda_program30_tour34_getflights_observe_v1.php').read_text()
+          if source.startswith('<?php'):
+              source=source[len('<?php'):]
+          result=ssh_php(source,{},maximum_bytes=65536)
+          out=Path(os.environ['RUNNER_TEMP'])/'int-program30-tour34-getflights'
+          out.mkdir(mode=0o700)
+          (out/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+
+          if result.get('schema_version') != 1 or result.get('source') != 'andromeda-program30-tour34-getflights-observe-v1':
+              raise SystemExit('result contract')
+          calls=result.get('supplier_calls')
+          if not isinstance(calls,dict):
+              raise SystemExit('supplier call contract')
+          for key in ('changeservice','calc','booking'):
+              if calls.get(key) != 0:
+                  raise SystemExit('forbidden supplier action: '+key)
+          for key in ('database_reads','database_writes','mapping_writes'):
+              if result.get(key) != 0:
+                  raise SystemExit('forbidden data mutation: '+key)
+          target=result.get('target',{})
+          if target.get('program_key')!='30' or target.get('tour_key')!='34':
+              raise SystemExit('wrong program/tour')
+          unsafe={'supplier_offer_id','uid','groupId','sid','session','claimDocument'}
+          def walk(v):
+              if isinstance(v,dict):
+                  for k,x in v.items():
+                      if k in unsafe:
+                          raise SystemExit('unsafe output key: '+k)
+                      walk(x)
+              elif isinstance(v,list):
+                  for x in v: walk(x)
+          walk(result)
+
+          status=result.get('status')
+          if status=='complete':
+              if calls.get('package')!=1 or calls.get('get_flights')!=1:
+                  raise SystemExit('complete call count')
+              if target.get('retained_group_offer_count')!=12:
+                  raise SystemExit('retained group count')
+              if result.get('outcome')!='targeted_get_flights_observed_no_selection_applied':
+                  raise SystemExit('outcome')
+          elif status=='supplier_rejected':
+              facts=result.get('supplier_error_facts')
+              if not isinstance(facts,dict) or facts.get('source')!='andromeda_claim_error':
+                  raise SystemExit('supplier rejection facts')
+          else:
+              raise SystemExit('terminal observation failed: '+str(result.get('reason')))
+          print(json.dumps(result,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Preserve terminal sanitized observation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-program30-tour34-getflights-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/int-program30-tour34-getflights/result.json
+          if-no-files-found: error
+          retention-days: 14
