@@ -1,0 +1,115 @@
+name: INT read program fuel cohort v3
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/int-program-fuel-cohort-v3-readback.yml'
+      - 'scripts/diagnostics/int_program_fuel_cohort_v3_readback.php'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.number == 3419 &&
+       github.event.comment.body == '/read-int-program-fuel-cohort-v3-3419')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify exact read-only contract
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/int_program_fuel_cohort_v3_readback.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/diagnostics/int_program_fuel_cohort_v3_readback.php').read_text()
+          required=[
+            "PFV3_OPERATION='int-andromeda-intourist-program-fuel-20260923-v2'",
+            "PFV3_PROGRAM='30'","PFV3_TOUR='34'","PFV3_EXPECTED_READY=12",
+            "'database_reads'=>1","'database_writes'=>0","'filesystem_writes'=>0",
+            "'85.00'","'per_person_one_way'","'340.00'","'TK 3003'","'TK 3006'",
+            "'final_ready_estimate'","'finalPriceVerified'","'operator_program_fuel_rule'",
+            "START TRANSACTION READ ONLY","program_fuel_acceptance_failed",
+          ]
+          for x in required:
+              if x not in p: raise SystemExit('missing:'+x)
+          forbidden=[
+            'curl_','getFlights(','changeService(','->calc(','bron_ticket','action=bron',
+            'INSERT INTO','UPDATE anytour_','DELETE FROM','REPLACE INTO','CREATE TABLE',
+            'ALTER TABLE','DROP TABLE','FOR UPDATE',
+          ]
+          for x in forbidden:
+              if x in p: raise SystemExit('forbidden:'+x)
+          print('PROGRAM_FUEL_COHORT_V3_READONLY_OK')
+          PY
+
+  read:
+    needs: contract
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      github.event.issue.number == 3419 &&
+      !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/read-int-program-fuel-cohort-v3-3419'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, persist-credentials: false}
+      - name: Read exact retained and LOCAL cohort
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/int-program-fuel-v3"
+          install -d -m 700 "$d"
+          printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > "$d/key"; chmod 600 "$d/key"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          ssh -T -i "$d/key" -o IdentitiesOnly=yes -o BatchMode=yes -o ControlMaster=no \
+            -o StrictHostKeyChecking=accept-new -o "UserKnownHostsFile=$d/known_hosts" \
+            -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o LogLevel=ERROR \
+            -l "$ANYTOOUR_DEPLOY_USER" "$ANYTOOUR_DEPLOY_HOST" \
+            'php -d display_errors=0 -d log_errors=0' \
+            < scripts/diagnostics/int_program_fuel_cohort_v3_readback.php > "$d/result.json"
+          test -s "$d/result.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'int-program-fuel-v3/result.json'
+          d=json.loads(p.read_text())
+          if d.get('schema_version')!=1 or d.get('source')!='int-program-fuel-cohort-v3-readback':
+              raise SystemExit('contract')
+          if d.get('supplier_calls')!=0 or d.get('database_reads')!=1 or d.get('database_writes')!=0 or d.get('filesystem_writes')!=0:
+              raise SystemExit('authority')
+          t=d.get('target',{})
+          if t.get('ready_count')!=12 or t.get('ready_valid_rule_count')!=12 or t.get('ready_non_target_count')!=0:
+              raise SystemExit('target')
+          s=d.get('stored',{})
+          if s.get('ready_count')!=12 or s.get('verified_count')!=0 or s.get('payload_hash_invalid_count')!=0:
+              raise SystemExit('stored')
+          print(json.dumps(d,ensure_ascii=False,sort_keys=True))
+          PY
+          rm -f "$d/key"
+      - name: Preserve sanitized result
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-program-fuel-cohort-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/int-program-fuel-v3/result.json
+          if-no-files-found: error
+          retention-days: 14
