@@ -323,7 +323,7 @@ test('continuation stops after a completed read adds no Tourvisor inventory',asy
  await h.data.continueSearch();await flush();
  const final=h.events.filter(e=>e.type==='complete').at(-1);
  assert.equal(final.continued,true);assert.equal(final.canContinue,false);
- assert.deepEqual(final.continuationGrowth,{before:{hotels:1,offers:1},after:{hotels:1,offers:1},grew:false});
+ assert.deepEqual(JSON.parse(JSON.stringify(final.continuationGrowth)),{before:{hotels:1,offers:1},after:{hotels:1,offers:1},grew:false});
  assert.equal(await h.data.continueSearch(),false);
  assert.equal(h.calls.filter(c=>c.action==='search_continue').length,1);
 });
@@ -337,8 +337,8 @@ test('continuation remains available only while Tourvisor inventory grows',async
  await h.data.continueSearch();await flush();
  let final=h.events.filter(e=>e.type==='complete').at(-1);
  assert.equal(final.canContinue,true);assert.equal(final.continuationGrowth.grew,true);
- assert.deepEqual(final.continuationGrowth.before,{hotels:1,offers:1});
- assert.deepEqual(final.continuationGrowth.after,{hotels:2,offers:2});
+ assert.deepEqual(JSON.parse(JSON.stringify(final.continuationGrowth.before)),{hotels:1,offers:1});
+ assert.deepEqual(JSON.parse(JSON.stringify(final.continuationGrowth.after)),{hotels:2,offers:2});
  await h.data.continueSearch();await flush();
  final=h.events.filter(e=>e.type==='complete').at(-1);
  assert.equal(final.canContinue,false);assert.equal(final.continuationGrowth.grew,false);
