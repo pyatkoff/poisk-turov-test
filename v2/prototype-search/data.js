@@ -208,7 +208,7 @@
       ||tour.selection_enabled!==false||tour.final_price_verified!==false||seen.has(offerRef))throw new Error('Invalid ANEX offer');
     seen.add(offerRef);
     const total=Number(tour.price.amount),mealName=meal(tour.meal)||'Питание уточняется';
-    if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo))throw new Error('ANEX price outside requested scope');
+    if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo))return null;
     const selectedMeals=(run.filters.meals||[]).map(meal).filter(Boolean);
     if(selectedMeals.length&&!selectedMeals.includes(mealName))return null;
     const flight=String(tour.flight_type||'').toLowerCase(),offerIdentityDigest=await digestRef(offerRef);
@@ -240,9 +240,10 @@
     owner.clearOffers('direct-anex');
     for(const entry of prepared)owner.upsertLegacyOffer(entry.legacyHotelId,entry.tour,{source:'direct-anex'});
     owner.refresh();
-    const visibleHotels=new Set(prepared.map(entry=>entry.legacyHotelId)).size,partialRange=data.date_range.to!==p.dateTo;
-    run.sourceCounts.anex={status:partialRange?'partial':'complete',hotels:visibleHotels,offers:prepared.length,
-      receivedHotels:data.hotels.length,receivedOffers,dateFrom:data.date_range.from,dateTo:data.date_range.to};
+    const visibleHotels=new Set(prepared.map(entry=>entry.legacyHotelId)).size,visibleOffers=prepared.length,partialRange=data.date_range.to!==p.dateTo;
+    run.sourceCounts.anex={status:partialRange?'partial':'complete',hotels:visibleHotels,offers:visibleOffers,
+      receivedHotels:data.hotels.length,receivedOffers,mappedHotels:data.hotels.length,mappedOffers:receivedOffers,
+      visibleHotels,visibleOffers,scopeFilteredOffers:Math.max(0,receivedOffers-visibleOffers),dateFrom:data.date_range.from,dateTo:data.date_range.to};
     return run.sourceCounts.anex;
   }
   async function enrichAnex(run,p){
