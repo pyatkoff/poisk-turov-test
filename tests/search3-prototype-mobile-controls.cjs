@@ -58,6 +58,15 @@ assert.match(normalized,
   /\.filter-top \.mobile-close, \.favorite-button, \.card-photo-arrow, \.compare-tray \.icon-button, \.modal-header \.icon-button, #modal-back, \.counter button, \.favorite-item \.icon-button, \.compare-hotel-card \.compare-remove \{ width:44px; min-width:44px; height:44px; min-height:44px; \}/,
   'Mobile icon, counter and compare-remove actions need 44 by 44 tap targets');
 assert.match(normalized,
+  /\.compare-tray \{ bottom:calc\(80px \+ env\(safe-area-inset-bottom\)\); \}/,
+  'Mobile compare tray must stay above the bottom navigation safe area');
+assert.match(normalized,
+  /\.toast \{ bottom:calc\(84px \+ env\(safe-area-inset-bottom\)\); \}/,
+  'Mobile toast must stay above the bottom navigation safe area');
+assert.match(normalized,
+  /body:has\(\.compare-tray:not\(\[hidden\]\)\) \.toast \{ bottom:calc\(155px \+ env\(safe-area-inset-bottom\)\); \}/,
+  'Mobile toast must stay above both the compare tray and the safe area');
+assert.match(normalized,
   /\.hotel-image-wrap \{ aspect-ratio:3 \/ 2; \}/,
   'Mobile hotel cards need a calmer 3:2 photo stage');
 assert.match(normalized,
@@ -73,6 +82,9 @@ console.log(JSON.stringify({
   actualSearchDom: true,
   searchLabelFontSizePx: 14,
   minTapHeightPx: 44,
+  safeAreaAwareOverlays: [
+    'compare-tray', 'toast', 'toast-with-compare-tray'
+  ],
   searchReadability: [
     'hotel-category-legend', 'meal-label', 'budget-label', 'all-filters-action'
   ],

@@ -71,6 +71,18 @@
     min-height:44px;
   }
 
+  .compare-tray {
+    bottom:calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .toast {
+    bottom:calc(84px + env(safe-area-inset-bottom));
+  }
+
+  body:has(.compare-tray:not([hidden])) .toast {
+    bottom:calc(155px + env(safe-area-inset-bottom));
+  }
+
   .hotel-image-wrap {
     aspect-ratio:3 / 2;
   }
