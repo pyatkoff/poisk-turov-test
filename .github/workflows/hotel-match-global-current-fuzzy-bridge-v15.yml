@@ -1,0 +1,119 @@
+name: MATCH global CURRENT fuzzy bridge v15
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-global-current-fuzzy-bridge-v15.yml]
+permissions: {contents: read, actions: read, issues: read}
+env:
+  OP: hotel-match-global-current-supplier-fuzzy-bridge-1971-20260922-v15
+  CLAIM: '5783463269'
+  FUZZY_BLOB: 4d9754b53cab0431ebeab5e53b127f1f19227dd2
+  BRIDGE_BLOB: ca393057939aa427b92d43a42cdcd83cfad8df48
+  FULL_BLOB: f551c9dd4c9365799a8728f29a9881dd3e3256d7
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6e75b540449e92b4886f43607fa02
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim, exact source blobs and one-file carrier
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+          BASE_SHA: '${{ github.event.pull_request.base.sha }}'
+        run: |
+          set -euo pipefail; umask 077; mkdir -p out payload
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD")" = ".github/workflows/hotel-match-global-current-fuzzy-bridge-v15.yml"
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php)" = "$FUZZY_BLOB"
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_current_supplier_bridge.php)" = "$BRIDGE_BLOB"
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_full_catalog_reconcile.php)" = "$FULL_BLOB"
+          php -l scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php
+          php -l scripts/diagnostics/hotel_match_current_supplier_bridge.php
+          php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >out/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('out/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for s in [os.environ['OP'],'hmsbf_review()','DB READ ONLY','HTTP0','DB/mapping writes0',
+                    'score>=82','common tokens>=2','symmetric>=0.75','margin>=12','duplicate provider→same local collisions HOLD']:
+              assert s in b,s
+          PY
+          cp scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php payload/
+          cp scripts/diagnostics/hotel_match_current_supplier_bridge.php payload/
+          cp scripts/diagnostics/hotel_full_catalog_reconcile.php payload/
+          cat >payload/run.php <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $root=(string)getenv('ANYTOUR_ROOT');
+          require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+          require_once __DIR__.'/hotel_match_current_supplier_fuzzy_bridge.php';
+          try{
+              $r=hmsbf_review(v2_data_db(),(string)getenv('OP'));
+              echo json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),PHP_EOL;
+              exit(($r['status']??'')==='completed'?0:2);
+          }catch(Throwable $e){
+              $out=['schema'=>'hotel-match-current-supplier-fuzzy-bridge/1','status'=>'failed_read_only',
+                    'operation_id'=>(string)getenv('OP'),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,
+                    'error_class'=>get_class($e),'error_code'=>(string)$e->getCode(),
+                    'error_message'=>mb_substr(preg_replace('/[\r\n\t]+/',' ',$e->getMessage())??'',0,180,'UTF-8')];
+              echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),PHP_EOL;exit(2);
+          }
+          PHP
+          php -l payload/run.php
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f:
+                  xs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD_SHA']]
+              if xs and max(xs,key=lambda x:x['id'])['status']=='completed':
+                  assert max(xs,key=lambda x:x['id'])['conclusion']=='success'
+                  break
+              time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Execute CURRENT fuzzy bridge read-only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; remoteDir="/tmp/match-global-fuzzy-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu; rm -rf '$remoteDir'; mkdir -m700 '$remoteDir'"
+          scp "${opts[@]}" payload/*.php "$remote:$remoteDir/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu; trap 'rm -rf "$remoteDir"' EXIT; OP='$OP' ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php '$remoteDir/run.php'" >out/result.json 2>out/remote.stderr
+          status=$?
+          set -e
+          python3 - <<'PY'
+          import json
+          x=json.load(open('out/result.json'))
+          assert x['database_writes']==0 and x['mapping_writes']==0 and x['supplier_calls']==0 and x['tourvisor_calls']==0
+          summary={'status':x['status'],'operation_id':x['operation_id']}
+          if x['status']=='completed':
+              summary.update({'stats':x['stats'],'status_counts':x['status_counts'],'provider_status_counts':x['provider_status_counts'],'row_count':len(x['rows'])})
+          else:
+              summary.update({'error_class':x.get('error_class'),'error_message':x.get('error_message')})
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-global-current-fuzzy-v15-${{ github.run_id }}', path: out/, retention-days: 90, if-no-files-found: error}
