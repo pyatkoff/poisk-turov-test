@@ -1,0 +1,80 @@
+name: INT read FUN&SUN program groups
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/diagnostics/int_funsun_retained_program_groups_v1.php'
+      - '.github/workflows/int-funsun-retained-program-groups-v1.yml'
+  issue_comment:
+    types: [created]
+
+permissions: {contents: read}
+
+jobs:
+  contract:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.number == 3419 &&
+       github.event.comment.body == '/read-int-funsun-program-groups-3419-v1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/int_funsun_retained_program_groups_v1.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/diagnostics/int_funsun_retained_program_groups_v1.php').read_text()
+          for x in ["'supplier_calls'=>0","'database_reads'=>0","'database_writes'=>0","'filesystem_writes'=>0",'transport_context','program_ref','tour_ref']:
+              if x not in p: raise SystemExit('missing:'+x)
+          for x in ['curl_','PDO','mysqli','getFlights(','changeService(','->calc(','file_put_contents']:
+              if x in p: raise SystemExit('forbidden:'+x)
+          PY
+
+  read:
+    needs: contract
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 3419 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/read-int-funsun-program-groups-3419-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, persist-credentials: false}
+      - name: Read retained FUN&SUN program groups
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/int-funsun-programs"; install -d -m 700 "$d"
+          printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > "$d/key"; chmod 600 "$d/key"; ssh-keygen -y -f "$d/key" >/dev/null
+          ssh -T -i "$d/key" -o IdentitiesOnly=yes -o BatchMode=yes -o ControlMaster=no \
+            -o StrictHostKeyChecking=accept-new -o "UserKnownHostsFile=$d/known_hosts" \
+            -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o LogLevel=ERROR \
+            -l "$ANYTOOUR_DEPLOY_USER" "$ANYTOOUR_DEPLOY_HOST" 'php -d display_errors=0 -d log_errors=0' \
+            < scripts/diagnostics/int_funsun_retained_program_groups_v1.php > "$d/result.json"
+          test -s "$d/result.json"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads((Path(os.environ['RUNNER_TEMP'])/'int-funsun-programs/result.json').read_text())
+          if d.get('schema_version')!=1 or d.get('source')!='int-funsun-retained-program-groups-v1':raise SystemExit('contract')
+          for k in ('supplier_calls','database_reads','database_writes','filesystem_writes'):
+              if d.get(k)!=0:raise SystemExit('side_effect:'+k)
+          print(json.dumps(d,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: int-funsun-program-groups-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/int-funsun-programs/result.json
+          if-no-files-found: error
+          retention-days: 14
