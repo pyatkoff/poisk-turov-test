@@ -28,7 +28,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             || !is_array($request['params'] ?? null)
             || $maxCaptures < 0 || $maxCaptures > 300
             || $maxCaptureSeconds < 0 || $maxCaptureSeconds > 240
-            || !in_array($captureMode, ['all','non_external_only'], true)) {
+            || !in_array($captureMode, ['all','non_external_only','single_reusable_group'], true)
+            || ($captureMode === 'single_reusable_group' && $maxCaptures > 1)) {
             throw new InvalidArgumentException('ANDROMEDA_LOCAL_COLLECTOR_INPUT');
         }
 
@@ -137,6 +138,16 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             $reusableGroupOfferCounts[$group] = ($reusableGroupOfferCounts[$group] ?? 0) + 1;
         }
 
+        // An explicitly authorized probe selects one compatible external group,
+        // preferably the largest one, before any cache or supplier I/O. A cache hit
+        // must not spend the spare capture on another group. All rows still autosave.
+        $probeGroup = null;
+        if ($captureMode === 'single_reusable_group' && $reusableGroupOfferCounts !== []) {
+            $ranked = $reusableGroupOfferCounts;
+            arsort($ranked, SORT_NUMERIC);
+            $probeGroup = array_key_first($ranked);
+        }
+
         // get_flights is only meaningful when the supplier reports external freight.
         // The search row is not authority to skip any mapped candidate, but it is useful
         // for spending the deliberately small capture budget: true first, then unknown,
@@ -148,11 +159,14 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         $captureQueue = [];
         $reusableGroups = [];
         $sameGroupSkips = 0;
-        $priorities = $captureMode === 'non_external_only' ? [false] : [true, null, false];
+        $priorities = $captureMode === 'non_external_only' ? [false]
+            : ($captureMode === 'single_reusable_group' ? [true] : [true, null, false]);
         foreach ($priorities as $priority) {
             $groups = [];
             foreach ($eligible as $key => $candidate) {
                 if ($candidate['freight_external'] !== $priority) continue;
+                if ($captureMode === 'single_reusable_group'
+                    && ($probeGroup === null || $candidate['reusable_surcharge_group'] !== $probeGroup)) continue;
                 $group = $candidate['transport_group'];
                 if (isset($groups[$group])) continue;
                 $groups[$group] = true;
@@ -161,6 +175,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             }
             foreach ($eligible as $key => $candidate) {
                 if ($candidate['freight_external'] !== $priority || isset($captureQueue[$key])) continue;
+                if ($captureMode === 'single_reusable_group'
+                    && ($probeGroup === null || $candidate['reusable_surcharge_group'] !== $probeGroup)) continue;
                 // A proven compatible surcharge group gets one representative attempt,
                 // not one attempt per hotel/room/SPO. Failure is not permission to retry
                 // another sibling. Unknown/non-external legacy groups are only ordering
@@ -171,6 +187,10 @@ final class AnyTourAndromedaLocalOfferCollectorV1
                 }
                 $captureQueue[$key] = $candidate['selection'];
             }
+        }
+
+        if ($captureMode === 'single_reusable_group') {
+            $reusableGroupOfferCounts = array_intersect_key($reusableGroupOfferCounts, $reusableGroups);
         }
 
         $attempted = 0;
