@@ -31,6 +31,15 @@ CALENDAR_SECOND = (CALENDAR_MONTH + timedelta(days=22)).isoformat()
 def profile(old):
     item = copy.deepcopy(FIXTURE.PROFILE)
     item.update(id=old + 400, name=f"Вымышленный отель {old}")
+    item['description'] = 'Техническое описание: здание и количество номеров.'
+    item['place'] = 'Рядом с набережной.'
+    tags = []
+    if old in (101, 102):
+        tags.append({'id': 5, 'name': 'Услуги и территория', 'items': [{'id': 23, 'name': 'Бассейн'}]})
+    if old == 102:
+        tags.append({'id': 3, 'name': 'Пляж и расположение', 'items': [{'id': 15, 'name': 'Первая линия'}]})
+    item['hotelInformation'] = {'services': {'tags': tags, 'child': '<p>Мини-клуб</p>'},
+                                'infrastructure': {'beach': '<p>Песчаный пляж</p>'}}
     return item
 
 
@@ -63,7 +72,8 @@ def check_width(browser, origin, width):
     page = context.new_page()
     page.set_default_timeout(15000)
     calls, native_calls, calendar_calls, forbidden, errors, held = [], [], [], [], [], []
-    state = {"native": False, "continued": False, "hold": False, "calendar_partial": False}
+    state = {"native": False, "continued": False, "hold": False, "calendar_partial": False,
+             "native_failure": False, "database_failure": False}
     page.on("pageerror", lambda error: errors.append(str(error)))
 
     def intercept(route):
@@ -86,6 +96,9 @@ def check_width(browser, origin, width):
                    "links": [{"legacyHotelId": i, "anytourHotelId": int(i) + 400} for i in ids]})
         elif url.path.endswith("/search3-local-results-read-v1.php"):
             params = request.post_data_json["params"]
+            if state['database_failure']:
+                reply({'ok': False}, 503)
+                return
             if state["calendar_partial"]:
                 calendar_calls.append(params)
                 if params["dateFrom"] == CALENDAR_SECOND:
@@ -102,6 +115,9 @@ def check_width(browser, origin, width):
             native_calls.append(body)
             assert body["generation"] >= 1
             assert body["params"]["countryId"] == "4"
+            if state['native_failure']:
+                reply({'ok': False}, 503)
+                return
             state["native"] = True
             reply({"ok": True, "data": {"provider": "andromeda", "generation": body["generation"], "hotels": []}})
         elif url.path == "/api-v2.php" and request.method == "GET":
@@ -168,6 +184,31 @@ def check_width(browser, origin, width):
         page.locator('.search-submit').click()
         count(5)
         page.locator('[data-action="continue-search"]').wait_for()
+        assert page.locator('#search-status').is_hidden(), 'No false completion banner above results'
+        assert page.locator('#search-more [data-action="continue-search"]').count() == 1
+        assert page.locator('#search-more').evaluate("e => !!(document.querySelector('#cards').compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING)")
+        assert page.locator('#search-more').bounding_box()['y'] >= page.locator('#cards').bounding_box()['y'] + page.locator('#cards').bounding_box()['height']
+        assert page.get_by_text('Быстро сравнить 3 тура', exact=True).count() == 0
+        assert page.locator('#hotel-501 .hotel-facts').inner_text() == 'Бассейн'
+        assert 'количество номеров' not in page.locator('#hotel-501 .hotel-facts').inner_text()
+        open_filters()
+        page.locator('[data-filter="amenities"][value="5:23"]').check()
+        apply_filters()
+        count(2)
+        assert '5:23' in parse_qs(urlparse(page.url).query)['amenities'][0]
+        assert '185' in page.locator('#price-strip').inner_text()
+        open_filters()
+        page.locator('[data-filter="amenities"][value="3:15"]').check()
+        apply_filters()
+        count(1)
+        assert page.locator('.hotel-card').get_attribute('id') == 'hotel-502'
+        assert '508' in page.locator('#price-strip').inner_text()
+        page.screenshot(path=str(EVIDENCE / f"amenity-filters-{width}.png"))
+        page.locator('#active-filters [data-key="amenities"][data-value="3:15"]').click()
+        page.locator('#active-filters [data-key="amenities"][data-value="5:23"]').click()
+        count(5)
+        assert len([c for c in calls if c['action'] == 'search_start']) == 1
+        assert len(native_calls) == 1
         assert any("103" in name for name in page.locator('.hotel-card').all_inner_texts()), "Premium tour hidden without budget"
         first_start = next(c for c in calls if c["action"] == "search_start")
         assert first_start["params"].get("priceTo", [""]) == [""]
@@ -188,7 +229,7 @@ def check_width(browser, origin, width):
         field.fill('200000')
         field.evaluate("e => { window.fixtureBudgetInput = e; }")
         held.pop().fulfill(content_type="application/json", body='{"requestCount":1}')
-        page.wait_for_function("document.querySelector('#search-status [data-action=continue-search]') !== null")
+        page.wait_for_function("document.querySelector('#search-more [data-action=continue-search]') !== null")
         page.wait_for_timeout(150)
         assert field.input_value() == '200000', "An asynchronous result discarded unfinished budget"
         assert field.evaluate("e => e === window.fixtureBudgetInput && document.activeElement === e"), "Focused editor was replaced"
@@ -239,6 +280,17 @@ def check_width(browser, origin, width):
         assert not forbidden, forbidden
         assert not errors, errors
         page.screenshot(path=str(EVIDENCE / f"restored-budget-{width}.png"))
+        page.locator('[data-action="close-modal"]').click()
+        state['calendar_partial'] = False
+        state['native_failure'] = True
+        state['database_failure'] = True
+        page.locator('.search-submit').click()
+        page.wait_for_function("document.querySelector('#search-status').textContent.includes('Получены не все предложения')")
+        assert page.locator('#search-status').is_visible()
+        assert page.locator('#search-more [data-action="continue-search"]').is_visible()
+        assert page.locator('.hotel-card').count() > 0
+        assert 'Поиск завершён' not in page.locator('#search-status').inner_text()
+        page.screenshot(path=str(EVIDENCE / f"partial-source-error-{width}.png"))
         return {"width": width, "status": "passed", "providers": providers,
                 "calls": calls, "mocked_andromeda_requests": native_calls,
                 "calendar_requests": calendar_calls, "calendar_partial_day": CALENDAR_DAY,

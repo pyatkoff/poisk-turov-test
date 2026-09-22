@@ -46,11 +46,26 @@
     if (!sameScope(p,data.scope) || !root.AnyTourLocalDbProviderV1.parse(data)) throw new Error('Ответ базы не соответствует параметрам поездки.');
     return data;
   }
+  function amenities(h) {
+    const groups=h.hotelInformation?.services?.tags||h.services?.tags,items=new Map();
+    if(!Array.isArray(groups))return [];
+    for(const group of groups){
+      // Saved structured hotel facts only. Promotional/availability badges
+      // (group 7) are not amenities and cannot promise a bookable tour.
+      if(!group||![1,2,3,5,8].includes(group.id)||!text(group.name).trim()||!Array.isArray(group.items))continue;
+      for(const item of group.items){
+        if(!item||!Number.isSafeInteger(item.id)||item.id<1||!text(item.name).trim())continue;
+        const key=group.id+':'+item.id;
+        items.set(key,{key,label:text(item.name).trim(),group:text(group.name).trim(),groupId:group.id});
+      }
+    }
+    return [...items.values()];
+  }
   function hotel(h, s) {
     const own=Number(h.anytourHotelId || h.id), photos=[h.primaryImage,...(Array.isArray(h.images)?h.images:[])].map(image).filter(Boolean);
     const rating=Number(h.rating && typeof h.rating === 'object' ? h.rating.value : h.rating);
     const ratingScale=Number(h.rating && typeof h.rating === 'object' ? h.rating.scale : 5);
-    return {id:own,legacyIds:(h.canonicalLegacyIds || []).map(String),name:text(h.name),country:String(s.country),resort:text(h.region)||text(h.subRegion),stars:Number(h.category)||0,rating:rating>0&&rating<=ratingScale?rating*5/ratingScale:null,beach:null,family:null,spa:null,pool:null,photos:[...new Set(photos)].slice(0,12),note:text(h.description),tag:'',raw:h,offers:[]};
+    return {id:own,legacyIds:(h.canonicalLegacyIds || []).map(String),name:text(h.name),country:String(s.country),resort:text(h.region)||text(h.subRegion),stars:Number(h.category)||0,rating:rating>0&&rating<=ratingScale?rating*5/ratingScale:null,beach:null,family:null,spa:null,pool:null,amenities:amenities(h),photos:[...new Set(photos)].slice(0,12),note:text(h.description),tag:'',raw:h,offers:[]};
   }
   function offer(t, h, s, index) {
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
