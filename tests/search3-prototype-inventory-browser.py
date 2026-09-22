@@ -104,7 +104,7 @@ def direct_andromeda(body):
         "hotels": [{"local_id": 105, "mapping_status": "resolved", "tours": [{
             "provider": "andromeda", "price": {"amount": "300000", "currency": "RUB"},
             "checkin": body["params"]["dateFrom"], "nights": 7, "adults": 2, "children": 0,
-            "meal": "AI", "room": "STANDARD", "placement": "DBL", "operator": {"name": "Библио-Глобус"},
+            "meal": "AI", "room": "STANDARD", "placement": "DBL", "operator": {"name": "Biblio Globus"},
             "offer_ref": ANDROMEDA_OFFER_REF,
             "offer_context": {"provider": "andromeda", "search_ref": ANDROMEDA_SEARCH_REF,
                               "generation": body["generation"], "page": 1, "offer_ref": ANDROMEDA_OFFER_REF},
@@ -283,6 +283,9 @@ def check_width(browser, origin, width):
         assert page.locator('#hotel-501 .hotel-facts').inner_text() == 'Бассейн'
         assert 'количество номеров' not in page.locator('#hotel-501 .hotel-facts').inner_text()
         open_filters()
+        operator_values = page.locator('input[data-filter="operators"]').evaluate_all("els => els.map(e => e.value).sort()")
+        assert operator_values == ["ANEX", "Библио-Глобус"], operator_values
+        assert "Biblio Globus" not in page.locator('.filter-panel').inner_text()
         page.locator('[data-filter="amenities"][value="5:23"]').check()
         apply_filters()
         count(2)
