@@ -19,7 +19,7 @@ function afi_flight(string $uid,string $group,string $direction,string $from,str
             'marketing_airline'=>'ZF',
             'departureAirportCode'=>$from,
             'arrivalAirportCode'=>$to,
-        ]]]]],
+        ]]]],
     ];
 }
 function afi_claim(bool $explicit=true):array{
