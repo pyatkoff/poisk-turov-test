@@ -143,10 +143,18 @@ final class AnyTourAndromedaOfferAutosaveV1
                 if (!is_string($offerRef) || !preg_match('/\Aoffer_[a-f0-9]{64}\z/D', $offerRef)) {
                     return self::receipt(false, 'cohort_invalid', 0, 0, 0);
                 }
+                $offerDigest = hash('sha256', json_encode(
+                    $offer,
+                    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+                ));
                 if (isset($seen[$offerRef])) {
-                    return self::receipt(false, 'duplicate_offer_identity', 0, count($offers), 0);
+                    // PRICE pagination may repeat the exact boundary row. Reuse that
+                    // observation once; the same identity with changed money/context
+                    // is contradictory and still blocks authoritative publication.
+                    if (hash_equals($seen[$offerRef], $offerDigest)) continue;
+                    return self::receipt(false, 'conflicting_offer_identity', 0, count($offers), 0);
                 }
-                $seen[$offerRef] = true;
+                $seen[$offerRef] = $offerDigest;
                 $offers[] = ['page' => $page, 'state' => $states[$page], 'offer' => $offer];
                 if (count($offers) > self::MAX_OFFERS) {
                     return self::receipt(false, 'too_many_offers', 0, count($offers), 0);
