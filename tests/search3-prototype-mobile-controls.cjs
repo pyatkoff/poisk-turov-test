@@ -36,6 +36,12 @@ assert.match(normalized,
 assert.match(normalized,
   /\.filter-top \.mobile-close, \.favorite-button, \.card-photo-arrow, \.compare-tray \.icon-button, \.modal-header \.icon-button, #modal-back, \.counter button, \.favorite-item \.icon-button, \.compare-hotel-card \.compare-remove \{ width:44px; min-width:44px; height:44px; min-height:44px; \}/,
   'Mobile icon, counter and compare-remove actions need 44 by 44 tap targets');
+assert.match(normalized,
+  /\.hotel-image-wrap \{ aspect-ratio:3 \/ 2; \}/,
+  'Mobile hotel cards need a calmer 3:2 photo stage');
+assert.match(normalized,
+  /\.hotel-detail-photos \{ grid-template-rows:108px 108px; \}/,
+  'Mobile hotel details need a taller photo grid');
 
 const forbiddenDesktopMedia = /@media\s*\(min-width/i;
 assert.equal(forbiddenDesktopMedia.test(css), false, 'This focused layer must not alter desktop widths');
@@ -58,6 +64,10 @@ console.log(JSON.stringify({
     'calendar-choose-dates', 'calendar-clear-date', 'destination-selection-action',
     'date-length-shortcut'
   ],
+  photoStage: {
+    cardAspectRatio: '3:2',
+    detailRowsPx: [108, 108]
+  },
   supplierRequests: 0,
   leadRequests: 0,
   status: 'passed'

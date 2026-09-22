@@ -50,4 +50,12 @@
     height:44px;
     min-height:44px;
   }
+
+  .hotel-image-wrap {
+    aspect-ratio:3 / 2;
+  }
+
+  .hotel-detail-photos {
+    grid-template-rows:108px 108px;
+  }
 }
