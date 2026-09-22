@@ -56,12 +56,14 @@ final class AnyTourOfferScopeIndexV1
         // Fetch a bounded recent hard-family cohort which has at least one currently
         // visible row in a latest completed provider snapshot. Range/filter
         // compatibility is checked in PHP; concrete date/night/category truth is checked later.
+        // Confirmation-required listings are visible too. The reader validates their
+        // price state; scope nomination must not require a ready-price sibling.
         $sql='SELECT x.scope_sha256,x.scope_version,x.family_sha256,x.params_json,x.params_sha256 '
             .'FROM anytour_offer_scopes x WHERE x.family_sha256=:family AND x.scope_sha256<>:current '
             .'AND EXISTS (SELECT 1 FROM anytour_offer_scope_state s JOIN anytour_offers o '
             .'ON o.scope_sha256=s.scope_sha256 AND o.provider=s.provider AND o.last_refresh_token=s.latest_complete_refresh_token '
             .'WHERE s.scope_sha256=x.scope_sha256 AND s.latest_complete_refresh_token IS NOT NULL '
-            .'AND o.is_active=1 AND o.final_price_ready=1 AND o.expires_at>:now LIMIT 1) '
+            .'AND o.is_active=1 AND o.expires_at>:now LIMIT 1) '
             .'ORDER BY x.last_seen_at DESC LIMIT '.self::MAX_CANDIDATE_SCOPES;
         $stmt=$db->prepare($sql);$stmt->execute(['now'=>self::sqlTime($now),'family'=>$family,'current'=>$digest]);
         $out=[];
