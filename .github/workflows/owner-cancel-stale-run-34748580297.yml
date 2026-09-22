@@ -1,15 +1,15 @@
-name: Owner cancel stale run 34748580297
+name: Owner remove stale run 34748580297
 'on':
   pull_request:
-    types: [opened]
+    types: [synchronize]
     branches: [feature/anex-search-adapter-20260907]
     paths: [.github/workflows/owner-cancel-stale-run-34748580297.yml]
 permissions: {contents: read, actions: write, issues: read}
 concurrency: {group: owner-cancel-stale-run-34748580297, cancel-in-progress: false}
 env:
-  OP: owner-cancel-stale-run-34748580297-20260922-v1
+  OP: owner-remove-stale-run-34748580297-20260922-v2
   BASE: 78f074eb70c90bb75cba4767acba2420952f4541
-  CLAIM: '5773565878'
+  CLAIM: '5773637102'
   TARGET: '34748580297'
 jobs:
   cancel:
@@ -38,9 +38,9 @@ jobs:
                   raise RuntimeError('unexpected_redirect')
           def api(path, method='GET'):
               if method == 'GET':
-                  assert path.startswith(('issues/comments/', 'compare/', 'actions/runs'))
+                  assert path.startswith(('issues/comments/', 'compare/', 'actions/runs', 'actions/artifacts/'))
               else:
-                  assert method == 'POST' and path == 'actions/runs/34748580297/cancel'
+                  assert (method,path) in [('POST','actions/runs/34748580297/force-cancel'),('DELETE','actions/runs/34748580297')]
               req = urllib.request.Request(ROOT + path, method=method,
                   data=b'' if method == 'POST' else None,
                   headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],
@@ -52,8 +52,8 @@ jobs:
                   assert len(raw) <= 8000000, 'github_response_bound'
                   return code, json.loads(raw) if raw else None
               except urllib.error.HTTPError as e:
-                  if method == 'POST' and e.code == 409:
-                      return 409, None
+                  if e.code == 409 or (e.code == 404 and path == 'actions/runs/34748580297'):
+                      return e.code, {'message':e.read(2048).decode('utf-8',errors='replace')}
                   raise RuntimeError('github_http_'+str(e.code)) from None
           def save(path, obj):
               with open(path, 'w', encoding='utf-8') as f:
@@ -81,7 +81,7 @@ jobs:
           assert os.environ['GITHUB_RUN_ATTEMPT']=='1'
           event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
           pr=event['pull_request']
-          assert event['action']=='opened' and pr['user']['id']==226193297
+          assert event['action']=='synchronize' and pr['user']['id']==226193297
           assert pr['head']['sha']==os.environ['HEAD']
           assert pr['head']['ref']=='ops/owner-cancel-stale-run-34748580297-20260922-v1'
           assert pr['head']['repo']['full_name']=='pyatkoff/poisk-turov-test'
@@ -89,7 +89,7 @@ jobs:
           assert claim['user']['id']==226193297 and claim['author_association']=='OWNER'
           assert claim['issue_url'].endswith('/issues/2530')
           for text in [os.environ['OP'], os.environ['BASE'], '34748580297',
-                       'ну так убери ее вообще', 'One regular cancel POST max']:
+                       'ну так убери ее вообще', 'one force-cancel POST', 'at most one DELETE']:
               assert text in claim['body'], 'authorization_mismatch'
           _, comparison=api('compare/'+os.environ['BASE']+'...'+os.environ['HEAD'])
           assert comparison['merge_base_commit']['sha']==os.environ['BASE']
@@ -106,67 +106,108 @@ jobs:
               time.sleep(2)
           else:
               raise RuntimeError('security_not_confirmed')
+          _, prior=api('actions/runs/35706126411')
+          assert prior['head_sha']=='f06bbd9678b2b5fbce61a20db79b96a7ce4e037f'
+          assert prior['status']=='completed' and prior['conclusion']=='failure'
+          _, artifact=api('actions/artifacts/10684162941')
+          assert artifact['digest']=='sha256:fbbc86c6c551a44841d304b6118ea10f0a85999f5d242eb08940e747fb3562a1'
+          assert artifact['workflow_run']['head_sha']==prior['head_sha']
+          assert artifact['size_in_bytes']==954 and not artifact['expired']
+          import subprocess, zipfile, hashlib, io
+          archive=subprocess.check_output(['gh','api','repos/pyatkoff/poisk-turov-test/actions/artifacts/10684162941/zip'],timeout=30)
+          assert hashlib.sha256(archive).hexdigest()==artifact['digest'].split(':')[1]
+          with zipfile.ZipFile(io.BytesIO(archive)) as z:
+              old=json.loads(z.read('receipt.json'))
+          assert old['cancel_http_status']==409 and old['cancel_post_attempted'] is True
+          assert old['terminal_verified'] is False and old['after']['id']==34748580297
           _, target=api('actions/runs/34748580297'); verify_target(target)
           assert target['status'] in ['queued','in_progress','pending','waiting','requested','completed']
           record={'operation':os.environ['OP'], 'source_sha':os.environ['HEAD'],
-              'claim':int(os.environ['CLAIM']), 'state':'reserved_before_cancel',
+              'claim':int(os.environ['CLAIM']), 'state':'reserved_before_force_cancel',
               'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'security_run':security['id'], 'target':snapshot(target),
-              'cancel_post_attempted':False, 'max_cancel_posts':1,
+              'cancel_post_attempted':False, 'max_force_cancel_posts':1, 'max_empty_run_deletes':1, 'predecessor_artifact':10684162941,
               'supplier_http':0, 'database_writes':0, 'no_replay':True}
           save('reservation/reservation.json', record)
           print('Authorization and exact-head Security passed; target:', target['status'])
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: owner-cancel-34748580297-reservation-${{ github.run_id }}
+          name: owner-remove-34748580297-v2-reservation-${{ github.run_id }}
           path: reservation/
           retention-days: 90
           if-no-files-found: error
-      - name: Cancel only the authorized run and read back terminal state
+      - name: Force-cancel exact stale run or remove its empty record
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
+          python3 - <<'PYCODE'
           import datetime, json, os, time
           from api_local import api, save, snapshot, verify_target
           r=json.load(open('reservation/reservation.json'))
           assert r['operation']==os.environ['OP'] and r['source_sha']==os.environ['HEAD']
           verify_target(r['target'])
-          r['state']='before_target_recheck'
+          r.update(state='before_force_cancel',force_cancel_attempted=False,delete_attempted=False)
           save('terminal/receipt.json',r)
           try:
-              _, current=api('actions/runs/34748580297'); verify_target(current)
-              if current['status']!='completed':
-                  r.update(state='cancel_attempted_outcome_unknown',cancel_post_attempted=True)
-                  save('terminal/receipt.json',r)
-                  code,_=api('actions/runs/34748580297/cancel',method='POST')
-                  r['cancel_http_status']=code
-                  save('terminal/receipt.json',r)
-                  assert code in (202,409), 'unexpected_cancel_status'
-                  for _ in range(30):
-                      _, current=api('actions/runs/34748580297'); verify_target(current)
-                      if current['status']=='completed':
-                          break
-                      time.sleep(2)
-              r['after']=snapshot(current)
-              r['terminal_verified']=current['status']=='completed'
-              r['state']='terminal_verified' if r['terminal_verified'] else 'not_terminal_no_replay'
+              code,current=api('actions/runs/34748580297')
+              if code!=404:
+                  verify_target(current)
+                  if current['status']!='completed':
+                      r.update(state='force_cancel_attempted_outcome_unknown',force_cancel_attempted=True)
+                      save('terminal/receipt.json',r)
+                      response,body=api('actions/runs/34748580297/force-cancel',method='POST')
+                      r['force_cancel_response']={'status':response,'body':body}
+                      save('terminal/receipt.json',r)
+                      assert response in (202,409), 'unexpected_force_cancel_status'
+                      for _ in range(15 if response==202 else 1):
+                          code,current=api('actions/runs/34748580297')
+                          if code==404: break
+                          verify_target(current)
+                          if current['status']=='completed': break
+                          time.sleep(2)
+                  if code!=404 and current['status']!='completed':
+                      _, jobs=api('actions/runs/34748580297/jobs?filter=all&per_page=100')
+                      _, artifacts=api('actions/runs/34748580297/artifacts?per_page=100')
+                      assert jobs['total_count']==0 and jobs['jobs']==[], 'nonempty_jobs_do_not_delete'
+                      assert artifacts['total_count']==0 and artifacts['artifacts']==[], 'nonempty_artifacts_do_not_delete'
+                      code,current=api('actions/runs/34748580297')
+                      assert code==200; verify_target(current)
+                      assert current['status']=='queued', 'changed_state_do_not_delete'
+                      r.update(state='empty_run_delete_attempted_outcome_unknown',delete_attempted=True,
+                          before_delete=snapshot(current),jobs=jobs,artifacts=artifacts)
+                      save('terminal/receipt.json',r)
+                      response,body=api('actions/runs/34748580297',method='DELETE')
+                      r['delete_response']={'status':response,'body':body}
+                      save('terminal/receipt.json',r)
+                      assert response in (204,404), 'delete_failed'
+                      for _ in range(5):
+                          code,current=api('actions/runs/34748580297')
+                          if code==404: break
+                          time.sleep(2)
+              if code==404:
+                  _, queued=api('actions/runs?status=queued&per_page=100')
+                  assert queued['total_count']<=100, 'queued_page_incomplete'
+                  assert all(x['id']!=34748580297 for x in queued['workflow_runs'])
+                  r.update(state='deleted_verified',terminal_verified=True,target_get_status=404,
+                      queued_contains_target=False,after=None)
+              else:
+                  verify_target(current)
+                  r.update(state='terminal_verified' if current['status']=='completed' else 'not_terminal_no_replay',
+                      terminal_verified=current['status']=='completed',after=snapshot(current))
               r['at_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat()
               save('terminal/receipt.json',r)
-              print(json.dumps({'target':34748580297,'cancel_http_status':r.get('cancel_http_status'),
-                    'status':current['status'],'conclusion':current['conclusion'],
-                    'terminal_verified':r['terminal_verified']}))
-              assert r['terminal_verified'], 'cancel_not_terminal_within_bounded_readback'
+              print(json.dumps(r,ensure_ascii=False,sort_keys=True))
+              assert r['terminal_verified'], 'cleanup_not_verified'
           except Exception as error:
-              r['error_type']=type(error).__name__
+              r.update(error_type=type(error).__name__,error=str(error))
               save('terminal/receipt.json',r)
               raise
-          PY
+          PYCODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: owner-cancel-34748580297-terminal-${{ github.run_id }}
+          name: owner-remove-34748580297-v2-terminal-${{ github.run_id }}
           path: terminal/
           retention-days: 90
           if-no-files-found: error
