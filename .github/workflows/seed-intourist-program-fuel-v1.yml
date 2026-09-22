@@ -1,0 +1,164 @@
+name: INT seed Intourist program fuel v1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seed-intourist-program-fuel-v1.yml'
+      - 'scripts/diagnostics/seed_intourist_program30_tour34_fuel_v1.php'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: int-seed-intourist-program30-tour34-fuel-v1
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.number == 3419 &&
+       github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify bounded seed contract
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/seed_intourist_program30_tour34_fuel_v1.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/diagnostics/seed_intourist_program30_tour34_fuel_v1.php').read_text()
+          required=[
+            "amount'=>'85'","program_key'=>'30'","tour_key'=>'34'",
+            "'TK 3003'","'TK 3006'","170 EUR","per_person_one_way",
+            "expires_at'=>$observed+86400","operation_exists_no_replay",
+            "supplier_calls'=>0","database_writes'=>0","mapping_writes'=>0",
+            "1ef85df9d6c1c56f26dc5d76b8bec5f293e7483c",
+          ]
+          for x in required:
+              if x not in p: raise SystemExit('missing seed contract: '+x)
+          for x in ['curl_','getFlights(','changeService(','->calc(','PDO','mysqli','bron_ticket','action=bron']:
+              if x in p: raise SystemExit('forbidden seed authority: '+x)
+          print('PROGRAM_FUEL_SEED_CONTRACT_OK')
+          PY
+
+  seed:
+    needs: contract
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' &&
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      github.event.issue.number == 3419 &&
+      !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Bind exact owner command and feature source
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=226193297;
+            const command='/seed-intourist-program30-tour34-fuel-3419-v1';
+            const featureSha='1ef85df9d6c1c56f26dc5d76b8bec5f293e7483c';
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1'||context.actor!=='pyatkoff'||
+               context.payload.sender?.id!==owner||process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('owner/attempt mismatch');
+            const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:3419,per_page:100});
+            const commands=comments.filter(c=>c.body===command&&c.user?.id===owner&&c.author_association==='OWNER');
+            if(commands.length!==1||commands[0].id!==context.payload.comment.id) throw new Error('duplicate/edited command');
+            const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+            if(main.object.sha!==context.sha) throw new Error('main advanced');
+            const {data:feature}=await github.rest.git.getRef({...context.repo,ref:'heads/feature/anex-search-adapter-20260907'});
+            if(feature.object.sha!==featureSha) throw new Error('INT feature advanced; review rather than seed');
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: control
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          ref: 1ef85df9d6c1c56f26dc5d76b8bec5f293e7483c
+          path: feature
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+
+      - name: Seed verified 85 EUR rule from terminal receipts
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          ANYTOOUR_DEPLOY_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          ANYTOOUR_DEPLOY_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          from anex_search3_owner_decisions import ssh_php
+
+          def body(path):
+              s=Path(path).read_text()
+              return s[len('<?php'):] if s.startswith('<?php') else s
+
+          evidence=body('feature/app/integrations/operator-fuel-rule-evidence.php')
+          registry=body('feature/app/integrations/operator-program-fuel-registry.php')
+          registry=registry.replace("require_once __DIR__ . '/operator-fuel-rule-evidence.php';",'')
+          seed=body('control/scripts/diagnostics/seed_intourist_program30_tour34_fuel_v1.php')
+          source=evidence+'\n'+registry+'\n'+seed
+          result=ssh_php(source,{},maximum_bytes=65536)
+
+          out=Path(os.environ['RUNNER_TEMP'])/'program-fuel-seed'
+          out.mkdir(mode=0o700)
+          (out/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+
+          if result.get('schema_version')!=1 or result.get('source')!='intourist-program30-tour34-fuel-seed-v1':
+              raise SystemExit('seed result contract')
+          if result.get('status')!='seeded_verified':
+              raise SystemExit('seed did not verify: '+str(result.get('reason')))
+          for k in ('supplier_calls','database_reads','database_writes','mapping_writes'):
+              if result.get(k)!=0: raise SystemExit('forbidden seed side effect: '+k)
+          rule=result.get('rule',{})
+          expected={'operator_family':'intourist','program_key':'30','tour_key':'34','amount':'85.00',
+                    'currency':'EUR','unit':'per_person_one_way','direction_count':2,'sample_count':2,
+                    'two_adult_native_total':'340.00'}
+          for k,v in expected.items():
+              if rule.get(k)!=v: raise SystemExit('rule mismatch: '+k)
+          if rule.get('flight_pair')!=['TK 3003','TK 3006']:
+              raise SystemExit('flight pair mismatch')
+          if not isinstance(rule.get('two_adult_rub_surcharge'),str):
+              raise SystemExit('RUB surcharge missing')
+          for k in ('evidence_sha256','registry_sha256'):
+              if not isinstance(rule.get(k),str) or len(rule[k])!=64:
+                  raise SystemExit('digest missing: '+k)
+          print(json.dumps(result,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Preserve terminal seed receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intourist-program30-tour34-fuel-seed-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/program-fuel-seed/result.json
+          if-no-files-found: error
+          retention-days: 14
