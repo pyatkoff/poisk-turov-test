@@ -38,7 +38,7 @@ class Contracts(unittest.TestCase):
         self.source=self.root/'original'; fixture(self.source)
         self.q,self.archive=pub.derive(self.source,self.root/'derived',request(),'d'*64)
         self.event={'repository':{'full_name':pub.REPO,'id':1345518271}, 'sender':{'login':'pyatkoff','id':226193297},
-            'action':'created','issue':{'number':2530},'comment':{'user':{'id':226193297},'author_association':'OWNER',
+            'action':'created','issue':{'number':3419},'comment':{'user':{'id':226193297},'author_association':'OWNER',
             'body':pub.PREFIX+'a'*40+' '+'b'*40+' 456 123'}}
         self.env={'GITHUB_REPOSITORY':pub.REPO,'GITHUB_REF':'refs/heads/main','GITHUB_ACTOR':'pyatkoff',
             'GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_ACTOR_ID':'226193297','GITHUB_RUN_ATTEMPT':'1',
@@ -71,7 +71,7 @@ class Contracts(unittest.TestCase):
                 pub.checked_request(self.event,{**self.env,key:value})
 
     def test_wrong_event_denied(self):
-        for path,value in [(('issue','number'),996),(('issue','pull_request'),{}),(('sender','id'),1),
+        for path,value in [(('issue','number'),2530),(('issue','number'),996),(('issue','pull_request'),{}),(('sender','id'),1),
             (('comment','author_association'),'MEMBER'),(('comment','user'),{'id':1}),(('repository','id'),1)]:
             event=copy.deepcopy(self.event); event[path[0]][path[1]]=value
             with self.subTest(path=path), self.assertRaises(ValueError): pub.checked_request(event,self.env)

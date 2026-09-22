@@ -1,4 +1,24 @@
 {
+  "coordination_journal": {
+    "issue": 3419,
+    "url": "https://github.com/pyatkoff/poisk-turov-test/issues/3419",
+    "history_issues": [
+      2530,
+      996
+    ],
+    "updated_at": "2026-09-22",
+    "queues": {
+      "search": 1646,
+      "int": 2506,
+      "int_umbrella": 1493,
+      "match": 1971,
+      "local": 2690,
+      "site": 1719,
+      "seo": 1720
+    },
+    "rule": "Fresh claims/results/authorized commands go to #3419. Preserve inherited claims, receipts and no-replay; on blocker record/defer it and continue the next independent available task.",
+    "entrypoint": "docs/project/coordination-journal.md"
+  },
   "schema_version": 20,
   "project": "pyatkoff/poisk-turov-test",
   "updated_at": "2026-09-02T03:06:00+03:00",

@@ -1,5 +1,13 @@
 # poisk-turov-test — Autopilot Rules
 
+## Текущий журнал координации — 2026-09-22
+
+Все новые claims, handoff, результаты и разрешённые команды: [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419).
+#2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
+При блокере зафиксировать причину и продолжать следующую доступную независимую задачу.
+Маршрутизация и действующие исполнители: [coordination-journal.md](docs/project/coordination-journal.md).
+Перенос журнала не разрешает повтор операций и не расширяет доступ или production-допуск.
+
 ## Product mission
 
 ### Primary goal

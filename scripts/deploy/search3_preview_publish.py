@@ -23,7 +23,7 @@ from search3_preview_remote import (ROUTE, digest, inventory, json_bytes, need,
 
 REPO = 'pyatkoff/poisk-turov-test'
 OWNER_ID = 226193297
-COORDINATION_ISSUE = 2530
+COORDINATION_ISSUE = 3419
 RELEASE = 'release/search3-production-ready-v1'
 API = 'https://api.github.com/repos/' + REPO
 ORIGIN = 'https://anytoour.ru'
