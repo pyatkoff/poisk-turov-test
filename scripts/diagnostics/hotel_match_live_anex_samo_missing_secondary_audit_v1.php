@@ -132,7 +132,14 @@ function hmams_execute(PDO $db):array{
                 $statusCounts[$ns.'|'.$state]=($statusCounts[$ns.'|'.$state]??0)+1;
             }
             if($hasUsable)$usableSaved++;
-            $needsFresh=!$hasUsable && !$accepted;
+            $freshLanes=[];
+            foreach(['bgoperator','operator_315','operator_342'] as $ns){
+                $lane=$lanes[$ns];$acceptedIds=$lane['accepted_external_ids']??[];
+                if($acceptedIds)continue;
+                if(($lane['state']??'')==='saved_single_native_missing_secondary_edge')continue;
+                $freshLanes[]=$ns;
+            }
+            $needsFresh=$freshLanes!==[];
             if($needsFresh)$freshNeeded++;
             $f=$facts[$tv];$g=implode('|',[(string)$f['country_name'],(string)$f['region_name'],(string)$f['subregion_name']]);
             $geo[$needsFresh?'needs_fresh':'saved_or_secondary'][$g]=($geo[$needsFresh?'needs_fresh':'saved_or_secondary'][$g]??0)+1;
@@ -142,11 +149,11 @@ function hmams_execute(PDO $db):array{
                 'anex_effective_ids'=>array_values($anexByLocal[$tv]??[]),'samo_anchor_count'=>0,
                 'accepted_secondary'=>$accepted,'secondary_lanes'=>$lanes,
                 'has_usable_saved_secondary_candidate'=>$hasUsable,'has_ambiguous_saved_secondary'=>$hasAmbiguous,
-                'needs_fresh_secondary_acquisition'=>$needsFresh,'safe_to_write_now'=>false,
+                'fresh_secondary_lanes'=>$freshLanes,'needs_fresh_secondary_acquisition'=>$needsFresh,'safe_to_write_now'=>false,
             ];
         }
-        foreach($geo as &$m){arsort($m);$m=array_slice($m,0,50,true);}unset($m);ksort($statusCounts);
-        usort($rows,static fn($a,$b)=>[$b['needs_fresh_secondary_acquisition'],$a['country'],$a['region'],$a['subregion'],$a['tv_hotel_id']]<=>[$a['needs_fresh_secondary_acquisition'],$b['country'],$b['region'],$b['subregion'],$b['tv_hotel_id']]);
+        foreach($geo as &$m){arsort($m);$m=array_slice($m,0,50,true);}unset($m);ksort($statusCounts);ksort($parseCounts);
+        usort($rows,static fn($a,$b)=>[(int)!$a['needs_fresh_secondary_acquisition'],$a['country'],$a['region'],$a['subregion'],$a['tv_hotel_id']]<=>[(int)!$b['needs_fresh_secondary_acquisition'],$b['country'],$b['region'],$b['subregion'],$b['tv_hotel_id']]);
         $db->rollBack();
         return [
             'operation'=>HMAMS_OP,'state'=>'completed_read_only_secondary_audit','historical_frontier_baseline'=>234,
