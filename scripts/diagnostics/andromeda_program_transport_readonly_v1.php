@@ -156,13 +156,54 @@ foreach($allOffers as $offer){
     $facts=offer_context($offer);
     if($facts['operator']!==$targetFacts['operator']) continue;
     ++$operatorOfferCount;
-    if($facts['program_key']!==null) $operatorPrograms[$facts['program_key']]=true;
+    $pk=$facts['program_key'];
+    if($pk!==null){
+        if(!isset($operatorPrograms[$pk]))$operatorPrograms[$pk]=[
+            'program_key'=>$pk,'program_labels'=>[],'offer_count'=>0,
+            'freight_external_counts'=>['true'=>0,'false'=>0,'null'=>0],
+            'tour_groups'=>[]
+        ];
+        $pg=&$operatorPrograms[$pk];
+        ++$pg['offer_count'];
+        if($facts['program_label']!==null)$pg['program_labels'][$facts['program_label']]=true;
+        $fk=$facts['freight_external']===true?'true':($facts['freight_external']===false?'false':'null');
+        ++$pg['freight_external_counts'][$fk];
+        if($facts['tour_key']!==null){
+            $tk=$facts['tour_key'];
+            if(!isset($pg['tour_groups'][$tk]))$pg['tour_groups'][$tk]=[
+                'tour_key'=>$tk,'tour_labels'=>[],'spo_keys'=>[],'spo_labels'=>[],'offer_count'=>0,'label_hints'=>[]
+            ];
+            $tg=&$pg['tour_groups'][$tk];
+            ++$tg['offer_count'];
+            if($facts['tour_label']!==null)$tg['tour_labels'][$facts['tour_label']]=true;
+            if($facts['spo_key']!==null)$tg['spo_keys'][$facts['spo_key']]=true;
+            if($facts['spo_label']!==null)$tg['spo_labels'][$facts['spo_label']]=true;
+            $tg['label_hints'][$facts['label_hint']]=true;
+            unset($tg);
+        }
+        unset($pg);
+    }
     if($targetFacts['program_key']!==null && $facts['program_key']===$targetFacts['program_key']){
         ++$programCount;
         if($facts['tour_key']!==null) $programTours[$facts['tour_key']]=true;
         $programFreight[$facts['freight_external']===true?'true':($facts['freight_external']===false?'false':'null')]++;
     }
     if($targetFacts['tour_key']!==null && $facts['tour_key']===$targetFacts['tour_key']) ++$tourCount;
+}
+ksort($operatorPrograms,SORT_NATURAL);
+$programList=[];
+foreach($operatorPrograms as $pg){
+    $pg['program_labels']=array_keys($pg['program_labels']);sort($pg['program_labels'],SORT_STRING);
+    ksort($pg['tour_groups'],SORT_NATURAL);
+    $tours=[];
+    foreach($pg['tour_groups'] as $tg){
+        foreach(['tour_labels','spo_keys','spo_labels','label_hints'] as $key){
+            $tg[$key]=array_keys($tg[$key]);sort($tg[$key],SORT_STRING);
+        }
+        $tours[]=$tg;
+    }
+    $pg['tour_groups']=$tours;
+    $programList[]=$pg;
 }
 
 $out=[
@@ -184,6 +225,7 @@ $out=[
         'same_program_freight_external_counts'=>$programFreight,
         'same_tour_offer_count'=>$tourCount,
     ],
+    'operator_programs'=>$programList,
     'interpretation'=>[
         'freight_external_is_not_charter_flag'=>true,
         'regular_or_charter_authority'=>'explicit_supplier_label_or_flight_evidence_required',
