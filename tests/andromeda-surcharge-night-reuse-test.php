@@ -14,6 +14,7 @@ function night_offer(int $nights,int $id,int $base):array{return [
 function night_fact(array $offer):array{
     $base=$offer['price']['amount'];
     return ['schema_version'=>1,'provider'=>'andromeda','state'=>'estimated','search_price'=>$offer['price'],
+        'transport_markup_reported'=>['amount'=>'15000','currency'=>'RUB','source'=>'andromeda_get_flights_transport','aggregation'=>'single_distinct_party_markup'],
         'party_surcharge'=>['amount'=>'15000','currency'=>'RUB','source'=>'andromeda_get_flights_transport'],
         'search_price_with_surcharge'=>['amount'=>(string)((int)$base+15000),'currency'=>'RUB','source'=>'derived_search_estimate'],
         'surcharge_scope'=>'party','arithmetic_applied'=>true,'final_price_verified'=>false];
@@ -47,6 +48,7 @@ $write=static function(string $path,array $value):bool{return file_put_contents(
 try{
     $evidence=AnyTourAndromedaSurchargeEvidenceV1::capture($offers[0],$request,night_fact($offers[0]),$now,$now+300);
     night_ok(is_array($evidence),'source evidence captured');
+    night_ok(($evidence['reuse_basis']['aggregation']??null)==='single_distinct_party_markup','program reuse basis captured');
     AnyTourAndromedaSurchargeEvidenceStoreV1::save($dir,$evidence,[
         'source_sha'=>str_repeat('a',40),'source_search_ref'=>str_repeat('b',64),'source_offer_ref'=>$offers[0]['offer_ref']],$write);
 
@@ -94,4 +96,4 @@ try{
     foreach(glob($dir.'/*')?:[] as $path)@unlink($path);@rmdir($dir);@rmdir($root);
 }
 
-echo "ANDROMEDA_SURCHARGE_NIGHT_REUSE_OK durations=3 groups=1 uncached_capture=1 cached_capture=0 cache_hits=1 applications=3 supplier_http=0 live_db=0\n";
+echo "ANDROMEDA_SURCHARGE_NIGHT_REUSE_OK durations=3 groups=1 uncached_capture=1 cached_capture=0 cache_hits=1 applications=3 reusable_basis=1 supplier_http=0 live_db=0\n";
