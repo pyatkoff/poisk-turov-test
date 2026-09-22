@@ -110,25 +110,42 @@ if(!is_array($first)||($first['generation']??null)!==$target['generation']
     ||!is_array($first['store']['snapshot']??null)
     ||!is_int($first['store']['created_at']??null)) fail_read('first_page_invalid');
 $created=$first['store']['created_at'];
-$pages=(int)($first['store']['snapshot']['pages_count']??0);
-if($pages<1||$pages>1000) fail_read('page_count_invalid');
+$advertisedPages=(int)($first['store']['snapshot']['pages_count']??0);
+if($advertisedPages<1||$advertisedPages>1000) fail_read('page_count_invalid');
+
+// Do not require every advertised page to exist: run_pages can terminate on an
+// empty supplier page before the initial advertised upper bound. Read only the
+// retained valid pages that actually exist for this exact searchRef/created cohort.
+$pagePaths=[1=>$searches.'/'.$target['search_ref'].'-1.json'];
+$prefix=$target['search_ref'].'-'.$created.'-';
+foreach(new DirectoryIterator($searches) as $entry){
+    if($entry->isDot()||$entry->isLink()||!$entry->isFile()) continue;
+    $name=$entry->getFilename();
+    if(!str_starts_with($name,$prefix)||!str_ends_with($name,'.json')) continue;
+    $middle=substr($name,strlen($prefix),-5);
+    if(preg_match('/\A[1-9][0-9]{0,3}\z/D',$middle)!==1) continue;
+    $page=(int)$middle;
+    if($page>1000) continue;
+    $pagePaths[$page]=$entry->getPathname();
+}
+ksort($pagePaths,SORT_NUMERIC);
 
 $allOffers=[];
 $targetOffer=null;
-for($page=1;$page<=$pages;++$page){
-    $path=$page===1
-        ? $searches.'/'.$target['search_ref'].'-1.json'
-        : $searches.'/'.$target['search_ref'].'-'.$created.'-'.$page.'.json';
+$validPages=0;
+foreach($pagePaths as $page=>$path){
     $state=read_json($path);
     $snapshot=is_array($state)?($state['store']['snapshot']??null):null;
     if(!is_array($snapshot)||($snapshot['generation']??null)!==$target['generation']
-        ||($snapshot['page']??null)!==$page||!is_array($snapshot['offers']??null)) fail_read('page_invalid_'.$page);
+        ||($snapshot['page']??null)!==$page||!is_array($snapshot['offers']??null)) continue;
+    ++$validPages;
     foreach($snapshot['offers'] as $offer){
         if(!is_array($offer)) continue;
         $allOffers[]=$offer;
         if(($offer['offer_ref']??null)===$target['offer_ref']) $targetOffer=$offer;
     }
 }
+if($validPages<1) fail_read('no_valid_pages');
 if(!is_array($targetOffer)) fail_read('target_offer_missing');
 $targetFacts=offer_context($targetOffer);
 if($targetFacts['operator']===null) fail_read('operator_missing');
@@ -159,7 +176,7 @@ $out=[
     ],
     'target'=>$targetFacts,
     'cohort'=>[
-        'pages'=>$pages,'offer_count'=>count($allOffers),
+        'advertised_pages'=>$advertisedPages,'retained_valid_pages'=>$validPages,'offer_count'=>count($allOffers),
         'same_operator_offer_count'=>$operatorOfferCount,
         'same_operator_distinct_program_keys'=>count($operatorPrograms),
         'same_program_offer_count'=>$programCount,
