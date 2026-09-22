@@ -22,6 +22,7 @@ FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <label class=\"sort-label\">Сортировка отелей <select><option>Рекомендуемые</option></select></label>
 <div class=\"offers-section\" style=\"margin-top:18px\"><div class=\"offer-list-toolbar\">Сортировка предложений <select><option>Сначала дешевле</option></select></div>
 <div class=\"offer-controls\" style=\"margin-top:12px\"><select><option>Номер FAMILY SEA VIEW · AI · 7 ночей</option></select></div></div>
+<div class=\"search-secondary\" style=\"margin-top:18px\"><label class=\"secondary-label-probe\">Питание <select class=\"secondary-select-probe\"><option>Всё включено</option></select></label><button class=\"text-button more-filters secondary-more-probe\">Ещё фильтры</button></div>
 <div class=\"calendar-card\" style=\"margin-top:18px\"><div class=\"calendar-heading\"><button class=\"text-button calendar-choose-probe\">Выбрать даты</button></div><div class=\"calendar-foot\"><button class=\"text-button calendar-clear-probe\">Все даты</button></div></div>
 <div class=\"destination-selection\" style=\"margin-top:18px\"><span>Турция · Анталья</span><button class=\"text-button\">Изменить</button></div>
 <div class=\"flex-dates\" style=\"margin-top:18px\"><button>7 ночей</button><button>10 ночей</button></div>
@@ -100,6 +101,9 @@ def inspect_width(browser, origin, width, screenshot=False):
             offerSort: style('.offer-list-toolbar select'),
             offerCondition: style('.offer-controls select'),
             toolbarFont: getComputedStyle(document.querySelector('.offer-list-toolbar')).fontSize,
+            secondaryLabel: style('.secondary-label-probe'),
+            secondarySelect: style('.secondary-select-probe'),
+            secondaryMore: style('.secondary-more-probe'),
             calendarChoose: style('.calendar-choose-probe'),
             calendarClear: style('.calendar-clear-probe'),
             destinationAction: style('.destination-selection button'),
@@ -137,6 +141,9 @@ def inspect_width(browser, origin, width, screenshot=False):
                 assert values[key]["fontSize"] == "16px", (width, key, values[key])
                 assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
             assert values["toolbarFont"] == "16px", (width, values)
+            assert values["secondarySelect"]["fontSize"] == "16px", (width, values["secondarySelect"])
+            for key in ("secondaryLabel", "secondarySelect", "secondaryMore"):
+                assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
             for key in (
                 "calendarChoose", "calendarClear", "destinationAction", "dateLengthShortcut",
                 "drawer", "preset", "activeFilter", "filterReset", "filterCheck", "filterStar",
@@ -159,6 +166,9 @@ def inspect_width(browser, origin, width, screenshot=False):
             assert values["drawer"]["minHeight"] != "44px", (width, values["drawer"])
             assert values["preset"]["minHeight"] != "44px", (width, values["preset"])
             assert values["activeFilter"]["minHeight"] != "44px", (width, values["activeFilter"])
+            assert values["secondarySelect"]["fontSize"] != "16px", (width, values["secondarySelect"])
+            for key in ("secondaryLabel", "secondarySelect", "secondaryMore"):
+                assert values[key]["minHeight"] != "44px", (width, key, values[key])
             for key in ("calendarChoose", "calendarClear", "destinationAction", "dateLengthShortcut"):
                 assert values[key]["minHeight"] != "44px", (width, key, values[key])
             for key in ("favorite", "photoArrow", "compareClose", "compareRemove", "modalBack", "counter", "favoriteRemove"):
