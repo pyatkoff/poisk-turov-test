@@ -11,6 +11,12 @@ function base_offer(string $provider, string $price): array {
 function tv_offer(string $total, string $fuel): array {
     return base_offer('tourvisor',$total)+['fuel_charge'=>$fuel];
 }
+function child_offer(string $provider, string $price, array $ages): array {
+    $row=base_offer($provider,$price);
+    $row['children']=count($ages);
+    $row['child_ages']=$ages;
+    return $row;
+}
 function check(bool $ok, string $name): void { if (!$ok) throw new RuntimeException($name); }
 
 $r=anytour_anex_tv_fuel_resolve(base_offer('anex','119448'),[tv_offer('140294','20846'),tv_offer('162494','29184')]);
@@ -41,6 +47,31 @@ check($r['status']==='unresolved','placement_guard');
 
 $r=anytour_anex_tv_fuel_resolve(base_offer('anex','119448'),[tv_offer('140295','20846')]);
 check($r['status']==='unresolved','arithmetic_guard');
+
+$anexChild=child_offer('anex','119448',[4,11]);
+$tvChild=child_offer('tourvisor','140294',[11,4])+['fuel_charge'=>'20846'];
+$r=anytour_anex_tv_fuel_resolve($anexChild,[$tvChild]);
+check($r['status']==='resolved_evidence'&&$r['fuel_charge']==='20846','child_ages_same_multiset');
+
+$wrongAges=child_offer('tourvisor','140294',[5,11])+['fuel_charge'=>'20846'];
+$r=anytour_anex_tv_fuel_resolve($anexChild,[$wrongAges]);
+check($r['status']==='unresolved'&&$r['reason']==='no_exact_arithmetic_match','child_ages_guard');
+
+$missingAges=$tvChild;unset($missingAges['child_ages']);
+$r=anytour_anex_tv_fuel_resolve($anexChild,[$missingAges]);
+check($r['status']==='unresolved','child_ages_missing_guard');
+
+$badDirect=$anexChild;$badDirect['child_ages']=[4];
+$r=anytour_anex_tv_fuel_resolve($badDirect,[$tvChild]);
+check($r['status']==='unresolved'&&$r['reason']==='invalid_direct_offer','child_ages_count_guard');
+
+$badDirect=$anexChild;$badDirect['child_ages']=[4,18];
+$r=anytour_anex_tv_fuel_resolve($badDirect,[$tvChild]);
+check($r['status']==='unresolved'&&$r['reason']==='invalid_direct_offer','child_ages_range_guard');
+
+$badDirect=$anexChild;$badDirect['child_ages']=[4,11.0];
+$r=anytour_anex_tv_fuel_resolve($badDirect,[$tvChild]);
+check($r['status']==='unresolved'&&$r['reason']==='invalid_direct_offer','child_ages_type_guard');
 
 check(anytour_anex_tv_fuel_cents('20846')===2084600,'cents_integer');
 check(anytour_anex_tv_fuel_cents('20846.4')===2084640,'cents_decimal');
