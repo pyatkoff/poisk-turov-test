@@ -125,9 +125,9 @@ jobs:
             assert x['provider_day']==day and int(x['owner_daily_limit'])==limit and int(x['tariff_search_units'])==450
             entry=x['operations'][old];assert int(entry['reserved'])==101 and 'actual' not in entry and 'refunded' not in entry
             receipt={'operation':old,'state':'pre_provider_reservation_reconciled','source_run_id':35761399853,'claim':int(claim),'reserved':101,'actual':0,'refunded':101,'ledger_before':450,'ledger_after':349,'reason':'pre_provider_entrypoint_failure','provider_http_calls':0}
-            prep=od/'tariff-reconcile.prepare.json';prep.write_text(json.dumps(receipt,sort_keys=True)+'\\n');os.chmod(prep,0o600)
+            prep=od/'tariff-reconcile.prepare.json';prep.write_text(json.dumps(receipt,sort_keys=True)+'\n');os.chmod(prep,0o600)
             x['tariff_search_units']=349;entry['actual']=0;entry['refunded']=101;entry['reconciliation']='pre_provider_entrypoint_failure';entry['claim']=int(claim)
-            raw=(json.dumps(x,sort_keys=True)+'\\n').encode();fd,tmp=tempfile.mkstemp(dir=str(q),prefix=ledger.name+'.');os.write(fd,raw);os.fsync(fd);os.close(fd);os.replace(tmp,ledger)
+            raw=(json.dumps(x,sort_keys=True)+'\n').encode();fd,tmp=tempfile.mkstemp(dir=str(q),prefix=ledger.name+'.');os.write(fd,raw);os.fsync(fd);os.close(fd);os.replace(tmp,ledger)
             os.replace(prep,od/'tariff-reconcile.json')
             assert json.loads(ledger.read_text())['tariff_search_units']==349
             assert json.loads((od/'tariff-reconcile.json').read_text())==receipt
@@ -135,7 +135,7 @@ jobs:
           PY
           old=".anytoour-match/operations/$OLD_OP"
           scp "${opts[@]}" "$RUNNER_TEMP/reconcile-preprovider.py" "$remote:$old/payload/reconcile-preprovider.py"
-          ssh "${opts[@]}" "$remote" "DAY='$DAY' LIMIT='$LIMIT' OLD_OP='$OLD_OP' CLAIM='$CLAIM' python3 \"\\$HOME/$old/payload/reconcile-preprovider.py\"" >terminal/preprovider-reconcile.json
+          ssh "${opts[@]}" "$remote" "DAY='$DAY' LIMIT='$LIMIT' OLD_OP='$OLD_OP' CLAIM='$CLAIM' python3 \"\$HOME/$old/payload/reconcile-preprovider.py\"" >terminal/preprovider-reconcile.json
           ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
           scp "${opts[@]}" reservation/reservation.json scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php v2/data/tourvisor-client-v1.php "$remote:$op/payload/"
           ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
