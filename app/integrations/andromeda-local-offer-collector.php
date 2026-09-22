@@ -28,7 +28,7 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             || !is_array($request['params'] ?? null)
             || $maxCaptures < 0 || $maxCaptures > 300
             || $maxCaptureSeconds < 0 || $maxCaptureSeconds > 240
-            || !in_array($captureMode, ['all','non_external_only'], true)) {
+            || !in_array($captureMode, ['all','non_external_only','external_group_only'], true)) {
             throw new InvalidArgumentException('ANDROMEDA_LOCAL_COLLECTOR_INPUT');
         }
 
@@ -148,11 +148,22 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         $captureQueue = [];
         $reusableGroups = [];
         $sameGroupSkips = 0;
-        $priorities = $captureMode === 'non_external_only' ? [false] : [true, null, false];
+        $priorities = $captureMode === 'non_external_only' ? [false]
+            : ($captureMode === 'external_group_only' ? [true] : [true, null, false]);
+        $selectedProbeGroup = null;
         foreach ($priorities as $priority) {
             $groups = [];
             foreach ($eligible as $key => $candidate) {
                 if ($candidate['freight_external'] !== $priority) continue;
+                // The owner-authorized live probe deliberately selects one strict
+                // reusable external group. Ungroupable rows and every later group
+                // are not fallback capture authority, including after a cache hit.
+                if ($captureMode === 'external_group_only') {
+                    $strictGroup = $candidate['reusable_surcharge_group'];
+                    if ($strictGroup === null) continue;
+                    if ($selectedProbeGroup === null) $selectedProbeGroup = $strictGroup;
+                    if ($strictGroup !== $selectedProbeGroup) continue;
+                }
                 $group = $candidate['transport_group'];
                 if (isset($groups[$group])) continue;
                 $groups[$group] = true;
