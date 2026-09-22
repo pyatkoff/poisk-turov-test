@@ -219,7 +219,7 @@ def check_width(browser, origin, width):
         assert last_start["params"].get("priceTo") == ["600000"]
         assert len(native_calls) == 2
         state["calendar_partial"] = True
-        page.locator('[data-action="edit-search"]').click()
+        page.locator('[data-action="edit-search"]').first.click()
         page.locator('[data-action="dates"]').click()
         calendar_price = page.locator(f'[data-action="day-pick"][data-date="{CALENDAR_DAY}"] small')
         calendar_price.wait_for()
