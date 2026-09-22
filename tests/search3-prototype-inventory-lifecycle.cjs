@@ -55,6 +55,26 @@ function harness({database,api,onEvent,native,clock=()=>Date.now()}={}){
  return {data,start,poll,events,calls,dbBodies,nativeCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
+test('hotel projection exposes saved structured amenities without inventing missing facts',()=>{
+ const h=harness(),raw={...profile(101),hotelInformation:{services:{tags:[
+  {id:5,name:'Услуги',items:[{id:23,name:'Бассейн'},{id:23,name:'Бассейн'},null]},
+  {id:3,name:'Пляж',items:[{id:15,name:'Первая линия'}]},
+  {id:7,name:'Доп.фильтры',items:[{id:46,name:'Гарантия мест'}]}
+ ]}},tours:live()[0].tours};
+ const projected=h.data.project([raw],trip)[0];
+ assert.deepEqual(Array.from(projected.amenities,a=>a.key),['5:23','3:15']);
+ assert.equal(projected.amenities[0].label,'Бассейн');assert.equal(projected.beach,null,'First line is not a measured distance');
+ const missing=h.data.project([{...profile(102),description:'There might be a pool',tours:live()[0].tours}],trip)[0];
+ assert.equal(missing.amenities.length,0,'No inference from prose or missing details');
+ const app=fs.readFileSync(path.join(rootDir,'v2/prototype-search/app.js'),'utf8');
+ const source=app.slice(app.indexOf('function hotelMatch('),app.indexOf('\nfunction hotelOffers('));
+ const match=vm.runInNewContext('('+source+')',{ratingValue:h=>h.rating});
+ const filters={hotelId:0,q:'',stars:[],resorts:[],amenities:['5:23','3:15']};
+ assert.equal(match(projected,filters,trip,false),true);
+ assert.equal(match({...projected,amenities:projected.amenities.slice(0,1)},filters,trip,false),false,'Selected amenities use AND on the same hotel');
+ assert.equal(match(missing,filters,trip,false),false,'Unknown amenities are not positive matches');
+ assert.equal(match(missing,{...filters,amenities:[]},trip,false),true,'Missing amenities do not hide unfiltered hotels');
+});
 test('unlimited and explicit premium budgets use the exact request',async()=>{
  const h=harness();assert.equal(h.data.params(trip).priceTo,'');
  for(const max of [600000,1500000,25000000])assert.equal(h.data.params(trip,[],{min:0,max}).priceTo,String(max));
