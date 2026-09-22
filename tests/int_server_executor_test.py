@@ -104,9 +104,9 @@ class InstallRuntimeTest(unittest.TestCase):
         bundle,manifest=m.bundle_source(source)
         archive=root/'source.tar.gz';archive.write_bytes(bundle)
         home=root/'home';project=home/'www/anytoour.ru'
-        (project/'app/integrations').mkdir(parents=True)
-        (project/'scripts/ops').mkdir(parents=True)
-        (project/'app/integrations/x0.php').write_text('<?php /* old */\n')
+        runtime=project/'_preview/search3-anex-candidate'
+        (runtime/'app/integrations').mkdir(parents=True)
+        (runtime/'app/integrations/x0.php').write_text('<?php /* old */\n')
         bindir=root/'bin';bindir.mkdir()
         php=bindir/'php'
         php.write_text(
@@ -131,13 +131,14 @@ class InstallRuntimeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             result,home,project=self.fixture(Path(td),'int-andromeda-runtime-install-20260922-v1')
             self.assertEqual('installed',result['status'])
-            self.assertEqual(23,result['install']['files'])
-            self.assertEqual('<?php\n',(project/'app/integrations/x0.php').read_text())
+            self.assertEqual(22,result['install']['files'])
+            self.assertEqual('<?php\n',(project/'_preview/search3-anex-candidate/app/integrations/x0.php').read_text())
             backup=home/'.anytoour-int-executor/int-andromeda-runtime-install-20260922-v1/backup/app/integrations/x0.php'
             self.assertEqual('<?php /* old */\n',backup.read_text())
             self.assertTrue(result['public_ui_entrypoints_unchanged'])
             self.assertEqual(0,result['supplier_calls'])
             self.assertEqual(0,result['database_writes'])
+            self.assertFalse((project/'app').exists())
 
     def test_post_install_failure_rolls_back_every_file(self):
         with tempfile.TemporaryDirectory() as td:
@@ -145,9 +146,9 @@ class InstallRuntimeTest(unittest.TestCase):
                 Path(td),'int-andromeda-runtime-install-20260922-v2',True)
             self.assertEqual('rolled_back',result['status'])
             self.assertEqual('complete',result['rollback']['status'])
-            self.assertEqual('<?php /* old */\n',(project/'app/integrations/x0.php').read_text())
-            self.assertFalse((project/'app/integrations/x1.php').exists())
-            self.assertFalse((project/'app/integrations/three-provider-fuel-evidence.php').exists())
+            self.assertEqual('<?php /* old */\n',(project/'_preview/search3-anex-candidate/app/integrations/x0.php').read_text())
+            self.assertFalse((project/'_preview/search3-anex-candidate/app/integrations/x1.php').exists())
+            self.assertFalse((project/'_preview/search3-anex-candidate/app/integrations/three-provider-fuel-evidence.php').exists())
             self.assertFalse(result['runtime_changed'])
 
 class ContractTest(unittest.TestCase):

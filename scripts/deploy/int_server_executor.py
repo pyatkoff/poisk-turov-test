@@ -36,7 +36,7 @@ FIXED = [
 # only provider/runtime PHP and the existing Andromeda collector entrypoint.
 # Public endpoints, UI, LOCAL readers and configuration are never copied.
 INSTALL_PREFIX = 'app/integrations/'
-INSTALL_FIXED = ['scripts/ops/andromeda_local_offer_collect.php']
+INSTALL_FIXED = []
 
 def need(condition: bool, reason: str) -> None:
     if not condition:
@@ -192,6 +192,7 @@ REMOTE = r"""
 import hashlib,json,os,pathlib,re,subprocess,sys,tarfile,time
 home=pathlib.Path.home()
 project=home/'www/anytoour.ru'
+runtime=project/'_preview/search3-anex-candidate'
 private=home/'.anytoour-int-executor'
 payload=json.loads(sys.stdin.read())
 operation=payload['operation_id']; mode=payload['mode']; source=payload['source_sha']
@@ -407,7 +408,7 @@ def stage_target_bytes(target,data,mode):
 def rollback_install(op):
     restored=[]
     for relative in reversed(install_applied):
-        target=project/relative
+        target=runtime/relative
         prior=install_previous[relative]
         if prior['exists']:
             backup=op/'backup'/relative
@@ -420,7 +421,7 @@ def rollback_install(op):
             target.unlink(missing_ok=True)
         restored.append(relative)
     for relative,prior in install_previous.items():
-        target=project/relative
+        target=runtime/relative
         if prior['exists']:
             if (not safe_file(target,2*1024*1024)
                     or hashlib.sha256(target.read_bytes()).hexdigest()!=prior['sha256']):
@@ -437,7 +438,6 @@ def install_runtime(stage,files,op):
     selected=sorted(
         relative for relative in files
         if relative.startswith('app/integrations/')
-        or relative=='scripts/ops/andromeda_local_offer_collect.php'
     )
     if len(selected)<20 or not any(x=='app/integrations/three-provider-fuel-evidence.php' for x in selected):
         fail('install_inventory')
@@ -455,7 +455,7 @@ def install_runtime(stage,files,op):
             fail('install_source_hash')
         lint=subprocess.run(['php','-l',str(source_path)],capture_output=True,text=True,timeout=20)
         if lint.returncode!=0: fail('install_source_lint')
-        target=project/relative
+        target=runtime/relative
         if not target.parent.is_dir() or target.parent.is_symlink() or target.parent.resolve()!=target.parent:
             fail('install_target_parent')
         prior={'exists':False,'sha256':None,'mode':0o644}
@@ -478,14 +478,14 @@ def install_runtime(stage,files,op):
     write_private_json(op/'install-plan.json',plan)
     install_started=True
     for relative in changed:
-        target=project/relative
+        target=runtime/relative
         os.replace(install_temps[relative],target)
         install_applied.append(relative)
         os.chmod(target,install_previous[relative]['mode'])
         write_private_json(op/'install-state.json',
             {'status':'applying','source_sha':source,'applied':install_applied})
     for relative,expected in install_expected.items():
-        target=project/relative
+        target=runtime/relative
         if (not safe_file(target,2*1024*1024)
                 or hashlib.sha256(target.read_bytes()).hexdigest()!=expected):
             fail('install_readback_hash')
@@ -502,6 +502,7 @@ try:
         fail('operation_invalid')
     if not re.fullmatch(r'[a-f0-9]{40}',source): fail('source_invalid')
     if project.resolve()!=project or project.name!='anytoour.ru': fail('project_invalid')
+    if runtime.resolve()!=runtime or not runtime.is_dir() or runtime.is_symlink(): fail('runtime_invalid')
     private.mkdir(mode=0o700,exist_ok=True)
     op=private/operation
     if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')
