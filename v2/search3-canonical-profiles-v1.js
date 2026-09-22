@@ -24,12 +24,20 @@ function create(refresh){
  if(pathname!==path.slice(0,-1)&&!pathname.startsWith(path))return null;
  if(typeof refresh!=='function')throw new TypeError('Renderer callback required');
  let lifecycleGeneration=0;
- let epoch=0,raw=[],options={},links=new Map(),profiles=new Map(),anchors=new Map(),storedOffers=new Map(),legacyOffers=new Map(),legacyStates=new Map(),missing=new Set(),failed=new Set(),pending=new Set(),workers=new Set();
- function reset(){epoch++;workers.forEach(task=>task.controller.abort());workers=new Set();pending=new Set();links=new Map();profiles=new Map();anchors=new Map();storedOffers=new Map();legacyOffers=new Map();legacyStates=new Map();missing=new Set();failed=new Set();raw=[];options={};}
+ let epoch=0,raw=[],options={},links=new Map(),profiles=new Map(),anchors=new Map(),storedOffers=new Map(),legacyOffers=new Map(),legacyStates=new Map(),missing=new Set(),failed=new Set(),pending=new Set(),workers=new Set(),profileReads=new Map();
+ function reset(){epoch++;workers.forEach(task=>task.controller.abort());workers=new Set();profileReads=new Map();pending=new Set();links=new Map();profiles=new Map();anchors=new Map();storedOffers=new Map();legacyOffers=new Map();legacyStates=new Map();missing=new Set();failed=new Set();raw=[];options={};}
  function checkedProfile(rawProfile){const p=profile(rawProfile),previous=profiles.get(id(p.id));if(previous&&p.revision===previous.revision&&JSON.stringify(p)!==JSON.stringify(previous))throw new Error('Conflicting profile revision');return previous&&p.revision<previous.revision?previous:p;}
  function putProfile(rawProfile){const p=checkedProfile(rawProfile);profiles.set(id(p.id),p);return p;}
  async function readProfile(anytourHotelId){
   const key=id(anytourHotelId);if(!key)throw new TypeError('Invalid own hotel ID');
+  if(profileReads.has(key))return profileReads.get(key);
+  const generation=epoch,request=fetchProfile(key);profileReads.set(key,request);
+  try{return await request;}finally{
+   // Only pending work is shared; a later explicit read must check freshness.
+   if(generation===epoch&&profileReads.get(key)===request)profileReads.delete(key);
+  }
+ }
+ async function fetchProfile(key){
   const generation=epoch,controller=new AbortController(),task={controller};workers.add(task);
   const timer=setTimeout(()=>controller.abort(),15000);
   try{
