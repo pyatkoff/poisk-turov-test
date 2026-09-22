@@ -11,14 +11,14 @@
     font-size:16px;
   }
 
-  .search-secondary label,
-  .search-secondary select,
-  .search-secondary .more-filters {
-    min-height:44px;
+  .quick-category legend,
+  .quick-field > span:first-child,
+  .intro .more-filters {
+    font-size:14px;
   }
 
-  .search-secondary select {
-    font-size:16px;
+  .intro .more-filters {
+    min-height:44px;
   }
 
   .drawer-trigger,
