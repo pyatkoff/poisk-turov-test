@@ -98,7 +98,7 @@ function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intr
 function editSearch(){if(searchResponse.pending)stopSearch();if(innerWidth<=1100)closeFilters();$('#search-form').hidden=false;$('.intro').hidden=false;$('#applied-search').hidden=true;$('#search').classList.remove('search-collapsed');$('#search').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#origin').focus({preventScroll:true});}
 const hotelPlaces=h=>[...new Set([h.subRegion,h.region,h.resort].map(value=>String(value||'').trim()).filter(Boolean))];
 function hotelMatch(h,f=state.filters,s=state.search,onlyFavorites=state.onlyFavorites){
- const q=f.q.toLowerCase().trim(),places=hotelPlaces(h);
+ const q=f.q.toLowerCase().trim(),places=[...new Set([h.subRegion,h.region,h.resort].map(value=>String(value||'').trim()).filter(Boolean))];
  return h.country===s.country&&(!f.hotelId||h.id===f.hotelId)
   &&(!q||h.name.toLowerCase().includes(q)||places.some(place=>place.toLowerCase().includes(q)))
   &&(!f.stars.length||f.stars.includes(h.stars))
