@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/andromeda-surcharge-evidence.php';
 require_once __DIR__ . '/andromeda-surcharge-evidence-store.php';
+require_once __DIR__ . '/operator-program-fuel-registry.php';
+require_once __DIR__ . '/operator-fuel-rule-store.php';
 
 /**
  * Supplier-free pricing bridge used by the Andromeda AnyTour autosave path.
@@ -62,13 +64,62 @@ final class AnyTourAndromedaSurchargeCacheAutosaveV1
                 $request,
                 $now
             );
-            if ($fact === null || ($fact['final_price_verified'] ?? null) !== false) return null;
-            // Make the non-final cache boundary explicit in the returned fact as well.
-            $fact = array_replace($fact, ['final_price_verified' => false]);
-            return ['state' => 'estimated', 'fact' => $fact, 'verified_quote' => null];
+            if ($fact !== null) {
+                if (($fact['final_price_verified'] ?? null) !== false) return null;
+                // Exact strict transport-group reuse remains more specific than program reuse.
+                $fact = array_replace($fact, ['final_price_verified' => false]);
+                return ['state' => 'estimated', 'fact' => $fact, 'verified_quote' => null];
+            }
+
+            $party = self::partyFromRequest($request);
+            $program = AnyTourOperatorProgramFuelRegistryV1::priceForOffer(
+                $directory, $offer, $party, $now
+            );
+            if ($program !== null) {
+                return ['state'=>'program_fuel','program_fuel'=>$program];
+            }
+
+            // Broad operator+direction evidence remains the final fallback. Current
+            // RUB observations need no FX; non-RUB evidence fails closed unless a
+            // separately typed current exchange is supplied by a future caller.
+            $offerRef=$offer['offer_ref']??null;
+            if(is_string($offerRef) && preg_match('/^offer_[a-f0-9]{64}$/D',$offerRef)===1){
+                $direction = AnyTourOperatorFuelRuleStoreV1::pricingEnvelopeForTarget(
+                    $directory,
+                    [
+                        'provider'=>'andromeda',
+                        'operator'=>$offer['operator']??null,
+                        'search_params'=>$request,
+                        'party'=>$party,
+                        'offer_ref_digest'=>hash('sha256',$offerRef),
+                    ],
+                    $now,
+                    null
+                );
+                if($direction!==null)return $direction;
+            }
+            return null;
         } catch (Throwable $ignored) {
             return null;
         }
+    }
+
+    private static function partyFromRequest(array $request): array
+    {
+        $adults=$request['adults']??null;
+        $ages=$request['childs']??[];
+        if(is_string($adults)&&preg_match('/^[1-9]$/D',$adults)===1)$adults=(int)$adults;
+        if(!is_int($adults)||$adults<1||$adults>9||!is_array($ages)||!array_is_list($ages)||count($ages)>9){
+            throw new InvalidArgumentException('ANDROMEDA_PROGRAM_FUEL_PARTY');
+        }
+        $out=[];
+        foreach($ages as $age){
+            if(is_string($age)&&preg_match('/^(?:0|[1-9][0-9]?)$/D',$age)===1)$age=(int)$age;
+            if(!is_int($age)||$age<0||$age>17)throw new InvalidArgumentException('ANDROMEDA_PROGRAM_FUEL_PARTY');
+            $out[]=$age;
+        }
+        sort($out,SORT_NUMERIC);
+        return ['adults'=>$adults,'children'=>count($out),'child_ages'=>$out];
     }
 
     /** @param callable(string,array):bool $write */
