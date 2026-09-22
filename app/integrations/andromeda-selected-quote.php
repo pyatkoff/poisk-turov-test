@@ -288,6 +288,15 @@ final class AnyTourAndromedaSelectedQuote
         return null;
     }
 
+    /**
+     * Sanitized read-only projection for sibling INT persistence.
+     * It reuses the exact quote parser and grants no arithmetic authority.
+     */
+    public static function reportedFuelSurcharges(array $claim): array
+    {
+        return self::fuelSurcharges($claim);
+    }
+
     /** Supplier-reported fuel services are evidence only; do not aggregate or apply them to prices here. */
     private static function fuelSurcharges(array $claim): array
     {

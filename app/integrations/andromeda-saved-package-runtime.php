@@ -323,6 +323,22 @@ function anytour_andromeda_saved_package_surcharge(string $directory, string $pa
             if ($again['context'] !== $resolved['context'] || $clock() >= $reserved['expires_at']) {
                 throw new RuntimeException('ANDROMEDA_SURCHARGE_CONTEXT_STALE');
             }
+            // Preserve literal supplier fuel-service evidence from this SAME get_flights
+            // response. It remains separate from the reusable transport surcharge and is
+            // never aggregated into a customer price by this runtime.
+            $fuelRows = AnyTourAndromedaSelectedQuote::reportedFuelSurcharges($flights);
+            $fuelJson = json_encode(
+                $fuelRows,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+            );
+            if (count($fuelRows) <= 20 && strlen($fuelJson) <= 4096) {
+                $next['fuel_surcharges_reported'] = $fuelRows;
+                $next['fuel_evidence_complete'] = true;
+            } else {
+                // Do not retain a truncated subset as if it were complete evidence.
+                $next['fuel_surcharges_reported'] = [];
+                $next['fuel_evidence_complete'] = false;
+            }
             $next['status'] = 'complete';
             $next['fact'] = AnyTourAndromedaSearchSurcharge::estimate($flights, $resolved['offer']['price']);
             $next['transport_money_diagnostic'] = AnyTourAndromedaSearchSurcharge::diagnostic($flights);
