@@ -15,6 +15,8 @@ const mobileIndex = html.indexOf(mobileLink);
 assert.ok(baseIndex >= 0, 'Prototype must keep its canonical styles.css link');
 assert.ok(mobileIndex > baseIndex, 'Mobile control layer must load after the canonical stylesheet');
 assert.equal(html.indexOf(mobileLink, mobileIndex + 1), -1, 'Mobile control layer must be linked once');
+assert.match(html, /<meta name="viewport" content="[^"]*viewport-fit=cover[^"]*">/,
+  'Top safe-area handling is required because the prototype opts into viewport-fit=cover');
 
 assert.match(html, /<fieldset class="quick-category">[\s\S]*?<legend>Категория отеля<\/legend>/,
   'The actual prototype search form must keep the quick-category legend');
@@ -58,6 +60,9 @@ assert.match(normalized,
   /\.filter-top \.mobile-close, \.favorite-button, \.card-photo-arrow, \.compare-tray \.icon-button, \.modal-header \.icon-button, #modal-back, \.counter button, \.favorite-item \.icon-button, \.compare-hotel-card \.compare-remove \{ width:44px; min-width:44px; height:44px; min-height:44px; \}/,
   'Mobile icon, counter and compare-remove actions need 44 by 44 tap targets');
 assert.match(normalized,
+  /\.filter-panel\.open \.filter-top \{ padding-top:calc\(18px \+ env\(safe-area-inset-top\)\); \}/,
+  'Fixed mobile filter header must stay below the viewport top safe area');
+assert.match(normalized,
   /\.compare-tray \{ bottom:calc\(80px \+ env\(safe-area-inset-bottom\)\); \}/,
   'Mobile compare tray must stay above the bottom navigation safe area');
 assert.match(normalized,
@@ -83,7 +88,7 @@ console.log(JSON.stringify({
   searchLabelFontSizePx: 14,
   minTapHeightPx: 44,
   safeAreaAwareOverlays: [
-    'compare-tray', 'toast', 'toast-with-compare-tray'
+    'filter-drawer-header', 'compare-tray', 'toast', 'toast-with-compare-tray'
   ],
   searchReadability: [
     'hotel-category-legend', 'meal-label', 'budget-label', 'all-filters-action'
