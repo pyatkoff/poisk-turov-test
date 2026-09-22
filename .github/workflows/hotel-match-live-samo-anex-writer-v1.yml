@@ -1,0 +1,119 @@
+name: MATCH live SAMO ANEX writer v1
+'on':
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live_samo_anex_writer_v1.php
+      - tests/hotel_match_live_samo_anex_writer_v1_test.php
+      - .github/workflows/hotel-match-live-samo-anex-writer-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-live-samo-anex-writer-1971-20260922-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-live-samo-anex-writer-1971-20260922-v1
+  BASE: 8fb325d1b5446ec1887963db9805cc8b682a9c33
+  CLAIM: '5784462508'
+  INPUT_ARTIFACT_ID: '10720511859'
+  INPUT_ARTIFACT_SHA256: '48b9501710f18d8ce1d1c70379230f7fc1e701ff611507f8a5595f70456899f7'
+jobs:
+  write:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'feat/match-live-samo-anex-writer-20260922-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source, input artifact, and reserve
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p reservation terminal input
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-live-samo-anex-writer-v1.yml scripts/diagnostics/hotel_match_live_samo_anex_writer_v1.php tests/hotel_match_live_samo_anex_writer_v1_test.php "
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = "$expected"
+          php -l scripts/diagnostics/hotel_match_live_samo_anex_writer_v1.php
+          php scripts/diagnostics/hotel_match_live_samo_anex_writer_v1.php --self-test
+          php tests/hotel_match_live_samo_anex_writer_v1_test.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >claim.json
+          python3 - <<'PY'
+          import json,os,pathlib,datetime
+          c=json.load(open('claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for s in ['exactly15','SERIALIZABLE','10720511859','48b9501710f18d8ce1d1c70379230f7fc1e701ff611507f8a5595f70456899f7','Only these15 ANEX mapping inserts']:
+              assert s in b,s
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps({
+            'operation':os.environ['OP'],'state':'reserved_before_write','source_sha':os.environ['HEAD'],
+            'input_artifact_id':int(os.environ['INPUT_ARTIFACT_ID']),'input_artifact_sha256':os.environ['INPUT_ARTIFACT_SHA256'],
+            'provider_http_calls':0,'database_writes_reserved':15,'mapping_writes_reserved':15,
+            'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()
+          },sort_keys=True)+'\n')
+          PY
+          rm claim.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$INPUT_ARTIFACT_ID/zip" >input/input.zip
+          echo "$INPUT_ARTIFACT_SHA256  input/input.zip" | sha256sum -c -
+          unzip -q input/input.zip -d input/unpacked
+          manifest="$(find input/unpacked -type f -name result.json -print -quit)"
+          test -n "$manifest";cp "$manifest" input/result.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('input/result.json'))
+          assert r['state']=='completed_read_only_identity_join'
+          assert r['source_sha']=='11064e77807826edaba66c43067b2b0e564aa100'
+          rows=[x for x in r['rows'] if x.get('status')=='candidate_strict_mutual_unique']
+          assert r['strict_mutual_unique_count']==15 and len(rows)==15
+          assert len({x['anex_hotel_id'] for x in rows})==15 and len({x['tv_hotel_id'] for x in rows})==15
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-live-samo-anex-writer-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(80):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(5)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Execute guarded CURRENT writer
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
+          scp "${opts[@]}" reservation/reservation.json input/result.json "$remote:$op/payload/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_live_samo_anex_writer_v1.php scripts/diagnostics/hotel_match_live_samo_anex_identity_join_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/app/integrations/"
+          ssh "${opts[@]}" "$remote" "set -eu;mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\";cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' MATCH_MANIFEST_PATH=\"\$HOME/$op/payload/result.json\" php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_live_samo_anex_writer_v1.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";mkdir export;for f in reservation.json result.json receipt.json;do cp \"\$f\" export/;done;tar -czf - -C export ." >terminal/server.tgz
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  n=m.name.lstrip('./')
+                  if m.isfile():pathlib.Path('terminal',n).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='committed_verified'
+          assert r['inserted']==15 and r['readback_verified'] is True
+          assert q['database_writes']==15 and q['mapping_writes']==15 and q['provider_http_calls']==0
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          print(json.dumps({'state':r['state'],'inserted':r['inserted'],'preexisting_mapping_rows_preserved':r['preexisting_mapping_rows_preserved'],'coverage_after':r['coverage_after']},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-live-samo-anex-writer-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
