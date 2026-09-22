@@ -46,7 +46,19 @@ FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <div class=\"favorite-item\" style=\"margin-top:18px\"><button class=\"icon-button\" aria-label=\"Удалить из избранного\">×</button></div>
 <div class=\"hotel-image-wrap photo-stage-probe\" style=\"width:100%;margin-top:18px;background:#e4ebf3\"></div>
 <div class=\"hotel-detail-photos detail-photos-probe\" style=\"margin:18px 0 0\"><button></button><button></button><button></button></div>
-</main></body></html>"""
+</main>
+<dialog id="tour-dialog-probe" open>
+  <div class="modal-header"><div><span class="eyebrow">ПРОВЕРЬТЕ УСЛОВИЯ</span><h2>Ваш тур в деталях</h2></div></div>
+  <div id="modal-body">
+    <div class="tour-hero tour-probe-hero">
+      <img class="tour-probe-image" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
+      <div><div class="hotel-stars">★★★★★</div><h3>Очень длинное название отеля для проверки мобильной геометрии</h3><p>Анталья, Турция</p></div>
+    </div>
+    <dl class="detail-grid tour-summary"><div><dt>Вылет — возвращение</dt><dd>29 сентября — 6 октября</dd></div><div><dt>Продолжительность</dt><dd>7 ночей</dd></div><div><dt>Туристы</dt><dd>2 взр.</dd></div><div><dt>Питание</dt><dd>Всё включено</dd></div></dl>
+    <div class="tour-layout"><div class="tour-main-details"><section class="tour-section"><h3>Проживание и питание</h3><p class="tour-missing">Условия уточняются для конкретного предложения.</p></section></div><aside class="tour-price-details"><div class="price-breakdown"><h3>Стоимость тура</h3><div class="price-line total"><span>Цена предложения</span><strong>15 000 000 ₽</strong></div></div></aside></div>
+  </div>
+  <div id="modal-footer"><div class="footer-total"><span>За всех туристов</span><strong>15 000 000 ₽</strong></div><button class="primary">Выбрать этот тур →</button></div>
+</dialog></body></html>"""
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -93,7 +105,10 @@ def inspect_width(browser, origin, width, screenshot=False):
               width:value.width,
               height:value.height,
               aspectRatio:value.aspectRatio,
-              gridTemplateRows:value.gridTemplateRows
+              gridTemplateRows:value.gridTemplateRows,
+              gridTemplateColumns:value.gridTemplateColumns,
+              display:value.display,
+              whiteSpace:value.whiteSpace
             };
           };
           return {
@@ -132,6 +147,13 @@ def inspect_width(browser, origin, width, screenshot=False):
             favoriteRemove: style('.favorite-item .icon-button'),
             photoStage: style('.photo-stage-probe'),
             detailPhotos: style('.detail-photos-probe'),
+            tourDialog: style('#tour-dialog-probe'),
+            tourHero: style('.tour-probe-hero'),
+            tourHeroImage: style('.tour-probe-image'),
+            tourFooter: style('#tour-dialog-probe #modal-footer'),
+            tourCta: style('#tour-dialog-probe #modal-footer .primary'),
+            tourDialogOverflow: document.querySelector('#tour-dialog-probe').scrollWidth > document.querySelector('#tour-dialog-probe').clientWidth,
+            tourFooterOverflow: document.querySelector('#tour-dialog-probe #modal-footer').scrollWidth > document.querySelector('#tour-dialog-probe #modal-footer').clientWidth,
             overflow: document.documentElement.scrollWidth > innerWidth
           };
         }""")
@@ -161,6 +183,16 @@ def inspect_width(browser, origin, width, screenshot=False):
             photo_height = float(values["photoStage"]["height"].removesuffix("px"))
             assert 1.49 <= photo_width / photo_height <= 1.51, (width, values["photoStage"])
             assert values["detailPhotos"]["gridTemplateRows"] == "108px 108px", (width, values["detailPhotos"])
+            assert values["tourHero"]["display"] == "grid", (width, values["tourHero"])
+            assert values["tourHero"]["gridTemplateColumns"].startswith("76px "), (width, values["tourHero"])
+            assert values["tourHeroImage"]["width"] == "76px", (width, values["tourHeroImage"])
+            assert values["tourHeroImage"]["height"] == "78px", (width, values["tourHeroImage"])
+            assert float(values["tourDialog"]["width"].removesuffix("px")) >= width - 2, (width, values["tourDialog"])
+            assert values["tourDialogOverflow"] is False, (width, values)
+            assert values["tourFooterOverflow"] is False, (width, values)
+            if width <= 374:
+                assert values["tourFooter"]["display"] == "grid", (width, values["tourFooter"])
+                assert float(values["tourCta"]["width"].removesuffix("px")) >= width - 60, (width, values["tourCta"])
         else:
             assert mobile is False, width
             assert values["drawer"]["minHeight"] != "44px", (width, values["drawer"])
@@ -175,6 +207,11 @@ def inspect_width(browser, origin, width, screenshot=False):
                 assert values[key]["width"] != "44px", (width, key, values[key])
             assert values["photoStage"]["aspectRatio"] != "3 / 2", (width, values["photoStage"])
             assert values["detailPhotos"]["gridTemplateRows"] != "108px 108px", (width, values["detailPhotos"])
+            assert values["tourHero"]["display"] == "flex", (width, values["tourHero"])
+            tour_width = float(values["tourDialog"]["width"].removesuffix("px"))
+            assert tour_width >= (700 if width == 761 else 900), (width, values["tourDialog"])
+            assert values["tourDialogOverflow"] is False, (width, values)
+            assert values["tourFooterOverflow"] is False, (width, values)
         assert values["overflow"] is False, (width, values)
         assert not errors, errors
         if screenshot:
@@ -194,7 +231,7 @@ def main():
             browser = playwright.chromium.launch(headless=True)
             try:
                 results = [inspect_width(browser, origin, width, width in (390, 1440))
-                           for width in (390, 760, 761, 1440)]
+                           for width in (320, 390, 760, 761, 1440)]
             finally:
                 browser.close()
         receipt = {
