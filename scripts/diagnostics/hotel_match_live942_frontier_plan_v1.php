@@ -46,16 +46,19 @@ function m942_plan(PDO $db):array{
         $front=$currentMissing+$control;
         m942_need(count($front)===942,'original_frontier_changed_'.count($front));
         $ids=array_keys($front);$ctx=m942_rows($db,$ids,true);$fallback=m942_rows($db,array_values(array_diff($ids,array_keys($ctx))),false);
-        $deps=[];foreach($db->query("SELECT country_id,departure_id FROM catalog_departure_countries WHERE is_active=1 ORDER BY country_id,(departure_id=1) DESC,departure_id")->fetchAll(PDO::FETCH_ASSOC)?:[] as $r){$c=(int)$r['country_id'];if(!isset($deps[$c]))$deps[$c]=(int)$r['departure_id'];}
+        $depNames=[];foreach($db->query("SELECT id,name FROM catalog_departures WHERE is_active=1 ORDER BY id")->fetchAll(PDO::FETCH_ASSOC)?:[] as $r){$did=(int)$r['id'];$name=trim((string)$r['name']);if($did>0&&$name!=='')$depNames[$did]=$name;}
+        $deps=[];foreach($db->query("SELECT country_id,departure_id FROM catalog_departure_countries WHERE is_active=1 ORDER BY country_id,(departure_id=1) DESC,departure_id")->fetchAll(PDO::FETCH_ASSOC)?:[] as $r){$countryId=(int)$r['country_id'];if(!isset($deps[$countryId]))$deps[$countryId]=(int)$r['departure_id'];}
         $rows=[];$missing=0;$past=0;
         foreach($ids as $id){
             $f=$facts[$id];$c=$ctx[$id]??$fallback[$id]??null;$source='future_observation';
             if($c===null){$missing++;$source='catalog_fallback';$date=(new DateTimeImmutable('now',new DateTimeZone('UTC')))->modify('+14 days')->format('Y-m-d');$c=['departure_id'=>$deps[(int)$f['country_id']]??1,'country_id'=>(int)$f['country_id'],'departure_date'=>$date,'nights'=>7,'adults'=>2,'children_count'=>0,'child_ages_signature'=>''];}
             elseif(!isset($ctx[$id])){$past++;$source='latest_observation_fallback';$date=(new DateTimeImmutable('now',new DateTimeZone('UTC')))->modify('+14 days')->format('Y-m-d');$c['departure_date']=$date;}
+            $departureId=(int)$c['departure_id'];$departureName=trim((string)($depNames[$departureId]??''));
+            m942_need($departureId>0&&$departureName!=='','departure_name_missing_'.$id.'_'.$departureId);
             $rows[]=[
                 'tv_hotel_id'=>$id,'hotel_name'=>(string)$f['name'],'country_id'=>(int)$f['country_id'],'country'=>(string)$f['country_name'],'region'=>(string)$f['region_name'],'subregion'=>(string)$f['subregion_name'],
                 'samo_hotel_ids'=>array_map('intval',array_keys($anchors[$id])),'context_source'=>$source,
-                'departure_id'=>(int)$c['departure_id'],'departure_date'=>(string)$c['departure_date'],'nights'=>max(1,min(28,(int)$c['nights'])),'adults'=>max(1,min(6,(int)$c['adults'])),
+                'departure_id'=>$departureId,'departure_name'=>$departureName,'departure_date'=>(string)$c['departure_date'],'nights'=>max(1,min(28,(int)$c['nights'])),'adults'=>max(1,min(6,(int)$c['adults'])),
                 'children_count'=>max(0,min(3,(int)$c['children_count'])),'child_ages_signature'=>(string)$c['child_ages_signature']
             ];
         }
