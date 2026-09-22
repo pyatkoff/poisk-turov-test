@@ -62,9 +62,6 @@ ok($result['surcharge_ready']===1,'surcharge ready');
 ok($autosaveCalls===1 && $result['autosave_published']===true && $result['ready_offer_count']===1,'autosave');
 ok($result['status']==='complete'&&$result['autosave']===['published'=>true,'reason'=>null,'readyOfferCount'=>1],'published autosave completes collector');
 
-// Real multi-page orchestrator shape: all advertised pages were drained, but the
-// aggregate preserves the standalone page normalizer's `partial` label. The exact
-// structural proof is accepted; arbitrary partial results must remain fail-closed.
 $drainedCaptureCalls=0;$drainedAutosaveCalls=0;
 $drained=AnyTourAndromedaLocalOfferCollectorV1::collect(
     $request,
@@ -112,9 +109,6 @@ foreach ([
     ok($partialThrown,'ambiguous partial aggregate must fail closed');
 }
 
-// The real page orchestrator returns its first terminal-empty page unchanged:
-// page=1, pages_count=0. Empty must reach the existing autosave owner exactly once,
-// without manufacturing a priced offer or using the supplier-capture callbacks.
 $emptyPage=[
     'provider'=>'andromeda','search_ref'=>str_repeat('0',64),'generation'=>7,
     'page'=>1,'pages_count'=>0,'status'=>'complete','hotels'=>[],
@@ -159,9 +153,6 @@ foreach(['all','non_external_only'] as $mode)foreach($emptySaveReceipts as $save
 }
 ok($emptyPage===$emptyPageBefore&&$request===$emptyRequestBefore,'empty input immutability');
 
-// Persistence failures are terminal evidence, not permission to claim the collector
-// completed. Preserve the exact receipt so a caller can reconcile an unknown write
-// state without replaying supplier or DB operations.
 $persistenceCases=[
     [['published'=>true,'reason'=>null,'readyOfferCount'=>3],'complete'],
     [['published'=>false,'reason'=>'already_published','readyOfferCount'=>3],'complete'],
@@ -186,9 +177,6 @@ foreach($persistenceCases as [$saveReceipt,$expectedStatus]){
     ok($persistenceResult['autosave']===$saveReceipt,'persistence receipt preserved exactly');
 }
 
-// Zero pages alone is not evidence of an authoritative empty search. Wrong types,
-// missing fields, pending/partial state, wrong generation or hidden offers must all
-// fail before any cohort load, capture, mapping callback or autosave can occur.
 $invalidEmptyPages=[];
 foreach([
     'provider'=>['anex',null], 'search_ref'=>['bad',null],
@@ -212,9 +200,6 @@ foreach($invalidEmptyPages as $shape){
     ok($invalidEmptyThrown,'unproven zero-page result must fail before autosave');
 }
 
-// Independently loaded retained rows must also be empty. Even a row that normal
-// operator/mapping routing would discard must not turn a contradictory cohort into
-// an authoritative empty replacement of the canonical snapshot.
 foreach([
     [['page'=>1,'offer'=>$offer('empty-owned','FUN&SUN',12,'7')]],
     [['page'=>1,'offer'=>$offer('empty-excluded','ANEX',11,'5')]],
@@ -256,7 +241,6 @@ ok($priorityResult['surcharge_capture_attempts']===3,'priority capture bound');
 ok($priorityResult['eligible_offers']===6,'priority keeps all candidates eligible');
 ok($priorityResult['status']==='incomplete','unpublished populated cohort must not report complete');
 
-// The evidence-backed key must not collapse materially different transport groups.
 $strictBase=$offer('strict-a','Интурист',30,'30',true,'p4','t4','spo-a');
 $strictSpo=$offer('strict-b','Интурист',31,'30',true,'p4','t4','spo-b');
 $strictNights=$offer('strict-c','Интурист',32,'30',true,'p4','t4','spo-c');$strictNights['nights']=8;
@@ -277,10 +261,8 @@ AnyTourAndromedaLocalOfferCollectorV1::collect(
     },
     $priorityAutosave,4
 );
-ok($strictOrder===[30,32,33,34],'nights/date/currency differences must stay distinct while SPO-only duplicate defers');
+ok($strictOrder===[30,33,34],'nights and SPO share one group while date/currency remain distinct');
 
-// Malformed explicit-external context must never share evidence. Two otherwise
-// identical unkeyable rows therefore each consume a first-pass unique-offer bucket.
 $malformedA=$offer('malformed-a','Интурист',40,'40',true,'p5','t5','spo-a');unset($malformedA['check_in']);
 $malformedB=$offer('malformed-b','Интурист',41,'40',true,'p5','t5','spo-b');unset($malformedB['check_in']);
 $malformedDistinct=$offer('malformed-c','Интурист',42,'40',true,'p6','t6','spo-c');
@@ -300,8 +282,6 @@ AnyTourAndromedaLocalOfferCollectorV1::collect(
 );
 ok($malformedOrder===[40,41,42],'unkeyable external rows must remain unique fail-closed buckets');
 
-// Mass non-external mode must ignore external/unknown candidates entirely and allow
-// a background-scale capture budget above the historical diagnostic cap of six.
 $nonExternalOrder=[];$nonExternalReady=0;
 $massCohort=static function(string $ref,int $generation)use($offer):array{
     $rows=[];
@@ -331,9 +311,6 @@ ok(!in_array(200,$nonExternalOrder,true)&&!in_array(201,$nonExternalOrder,true),
 ok($massResult['capture_mode']==='non_external_only'&&$massResult['capture_queue_offers']===12,'nonexternal queue metadata');
 ok($massResult['surcharge_ready']===12&&$massResult['ready_offer_count']===12,'verified calc counts as ready');
 
-// The optional wall-clock budget must stop starting new supplier candidates and
-// still run the existing single autosave. It is deliberately stricter than the
-// supplier-call count so already-verified 300s quote evidence can stay fresh.
 $budgetOrder=[];$budgetAutosaveCalls=0;$budgetTicks=[100.0,120.0,311.0];
 $budgetClock=static function()use(&$budgetTicks):float{
     if($budgetTicks===[])throw new RuntimeException('unexpected_clock_read');
@@ -411,4 +388,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 strict_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1 persistence_fail_closed=7 cli_exit_guard=1 terminal_empty=4 empty_fail_closed=51\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 night_independent_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1 persistence_fail_closed=7 cli_exit_guard=1 terminal_empty=4 empty_fail_closed=51\n";
