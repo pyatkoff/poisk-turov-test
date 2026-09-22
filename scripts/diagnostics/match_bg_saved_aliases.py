@@ -18,6 +18,12 @@ import zipfile
 
 EX = re.compile(r'\(\s*ex(?:\.|\s|:|-)+([^()]*)\)', re.I)
 COMMON4 = {'operator_5', 'operator_315', 'operator_342', 'operator_115'}
+COUNTRY_LABEL_ALIASES = {
+    # BG uses the full country title while the local catalog consistently uses
+    # the standard Russian acronym. Keep this explicit and code-bound: it must
+    # not become a generic abbreviation/fuzzy-country rule.
+    'AE': {'оаэ', 'объединенные арабские эмираты', 'uae', 'united arab emirates'},
+}
 
 def sha(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
@@ -39,6 +45,14 @@ def names(value: object) -> dict:
 def stars(value: object) -> int | None:
     m = re.fullmatch(r'\s*([1-5])\s*\*?\s*', str(value or ''))
     return int(m.group(1)) if m else None
+
+def country_matches(local_name: object, country: dict) -> bool:
+    local = label(local_name)
+    official = {label(country.get(k)) for k in ('title_ru', 'title_en')} - {''}
+    if local and local in official:
+        return True
+    aliases = COUNTRY_LABEL_ALIASES.get(str(country.get('code') or '').upper())
+    return bool(aliases and local in aliases and official & aliases)
 
 def name_proofs(local: str, official: str, records: list[dict]) -> list[dict]:
     l, b = names(local), names(official)
@@ -64,8 +78,7 @@ def geography_proof(row: dict, bg: dict, rules: dict) -> dict | None:
         or str(hotel.get('countryKey')) != str(country.get('id'))
         or str(hotel.get('cityKey')) != str(city.get('id'))
         or str(city.get('country')) != str(country.get('id'))
-        or not label(country.get('title_ru'))
-        or label(country.get('title_ru')) != label(local.get('country_name'))):
+        or not country_matches(local.get('country_name'), country)):
         return None
     for geo in row.get('retained_geography', []):
         if not (geo.get('native_namespace') == 'bgoperator' and geo.get('native_id') == bg.get('native_id')
@@ -151,7 +164,7 @@ def run(archive: Path, expected_digest: str) -> dict:
                     continue
                 h, city, country = bg['hotel'], bg['official_city'], bg['official_country']
                 geo = geography_proof(row, bg, data['rule_table'])
-                checked = (bg.get('category_exact') and bg.get('country_matches_local') and bg.get('city_country_consistent')
+                checked = (bg.get('category_exact') and country_matches(local.get('country_name'), country) and bg.get('city_country_consistent')
                     and str(h.get('key')) == f4[0] and str(h.get('countryKey')) == str(country.get('id'))
                     and str(h.get('cityKey')) == str(city.get('id')) and str(city.get('country')) == str(country.get('id'))
                     and stars(h.get('stars')) == stars(local.get('category'))
