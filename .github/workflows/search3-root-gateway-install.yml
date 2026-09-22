@@ -32,7 +32,7 @@ jobs:
           PREVIEW_HOST: "${{ secrets.ANYTOOUR_DEPLOY_HOST }}"
           PREVIEW_USER: "${{ secrets.ANYTOOUR_DEPLOY_USER }}"
           PREVIEW_KEY: "${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}"
-        run: python3 scripts/deploy/search3_root_gateway_install.py inspect
+        run: python3 scripts/deploy/search3_root_gateway_inspect.py
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with: {name: "search3-root-gateway-inspect-${{ github.run_id }}", path: "${{ runner.temp }}/search3-root-gateway-inspect/evidence.json", if-no-files-found: warn, retention-days: 30}
