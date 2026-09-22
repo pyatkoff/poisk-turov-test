@@ -59,6 +59,31 @@ function anytour_andromeda_search3_operator_aliases(string $name): array {
     return array_values(array_unique(array_filter($aliases,static fn($v)=>is_string($v)&&trim($v)!=='')));
 }
 
+function anytour_andromeda_search3_known_operator_name(string $id): ?string {
+    return [
+        '13'=>'ANEX',
+        '18'=>'Библио-Глобус',
+        '25'=>'FUN&SUN',
+        '43'=>'Intourist',
+    ][$id]??null;
+}
+
+function anytour_andromeda_search3_operator_name(array $observed,string $id): ?string {
+    $seen=$observed[$id]??null;
+    if(!is_string($seen)||trim($seen)==='')$seen=null;
+    $known=anytour_andromeda_search3_known_operator_name($id);
+    if($known===null)return $seen;
+    if($seen!==null){
+        $allowed=[];
+        foreach(anytour_andromeda_search3_operator_aliases($known) as $alias)
+            $allowed[anytour_anex_search3_name($alias)]=true;
+        if(!isset($allowed[anytour_anex_search3_name($seen)]))
+            throw new DomainException('operator_identity_conflict');
+    }
+    return $known;
+}
+
+
 /** Resolve Search3/Tourvisor operator IDs through observed Tourvisor names, then saved Andromeda OPERATORS. */
 function anytour_andromeda_search3_operators(array $saved,array $values,PDO $pdo): ?string {
     if(!$values)return null;
@@ -78,8 +103,9 @@ function anytour_andromeda_search3_operators(array $saved,array $values,PDO $pdo
     if(!is_array($rows))throw new DomainException('operator_dictionary_missing');
     $ids=[];
     foreach(array_keys($wanted) as $id){
-        if(!isset($names[$id])||trim($names[$id])==='')throw new DomainException('operator_not_loaded');
-        $ids[]=anytour_andromeda_search3_dictionary_id($rows,anytour_andromeda_search3_operator_aliases($names[$id]),'operator_not_loaded');
+        $name=anytour_andromeda_search3_operator_name($names,$id);
+        if($name===null)throw new DomainException('operator_not_loaded');
+        $ids[]=anytour_andromeda_search3_dictionary_id($rows,anytour_andromeda_search3_operator_aliases($name),'operator_not_loaded');
     }
     $ids=array_values(array_unique($ids));sort($ids,SORT_NUMERIC);
     return implode(',',$ids);
