@@ -13,6 +13,8 @@ on:
       - 'tests/search3-css-printing.cjs'
       - 'tests/search3-presentation-scope.test.cjs'
       - 'tests/search3-tourvisor-results-limit.php'
+      - 'tests/search3-prototype-inventory-lifecycle.cjs'
+      - 'tests/search3-prototype-inventory-browser.py'
       - 'tests/search3_source_build_test.py'
       - 'v2/**'
       - 'tests/site-preview-path-smoke.php'
@@ -93,6 +95,7 @@ jobs:
           node tests/search3-presentation-scope.test.cjs
           node tests/search3-honest-results-controls.cjs
           php tests/search3-tourvisor-results-limit.php
+          node tests/search3-prototype-inventory-lifecycle.cjs
           python3 -B tests/search3_source_build_test.py
           python3 -B tests/search3_production_presentation_test.py
           python3 -B tests/search3_site_preview_isolation_test.py
@@ -268,6 +271,40 @@ jobs:
           kill "$php_pid" >/dev/null 2>&1 || true
           trap - EXIT
           echo SEARCH3_SITE_LOCAL_PREVIEW_SMOKE_OK
+
+      - name: Detect prototype inventory changes
+        id: prototype-inventory
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/prototype-search/app.js v2/prototype-search/data.js tests/search3-prototype-inventory-lifecycle.cjs tests/search3-prototype-inventory-browser.py; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install pinned prototype browser tools
+        if: steps.prototype-inventory.outputs.required == 'true'
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+
+      - name: Verify prototype budget continuation and contact contracts
+        if: steps.prototype-inventory.outputs.required == 'true'
+        run: |
+          node tests/search3-prototype-lead-bind.cjs
+          python tests/search3-prototype-inventory-browser.py
+          python tests/search3-prototype-contact-recovery.py
+
+      - name: Retain prototype inventory browser evidence
+        if: always() && steps.prototype-inventory.outputs.required == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-prototype-inventory-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: local-db-price-evidence/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Detect proven card-only presentation scope
         id: presentation-scope
