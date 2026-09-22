@@ -130,6 +130,27 @@ def parse_command(body: str) -> dict:
             need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'offset': offset, 'limit': limit}
+    if mode == 'andromeda-operator-scope':
+        # One provider-neutral Search3/Tourvisor operator filter. This mode is
+        # search+autosave only: no package/getFlights capture budget is accepted.
+        need(len(parts) == 12, 'command_shape')
+        departure = integer(parts[3], 1, 999999999, 'departure')
+        country = integer(parts[4], 1, 999999999, 'country')
+        date_from, date_to = date(parts[5]), date(parts[6])
+        need(date_to >= date_from, 'date_range')
+        nights = integer(parts[7], 1, 28, 'nights')
+        adults = integer(parts[8], 1, 6, 'adults')
+        meal = parts[9]
+        need(re.fullmatch(r'(?:-|[A-Za-z0-9_,&]{1,32})', meal) is not None, 'meal')
+        region = integer(parts[10], 0, 999999999, 'region')
+        operator_id = integer(parts[11], 1, 999999999, 'operator_id')
+        return {
+            'source_sha': source, 'mode': mode, 'operation_id': operation,
+            'departure': departure, 'country': country, 'date_from': date_from,
+            'date_to': date_to, 'nights': nights, 'adults': adults,
+            'meal': '' if meal == '-' else meal, 'region': region,
+            'operator_id': operator_id, 'max_captures': 0,
+        }
     if mode == 'andromeda-scope':
         need(len(parts) == 12, 'command_shape')
         departure = integer(parts[3], 1, 999999999, 'departure')
@@ -412,7 +433,8 @@ echo json_encode(['readbackError'=>$code,'errorClass'=>get_class($e),
           'hotelCategory':'','hotelRating':'','hotelTypes':[],'hotelIds':[],
           'hotelServices':[],'arrivalId':'',
           'regionIds':[] if scope.get('regionId') is None else [str(scope['regionId'])],
-          'subregionIds':[],'operatorIds':[],'priceFrom':'','priceTo':'',
+          'subregionIds':[],'operatorIds':[] if scope.get('operatorId') is None else [str(scope['operatorId'])],
+          'priceFrom':'','priceTo':'',
           'currency':'RUB','onlyCharter':False,'onlyDirect':False}
         run=subprocess.run(['php','-r',php,json.dumps(params,separators=(',',':'))],
                            cwd=project,capture_output=True,text=True,timeout=30)
@@ -716,7 +738,7 @@ try:
         command=['php',str(stage/'scripts/ops/anex_local_offer_demand_fill.php'),
           '--limit='+str(payload['limit']),'--lookback-hours=168','--horizon-days=21',
           '--max-expands=600','--max-apd=600','--generation-base='+generation]
-    elif mode in ('andromeda-scope','andromeda-external-group'):
+    elif mode in ('andromeda-scope','andromeda-external-group','andromeda-operator-scope'):
         config=project/'_preview/search3-anex-candidate/.andromeda-private.php'
         if not safe_file(config,65536): fail('andromeda_private_config_missing')
         command=['php',str(stage/'scripts/ops/andromeda_local_offer_collect.php'),
@@ -728,6 +750,7 @@ try:
           '--max-captures='+str(payload['max_captures']),'--max-capture-seconds='+('240' if payload['max_captures']>0 else '0'),
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
+        if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
     if mode not in ('reconcile','local-readback','install-runtime','match-tv942','match-samo942'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
@@ -749,7 +772,8 @@ try:
                 scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
                          'regionId':payload['region'] or None,'dateFrom':payload['date_from'],
                          'dateTo':payload['date_to'],'nights':payload['nights'],
-                         'adults':payload['adults'],'childAges':[]}]
+                         'adults':payload['adults'],'childAges':[],
+                         'operatorId':payload.get('operator_id')}]
             try:
                 result['local_readback']=local_read(scopes) if scopes else []
             except Exception as exc:
