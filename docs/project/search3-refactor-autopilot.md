@@ -1,5 +1,13 @@
 # Search3 technical refactor autopilot
 
+## Текущий журнал координации — 2026-09-22
+
+Все новые claims, handoff, результаты и разрешённые команды: [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419).
+#2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
+При блокере зафиксировать причину и продолжать следующую доступную независимую задачу.
+Маршрутизация и действующие исполнители: [coordination-journal.md](coordination-journal.md).
+Перенос журнала не разрешает повтор операций и не расширяет доступ или production-допуск.
+
 Owner request recorded on 2026-09-06: «давай на автопилот поставь».
 
 ## Hourly development resumed — 2026-09-06
@@ -15,7 +23,7 @@ historical checkpoints are superseded by this explicit owner request.
 Each run must perform actual development, prioritizing large reversible removals
 of obsolete presentation layers and compact repair of concrete preview regressions.
 Do not repeat the twelve retired layers or completed minifier/dominance/media scans.
-Read fresh release state and #996/#1334; checked code and published preview may differ.
+Read fresh release state and #3419/#1334; checked code and published preview may differ.
 Continue beyond one PR while a safe independent next step remains. Avoid overlapping
 edits or duplicate deployments; retain the focused two-source-job policy and reuse
 the successful artifact. Do not publish or replay a browser journey merely because

@@ -1,5 +1,13 @@
 # poisk-turov-test — Autopilot Roadmap
 
+## Текущий журнал координации — 2026-09-22
+
+Все новые claims, handoff, результаты и разрешённые команды: [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419).
+#2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
+При блокере зафиксировать причину и продолжать следующую доступную независимую задачу.
+Маршрутизация и действующие исполнители: [coordination-journal.md](docs/project/coordination-journal.md).
+Перенос журнала не разрешает повтор операций и не расширяет доступ или production-допуск.
+
 ## Current AnyTour work routing — 2026-09-09
 
 Read the [central development plan](https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/anytour-development.md) on the fresh release, then
@@ -7,7 +15,7 @@ Read the [central development plan](https://github.com/pyatkoff/poisk-turov-test
 The inherited root AUTOPILOT_STATE and old Search3 next_action below are historical
 for this integration branch, not the current whole-site queue. Keep all existing
 owner/security/production gates. INT, temporary addon SEARCH, SITE and SEO have
-separate owners under #996; do not copy this old base over the current release.
+separate owners under #3419; do not copy this old base over the current release.
 
 
 Updated: 2026-09-04
@@ -18,7 +26,7 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 AnyTour Design System 2.0 is the only canonical design system. Do not restore, introduce or reference Design System 1.0 as current. Treat the public site as one product across homepage → destination/country → hot/search → results → selected tour → lead.
 
-Active owner-directed continuation is [Search3 site completion, issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996). Finish the new design across the site before expanding SEO or refactoring. The coherent whole-site preview is published from checked source `39d376436e3553d16755a7da1c77cb4c3f5156bf`; desktop real-catalogue acceptance reaches the lead form, unavailable-flight/retry branches pass deterministic browser coverage, result cards are readable at 375/430/1024/1440, localized decimal flight-price tradeoffs are internally consistent, and resort destination copy uses the reviewed grammatical form. Physical iPhone/Safari remains. The existing search-only deploy still accepts only nine search files and is unchanged. The stable DS2 mode/phase/stage identifiers remain unchanged; Search3 is the active substage.
+Active owner-directed continuation is [Search3 site completion, issue #3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419). Finish the new design across the site before expanding SEO or refactoring. The coherent whole-site preview is published from checked source `39d376436e3553d16755a7da1c77cb4c3f5156bf`; desktop real-catalogue acceptance reaches the lead form, unavailable-flight/retry branches pass deterministic browser coverage, result cards are readable at 375/430/1024/1440, localized decimal flight-price tradeoffs are internally consistent, and resort destination copy uses the reviewed grammatical form. Physical iPhone/Safari remains. The existing search-only deploy still accepts only nine search files and is unchanged. The stable DS2 mode/phase/stage identifiers remain unchanged; Search3 is the active substage.
 
 Priority order after emergency overrides is: confirmed search/mobile defects → common site presentation → whole-site preview and handoff → truthful content/working links and offer freshness → end-to-end acceptance → owner-approved migration. Owner explicitly authorized Search3 presentation refactoring on 2026-09-05. Source ownership and reproducible build are in scope; broader technical refactor and mass SEO expansion remain deferred.
 
@@ -71,7 +79,7 @@ Search3 candidate `470474414a3930f1f6c095a8dbbc187075b253c0` is published in the
 
 Draft #1334 contains the production import, old-search route, client-facing copy, independent home night ranges/child ages, and date/night/party-preserving links from snapshot/month pages. These changes are prepared and checked, not published on the main site. The previous 7.3/10 score is historical; no new whole-product score has been assigned.
 
-Continue from `AUTOPILOT_STATE.json` current task/queue and [issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996):
+Continue from `AUTOPILOT_STATE.json` current task/queue and [issue #3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419):
 
 1. Keep the published whole-site preview isolated and exact; source `47e54a02`, deploy `33942600148`, deployment record #1346.
 2. Complete physical iPhone/Safari acceptance. Desktop home → search → hotel → tour → flight → summary → lead form passed without sending a lead; deterministic Chromium also covers empty-flight retry, recovery and the fallback path to the lead form without invoking lead transport.
