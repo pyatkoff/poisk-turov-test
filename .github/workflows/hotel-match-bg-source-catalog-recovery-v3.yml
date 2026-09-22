@@ -1,0 +1,111 @@
+name: MATCH BG recover persisted source catalog evidence v3
+'on':
+  pull_request:
+    types: [synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-bg-source-catalog-recovery-v3.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-bg-source-catalog-recovery-1971-20260922-v3, cancel-in-progress: false}
+env:
+  OP: hotel-match-bg-source-catalog-recovery-1971-20260922-v3
+  PARENT: b344865d22c464a79801e02a1b02cf3d28c39f80
+  CLAIM: '5774940655'
+  RETAINED_ARTIFACT: '10688472272'
+  RETAINED_DIGEST: 'sha256:a52b4dbdf4a9eafdd49746a5a1aae461374f8d558e088096165ff82964e2b515'
+  RETAINED_RUN: '35714395387'
+  RETAINED_HEAD: 19d1a8c96229d6d9f9f8a469754ca4261766ce51
+  RETAINED_NAME: match-bg-retained-geography-35714395387
+jobs:
+  recover:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 3413 && github.event.pull_request.head.ref == 'ops/match-bg-source-catalog-recovery-1971-20260922-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+    - name: Validate exact continuation and recover immutable projection code
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077; mkdir -p input reservation terminal
+        test "$(git rev-parse HEAD^)" = "$PARENT"
+        test "$(git diff --name-only "$PARENT"..HEAD | tr '\n' ' ')" = ".github/workflows/hotel-match-bg-source-catalog-recovery-v3.yml "
+        gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+        gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$RETAINED_ARTIFACT" > input/artifact-meta.json
+        gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$RETAINED_ARTIFACT/zip" > input/retained.zip
+        python3 - <<'PY'
+        import datetime,hashlib,json,os,pathlib,re,zipfile
+        c=json.load(open('input/claim.json'))
+        assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER'
+        assert c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+        for t in (os.environ['OP'],'PR#3413','READ ONLY','SupplierHTTP0/provider0','DB/mapping writes0','Никакой F4 transform/operator_115 write'):
+            assert t in c['body'],t
+        m=json.load(open('input/artifact-meta.json'))
+        assert m['id']==int(os.environ['RETAINED_ARTIFACT']) and m['name']==os.environ['RETAINED_NAME'] and m['expired'] is False
+        assert m['digest']==os.environ['RETAINED_DIGEST'] and m['workflow_run']['id']==int(os.environ['RETAINED_RUN']) and m['workflow_run']['head_sha']==os.environ['RETAINED_HEAD']
+        with zipfile.ZipFile('input/retained.zip') as z:
+            rb=z.read('result.json');qb=z.read('receipt.json')
+        q=json.loads(qb);d=json.loads(rb)
+        assert q['result_sha256']==hashlib.sha256(rb).hexdigest()
+        assert d['schema']=='bg-retained-place-evidence/1' and len(d['rows'])==816 and d['counts']['official_keys_examined']==820
+        assert d['mapping_writes']==0 and d['ids_promoted_to_operator115'] is False
+        ids=sorted({int(x['tv_hotel_id']) for x in d['rows']});assert len(ids)==816
+        pathlib.Path('input/ids.json').write_text(json.dumps(ids)+'\n')
+        pathlib.Path('input/retained.json').write_text(json.dumps({'rows':[{'tv_hotel_id':x['tv_hotel_id'],'f4_candidates':x['f4_candidates'],'catalog_hotel':x['catalog_hotel']} for x in d['rows']]},ensure_ascii=False)+'\n')
+        src=pathlib.Path('.github/workflows/hotel-match-bg-source-catalog-recovery-v2.yml').read_text()
+        marker="cat > input/recover.php <<'PHP'\n";start=src.index(marker)+len(marker);end=src.index("\n        PHP",start)
+        php=src[start:end].replace("const OP='hotel-match-bg-source-catalog-recovery-1971-20260922-v2';","const OP='hotel-match-bg-source-catalog-recovery-1971-20260922-v3';")
+        assert php.count("const OP='hotel-match-bg-source-catalog-recovery-1971-20260922-v3';")==1 and 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' in php and "supplier_http_requests'=>0" in php and "mapping_writes'=>0" in php
+        pathlib.Path('input/recover.php').write_text(php)
+        reserve={'operation':os.environ['OP'],'state':'reserved_before_read_only_db','source_sha':os.environ['HEAD'],'parent_sha':os.environ['PARENT'],'claim_id':int(os.environ['CLAIM']),'retained_artifact_id':int(os.environ['RETAINED_ARTIFACT']),'retained_digest':m['digest'],'retained_result_sha256':hashlib.sha256(rb).hexdigest(),'membership_count':len(ids),'projection_source_sha':os.environ['PARENT'],'projection_php_sha256':hashlib.sha256(php.encode()).hexdigest(),'supplier_http_requests':0,'provider_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+        pathlib.Path('reservation/reservation.json').write_text(json.dumps(reserve,sort_keys=True)+'\n')
+        PY
+        php -l input/recover.php
+        rm input/claim.json input/artifact-meta.json input/retained.zip
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with: {name: 'match-bg-source-catalog-v3-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+    - name: Require exact-head Security
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import json,os,time,urllib.request
+        u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+        for _ in range(60):
+            req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(req,timeout=30) as f: rs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+            if rs and max(rs,key=lambda x:x['id'])['status']=='completed': assert max(rs,key=lambda x:x['id'])['conclusion']=='success';break
+            time.sleep(5)
+        else: raise SystemExit('security_not_green')
+        PY
+    - name: Recover CURRENT persisted source catalog evidence
+      env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/h"; trap 'rm -f "$key" "$known"' EXIT
+        if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+        chmod 600 "$key"; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null; r="$USER@$HOST"; op=".anytoour-match/operations/$OP"; a=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+        ssh "${a[@]}" "$r" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/.anytoour-match/operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+        cp reservation/reservation.json input/reservation.json; scp "${a[@]}" input/recover.php input/ids.json input/reservation.json "$r:$op/payload/"
+        set +e; ssh "${a[@]}" "$r" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_DIR=\"\$HOME/$op/payload\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/recover.php\"" >terminal/stdout 2>terminal/stderr; status=$?; ssh "${a[@]}" "$r" "cd \"\$HOME/$op\" && tar -czf - -- *.json" >terminal/server.tgz; set -e; printf '%s\n' "$status">terminal/exit-code.txt; exit "$status"
+    - name: Verify and summarize recovered Biblio native hints
+      run: |
+        python3 - <<'PY'
+        import collections,hashlib,json,pathlib,tarfile
+        with tarfile.open('terminal/server.tgz','r:gz') as t:
+            for n in ('started.json','result.json','receipt.json'): pathlib.Path('terminal',n).write_bytes(t.extractfile(n).read())
+        r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'));ret=json.load(open('input/retained.json'))
+        assert r['state']==q['state']=='completed_source_catalog_recovery' and q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+        assert r['supplier_http_requests']==r['provider_calls']==r['database_writes']==r['mapping_writes']==0 and r['counts']['membership_hotels']==816 and r['counts']['evidence_hash_mismatches']==0
+        f4={int(x['tv_hotel_id']):set(map(str,x['f4_candidates'])) for x in ret['rows']};paths=collections.Counter();biblio=[];native=collections.Counter()
+        for row in r['rows']:
+            text=json.dumps([row['source_catalog_blocks'],row['identity_hints']],ensure_ascii=False).lower()
+            for b in row['source_catalog_blocks']: paths[b['path']]+=1
+            if 'biblio' in text or 'библио' in text:
+                vals=[x for x in row['identity_hints'] if any(k in x['path'].lower() for k in ('native_hotel_id','external_hotel_id','hotel_id','hotelid','hotelkey','operator_id','operatorid','operator_name','operatorname'))]
+                for x in vals:
+                    if 'native_hotel_id' in x['path'].lower(): native[str(x['value'])]+=1
+                biblio.append({'local_hotel_id':row['local_hotel_id'],'andromeda_catalog_id':row['andromeda_catalog_id'],'f4_candidates':sorted(f4.get(row['local_hotel_id'],set())),'identity_values':vals,'source_catalog_blocks':row['source_catalog_blocks']})
+        s={'counts':r['counts'],'source_catalog_paths':dict(paths),'biblio_rows_found':len(biblio),'distinct_biblio_native_values':len(native),'biblio_native_value_counts':dict(native),'biblio_rows':biblio,'authority':'evidence-only; no F4/operator115 transform and no mapping write'}
+        pathlib.Path('terminal/source-catalog-summary.json').write_text(json.dumps(s,ensure_ascii=False,indent=2,sort_keys=True)+'\n'); print(json.dumps({k:v for k,v in s.items() if k!='biblio_rows'},ensure_ascii=False,sort_keys=True))
+        PY
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: always()
+      with: {name: 'match-bg-source-catalog-v3-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
