@@ -78,6 +78,22 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'program_fuel_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'program-fuel-probe':
+        # One exact retained operator/program/tour + one distinct-SPO sample.
+        need(len(parts) == 8, 'command_shape')
+        target = parts[3]
+        family = parts[4]
+        need(OP_RE.fullmatch(target) is not None and target.startswith('int-andromeda-')
+             and target != operation, 'target_operation_id')
+        need(family in ('funsun','intourist'), 'program_fuel_operator_family')
+        program_key = integer(parts[5], 1, 999999999, 'program_key')
+        tour_key = integer(parts[6], 1, 999999999, 'tour_key')
+        sample_index = integer(parts[7], 0, 1000, 'sample_index')
+        need(operation.startswith('int-andromeda-'), 'program_fuel_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'target_operation_id': target, 'operator_family': family,
+                'program_key': program_key, 'tour_key': tour_key,
+                'sample_index': sample_index}
     if mode == 'anex-demand':
         need(len(parts) == 4, 'command_shape')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
@@ -389,6 +405,63 @@ def program_fuel_readback():
             or stored.get('ready_count')!=12 or stored.get('verified_count')!=0
             or stored.get('payload_hash_invalid_count')!=0 or stored.get('retained_missing_count')!=0):
         fail('program_fuel_readback_acceptance')
+    return data
+def program_fuel_probe():
+    encoded=payload.get('program_fuel_probe_php_b64')
+    expected=payload.get('program_fuel_probe_php_sha256')
+    if not isinstance(encoded,str) or not isinstance(expected,str) or not re.fullmatch(r'[a-f0-9]{64}',expected):
+        fail('program_fuel_probe_source_missing')
+    try:
+        script=base64.b64decode(encoded,validate=True)
+    except Exception:
+        fail('program_fuel_probe_source_encoding')
+    if not script or len(script)>1024*1024 or hashlib.sha256(script).hexdigest()!=expected:
+        fail('program_fuel_probe_source_hash')
+    env=dict(os.environ)
+    env.update({
+        'INT_PROGRAM_PROBE_TARGET_OPERATION': str(payload['target_operation_id']),
+        'INT_PROGRAM_PROBE_OPERATOR_FAMILY': str(payload['operator_family']),
+        'INT_PROGRAM_PROBE_PROGRAM_KEY': str(payload['program_key']),
+        'INT_PROGRAM_PROBE_TOUR_KEY': str(payload['tour_key']),
+        'INT_PROGRAM_PROBE_SAMPLE_INDEX': str(payload['sample_index']),
+    })
+    run=subprocess.run(
+        ['php','-d','display_errors=0','-d','log_errors=0'],
+        input=script,cwd=project,env=env,capture_output=True,timeout=120
+    )
+    if run.returncode!=0 or run.stderr.strip():
+        fail('program_fuel_probe_failed')
+    try:
+        data=json.loads(run.stdout.decode().strip())
+    except Exception:
+        fail('program_fuel_probe_unparseable')
+    if not isinstance(data,dict) or data.get('schema_version')!=1 or data.get('source')!='int-andromeda-program-getflights-probe-v1':
+        fail('program_fuel_probe_contract')
+    calls=data.get('supplier_calls',{})
+    if (not isinstance(calls,dict) or calls.get('changeservice')!=0
+            or calls.get('calc')!=0 or calls.get('booking')!=0
+            or data.get('database_reads')!=0 or data.get('database_writes')!=0
+            or data.get('mapping_writes')!=0 or data.get('final_price_verified') is not False):
+        fail('program_fuel_probe_authority')
+    target=data.get('target',{})
+    if data.get('status')=='complete':
+        if (calls.get('login_attempted') is not True or calls.get('package')!=1
+                or calls.get('get_flights')!=1
+                or target.get('target_operation')!=payload['target_operation_id']
+                or target.get('operator_family')!=payload['operator_family']
+                or target.get('program_key')!=str(payload['program_key'])
+                or target.get('tour_key')!=str(payload['tour_key'])
+                or target.get('sample_distinct_spo_index')!=payload['sample_index']
+                or not isinstance(target.get('spo_key'),str)
+                or not isinstance(target.get('selected_offer_ref_sha256'),str)
+                or not re.fullmatch(r'[a-f0-9]{64}',target['selected_offer_ref_sha256'])):
+            fail('program_fuel_probe_acceptance')
+    elif data.get('status')=='supplier_rejected':
+        facts=data.get('supplier_error_facts')
+        if not isinstance(facts,dict) or facts.get('source')!='andromeda_claim_error':
+            fail('program_fuel_probe_supplier_rejection')
+    elif data.get('status') not in ('blocked_before_supplier','unknown_no_replay'):
+        fail('program_fuel_probe_status')
     return data
 def safe_json(path,max_size=1024*1024):
     if not safe_file(path,max_size): fail('safe_json')
@@ -906,6 +979,23 @@ try:
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
+    if mode=='program-fuel-probe':
+        result['before_db']=db_summary('andromeda')
+        result['program_fuel_probe']=program_fuel_probe()
+        result['after_db']=db_summary('andromeda')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        if result['before_db']!=result['after_db']: fail('program_fuel_probe_db_drift')
+        probe_status=result['program_fuel_probe'].get('status')
+        if probe_status in ('complete','supplier_rejected'):
+            result['status']='complete'
+        elif probe_status=='blocked_before_supplier':
+            result['status']='blocked'
+        else:
+            result['status']='unknown_no_replay'
+        result['supplier_calls']=result['program_fuel_probe'].get('supplier_calls','unknown')
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='local-readback':
         result['before_db']=db_summary('andromeda')
         scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
@@ -970,7 +1060,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -993,7 +1083,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
@@ -1108,6 +1198,13 @@ def execute(command: dict, source_root: Path) -> dict:
         need(0 < len(readback_bytes) <= 1024 * 1024, 'program_fuel_readback_source_size')
         payload['program_fuel_readback_php_b64'] = base64.b64encode(readback_bytes).decode()
         payload['program_fuel_readback_php_sha256'] = hashlib.sha256(readback_bytes).hexdigest()
+    if command['mode'] == 'program-fuel-probe':
+        probe_path = Path(__file__).resolve().parents[2] / 'scripts/diagnostics/int_andromeda_program_getflights_probe_v1.php'
+        need(probe_path.is_file() and not probe_path.is_symlink(), 'program_fuel_probe_source')
+        probe_bytes = probe_path.read_bytes()
+        need(0 < len(probe_bytes) <= 1024 * 1024, 'program_fuel_probe_source_size')
+        payload['program_fuel_probe_php_b64'] = base64.b64encode(probe_bytes).decode()
+        payload['program_fuel_probe_php_sha256'] = hashlib.sha256(probe_bytes).hexdigest()
     encoded = base64.b64encode(REMOTE.encode()).decode()
     remote_command = (
         "python3 -c 'import base64;exec(base64.b64decode(\"" + encoded + "\"))'"
@@ -1148,7 +1245,7 @@ def main() -> None:
         for key,value in command.items():
             print(f'{key}={value}')
         return
-    if command['mode'] in ('match-tv942','match-samo942'):
+    if command['mode'] in ('match-tv942','match-samo942','program-fuel-probe'):
         ensure_supplier_slot(token)
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
