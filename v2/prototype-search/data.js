@@ -7,6 +7,10 @@
   const quoteReceipts = new WeakMap();
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
+  function nativeEndpoint(value){
+    if(typeof value!=='string'||!root.location)return null;
+    try{const url=new URL(value,root.location.href);return url.origin===root.location.origin&&url.pathname==='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'&&!url.search&&!url.hash?url:null;}catch{return null;}
+  }
   const text = value => typeof value === 'object' && value ? String(value.russianName || value.name || '') : String(value ?? '');
   const amount = value => { const n = Number(value && typeof value === 'object' ? value.value : value); return Number.isFinite(n) && n > 0 ? n : null; };
   const date = value => { const s = String(value || '').slice(0, 10), p = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/); return p ? `${p[3]}-${p[2]}-${p[1]}` : /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''; };
@@ -77,7 +81,21 @@
   function refreshDatabase(run){
     // Serial snapshots cannot overwrite a later snapshot with an earlier one.
     // Provider completion uses the same reader; no parallel store or DTO.
-    run.database=run.database.then(()=>{if(current(run))return readDatabase(run);});
+    return run.database=run.database.then(()=>{if(current(run))return readDatabase(run);});
+  }
+  async function enrichAndromeda(run,p){
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi);if(!url||!current(run))return;
+    notify({type:'provider',provider:'andromeda',status:'loading'});if(!current(run))return;
+    try{
+      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({generation:run.generation,params:p})});
+      const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!current(run))return;
+      if(!response.ok||payload?.ok!==true||!data||data.provider!=='andromeda'||data.generation!==run.generation)throw new Error('Andromeda search unavailable');
+      await refreshDatabase(run);if(!current(run))return;
+      notify({type:'provider',provider:'andromeda',status:'complete',hotels:Array.isArray(data.hotels)?data.hotels.length:0});
+    }catch(error){
+      if(!current(run)||error?.name==='AbortError')return;
+      notify({type:'provider',provider:'andromeda',status:'error'});
+    }
   }
   async function pollSearch(run){
     if(!current(run))return;
@@ -104,7 +122,7 @@
   async function search(s, callback, hotelIds=[], filters={}) {
     const p=params(s,hotelIds,filters),epoch=stop();notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
     const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,lastProgress:-10,lastRead:0,deadline:0};
-    activeSearch=run;callback({type:'loading'});if(!current(run))return;run.database=readDatabase(run);
+    activeSearch=run;callback({type:'loading'});if(!current(run))return;run.database=readDatabase(run);void enrichAndromeda(run,p);
     try{
       const started=await rt.api('search_start',p);if(!current(run))return;
       searchId=Number(started.searchId);
