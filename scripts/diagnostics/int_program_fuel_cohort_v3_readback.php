@@ -147,6 +147,7 @@ try{
     $ruleAmounts=[];$ruleCurrencies=[];$ruleUnits=[];$ruleDirections=[];$rulePassengers=[];$ruleNativeTotals=[];
     $ruleRelations=[];$ruleFlights=[];$ruleOfferCounts=[];$ruleEvidenceCounts=[];$ruleShas=[];$fxRates=[];$fuelCharges=[];
     $targetListingPrices=[];$targetDisplayPrices=[];$targetFinalPrices=[];
+    $validationFailures=[];
 
     foreach($dbRows as $row){
         $digest=pfv3_digest($row['offer_ref_digest']??null);
@@ -208,36 +209,45 @@ try{
         pfv3_set_add($targetDisplayPrices,pfv3_money((string)$row['display_price']));
 
         $flightPair=$rule['flight_pair']??null;
-        $valid=($rule['schema_version']??null)===1
-            &&($rule['key']['operator_family']??null)==='intourist'
-            &&($rule['key']['program_key']??null)===PFV3_PROGRAM
-            &&($rule['key']['tour_key']??null)===PFV3_TOUR
-            &&($rule['amount']??null)==='85.00'
-            &&($rule['currency']??null)==='EUR'
-            &&($rule['unit']??null)==='per_person_one_way'
-            &&($rule['direction_count']??null)===2
-            &&($rule['passenger_count']??null)===2
-            &&($rule['applied_native_total']??null)==='340.00'
-            &&($rule['base_relation']??null)==='excluded'
-            &&is_int($rule['independent_offer_count']??null)&&$rule['independent_offer_count']>=2
-            &&is_int($rule['evidence_count']??null)&&$rule['evidence_count']>=2
-            &&($flightPair['outbound']['flight']??null)==='TK 3003'
-            &&($flightPair['return']['flight']??null)==='TK 3006'
-            &&($fuel['currency']??null)==='RUB'
-            &&($fuel['source']??null)==='operator_program_fuel_rule'
-            &&($total['currency']??null)==='RUB'
-            &&($total['source']??null)==='derived_search_estimate'
-            &&($money['search_price_fuel_relation']??null)==='excluded'
-            &&($money['arithmetic_applied']??null)===true
-            &&pfv3_money($fuel['amount']??null)!==null
-            &&pfv3_money($base['amount']??null)!==null
-            &&pfv3_money($total['amount']??null)!==null
-            &&pfv3_money((string)$row['display_price'])===pfv3_money($total['amount'])
-            &&($payload['listingPrice']??null)===pfv3_money($total['amount']);
+        $checks=[
+            'rule_schema'=>(($rule['schema_version']??null)===1),
+            'rule_operator'=>(($rule['key']['operator_family']??null)==='intourist'),
+            'rule_program'=>(($rule['key']['program_key']??null)===PFV3_PROGRAM),
+            'rule_tour'=>(($rule['key']['tour_key']??null)===PFV3_TOUR),
+            'rule_amount'=>(($rule['amount']??null)==='85.00'),
+            'rule_currency'=>(($rule['currency']??null)==='EUR'),
+            'rule_unit'=>(($rule['unit']??null)==='per_person_one_way'),
+            'rule_directions'=>(($rule['direction_count']??null)===2),
+            'rule_passengers'=>(($rule['passenger_count']??null)===2),
+            'rule_native_total'=>(($rule['applied_native_total']??null)==='340.00'),
+            'rule_relation'=>(($rule['base_relation']??null)==='excluded'),
+            'rule_offer_evidence'=>(is_int($rule['independent_offer_count']??null)&&$rule['independent_offer_count']>=2),
+            'rule_digest_evidence'=>(is_int($rule['evidence_count']??null)&&$rule['evidence_count']>=2),
+            'rule_outbound_flight'=>(($flightPair['outbound']['flight']??null)==='TK 3003'),
+            'rule_return_flight'=>(($flightPair['return']['flight']??null)==='TK 3006'),
+            'fuel_currency'=>(($fuel['currency']??null)==='RUB'),
+            'fuel_source'=>(($fuel['source']??null)==='operator_program_fuel_rule'),
+            'total_currency'=>(($total['currency']??null)==='RUB'),
+            'total_source'=>(($total['source']??null)==='derived_search_estimate'),
+            'money_relation'=>(($money['search_price_fuel_relation']??null)==='excluded'),
+            'money_arithmetic'=>(($money['arithmetic_applied']??null)===true),
+            'fuel_amount_valid'=>(pfv3_money($fuel['amount']??null)!==null),
+            'base_amount_valid'=>(pfv3_money($base['amount']??null)!==null),
+            'total_amount_valid'=>(pfv3_money($total['amount']??null)!==null),
+            'stored_display_equals_total'=>(pfv3_money((string)$row['display_price'])===pfv3_money($total['amount'])),
+            'payload_listing_equals_total'=>(($payload['listingPrice']??null)===pfv3_money($total['amount'])),
+        ];
+        $valid=true;
+        foreach($checks as $name=>$ok){
+            if($ok===true) continue;
+            $valid=false;
+            $validationFailures[$name]=($validationFailures[$name]??0)+1;
+        }
         if($valid)++$targetReadyValid;
     }
 
     ksort($listingStateCounts,SORT_STRING);
+    ksort($validationFailures,SORT_STRING);
     ksort($groups,SORT_STRING);
     $groupList=[];
     foreach($groups as $g){
@@ -262,6 +272,7 @@ try{
             'stored_count'=>$targetStored,'ready_count'=>$targetReady,'ready_valid_rule_count'=>$targetReadyValid,
             'program_rule_rows'=>$programRuleRows,'ready_non_target_count'=>$readyNonTarget,
             'bad_ready_boundary_count'=>$badReadyBoundary,
+            'validation_failure_counts'=>$validationFailures,
         ],
         'rule'=>[
             'amounts'=>pfv3_values($ruleAmounts),'currencies'=>pfv3_values($ruleCurrencies),
