@@ -146,7 +146,7 @@ class InstallRuntimeTest(unittest.TestCase):
                 Path(td),'int-andromeda-runtime-install-20260922-v2',True)
             self.assertEqual('rolled_back',result['status'])
             self.assertEqual('complete',result['rollback']['status'])
-            self.assertEqual('<?php /* old */\n',(project/'app/integrations/x0.php').read_text())
+            self.assertEqual('<?php /* old */\n',(project/'_preview/search3-anex-candidate/app/integrations/x0.php').read_text())
             self.assertFalse((project/'_preview/search3-anex-candidate/app/integrations/x1.php').exists())
             self.assertFalse((project/'_preview/search3-anex-candidate/app/integrations/three-provider-fuel-evidence.php').exists())
             self.assertFalse(result['runtime_changed'])
