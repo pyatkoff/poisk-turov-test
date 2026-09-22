@@ -105,33 +105,53 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         if ($family === null) return null;
         $direction = self::targetDirection($target, $operator);
         $party = self::targetParty($target);
+        if (self::hasInfant($party)) return null;
+        $targetRelation = $target['base_relation'] ?? null;
+        if (!in_array($targetRelation, ['included', 'excluded'], true)) {
+            throw new InvalidArgumentException('OPERATOR_FUEL_TARGET_RELATION');
+        }
         $offerDigest = self::digest($target['offer_ref_digest'] ?? null, 'OPERATOR_FUEL_TARGET_OFFER');
 
-        $compatible = [];
-        $facts = [];
-        $offers = [];
-        $evidence = [];
+        // Owner contract: a minority exception must not block the general direction rule.
+        // Group only the reusable rate fact (native amount+currency+unit). Source PRICE
+        // inclusion remains provenance; the target provider supplies its own relation.
+        $groups = [];
         foreach ($rows as $raw) {
             if (!is_array($raw)) continue;
             try { $obs = self::observation($raw); } catch (InvalidArgumentException $ignored) { continue; }
             if ($obs['operator_family'] !== $family || $obs['direction'] !== $direction) continue;
             if ($obs['unit'] !== 'party_roundtrip'
-                || !in_array($obs['base_relation'], ['included', 'excluded'], true)
                 || $obs['base_includes_other_required_charges'] !== true) continue;
             if ($obs['observed_at'] > $now || $obs['expires_at'] <= $now) continue;
             $sourceParty = $obs['scope']['party'];
             if ($sourceParty !== $party || self::hasInfant($sourceParty)) continue;
-            $fact = $obs['amount'] . '|' . $obs['currency'] . '|' . $obs['base_relation'] . '|party_roundtrip';
-            $facts[$fact] = true;
-            if (count($facts) > 1) return null;
-            $offers[$obs['offer_ref_digest']] = true;
-            $evidence[$obs['evidence_sha256']] = true;
-            $compatible[] = $obs;
+            $fact = $obs['amount'] . '|' . $obs['currency'] . '|party_roundtrip';
+            $groups[$fact] ??= ['rows'=>[], 'offers'=>[], 'evidence'=>[]];
+            $groups[$fact]['rows'][] = $obs;
+            $groups[$fact]['offers'][$obs['offer_ref_digest']] = true;
+            $groups[$fact]['evidence'][$obs['evidence_sha256']] = true;
         }
-        if (count($offers) < 2 || count($evidence) < 2 || $compatible === []) return null;
+        if ($groups === []) return null;
+
+        $ranked = [];
+        foreach ($groups as $fact=>$group) {
+            $support = min(count($group['offers']), count($group['evidence']));
+            if ($support < 2) continue;
+            $ranked[] = ['fact'=>$fact, 'support'=>$support, 'group'=>$group];
+        }
+        if ($ranked === []) return null;
+        usort($ranked, static function(array $a,array $b):int {
+            $bySupport = $b['support'] <=> $a['support'];
+            return $bySupport !== 0 ? $bySupport : strcmp($a['fact'], $b['fact']);
+        });
+        if (isset($ranked[1]) && $ranked[1]['support'] === $ranked[0]['support']) return null;
+        $winner = $ranked[0]['group'];
+        $winnerFact = $ranked[0]['fact'];
+        $conflicting = 0;
+        foreach ($groups as $fact=>$group) if ($fact !== $winnerFact) $conflicting += count($group['rows']);
 
         $inputObs = [];
-        foreach ($compatible as $obs) {
+        foreach ($winner['rows'] as $obs) {
             $inputObs[] = [
                 'direction' => $obs['direction'],
                 'provider' => $obs['provider'],
@@ -140,7 +160,7 @@ final class AnyTourOperatorFuelRuleEvidenceV1
                 'kind' => 'fuel',
                 'unit' => 'party_roundtrip',
                 'base_includes_other_required_charges' => true,
-                'base_relation' => $obs['base_relation'],
+                'source_base_relation' => $obs['base_relation'],
                 'offer_ref_digest' => $obs['offer_ref_digest'],
                 'evidence_sha256' => $obs['evidence_sha256'],
                 'observed_at' => $obs['observed_at'],
@@ -155,7 +175,10 @@ final class AnyTourOperatorFuelRuleEvidenceV1
             'offer_ref_digest' => $offerDigest,
             'direction' => $direction,
             'party' => $party,
+            'base_relation' => $targetRelation,
             'observations' => $inputObs,
+            'winning_support' => $ranked[0]['support'],
+            'conflicting_observation_count' => $conflicting,
             'exchange' => $exchange,
         ];
     }
