@@ -156,6 +156,22 @@ function assert_confirmation_dto(array $dto, string $amount = '185125'): void {
         'confirmation gained fuel/final/selection authority');
 }
 
+function assert_biblio_policy_confirmation_dto(array $dto, string $amount = '185125'): void {
+    aassert($dto['finalPriceReady'] === false && $dto['finalPrice'] === null
+        && $dto['price'] === $amount && $dto['currency'] === 'RUB', 'Biblio policy changed supplier base');
+    aassert(($dto['operator']['raw'] ?? null) === 'Biblio Globus', 'Biblio policy bound to wrong operator');
+    aassert(($dto['money']['fuel_charge_reported'] ?? null) === [
+            'amount' => '0.00', 'currency' => 'RUB', 'source' => 'biblio_owner_policy',
+        ]
+        && ($dto['money']['search_price_fuel_relation'] ?? null) === 'included'
+        && ($dto['money']['operator_fuel_policy']['source'] ?? null) === 'owner_policy'
+        && !array_key_exists('search_price_with_surcharge', $dto['money'])
+        && $dto['money']['arithmetic_applied'] === false
+        && $dto['quote_state'] === 'unknown' && $dto['final_price_verified'] === false
+        && $dto['selection_state'] === 'disabled' && $dto['booking_enabled'] === false,
+        'Biblio policy gained final/arithmetic/selection authority');
+}
+
 // Missing-field provenance is sanitized and records only ownership, never raw supplier text.
 $criteria = [
     'TOWNFROMINC' => '1', 'STATEINC' => '4', 'CHECKIN_BEG' => '20261010', 'CHECKIN_END' => '20261010',
@@ -227,7 +243,11 @@ try {
         && $result['confirmationRequiredOfferCount'] === 2, 'flight-only search rows were dropped, marked final or hidden from receipt');
     aassert($result['receivedOfferCount'] === 2 && $result['ownedOfferCount'] === 2
         && count($ingests) === 1 && count($ingests[0]['rows']) === 2, 'flight-only cohort retention');
-    foreach ($ingests[0]['rows'] as $row) assert_confirmation_dto($row['dto']);
+    foreach ($ingests[0]['rows'] as $row) {
+        (($row['dto']['operator']['raw'] ?? null) === 'Biblio Globus')
+            ? assert_biblio_policy_confirmation_dto($row['dto'])
+            : assert_confirmation_dto($row['dto']);
+    }
     $checkpoint = json_decode(file_get_contents($dir . '/' . $ref . '-' . $created . '-anytour-offer-autosave-v1.json'), true, 64, JSON_THROW_ON_ERROR);
     aassert($checkpoint['ready_offer_count'] === 0, 'confirmation checkpoint claimed final prices');
     $again = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,

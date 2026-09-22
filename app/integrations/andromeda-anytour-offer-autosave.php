@@ -11,6 +11,7 @@ require_once __DIR__ . '/three-provider-offer-contract.php';
 require_once __DIR__ . '/three-provider-offer-context.php';
 require_once __DIR__ . '/three-provider-search-handoff.php';
 require_once __DIR__ . '/anytour-offer-snapshot-producer.php';
+require_once __DIR__ . '/biblio-fuel-owner-policy.php';
 require_once __DIR__ . '/andromeda-pagination.php';
 
 /**
@@ -259,6 +260,7 @@ final class AnyTourAndromedaOfferAutosaveV1
         foreach ($entries as $entry) {
             $verifiedQuote = $entry['verified_quote'] ?? null;
             $operatorFuel = $entry['operator_fuel'] ?? null;
+            $fuelOwnerPolicy = $entry['fuel_owner_policy'] ?? null;
             $searchMoney = $entry['offer']['money'] ?? null;
             if (!is_array($searchMoney)) {
                 throw new RuntimeException('ANDROMEDA_ANYTOUR_MONEY_DIGEST');
@@ -288,6 +290,12 @@ final class AnyTourAndromedaOfferAutosaveV1
                 'operator_fuel_digest' => is_array($operatorFuel)
                     ? hash('sha256', json_encode(
                         $operatorFuel,
+                        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+                    ))
+                    : null,
+                'fuel_owner_policy_digest' => is_array($fuelOwnerPolicy)
+                    ? hash('sha256', json_encode(
+                        $fuelOwnerPolicy,
                         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
                     ))
                     : null,
@@ -451,6 +459,9 @@ final class AnyTourAndromedaOfferAutosaveV1
                 'current' => $current,
                 'priced_money' => $priced,
             ];
+            $ownerPolicy = AnyTourBiblioFuelOwnerPolicyV1::forParty($operator, [
+                'adults'=>$adults, 'children'=>$children, 'child_ages'=>$childAges,
+            ]);
             if ($surcharge !== null && $price['currency'] === 'RUB') {
                 // Valid flight-only evidence is not a full/fuel-inclusive total. Keep
                 // this mapped PRICE row through the existing confirmation path, just
@@ -459,13 +470,21 @@ final class AnyTourAndromedaOfferAutosaveV1
                 $entry['priced_money'] = null;
                 $entry['confirmation_required'] = true;
             }
-            if ($operatorFuel !== null) {
+            if ($operatorFuel !== null && $ownerPolicy === null) {
                 // The producer owns fuel arithmetic and fail-closed compatibility.
                 // Autosave only transports a source-bound confirmed rule input.
                 $entry['priced_money'] = null;
                 $entry['operator_fuel'] = $operatorFuel;
             }
-            if ($verifiedQuote !== null) $entry['verified_quote'] = $verifiedQuote;
+            if ($verifiedQuote !== null) {
+                $entry['verified_quote'] = $verifiedQuote;
+            } elseif ($ownerPolicy !== null) {
+                // Owner policy resolves only BG fuel. Other price uncertainty stays
+                // confirmation-required and supplier base remains unchanged.
+                $entry['priced_money'] = null;
+                $entry['confirmation_required'] = true;
+                $entry['fuel_owner_policy'] = $ownerPolicy;
+            }
             return $entry;
         } catch (DomainException $error) {
             if ($error->getMessage() === 'ANDROMEDA_ANYTOUR_PROTECTED_PRICE_MISMATCH') throw $error;
