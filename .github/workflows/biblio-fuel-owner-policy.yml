@@ -1,0 +1,44 @@
+name: Biblio fuel owner policy
+
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'app/integrations/biblio-fuel-owner-policy.php'
+      - 'app/integrations/andromeda-anytour-offer-autosave.php'
+      - 'app/integrations/anytour-offer-snapshot-producer.php'
+      - 'tests/biblio-fuel-owner-policy-test.php'
+      - '.github/workflows/biblio-fuel-owner-policy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Validate Biblio owner fuel policy
+        run: |
+          set -euo pipefail
+          php -l app/integrations/biblio-fuel-owner-policy.php
+          php -l app/integrations/anytour-offer-snapshot-producer.php
+          php -l app/integrations/andromeda-anytour-offer-autosave.php
+          php -l tests/biblio-fuel-owner-policy-test.php
+          php -d allow_url_fopen=0 tests/biblio-fuel-owner-policy-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('app/integrations/biblio-fuel-owner-policy.php').read_text()
+          assert 'curl_' not in src and 'http://' not in src and 'https://' not in src
+          assert "'amount' => '0.00'" in src
+          assert "'base_relation' => 'included'" in src
+          assert "'infant_pricing_state'" in src
+          print('Biblio owner fuel policy boundary: PASS')
+          PY
