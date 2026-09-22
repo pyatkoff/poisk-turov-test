@@ -260,6 +260,7 @@ final class AnyTourAndromedaOfferAutosaveV1
         foreach ($entries as $entry) {
             $verifiedQuote = $entry['verified_quote'] ?? null;
             $operatorFuel = $entry['operator_fuel'] ?? null;
+            $programFuel = $entry['program_fuel'] ?? null;
             $fuelOwnerPolicy = $entry['fuel_owner_policy'] ?? null;
             $searchMoney = $entry['offer']['money'] ?? null;
             if (!is_array($searchMoney)) {
@@ -290,6 +291,12 @@ final class AnyTourAndromedaOfferAutosaveV1
                 'operator_fuel_digest' => is_array($operatorFuel)
                     ? hash('sha256', json_encode(
                         $operatorFuel,
+                        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+                    ))
+                    : null,
+                'program_fuel_digest' => is_array($programFuel)
+                    ? hash('sha256', json_encode(
+                        $programFuel,
                         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
                     ))
                     : null,
@@ -377,8 +384,13 @@ final class AnyTourAndromedaOfferAutosaveV1
             $surcharge = null;
             $verifiedQuote = null;
             $operatorFuel = null;
+            $programFuel = null;
             if ($pricing !== null) {
-                if (($pricing['state'] ?? null) === 'operator_fuel'
+                if (($pricing['state'] ?? null) === 'program_fuel'
+                    && count($pricing) === 2
+                    && is_array($pricing['program_fuel'] ?? null)) {
+                    $programFuel = $pricing['program_fuel'];
+                } elseif (($pricing['state'] ?? null) === 'operator_fuel'
                     && count($pricing) === 2
                     && is_array($pricing['operator_fuel'] ?? null)) {
                     $operatorFuel = $pricing['operator_fuel'];
@@ -470,9 +482,15 @@ final class AnyTourAndromedaOfferAutosaveV1
                 $entry['priced_money'] = null;
                 $entry['confirmation_required'] = true;
             }
-            if ($operatorFuel !== null && $ownerPolicy === null) {
+            if ($programFuel !== null && $ownerPolicy === null) {
+                // Exact program/tour rule is already corroborated by independent
+                // supplier observations. Producer revalidates it against this offer
+                // and party before marking the reusable listing estimate ready.
+                $entry['priced_money'] = null;
+                $entry['program_fuel'] = $programFuel;
+            } elseif ($operatorFuel !== null && $ownerPolicy === null) {
                 // The producer owns fuel arithmetic and fail-closed compatibility.
-                // Autosave only transports a source-bound confirmed rule input.
+                // Autosave only transports a source-bound confirmed direction rule input.
                 $entry['priced_money'] = null;
                 $entry['operator_fuel'] = $operatorFuel;
             }
