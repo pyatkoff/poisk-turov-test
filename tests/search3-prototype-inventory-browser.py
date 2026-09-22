@@ -71,7 +71,7 @@ def check_width(browser, origin, width):
     context = browser.new_context(viewport={"width": width, "height": 900})
     page = context.new_page()
     page.set_default_timeout(15000)
-    calls, native_calls, calendar_calls, forbidden, errors, held = [], [], [], [], [], []
+    calls, native_calls, calendar_calls, observation_calls, forbidden, errors, held = [], [], [], [], [], [], []
     state = {"native": False, "continued": False, "hold": False, "calendar_partial": False,
              "native_failure": False, "database_failure": False}
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -88,6 +88,16 @@ def check_width(browser, origin, width):
             route.fulfill(content_type="image/svg+xml", body=FIXTURE.PHOTO)
         elif url.path == "/data/departures-v1.php":
             reply({"ok": True, "items": [{"id": 1, "name": "Москва"}]})
+        elif url.path == "/data/price-calendar-read-v1.php":
+            observation_calls.append(query)
+            first, last = query['dateFrom'][0], query['dateTo'][0]
+            series = [{"date": DATE, "observed": True, "minPrice": 97500}] if first <= DATE <= last else []
+            reply({"ok": True, "source": "latest-known-exact-segments-from-anytour-first-party-observations",
+                   "cachedPriceIsFinal": False, "currency": "RUB", "adults": 2, "childrenCount": 0,
+                   "departureId": int(query["departureId"][0]), "countryId": int(query["countryId"][0]),
+                   "regionId": int(query["regionId"][0]) if query.get("regionId") else None,
+                   "dateFrom": first, "dateTo": last, "nightsFrom": int(query["nightsFrom"][0]),
+                   "nightsTo": int(query["nightsTo"][0]), "series": series})
         elif url.path.endswith("/hotel-details-read-v1.php"):
             ids = query.get("legacyHotelIds[]", [])
             assert ids, query
@@ -125,6 +135,8 @@ def check_width(browser, origin, width):
             calls.append({"action": action, "params": query})
             if action == "countries":
                 reply([{"id": 4, "name": "Турция"}])
+            elif action == "regions":
+                reply([{"id": 20, "name": "Анталья", "countryId": 4}, {"id": 23, "name": "Сиде", "countryId": 4}])
             elif action == "meals":
                 reply([{"id": 7, "name": "AI"}])
             elif action == "search_start":
@@ -171,6 +183,17 @@ def check_width(browser, origin, width):
                             "minNights": 7, "maxNights": 7, "adults": 2, "ages": ""})
         page.goto(origin + BASE + "prototype-search/?" + params)
         page.locator(".search-submit:not([disabled])").wait_for()
+        page.locator('#country').click()
+        assert page.locator('[data-action="destination-resort"]').count() == 2
+        page.locator('[data-action="destination-resort"][data-value="Анталья"]').click()
+        page.locator('[data-action="apply-destination"]').click()
+        assert not any(row['action'] == 'search_start' for row in calls)
+        page.locator('[data-action="dates"]').first.click()
+        page.wait_for_function("day => document.querySelector('[data-action=day-pick][data-date=\"' + day + '\"]')?.getAttribute('aria-label').includes('97')", arg=DATE)
+        assert page.locator(f'[data-action="day-pick"][data-date="{DATE}"]').get_attribute('aria-label').replace('\u00a0', ' ').endswith('97 500 ₽')
+        assert page.locator('.hotel-card').count() == 0, 'Observation minimum never creates a selectable tour'
+        page.screenshot(path=str(EVIDENCE / f"stored-calendar-before-search-{width}.png"))
+        page.locator('[data-action="close-modal"]').click()
         for amount in ("1500000.5", "25000000"):
             page.locator('#quick-budget').click()
             page.locator('#budget-max').fill(amount)
@@ -183,6 +206,9 @@ def check_width(browser, origin, width):
         assert "max" not in parse_qs(urlparse(page.url).query)
         page.locator('.search-submit').click()
         count(5)
+        assert next(row['params'] for row in calls if row['action'] == 'search_start')['regionIds[]'] == ['20']
+        assert native_calls[0]['params']['regionIds'] == ['20']
+        page.wait_for_function("day => document.querySelector('[data-action=select-date][data-date=\"' + day + '\"]')?.getAttribute('aria-label').includes('97')", arg=DATE)
         page.locator('[data-action="continue-search"]').wait_for()
         assert page.locator('#search-status').is_hidden(), 'No false completion banner above results'
         assert page.locator('#search-more [data-action="continue-search"]').count() == 1
