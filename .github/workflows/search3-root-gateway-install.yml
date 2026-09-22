@@ -1,0 +1,95 @@
+name: Install checked Search3 root gateway
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/search3-root-gateway-install.yml'
+      - 'scripts/deploy/search3_root_gateway_install.py'
+      - 'tests/search3_root_gateway_install_test.py'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - run: python3 tests/search3_root_gateway_install_test.py
+
+  prepare:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event_name == 'issue_comment' && github.event.issue.number == 3419 &&
+      !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, '/install-search3-root-gateway ')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      artifact_id: ${{ steps.retain.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - run: python3 tests/search3_root_gateway_install_test.py
+      - name: Prepare exact one-file artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/deploy/search3_root_gateway_install.py prepare
+      - id: retain
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-root-gateway-ready-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-root-gateway-prepare/retained/
+          if-no-files-found: error
+          retention-days: 30
+
+  install:
+    needs: prepare
+    if: github.ref == 'refs/heads/main' && github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+    concurrency:
+      group: deploy-anytoour-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - run: python3 tests/search3_root_gateway_install_test.py
+      - name: Install only checked root api-v2.php
+        env:
+          GH_TOKEN: ${{ github.token }}
+          READY_ARTIFACT_ID: ${{ needs.prepare.outputs.artifact_id }}
+          PREVIEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          PREVIEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PREVIEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: python3 scripts/deploy/search3_root_gateway_install.py install
+      - name: Retain install or rollback receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-root-gateway-deployment-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-root-gateway-install/evidence.json
+          if-no-files-found: warn
+          retention-days: 30
