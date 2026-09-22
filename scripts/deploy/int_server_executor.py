@@ -35,6 +35,7 @@ FIXED = [
     'scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php',
     'scripts/diagnostics/hotel_match_live942_tv_anex_refresh_v1.py',
     'scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php',
+    'scripts/diagnostics/hotel_match_live_anex_samo_missing_secondary_audit_v1.php',
 ]
 
 # Persistent installation is intentionally narrower than the source bundle:
@@ -135,6 +136,10 @@ def parse_command(body: str) -> dict:
             need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'offset': offset, 'limit': limit}
+    if mode == 'match-secondary-audit':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'match-readback':
         need(len(parts) == 6, 'command_shape')
         lane = parts[3]
@@ -752,6 +757,37 @@ def read_match942(lane, offset, limit):
     else:
         out['state']='pre_provider_reservation_only'
     return out
+def run_match_secondary_audit(stage):
+    child='hotel-match-live-anex-samo-missing-secondary-audit-1971-20260923-v1'
+    match_root=home/'.anytoour-match/operations'
+    match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
+    child_dir=match_root/child
+    if child_dir.exists() or child_dir.is_symlink(): fail('match_secondary_child_exists_no_replay')
+    child_dir.mkdir(mode=0o700)
+    reservation={'operation':child,'state':'reserved_before_db_read','source_sha':source,
+                 'parent_operation':operation,'provider_http_calls':0,'database_writes':0,'mapping_writes':0}
+    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
+    os.chmod(child_dir/'reservation.json',0o600)
+    runner=stage/'scripts/diagnostics/hotel_match_live_anex_samo_missing_secondary_audit_v1.php'
+    helper=stage/'scripts/diagnostics/hotel_match_anex_effective_coverage.php'
+    if not safe_file(runner) or not safe_file(helper): fail('match_secondary_source_missing')
+    env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),'MATCH_SOURCE_SHA':source}
+    call=subprocess.run(['php',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=240)
+    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
+    if not safe_file(result_path,16*1024*1024) or not safe_file(receipt_path,1024*1024):
+        fail('match_secondary_terminal_missing')
+    child_result=safe_json(result_path,16*1024*1024);receipt=safe_json(receipt_path,1024*1024)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    if receipt.get('result_sha256')!=digest: fail('match_secondary_terminal_hash')
+    if (call.returncode!=0 or child_result.get('state')!='completed_read_only_secondary_audit'
+            or child_result.get('provider_http_calls')!=0 or child_result.get('database_writes')!=0
+            or child_result.get('mapping_writes')!=0):
+        fail('match_secondary_terminal_guard')
+    summary={k:v for k,v in child_result.items() if k!='rows'}
+    return {'child_operation':child,'state':child_result.get('state'),'result_sha256':digest,
+            'summary':summary,'stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
+            'stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
+
 def run_match942(stage, mode, offset, limit):
     match_root=home/'.anytoour-match/operations'
     match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
@@ -909,6 +945,14 @@ try:
         result['database_writes']=0
         result['production_unchanged']=True
         __RECONCILED__=True
+    if mode=='match-secondary-audit':
+        result['match_secondary_audit']=run_match_secondary_audit(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='match-readback':
         result['match_readback']=read_match942(payload['lane'],int(payload['offset']),int(payload['limit']))
         result['production_after']=fingerprints()
