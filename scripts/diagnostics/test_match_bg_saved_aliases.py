@@ -29,6 +29,11 @@ class Names(unittest.TestCase):
         self.assertEqual(m.name_proofs('HOTEL','',[]),[])
     def test_current_title_survives_ex(self):
         self.assertTrue(m.name_proofs('KAILA BEACH HOTEL (EX. KATYA HOTEL)','Kaila Beach Hotel',[]))
+    def test_country_semantics_are_explicit_and_code_bound(self):
+        ae={'code':'AE','title_ru':'Объединенные Арабские Эмираты','title_en':'United Arab Emirates'}
+        self.assertTrue(m.country_matches('ОАЭ',ae));self.assertTrue(m.country_matches('UAE',ae))
+        self.assertFalse(m.country_matches('ОАЭ',ae|{'code':'TR'}))
+        self.assertFalse(m.country_matches('ОАЭ',ae|{'title_ru':'Турция','title_en':'Turkey'}))
 
 class Actual816(unittest.TestCase):
     @classmethod
@@ -46,9 +51,9 @@ class Actual816(unittest.TestCase):
             with zipfile.ZipFile(p,'w') as z:z.writestr('result.json',rb);z.writestr('receipt.json',json.dumps(q))
             return m.run(p,hashlib.sha256(p.read_bytes()).hexdigest())
     def test_mass_counts_and_disjoint_delta(self):
-        self.assertEqual(self.result['counts']['new_evidence_candidates'],124)
-        self.assertEqual(self.result['counts']['candidate_union_not_accepted'],380)
-        self.assertEqual(len(set(self.result['new_candidate_ids'])),124)
+        self.assertEqual(self.result['counts']['new_evidence_candidates'],145)
+        self.assertEqual(self.result['counts']['candidate_union_not_accepted'],401)
+        self.assertEqual(len(set(self.result['new_candidate_ids'])),145)
         for r in self.result['rows']:
             self.assertFalse(r['safe_to_write_now'])
             self.assertEqual(r['input_row'],next(s for s in self.source['rows'] if s['tv_hotel_id']==r['tv_hotel_id']))
@@ -102,12 +107,23 @@ class Actual816(unittest.TestCase):
         self.assertIsNotNone(m.geography_proof(row,bg,self.source['rule_table']))
         row['catalog_hotel']['region_name']='Другой курорт';row['catalog_hotel']['subregion_name']=None
         self.assertIsNone(m.geography_proof(row,bg,self.source['rule_table']))
+    def test_uae_full_country_title_matches_local_acronym_only_with_exact_place_rule(self):
+        row=copy.deepcopy(next(r for r in self.source['rows'] if r['tv_hotel_id']==2519));bg=row['official_evidence'][0]
+        self.assertEqual((bg['official_country']['code'],bg['official_country']['title_ru'],row['catalog_hotel']['country_name']),
+                         ('AE','Объединенные Арабские Эмираты','ОАЭ'))
+        self.assertIsNotNone(m.geography_proof(row,bg,self.source['rule_table']))
+        row['catalog_hotel']['subregion_name']='Марина'
+        self.assertIsNone(m.geography_proof(row,bg,self.source['rule_table']))
+        row=copy.deepcopy(next(r for r in self.source['rows'] if r['tv_hotel_id']==2519));bg=row['official_evidence'][0]
+        bg['official_country']['code']='TR'
+        self.assertIsNone(m.geography_proof(row,bg,self.source['rule_table']))
     def test_manifest_exact_membership_and_result(self):
         fixture=HERE/'fixtures'/'match_bg_saved_aliases_20260922.json'
         if not fixture.exists():fixture=HERE/'match_bg_saved_aliases_20260922.json'
         f=json.loads(fixture.read_text())
         self.assertEqual(f['counts'],self.result['counts'])
-        self.assertEqual(f['delta_tuples'],[[r['tv_hotel_id'],r['input_row']['f4_candidates'][0],r['input_row']['accepted_catalog_ids'][0]] for r in self.result['rows'] if r['new_alias_evidence_candidate']])
+        actual=[[r['tv_hotel_id'],r['input_row']['f4_candidates'][0],r['input_row']['accepted_catalog_ids'][0]] for r in self.result['rows'] if r['new_alias_evidence_candidate']]
+        self.assertEqual(sorted(f['delta_tuples']),sorted(actual))
         encoded=(json.dumps(self.result,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode()
         self.assertEqual(f['full_result_sha256'],hashlib.sha256(encoded).hexdigest())
 
