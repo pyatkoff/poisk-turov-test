@@ -81,6 +81,9 @@ function anytour_anex_tv_fuel_normalize_offer(array $row, string $provider): ?ar
         if ($value === false || (int)$value < ($key === 'children' ? 0 : 1)) return null;
         $clean[$key] = (int)$value;
     }
+    $childAges = anytour_anex_tv_fuel_child_ages($row['child_ages'] ?? null, $clean['children']);
+    if ($childAges === null) return null;
+    $clean['child_ages'] = $childAges;
     $date = (string)($row['date'] ?? '');
     if (!preg_match('/\A20[0-9]{2}-[0-9]{2}-[0-9]{2}\z/D', $date)) return null;
     $clean['date'] = $date;
@@ -102,10 +105,30 @@ function anytour_anex_tv_fuel_normalize_offer(array $row, string $provider): ?ar
 
 function anytour_anex_tv_fuel_same_context(array $a, array $b): bool
 {
-    foreach (['local_hotel_id','date','nights','adults','children','meal_family','room_norm','placement_norm','currency'] as $key) {
+    foreach (['local_hotel_id','date','nights','adults','children','child_ages','meal_family','room_norm','placement_norm','currency'] as $key) {
         if (($a[$key] ?? null) !== ($b[$key] ?? null)) return false;
     }
     return true;
+}
+
+function anytour_anex_tv_fuel_child_ages($value, int $children): ?array
+{
+    if ($value === null || $value === '') return $children === 0 ? [] : null;
+    if (!is_array($value) || count($value) !== $children) return null;
+    $ages = [];
+    foreach ($value as $age) {
+        if (is_int($age)) {
+            $parsed = $age;
+        } elseif (is_string($age) && preg_match('/\A[0-9]{1,2}\z/D', $age) === 1) {
+            $parsed = (int)$age;
+        } else {
+            return null;
+        }
+        if ($parsed < 0 || $parsed > 17) return null;
+        $ages[] = $parsed;
+    }
+    sort($ages, SORT_NUMERIC);
+    return $ages;
 }
 
 function anytour_anex_tv_fuel_cents($value): ?int
