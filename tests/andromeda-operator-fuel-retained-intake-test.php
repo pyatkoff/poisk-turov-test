@@ -40,7 +40,7 @@ function afi_claim(bool $explicit=true):array{
         'variants'=>[['transports'=>[['transport'=>[
             afi_flight('out1','g0','0','VKO','AYT','ZF1001'),
             afi_flight('back1','g1','1','AYT','VKO','ZF1002'),
-        ]]]],
+        ]]]]],
     ];
 }
 function afi_retained(string $offerRef,string $response,bool $explicit=true):array{
