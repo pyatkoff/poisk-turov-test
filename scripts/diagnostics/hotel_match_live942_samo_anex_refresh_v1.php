@@ -141,13 +141,15 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
     echo s942_json(['state'=>$state,'reason'=>$reason,'samo_http_calls'=>$calls,'searched_hotels'=>count($rows),'status_counts'=>$counts,'unique_native_source_unique_count'=>$mutual])."\n";
     return in_array($state,['completed_read_only','terminal_quota_stop_no_replay'],true)?0:2;
 }
-if(($argv[1]??'')==='--self-test'){
-    s942_need(s942_norm('АНЕКС  ТУР')==='анекс тур','norm');
-    $ids=s942_ids([['id'=>1,'name'=>'Moscow','lName'=>'Москва'],['id'=>2,'name'=>'Kazan','lName'=>'Казань']],['Москва']);s942_need($ids===[1],'townfrom');
-    s942_need(s942_date_ymd('2026-10-11')==='20261011'&&s942_date_ymd('2026-99-11')===null,'date');
-    s942_need(s942_child_ages(2,'5, 12')===[5,12]&&s942_child_ages(1,'')===null,'ages');
-    echo "MATCH_LIVE942_SAMO_ANEX_REFRESH_V3_SELFTEST_OK\n";exit;
+if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
+    if(($argv[1]??'')==='--self-test'){
+        s942_need(s942_norm('АНЕКС  ТУР')==='анекс тур','norm');
+        $ids=s942_ids([['id'=>1,'name'=>'Moscow','lName'=>'Москва'],['id'=>2,'name'=>'Kazan','lName'=>'Казань']],['Москва']);s942_need($ids===[1],'townfrom');
+        s942_need(s942_date_ymd('2026-10-11')==='20261011'&&s942_date_ymd('2026-99-11')===null,'date');
+        s942_need(s942_child_ages(2,'5, 12')===[5,12]&&s942_child_ages(1,'')===null,'ages');
+        echo "MATCH_LIVE942_SAMO_ANEX_REFRESH_V3_SELFTEST_OK\n";exit;
+    }
+    s942_need(($argv[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$plan=(string)getenv('MATCH_PLAN_PATH');$sha=(string)getenv('MATCH_SOURCE_SHA');
+    s942_need(is_dir($root)&&is_dir($dir)&&basename($dir)===OP&&is_file($plan)&&preg_match('/^[a-f0-9]{40}$/D',$sha)===1,'runtime_scope');
+    exit(s942_execute($root,$dir,$plan,$sha));
 }
-s942_need(($argv[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$plan=(string)getenv('MATCH_PLAN_PATH');$sha=(string)getenv('MATCH_SOURCE_SHA');
-s942_need(is_dir($root)&&is_dir($dir)&&basename($dir)===OP&&is_file($plan)&&preg_match('/^[a-f0-9]{40}$/D',$sha)===1,'runtime_scope');
-exit(s942_execute($root,$dir,$plan,$sha));
