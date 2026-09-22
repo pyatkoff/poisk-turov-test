@@ -7,6 +7,10 @@ on:
       - 'app/integrations/operator-program-fuel-registry.php'
       - 'tests/operator-program-fuel-registry-test.php'
       - 'v2/api-andromeda-search3-preview.php'
+      - 'app/integrations/andromeda-surcharge-cache-autosave.php'
+      - 'app/integrations/andromeda-anytour-offer-autosave.php'
+      - 'app/integrations/anytour-offer-snapshot-producer.php'
+      - 'tests/andromeda-program-fuel-autosave-test.php'
       - '.github/workflows/operator-program-fuel-registry.yml'
 
 permissions:
@@ -26,10 +30,13 @@ jobs:
           php -l app/integrations/operator-program-fuel-registry.php
           php -l v2/api-andromeda-search3-preview.php
           php tests/operator-program-fuel-registry-test.php
+          php tests/andromeda-program-fuel-autosave-test.php
           python3 - <<'PY'
           from pathlib import Path
           r=Path('app/integrations/operator-program-fuel-registry.php').read_text()
           api=Path('v2/api-andromeda-search3-preview.php').read_text()
+          autosave=Path('app/integrations/andromeda-surcharge-cache-autosave.php').read_text()
+          producer=Path('app/integrations/anytour-offer-snapshot-producer.php').read_text()
           for token in ('curl_','getFlights(','changeService(','->calc(','bron_ticket','PDO','mysqli'):
               if token in r:
                   raise SystemExit('registry must be supplier/db passive: '+token)
@@ -39,5 +46,9 @@ jobs:
               raise SystemExit('offer-specific surcharge must outrank exact program fallback')
           if "programFuelDirectory" not in api:
               raise SystemExit('program registry not wired')
+          if "state'=>'program_fuel'" not in autosave or 'AnyTourOperatorProgramFuelRegistryV1::priceForOffer' not in autosave:
+              raise SystemExit('program registry not wired to autosave')
+          if 'PROGRAM_FUEL_OFFER_KEYS' not in producer or 'AnyTourOperatorProgramFuelRegistryV1::apply' not in producer:
+              raise SystemExit('program fuel not wired to snapshot producer')
           print('PROGRAM_FUEL_REGISTRY_CONTRACT_OK')
           PY
