@@ -1,0 +1,149 @@
+name: MATCH TV-SAMO v2 saved-evidence salvage v1
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-tv-samo-v2-salvage-live-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: match-tv-samo-v2-salvage-1971-20260922-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-tv-samo-common4-weekly-v2-salvage-1971-20260922-v1
+  PREV: hotel-match-tv-samo-common4-weekly-1971-20260922-v2
+  BASE: 487ca7313d372e4cd044e273a0ec0109fbf67c0b
+  CLAIM: '5780164497'
+jobs:
+  salvage:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-tv-samo-v2-salvage-1971-20260922-v1' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and read-only claim
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD")" = ".github/workflows/hotel-match-tv-samo-v2-salvage-live-v1.yml"
+          php -l scripts/diagnostics/hotel_match_tv_samo_common4_weekly_resume_v3.php
+          php tests/hotel_match_tv_samo_common4_weekly_resume_v3_test.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > terminal/claim.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          c=json.load(open('terminal/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for s in [os.environ['OP'],os.environ['BASE'],'partial_not_fully_drained','MUST NOT call Tourvisor','no replay']: assert s in b,s
+          r={'operation':os.environ['OP'],'state':'reserved_read_only_salvage','source_base':os.environ['BASE'],
+             'ops_head':os.environ['HEAD'],'run_id':int(os.environ['GITHUB_RUN_ID']),
+             'previous_operation':os.environ['PREV'],'provider_access_planned':False,'quota_access_planned':False,
+             'database_writes':0,'mapping_writes':0,'raw_private_export_planned':False}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-tv-samo-v2-salvage-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          repo=os.environ['GITHUB_REPOSITORY'];tok=os.environ['GH_TOKEN'];head=os.environ['HEAD']
+          def api(p):
+            q=urllib.request.Request('https://api.github.com/repos/'+repo+'/'+p,headers={'Authorization':'Bearer '+tok})
+            with urllib.request.urlopen(q,timeout=30) as f:return json.load(f)
+          for _ in range(90):
+            xs=[x for x in api('actions/runs?head_sha='+head+'&per_page=100')['workflow_runs'] if x['name']=='Security guard']
+            if xs and max(xs,key=lambda x:x['id'])['status']=='completed':
+              assert max(xs,key=lambda x:x['id'])['conclusion']=='success';break
+            time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Read immutable saved evidence and export normalized partial projection
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OP"; prev=".anytoour-match/operations/$PREV"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test -d \"\$HOME/$prev/evidence-private\";test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          cat >"$RUNNER_TEMP/salvage.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $opDir=(string)getenv('SALVAGE_OP_DIR');$prevDir=(string)getenv('SALVAGE_PREV_DIR');
+          if($opDir===''||$prevDir==='')throw new RuntimeException('paths');
+          require_once $opDir.'/payload/hotel_match_tv_samo_common4_weekly_resume_v3.php';
+          $r=json_decode((string)file_get_contents($opDir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);
+          if(($r['operation']??null)!==HMC_OP.'-salvage-1971-20260922-v1' && ($r['operation']??null)!=='hotel-match-tv-samo-common4-weekly-v2-salvage-1971-20260922-v1')throw new RuntimeException('reservation');
+          $cp=hmc3_previous_checkpoint($prevDir);
+          $common=[
+            'anex'=>['tv'=>['id'=>13,'name'=>'ANEX'],'samo'=>['id'=>5,'name'=>'ANEX']],
+            'biblio'=>['tv'=>['id'=>18,'name'=>'Библио-Глобус'],'samo'=>['id'=>115,'name'=>'Biblio Globus']],
+            'funsun'=>['tv'=>['id'=>25,'name'=>'FUN&SUN'],'samo'=>['id'=>315,'name'=>'FUN&SUN']],
+            'intourist'=>['tv'=>['id'=>43,'name'=>'Интурист'],'samo'=>['id'=>342,'name'=>'Intourist']],
+          ];
+          $offers=hmc_tv_offer_rows($cp['rows'],HMC_DATE_FROM,$common);
+          foreach($offers as $i=>&$x)$x['normalized_row_index']=$i+1;unset($x);
+          $hotels=[];$operators=[];
+          foreach($offers as $x){$hotels[(string)$x['hotel_id']]=true;$f=(string)$x['operator_family'];$operators[$f]=($operators[$f]??0)+1;}
+          ksort($operators);
+          $sources=[];$rawCount=0;
+          foreach(glob($prevDir.'/evidence-private/*.meta.json')?:[] as $m){
+            $j=json_decode((string)file_get_contents($m),true,32,JSON_THROW_ON_ERROR);
+            $bin=preg_replace('/\.meta\.json$/','.bin',$m);$raw=(string)file_get_contents($bin);
+            if(hash('sha256',$raw)!==($j['raw_sha256']??null))throw new RuntimeException('raw_hash');
+            $source=(string)($j['source']??'unknown');$sources[$source]=($sources[$source]??0)+1;$rawCount++;
+          }
+          ksort($sources);
+          if($rawCount!==79||($sources['tourvisor']??0)!==77||($sources['samo-http']??0)!==2)throw new RuntimeException('inventory');
+          $out=[
+            'operation'=>'hotel-match-tv-samo-common4-weekly-v2-salvage-1971-20260922-v1',
+            'state'=>'completed_read_only_partial_not_fully_drained',
+            'previous_operation'=>HMC_PREVIOUS_OP,'source_state'=>'terminal_failed_no_replay',
+            'scope'=>['departure'=>'Moscow','country'=>'Turkey','resort'=>'Side','tv_region_id'=>23,'samo_townto_id'=>20,
+              'date_from'=>HMC_DATE_FROM,'date_to'=>HMC_DATE_TO,'nights'=>HMC_NIGHTS,'adults'=>HMC_ADULTS,'children'=>HMC_CHILDREN,
+              'star'=>3,'tv_operator_ids'=>[13,18,25,43],'samo_operator_ids'=>[5,115,315,342]],
+            'checkpoint'=>['search_id'=>(int)$cp['search_id'],'prior_continue_calls'=>(int)$cp['prior_continue_calls'],
+              'last_request_count'=>(int)$cp['last_request_count'],'fully_drained'=>false,'exhaustion'=>null],
+            'counts'=>['raw_responses'=>$rawCount,'raw_responses_by_source'=>$sources,'source_hotels'=>count($cp['rows']),
+              'unique_offer_hotels'=>count($hotels),'normalized_offer_rows'=>count($offers),'operator_rows'=>$operators],
+            'offers'=>$offers,
+            'candidate_acceptances'=>0,'database_writes'=>0,'mapping_writes'=>0,'provider_http'=>0,'quota_ledger_access'=>0,
+            'private_raw_exported'=>false,'no_replay'=>true,
+          ];
+          $sha=hmc_write($opDir.'/result.json',$out);
+          hmc_write($opDir.'/receipt.json',['operation'=>$out['operation'],'state'=>$out['state'],'result_sha256'=>$sha,
+            'readback_verified'=>hash_file('sha256',$opDir.'/result.json')===$sha,'provider_accessed'=>false,
+            'database_writes'=>0,'mapping_writes'=>0,'private_raw_exported'=>false,'no_replay'=>true]);
+          echo hmc_json(['state'=>$out['state'],'source_hotels'=>$out['counts']['source_hotels'],
+            'offer_hotels'=>$out['counts']['unique_offer_hotels'],'offer_rows'=>$out['counts']['normalized_offer_rows'],
+            'last_request_count'=>$out['checkpoint']['last_request_count']])."\n";
+          PHP
+          scp "${opts[@]}" reservation/reservation.json "$RUNNER_TEMP/salvage.php" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_resume_v3.php scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\";SALVAGE_OP_DIR=\"\$HOME/$op\" SALVAGE_PREV_DIR=\"\$HOME/$prev\" php \"\$HOME/$op/payload/salvage.php\"" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
+          python3 - <<'PY'
+          import hashlib,json,tarfile,pathlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+            names=set(t.getnames());assert names=={'reservation.json','result.json','receipt.json'}
+            for m in t.getmembers():pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only_partial_not_fully_drained'
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['checkpoint']['prior_continue_calls']==16 and r['checkpoint']['last_request_count']>0 and not r['checkpoint']['fully_drained']
+          assert r['counts']['raw_responses']==79 and r['counts']['raw_responses_by_source']=={'samo-http':2,'tourvisor':77}
+          assert r['provider_http']==r['database_writes']==r['mapping_writes']==r['quota_ledger_access']==0
+          assert r['private_raw_exported'] is False and r['candidate_acceptances']==0
+          print(json.dumps({'state':r['state'],'counts':r['counts'],'checkpoint':r['checkpoint']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-tv-samo-v2-salvage-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
