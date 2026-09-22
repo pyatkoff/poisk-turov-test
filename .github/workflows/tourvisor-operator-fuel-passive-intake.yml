@@ -1,0 +1,51 @@
+name: Tourvisor passive operator fuel intake
+
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'v2/api-v2.php'
+      - 'app/integrations/tourvisor-operator-fuel-passive-intake.php'
+      - 'app/integrations/tourvisor-operator-fuel-retained-intake.php'
+      - 'app/integrations/operator-fuel-rule-evidence.php'
+      - 'app/integrations/operator-fuel-rule-store.php'
+      - 'tests/tourvisor-operator-fuel-passive-intake-test.php'
+      - 'docs/project/search3-production-import.json'
+      - '.github/workflows/tourvisor-operator-fuel-passive-intake.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite
+      - name: Validate passive selected-tour intake
+        run: |
+          set -euo pipefail
+          php -l v2/api-v2.php
+          php -l app/integrations/tourvisor-operator-fuel-passive-intake.php
+          php -l tests/tourvisor-operator-fuel-passive-intake-test.php
+          php -d allow_url_fopen=0 tests/tourvisor-operator-fuel-passive-intake-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('app/integrations/tourvisor-operator-fuel-passive-intake.php').read_text()
+          api=Path('v2/api-v2.php').read_text()
+          assert 'curl_' not in src and 'http://' not in src and 'https://' not in src
+          assert "provider='tourvisor'" in src
+          assert "PENDING_TTL = 900" in src
+          assert "EVIDENCE_TTL = 86400" in src
+          assert "dirname($catalog) . '/searches'" in api
+          assert api.count("tourvisor_fuel_passive_tour($id, $data);")==1
+          assert api.count("tourvisor_fuel_passive_flights($id, $data);")==1
+          print('Tourvisor passive intake static boundary: PASS')
+          PY
