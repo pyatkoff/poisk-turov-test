@@ -130,6 +130,19 @@ def parse_command(body: str) -> dict:
             need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'offset': offset, 'limit': limit}
+    if mode == 'match-readback':
+        need(len(parts) == 6, 'command_shape')
+        lane = parts[3]
+        need(lane in ('tv','samo'), 'match_lane')
+        offset = integer(parts[4], 0, 941, 'match_offset')
+        limit = integer(parts[5], 1, 350, 'match_limit')
+        need(offset + limit <= 942, 'match_scope')
+        if lane == 'tv':
+            need(operation.startswith('int-anex-'), 'match_operation_namespace')
+        else:
+            need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'lane': lane, 'offset': offset, 'limit': limit}
     if mode == 'andromeda-operator-preflight':
         # Supplier-free proof that one Search3/Tourvisor operator ID resolves through
         # current local identity evidence into the saved Andromeda operator dictionary.
@@ -666,11 +679,45 @@ def install_runtime(stage,files,op):
               'manifest_sha256':payload['manifest_sha256']}
     write_private_json(op/'install-state.json',complete)
     return complete
+def match942_child_name(lane, offset, limit):
+    if lane not in ('tv','samo') or offset<0 or limit<1 or offset+limit>942: fail('match_child_scope')
+    kind='tv-anex' if lane=='tv' else 'samo-anex'
+    return 'hotel-match-live942-'+kind+'-refresh-1971-20260923-o'+str(offset)+'-n'+str(limit)+'-v2'
+def read_match942(lane, offset, limit):
+    child=match942_child_name(lane,offset,limit)
+    child_dir=home/'.anytoour-match/operations'/child
+    if not child_dir.is_dir() or child_dir.is_symlink(): fail('match_child_missing')
+    reservation=safe_json(child_dir/'reservation.json',65536) if safe_file(child_dir/'reservation.json',65536) else {}
+    result_path=child_dir/'result.json'; receipt_path=child_dir/'receipt.json'
+    attempt_patterns=('tv-request-*.json','tv-response-*.json','tv-batch-*-reservation.json',
+                      'tv-batch-*-result.json','samo-http-*-reserved.json',
+                      'samo-target-*-reserved.json','samo-target-*-result.json')
+    counts={pattern:len(list(child_dir.glob(pattern))) for pattern in attempt_patterns}
+    provider_attempt_files=counts['tv-request-*.json']+counts['samo-http-*-reserved.json']
+    out={'child_operation':child,'reservation_present':bool(reservation),
+         'reservation_source_sha':reservation.get('source_sha'),
+         'reservation_parent_operation':reservation.get('parent_operation'),
+         'scope_offset':reservation.get('offset'),'scope_count':reservation.get('limit'),
+         'file_counts':counts,'provider_attempt_files':provider_attempt_files,
+         'result_present':safe_file(result_path,8*1024*1024),
+         'receipt_present':safe_file(receipt_path,1024*1024)}
+    if out['result_present'] and out['receipt_present']:
+        child_result=safe_json(result_path,8*1024*1024); receipt=safe_json(receipt_path,1024*1024)
+        digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+        if receipt.get('result_sha256')!=digest: fail('match_readback_hash')
+        summary={k:v for k,v in child_result.items() if k not in ('rows','edges','batches')}
+        out.update(state='terminal_receipt',result_sha256=digest,summary=summary,
+                   receipt_state=receipt.get('state'),receipt_no_replay=receipt.get('no_replay'))
+    elif provider_attempt_files>0:
+        out['state']='provider_attempted_without_terminal'
+    else:
+        out['state']='pre_provider_reservation_only'
+    return out
 def run_match942(stage, mode, offset, limit):
     match_root=home/'.anytoour-match/operations'
     match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
-    lane='tv-anex' if mode=='match-tv942' else 'samo-anex'
-    child='hotel-match-live942-'+lane+'-refresh-1971-20260923-o'+str(offset)+'-n'+str(limit)+'-v2'
+    lane='tv' if mode=='match-tv942' else 'samo'
+    child=match942_child_name(lane,offset,limit)
     child_dir=match_root/child
     if child_dir.exists() or child_dir.is_symlink(): fail('match_child_exists_no_replay')
     child_dir.mkdir(mode=0o700)
@@ -812,6 +859,14 @@ try:
         result['database_writes']=0
         result['production_unchanged']=True
         __RECONCILED__=True
+    if mode=='match-readback':
+        result['match_readback']=read_match942(payload['lane'],int(payload['offset']),int(payload['limit']))
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='reconciled_read_only'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode in ('match-tv942','match-samo942'):
         result['match942']=run_match942(stage,mode,int(payload['offset']),int(payload['limit']))
         result['production_after']=fingerprints()
