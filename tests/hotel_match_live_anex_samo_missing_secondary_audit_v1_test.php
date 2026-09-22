@@ -13,4 +13,7 @@ $x=hmams_parse_link(['operator_id'=>43,'operator_link'=>'https://operator.test/t
 t_need($x['state']==='ambiguous_native_candidates','ambiguous');
 $x=hmams_parse_link(['operator_id'=>43,'operator_link'=>'https://operator.test/t?page=12','operator_link_host'=>'operator.test','operator_link_query'=>'page=12']);
 t_need($x['state']==='numeric_nonhotel_only','nonhotel');
+t_need(!hmams_lane_needs_fresh(['state'=>'no_saved_native','accepted_external_ids'=>['123']]),'accepted_no_fresh');
+t_need(!hmams_lane_needs_fresh(['state'=>'saved_single_native_missing_secondary_edge','accepted_external_ids'=>[]]),'saved_no_fresh');
+t_need(hmams_lane_needs_fresh(['state'=>'saved_ambiguous_native','accepted_external_ids'=>[]]),'ambiguous_fresh');
 echo "MATCH_LIVE_ANEX_SAMO_MISSING_SECONDARY_AUDIT_V1_TEST_OK\n";
