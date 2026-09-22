@@ -438,17 +438,37 @@ foreach ([
     } finally { cleanup_dir($dir); }
 }
 
-// Duplicate supplier offer identity across pages is never authoritative.
+// PRICE pagination can repeat an identical boundary row. Store it once so one
+// harmless overlap cannot suppress every valid sibling in the complete cohort.
 $dir = temp_searches();
 try {
-    $ref = hash('sha256', 'duplicate'); $created = time() - 30; $ingests = [];
+    $ref = hash('sha256', 'identical-page-overlap'); $created = time() - 30; $ingests = [];
     $same = normalized_offer('same');
     write_state($dir, $ref, $created, 1, state($ref, 1, 1, 2, $created, [$same]));
     write_state($dir, $ref, $created, 2, state($ref, 1, 2, 2, $created, [$same]));
     [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
     $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
         new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
-    aassert($result['reason'] === 'duplicate_offer_identity' && $ingests === [], 'duplicate offer published');
+    aassert($result['published'] === true && $result['receivedOfferCount'] === 1
+        && $result['ownedOfferCount'] === 1 && $result['confirmationRequiredOfferCount'] === 1
+        && count($ingests) === 1 && count($ingests[0]['rows']) === 1,
+        'identical pagination overlap was not deduplicated exactly once');
+} finally { cleanup_dir($dir); }
+
+// The same identity with any changed normalized field is conflicting evidence.
+// It remains fail-closed and must not publish a partial authoritative snapshot.
+$dir = temp_searches();
+try {
+    $ref = hash('sha256', 'conflicting-page-overlap'); $created = time() - 30; $ingests = [];
+    $first = normalized_offer('same');
+    $changed = normalized_offer('same', 'FUN&SUN', 101, '100', '185126');
+    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 2, $created, [$first]));
+    write_state($dir, $ref, $created, 2, state($ref, 1, 2, 2, $created, [$changed]));
+    [$mapping, $canonical, $surcharge, $save, $ingest] = callbacks($ingests, party_surcharge());
+    $result = AnyTourAndromedaOfferAutosaveV1::consume(search_request(), $dir, $ref, 1,
+        new DateTimeImmutable('now', new DateTimeZone('UTC')), $mapping, $canonical, $surcharge, $save, $ingest);
+    aassert($result['reason'] === 'conflicting_offer_identity' && $ingests === [],
+        'conflicting duplicate identity published');
 } finally { cleanup_dir($dir); }
 
 // Both retained envelope shapes and explicit zero keep only the supplier base.
