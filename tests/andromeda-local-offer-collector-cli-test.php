@@ -169,3 +169,61 @@ foreach(['region','subregion'] as $key) foreach($badDestinations as $value) {
     familyCheck(str_contains($run['stderr'],'ANDROMEDA_COLLECTOR_INT'),'strict destination validation error');
 }
 echo 'ANDROMEDA_COLLECTOR_DESTINATION_CLI_OK positive='.count($destinations).' invalid='.(2*count($badDestinations)).' exact_request=1 supplier=0 db=0'."\n";
+
+// Explicit one-group mode reaches the actual CLI; its budget cannot expand.
+foreach ([0,1] as $budget) {
+    $run=familyCli(['--capture-mode=single_reusable_group','--max-captures='.$budget]);
+    familyCheck($run['code']===0,'single-group CLI rejected: '.$run['stderr']);
+    $events=array_column($run['trace'],1,0);
+    familyCheck($events['collector']['mode']==='single_reusable_group'
+        &&$events['collector']['maxCaptures']===$budget,'single-group CLI forwarding');
+}
+$run=familyCli(['--capture-mode=single_reusable_group','--max-captures=2']);
+familyCheck($run['code']!==0&&!in_array('catalog',array_column($run['trace'],0),true),'probe budget expanded before search');
+
+// Real collector; deliberately synthetic offers and no supplier/DB callbacks.
+require_once __DIR__.'/../app/integrations/andromeda-local-offer-collector.php';
+function probeOffer(int $id,string $program='5'):array{
+    return ['provider'=>'andromeda','offer_ref'=>'offer_'.hash('sha256','probe-'.$id),
+        'local_hotel_id'=>1000+$id,'operator'=>'FUN&SUN','operator_ref'=>'315',
+        'check_in'=>'2026-10-07','nights'=>[7,10,14][$id%3],'adults'=>2,'children'=>0,
+        'price'=>['amount'=>(string)(100000+$id),'currency'=>'RUB'],
+        'transport_context'=>['freight_external'=>true,'program_ref'=>$program,'tour_ref'=>'3005']];
+}
+(function():void{
+    $request=['generation'=>17,'params'=>['departureId'=>'1','countryId'=>'4','childs'=>[]]];
+    $small=[probeOffer(4,'6'),probeOffer(5,'6')];
+    $large=[probeOffer(1),probeOffer(2),probeOffer(3)];
+    $invalid=probeOffer(6);unset($invalid['transport_context']['program_ref']);
+    $unknown=probeOffer(7);$unknown['transport_context']['freight_external']=null;
+    $nonExternal=probeOffer(8);$nonExternal['transport_context']['freight_external']=false;
+    $rows=array_merge($small,[$invalid,$unknown,$nonExternal],$large);$before=$rows;
+    foreach([true,false] as $hit){
+        $captures=0;$checks=0;$saves=0;
+        $r=AnyTourAndromedaLocalOfferCollectorV1::collect($request,
+            static fn()=>['provider'=>'andromeda','search_ref'=>str_repeat('a',64),'pages_count'=>1,'status'=>'complete'],
+            static fn()=>array_map(static fn($o)=>['page'=>1,'offer'=>$o],$rows),static fn()=>true,
+            static function($selection)use(&$captures,$large){++$captures;familyCheck($selection['offer_ref']===$large[0]['offer_ref'],'largest group representative');return ['status'=>'captured','surcharge'=>['status'=>'unavailable']];},
+            static function()use(&$saves){++$saves;return ['published'=>true,'readyOfferCount'=>0];},
+            1,'single_reusable_group',0,null,
+            static function($selection,$offer,$req)use(&$checks,$hit,$large,$request){++$checks;familyCheck($offer===$large[0]&&$req===$request,'one compatible cache check');return $hit;});
+        familyCheck($captures===($hit?0:1)&&$checks===1&&$saves===1,'one group bounds');
+        familyCheck($r['capture_queue_offers']===1&&$r['reusable_surcharge_groups']===1&&$r['reusable_surcharge_offers']===3,'probe denominator');
+        familyCheck($r['surcharge_cache_covered_offers']===($hit?3:0)&&$r['surcharge_group_duplicate_skips']===2,'hit coverage');
+        familyCheck($rows===$before&&$r['received_offers']===8&&$r['eligible_offers']===8,'full cohort preserved');
+    }
+    foreach([[$invalid,$unknown,$nonExternal],[]] as $none){
+        $calls=0;
+        $r=AnyTourAndromedaLocalOfferCollectorV1::collect($request,
+            static fn()=>['provider'=>'andromeda','search_ref'=>str_repeat('a',64),'pages_count'=>1,'status'=>'complete'],
+            static fn()=>array_map(static fn($o)=>['page'=>1,'offer'=>$o],$none),static fn()=>true,
+            static function()use(&$calls){++$calls;throw new RuntimeException('must not capture');},
+            static fn()=>['published'=>true,'readyOfferCount'=>0],1,'single_reusable_group',0,null,
+            static function()use(&$calls){++$calls;return false;});
+        familyCheck($calls===0&&$r['capture_queue_offers']===0&&$r['reusable_surcharge_groups']===0,'no compatible group means no pricing call');
+    }
+    $unexpected=static function(){throw new RuntimeException('bad budget reached callback');};
+    try{AnyTourAndromedaLocalOfferCollectorV1::collect($request,$unexpected,$unexpected,$unexpected,$unexpected,$unexpected,2,'single_reusable_group');throw new RuntimeException('accepted two captures');}
+    catch(InvalidArgumentException $e){familyCheck($e->getMessage()==='ANDROMEDA_LOCAL_COLLECTOR_INPUT','single group budget validation');}
+})();
+echo "SINGLE_GROUP_PROBE_OK groups=1 coverage=3 offers_retained=8 capture_miss=1 capture_hit=0 supplier_http=0\n";
