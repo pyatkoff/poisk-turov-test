@@ -107,29 +107,98 @@ final class AnyTourOperatorProgramFuelRegistryV1
             $total=self::format($baseUnits+$increment);
             $digests=array_keys($evidence);sort($digests,SORT_STRING);
             $flightPair=count($flightPairs)===1?array_values($flightPairs)[0]:null;
+            $rule=[
+                'schema_version'=>1,'key'=>$key,'unit'=>'per_person_one_way',
+                'amount'=>self::format($nativeUnits),'currency'=>$currency,
+                'direction_count'=>2,'passenger_count'=>$passengers,
+                'applied_native_total'=>self::format($nativeTotal),
+                'base_relation'=>$relation,'flight_pair'=>$flightPair,
+                'independent_offer_count'=>count($offers),'evidence_count'=>count($evidence),
+                'evidence_sha256'=>self::hash($digests),'expires_at'=>$freshUntil,
+                'exchange'=>$fxOut,
+            ];
+            $rule['rule_sha256']=self::hash($rule);
+            $offerRef=$offer['offer_ref']??null;
+            if(!is_string($offerRef)||preg_match('/\\Aoffer_[a-f0-9]{64}\\z/D',$offerRef)!==1)return null;
             return [
+                'schema_version'=>1,
                 'provider'=>'andromeda',
                 'state'=>'estimated',
                 'source'=>'operator_program_fuel_registry',
+                'offer_ref_digest'=>hash('sha256',$offerRef),
+                'party'=>$party,
                 'final_price_verified'=>false,
                 'arithmetic_applied'=>$relation==='excluded',
                 'search_price'=>['amount'=>(string)$base['amount'],'currency'=>'RUB'],
-                'party_surcharge'=>['amount'=>self::format($converted),'currency'=>'RUB','source'=>'operator_program_fuel_registry'],
+                'party_surcharge'=>['amount'=>self::format($converted),'currency'=>'RUB',
+                    'source'=>$currency==='RUB'?'andromeda_get_flights_transport':'andromeda_get_flights_transport_converted'],
                 'search_price_with_surcharge'=>['amount'=>$total,'currency'=>'RUB','source'=>'derived_search_estimate'],
-                'program_rule'=>[
-                    'schema_version'=>1,'key'=>$key,'unit'=>'per_person_one_way',
-                    'amount'=>self::format($nativeUnits),'currency'=>$currency,
-                    'direction_count'=>2,'passenger_count'=>$passengers,
-                    'applied_native_total'=>self::format($nativeTotal),
-                    'base_relation'=>$relation,'flight_pair'=>$flightPair,
-                    'independent_offer_count'=>count($offers),'evidence_count'=>count($evidence),
-                    'evidence_sha256'=>self::hash($digests),'expires_at'=>$freshUntil,
-                    'exchange'=>$fxOut,
-                ],
+                'program_rule'=>$rule,
             ];
         } catch (Throwable $ignored) {
             return null;
         }
+    }
+
+    public static function apply(array $dto,array $input,int $now):array
+    {
+        $hold=static fn(string $reason):array=>['dto'=>$dto,'applied'=>false,'reason'=>$reason];
+        try{
+            if($now<1||($dto['provider']??null)!=='andromeda'||($dto['quote_state']??null)!=='unknown'
+                ||($dto['final_price_verified']??null)!==false||($dto['money']['arithmetic_applied']??null)!==false
+                ||($dto['money']['additional_prices_reported']??null)!==[])return $hold('program_fuel_overlap_or_nonbase_state');
+            if(($input['schema_version']??null)!==1||($input['provider']??null)!=='andromeda'
+                ||($input['state']??null)!=='estimated'||($input['source']??null)!=='operator_program_fuel_registry'
+                ||($input['final_price_verified']??null)!==false)return $hold('program_fuel_input');
+            if(($input['offer_ref_digest']??null)!==($dto['identity']['offer_ref_digest']??null)
+                ||!is_string($input['offer_ref_digest']??null)
+                ||preg_match('/\\A[a-f0-9]{64}\\z/D',$input['offer_ref_digest'])!==1)return $hold('program_fuel_offer_binding');
+
+            $party=self::party($input['party']??null);
+            if($party!==self::party($dto['tour']['party']??null)||self::hasInfant($party))return $hold('program_fuel_party_binding');
+            $base=$dto['money']['search_price']??null;
+            if(!is_array($base)||($base['currency']??null)!=='RUB'
+                ||($input['search_price']??null)!==['amount'=>$base['amount'],'currency'=>'RUB']
+                ||($dto['price']??null)!==$base['amount'])return $hold('program_fuel_base_binding');
+
+            $rule=$input['program_rule']??null;
+            if(!is_array($rule)||($rule['schema_version']??null)!==1||($rule['unit']??null)!=='per_person_one_way'
+                ||($rule['direction_count']??null)!==2||($rule['passenger_count']??null)!==($party['adults']+$party['children'])
+                ||!in_array($rule['base_relation']??null,['included','excluded'],true)
+                ||!is_int($rule['independent_offer_count']??null)||$rule['independent_offer_count']<2
+                ||!is_int($rule['evidence_count']??null)||$rule['evidence_count']<2
+                ||!is_int($rule['expires_at']??null)||$rule['expires_at']<=$now
+                ||!is_string($rule['evidence_sha256']??null)||preg_match('/\\A[a-f0-9]{64}\\z/D',$rule['evidence_sha256'])!==1
+                ||!is_string($rule['rule_sha256']??null)||preg_match('/\\A[a-f0-9]{64}\\z/D',$rule['rule_sha256'])!==1)return $hold('program_fuel_rule_invalid');
+            $checkRule=$rule;unset($checkRule['rule_sha256']);
+            if(self::hash($checkRule)!==$rule['rule_sha256'])return $hold('program_fuel_rule_hash');
+            $family=AnyTourOperatorFuelRuleEvidenceV1::operatorFamily($dto['operator']['raw']??null);
+            if($family===null||($rule['key']['operator_family']??null)!==$family)return $hold('program_fuel_operator_binding');
+
+            $native=self::units($rule['amount']??null);
+            $expectedNative=$native*$rule['passenger_count']*2;
+            if(self::format($expectedNative)!==($rule['applied_native_total']??null))return $hold('program_fuel_native_total');
+            $partySurcharge=$input['party_surcharge']??null;
+            $total=$input['search_price_with_surcharge']??null;
+            if(!is_array($partySurcharge)||($partySurcharge['currency']??null)!=='RUB'
+                ||!in_array($partySurcharge['source']??null,['andromeda_get_flights_transport','andromeda_get_flights_transport_converted'],true)
+                ||!is_array($total)||($total['currency']??null)!=='RUB'||($total['source']??null)!=='derived_search_estimate')return $hold('program_fuel_money');
+            $charge=self::units($partySurcharge['amount']??null);$baseUnits=self::units($base['amount']??null);
+            $relation=$rule['base_relation'];$expectedTotal=$baseUnits+($relation==='excluded'?$charge:0);
+            if(self::format($expectedTotal)!==($total['amount']??null)
+                ||($input['arithmetic_applied']??null)!==($relation==='excluded'))return $hold('program_fuel_total');
+
+            $out=$dto;
+            $out['money']['fuel_charge_reported']=['amount'=>self::format($charge),'currency'=>'RUB','source'=>'operator_program_fuel_rule'];
+            $out['money']['operator_program_fuel_rule']=$rule;
+            $out['money']['search_price_fuel_relation']=$relation;
+            $out['money']['search_price_with_surcharge']=$total;
+            $out['money']['arithmetic_applied']=$relation==='excluded';
+            $out['finalPriceReady']=true;
+            $out['finalPrice']=$out['price']=$total['amount'];
+            $out['final_price_verified']=false;
+            return ['dto'=>$out,'applied'=>true,'reason'=>null];
+        }catch(Throwable $ignored){return $hold('program_fuel_invalid');}
     }
 
     public static function observation(array $row): array
