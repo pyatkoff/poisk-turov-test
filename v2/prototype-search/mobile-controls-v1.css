@@ -71,6 +71,10 @@
     min-height:44px;
   }
 
+  .filter-panel.open .filter-top {
+    padding-top:calc(18px + env(safe-area-inset-top));
+  }
+
   .compare-tray {
     bottom:calc(80px + env(safe-area-inset-bottom));
   }
