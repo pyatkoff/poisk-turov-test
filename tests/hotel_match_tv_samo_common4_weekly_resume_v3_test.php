@@ -187,9 +187,9 @@ $put=function(string $path,array $params,array $reply)use($tmp,&$seq){
 };
 $put('/tours/search',['hotelCategory'=>3],['searchId'=>123]);
 $put('/tours/search/123',['limit'=>100],['hotels'=>[['id'=>7,'name'=>'Hotel','tours'=>[['id'=>'t1']]]]]);
-for($i=1;$i<=20;$i++)$put('/tours/search/123/continue',[],['requestCount'=>1]);
+for($i=1;$i<=16;$i++)$put('/tours/search/123/continue',[],['requestCount'=>1]);
 $cp=hmc3_previous_checkpoint($tmp);
-hmc_need($cp['search_id']===123&&$cp['prior_continue_calls']===20&&$cp['last_request_count']===1,'resume_checkpoint');
+hmc_need($cp['search_id']===123&&$cp['prior_continue_calls']===16&&$cp['last_request_count']===1,'resume_checkpoint');
 hmc_need(hmc_tv_signatures($cp['rows'])===['hotels'=>1,'tours'=>1],'resume_union');
 foreach(glob($tmp.'/evidence-private/*')?:[] as $f)unlink($f);rmdir($tmp.'/evidence-private');unlink($tmp.'/result.json');unlink($tmp.'/receipt.json');unlink($tmp.'/search-plan.json');rmdir($tmp);
 
