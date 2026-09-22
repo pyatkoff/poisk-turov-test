@@ -288,13 +288,14 @@ jobs:
         if: steps.prototype-inventory.outputs.required == 'true'
         run: |
           python -m pip install playwright==1.57.0
-          python -m playwright install --with-deps chromium
+          python -m playwright install --with-deps chromium webkit
 
       - name: Verify prototype budget continuation and contact contracts
         if: steps.prototype-inventory.outputs.required == 'true'
         run: |
           node tests/search3-prototype-lead-bind.cjs
           python tests/search3-prototype-inventory-browser.py
+          python tests/search3-prototype-inventory-browser.py --browser webkit
           python tests/search3-prototype-contact-recovery.py
 
       - name: Retain prototype inventory browser evidence

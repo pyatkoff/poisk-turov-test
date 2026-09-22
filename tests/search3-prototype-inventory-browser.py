@@ -3,6 +3,7 @@
 Reuse the existing prototype fixture server. No native supplier search, live DB,
 lead, price authority or physical-device acceptance is claimed by this test.
 """
+import argparse
 import copy
 import hashlib
 import importlib.util
@@ -51,7 +52,7 @@ def stored(old, provider, price):
     }]}
 
 
-def check_width(browser, origin, width):
+def check_width(browser, origin, width, engine):
     context = browser.new_context(viewport={"width": width, "height": 900})
     page = context.new_page()
     page.set_default_timeout(15000)
@@ -188,7 +189,7 @@ def check_width(browser, origin, width):
         assert parse_qs(urlparse(page.url).query)["max"] == ["600000"]
         assert len([c for c in calls if c["action"] == "search_start"]) == 1
         assert len([c for c in calls if c["action"] == "search_continue"]) == 1
-        page.screenshot(path=str(EVIDENCE / f"budget-continue-{width}.png"))
+        page.screenshot(path=str(EVIDENCE / f"budget-continue-{engine}-{width}.png"))
         page.reload()
         page.locator(".search-submit:not([disabled])").wait_for()
         assert "600" in page.locator('#budget-label').inner_text()
@@ -199,11 +200,11 @@ def check_width(browser, origin, width):
         assert not page.evaluate("document.documentElement.scrollWidth > innerWidth"), "Document overflow"
         assert not forbidden, forbidden
         assert not errors, errors
-        page.screenshot(path=str(EVIDENCE / f"restored-budget-{width}.png"))
-        return {"width": width, "status": "passed", "providers": providers,
+        page.screenshot(path=str(EVIDENCE / f"restored-budget-{engine}-{width}.png"))
+        return {"width": width, "browser": engine, "status": "passed", "providers": providers,
                 "calls": calls, "forbidden": forbidden, "browser_errors": errors}
     except Exception:
-        page.screenshot(path=str(EVIDENCE / f"failure-{width}.png"))
+        page.screenshot(path=str(EVIDENCE / f"failure-{engine}-{width}.png"))
         print(json.dumps({"width": width, "calls": calls, "forbidden": forbidden,
                           "errors": errors, "body": page.locator('body').inner_text()[:5000]}, ensure_ascii=False))
         raise
@@ -214,22 +215,25 @@ def check_width(browser, origin, width):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--browser", choices=("chromium", "webkit"), default="chromium")
+    args = parser.parse_args()
     server = ThreadingHTTPServer(("127.0.0.1", 0), FIXTURE.StaticFiles)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     origin = "http://127.0.0.1:" + str(server.server_port)
     try:
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
+            browser = getattr(playwright, args.browser).launch(headless=True)
             try:
-                results = [check_width(browser, origin, width) for width in (390, 1440)]
+                results = [check_width(browser, origin, width, args.browser) for width in (390, 1440)]
             finally:
                 browser.close()
-        receipt = {"test": "search3-prototype-inventory", "live_inventory": False, "published": False,
+        receipt = {"test": "search3-prototype-inventory", "browser": args.browser, "live_inventory": False, "published": False,
                    "supplier_requests": 0, "lead_requests": 0, "results": results,
                    "source_sha256": {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
                                      for name in ("prototype-search/app.js", "prototype-search/data.js")}}
-        (EVIDENCE / "receipt.json").write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n")
+        (EVIDENCE / f"receipt-{args.browser}.json").write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n")
         print("SEARCH3_PROTOTYPE_INVENTORY_BROWSER_OK", json.dumps(receipt, ensure_ascii=False))
     finally:
         server.shutdown()
