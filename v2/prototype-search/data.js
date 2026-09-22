@@ -5,7 +5,7 @@
   const local = '/_preview/search3-local-candidate/';
   const catalog = { departures: [], countries: [], meals: [] };
   const quoteReceipts = new WeakMap();
-  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null;
+  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
   const text = value => typeof value === 'object' && value ? String(value.russianName || value.name || '') : String(value ?? '');
   const amount = value => { const n = Number(value && typeof value === 'object' ? value.value : value); return Number.isFinite(n) && n > 0 ? n : null; };
@@ -21,7 +21,7 @@
     if (!Number.isInteger(s.minNights) || !Number.isInteger(s.maxNights) || s.minNights < 1 || s.maxNights > 28 || s.maxNights < s.minNights || s.maxNights - s.minNights > 10) throw new Error('Проверьте диапазон ночей.');
     const chosenMeal=filters.meals?.length===1?catalog.meals.find(x=>meal(x)===filters.meals[0]):null;
     const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
-    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:chosenMeal?String(chosenMeal.id):'',hotelCategory:stars.length?String(Math.min(...stars)):'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max>0&&filters.max<600000?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
+    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:chosenMeal?String(chosenMeal.id):'',hotelCategory:stars.length?String(Math.min(...stars)):'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max!==null&&filters.max!==undefined&&filters.max!==''?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
   }
   function sameScope(request, response) {
     if (!response || response.scopeVersion !== 1 || Object.keys(response).length !== Object.keys(request).length + 1) return false;
@@ -53,32 +53,77 @@
     return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),room:text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,meal:meal(t.meal)||'Питание уточняется',operator:text(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
   function project(list,s) { return list.map(rawHotel=>{const h=hotel(rawHotel,s);h.offers=(rawHotel.tours||[]).map((t,i)=>offer(t,h,s,i)).filter(Boolean);return h;}).filter(h=>h.offers.length); }
-  function publish() {if(owner&&context)notify({type:'results',hotels:project(owner.read(raw,{}),context)});}
-  function stop(){generation++;clearTimeout(timer);timer=null;return generation;}
+  function publish() {if(owner&&context&&activeSearch&&current(activeSearch))notify({type:'results',hotels:project(owner.read(raw,{}),context)});}
+  function current(run){return activeSearch===run&&run.generation===generation;}
+  function stop(){
+    generation++;clearTimeout(timer);timer=null;
+    activeSearch?.controller.abort();activeSearch=null;
+    return generation;
+  }
+  function searchError(run,error){
+    if(!current(run))return;
+    run.pending=false;
+    // An expired supplier search cannot be continued. A lost response is not
+    // evidence that search_continue failed: subsequent recovery only reads it.
+    if(error?.status===404||error?.status===410)run.expired=true;
+    notify({type:'error',message:error.message,canContinue:!!run.searchId&&!run.expired,retryRead:run.resumeOnly});
+  }
+  function readDatabase(run){
+    return db(run.search,run.controller.signal,run.hotelIds,run.filters).then(data=>{
+      if(!current(run)||!owner)return;
+      root.AnyTourLocalDbProviderV1.apply(owner,data);if(current(run))notify({type:'database'});
+    }).catch(error=>{if(current(run))notify({type:'database-error',message:error.message});});
+  }
+  function refreshDatabase(run){
+    // Serial snapshots cannot overwrite a later snapshot with an earlier one.
+    // Provider completion uses the same reader; no parallel store or DTO.
+    run.database=run.database.then(()=>{if(current(run))return readDatabase(run);});
+  }
+  async function pollSearch(run){
+    if(!current(run))return;
+    try{
+      const status=await rt.api('search_status',{searchId:run.searchId});if(!current(run))return;
+      const progress=Math.max(0,Math.min(100,Number(status.progress)||0));
+      const complete=progress>=100||status.status==='complete';notify({type:'progress',progress});if(!current(run))return;
+      if(complete||progress>=run.lastProgress+10||Date.now()-run.lastRead>7000){
+        // #3444 validates this explicit request in the existing gateway. This
+        // is a response-size bound, not a claim that these are all market tours.
+        const rows=await rt.api('search_results',{searchId:run.searchId,limit:complete||run.continued?5000:25});
+        if(!current(run))return;
+        if(!Array.isArray(rows))throw new Error('Не удалось прочитать предложения.');
+        raw=rows;run.lastProgress=progress;run.lastRead=Date.now();publish();if(!current(run))return;
+      }
+      if(complete){
+        run.pending=false;run.resumeOnly=false;refreshDatabase(run);
+        notify({type:'complete',canContinue:true,continued:run.continued,resultLimitReached:raw.length>=5000});return;
+      }
+      if(run.deadline&&Date.now()>=run.deadline)throw new Error('Продолжение поиска ещё не завершено. Проверьте результат повторно.');
+      timer=setTimeout(()=>pollSearch(run),2500);
+    }catch(error){searchError(run,error);}
+  }
   async function search(s, callback, hotelIds=[], filters={}) {
-    const p=params(s,hotelIds,filters),run=stop();notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
-    callback({type:'loading'});
-    db(s,undefined,hotelIds,filters).then(data=>{if(run!==generation||!owner)return;root.AnyTourLocalDbProviderV1.apply(owner,data);callback({type:'database'});}).catch(error=>{if(run===generation)callback({type:'database-error',message:error.message});});
-    try {
-      const started=await rt.api('search_start',p);
-      if(run!==generation)return;
-      searchId=Number(started.searchId);if(!searchId)throw new Error('Не удалось запустить поиск.');rt.setSearchId(searchId);
-      let lastProgress=-10,lastRead=0;
-      const poll=async()=>{
-        try {
-          const status=await rt.api('search_status',{searchId});if(run!==generation)return;
-          const progress=Number(status.progress)||0,complete=progress>=100||status.status==='complete';callback({type:'progress',progress});
-          if(complete||progress>=lastProgress+10||Date.now()-lastRead>7000){
-            const rows=await rt.api('search_results',{searchId,limit:complete?100:25});if(run!==generation)return;
-            if(!Array.isArray(rows))throw new Error('Не удалось прочитать предложения.');
-            raw=rows;lastProgress=progress;lastRead=Date.now();publish();
-          }
-          if(complete){callback({type:'complete'});return;}
-          timer=setTimeout(poll,2500);
-        }catch(error){if(run===generation)callback({type:'error',message:error.message});}
-      };
-      timer=setTimeout(poll,1000);
-    }catch(error){if(run===generation)callback({type:'error',message:error.message});}
+    const p=params(s,hotelIds,filters),epoch=stop();notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
+    const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,lastProgress:-10,lastRead:0,deadline:0};
+    activeSearch=run;callback({type:'loading'});if(!current(run))return;run.database=readDatabase(run);
+    try{
+      const started=await rt.api('search_start',p);if(!current(run))return;
+      searchId=Number(started.searchId);
+      if(!Number.isSafeInteger(searchId)||searchId<1)throw new Error('Не удалось запустить поиск.');
+      run.searchId=searchId;rt.setSearchId(searchId);
+      timer=setTimeout(()=>pollSearch(run),1000);
+    }catch(error){searchError(run,error);}
+  }
+  async function continueSearch(){
+    const run=activeSearch;
+    if(!run||!current(run)||run.pending||!run.searchId||run.expired)return false;
+    // Lock before the first await: double clicks never spend a second request.
+    run.pending=true;run.continued=true;run.lastProgress=-10;run.lastRead=0;run.deadline=Date.now()+75000;
+    const retryRead=run.resumeOnly;run.resumeOnly=true;
+    notify({type:'loading',continued:true,retryRead});if(!current(run))return false;
+    try{
+      if(!retryRead){await rt.api('search_continue',{searchId:run.searchId});if(!current(run))return false;}
+      await pollSearch(run);return current(run);
+    }catch(error){searchError(run,error);return false;}
   }
   async function calendar(s,from,to,signal,filters={}) {
     const result=[];
@@ -169,5 +214,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,search,stop,calendar,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,search,continueSearch,stop,calendar,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;}});
 })(window);

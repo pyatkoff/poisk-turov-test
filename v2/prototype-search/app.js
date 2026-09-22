@@ -54,7 +54,7 @@ const startDay=addDays(iso(new Date()),1),endDay=addDays(startDay,180);
 let hotels=[];
 let resultCalendar={key:null,hotels:[],phase:'idle',controller:null};
 
-const defaultFilters=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],min:0,max:600000,rating:false,beach:false,family:false,spa:false});
+const defaultFilters=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],min:0,max:null,rating:false,beach:false,family:false,spa:false});
 const getStored=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
 const saveStored=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{toast('Сохранение в браузере недоступно; выбор останется до перезагрузки.')}};
 const validIds=ids=>Array.isArray(ids)?[...new Set(ids.filter(id=>Number.isSafeInteger(id)&&id>0))].slice(0,20):[];
@@ -80,15 +80,15 @@ function restoreURL(){
  if(p.has('ages'))s.ages=p.get('ages').split(',').filter(x=>/^\d+$/.test(x)&&Number(x)<=17).slice(0,3).map(Number);
  const hotelId=p.get('hotel');if(/^[1-9]\d*$/.test(hotelId||'')&&Number.isSafeInteger(Number(hotelId)))state.filters.hotelId=Number(hotelId);
  state.filters.stars=(p.get('stars')||'').split('|').map(Number).filter(n=>[3,4,5].includes(n));
- for(const k of ['min','max'])if(p.has(k)&&Number.isFinite(Number(p.get(k))))state.filters[k]=Math.min(600000,Math.max(0,Number(p.get(k))));
- if(state.filters.min>state.filters.max)state.filters.min=state.filters.max;
+ for(const k of ['min','max'])if(p.has(k)&&p.get(k).trim()!==''&&Number.isFinite(Number(p.get(k))))state.filters[k]=Math.max(0,Number(p.get(k)));
+ if(state.filters.max!==null&&state.filters.min>state.filters.max)state.filters.min=state.filters.max;
  for(const k of ['meals','resorts','operators'])state.filters[k]=[...new Set((p.get(k)||'').split('|').filter(Boolean))];
  state.filters.q=p.get('q')||'';state.filters.rating=p.get('rating')==='1';
  if(['recommended','price','rating'].includes(p.get('sort')))state.sort=p.get('sort');
  $('#sort').value=state.sort;
  state.hasSearched=false;draft=structuredClone(s);
 }
-function updateURL(){const p=new URLSearchParams();for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);if(state.selectedDate)p.set('date',state.selectedDate);if(state.hasSearched)p.set('searched','1');if(state.onlyFavorites)p.set('favorites','1');const f=state.filters;for(const k of ['stars','meals','resorts','operators','flight'])if(f[k].length)p.set(k,f[k].join('|'));for(const k of ['beach','rating','family','spa'])if(f[k])p.set(k,'1');if(f.hotelId)p.set('hotel',f.hotelId);if(f.q)p.set('q',f.q);if(f.min)p.set('min',f.min);if(f.max!==600000)p.set('max',f.max);if(state.sort!=='recommended')p.set('sort',state.sort);const query='?'+p.toString();if(location.search!==query||location.hash)history.replaceState(history.state,'',query);}
+function updateURL(){const p=new URLSearchParams();for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);if(state.selectedDate)p.set('date',state.selectedDate);if(state.hasSearched)p.set('searched','1');if(state.onlyFavorites)p.set('favorites','1');const f=state.filters;for(const k of ['stars','meals','resorts','operators','flight'])if(f[k].length)p.set(k,f[k].join('|'));for(const k of ['beach','rating','family','spa'])if(f[k])p.set(k,'1');if(f.hotelId)p.set('hotel',f.hotelId);if(f.q)p.set('q',f.q);if(f.min)p.set('min',f.min);if(f.max!==null)p.set('max',f.max);if(state.sort!=='recommended')p.set('sort',state.sort);const query='?'+p.toString();if(location.search!==query||location.hash)history.replaceState(history.state,'',query);}
 function renderSummary(){const s=state.search,f=state.filters;$('#applied-search').innerHTML=`<div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong><p>${state.selectedDate?dateText(state.selectedDate):rangeText(s.from,s.to)} · ${durationText()} · ${guestsText()}</p></div></div><div class="applied-extras"><span>${f.stars.length?f.stars.join(' / ')+' ★':'Любая категория'}</span><span>${f.meals.length?f.meals.map(esc).join(', '):'Любое питание'}</span><span>${budgetText()}</span></div><button class="secondary" data-action="edit-search">${icon('sliders')} Изменить поиск</button>`;}
 function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intro').hidden=true;$('#applied-search').hidden=false;$('#search').classList.add('search-collapsed');}
 function editSearch(){if(searchResponse.pending)stopSearch();if(innerWidth<=1100)closeFilters();$('#search-form').hidden=false;$('.intro').hidden=false;$('#applied-search').hidden=true;$('#search').classList.remove('search-collapsed');$('#search').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#origin').focus({preventScroll:true});}
@@ -98,11 +98,11 @@ function hotelOffers(h,options={}){
  const s=options.search||state.search,f=options.filters||state.filters,selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
  const from=options.day||(selected&&!options.ignoreDate?selected:s.from),to=options.day||(selected&&!options.ignoreDate?selected:s.to);
  if(!hotelMatch(h,f,s,options.onlyFavorites??state.onlyFavorites))return[];
- return (h.offers||[]).filter(o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&JSON.stringify([...o.ages].sort())===JSON.stringify([...s.ages].sort())&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&(!f.meals.length||f.meals.includes(o.meal))&&o.total>=f.min&&(f.max===600000||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight))).sort((a,b)=>a.total-b.total||a.day.localeCompare(b.day));
+ return (h.offers||[]).filter(o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&JSON.stringify([...o.ages].sort())===JSON.stringify([...s.ages].sort())&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&(!f.meals.length||f.meals.includes(o.meal))&&o.total>=f.min&&(f.max===null||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight))).sort((a,b)=>a.total-b.total||a.day.localeCompare(b.day));
 }
 function results(){return hotels.map(h=>({hotel:h,offers:hotelOffers(h)})).filter(r=>r.offers.length).sort((a,b)=>state.sort==='price'?a.offers[0].total-b.offers[0].total:state.sort==='rating'?b.hotel.rating-a.hotel.rating:(b.hotel.rating+(b.hotel.beach!==null&&b.hotel.beach<=150?.2:0))-(a.hotel.rating+(a.hotel.beach!==null&&a.hotel.beach<=150?.2:0)));}
 function minimumForDay(day,options={}){let min=Infinity;const source=options.calendarHotels||hotels;source.forEach(h=>{const offers=hotelOffers(h,{...options,day,ignoreDate:true,onlyFavorites:false});if(offers.length)min=Math.min(min,offers[0].total)});return Number.isFinite(min)?min:null;}
-function filterCount(){return Object.entries(state.filters).reduce((n,[k,v])=>n+(Array.isArray(v)?v.length:k==='max'?(v<600000?1:0):k==='min'?(v>0?1:0):v?1:0),0);}
+function filterCount(){return Object.entries(state.filters).reduce((n,[k,v])=>n+(Array.isArray(v)?v.length:k==='max'?(v!==null?1:0):k==='min'?(v>0?1:0):v?1:0),0);}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.hidden=true,3600);}
 const draftSelectedDate=()=>draft.from===state.search.from&&draft.to===state.search.to?state.selectedDate:null;
 function updateSearchUI(){
@@ -184,14 +184,14 @@ function filterChipData(model=appliedFilterModel()){
  if(f.q)chips.push({key:'q',value:'',label:`Отель: ${f.q}`});
  for(const key of ['stars','meals','resorts','operators','flight'])f[key].forEach(value=>chips.push({key,value,label:key==='stars'?value+' ★':key==='flight'?(value==='charter'?'Чартер':'Регулярный рейс'):value}));
  for(const [key,label] of [['beach','Первая линия'],['rating','Рейтинг 4,5+'],['family','Детский клуб'],['spa','Спа-центр']])if(f[key])chips.push({key,value:'',label});
- if(f.min>0||f.max<600000)chips.push({key:'price',value:'',label:`${money(f.min)} — ${money(f.max)}`});
+ if(f.min>0||f.max!==null)chips.push({key:'price',value:'',label:budgetLabel(f)});
  return chips;
 }
-function removeModelFilter(model,key,value){const f=model.filters;if(key==='date')model.selectedDate=null;else if(key==='favorites')model.onlyFavorites=false;else if(key==='price'){f.min=0;f.max=600000}else if(Array.isArray(f[key]))f[key]=f[key].filter(x=>String(x)!==String(value));else f[key]=key==='q'?'':key==='hotelId'?0:false;}
+function removeModelFilter(model,key,value){const f=model.filters;if(key==='date')model.selectedDate=null;else if(key==='favorites')model.onlyFavorites=false;else if(key==='price'){f.min=0;f.max=null}else if(Array.isArray(f[key]))f[key]=f[key].filter(x=>String(x)!==String(value));else f[key]=key==='q'?'':key==='hotelId'?0:false;}
 function recoverySuggestions(model){
  const f=model.filters,candidates=[];
  const add=(key,title,change,description='Остальные условия сохранятся')=>{const next=structuredClone(model);change(next);const count=countMatchingHotels(next);if(count)candidates.push({key,title,description,count,model:next});};
- if(f.max<600000){const wider={...model,filters:{...f,max:600000}},offers=hotels.map(h=>hotelOffers(h,wider)[0]).filter(Boolean),minimum=offers.length?Math.min(...offers.map(o=>o.total)):null;if(minimum!==null&&minimum>f.max){const ceiling=Math.min(600000,Math.ceil(minimum/1000)*1000);add('budget',`Бюджет до ${money(ceiling)}`,m=>m.filters.max=ceiling);}}
+ if(f.max!==null){const wider={...model,filters:{...f,max:null}},offers=hotels.map(h=>hotelOffers(h,wider)[0]).filter(Boolean),minimum=offers.length?Math.min(...offers.map(o=>o.total)):null;if(minimum!==null&&minimum>f.max){const ceiling=Math.ceil(minimum/1000)*1000;add('budget',`Бюджет до ${money(ceiling)}`,m=>m.filters.max=ceiling);}}
  if(f.min>0)add('minimum',`Убрать бюджет «от ${money(f.min)}»`,m=>m.filters.min=0);
  if(f.q)add('q','Убрать поиск по названию',m=>m.filters.q='');
  for(const [key,title] of [['meals','Любое питание'],['stars','Любая категория отеля'],['flight','Любой тип перелёта'],['operators','Любой туроператор'],['beach','Без условия «Первая линия»'],['rating','Без ограничения по рейтингу'],['family','Без условия «Детский клуб»'],['spa','Без условия «Спа-центр»'],['resorts','Все курорты направления'],['hotelId','Другие отели в направлении']])if(Array.isArray(f[key])?f[key].length:f[key])add(key,title,m=>m.filters[key]=Array.isArray(f[key])?[]:key==='hotelId'?0:false);
@@ -216,15 +216,41 @@ function updateDrawerPreview(){
 function filterEdited(rebuild=false){if(filterDraft){if(rebuild)renderFilters();else updateFacetCounts();updateDrawerPreview();return}if(rebuild)syncFilters();else{renderResults({keepFilters:true});updateSearchUI()}}
 function checkRows(group,options){const model=editingFilterModel();return options.map(([val,label])=>{const count=countMatchingHotels({...model,filters:{...model.filters,[group]:[val]}});return `<label class="check-row"><input type="checkbox" data-filter="${group}" value="${esc(val)}" ${model.filters[group].includes(val)?'checked':''}><span>${esc(label)}</span><small aria-label="${hotelCountText(count)}">${count}</small></label>`}).join('');}
 function updateFacetCounts(){const model=editingFilterModel();$$('[data-filter],[data-filter-bool]').forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=input.dataset.filter?[input.value]:true,count=countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),label=input.closest('.check-row')?.querySelector('small');if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}});}
-function renderFilters(){const model=editingFilterModel(),f=model.filters,hs=hotels.filter(h=>h.country===state.search.country);$('#filters').innerHTML=`
+function budgetScale(f){
+ let high=Math.max(1000,f.min,f.max??0);
+ for(const h of hotels)for(const o of h.offers||[])if(Number.isFinite(o.total)&&o.total>high)high=o.total;
+ return Math.ceil(high/1000)*1000;
+}
+function syncBudgetControls(f){
+ $('#min-price').value=f.min;$('#max-price').value=f.max??'';
+ const range=$('#price-range'),high=budgetScale(f);range.max=high;range.value=f.max??high;
+ range.setAttribute('aria-valuetext',budgetLabel(f));
+}
+let renderedFilterContext=null;
+function paintFilters(markup,filters){
+ const host=$('#filters'),active=document.activeElement,scope=searchKey(state.search);
+ const group=active&&host.contains(active)&&['min-price','max-price','price-range'].includes(active.id)?active.closest('.filter-group'):null;
+ if(group&&renderedFilterContext?.filters===filters&&renderedFilterContext.scope===scope){
+  const template=document.createElement('template');template.innerHTML=markup;
+  const replacement=template.content.querySelector('#min-price')?.closest('.filter-group');
+  if(replacement&&replacement.parentNode===template.content){
+   // Preserve the attached editor, native focus and an unfinished number.
+   const nodes=[...template.content.childNodes],index=nodes.indexOf(replacement);
+   [...host.childNodes].forEach(node=>{if(node!==group)node.remove();});
+   group.before(...nodes.slice(0,index));group.after(...nodes.slice(index+1));
+  }else host.innerHTML=markup;
+ }else host.innerHTML=markup;
+ renderedFilterContext={filters,scope};
+}
+function renderFilters(){const model=editingFilterModel(),f=model.filters,hs=hotels.filter(h=>h.country===state.search.country),scale=budgetScale(f);paintFilters(`
  <div class="filter-group"><h4>Название отеля или курорт</h4><div class="filter-search"><input class="input" id="hotel-query" type="search" value="${esc(f.q)}" placeholder="Введите название" aria-label="Название отеля или курорт">${icon('search')}</div></div>
- <div class="filter-group"><h4>Бюджет на всех туристов</h4><div class="price-inputs"><label>От, ₽<input type="number" id="min-price" value="${f.min}" min="0" max="600000" step="1000"></label><label>До, ₽<input type="number" id="max-price" value="${f.max}" min="0" max="600000" step="1000"></label></div><input class="range" type="range" id="price-range" aria-label="Максимальная цена" min="50000" max="600000" step="5000" value="${f.max}"></div>
+ <div class="filter-group"><h4>Бюджет на всех туристов</h4><div class="price-inputs"><label>От, ₽<input type="number" id="min-price" value="${f.min}" min="0" step="any"></label><label>До, ₽<input type="number" id="max-price" value="${f.max??''}" min="0" step="any" placeholder="Без ограничений"></label></div><input class="range" type="range" id="price-range" aria-label="Максимальная цена" aria-valuetext="${esc(budgetLabel(f))}" min="0" max="${scale}" step="1000" value="${f.max??scale}"></div>
  <div class="filter-group"><h4>Категория отеля</h4><div class="star-options">${[3,4,5].map(n=>`<button type="button" data-action="star" data-value="${n}" aria-pressed="${f.stars.includes(n)}" class="${f.stars.includes(n)?'active':''}">${n} <span>★</span></button>`).join('')}</div></div>
  ${Object.keys(mealNames).length?`<div class="filter-group"><h4>Питание</h4>${checkRows('meals',[...new Set([...Object.keys(mealNames),...f.meals])].map(m=>[m,m]))}</div>`:''}
  ${f.rating||hs.length&&hs.every(h=>h.rating!==null)?`<div class="filter-group"><h4>Оценка гостей</h4><label class="check-row"><input type="checkbox" data-filter-bool="rating" ${f.rating?'checked':''}><span>От 4,5 из 5</span><small>${countMatchingHotels({...model,filters:{...f,rating:true}})}</small></label></div>`:''}
  ${f.resorts.length||hs.some(h=>h.resort)?`<div class="filter-group"><h4>Курорт</h4>${checkRows('resorts',[...new Set([...f.resorts,...hs.map(h=>h.resort).filter(Boolean)])].map(r=>[r,r]))}</div>`:''}
  ${f.operators.length||operators.length?`<div class="filter-group"><h4>Туроператор</h4>${checkRows('operators',[...new Set([...f.operators,...operators])].map(o=>[o,o]))}</div>`:''}
- <div class="filter-hint">${icon('info')}<span>${!state.hasSearched&&!state.onlyFavorites?'Условия применятся после нажатия «Найти туры». Доступные курорты и туроператоры появятся в выдаче.':'Фильтры применяются к найденным предложениям. Актуальная цена и сборы уточняются при выборе.'}</span></div>`;
+ <div class="filter-hint">${icon('info')}<span>${!state.hasSearched&&!state.onlyFavorites?'Условия применятся после нажатия «Найти туры». Доступные курорты и туроператоры появятся в выдаче.':'Фильтры применяются к найденным предложениям. Актуальная цена и сборы уточняются при выборе.'}</span></div>`,f);
  $('#beach-chip').hidden=true;$('#family-chip').hidden=true;$('#rating-chip').hidden=!hs.length||hs.some(h=>h.rating===null);
 }
 function loadResultCalendar(){
@@ -405,7 +431,8 @@ $('#modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal()}});
 let calendarHotels=[],calendarRequest=null,calendarObserver=null,calendarMobile=null;
 let dateContext=null,datePrices=new Map(),mealDraft=[],dateAnchor=null;
-const budgetText=()=>state.filters.min?`${money(state.filters.min)} — ${money(state.filters.max)}`:state.filters.max<600000?'До '+money(state.filters.max):'Любой';
+function budgetLabel(f){return f.max===null?(f.min?'От '+money(f.min):'Без ограничений'):f.min?`${money(f.min)} — ${money(f.max)}`:'До '+money(f.max);}
+const budgetText=()=>budgetLabel(state.filters);
 function createDateContext(source='form'){
  const s=source==='results'?state.search:draft,filters=structuredClone(state.filters);
  if(source==='form'&&draftDestination){filters.resorts=[...draftDestination.resorts];filters.hotelId=draftDestination.hotelId;filters.q='';}else if(s.country!==state.search.country){filters.resorts=[];filters.hotelId=0;filters.q='';}
@@ -416,7 +443,7 @@ function openMeals(){
  mealDraft=[...state.filters.meals];showModal('meals','Какое питание включить?','ПИТАНИЕ',`<p class="modal-intro">Можно выбрать несколько вариантов.</p><div class="meal-options">${[['','Любое питание'],...[...new Set([...Object.keys(mealNames),...mealDraft])].map(m=>[m,m])].map(([v,label])=>`<label class="meal-option"><input type="checkbox" data-meal-choice value="${esc(v)}" ${v?mealDraft.includes(v)?'checked':'':!mealDraft.length?'checked':''}><span><strong>${esc(label)}</strong>${v==='AI'?'<small>В том числе ультра всё включено</small>':v==='HB'?'<small>Два приёма пищи в день</small>':''}</span></label>`).join('')}</div>`);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-meals">Применить</button>';
 }
-function openBudget(){showModal('budget','Бюджет на весь тур','НА ВСЕХ ТУРИСТОВ',`<p class="modal-intro">Полная стоимость с перелётом и обязательными сборами.</p><div class="form-row"><label>От, ₽<input type="number" class="input" id="budget-min" min="0" max="600000" step="1000" value="${state.filters.min}"></label><label>До, ₽<input type="number" class="input" id="budget-max" min="0" max="600000" step="1000" value="${state.filters.max}"></label></div><div class="budget-presets">${[150000,200000,300000,600000].map(n=>`<button class="chip" data-action="budget-preset" data-value="${n}">${n===600000?'Без ограничений':'До '+money(n)}</button>`).join('')}</div><p class="error-text" id="budget-error" role="alert"></p>`);$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-budget">Применить бюджет</button>';}
+function openBudget(){showModal('budget','Бюджет на весь тур','НА ВСЕХ ТУРИСТОВ',`<p class="modal-intro">Бюджет на весь тур и всех туристов. Актуальность цены и обязательные сборы уточняются при выборе предложения.</p><div class="form-row"><label>От, ₽<input type="number" class="input" id="budget-min" min="0" step="any" value="${state.filters.min}"></label><label>До, ₽<input type="number" class="input" id="budget-max" min="0" step="any" value="${state.filters.max??''}" placeholder="Без ограничений"></label></div><div class="budget-presets">${[150000,200000,300000,null].map(n=>`<button class="chip" data-action="budget-preset" data-value="${n??''}">${n===null?'Без ограничений':'До '+money(n)}</button>`).join('')}</div><p class="error-text" id="budget-error" role="alert"></p>`);$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-budget">Применить бюджет</button>';}
 function openDates(source='form'){
  dateContext=createDateContext(source);const s=dateContext.search,selectedDay=source==='results'?state.selectedDate:draftSelectedDate();
  dateDraft={from:selectedDay||s.from,to:selectedDay||s.to,phase:0,flex:0};
@@ -589,7 +616,7 @@ function undoSelectedTour(){savedSelection=removedSelectedTour;removedSelectedTo
 function completeTour(o){savedSelection=o;updateNav();openLeadPreview();}
 
 let compareView={onlyDifferences:false,pair:[]};
-function savedContext(){return `<div class="saved-context"><strong>${esc(state.search.origin)} → ${esc(countryNames[state.search.country]||'')}</strong><span>Вылет ${state.selectedDate?dateText(state.selectedDate):rangeText(state.search.from,state.search.to)} · ${durationText()} · ${guestsText()}</span><small>Цены с учётом ${filterCount()||state.onlyFavorites?'текущих фильтров':'всех обязательных сборов'}</small></div>`;}
+function savedContext(){return `<div class="saved-context"><strong>${esc(state.search.origin)} → ${esc(countryNames[state.search.country]||'')}</strong><span>Вылет ${state.selectedDate?dateText(state.selectedDate):rangeText(state.search.from,state.search.to)} · ${durationText()} · ${guestsText()}</span><small>Цены за всех туристов${filterCount()||state.onlyFavorites?' с учётом текущих фильтров':''}. Актуальность и состав цены — в условиях предложения.</small></div>`;}
 function savedAvailability(h){const offers=hotelOffers(h);return {hotel:h,offers,offer:offers[0],reason:h.country!==state.search.country?'Другое направление':'Нет туров по текущим фильтрам'};}
 function savedRecovery(h){return `<button class="secondary saved-recovery" data-action="show-hotel" data-id="${h.id}">${h.country!==state.search.country?'Новый поиск':'Снять фильтры'}</button>`;}
 function refreshSavedView(type,focusSelector){const scroll=$('#modal-body').scrollTop;if(type==='compare')renderCompare();else renderFavorites();$('#modal-body').scrollTop=scroll;if(focusSelector)($(focusSelector)||$('#modal-body button')||$('#modal-title')).focus({preventScroll:true});}
@@ -622,10 +649,10 @@ function resetFilters(){state.filters=defaultFilters();state.onlyFavorites=false
 function clearSearchTimers(){data.stop();clearTimeout(searchTimer);clearTimeout(searchStageTimer);}
 function stopSearch(){clearSearchTimers();searchResponse.pending=false;searchResponse.phase='cancelled';renderResults({keepFilters:true});}
 function renderSearchStatus(items,total){
- const r=searchResponse,node=$('#search-status'),noCurrent=r.phase==='complete'&&r.exactRefresh&&!items.some(item=>item.offers.some(o=>!needsRefresh(o)));node.hidden=!state.hasSearched||(r.phase==='complete'&&!noCurrent);if(node.hidden)return;
- const title=noCurrent?'Актуальные варианты пока не найдены':r.pending?'Ищем предложения':r.phase==='cancelled'?'Поиск остановлен':'Поиск не завершён';
- const message=noCurrent?'На выбранную дату и число ночей нет актуальных предложений с этими фильтрами. Попробуйте изменить условия.'+(total?' Сохранённые цены ниже ещё требуют проверки.':''):r.message||'Сохранённые цены доступны сразу. Актуальные предложения добавляются по мере получения.';
- node.innerHTML=`<div class="search-status-top"><div><h3>${r.pending?'<span class="search-progress-spinner" aria-hidden="true"></span>':icon('info')}${title}</h3><p>${esc(message)}</p></div></div><div class="search-status-actions">${r.pending?'<button class="secondary" data-action="stop-search">Остановить поиск</button>':'<button class="primary" data-action="retry-search">Повторить поиск</button>'}<button class="text-button" data-action="edit-search">Изменить условия</button></div>`;
+ const r=searchResponse,node=$('#search-status'),noCurrent=r.phase==='complete'&&r.exactRefresh&&!items.some(item=>item.offers.some(o=>!needsRefresh(o)));node.hidden=!state.hasSearched||(r.phase==='complete'&&!noCurrent&&!r.canContinue);if(node.hidden)return;
+ const title=noCurrent?'Актуальные варианты пока не найдены':r.pending?(r.continued?'Продолжаем поиск':'Ищем предложения'):r.phase==='complete'?'Поиск завершён':r.phase==='cancelled'?'Поиск остановлен':'Поиск не завершён';
+ const message=noCurrent?'На выбранную дату и число ночей нет актуальных предложений с этими фильтрами. Попробуйте изменить условия.'+(total?' Сохранённые цены ниже ещё требуют проверки.':''):r.phase==='complete'?(r.resultLimitReached?'Получена большая выборка отелей. Это не вся выдача: уточните условия, чтобы увидеть остальные предложения.':'Показаны полученные предложения. Можно запросить дополнительные варианты, сохранив найденные туры.'):r.message||'Сохранённые цены доступны сразу. Актуальные предложения добавляются по мере получения.';
+ node.innerHTML=`<div class="search-status-top"><div><h3>${r.pending?'<span class="search-progress-spinner" aria-hidden="true"></span>':icon('info')}${title}</h3><p>${esc(message)}</p></div></div><div class="search-status-actions">${r.pending?'<button class="secondary" data-action="stop-search">Остановить поиск</button>':r.canContinue?`<button class="primary" data-action="continue-search">${r.retryRead?'Проверить результат':'Продолжить поиск'}</button>`:'<button class="primary" data-action="retry-search">Повторить поиск</button>'}<button class="text-button" data-action="edit-search">Изменить условия</button></div>`;
  if(!items.length&&r.pending)$('#cards').innerHTML=Array.from({length:2},()=>'<div class="search-skeleton" aria-hidden="true"><div class="skeleton-photo"></div><div class="skeleton-lines"><i></i><i></i><i></i></div></div>').join('');
 }
 function runSearch(options={}){
@@ -642,9 +669,10 @@ function runSearch(options={}){
    operators.splice(0,operators.length,...new Set(hotels.flatMap(h=>h.offers.map(o=>o.operator))));
    hotels.forEach(h=>h.offers.forEach(o=>{mealNames[o.meal]=o.meal;}));
   }
+  if(event.type==='loading'){searchResponse.pending=true;searchResponse.phase='loading';searchResponse.continued=event.continued===true;searchResponse.canContinue=false;searchResponse.message=event.retryRead?'Проверяем результат предыдущего запроса без повторного запуска.':event.continued?'Запрашиваем дополнительные варианты. Найденные предложения сохраняются.':'';}
   if(event.type==='progress')searchResponse.message='Получаем предложения · '+event.progress+'%';
-  if(event.type==='complete'){searchResponse.pending=false;searchResponse.phase='complete';}
-  if(event.type==='error'){searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=event.message;}
+  if(event.type==='complete'){searchResponse.pending=false;searchResponse.phase='complete';searchResponse.canContinue=event.canContinue===true;searchResponse.retryRead=false;searchResponse.resultLimitReached=event.resultLimitReached===true;}
+  if(event.type==='error'){searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=event.message;searchResponse.canContinue=event.canContinue===true;searchResponse.retryRead=event.retryRead===true;}
   renderResults();updateSearchUI();if(modalType==='dates')refreshCalendarPrices();
  },options.hotelIds||(state.filters.hotelId?destinationHotel(state.filters.hotelId)?.legacyIds||[]:[]),structuredClone(state.filters)).catch(error=>{searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=error.message;renderResults();});
  renderResults();
@@ -673,12 +701,17 @@ document.addEventListener('change',e=>{const t=e.target;
  if(t.id==='sort'){state.sort=t.value;renderResults({keepFilters:true})}
  if(t.dataset.filter){const arr=editingFilterModel().filters[t.dataset.filter],idx=arr.indexOf(t.value);if(t.checked&&idx<0)arr.push(t.value);if(!t.checked&&idx>=0)arr.splice(idx,1);filterEdited()}
  if(t.dataset.filterBool){editingFilterModel().filters[t.dataset.filterBool]=t.checked;filterEdited()}
- if(['min-price','max-price'].includes(t.id)){const f=editingFilterModel().filters,value=Math.max(0,Math.min(600000,Number(t.value)||0));f[t.id==='min-price'?'min':'max']=value;if(f.min>f.max){if(t.id==='min-price')f.max=f.min;else f.min=f.max}$('#min-price').value=f.min;$('#max-price').value=f.max;$('#price-range').value=f.max;filterEdited()}
+ if(['min-price','max-price'].includes(t.id)){
+  const f=editingFilterModel().filters,isMax=t.id==='max-price',value=isMax&&t.value.trim()===''?null:Number(t.value);
+  if(t.validity?.badInput||value!==null&&(!Number.isFinite(value)||value<0)){syncBudgetControls(f);toast('Введите неотрицательную сумму или оставьте верхнюю границу пустой.');return;}
+  f[isMax?'max':'min']=value;if(f.max!==null&&f.min>f.max){if(isMax)f.min=f.max;else f.max=f.min;}
+  syncBudgetControls(f);filterEdited();
+ }
  if(t.dataset.childAge!==undefined)guestDraft.ages[+t.dataset.childAge]=t.value===''?null:+t.value;
  if(t.hasAttribute('data-meal-choice')){if(!t.value)mealDraft=[];else{mealDraft=t.checked?[...new Set([...mealDraft,t.value])]:mealDraft.filter(v=>v!==t.value)}$$('[data-meal-choice]').forEach(c=>c.checked=c.value?mealDraft.includes(c.value):!mealDraft.length)}
  if(t.id==='date-from'||t.id==='date-to'){dateDraft[t.id==='date-from'?'from':'to']=t.value;dateDraft.phase=0;dateDraft.flex=0;dateAnchor=dateDraft.from;if(dateDraft.from&&dateDraft.to)updateDateSelection();}
 });
-document.addEventListener('input',e=>{if(e.target.id==='destination-query')lookupDestination();if(e.target.id==='hotel-query'){editingFilterModel().filters.q=e.target.value;filterEdited()}if(e.target.id==='price-range'){const f=editingFilterModel().filters;f.max=+e.target.value;if(f.min>f.max)f.min=f.max;$('#max-price').value=f.max;$('#min-price').value=f.min;filterEdited()}});
+document.addEventListener('input',e=>{if(e.target.id==='destination-query')lookupDestination();if(e.target.id==='hotel-query'){editingFilterModel().filters.q=e.target.value;filterEdited()}if(e.target.id==='price-range'){const f=editingFilterModel().filters;f.max=Number(e.target.value)>=Number(e.target.max)?null:Number(e.target.value);if(f.max!==null&&f.min>f.max)f.min=f.max;$('#max-price').value=f.max??'';$('#min-price').value=f.min;e.target.setAttribute('aria-valuetext',budgetLabel(f));filterEdited()}});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b||b.disabled)return;actionTrigger=b;queueMicrotask(()=>{if(actionTrigger===b)actionTrigger=null;});const action=b.dataset.action,id=+b.dataset.id;
  switch(action){
  case 'choose-flight':openFlightPicker();break;case 'apply-flight':applyFlightPair();break;
@@ -688,6 +721,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'remove-selected-tour':removeSelectedTour();break;
  case 'undo-selected-tour':undoSelectedTour();break;
  case 'retry-search':if(!searchResponse.pending)runSearch({retain:true,exactRefresh:searchResponse.exactRefresh});break;
+ case 'continue-search':if(!searchResponse.pending&&searchResponse.canContinue)data.continueSearch();break;
  case 'stop-search':stopSearch();break;
  case 'destination':openDestination();break;
  case 'retry-destination':lookupDestination();break;
@@ -701,7 +735,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'dates':openDates();break;case 'meals':openMeals();break;case 'budget':openBudget();break;
  case 'apply-meals':state.filters.meals=[...mealDraft];syncFilters();closeModal();break;
  case 'budget-preset':$('#budget-min').value=0;$('#budget-max').value=b.dataset.value;break;
- case 'apply-budget':{const min=Number($('#budget-min').value),max=Number($('#budget-max').value);if(!Number.isFinite(min)||!Number.isFinite(max)||min<0||max>600000||min>max){$('#budget-error').textContent='Укажите сумму от 0 до 600 000 ₽; минимум не должен превышать максимум.';return}state.filters.min=min;state.filters.max=max;syncFilters();closeModal();break}
+ case 'apply-budget':{const low=$('#budget-min'),high=$('#budget-max'),min=Number(low.value),max=high.value.trim()===''?null:Number(high.value);if(low.validity.badInput||high.validity.badInput||!Number.isFinite(min)||min<0||max!==null&&(!Number.isFinite(max)||max<0||min>max)){$('#budget-error').textContent='Введите неотрицательные суммы; минимум не должен превышать максимум. Пустое поле «До» — без ограничений.';return}state.filters.min=min;state.filters.max=max;syncFilters();closeModal();break}
  case 'any-stars':state.filters.stars=[];syncFilters();break;case 'nights':openNights();break;case 'guests':openGuests();break;case 'calendar':openCalendar();break;
  case 'modal-back':modalBack();break;case 'close-modal':closeModal();break;case 'filters':openFilters();break;case 'close-filters':closeFilters();break;case 'apply-filters':closeFilters({apply:true});break;
  case 'top':case 'edit-search':editSearch();break;
