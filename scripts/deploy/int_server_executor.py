@@ -130,6 +130,27 @@ def parse_command(body: str) -> dict:
             need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'offset': offset, 'limit': limit}
+    if mode == 'andromeda-operator-preflight':
+        # Supplier-free proof that one Search3/Tourvisor operator ID resolves through
+        # current local identity evidence into the saved Andromeda operator dictionary.
+        need(len(parts) == 12, 'command_shape')
+        departure = integer(parts[3], 1, 999999999, 'departure')
+        country = integer(parts[4], 1, 999999999, 'country')
+        date_from, date_to = date(parts[5]), date(parts[6])
+        need(date_to >= date_from, 'date_range')
+        nights = integer(parts[7], 1, 28, 'nights')
+        adults = integer(parts[8], 1, 6, 'adults')
+        meal = parts[9]
+        need(re.fullmatch(r'(?:-|[A-Za-z0-9_,&]{1,32})', meal) is not None, 'meal')
+        region = integer(parts[10], 0, 999999999, 'region')
+        operator_id = integer(parts[11], 1, 999999999, 'operator_id')
+        return {
+            'source_sha': source, 'mode': mode, 'operation_id': operation,
+            'departure': departure, 'country': country, 'date_from': date_from,
+            'date_to': date_to, 'nights': nights, 'adults': adults,
+            'meal': '' if meal == '-' else meal, 'region': region,
+            'operator_id': operator_id,
+        }
     if mode == 'andromeda-operator-scope':
         # One provider-neutral Search3/Tourvisor operator filter. This mode is
         # search+autosave only: no package/getFlights capture budget is accepted.
@@ -459,6 +480,62 @@ echo json_encode(['readbackError'=>$code,'errorClass'=>get_class($e),
         parsed['status']='complete';parsed.update(meta);rows.append(parsed)
     return rows
 
+def operator_preflight(stage):
+    api=stage/'v2/api-andromeda-search3-preview.php'
+    config=project/'_preview/search3-anex-candidate/.andromeda-private.php'
+    if not safe_file(api,2*1024*1024): fail('operator_preflight_source_missing')
+    if not safe_file(config,65536): fail('andromeda_private_config_missing')
+    request={
+        'generation':2100000000-(int(hashlib.sha256(operation.encode()).hexdigest()[:6],16)%1000000),
+        'page':1,
+        'params':{
+            'departureId':str(payload['departure']),'countryId':str(payload['country']),
+            'dateFrom':payload['date_from'],'dateTo':payload['date_to'],
+            'nightsFrom':payload['nights'],'nightsTo':payload['nights'],
+            'adults':payload['adults'],'childs':[],'meal':payload['meal'],
+            'hotelCategory':'','hotelRating':'','hotelTypes':[],'hotelIds':[],
+            'hotelServices':[],'arrivalId':'',
+            'regionIds':[] if not payload['region'] else [str(payload['region'])],
+            'subregionIds':[],'operatorIds':[str(payload['operator_id'])],
+            'priceFrom':'','priceTo':'','currency':'RUB',
+            'onlyCharter':False,'onlyDirect':False,
+        }
+    }
+    php=r'''declare(strict_types=1);error_reporting(0);ini_set('display_errors','0');ini_set('log_errors','0');
+$allowed=['country_not_loaded','meal_not_supported','meal_dictionary_missing','meal_not_loaded',
+'stars_not_supported','stars_dictionary_missing','stars_not_loaded','operator_dictionary_missing',
+'operator_not_loaded','destination_dictionary_missing','destination_not_loaded','departure_not_loaded',
+'no_operators','operator_not_supported','filter_not_supported'];
+try{
+$api=$argv[1];$configPath=$argv[2];$request=json_decode($argv[3],true,32,JSON_THROW_ON_ERROR);
+if(!is_file($api)||is_link($api)||!is_file($configPath)||is_link($configPath))throw new RuntimeException('preflight_runtime_missing');
+require_once $api;$config=require $configPath;
+if(!is_array($config)||($config['enabled']??null)!==true)throw new RuntimeException('preflight_runtime_missing');
+$root=getenv('HOME').'/www/anytoour.ru';require_once $root.'/config.php';
+$dbPath=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';
+require_once $dbPath;$pdo=v2_data_db();$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+$saved=anytour_andromeda_search3_catalog($config,$request);$saved['excluded_operator_ids']=$config['excluded_operator_ids']??[];
+$name=null;
+try{$q=$pdo->prepare("SELECT operator_name FROM tour_operator_identity_observations WHERE operator_id=? AND operator_name IS NOT NULL AND operator_name<>'' ORDER BY last_seen_at DESC,id DESC LIMIT 1");$q->execute([(string)$request['params']['operatorIds'][0]]);$v=$q->fetchColumn();if(is_string($v)&&$v!=='')$name=$v;}catch(Throwable $ignored){}
+$params=anytour_andromeda_search3_params($request,$pdo,$saved);
+echo json_encode(['status'=>'resolved','operator_id'=>(string)$request['params']['operatorIds'][0],
+'operator_name'=>$name,'andromeda_operators'=>$params['OPERATORS']??null,
+'supplier_calls'=>0,'database_writes'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+}catch(Throwable $e){$m=$e->getMessage();$code=in_array($m,$allowed,true)?$m:'preflight_unclassified';
+echo json_encode(['status'=>'failed','error_code'=>$code,'error_class'=>get_class($e),
+'error_sha256'=>hash('sha256',$m),'supplier_calls'=>0,'database_writes'=>0],
+JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}'''
+    run=subprocess.run(['php','-r',php,str(api),str(config),json.dumps(request,separators=(',',':'))],
+                       cwd=project,capture_output=True,text=True,timeout=30)
+    if run.returncode or run.stderr.strip(): fail('operator_preflight_process')
+    try: parsed=json.loads(run.stdout)
+    except Exception: fail('operator_preflight_json')
+    if not isinstance(parsed,dict) or parsed.get('status') not in ('resolved','failed'):
+        fail('operator_preflight_shape')
+    if parsed.get('supplier_calls')!=0 or parsed.get('database_writes')!=0:
+        fail('operator_preflight_authority')
+    return parsed
+
 install_started=False
 install_previous={}
 install_applied=[]
@@ -706,6 +783,17 @@ try:
         result['database_writes']=0
         result['production_unchanged']=True
         __LOCAL_READBACK__=True
+    if mode=='andromeda-operator-preflight':
+        result['before_db']=db_summary('andromeda')
+        result['operator_preflight']=operator_preflight(stage)
+        result['after_db']=db_summary('andromeda')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        if result['before_db']!=result['after_db']: fail('operator_preflight_db_drift')
+        result['status']='preflight_complete'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='reconcile':
         target_name=payload['target_operation_id']
         provider='anex' if target_name.startswith('int-anex-') else 'andromeda'
@@ -728,7 +816,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','install-runtime','match-tv942','match-samo942'):
+    if mode not in ('reconcile','local-readback','install-runtime','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -751,7 +839,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','install-runtime','match-tv942','match-samo942'):
+    if mode not in ('reconcile','local-readback','install-runtime','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
