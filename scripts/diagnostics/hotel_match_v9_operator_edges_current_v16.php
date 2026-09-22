@@ -20,7 +20,7 @@ function hm16_f4(string $url):array{
         if(strcasecmp(rawurldecode($kv[0]),'F4')!==0)continue;
         $v=hm16_positive(rawurldecode($kv[1]));hm16_need($v!==null,'biblio_f4_literal');$vals[$v]=true;
     }
-    return array_keys($vals);
+    return array_map('strval',array_keys($vals));
 }
 function hm16_edge_base(array $e):array{
     $link=(string)($e['operator_link']??'');$linkHash=(string)($e['operator_link_sha256']??'');
