@@ -43,6 +43,8 @@ FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <div class=\"modal-header\" style=\"display:flex;margin-top:18px\"><button id=\"modal-back\" class=\"icon-button\" aria-label=\"Назад\">←</button><button class=\"icon-button modal-close-probe\" aria-label=\"Закрыть\">×</button></div>
 <div class=\"counter\" style=\"margin-top:18px\"><button aria-label=\"Увеличить количество туристов\">+</button></div>
 <div class=\"favorite-item\" style=\"margin-top:18px\"><button class=\"icon-button\" aria-label=\"Удалить из избранного\">×</button></div>
+<div class=\"hotel-image-wrap photo-stage-probe\" style=\"width:100%;margin-top:18px;background:#e4ebf3\"></div>
+<div class=\"hotel-detail-photos detail-photos-probe\" style=\"margin:18px 0 0\"><button></button><button></button><button></button></div>
 </main></body></html>"""
 
 
@@ -83,7 +85,15 @@ def inspect_width(browser, origin, width, screenshot=False):
         values = page.evaluate("""() => {
           const style = selector => {
             const value = getComputedStyle(document.querySelector(selector));
-            return {fontSize:value.fontSize, minWidth:value.minWidth, minHeight:value.minHeight, width:value.width, height:value.height};
+            return {
+              fontSize:value.fontSize,
+              minWidth:value.minWidth,
+              minHeight:value.minHeight,
+              width:value.width,
+              height:value.height,
+              aspectRatio:value.aspectRatio,
+              gridTemplateRows:value.gridTemplateRows
+            };
           };
           return {
             hotelSort: style('.sort-label select'),
@@ -116,6 +126,8 @@ def inspect_width(browser, origin, width, screenshot=False):
             modalClose: style('.modal-close-probe'),
             counter: style('.counter button'),
             favoriteRemove: style('.favorite-item .icon-button'),
+            photoStage: style('.photo-stage-probe'),
+            detailPhotos: style('.detail-photos-probe'),
             overflow: document.documentElement.scrollWidth > innerWidth
           };
         }""")
@@ -137,6 +149,11 @@ def inspect_width(browser, origin, width, screenshot=False):
             ):
                 assert float(values[key]["width"].removesuffix("px")) >= 44, (width, key, values[key])
                 assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
+            assert values["photoStage"]["aspectRatio"] == "3 / 2", (width, values["photoStage"])
+            photo_width = float(values["photoStage"]["width"].removesuffix("px"))
+            photo_height = float(values["photoStage"]["height"].removesuffix("px"))
+            assert 1.49 <= photo_width / photo_height <= 1.51, (width, values["photoStage"])
+            assert values["detailPhotos"]["gridTemplateRows"] == "108px 108px", (width, values["detailPhotos"])
         else:
             assert mobile is False, width
             assert values["drawer"]["minHeight"] != "44px", (width, values["drawer"])
@@ -146,6 +163,8 @@ def inspect_width(browser, origin, width, screenshot=False):
                 assert values[key]["minHeight"] != "44px", (width, key, values[key])
             for key in ("favorite", "photoArrow", "compareClose", "compareRemove", "modalBack", "counter", "favoriteRemove"):
                 assert values[key]["width"] != "44px", (width, key, values[key])
+            assert values["photoStage"]["aspectRatio"] != "3 / 2", (width, values["photoStage"])
+            assert values["detailPhotos"]["gridTemplateRows"] != "108px 108px", (width, values["detailPhotos"])
         assert values["overflow"] is False, (width, values)
         assert not errors, errors
         if screenshot:
