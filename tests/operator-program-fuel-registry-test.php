@@ -52,7 +52,8 @@ pfr_ok($r['program_rule']['flight_pair']===['outbound'=>['flight'=>'TK 3003'],'r
 pfr_ok($r['program_rule']['exchange']['rate']==='99.49','latest fresh fx');
 
 $child=['adults'=>2,'children'=>1,'child_ages'=>[5]];
-$c=AnyTourOperatorProgramFuelRegistryV1::priceForOffer($dir,pfr_offer('30','34','100000'),$child,1200);
+$childOffer=pfr_offer('30','34','100000');$childOffer['children']=1;
+$c=AnyTourOperatorProgramFuelRegistryV1::priceForOffer($dir,$childOffer,$child,1200);
 pfr_ok($c['program_rule']['passenger_count']===3,'child2plus counts');
 pfr_ok($c['party_surcharge']['amount']==='50739.90','3 passengers x2 x85');
 pfr_ok($c['search_price_with_surcharge']['amount']==='150739.90','child total');
