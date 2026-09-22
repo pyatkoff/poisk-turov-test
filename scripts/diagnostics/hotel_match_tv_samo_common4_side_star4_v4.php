@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__.'/hotel_match_operator_fingerprint_room_evidence_v1.php';
 
-const HMC_OP = 'hotel-match-tv-samo-common4-side-star4-1971-20260922-v4';
+const HMC_OP = 'hotel-match-tv-samo-common4-side-star4-1971-20260922-v4b';
 const HMC_PREVIOUS_OP = 'hotel-match-tv-samo-common4-weekly-1971-20260922-v2';
 const HMC_DEPARTURE = 1;
 const HMC_TV_COUNTRY = 4;
