@@ -36,6 +36,13 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(0,v['max_captures'])
         self.assertEqual('',v['meal'])
 
+    def test_andromeda_operator_preflight(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} andromeda-operator-preflight int-andromeda-intourist-preflight-20260923-v1 1 4 2026-10-18 2026-10-18 7 2 - 0 43')
+        self.assertEqual('andromeda-operator-preflight',v['mode'])
+        self.assertEqual(43,v['operator_id'])
+        self.assertEqual('',v['meal'])
+        self.assertNotIn('max_captures',v)
+
     def test_andromeda_external_group(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} andromeda-external-group int-andromeda-external-group-turkey-20260922-v1 1 4 2026-10-20 2026-10-20 7 2 - 0')
         self.assertEqual('andromeda-external-group',v['mode'])
@@ -71,6 +78,8 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} andromeda-external-group int-andromeda-external-group-turkey-20260922-v1 1 4 2026-10-20 2026-10-20 7 2 - 0 2',
           f'/run-int-server-v1 {SHA} andromeda-operator-scope int-andromeda-intourist-scope-20260922-v1 1 4 2026-10-11 2026-10-11 7 2 - 0 0',
           f'/run-int-server-v1 {SHA} andromeda-operator-scope int-andromeda-intourist-scope-20260922-v1 1 4 2026-10-11 2026-10-11 7 2 - 0 43 extra',
+          f'/run-int-server-v1 {SHA} andromeda-operator-preflight int-andromeda-intourist-preflight-20260923-v1 1 4 2026-10-18 2026-10-18 7 2 - 0 0',
+          f'/run-int-server-v1 {SHA} andromeda-operator-preflight int-andromeda-intourist-preflight-20260923-v1 1 4 2026-10-18 2026-10-18 7 2 - 0 43 extra',
           f'/run-int-server-v1 {SHA} match-tv942 int-andromeda-match-tv942-20260923-v1 0 100',
           f'/run-int-server-v1 {SHA} match-samo942 int-anex-match-samo942-20260923-v1 0 100',
           f'/run-int-server-v1 {SHA} match-tv942 int-anex-match-tv942-20260923-v1 900 43',
@@ -188,6 +197,8 @@ class ContractTest(unittest.TestCase):
                   "search3-local-results-read-v1.php","--max-captures=","non_external_only",
                   "andromeda-external-group","external_group_only",
                   "andromeda-operator-scope","--operator-id=","operatorId",
+                  "andromeda-operator-preflight","operator_preflight","operator_not_loaded",
+                  "operator_dictionary_missing","andromeda_operators","operator_preflight_db_drift",
                   "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero",
                   "php=\"$c=require $argv[1];","allowed_keys={'status'","name_sha256","top_level_keys",
                   "local-readback","local_readback_exit","stderr_sha256",
