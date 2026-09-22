@@ -96,7 +96,17 @@ function updateURL(){const p=new URLSearchParams();for(const [k,v] of Object.ent
 function renderSummary(){const s=state.search,f=state.filters;$('#applied-search').innerHTML=`<div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong><p>${state.selectedDate?dateText(state.selectedDate):rangeText(s.from,s.to)} · ${durationText()} · ${guestsText()}</p></div></div><div class="applied-extras"><span>${f.stars.length?f.stars.join(' / ')+' ★':'Любая категория'}</span><span>${f.meals.length?f.meals.map(esc).join(', '):'Любое питание'}</span><span>${budgetText()}</span></div><button class="secondary" data-action="edit-search">${icon('sliders')} Изменить поиск</button>`;}
 function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intro').hidden=true;$('#applied-search').hidden=false;$('#search').classList.add('search-collapsed');}
 function editSearch(){if(searchResponse.pending)stopSearch();if(innerWidth<=1100)closeFilters();$('#search-form').hidden=false;$('.intro').hidden=false;$('#applied-search').hidden=true;$('#search').classList.remove('search-collapsed');$('#search').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#origin').focus({preventScroll:true});}
-function hotelMatch(h,f=state.filters,s=state.search,onlyFavorites=state.onlyFavorites){return h.country===s.country&&(!f.hotelId||h.id===f.hotelId)&&(!f.q||h.name.toLowerCase().includes(f.q.toLowerCase().trim())||h.resort.toLowerCase().includes(f.q.toLowerCase().trim()))&&(!f.stars.length||f.stars.includes(h.stars))&&(!f.resorts.length||f.resorts.includes(h.resort))&&(f.amenities||[]).every(key=>(h.amenities||[]).some(a=>a.key===key))&&(!f.rating||ratingValue(h)>=4.5)&&(!f.beach||h.beach!==null&&h.beach<=150)&&(!f.family||h.family)&&(!f.spa||h.spa)&&(!onlyFavorites||s.country!==state.search.country||state.favorites.includes(h.id));}
+const hotelPlaces=h=>[...new Set([h.subRegion,h.region,h.resort].map(value=>String(value||'').trim()).filter(Boolean))];
+function hotelMatch(h,f=state.filters,s=state.search,onlyFavorites=state.onlyFavorites){
+ const q=f.q.toLowerCase().trim(),places=[...new Set([h.subRegion,h.region,h.resort].map(value=>String(value||'').trim()).filter(Boolean))];
+ return h.country===s.country&&(!f.hotelId||h.id===f.hotelId)
+  &&(!q||h.name.toLowerCase().includes(q)||places.some(place=>place.toLowerCase().includes(q)))
+  &&(!f.stars.length||f.stars.includes(h.stars))
+  &&(!f.resorts.length||f.resorts.some(resort=>places.includes(resort)))
+  &&(f.amenities||[]).every(key=>(h.amenities||[]).some(a=>a.key===key))
+  &&(!f.rating||ratingValue(h)>=4.5)&&(!f.beach||h.beach!==null&&h.beach<=150)&&(!f.family||h.family)&&(!f.spa||h.spa)
+  &&(!onlyFavorites||s.country!==state.search.country||state.favorites.includes(h.id));
+}
 function hotelOffers(h,options={}){
  if(!h)return[];
  const s=options.search||state.search,f=options.filters||state.filters,selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
@@ -170,7 +180,7 @@ function renderDestination(){
  const resorts=Object.values(data.catalog.regions).flat().filter(r=>q?normalizeSearch(r.name+' '+countryNames[r.country]).includes(q):r.country===d.country);
  if(resorts.length)html+=`<section class="destination-section"><h3>${q?'Курорты':'Курорты · можно выбрать несколько'}</h3>${resorts.map(r=>{const selected=d.country===r.country&&d.resorts.includes(r.name);return `<button class="destination-row" data-action="destination-resort" data-country="${r.country}" data-value="${esc(r.name)}" aria-pressed="${selected}"><span class="choice-check">${selected?icon('check'):''}</span><span><strong>${esc(r.name)}</strong><small>${esc(countryNames[r.country]||'')}</small></span></button>`}).join('')}</section>`;
  if(!data.catalog.regions[d.country])html+=resortLoads.get(d.country)==='error'?'<p role="status">Не удалось загрузить курорты.</p><button class="secondary" data-action="retry-resorts">Повторить загрузку курортов</button>':'<p role="status">Загружаем курорты…</p>';
- const loaded=hotels.filter(h=>h.country===d.country&&(q?normalizeSearch(h.name+' '+h.resort).includes(q):!d.resorts.length||d.resorts.includes(h.resort)));
+ const loaded=hotels.filter(h=>h.country===d.country&&(q?normalizeSearch([h.name,...hotelPlaces(h)].join(' ')).includes(q):!d.resorts.length||d.resorts.some(resort=>hotelPlaces(h).includes(resort))));
  const matches=q?[...new Map([...loaded,...destinationLookup.rows].map(h=>[h.id,h])).values()]:loaded;
  if(matches.length)html+=`<section class="destination-section"><h3>Отели · ${esc(countryNames[d.country]||'')}</h3>${matches.map(h=>`<button class="destination-row destination-hotel" data-action="destination-hotel" data-id="${h.id}" aria-pressed="${d.hotelId===h.id}"><img src="${esc(photoUrl(h))}" alt="" width="58" height="45"><span><strong>${esc(h.name)}</strong><small>${esc(h.resort)}, ${esc(countryNames[h.country]||'')}${h.stars?' · '+h.stars+' ★':''}</small></span>${d.hotelId===h.id?icon('check'):''}</button>`).join('')}</section>`;
  if(q&&destinationLookup.status==='loading')html+='<p role="status">Ищем отели в каталоге…</p>';
@@ -280,7 +290,7 @@ function renderFilters(){const model=editingFilterModel(),f=model.filters,hs=hot
  <div class="filter-group"><h4>Категория отеля</h4><div class="star-options">${[3,4,5].map(n=>`<button type="button" data-action="star" data-value="${n}" aria-pressed="${f.stars.includes(n)}" class="${f.stars.includes(n)?'active':''}">${n} <span>★</span></button>`).join('')}</div></div>
  ${Object.keys(mealNames).length?`<div class="filter-group"><h4>Питание</h4>${checkRows('meals',[...new Set([...Object.keys(mealNames),...f.meals])].map(m=>[m,m]))}</div>`:''}
  ${f.rating||hs.length&&hs.every(h=>h.rating!==null)?`<div class="filter-group"><h4>Оценка гостей</h4><label class="check-row"><input type="checkbox" data-filter-bool="rating" ${f.rating?'checked':''}><span>От 4,5 из 5</span><small>${countMatchingHotels({...model,filters:{...f,rating:true}})}</small></label></div>`:''}
- ${f.resorts.length||hs.some(h=>h.resort)?`<div class="filter-group"><h4>Курорт</h4>${checkRows('resorts',[...new Set([...f.resorts,...hs.map(h=>h.resort).filter(Boolean)])].map(r=>[r,r]))}</div>`:''}
+ ${f.resorts.length||hs.some(h=>hotelPlaces(h).length)?`<div class="filter-group"><h4>Курорт</h4>${checkRows('resorts',[...new Set([...f.resorts,...hs.flatMap(h=>hotelPlaces(h))])].map(r=>[r,r]))}</div>`:''}
  ${f.operators.length||operators.length?`<div class="filter-group"><h4>Туроператор</h4>${checkRows('operators',[...new Set([...f.operators,...operators])].map(o=>[o,o]))}</div>`:''}
  ${amenityFilterGroups(hs,f)}
  <div class="filter-hint">${icon('info')}<span>${!state.hasSearched&&!state.onlyFavorites?'Условия применятся после нажатия «Найти туры». Доступные курорты и туроператоры появятся в выдаче.':'Фильтры применяются к найденным предложениям. Актуальная цена и сборы уточняются при выборе.'}</span></div>`,f);

@@ -33,6 +33,8 @@ ANDROMEDA_SEARCH_REF = "c" * 64
 def profile(old):
     item = copy.deepcopy(FIXTURE.PROFILE)
     item.update(id=old + 400, name=f"Вымышленный отель {old}")
+    if old == 102:
+        item['subRegion'] = {'name': 'Сиде'}
     item['description'] = 'Техническое описание: здание и количество номеров.'
     item['place'] = 'Рядом с набережной.'
     tags = []
@@ -271,6 +273,7 @@ def check_width(browser, origin, width):
         assert "max" not in parse_qs(urlparse(page.url).query)
         page.locator('.search-submit').click()
         count(5)
+        assert 'Сиде' in page.locator('#hotel-502 .hotel-location').inner_text()
         assert next(row['params'] for row in calls if row['action'] == 'search_start')['regionIds[]'] == ['20']
         assert native_calls[0]['params']['regionIds'] == ['20']
         page.wait_for_function("day => document.querySelector('[data-action=select-date][data-date=\"' + day + '\"]')?.getAttribute('aria-label').includes('97')", arg=DATE)
@@ -283,6 +286,8 @@ def check_width(browser, origin, width):
         assert page.locator('#hotel-501 .hotel-facts').inner_text() == 'Бассейн'
         assert 'количество номеров' not in page.locator('#hotel-501 .hotel-facts').inner_text()
         open_filters()
+        resort_values = page.locator('input[data-filter="resorts"]').evaluate_all("els => els.map(e => e.value).sort()")
+        assert 'Анталья' in resort_values and 'Сиде' in resort_values, resort_values
         operator_values = page.locator('input[data-filter="operators"]').evaluate_all("els => els.map(e => e.value).sort()")
         assert operator_values == ["ANEX", "Библио-Глобус"], operator_values
         assert "Biblio Globus" not in page.locator('.filter-panel').inner_text()

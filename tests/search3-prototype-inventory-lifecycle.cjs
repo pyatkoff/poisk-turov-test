@@ -116,6 +116,12 @@ test('operator labels collapse known cross-provider aliases without touching sou
  assert.equal(h.data.operator('Pegas Touristik'),'Pegas Touristik');
  assert.equal(h.data.operator('LOTI'),'LOTI');
 });
+test('hotel projection keeps parent region and displays the more specific subregion',async()=>{
+ const h=harness();
+ const rows=h.data.project([{id:101,anytourHotelId:501,name:'FICTIONAL HOTEL 101',category:5,rating:4.7,
+  region:{name:'Анталья'},subRegion:{name:'Сиде'},images:[],tours:[{id:'geo-1',provider:'tourvisor',price:150000,date:trip.from,nights:7,meal:{name:'AI'},roomType:'STANDARD',operator:{name:'ANEX'}}]}],trip);
+ assert.equal(rows.length,1);assert.equal(rows[0].region,'Анталья');assert.equal(rows[0].subRegion,'Сиде');assert.equal(rows[0].resort,'Сиде');
+});
 test('first search unions direct ANEX once and waits for it before complete',async()=>{
  const gate=defer();const h=harness({anex:async body=>{await gate.promise;return {response:{ok:true,json:async()=>directAnex(body)}};}});
  await h.start();assert.equal(h.anexCalls.length,1);assert.equal(h.anexCalls[0].action,'search');
