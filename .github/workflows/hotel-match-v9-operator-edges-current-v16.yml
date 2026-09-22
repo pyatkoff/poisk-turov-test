@@ -1,7 +1,7 @@
 name: MATCH V9 operator edges CURRENT V16
 'on':
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
     branches: [feature/anex-search-adapter-20260907]
     paths:
       - scripts/diagnostics/hotel_match_v9_operator_edges_current_v16.php
