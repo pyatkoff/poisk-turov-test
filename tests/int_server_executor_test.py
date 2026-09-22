@@ -19,6 +19,15 @@ class ParseTest(unittest.TestCase):
         v=m.parse_command(f'/run-int-server-v1 {SHA} install-runtime int-andromeda-runtime-install-20260922-v1')
         self.assertEqual('install-runtime',v['mode'])
         self.assertEqual(SHA,v['source_sha'])
+
+    def test_program_fuel_readback(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} program-fuel-readback int-andromeda-program-fuel-readback-20260923-v1')
+        self.assertEqual('program-fuel-readback',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
+        with self.assertRaises(ValueError):
+            m.parse_command(f'/run-int-server-v1 {SHA} program-fuel-readback int-anex-program-fuel-readback-20260923-v1')
+        with self.assertRaises(ValueError):
+            m.parse_command(f'/run-int-server-v1 {SHA} program-fuel-readback int-andromeda-program-fuel-readback-20260923-v1 extra')
     def test_anex(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} anex-demand int-anex-current-demand-20260921-v1 3')
         self.assertEqual(3,v['limit']);self.assertEqual('anex-demand',v['mode'])
@@ -213,6 +222,8 @@ class ContractTest(unittest.TestCase):
                   "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero",
                   "php=\"$c=require $argv[1];","allowed_keys={'status'","name_sha256","top_level_keys",
                   "local-readback","local_readback_exit","stderr_sha256",
+                  "program-fuel-readback","program_fuel_readback","program_fuel_readback_php_b64",
+                  "program_fuel_readback_acceptance","program_fuel_readback_db_drift",
                   "LOCAL_READER_MISSING","LOCAL_DB_CONNECTION","LOCAL_DB_NOT_CONFIGURED",
                   "require_once $config","errorSha256","attempt_state","package_record",
                   "diagnostic_code","actualization","failure_class","actions_used",
