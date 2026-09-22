@@ -28,6 +28,24 @@ class ParseTest(unittest.TestCase):
             m.parse_command(f'/run-int-server-v1 {SHA} program-fuel-readback int-anex-program-fuel-readback-20260923-v1')
         with self.assertRaises(ValueError):
             m.parse_command(f'/run-int-server-v1 {SHA} program-fuel-readback int-andromeda-program-fuel-readback-20260923-v1 extra')
+
+    def test_program_fuel_probe(self):
+        v=m.parse_command(
+            f'/run-int-server-v1 {SHA} program-fuel-probe int-andromeda-funsun-antalya-fuel-probe-20260923-v1 '
+            'int-andromeda-flight-observe-20260922-v2 funsun 114 78 0'
+        )
+        self.assertEqual('program-fuel-probe',v['mode'])
+        self.assertEqual('funsun',v['operator_family'])
+        self.assertEqual(114,v['program_key']);self.assertEqual(78,v['tour_key']);self.assertEqual(0,v['sample_index'])
+        bad=[
+            f'/run-int-server-v1 {SHA} program-fuel-probe int-anex-bad-20260923-v1 int-andromeda-flight-observe-20260922-v2 funsun 114 78 0',
+            f'/run-int-server-v1 {SHA} program-fuel-probe int-andromeda-bad-20260923-v1 int-anex-target-20260922-v1 funsun 114 78 0',
+            f'/run-int-server-v1 {SHA} program-fuel-probe int-andromeda-bad-20260923-v1 int-andromeda-flight-observe-20260922-v2 biblio 114 78 0',
+            f'/run-int-server-v1 {SHA} program-fuel-probe int-andromeda-bad-20260923-v1 int-andromeda-flight-observe-20260922-v2 funsun 0 78 0',
+            f'/run-int-server-v1 {SHA} program-fuel-probe int-andromeda-bad-20260923-v1 int-andromeda-flight-observe-20260922-v2 funsun 114 78 1001',
+        ]
+        for value in bad:
+            with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
     def test_anex(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} anex-demand int-anex-current-demand-20260921-v1 3')
         self.assertEqual(3,v['limit']);self.assertEqual('anex-demand',v['mode'])
@@ -113,6 +131,28 @@ class ParseTest(unittest.TestCase):
         ]
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
+
+
+class ProgramFuelProbeSourceTest(unittest.TestCase):
+    def test_generic_probe_source_is_bounded(self):
+        source=SCRIPT.parents[2]/'scripts/diagnostics/int_andromeda_program_getflights_probe_v1.php'
+        text=source.read_text()
+        run=subprocess.run(['php','-l',str(source)],capture_output=True,text=True)
+        self.assertEqual(0,run.returncode,run.stderr)
+        for required in [
+            "int-andromeda-program-getflights-probe-v1",
+            "INT_PROGRAM_PROBE_TARGET_OPERATION","INT_PROGRAM_PROBE_OPERATOR_FAMILY",
+            "INT_PROGRAM_PROBE_PROGRAM_KEY","INT_PROGRAM_PROBE_TOUR_KEY",
+            "INT_PROGRAM_PROBE_SAMPLE_INDEX","distinct_spo",
+            "anytour_andromeda_quote_supplier","->package(","->getFlights(",
+            "cheapestRequiredFlightSelection","reportedFuelSurcharges",
+            "'changeservice'=>0","'calc'=>0","'booking'=>0",
+            "'database_writes'=>0","'final_price_verified'=>false",
+        ]:
+            self.assertIn(required,text)
+        self.assertEqual(1,text.count("->getFlights("))
+        for forbidden in ["->changeService(","->calc(","bron_ticket","action=bron","'supplier_offer_id'=>"]:
+            self.assertNotIn(forbidden,text)
 
 class CoordinatorTest(unittest.TestCase):
     def test_only_current_journal_can_authorize_a_server_command(self):
@@ -231,6 +271,9 @@ class ContractTest(unittest.TestCase):
                   "local-readback","local_readback_exit","stderr_sha256",
                   "program-fuel-readback","program_fuel_readback","program_fuel_readback_php_b64",
                   "program_fuel_readback_acceptance","program_fuel_readback_db_drift",
+                  "int-program-fuel-readback-wrapper-v1","set_exception_handler","diagnostic_status","partial",
+                  "program-fuel-probe","program_fuel_probe","program_fuel_probe_php_b64",
+                  "program_fuel_probe_acceptance","program_fuel_probe_db_drift",
                   "LOCAL_READER_MISSING","LOCAL_DB_CONNECTION","LOCAL_DB_NOT_CONFIGURED",
                   "require_once $config","errorSha256","attempt_state","package_record",
                   "diagnostic_code","actualization","failure_class","actions_used",
