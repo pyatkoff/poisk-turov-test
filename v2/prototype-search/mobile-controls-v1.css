@@ -21,6 +21,16 @@
     font-size:16px;
   }
 
+  .quick-category legend,
+  .quick-field > span:first-child,
+  .intro .more-filters {
+    font-size:14px;
+  }
+
+  .intro .more-filters {
+    min-height:44px;
+  }
+
   .drawer-trigger,
   .quick-chips .chip,
   .active-filter,
