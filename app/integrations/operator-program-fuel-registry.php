@@ -112,7 +112,7 @@ final class AnyTourOperatorProgramFuelRegistryV1
                 'source'=>'operator_program_fuel_registry',
                 'final_price_verified'=>false,
                 'arithmetic_applied'=>$relation==='excluded',
-                'search_price'=>['amount'=>self::format($baseUnits),'currency'=>'RUB'],
+                'search_price'=>['amount'=>(string)$base['amount'],'currency'=>'RUB'],
                 'party_surcharge'=>['amount'=>self::format($converted),'currency'=>'RUB','source'=>'operator_program_fuel_registry'],
                 'search_price_with_surcharge'=>['amount'=>$total,'currency'=>'RUB','source'=>'derived_search_estimate'],
                 'program_rule'=>[
