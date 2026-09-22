@@ -17,6 +17,24 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+      - name: Read exact unchanged LOCAL contract for integration testing
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 765c1cf42533fde6c56a3501b4353cbe0d54dc4f
+          path: local-contract
+          sparse-checkout: v2/data
+          persist-credentials: false
+      - name: Compose test-only LOCAL dependencies without overwriting INT files
+        run: |
+          set -euo pipefail
+          mkdir -p v2/data
+          for file in anytour-offer-store-v1.php anytour-provider-identity-bridge-v1.php; do
+            if test -e "v2/data/$file"; then
+              cmp "v2/data/$file" "local-contract/v2/data/$file"
+            else
+              cp "local-contract/v2/data/$file" "v2/data/$file"
+            fi
+          done
       - name: Typed fuel and existing producer LOCAL contract
         run: |
           set -euo pipefail
