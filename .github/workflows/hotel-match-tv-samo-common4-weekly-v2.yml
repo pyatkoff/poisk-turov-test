@@ -1,0 +1,50 @@
+name: MATCH TV-SAMO common4 weekly v2 offline check
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+      - tests/hotel_match_tv_samo_common4_weekly_v2_test.php
+      - .github/workflows/hotel-match-tv-samo-common4-weekly-v2.yml
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate full-drain collector and room evidence
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php
+          php -l scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          php -l tests/hotel_match_tv_samo_common4_weekly_v2_test.php
+          php scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php --self-test
+          php tests/hotel_match_tv_samo_common4_weekly_v2_test.php
+          grep -Fq "'operatorIds'=>\$tvOperatorIds" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "'OPERATORS'=>\$samoCsv" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "'/tours/search/'.\$sid.'/continue'" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "for(\$page=1;\$page<=HMC_MAX_SAMO_PAGES;\$page++)" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          ! grep -Fq "/tours/dates" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "HMC_DATE_FROM = '2026-10-05'" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "HMC_DATE_TO = '2026-10-11'" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "'CHECKIN_BEG'=>\$ymd,'CHECKIN_END'=>\$ymdTo" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "'resort'=>'Side'" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "planned_before_search" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "evidence-private" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          grep -Fq "'raw_payload_exported'=>false" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php').read_text()
+          for bad in ['new PDO', 'INSERT INTO', 'UPDATE ', 'DELETE FROM', 'booking(', 'lead_send']:
+              assert bad not in p, bad
+          for good in ["'database_writes'=>0","'mapping_writes'=>0","'metrika_writes'=>0",
+                       'tv_multi_operator_mode','samo_multi_operator_mode','candidate_evidence',
+                       'native_anex_hotel_id','room_raw','detail_queue_state','search_plan_sha256']:
+              assert good in p, good
+          print('MATCH_COMMON4_FULL_DRAIN_BOUNDARY_OK')
+          PY
