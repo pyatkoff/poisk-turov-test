@@ -2,7 +2,7 @@
 import collections,datetime as dt,fcntl,hashlib,json,os,pathlib,re,subprocess,sys,time,urllib.error,urllib.parse,urllib.request
 from zoneinfo import ZoneInfo
 
-OP='hotel-match-live942-tv-anex-refresh-1971-20260923-v1'
+OP='hotel-match-live942-tv-anex-refresh-1971-20260923-v2'
 DAY='2026-09-23'
 LIMIT=3000
 CALL_CAP=2700
@@ -194,7 +194,7 @@ if __name__=='__main__':
     if '--self-test' in sys.argv:
         x=chunks([{'departure_id':1,'country_id':4,'departure_date':'2026-10-01','nights':7,'adults':2,'child_ages_signature':'','tv_hotel_id':i} for i in range(1,66)])
         assert [len(z['hotel_ids']) for z in x]==[30,30,5]
-        print('MATCH_LIVE942_TV_ANEX_REFRESH_V1_SELFTEST_OK')
+        print('MATCH_LIVE942_TV_ANEX_REFRESH_V2_SELFTEST_OK')
     elif '--execute' in sys.argv:
         sys.exit(execute(pathlib.Path(os.environ['ANYTOUR_ROOT']),pathlib.Path(os.environ['MATCH_OPERATION_DIR']),pathlib.Path(os.environ['MATCH_PLAN_PATH'])))
     else:raise SystemExit('disabled')
