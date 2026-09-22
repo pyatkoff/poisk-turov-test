@@ -25,16 +25,18 @@ function create(refresh){
  if(typeof refresh!=='function')throw new TypeError('Renderer callback required');
  let lifecycleGeneration=0;
  let epoch=0,raw=[],options={},links=new Map(),profiles=new Map(),anchors=new Map(),storedOffers=new Map(),legacyOffers=new Map(),legacyStates=new Map(),missing=new Set(),failed=new Set(),pending=new Set(),workers=new Set(),profileReads=new Map();
- function reset(){epoch++;workers.forEach(task=>task.controller.abort());workers=new Set();profileReads=new Map();pending=new Set();links=new Map();profiles=new Map();anchors=new Map();storedOffers=new Map();legacyOffers=new Map();legacyStates=new Map();missing=new Set();failed=new Set();raw=[];options={};}
+ function reset(){epoch++;workers.forEach(task=>task.controller.abort());profileReads.forEach(read=>{if(!read.started)read.resolve(null);});workers=new Set();profileReads=new Map();pending=new Set();links=new Map();profiles=new Map();anchors=new Map();storedOffers=new Map();legacyOffers=new Map();legacyStates=new Map();missing=new Set();failed=new Set();raw=[];options={};}
  function checkedProfile(rawProfile){const p=profile(rawProfile),previous=profiles.get(id(p.id));if(previous&&p.revision===previous.revision&&JSON.stringify(p)!==JSON.stringify(previous))throw new Error('Conflicting profile revision');return previous&&p.revision<previous.revision?previous:p;}
  function putProfile(rawProfile){const p=checkedProfile(rawProfile);profiles.set(id(p.id),p);return p;}
  async function readProfile(anytourHotelId){
   const key=id(anytourHotelId);if(!key)throw new TypeError('Invalid own hotel ID');
-  if(profileReads.has(key))return profileReads.get(key);
-  const generation=epoch,request=fetchProfile(key);profileReads.set(key,request);
-  try{return await request;}finally{
+  if(profileReads.has(key))return profileReads.get(key).promise;
+  const generation=epoch,read={started:false};
+  read.promise=new Promise((resolve,reject)=>{read.resolve=resolve;read.reject=reject;});
+  profileReads.set(key,read);pump();
+  try{return await read.promise;}finally{
    // Only pending work is shared; a later explicit read must check freshness.
-   if(generation===epoch&&profileReads.get(key)===request)profileReads.delete(key);
+   if(generation===epoch&&profileReads.get(key)===read)profileReads.delete(key);
   }
  }
  async function fetchProfile(key){
@@ -105,8 +107,15 @@ function create(refresh){
     const prepared=Array.from(checked.profiles.values(),checkedProfile);
     prepared.forEach(p=>profiles.set(id(p.id),p));checked.links.forEach((own,old)=>links.set(old,own));checked.missing.forEach(key=>missing.add(key));
    }).catch(()=>{if(generation===epoch)requested.forEach(key=>failed.add(key));}).finally(()=>{
-    clearTimeout(timer);if(generation!==epoch)return;workers.delete(task);requested.forEach(key=>pending.delete(key));refresh();
+    clearTimeout(timer);if(generation!==epoch)return;workers.delete(task);requested.forEach(key=>pending.delete(key));
+    try{refresh();}finally{if(generation===epoch)pump();}
    });
+  }
+  // Current result descriptions take the next free slot before waiting favourites.
+  // Both consumers share the existing two-worker limit and in-flight ID registry.
+  for(const [key,read] of profileReads){
+   if(workers.size>=2)break;
+   if(!read.started){read.started=true;fetchProfile(key).then(read.resolve,read.reject);}
   }
  }
  function status(results){
