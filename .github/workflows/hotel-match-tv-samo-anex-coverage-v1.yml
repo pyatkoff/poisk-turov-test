@@ -1,0 +1,98 @@
+name: MATCH TV SAMO ANEX coverage v1
+'on':
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php
+      - tests/hotel_match_tv_samo_anex_coverage_v1_test.php
+      - .github/workflows/hotel-match-tv-samo-anex-coverage-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-tv-samo-anex-coverage-1971-20260922-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-tv-samo-anex-coverage-1971-20260922-v1
+  BASE: d98e2ed1e026d2fbd240fef426dee42be5d9d377
+  CLAIM: '5784146770'
+jobs:
+  coverage:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'feat/match-tv-samo-anex-coverage-20260922-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source and reserve
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-tv-samo-anex-coverage-v1.yml scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php tests/hotel_match_tv_samo_anex_coverage_v1_test.php "
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = "$expected"
+          php -l scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php
+          php scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php --self-test
+          php tests/hotel_match_tv_samo_anex_coverage_v1_test.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >claim.json
+          python3 - <<'PY'
+          import json,os,pathlib,datetime
+          c=json.load(open('claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for s in ['TV↔SAMO/Andromeda↔ANEX','DB READ ONLY','HTTP0','full triple']:
+              assert s in b,s
+          r={'operation':os.environ['OP'],'state':'reserved_before_db_read','source_sha':os.environ['HEAD'],'provider_http_calls':0,'database_writes':0,'mapping_writes':0,'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+          rm claim.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-tv-samo-anex-coverage-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(80):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(5)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Execute CURRENT triple coverage read-only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077;test -n "$KEY";test -n "$HOST";test -n "$USER"
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/payload/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/app/integrations/"
+          ssh "${opts[@]}" "$remote" "set -eu;mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\";cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";mkdir export;for f in reservation.json result.json receipt.json;do cp \"\$f\" export/;done;tar -czf - -C export ." >terminal/server.tgz
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  n=m.name.lstrip('./')
+                  if m.isfile(): pathlib.Path('terminal',n).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only_coverage'
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','database_writes','mapping_writes']: assert r[k]==0,(k,r[k])
+          print(json.dumps({'edge_counts':r['edge_counts'],'active':r['active_tv']['counts'],'live30':r['live_30d']['counts'],'live90':r['live_90d']['counts'],'live_all':r['live_all']['counts'],'live30_top_missing':r['live_30d']['top_missing_geographies']},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-tv-samo-anex-coverage-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
