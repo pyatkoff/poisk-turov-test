@@ -2,7 +2,7 @@ name: Install checked Search3 root gateway
 on:
   pull_request:
     branches: [main]
-    paths: ['.github/workflows/search3-root-gateway-install.yml','scripts/deploy/search3_root_gateway_install.py','tests/search3_root_gateway_install_test.py']
+    paths: ['.github/workflows/search3-root-gateway-install.yml','scripts/deploy/search3_root_gateway_install.py','scripts/deploy/search3_root_gateway_inspect.py','tests/search3_root_gateway_install_test.py']
   issue_comment:
     types: [created]
 permissions: {contents: read}
@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: "${{ github.event.pull_request.head.sha }}", persist-credentials: false}
+      - run: python3 -m py_compile scripts/deploy/search3_root_gateway_install.py scripts/deploy/search3_root_gateway_inspect.py
       - run: python3 tests/search3_root_gateway_install_test.py
   inspect:
     if: >-
@@ -27,6 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - run: python3 -m py_compile scripts/deploy/search3_root_gateway_inspect.py
+      - run: python3 tests/search3_root_gateway_install_test.py
       - env:
           GH_TOKEN: "${{ github.token }}"
           PREVIEW_HOST: "${{ secrets.ANYTOOUR_DEPLOY_HOST }}"
@@ -50,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - run: python3 -m py_compile scripts/deploy/search3_root_gateway_install.py
       - run: python3 tests/search3_root_gateway_install_test.py
       - env: {GH_TOKEN: "${{ github.token }}"}
         run: python3 scripts/deploy/search3_root_gateway_install.py prepare
@@ -65,6 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - run: python3 -m py_compile scripts/deploy/search3_root_gateway_install.py
       - run: python3 tests/search3_root_gateway_install_test.py
       - uses: actions/download-artifact@v4
         with:
@@ -72,7 +77,8 @@ jobs:
           path: "${{ runner.temp }}/search3-root-gateway-ready/"
       - env:
           GH_TOKEN: "${{ github.token }}"
-          READY_ARTIFACT_ID: "${{ needs.prepare.outputs.artifact_id }}"\n          READY_DIR: "${{ runner.temp }}/search3-root-gateway-ready/"
+          READY_ARTIFACT_ID: "${{ needs.prepare.outputs.artifact_id }}"
+          READY_DIR: "${{ runner.temp }}/search3-root-gateway-ready/"
           PREVIEW_HOST: "${{ secrets.ANYTOOUR_DEPLOY_HOST }}"
           PREVIEW_USER: "${{ secrets.ANYTOOUR_DEPLOY_USER }}"
           PREVIEW_KEY: "${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}"
