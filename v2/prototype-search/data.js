@@ -165,7 +165,7 @@
     }
     calendarWindows.set(key,{rows:structuredClone(rows),until,startedAt,size});calendarWindowBytes+=size;
   }
-  async function calendar(s,from,to,signal,filters={}) {
+  async function calendar(s,from,to,signal,filters={},onWindow) {
     const result=[],version=calendarVersion,queryFilters=structuredClone(filters),search=structuredClone(s);
     for(let start=from;start<=to;start=plus(start,22)) {
       if(signal?.aborted)throw new DOMException('Aborted','AbortError');
@@ -173,12 +173,18 @@
       const key=JSON.stringify([scope,params(scope,[],queryFilters)]),now=Date.now();
       for(const [id,entry]of calendarWindows)if(entry.until<=now||now<entry.startedAt){calendarWindowBytes-=entry.size;calendarWindows.delete(id);}
       const hit=version===calendarVersion?calendarWindows.get(key):null;
-      if(hit){calendarWindows.delete(key);calendarWindows.set(key,hit);result.push(...structuredClone(hit.rows));continue;}
+      if(hit){
+        calendarWindows.delete(key);calendarWindows.set(key,hit);
+        const rows=structuredClone(hit.rows);result.push(...rows);
+        if(typeof onWindow==='function')onWindow(structuredClone(rows),{from:scope.from,to:scope.to,cached:true});
+        continue;
+      }
       const data=await db(scope,signal,[],queryFilters),parsed=root.AnyTourLocalDbProviderV1.parse(data);
       if(signal?.aborted)throw new DOMException('Aborted','AbortError');
       const list=parsed.hotels.map(g=>({...g.hotel,anytourHotelId:g.anytourHotelId,canonicalLegacyIds:[...new Set(g.offers.map(o=>o.legacyHotelId))],tours:g.offers.map(o=>o.tour)}));
       const rows=project(list,scope);result.push(...rows);
       if(version===calendarVersion)retainCalendarWindow(key,rows,data,now);
+      if(version===calendarVersion&&typeof onWindow==='function')onWindow(structuredClone(rows),{from:scope.from,to:scope.to,cached:false});
     }
     return result;
   }

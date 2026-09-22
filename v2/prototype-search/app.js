@@ -810,7 +810,8 @@ function loadCalendarPrices(){
  const read=async month=>{
   if(loads.has(month)||controller.signal.aborted)return;loads.set(month,'loading');legend();
   const from=month<startDay?startDay:month,next=dateObj(month);next.setUTCMonth(next.getUTCMonth()+1);next.setUTCDate(0);const to=iso(next)>endDay?endDay:iso(next);
-  try{const rows=await data.calendar(ctx.search,from,to,controller.signal,ctx.filters);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;calendarHotels.push(...rows);loads.set(month,'complete');refreshCalendarPrices();legend();}
+  const show=rows=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;calendarHotels.push(...rows);refreshCalendarPrices();};
+  try{await data.calendar(ctx.search,from,to,controller.signal,ctx.filters,show);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;loads.set(month,'complete');legend();}
   catch(error){if(error.name!=='AbortError'){loads.set(month,'error');legend();}}
  };
  // Desktop displays two months; mobile reads each month as it comes into view.

@@ -181,8 +181,15 @@ test('calendar revisit reuses both successful windows without changing money or 
 test('failed second calendar window stays an error and retry reuses the first window only',async()=>{
  const now=Date.parse('2026-09-22T16:00:00Z');let fail=true;
  const h=harness({clock:()=>now,database:(i,p)=>{if(p.dateFrom==='2026-10-23'&&fail){fail=false;throw Error('fixture second window unavailable');}return calendarSnapshot(p,new Date(now+60000).toISOString());}});
- await assert.rejects(calendarRead(h),/second window unavailable/);assert.equal(h.dbBodies.length,2);
- const rows=await calendarRead(h);assert.equal(h.dbBodies.length,3);assert.equal(rows.length,2);
+ const firstWindows=[];
+ await assert.rejects(h.data.calendar(trip,calendarFrom,calendarTo,undefined,{},(rows,window)=>firstWindows.push({rows,window})),/second window unavailable/);assert.equal(h.dbBodies.length,2);
+ assert.equal(firstWindows.length,1,'The successful first window is delivered before a later window fails');
+ assert.equal(firstWindows[0].rows.length,1);assert.equal(JSON.stringify(firstWindows[0].window),JSON.stringify({from:'2026-10-01',to:'2026-10-22',cached:false}));
+ firstWindows[0].rows[0].name='consumer mutation';
+ const retryWindows=[];
+ const rows=await h.data.calendar(trip,calendarFrom,calendarTo,undefined,{},(windowRows,window)=>retryWindows.push({rows:windowRows,window}));assert.equal(h.dbBodies.length,3);assert.equal(rows.length,2);
+ assert.equal(JSON.stringify(retryWindows.map(item=>item.window)),JSON.stringify([{from:'2026-10-01',to:'2026-10-22',cached:true},{from:'2026-10-23',to:'2026-10-31',cached:false}]));
+ assert.notEqual(rows[0].name,'consumer mutation','Progressive consumer mutation cannot alter retained or returned rows');
  assert.deepEqual(h.dbBodies.map(p=>p.dateFrom),['2026-10-01','2026-10-23','2026-10-23']);
 });
 test('calendar reuse expires at the earliest listing expiry and at the thirty-second freshness bound',async()=>{
@@ -231,12 +238,14 @@ test('native completion invalidates a calendar window without a duplicate provid
 test('aborted or invalidated calendar requests cannot populate reusable results',async()=>{
  const now=Date.parse('2026-09-22T16:00:00Z');
  for(const abort of [true,false]){
-  const gate=defer(),controller=new AbortController();
+ const gate=defer(),controller=new AbortController();
   const h=harness({clock:()=>now,database:(i,p)=>i===1?gate.promise:calendarSnapshot(p,new Date(now+60000).toISOString())});
-  const pending=calendarRead(h,controller.signal,{},trip,calendarFrom,calendarFrom);await flush();
+  const delivered=[];
+  const pending=h.data.calendar(trip,calendarFrom,calendarFrom,controller.signal,{},rows=>delivered.push(rows));await flush();
   if(abort)controller.abort();else h.data.stop();
   gate.resolve(calendarSnapshot(h.dbBodies[0],new Date(now+60000).toISOString()));
   if(abort)await assert.rejects(pending,{name:'AbortError'});else await pending;
+  assert.equal(delivered.length,0,'Aborted or invalidated requests cannot progressively render stale rows');
   await calendarRead(h,undefined,{},trip,calendarFrom,calendarFrom);assert.equal(h.dbBodies.length,2);
   const cancelled=new AbortController();cancelled.abort();await assert.rejects(calendarRead(h,cancelled.signal,{},trip,calendarFrom,calendarFrom),{name:'AbortError'});
   assert.equal(h.dbBodies.length,2);
