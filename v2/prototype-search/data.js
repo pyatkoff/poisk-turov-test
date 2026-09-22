@@ -242,6 +242,60 @@
       notify({type:'provider',provider:'anex',status:'error'});
     }
   }
+  async function directAndromedaOffer(hotel,tour,run,p,seen,data){
+    const price=tour&&tour.price,context=tour&&tour.offer_context;
+    if(!tour||typeof tour!=='object'||tour.provider!=='andromeda'||!price||price.currency!=='RUB'
+      ||typeof price.amount!=='string'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(price.amount)
+      ||Number(price.amount)<=0||!context||context.provider!=='andromeda'
+      ||context.search_ref!==data.search_ref||context.generation!==run.generation
+      ||!Number.isInteger(context.page)||context.page<1||context.page>1000
+      ||context.offer_ref!==tour.offer_ref||tour.selection_enabled!==false)throw new Error('Invalid Andromeda offer');
+    const day=date(tour.checkin),nights=Number(tour.nights),offerRef=String(tour.offer_ref||'');
+    if(!day||day<p.dateFrom||day>p.dateTo||!Number.isInteger(nights)||nights<Number(p.nightsFrom)||nights>Number(p.nightsTo)
+      ||!(/^offer_[a-f0-9]{64}$/).test(offerRef)||seen.has(offerRef))throw new Error('Invalid Andromeda offer');
+    if(tour.listing_price_ref!==undefined&&(!(/^listing_[a-f0-9]{64}$/).test(String(tour.listing_price_ref))))throw new Error('Invalid Andromeda listing price reference');
+    seen.add(offerRef);
+    const total=Number(price.amount),mealName=meal(tour.meal)||'Питание уточняется';
+    if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo))return null;
+    const selectedMeals=(run.filters.meals||[]).map(meal).filter(Boolean);
+    if(selectedMeals.length&&!selectedMeals.includes(mealName))return null;
+    const flight=String(tour.flight_type||'').toLowerCase(),offerIdentityDigest=await digestRef(offerRef);
+    const normalized={id:offerRef,offerRef,offerIdentityDigest,searchRef:data.search_ref,provider:'andromeda',price:total,date:day,nights,
+      meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:text(tour.placement),
+      operator:tour.operator&&typeof tour.operator==='object'?structuredClone(tour.operator):{name:text(tour.operator)||'Туроператор уточняется'},
+      isCharter:flight==='charter'?true:flight==='regular'?false:undefined,cachedListing:false,selectionEnabled:false,bookingEnabled:false,
+      finalPriceVerified:false,quoteRequired:true,andromedaLocalHotelId:hotel.local_id,offer_context:structuredClone(context)};
+    if(tour.listing_price_ref!==undefined)normalized.listing_price_ref=String(tour.listing_price_ref);
+    if(tour.base_search_price&&typeof tour.base_search_price==='object')normalized.base_search_price=structuredClone(tour.base_search_price);
+    if(tour.search_surcharge&&typeof tour.search_surcharge==='object')normalized.search_surcharge=structuredClone(tour.search_surcharge);
+    return normalized;
+  }
+  async function applyDirectAndromeda(run,data,p){
+    if(!data||data.provider!=='andromeda'||data.generation!==run.generation||!Array.isArray(data.hotels)||data.hotels.length>5000
+      ||!data.date_range||data.date_range.from!==p.dateFrom||data.date_range.to!==p.dateTo
+      ||typeof data.search_ref!=='string'||!(/^[a-f0-9]{64}$/).test(data.search_ref)
+      ||!['complete','partial'].includes(data.status)||data.selection_enabled!==false||data.first_page_only!==false)throw new Error('Invalid Andromeda search response');
+    const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let projectedOffers=0;
+    for(const hotel of data.hotels){
+      if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||hotel.mapping_status!=='resolved'||seenHotels.has(hotel.local_id)
+        ||!Array.isArray(hotel.tours)||hotel.tours.length<1)throw new Error('Invalid Andromeda hotel');
+      seenHotels.add(hotel.local_id);projectedOffers+=hotel.tours.length;
+      if(projectedOffers>15000)throw new Error('Invalid Andromeda result size');
+      for(const tour of hotel.tours){
+        const normalized=await directAndromedaOffer(hotel,tour,run,p,seenOffers,data);
+        if(normalized)prepared.push({legacyHotelId:hotel.local_id,tour:normalized});
+      }
+    }
+    owner.clearOffers('direct-andromeda');
+    for(const entry of prepared)owner.upsertLegacyOffer(entry.legacyHotelId,entry.tour,{source:'direct-andromeda'});
+    owner.refresh();
+    const receivedOffers=Number.isInteger(data.received_offers)&&data.received_offers>=projectedOffers?data.received_offers:projectedOffers;
+    const mappedOffers=Number.isInteger(data.mapped_offers)&&data.mapped_offers>=projectedOffers?data.mapped_offers:projectedOffers;
+    run.sourceCounts.andromeda={status:data.status==='partial'?'partial':'complete',
+      hotels:new Set(prepared.map(entry=>entry.legacyHotelId)).size,offers:prepared.length,
+      receivedHotels:data.hotels.length,projectedOffers,receivedOffers,mappedOffers,dateFrom:data.date_range.from,dateTo:data.date_range.to};
+    return run.sourceCounts.andromeda;
+  }
   async function enrichAndromeda(run,p){
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');
     if(!url||!current(run)){run.sourceCounts.andromeda={status:'skipped',hotels:0,offers:0};return;}
@@ -249,13 +303,15 @@
     try{
       const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({generation:run.generation,params:p})});
       const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!current(run))return;
-      if(!response.ok||payload?.ok!==true||!data||data.provider!=='andromeda'||data.generation!==run.generation)throw new Error('Andromeda search unavailable');
-      await refreshDatabase(run);if(!current(run))return;
-      const offers=Array.isArray(data.hotels)?data.hotels.reduce((sum,h)=>sum+(Array.isArray(h?.tours)?h.tours.length:0),0):0;
-      run.sourceCounts.andromeda={status:'complete',hotels:Array.isArray(data.hotels)?data.hotels.length:0,offers};
-      notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda});
+      if(!response.ok||payload?.ok!==true)throw new Error('Andromeda search unavailable');
+      const result=await applyDirectAndromeda(run,data,p);if(!current(run))return;
+      notify({type:'provider',provider:'andromeda',...result});
+      // Keep durable/cache visibility independent: autosave may land the same
+      // offer later, and the canonical SHA-256 identity collapses that duplicate.
+      await refreshDatabase(run);
     }catch(error){
       if(!current(run)||error?.name==='AbortError')return;
+      owner.clearOffers('direct-andromeda');owner.refresh();
       run.sourceCounts.andromeda={status:'error',hotels:0,offers:0};
       notify({type:'provider',provider:'andromeda',status:'error'});
     }

@@ -26,6 +26,8 @@ CALENDAR_MONTH = (FIXTURE_DAY.replace(day=28) + timedelta(days=4)).replace(day=1
 CALENDAR_FIRST = CALENDAR_MONTH.isoformat()
 CALENDAR_DAY = (CALENDAR_MONTH + timedelta(days=4)).isoformat()
 CALENDAR_SECOND = (CALENDAR_MONTH + timedelta(days=22)).isoformat()
+ANDROMEDA_OFFER_REF = "offer_" + "d" * 64
+ANDROMEDA_SEARCH_REF = "c" * 64
 
 
 def profile(old):
@@ -49,7 +51,7 @@ def tour(old, price):
     return {"id": old, "provider": "tourvisor", "tours": [item]}
 
 
-def stored(old, provider, price, checkin=DATE):
+def stored(old, provider, price, checkin=DATE, offer_ref=None):
     return {"anytourHotelId": old + 400, "hotel": profile(old), "offers": [{
         "provider": provider, "legacyHotelId": str(old), "currency": "RUB", "price": price,
         "expiresAt": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat().replace("+00:00", "Z"),
@@ -58,8 +60,11 @@ def stored(old, provider, price, checkin=DATE):
                     "listingPrice": price, "listingPriceState": "search_price_confirmation_required",
                     "listingPriceReady": False, "priceConfirmationRequired": True,
                     "quoteState": "unknown", "finalPriceVerified": False, "quoteEvidenceDigest": None,
-                    "identity": {key: hashlib.sha256((key + provider).encode()).hexdigest()
-                                 for key in ("offer_ref_digest", "search_ref_digest", "provider_hotel_ref_digest")},
+                    "identity": {
+                        "offer_ref_digest": hashlib.sha256((offer_ref if offer_ref else "offer_ref_digest" + provider).encode()).hexdigest(),
+                        "search_ref_digest": hashlib.sha256(("search_ref_digest" + provider).encode()).hexdigest(),
+                        "provider_hotel_ref_digest": hashlib.sha256(("provider_hotel_ref_digest" + provider).encode()).hexdigest(),
+                    },
                     "tour": {"checkin": checkin, "nights": 7, "meal": {"raw": "AI"},
                              "room": {"raw": "STANDARD"}, "placement": {"raw": "DBL"},
                              "party": {"adults": 2, "children": 0}},
@@ -87,6 +92,25 @@ def direct_anex(body):
         }],
     }}
 
+
+
+def direct_andromeda(body):
+    return {"ok": True, "data": {
+        "provider": "andromeda", "generation": body["generation"],
+        "date_range": {"from": body["params"]["dateFrom"], "to": body["params"]["dateTo"]},
+        "grouped": True, "first_page_only": False, "page": 1, "pages_count": 1,
+        "external_search_pending": False, "search_ref": ANDROMEDA_SEARCH_REF, "status": "complete",
+        "received_offers": 1, "mapped_offers": 1, "selection_enabled": False,
+        "hotels": [{"local_id": 105, "mapping_status": "resolved", "tours": [{
+            "provider": "andromeda", "price": {"amount": "300000", "currency": "RUB"},
+            "checkin": body["params"]["dateFrom"], "nights": 7, "adults": 2, "children": 0,
+            "meal": "AI", "room": "STANDARD", "placement": "DBL", "operator": {"name": "Библио-Глобус"},
+            "offer_ref": ANDROMEDA_OFFER_REF,
+            "offer_context": {"provider": "andromeda", "search_ref": ANDROMEDA_SEARCH_REF,
+                              "generation": body["generation"], "page": 1, "offer_ref": ANDROMEDA_OFFER_REF},
+            "listing_price_ref": "listing_" + "e" * 64, "selection_enabled": False,
+        }]}],
+    }}
 
 def check_width(browser, origin, width):
     context = browser.new_context(viewport={"width": width, "height": 900})
@@ -137,7 +161,7 @@ def check_width(browser, origin, width):
                     return
                 rows = [stored(120, "anex", 275000, CALENDAR_DAY)] if params["dateFrom"] == CALENDAR_FIRST else []
             else:
-                rows = [stored(104, "anex", 250000), stored(105, "andromeda", 300000)] if state["native"] else []
+                rows = [stored(104, "anex", 250000), stored(105, "andromeda", 300000, offer_ref=ANDROMEDA_OFFER_REF)] if state["native"] else []
             reply({"ok": True, "data": {"source": "anytour-db-first-results-v1", "scopeVersion": 1,
                    "scope": {"scopeVersion": 1, **params}, "scopeDigest": "c" * 64,
                    "selectionAuthority": False, "hotels": rows}})
@@ -150,7 +174,7 @@ def check_width(browser, origin, width):
                 reply({'ok': False}, 503)
                 return
             state["native"] = True
-            reply({"ok": True, "data": {"provider": "andromeda", "generation": body["generation"], "hotels": []}})
+            reply(direct_andromeda(body))
         elif url.path == "/_preview/search3-anex-candidate/api-anex-search3-preview.php" and request.method == "POST":
             body = request.post_data_json
             anex_calls.append(body)
@@ -272,6 +296,10 @@ def check_width(browser, origin, width):
             return [...new Set(owner.read(owner.source(), {}).flatMap(h => h.providers || []))].sort();
         }""")
         assert providers == ["andromeda", "anex", "tourvisor"], providers
+        andromeda_offer_count = page.evaluate("""() => Search3CanonicalProfilesV1.current().read(
+            Search3CanonicalProfilesV1.current().source(), {}
+        ).flatMap(h => h.tours || []).filter(t => t.provider === 'andromeda').length""")
+        assert andromeda_offer_count == 1, "native + LOCAL Andromeda must dedupe by offer identity"
         assert len(native_calls) == 1
         assert len(anex_calls) == 1
         state["hold"] = True
