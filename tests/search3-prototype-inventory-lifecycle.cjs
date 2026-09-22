@@ -61,10 +61,10 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
   if(action==='search_results')return live();
   throw Error('unexpected API '+action);
  }};
- const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
+ const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,crypto:crypto.webcrypto,TextEncoder,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
  if(native||anex){win.V2_CONFIG={};if(native)win.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';if(anex)win.V2_CONFIG.anexApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php';}
  const bus=new EventTarget();win.addEventListener=bus.addEventListener.bind(bus);win.removeEventListener=bus.removeEventListener.bind(bus);win.dispatchEvent=bus.dispatchEvent.bind(bus);
- const sandbox={window:win,fetch,URL,URLSearchParams,AbortController,DOMException,structuredClone,console,Date:class extends Date{static now(){return clock();}},setTimeout:win.setTimeout,clearTimeout:win.clearTimeout};
+ const sandbox={window:win,fetch,URL,URLSearchParams,AbortController,DOMException,structuredClone,console,crypto:crypto.webcrypto,TextEncoder,Date:class extends Date{static now(){return clock();}},setTimeout:win.setTimeout,clearTimeout:win.clearTimeout};
  vm.createContext(sandbox);
  for(const name of ['search3-canonical-profiles-v1.js','search3-local-db-provider-v1.js','prototype-search/data.js'])vm.runInContext(fs.readFileSync(path.join(rootDir,'v2',name),'utf8'),sandbox,{filename:name});
  const data=win.AnyTourPrototypeData;data.catalog.departures.push({id:1,name:'Москва'});data.catalog.countries.push({id:4,name:'Турция'});
@@ -94,6 +94,17 @@ test('first search unions direct ANEX once and waits for it before complete',asy
  assert.equal(final.union.hotelsByProvider.anex,1);assert.equal(final.union.hotelsByProvider.tourvisor,1);assert.equal(final.union.providerSets['anex+tourvisor'],1);
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='complete'));
  await h.data.continueSearch();await flush();assert.equal(h.anexCalls.length,1,'Continue never replays direct ANEX');
+});
+test('direct ANEX and LOCAL dedupe the same normalized ANEX offer identity',async()=>{
+ const offerRef='anex_online:'+'b'.repeat(64);
+ const h=harness({anex:async()=>undefined,database:(i,p)=>{
+  const row=snapshot(p,['anex']);row.hotels[0].offers[0].listing.identity.offer_ref_digest=hash(offerRef);return row;
+ }});
+ await h.start();await h.poll();
+ const hotel=h.latest()[0],anexOffers=hotel.offers.filter(o=>o.provider==='anex');
+ assert.equal(anexOffers.length,1,'same direct+stored ANEX offer must not duplicate inside canonical hotel');
+ const final=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.equal(final.union.hotelsByProvider.anex,1);assert.equal(final.union.offersByProvider.anex,1);
 });
 test('direct ANEX failure preserves Tourvisor and LOCAL inventory',async()=>{
  const h=harness({anex:async()=>({response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}})});
