@@ -97,7 +97,7 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     $mode=$argv[1]??'';
     if($mode==='--self-test'){
         $ids=[];hmsab_collect_ids(['anex_bridges'=>[['anex_id'=>123]],'prior'=>['source'=>['operatorKey'=>5,'hotelKey'=>'456']]],$ids);
-        hmsab_need(array_keys($ids)===['123','456'],'collect_fixture');
+        hmsab_need(array_keys($ids)===[123,456],'collect_fixture');
         $ids=[];hmsab_collect_ids(['source'=>['operatorKey'=>315,'hotelKey'=>'456']],$ids);hmsab_need($ids===[],'operator_guard');
         echo "MATCH_LIVE_SAMO_ANCHOR_ANEX_BRIDGE_V1_SELFTEST_OK\n";exit;
     }
