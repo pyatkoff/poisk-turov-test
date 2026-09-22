@@ -1,0 +1,23 @@
+name: MATCH TV-SAMO Side star4 SAMO v5 CI
+'on':
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_samo_v5.php
+      - tests/hotel_match_tv_samo_common4_side_star4_samo_v5_test.php
+      - .github/workflows/hotel-match-tv-samo-common4-side-star4-samo-v5-ci.yml
+permissions: {contents: read}
+jobs:
+  test:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - run: |
+          php -l scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_samo_v5.php
+          php tests/hotel_match_tv_samo_common4_side_star4_samo_v5_test.php
+          php scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_samo_v5.php --self-test
+          ! grep -Fq '\$td=hmc_tv_drain(\$tvParams,\$tvCounter)' scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_samo_v5.php
+          grep -Fq "retained_partial_tv4_plus_fresh_samo4" scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_samo_v5.php
