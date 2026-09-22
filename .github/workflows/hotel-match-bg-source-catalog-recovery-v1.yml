@@ -1,0 +1,176 @@
+name: MATCH BG recover persisted source catalog evidence
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-bg-source-catalog-recovery-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-bg-source-catalog-recovery-1971-20260922-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-bg-source-catalog-recovery-1971-20260922-v1
+  BASE: 1a8e0aed2ecdb6fc2888a92e4b5512e744dcb76e
+  CLAIM: '5774834311'
+  RETAINED_ARTIFACT: '10688472272'
+  RETAINED_ZIP_SHA256: a52b4dbdf4a9eafdd49746a5a1aae461374f8d558e088096165ff82964e2b515
+jobs:
+  recover:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-bg-source-catalog-recovery-1971-20260922-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+    - name: Validate exact source, owner claim and retained membership
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077; mkdir -p input reservation terminal
+        test "$(git merge-base HEAD "$BASE")" = "$BASE"
+        test "$(git diff --name-only "$BASE"..HEAD | tr '\n' ' ')" = ".github/workflows/hotel-match-bg-source-catalog-recovery-v1.yml "
+        gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+        gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$RETAINED_ARTIFACT/zip" > input/retained.zip
+        python3 - <<'PY'
+        import datetime,hashlib,json,os,pathlib,zipfile
+        c=json.load(open('input/claim.json'))
+        assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297
+        assert c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+        for t in (os.environ['OP'],'source_catalog','READ ONLY','supplier HTTP0','DB/mapping writes0','никакой записи operator_115'):
+            assert t in c['body'], t
+        raw=pathlib.Path('input/retained.zip').read_bytes()
+        assert hashlib.sha256(raw).hexdigest()==os.environ['RETAINED_ZIP_SHA256']
+        with zipfile.ZipFile('input/retained.zip') as z:
+            d=json.loads(z.read('result.json'))
+        assert d['schema']=='bg-retained-place-evidence/1' and len(d['rows'])==816 and d['mapping_writes']==0
+        ids=sorted({int(x['tv_hotel_id']) for x in d['rows']})
+        assert len(ids)==816
+        pathlib.Path('input/ids.json').write_text(json.dumps(ids)+'\n')
+        pathlib.Path('input/retained.json').write_text(json.dumps({'rows':[{'tv_hotel_id':x['tv_hotel_id'],'f4_candidates':x['f4_candidates'],'catalog_hotel':x['catalog_hotel']} for x in d['rows']]},ensure_ascii=False)+'\n')
+        reserve={'operation':os.environ['OP'],'state':'reserved_before_read_only_db','source_sha':os.environ['HEAD'],
+          'base_sha':os.environ['BASE'],'claim_id':int(os.environ['CLAIM']),'retained_artifact_id':int(os.environ['RETAINED_ARTIFACT']),
+          'membership_count':len(ids),'supplier_http_requests':0,'provider_calls':0,'database_writes':0,'mapping_writes':0,
+          'no_replay':True,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+        pathlib.Path('reservation/reservation.json').write_text(json.dumps(reserve,sort_keys=True)+'\n')
+        PY
+        rm input/claim.json input/retained.zip
+        cat > input/recover.php <<'PHP'
+        <?php
+        declare(strict_types=1);
+        const OP='hotel-match-bg-source-catalog-recovery-1971-20260922-v1';
+        function need(bool $ok,string $why):void {if(!$ok)throw new RuntimeException($why);}
+        function readj(string $p):array {$a=json_decode((string)file_get_contents($p),true,512,JSON_THROW_ON_ERROR);need(is_array($a),'json');return $a;}
+        function savej(string $p,array $a):string {$b=json_encode($a,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";$f=fopen($p,'xb');need($f!==false,'exclusive_create');need(fwrite($f,$b)===strlen($b)&&fflush($f),'durable');fclose($f);return hash('sha256',$b);}
+        function sql(PDO $db,string $s):array {need(str_starts_with($s,'SELECT '),'select_only');$q=$db->query($s);need($q!==false,'query');return $q->fetchAll(PDO::FETCH_ASSOC)?:[];}
+        function normkey(string $k):string {return strtolower(str_replace(['-',' '],'_',trim($k)));}
+        function safeBlock(mixed $v,int $depth=0):mixed {
+          if($depth>10)return null;
+          if(!is_array($v))return null;
+          $allow=array_flip(['id','name','lname','operator','operator_id','operatorid','operator_name','operatorname','provider','provider_id','supplier','supplier_id','native_hotel_id','external_hotel_id','source_hotel_id','hotel_id','hotelid','hotelkey','town','townkey','state','statekey','star','starkey','country','country_id','city','city_id','resort','resort_id']);
+          $out=[];
+          foreach($v as $k=>$x){$nk=normkey((string)$k);
+            if(is_array($x)){$p=safeBlock($x,$depth+1);if($p!==null&&$p!==[])$out[$k]=$p;continue;}
+            if(!isset($allow[$nk])||(!is_scalar($x)&&$x!==null))continue;
+            $out[$k]=is_string($x)?mb_substr($x,0,240):$x;
+          }
+          return $out;
+        }
+        function collectSourceCatalog(mixed $v,string $path='',int $depth=0,array &$out=[]):void {
+          if($depth>14||count($out)>=64||!is_array($v))return;
+          foreach($v as $k=>$x){$p=$path===''?(string)$k:$path.'.'.$k;$nk=normkey((string)$k);
+            if(in_array($nk,['source_catalog','sourcecatalog','source_catalogs','supplier_catalog','provider_catalog'],true)&&is_array($x)){$block=safeBlock($x);$out[]=['path'=>$p,'projection'=>$block];}
+            if(is_array($x))collectSourceCatalog($x,$p,$depth+1,$out);
+          }
+        }
+        function collectHints(mixed $v,string $path='',int $depth=0,array &$out=[]):void {
+          if($depth>14||count($out)>=160)return;
+          if(is_array($v)){foreach($v as $k=>$x){$p=$path===''?(string)$k:$path.'.'.$k;collectHints($x,$p,$depth+1,$out);}return;}
+          $nk=normkey((string)preg_replace('/^.*\./','',$path));
+          $allow=['operator','operator_id','operatorid','operator_name','operatorname','provider','provider_id','supplier','supplier_id','native_hotel_id','external_hotel_id','source_hotel_id','hotel_id','hotelid','hotelkey','id','name','town','state','star'];
+          if(!in_array($nk,$allow,true)||(!is_scalar($v)&&$v!==null))return;
+          $out[]=['path'=>$path,'value'=>is_string($v)?mb_substr($v,0,240):$v];
+        }
+        $root=realpath((string)getenv('ANYTOUR_ROOT'));$dir=realpath((string)getenv('MATCH_OPERATION_DIR'));$in=realpath((string)getenv('MATCH_INPUT_DIR'));$head=(string)getenv('MATCH_SOURCE_SHA');
+        need($root!==false&&basename($root)==='anytoour.ru'&&$dir!==false&&basename($dir)===OP&&$in!==false&&preg_match('/^[a-f0-9]{40}$/D',$head)===1,'scope');
+        $ids=readj("$in/ids.json");need(count($ids)===816&&count(array_unique(array_map('intval',$ids)))===816,'membership');
+        $res=readj("$in/reservation.json");need($res['operation']===OP&&$res['source_sha']===$head,'reservation');
+        savej("$dir/started.json",['operation'=>OP,'state'=>'started_no_replay','source_sha'=>$head]);
+        $base=['operation'=>OP,'source_sha'=>$head,'supplier_http_requests'=>0,'provider_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true];
+        try {
+          require_once $root.(is_file("$root/data/db-v1.php")?'/data/db-v1.php':'/v2/data/db-v1.php');
+          $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+          $list=implode(',',array_map('intval',$ids));
+          $rows=sql($db,"SELECT local_hotel_id,external_hotel_id,catalog_sha256,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE local_hotel_id IN ($list) AND supplier_namespace='andromeda_catalog' AND decision_status='accepted' ORDER BY local_hotel_id,external_hotel_id");
+          $db->rollBack();
+          $out=[];$withBlocks=0;$blockCount=0;$hashMismatch=0;
+          foreach($rows as $r){$raw=(string)$r['evidence_json'];$e=json_decode($raw,true);$blocks=[];$hints=[];if(is_array($e)){collectSourceCatalog($e,'',0,$blocks);collectHints($e,'',0,$hints);}$sha=hash('sha256',$raw);if($sha!==$r['evidence_sha256'])$hashMismatch++;if(count($blocks)>0)$withBlocks++;$blockCount+=count($blocks);$out[]=['local_hotel_id'=>(int)$r['local_hotel_id'],'andromeda_catalog_id'=>(string)$r['external_hotel_id'],'catalog_sha256'=>$r['catalog_sha256'],'evidence_sha256'=>$r['evidence_sha256'],'evidence_json_sha256'=>$sha,'recorded_evidence_hash_matches'=>$sha===$r['evidence_sha256'],'source_catalog_blocks'=>$blocks,'identity_hints'=>$hints];}
+          $counts=['membership_hotels'=>816,'accepted_andromeda_catalog_rows'=>count($rows),'rows_with_source_catalog_blocks'=>$withBlocks,'source_catalog_blocks'=>$blockCount,'evidence_hash_mismatches'=>$hashMismatch];
+          $result=$base+['state'=>'completed_source_catalog_recovery','snapshot_at_utc'=>gmdate('c'),'counts'=>$counts,'rows'=>$out,'authority_note'=>'source_catalog is retained evidence only; no provider namespace transform or mapping is performed'];
+          $sha=savej("$dir/result.json",$result);savej("$dir/receipt.json",$base+['state'=>'completed_source_catalog_recovery','result_sha256'=>$sha,'counts'=>$counts]);echo json_encode($counts,JSON_THROW_ON_ERROR)."\n";
+        }catch(Throwable $e){if(isset($db)&&$db->inTransaction())$db->rollBack();savej("$dir/failure.json",$base+['state'=>'failed_no_replay','error_class'=>get_class($e)]);exit(1);}
+        PHP
+        php -l input/recover.php
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with: {name: 'match-bg-source-catalog-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+    - name: Require exact-head Security
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import json,os,time,urllib.request
+        u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+        for _ in range(60):
+            req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(req,timeout=30) as f: rs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+            if rs and max(rs,key=lambda x:x['id'])['status']=='completed':
+                assert max(rs,key=lambda x:x['id'])['conclusion']=='success';break
+            time.sleep(5)
+        else: raise SystemExit('security_not_green')
+        PY
+    - name: Recover CURRENT persisted source catalog evidence
+      env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077
+        key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/h"; trap 'rm -f "$key" "$known"' EXIT
+        if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+        chmod 600 "$key"; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+        r="$USER@$HOST"; op=".anytoour-match/operations/$OP"; a=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+        ssh "${a[@]}" "$r" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/.anytoour-match/operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+        cp reservation/reservation.json input/reservation.json
+        scp "${a[@]}" input/recover.php input/ids.json input/reservation.json "$r:$op/payload/"
+        set +e
+        ssh "${a[@]}" "$r" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_DIR=\"\$HOME/$op/payload\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/recover.php\"" >terminal/stdout 2>terminal/stderr
+        status=$?
+        ssh "${a[@]}" "$r" "cd \"\$HOME/$op\" && tar -czf - -- *.json" >terminal/server.tgz
+        set -e
+        printf '%s\n' "$status" >terminal/exit-code.txt
+        exit "$status"
+    - name: Verify recovered evidence and summarize Biblio native hints
+      run: |
+        python3 - <<'PY'
+        import collections,hashlib,json,pathlib,tarfile
+        with tarfile.open('terminal/server.tgz','r:gz') as t:
+            for n in ('started.json','result.json','receipt.json'):
+                b=t.extractfile(n).read();pathlib.Path('terminal',n).write_bytes(b)
+        r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'));ret=json.load(open('input/retained.json'))
+        assert r['state']==q['state']=='completed_source_catalog_recovery'
+        assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+        assert r['supplier_http_requests']==r['provider_calls']==r['database_writes']==r['mapping_writes']==0
+        assert r['counts']['membership_hotels']==816 and r['counts']['evidence_hash_mismatches']==0
+        f4={int(x['tv_hotel_id']):set(map(str,x['f4_candidates'])) for x in ret['rows']}
+        path_counts=collections.Counter(); biblio_rows=[]; native_values=collections.Counter()
+        for row in r['rows']:
+            text=json.dumps(row['source_catalog_blocks'],ensure_ascii=False).lower()
+            for block in row['source_catalog_blocks']:
+                path_counts[block['path']]+=1
+            if 'biblio' in text or 'библио' in text or any('biblio' in str(x['value']).lower() or 'библио' in str(x['value']).lower() for x in row['identity_hints']):
+                vals=[]
+                for x in row['identity_hints']:
+                    if any(k in x['path'].lower() for k in ('native_hotel_id','external_hotel_id','hotel_id','hotelid','hotelkey','operator_id','operatorid','operator_name','operatorname')):
+                        vals.append(x)
+                        if 'native_hotel_id' in x['path'].lower(): native_values[str(x['value'])]+=1
+                biblio_rows.append({'local_hotel_id':row['local_hotel_id'],'andromeda_catalog_id':row['andromeda_catalog_id'],'f4_candidates':sorted(f4.get(row['local_hotel_id'],set())),'identity_values':vals,'source_catalog_blocks':row['source_catalog_blocks']})
+        s={'counts':r['counts'],'source_catalog_paths':dict(path_counts),'biblio_rows_found':len(biblio_rows),'distinct_biblio_native_values':len(native_values),'biblio_native_value_counts':dict(native_values),'biblio_rows':biblio_rows,'authority':'evidence-only; no F4/operator115 transform and no mapping write'}
+        pathlib.Path('terminal/source-catalog-summary.json').write_text(json.dumps(s,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+        print(json.dumps({k:v for k,v in s.items() if k!='biblio_rows'},ensure_ascii=False,sort_keys=True))
+        PY
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: always()
+      with: {name: 'match-bg-source-catalog-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
