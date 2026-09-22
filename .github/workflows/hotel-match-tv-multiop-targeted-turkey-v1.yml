@@ -1,15 +1,15 @@
-name: MATCH live942 dual ANEX refresh v1
+name: MATCH live942 dual ANEX refresh v2
 on:
   push:
-    branches: [ops/match-live942-dual-anex-refresh-1971-20260923-v1]
+    branches: [ops/match-live942-dual-anex-refresh-1971-20260923-v2]
     paths: [.github/workflows/hotel-match-tv-multiop-targeted-turkey-v1.yml]
 permissions: {contents: read, actions: read, issues: read}
-concurrency: {group: hotel-match-live942-dual-anex-refresh-1971-20260923-v1, cancel-in-progress: false}
+concurrency: {group: hotel-match-live942-dual-anex-refresh-1971-20260923-v2, cancel-in-progress: false}
 env:
-  TV_OP: hotel-match-live942-tv-anex-refresh-1971-20260923-v1
-  SAMO_OP: hotel-match-live942-samo-anex-refresh-1971-20260923-v1
-  CLAIM_ID: '5784706620'
-  OUT: /tmp/match-live942-dual-anex-refresh-v1
+  TV_OP: hotel-match-live942-tv-anex-refresh-1971-20260923-v2
+  SAMO_OP: hotel-match-live942-samo-anex-refresh-1971-20260923-v2
+  CLAIM_ID: '5784737584'
+  OUT: /tmp/match-live942-dual-anex-refresh-v2
 jobs:
   acquire:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
@@ -34,7 +34,7 @@ jobs:
           import json,os
           c=json.load(open(os.environ['OUT']+'/claim.json')); b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          for x in [os.environ['TV_OP'],os.environ['SAMO_OP'],'exact pre-writer 942','control15','trusted MATCH SSH workflow']:
+          for x in [os.environ['TV_OP'],os.environ['SAMO_OP'],'original942','PRE-PROVIDER','ControlPath']:
               assert x in b,x
           PY
           python3 - <<'PY'
@@ -89,12 +89,12 @@ jobs:
           ssh -M -S "$sock" -fnNT -o ControlPersist=14400 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
           tv=".anytoour-match/operations/$TV_OP"; samo=".anytoour-match/operations/$SAMO_OP"
           ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "set -eu; test ! -e \"\$HOME/$tv\"; test ! -e \"\$HOME/$samo\"; mkdir -p \"\$HOME/$tv/payload\" \"\$HOME/$samo/payload\""
-          scp -S "$sock" -o ControlMaster=no "$OUT/tv/reservation.json" "$USER@$HOST:$tv/reservation.json"
-          scp -S "$sock" -o ControlMaster=no "$OUT/samo/reservation.json" "$USER@$HOST:$samo/reservation.json"
-          scp -S "$sock" -o ControlMaster=no scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php scripts/diagnostics/hotel_match_live942_tv_anex_refresh_v1.py "$USER@$HOST:$tv/payload/"
-          scp -S "$sock" -o ControlMaster=no scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php "$USER@$HOST:$samo/payload/"
+          scp -o ControlPath="$sock" -o ControlMaster=no "$OUT/tv/reservation.json" "$USER@$HOST:$tv/reservation.json"
+          scp -o ControlPath="$sock" -o ControlMaster=no "$OUT/samo/reservation.json" "$USER@$HOST:$samo/reservation.json"
+          scp -o ControlPath="$sock" -o ControlMaster=no scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php scripts/diagnostics/hotel_match_live942_tv_anex_refresh_v1.py "$USER@$HOST:$tv/payload/"
+          scp -o ControlPath="$sock" -o ControlMaster=no scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php "$USER@$HOST:$samo/payload/"
           ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php \"\$HOME/$tv/payload/hotel_match_live942_frontier_plan_v1.php\" --execute > \"\$HOME/$tv/plan.json\""
-          scp -S "$sock" -o ControlMaster=no "$USER@$HOST:$tv/plan.json" "$OUT/plan.json"
+          scp -o ControlPath="$sock" -o ControlMaster=no "$USER@$HOST:$tv/plan.json" "$OUT/plan.json"
           python3 - <<'PY'
           import json,os,pathlib
           p=json.load(open(os.environ['OUT']+'/plan.json'))
@@ -103,7 +103,7 @@ jobs:
           assert len(p['rows'])==942 and p['database_writes']==p['mapping_writes']==0
           pathlib.Path(os.environ['OUT']+'/plan-summary.json').write_text(json.dumps({k:p[k] for k in ('state','frontier_count','current_missing_count','control_written_count','missing_context_fallback','past_context_shifted')},sort_keys=True,indent=2)+'\n')
           PY
-          scp -S "$sock" -o ControlMaster=no "$OUT/plan.json" "$USER@$HOST:$samo/plan.json"
+          scp -o ControlPath="$sock" -o ControlMaster=no "$OUT/plan.json" "$USER@$HOST:$samo/plan.json"
           set +e
           ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$tv\" MATCH_PLAN_PATH=\"\$HOME/$tv/plan.json\" python3 \"\$HOME/$tv/payload/hotel_match_live942_tv_anex_refresh_v1.py\" --execute" >"$OUT/tv/stdout.txt" 2>"$OUT/tv/stderr.txt"
           tvrc=$?
@@ -112,8 +112,8 @@ jobs:
           set -e
           for side in tv samo; do
             if [[ "$side" == tv ]]; then op="$TV_OP"; else op="$SAMO_OP"; fi
-            scp -S "$sock" -o ControlMaster=no "$USER@$HOST:.anytoour-match/operations/$op/result.json" "$OUT/$side/result.json"
-            scp -S "$sock" -o ControlMaster=no "$USER@$HOST:.anytoour-match/operations/$op/receipt.json" "$OUT/$side/receipt.json"
+            scp -o ControlPath="$sock" -o ControlMaster=no "$USER@$HOST:.anytoour-match/operations/$op/result.json" "$OUT/$side/result.json"
+            scp -o ControlPath="$sock" -o ControlMaster=no "$USER@$HOST:.anytoour-match/operations/$op/receipt.json" "$OUT/$side/receipt.json"
           done
           export TVRC="$tvrc" SAMORC="$samorc"
           python3 - <<'PY'
