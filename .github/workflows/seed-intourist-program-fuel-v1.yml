@@ -24,7 +24,7 @@ jobs:
       github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.number == 3419 &&
-       github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v4')
+       github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v5')
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
@@ -65,7 +65,7 @@ jobs:
       !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v4'
+      github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v5'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -74,7 +74,7 @@ jobs:
         with:
           script: |
             const owner=226193297;
-            const command='/seed-intourist-program30-tour34-fuel-3419-v4';
+            const command='/seed-intourist-program30-tour34-fuel-3419-v5';
             const evidenceBlob='06972050d892df225b225958af98722bb1bbd509';
             const registryBlob='bf7952a3260781a135832b7af1e274860e78594c';
             if(process.env.GITHUB_RUN_ATTEMPT!=='1'||context.actor!=='pyatkoff'||
@@ -116,13 +116,18 @@ jobs:
 
           def body(path):
               s=Path(path).read_text()
-              return s[len('<?php'):] if s.startswith('<?php') else s
+              if s.startswith('<?php'):
+                  s=s[len('<?php'):]
+              s=s.lstrip()
+              if s.startswith('declare(strict_types=1);'):
+                  s=s[len('declare(strict_types=1);'):].lstrip()
+              return s
 
           evidence=body('feature/app/integrations/operator-fuel-rule-evidence.php')
           registry=body('feature/app/integrations/operator-program-fuel-registry.php')
           registry=registry.replace("require_once __DIR__ . '/operator-fuel-rule-evidence.php';",'')
           seed=body('control/scripts/diagnostics/seed_intourist_program30_tour34_fuel_v1.php')
-          source='<?php\n'+evidence+'\n'+registry+'\n'+seed
+          source='<?php\ndeclare(strict_types=1);\n'+evidence+'\n'+registry+'\n'+seed
           (Path(os.environ['RUNNER_TEMP'])/'program-fuel-seed/runtime.php').write_text(source)
           PY
           php -l "$d/runtime.php" >/dev/null
