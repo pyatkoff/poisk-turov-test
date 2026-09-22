@@ -169,3 +169,43 @@ foreach(['region','subregion'] as $key) foreach($badDestinations as $value) {
     familyCheck(str_contains($run['stderr'],'ANDROMEDA_COLLECTOR_INT'),'strict destination validation error');
 }
 echo 'ANDROMEDA_COLLECTOR_DESTINATION_CLI_OK positive='.count($destinations).' invalid='.(2*count($badDestinations)).' exact_request=1 supplier=0 db=0'."\n";
+
+// Canonical one-group probe must not fall through to the legacy queue's
+// unkeyable external rows. Actual collector, explicitly synthetic source offers.
+require_once __DIR__.'/../app/integrations/andromeda-local-offer-collector.php';
+(function():void{
+    $offer=static function(int $id):array{
+        return ['provider'=>'andromeda','offer_ref'=>'offer_'.hash('sha256','external-probe-'.$id),
+            'local_hotel_id'=>1000+$id,'operator'=>'FUN&SUN','operator_ref'=>'315',
+            'check_in'=>'2026-10-07','nights'=>[7,10,14][$id%3],'adults'=>2,'children'=>0,
+            'price'=>['amount'=>(string)(100000+$id),'currency'=>'RUB'],
+            'transport_context'=>['freight_external'=>true,'program_ref'=>'5','tour_ref'=>'3005']];
+    };
+    $valid=$offer(1);$sibling=$offer(3);$other=$offer(4);$other['transport_context']['program_ref']='6';
+    $bad=$offer(2);unset($bad['transport_context']['program_ref']);
+    $req=['generation'=>17,'params'=>['departureId'=>'1','countryId'=>'4','childs'=>[]]];
+    foreach([[$bad],[$bad,$valid,$sibling,$other]] as $offers)foreach([true,false] as $hit){
+        $captures=0;$checks=0;$saves=0;$before=$offers;$hasGroup=count($offers)>1;
+        $result=AnyTourAndromedaLocalOfferCollectorV1::collect($req,
+            static fn()=>['provider'=>'andromeda','search_ref'=>str_repeat('a',64),'pages_count'=>1,'status'=>'complete'],
+            static fn()=>array_map(static fn($o)=>['page'=>1,'offer'=>$o],$offers),static fn()=>true,
+            static function($selection)use(&$captures,$valid){
+                ++$captures;familyCheck($selection['offer_ref']===$valid['offer_ref'],'probe captured an unkeyable or different group');
+                return ['status'=>'captured','surcharge'=>['status'=>'unavailable']];
+            },
+            static function()use(&$saves){++$saves;return ['published'=>true,'readyOfferCount'=>0];},
+            1,'external_group_only',0,null,
+            static function($selection,$row)use(&$checks,$hit,$valid){
+                ++$checks;familyCheck($row===$valid,'only selected strict group is checked');return $hit;
+            });
+        familyCheck($captures===($hasGroup&&!$hit?1:0)&&$checks===($hasGroup?1:0),'one-group capture/cache counts');
+        familyCheck($result['capture_queue_offers']===($hasGroup?1:0),'no legacy fallback queue');
+        familyCheck($result['surcharge_cache_covered_offers']===($hasGroup&&$hit?2:0),'exact same-group hit coverage');
+        familyCheck($saves===1&&$offers===$before&&$result['eligible_offers']===count($offers),'keep every offer for autosave');
+    }
+    $run=familyCli(['--capture-mode=external_group_only','--max-captures=1']);
+    familyCheck($run['code']===0,'canonical probe CLI: '.$run['stderr']);
+    $events=array_column($run['trace'],1,0);
+    familyCheck($events['collector']['mode']==='external_group_only'&&$events['collector']['maxCaptures']===1,'canonical CLI forwarding');
+})();
+echo "EXTERNAL_GROUP_NO_FALLTHROUGH_OK cases=4 malformed_capture=0 cache_hit_capture=0 supplier_http=0 live_db=0\n";
