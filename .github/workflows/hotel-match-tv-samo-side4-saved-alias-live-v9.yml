@@ -1,0 +1,72 @@
+name: MATCH Side4 saved alias live v9
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-tv-samo-side4-saved-alias-live-v8.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: match-tv-samo-side4-saved-alias-1971-20260922-v9, cancel-in-progress: false}
+env:
+  OP: hotel-match-tv-samo-side4-saved-alias-1971-20260922-v9
+  BASE: 44acdfdbbf4c8f618bac375b9719bc4bf481e051
+  SOURCE_HEAD: 51da5f295574ef031c724aea1b46b4ebb72743ed
+  CLAIM: '5782801344'
+jobs:
+  live:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-side4-saved-alias-live-1971-20260922-v9' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source and reserve
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD";test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD")" = ".github/workflows/hotel-match-tv-samo-side4-saved-alias-live-v8.yml"
+          php -l scripts/diagnostics/hotel_match_tv_samo_side4_saved_alias_v9.php
+          php tests/hotel_match_tv_samo_side4_saved_alias_v9_test.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >terminal/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/commits/$SOURCE_HEAD/check-runs" >terminal/source-checks.json
+          python3 - <<'PY'
+          import json,os,pathlib,datetime
+          c=json.load(open('terminal/claim.json'));b=c['body'];assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for s in [os.environ['OP'],os.environ['BASE'],'Provider/Tourvisor/SAMO/ANEX/Andromeda HTTP0','DB reads/writes0','V7/V8 terminal operations remain no-replay']:assert s in b,s
+          xs=json.load(open('terminal/source-checks.json'))['check_runs'];ok={(x['name'],x['conclusion']) for x in xs};assert ('guard','success') in ok and ('test','success') in ok,ok
+          r={'operation':os.environ['OP'],'state':'reserved_read_only_saved_alias','source_merge':os.environ['BASE'],'ops_head':os.environ['HEAD'],'run_id':int(os.environ['GITHUB_RUN_ID']),'provider_http_calls':0,'database_reads':0,'database_writes':0,'mapping_writes':0,'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-side4-alias-v9-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90}
+      - name: Execute saved-only alias resolution
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail;umask 077;test -n "$KEY";test -n "$HOST";test -n "$USER"
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json scripts/diagnostics/hotel_match_tv_samo_side4_saved_alias_v9.php scripts/diagnostics/hotel_match_tv_samo_side4_saved_alias_current_v7.php scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_saved_v6.php scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_samo_v5.php scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\";MATCH_OPERATION_DIR=\"\$HOME/$op\" php \"\$HOME/$op/payload/hotel_match_tv_samo_side4_saved_alias_v9.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";mkdir export;for f in reservation.json result.json receipt.json;do cp \"\$f\" export/;done;tar -czf - -C export ." >terminal/server.tgz
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+            for m in t.getmembers():
+              n=m.name.lstrip('./')
+              if m.isfile():pathlib.Path('terminal',n).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only_saved_alias'
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert q['provider_accessed'] is False and r['provider_http_calls']==r['database_reads']==r['database_writes']==r['mapping_writes']==0
+          assert r['scope']['retained_tv_hotels']==140 and r['scope']['retained_tv_offers']==1809 and r['scope']['retained_samo_offers']==779
+          assert r['resolver']['baseline_exact_count']==3 and r['resolver']['unresolved_tv_hotels']==137
+          assert r['resolver']['alias']['tv_hotels']==137 and r['resolver']['alias']['samo_hotels']==569
+          print(json.dumps({'state':r['state'],'baseline':3,'strong_alias':r['resolver']['alias']['strong_count'],'review':r['resolver']['alias']['review_count']}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-side4-alias-v9-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
+
