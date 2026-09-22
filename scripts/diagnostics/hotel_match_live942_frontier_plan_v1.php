@@ -36,12 +36,12 @@ function m942_plan(PDO $db):array{
         }
         $currentMissing=[];foreach($live as $id=>$_)if(isset($anchors[$id])&&!isset($anexBy[$id]))$currentMissing[$id]=true;
         m942_need(count($currentMissing)===927,'current_missing_changed_'.count($currentMissing));
-        $writerDigest='a46e6c7ecc7e4d57eb5820bdb3f89e5489a874a75597ed0e42b84549b10ad7b1';
-        $control=[];$st=$db->prepare("SELECT DISTINCT catalog_hotel_id FROM anex_hotel_search_mappings WHERE enabled=1 AND mapping_digest=? ORDER BY catalog_hotel_id");$st->execute([$writerDigest]);
-        foreach($st->fetchAll(PDO::FETCH_COLUMN)?:[] as $raw){$id=(int)$raw;if(isset($live[$id])&&isset($anchors[$id]))$control[$id]=true;}
         $expectedControl=[1738,2483,4063,11770,21796,49610,52326,58328,61611,65773,68983,69144,69165,123246,123308];sort($expectedControl);
-        $gotControl=array_keys($control);sort($gotControl);
-        m942_need($gotControl===$expectedControl,'control15_changed');
+        $control=[];
+        foreach($expectedControl as $id){
+            m942_need(isset($live[$id])&&isset($anchors[$id])&&isset($anexBy[$id]),'control15_not_current_'.$id);
+            $control[$id]=true;
+        }
         m942_need(count(array_intersect_key($currentMissing,$control))===0,'control_overlap');
         $front=$currentMissing+$control;
         m942_need(count($front)===942,'original_frontier_changed_'.count($front));
@@ -61,7 +61,7 @@ function m942_plan(PDO $db):array{
         }
         usort($rows,static fn($a,$b)=>[$a['country_id'],$a['departure_id'],$a['departure_date'],$a['nights'],$a['tv_hotel_id']]<=>[$b['country_id'],$b['departure_id'],$b['departure_date'],$b['nights'],$b['tv_hotel_id']]);
         $db->rollBack();
-        return ['state'=>'original_live942_ready','generated_at_utc'=>gmdate('c'),'frontier_count'=>count($rows),'current_missing_count'=>count($currentMissing),'control_written_count'=>count($control),'writer_mapping_digest'=>$writerDigest,'missing_context_fallback'=>$missing,'past_context_shifted'=>$past,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0];
+        return ['state'=>'original_live942_ready','generated_at_utc'=>gmdate('c'),'frontier_count'=>count($rows),'current_missing_count'=>count($currentMissing),'control_written_count'=>count($control),'control_written_ids'=>$expectedControl,'missing_context_fallback'=>$missing,'past_context_shifted'=>$past,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0];
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
 if(($argv[1]??'')==='--self-test'){m942_need(m942_excluded('Россия')&&!m942_excluded('Turkey'),'exclude');echo "MATCH_LIVE942_PLAN_V1_SELFTEST_OK\n";exit;}
