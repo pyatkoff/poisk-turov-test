@@ -49,6 +49,14 @@ function s942_catalog(string $path,int $localCountry):array{
     $p=$localCountry===1?$path:dirname($path).'/countries/'.$localCountry.'.json';
     s942_need(is_file($p)&&!is_link($p),'catalog_missing_'.$localCountry);return s942_read($p);
 }
+function s942_private_config(string $root):array{
+    foreach([$root.'/_preview/search3-anex-candidate/.andromeda-private.php',$root.'/v2/.andromeda-private.php'] as $path){
+        if(!is_file($path)||is_link($path))continue;
+        $cfg=require $path;
+        if(is_array($cfg)&&($cfg['enabled']??false)===true&&is_string($cfg['catalog_path']??null)&&$cfg['catalog_path']!=='')return $cfg;
+    }
+    throw new RuntimeException('andromeda_private_config_missing');
+}
 function s942_execute(string $root,string $dir,string $planPath,string $sourceSha):int{
     $plan=s942_read($planPath);$res=s942_read($dir.'/reservation.json');
     s942_need(($res['operation']??'')===OP&&($plan['frontier_count']??0)===942&&count($plan['rows']??[])===942,'input_guard');
@@ -57,8 +65,7 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
     $scope=array_slice($plan['rows'],$offset,$limit);
     $app=$root.'/app/integrations';if(!is_dir($app))$app=$root.'/v2/app/integrations';
     require_once $app.'/andromeda-client.php';require_once $app.'/andromeda-transport.php';
-    $v2=$root.'/v2';$cfg=require $v2.'/.andromeda-private.php';
-    s942_need(($cfg['enabled']??false)===true&&is_string($cfg['catalog_path']??null)&&$cfg['catalog_path']!=='','config');
+    $cfg=s942_private_config($root);
     $private=dirname($cfg['catalog_path']);$calls=0;$transport=new AnyTourAndromedaTransport(true);
     $wrap=function($url,$opts)use($transport,$private,&$calls,$dir){
         $next=$calls+1;s942_need($next<=MAX_HTTP,'operation_http_cap');s942_budget($private,OP,$next);$calls=$next;
@@ -147,6 +154,9 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
         $ids=s942_ids([['id'=>1,'name'=>'Moscow','lName'=>'Москва'],['id'=>2,'name'=>'Kazan','lName'=>'Казань']],['Москва']);s942_need($ids===[1],'townfrom');
         s942_need(s942_date_ymd('2026-10-11')==='20261011'&&s942_date_ymd('2026-99-11')===null,'date');
         s942_need(s942_child_ages(2,'5, 12')===[5,12]&&s942_child_ages(1,'')===null,'ages');
+        $tmp=sys_get_temp_dir().'/s942cfg-'.bin2hex(random_bytes(4));mkdir($tmp,0700,true);mkdir($tmp.'/_preview/search3-anex-candidate',0700,true);
+        file_put_contents($tmp.'/_preview/search3-anex-candidate/.andromeda-private.php',"<?php return ['enabled'=>true,'catalog_path'=>'/tmp/catalog.json'];");
+        s942_need((s942_private_config($tmp)['catalog_path']??'')==='/tmp/catalog.json','private_config');unlink($tmp.'/_preview/search3-anex-candidate/.andromeda-private.php');rmdir($tmp.'/_preview/search3-anex-candidate');rmdir($tmp.'/_preview');rmdir($tmp);
         echo "MATCH_LIVE942_SAMO_ANEX_REFRESH_V3_SELFTEST_OK\n";exit;
     }
     s942_need(($argv[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$plan=(string)getenv('MATCH_PLAN_PATH');$sha=(string)getenv('MATCH_SOURCE_SHA');
