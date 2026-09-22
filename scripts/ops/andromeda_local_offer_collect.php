@@ -72,6 +72,9 @@ $to=$date($args['date-to']??$from);
 $nights=$int($args['nights']??'7',1,28);
 $adults=$int($args['adults']??'2',1,6);
 $meal=$args['meal']??'7';
+$operatorIds=[];
+$operatorRaw=$args['operator-id']??'';
+if($operatorRaw!=='')$operatorIds=[(string)$int($operatorRaw,1,999999999)];
 $generation=$int($args['generation']??'17171801',1,2147483647);
 // Background collection persists fresh PRICE results and reuses retained pricing;
 // package/quote actualization is opt-in only and never enabled by the default CLI.
@@ -88,7 +91,7 @@ $params=[
     'dateFrom'=>$from,'dateTo'=>$to,'nightsFrom'=>$nights,'nightsTo'=>$nights,
     'adults'=>$adults,'childs'=>$childAges,'meal'=>$meal,'hotelCategory'=>'','hotelRating'=>'',
     'hotelTypes'=>[],'hotelIds'=>[],'hotelServices'=>[],'arrivalId'=>'','regionIds'=>$destinationIds['region'],
-    'subregionIds'=>$destinationIds['subregion'],'operatorIds'=>[],'priceFrom'=>'','priceTo'=>'','currency'=>'RUB',
+    'subregionIds'=>$destinationIds['subregion'],'operatorIds'=>$operatorIds,'priceFrom'=>'','priceTo'=>'','currency'=>'RUB',
     'onlyCharter'=>false,'onlyDirect'=>false,
 ];
 $request=['generation'=>$generation,'params'=>$params];
