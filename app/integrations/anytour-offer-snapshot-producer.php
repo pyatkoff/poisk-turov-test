@@ -26,6 +26,11 @@ final class AnyTourIntOfferSnapshotProducerV1
         'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money', 'operator_fuel'
     ];
 
+    private const OWNER_FUEL_POLICY_OFFER_KEYS = [
+        'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money',
+        'confirmation_required', 'fuel_owner_policy'
+    ];
+
     /**
      * @param callable(string,array,array,DateTimeImmutable):array $ingest
      */
@@ -63,13 +68,16 @@ final class AnyTourIntOfferSnapshotProducerV1
         $confirmationCount = 0;
         $nowTs = $now->getTimestamp();
         $fuelApplied = 0; $fuelRules = []; $fuelRejections = []; $fuelInputCount = 0;
+        $ownerPolicyInput = 0; $ownerPolicyApplied = 0; $ownerPolicyRejections = [];
 
         foreach ($refresh['offers'] as $entry) {
             $verifiedShape = is_array($entry) && self::exactKeys($entry, self::VERIFIED_OFFER_KEYS);
             $confirmationShape = is_array($entry) && self::exactKeys($entry, self::CONFIRMATION_OFFER_KEYS);
             $fuelShape = is_array($entry) && self::exactKeys($entry, self::FUEL_OFFER_KEYS);
+            $ownerPolicyShape = is_array($entry) && self::exactKeys($entry, self::OWNER_FUEL_POLICY_OFFER_KEYS);
             if (!is_array($entry)
-                || (!self::exactKeys($entry, self::OFFER_KEYS) && !$verifiedShape && !$confirmationShape && !$fuelShape)) {
+                || (!self::exactKeys($entry, self::OFFER_KEYS) && !$verifiedShape && !$confirmationShape
+                    && !$fuelShape && !$ownerPolicyShape)) {
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_OFFER');
             }
             $offer = $entry['offer'];
@@ -77,7 +85,8 @@ final class AnyTourIntOfferSnapshotProducerV1
             $current = $entry['current'];
             $pricedMoney = $entry['priced_money'];
             $verifiedQuote = $verifiedShape ? $entry['verified_quote'] : null;
-            $confirmationRequired = $confirmationShape ? $entry['confirmation_required'] : false;
+            $confirmationRequired = ($confirmationShape || $ownerPolicyShape)
+                ? $entry['confirmation_required'] : false;
             if (!is_array($offer) || ($offer['provider'] ?? null) !== $provider
                 || !is_array($retained) || !is_array($current)
                 || ($pricedMoney !== null && !is_array($pricedMoney))
@@ -85,7 +94,11 @@ final class AnyTourIntOfferSnapshotProducerV1
                 || ($verifiedShape && $pricedMoney !== null)
                 || ($confirmationShape && ($confirmationRequired !== true || $pricedMoney !== null))
                 || ($fuelShape && (!is_array($entry['operator_fuel']) || $pricedMoney !== null))
-                || ($verifiedShape && $confirmationShape)) {
+                || ($ownerPolicyShape && (
+                    $confirmationRequired !== true || $pricedMoney !== null
+                    || !is_array($entry['fuel_owner_policy'])
+                ))
+                || ($verifiedShape && ($confirmationShape || $ownerPolicyShape))) {
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_OFFER');
             }
 
@@ -133,6 +146,21 @@ final class AnyTourIntOfferSnapshotProducerV1
                 } else {
                     $reason = $fuel['reason'];
                     $fuelRejections[$reason] = ($fuelRejections[$reason] ?? 0) + 1;
+                }
+            } elseif ($ownerPolicyShape) {
+                require_once __DIR__ . '/biblio-fuel-owner-policy.php';
+                $baseDto = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
+                    $offer, $retained, $current, $nowTs
+                );
+                $policy = AnyTourBiblioFuelOwnerPolicyV1::apply($baseDto, $entry['fuel_owner_policy']);
+                $dto = $policy['dto'];
+                ++$ownerPolicyInput;
+                $confirmationRequired = true;
+                if ($policy['applied']) {
+                    ++$ownerPolicyApplied;
+                } else {
+                    $reason = $policy['reason'];
+                    $ownerPolicyRejections[$reason] = ($ownerPolicyRejections[$reason] ?? 0) + 1;
                 }
             } elseif ($confirmationRequired === true) {
                 $dto = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
@@ -234,7 +262,11 @@ final class AnyTourIntOfferSnapshotProducerV1
             'inputOfferCount' => $fuelInputCount, 'appliedOfferCount' => $fuelApplied,
             'ruleCount' => count($fuelRules), 'rejections' => $fuelRejections,
         ]];
-        return $fuelReceipt + [
+        $policyReceipt = $ownerPolicyInput === 0 ? [] : ['operatorFuelPolicy' => [
+            'inputOfferCount' => $ownerPolicyInput, 'appliedOfferCount' => $ownerPolicyApplied,
+            'rejections' => $ownerPolicyRejections,
+        ]];
+        return $fuelReceipt + $policyReceipt + [
             'source' => 'anytour-int-offer-snapshot-producer-v1',
             'provider' => $provider,
             'published' => true,
