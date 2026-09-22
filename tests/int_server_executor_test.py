@@ -132,6 +132,28 @@ class ParseTest(unittest.TestCase):
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
 
+
+class ProgramFuelProbeSourceTest(unittest.TestCase):
+    def test_generic_probe_source_is_bounded(self):
+        source=SCRIPT.parents[2]/'scripts/diagnostics/int_andromeda_program_getflights_probe_v1.php'
+        text=source.read_text()
+        run=subprocess.run(['php','-l',str(source)],capture_output=True,text=True)
+        self.assertEqual(0,run.returncode,run.stderr)
+        for required in [
+            "int-andromeda-program-getflights-probe-v1",
+            "INT_PROGRAM_PROBE_TARGET_OPERATION","INT_PROGRAM_PROBE_OPERATOR_FAMILY",
+            "INT_PROGRAM_PROBE_PROGRAM_KEY","INT_PROGRAM_PROBE_TOUR_KEY",
+            "INT_PROGRAM_PROBE_SAMPLE_INDEX","distinct_spo",
+            "anytour_andromeda_quote_supplier","->package(","->getFlights(",
+            "cheapestRequiredFlightSelection","reportedFuelSurcharges",
+            "'changeservice'=>0","'calc'=>0","'booking'=>0",
+            "'database_writes'=>0","'final_price_verified'=>false",
+        ]:
+            self.assertIn(required,text)
+        self.assertEqual(1,text.count("->getFlights("))
+        for forbidden in ["->changeService(","->calc(","bron_ticket","action=bron","'supplier_offer_id'=>"]:
+            self.assertNotIn(forbidden,text)
+
 class CoordinatorTest(unittest.TestCase):
     def test_only_current_journal_can_authorize_a_server_command(self):
         body=f'/run-int-server-v1 {SHA} anex-demand int-anex-current-demand-20260922-v1 3'
