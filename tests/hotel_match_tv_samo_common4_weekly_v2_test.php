@@ -146,6 +146,10 @@ hmc_need(str_contains($source,"'CHECKIN_BEG'=>\$ymd,'CHECKIN_END'=>\$ymdTo"),'sa
 hmc_need(str_contains($source,"if(\$requests===0)"),'explicit_continue_exhaustion');
 hmc_need(!str_contains($source,'hmc_enrich_tv_anex(\$tvRows'),'no_mass_detail_invocation');
 hmc_need(str_contains($source,"'detail_queue_state'=>'pending_current_and_fuel_reconcile'"),'selective_detail_deferred');
+hmc_need(!str_contains($source,'v2_data_tv_get('),'no_hidden_tv_retry_client');
+hmc_need(str_contains($source,"hmc_private_evidence_record_raw('tourvisor'"),'tv_raw_bytes');
+hmc_need(str_contains($source,"hmc_private_evidence_record_raw('samo-price'"),'samo_raw_bytes');
+hmc_need(str_contains($source,"'tv_tariff_search_units'=>\$GLOBALS['HMC_TV_TARIFF_UNITS']"),'tv_tariff_units');
 
 $tmp=sys_get_temp_dir().'/hmc2-'.bin2hex(random_bytes(5));
 mkdir($tmp,0700,true);
@@ -156,5 +160,17 @@ hmc_need(count($files)===1,'private_evidence_file');
 hmc_need(hash_file('sha256',$files[0])===$sha,'private_evidence_hash');
 hmc_need(($GLOBALS['HMC_PRIVATE_EVIDENCE_HASHES']??[])===[$sha],'private_hash_projection');
 array_map('unlink',$files);rmdir($tmp.'/evidence-private');rmdir($tmp);
+
+$GLOBALS['HMC_PRIVATE_EVIDENCE_HASHES']=[];
+$tmp=sys_get_temp_dir().'/hmc2raw-'.bin2hex(random_bytes(5));
+mkdir($tmp,0700,true);hmc_private_evidence_init($tmp);
+$raw="\x00raw\nbytes\xff";
+$rawSha=hmc_private_evidence_record_raw('tourvisor',['path'=>'/tours/search'],429,$raw);
+$bins=glob($tmp.'/evidence-private/*.bin')?:[];$metas=glob($tmp.'/evidence-private/*.meta.json')?:[];
+hmc_need(count($bins)===1&&count($metas)===1,'raw_evidence_pair');
+hmc_need(file_get_contents($bins[0])===$raw&&hash_file('sha256',$bins[0])===$rawSha,'raw_exact_bytes');
+$meta=json_decode((string)file_get_contents($metas[0]),true,32,JSON_THROW_ON_ERROR);
+hmc_need(($meta['http_status']??null)===429&&($meta['raw_sha256']??null)===$rawSha,'raw_meta');
+array_map('unlink',array_merge($bins,$metas));rmdir($tmp.'/evidence-private');rmdir($tmp);
 
 echo "MATCH_TV_SAMO_COMMON4_WEEKLY_V2_TEST_OK\n";
