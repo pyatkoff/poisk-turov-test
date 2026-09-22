@@ -1,7 +1,7 @@
 (function(){'use strict';
 if(window.V2CurrentPriceCalendar)return;
 const money=new Intl.NumberFormat('ru-RU'),dayFormatter=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',weekday:'short',timeZone:'UTC'});
-let terminal=false,filteredItems=null,disclosureOpen=null,pendingFocus=false,selectedDate='',availableDays=[];
+let terminal=false,localDbReady=false,filteredItems=null,disclosureOpen=null,pendingFocus=false,selectedDate='',availableDays=[];
 function dateValue(raw){
 const s=String(raw||'').trim(),iso=s.match(/^(\d{4})-(\d{2})-(\d{2})$/),local=iso?null:s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
 if(!iso&&!local)return'';
@@ -104,10 +104,12 @@ updateNavigation(box);
 return days;}
 function clear(){disclosureOpen=null;selectedDate='';availableDays=[];const box=document.getElementById('currentPriceCalendar'),restoreFocus=box&&box.contains(document.activeElement);if(box){box.hidden=true;box.innerHTML='';}if(restoreFocus){pendingFocus=true;focusFallback();}}
 function complete(event){terminal=true;render(filteredItems||event&&event.detail&&event.detail.items);if(pendingFocus){pendingFocus=false;focusFallback();}}
-function reset(event){if(!(event&&event.detail&&event.detail.dirty)){terminal=false;filteredItems=null;}clear();}
+function providerStatus(event){const detail=event&&event.detail||{};if(detail.provider!=='local-db'||detail.status!=='complete')return;localDbReady=true;if(filteredItems)render(filteredItems);}
+function reset(event){if(!(event&&event.detail&&event.detail.dirty)){terminal=false;localDbReady=false;filteredItems=null;}clear();}
 window.addEventListener('v2:search-complete',complete);
 window.addEventListener('v2:search-continued',complete);
-window.addEventListener('search3:local-results-filtered',e=>{filteredItems=e&&e.detail&&e.detail.items;if(terminal)render(filteredItems);});
+window.addEventListener('v2:provider-status',providerStatus);
+window.addEventListener('search3:local-results-filtered',e=>{filteredItems=e&&e.detail&&e.detail.items;if(terminal||localDbReady)render(filteredItems);});
 window.addEventListener('v2:search-started',reset);
 window.addEventListener('v2:search-reset',reset);
 window.addEventListener('resize',()=>updateNavigation(document.getElementById('currentPriceCalendar')),{passive:true});
@@ -126,5 +128,5 @@ const date=dateValue(btn.dataset.calendarDate);if(!date||!availableDays.some(day
 e.preventDefault();
 if(document.body.classList.contains('search3-candidate')){selectedDate=date;updateSelection(box);}else submitDate(date);
 });
-window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:4};
+window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:5};
 })();
