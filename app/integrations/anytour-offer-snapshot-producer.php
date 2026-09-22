@@ -26,6 +26,10 @@ final class AnyTourIntOfferSnapshotProducerV1
         'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money', 'operator_fuel'
     ];
 
+    private const PROGRAM_FUEL_OFFER_KEYS = [
+        'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money', 'program_fuel'
+    ];
+
     private const OWNER_FUEL_POLICY_OFFER_KEYS = [
         'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money',
         'confirmation_required', 'fuel_owner_policy'
@@ -68,16 +72,18 @@ final class AnyTourIntOfferSnapshotProducerV1
         $confirmationCount = 0;
         $nowTs = $now->getTimestamp();
         $fuelApplied = 0; $fuelRules = []; $fuelRejections = []; $fuelInputCount = 0;
+        $programFuelApplied = 0; $programFuelRules = []; $programFuelRejections = []; $programFuelInput = 0;
         $ownerPolicyInput = 0; $ownerPolicyApplied = 0; $ownerPolicyRejections = [];
 
         foreach ($refresh['offers'] as $entry) {
             $verifiedShape = is_array($entry) && self::exactKeys($entry, self::VERIFIED_OFFER_KEYS);
             $confirmationShape = is_array($entry) && self::exactKeys($entry, self::CONFIRMATION_OFFER_KEYS);
             $fuelShape = is_array($entry) && self::exactKeys($entry, self::FUEL_OFFER_KEYS);
+            $programFuelShape = is_array($entry) && self::exactKeys($entry, self::PROGRAM_FUEL_OFFER_KEYS);
             $ownerPolicyShape = is_array($entry) && self::exactKeys($entry, self::OWNER_FUEL_POLICY_OFFER_KEYS);
             if (!is_array($entry)
                 || (!self::exactKeys($entry, self::OFFER_KEYS) && !$verifiedShape && !$confirmationShape
-                    && !$fuelShape && !$ownerPolicyShape)) {
+                    && !$fuelShape && !$programFuelShape && !$ownerPolicyShape)) {
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_OFFER');
             }
             $offer = $entry['offer'];
@@ -94,6 +100,7 @@ final class AnyTourIntOfferSnapshotProducerV1
                 || ($verifiedShape && $pricedMoney !== null)
                 || ($confirmationShape && ($confirmationRequired !== true || $pricedMoney !== null))
                 || ($fuelShape && (!is_array($entry['operator_fuel']) || $pricedMoney !== null))
+                || ($programFuelShape && (!is_array($entry['program_fuel']) || $pricedMoney !== null))
                 || ($ownerPolicyShape && (
                     $confirmationRequired !== true || $pricedMoney !== null
                     || !is_array($entry['fuel_owner_policy'])
@@ -128,6 +135,25 @@ final class AnyTourIntOfferSnapshotProducerV1
                 $dto['finalPrice'] = $verifiedAmount;
                 $dto['price'] = $verifiedAmount;
                 $dto['currency'] = 'RUB';
+            } elseif ($programFuelShape) {
+                require_once __DIR__ . '/operator-program-fuel-registry.php';
+                $baseDto = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
+                    $offer, $retained, $current, $nowTs
+                );
+                $programFuel = AnyTourOperatorProgramFuelRegistryV1::apply(
+                    $baseDto, $entry['program_fuel'], $nowTs
+                );
+                $dto = $programFuel['dto'];
+                ++$programFuelInput;
+                $confirmationRequired = !$programFuel['applied'];
+                if ($programFuel['applied']) {
+                    ++$programFuelApplied;
+                    $ruleSha = $dto['money']['operator_program_fuel_rule']['rule_sha256'] ?? null;
+                    if (is_string($ruleSha)) $programFuelRules[$ruleSha] = true;
+                } else {
+                    $reason = $programFuel['reason'];
+                    $programFuelRejections[$reason] = ($programFuelRejections[$reason] ?? 0) + 1;
+                }
             } elseif ($fuelShape) {
                 require_once __DIR__ . '/three-provider-fuel-evidence.php';
                 // Validate the canonical source and its own price BEFORE applying
@@ -262,11 +288,15 @@ final class AnyTourIntOfferSnapshotProducerV1
             'inputOfferCount' => $fuelInputCount, 'appliedOfferCount' => $fuelApplied,
             'ruleCount' => count($fuelRules), 'rejections' => $fuelRejections,
         ]];
+        $programFuelReceipt = $programFuelInput === 0 ? [] : ['operatorProgramFuel' => [
+            'inputOfferCount' => $programFuelInput, 'appliedOfferCount' => $programFuelApplied,
+            'ruleCount' => count($programFuelRules), 'rejections' => $programFuelRejections,
+        ]];
         $policyReceipt = $ownerPolicyInput === 0 ? [] : ['operatorFuelPolicy' => [
             'inputOfferCount' => $ownerPolicyInput, 'appliedOfferCount' => $ownerPolicyApplied,
             'rejections' => $ownerPolicyRejections,
         ]];
-        return $fuelReceipt + $policyReceipt + [
+        return $fuelReceipt + $programFuelReceipt + $policyReceipt + [
             'source' => 'anytour-int-offer-snapshot-producer-v1',
             'provider' => $provider,
             'published' => true,
