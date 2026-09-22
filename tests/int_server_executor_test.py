@@ -271,6 +271,7 @@ class ContractTest(unittest.TestCase):
                   "local-readback","local_readback_exit","stderr_sha256",
                   "program-fuel-readback","program_fuel_readback","program_fuel_readback_php_b64",
                   "program_fuel_readback_acceptance","program_fuel_readback_db_drift",
+                  "int-program-fuel-readback-wrapper-v1","set_exception_handler","diagnostic_status","partial",
                   "program-fuel-probe","program_fuel_probe","program_fuel_probe_php_b64",
                   "program_fuel_probe_acceptance","program_fuel_probe_db_drift",
                   "LOCAL_READER_MISSING","LOCAL_DB_CONNECTION","LOCAL_DB_NOT_CONFIGURED",
