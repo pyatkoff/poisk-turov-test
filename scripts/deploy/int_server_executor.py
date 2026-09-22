@@ -73,6 +73,7 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 3, 'command_shape')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'program-fuel-readback':
+        # Supplier-free exact DB/retained-cohort acceptance through the permanent SSH lane.
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'program_fuel_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
