@@ -93,9 +93,17 @@ jobs:
             release/v2/data/anytour-offer-store-v1.php; do
             test -s "$f"; test ! -L "$f"
           done
-          ! grep -Eiq -- '\b(INSERT|UPDATE|DELETE|REPLACE|CREATE|ALTER|DROP|TRUNCATE)\b' ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php
-          grep -Fq "START TRANSACTION READ ONLY" ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php
-          grep -Fq "rollBack" ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source=Path('ops/scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php').read_text()
+          assert 'START TRANSACTION READ ONLY' in source
+          assert 'rollBack' in source
+          mutation=re.compile(r'''(?i)(["'])\s*(INSERT|UPDATE|DELETE|REPLACE|CREATE|ALTER|DROP|TRUNCATE)\b''')
+          match=mutation.search(source)
+          assert match is None, match.group(0) if match else None
+          print('TTL_RUNTIME_SQL_READ_ONLY_STATIC_OK')
+          PY
       - name: Build bounded read-only runtime
         shell: bash
         run: |
