@@ -12,15 +12,23 @@ function snapshot(params,providers=['tourvisor']){
 const live=(n=1)=>Array.from({length:n},(_,i)=>({id:101+i,provider:'tourvisor',tours:[{id:'fictional-live-'+i,provider:'tourvisor',price:1500000+i,date:trip.from,nights:7,meal:{name:'AI'},roomType:'STANDARD',operator:{name:'FICTIONAL TV'}}]}));
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
-function harness({database,api,onEvent}={}){
- const events=[],calls=[],dbBodies=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
+function harness({database,api,onEvent,native}={}){
+ const events=[],calls=[],dbBodies=[],nativeCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
+  const target=new URL(url,'https://anytoour.ru/');
+  if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'){
+   assert.ok(native,'unexpected Andromeda request');
+   const body=JSON.parse(options.body);nativeCalls.push(structuredClone(body));
+   const result=await native(body,options.signal,nativeCalls);
+   if(result&&result.response)return result.response;
+   return {ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:body.generation,hotels:[]}})};
+  }
   if(String(url).includes('search3-local-results-read')){
    const params=JSON.parse(options.body).params;dbBodies.push(structuredClone(params));
    const data=database?await database(++readIndex,params,options.signal):snapshot(params);
    return {ok:true,json:async()=>({ok:true,data})};
   }
-  const target=new URL(url,'https://anytoour.ru/'),ids=target.searchParams.getAll('legacyHotelIds[]');
+  const ids=target.searchParams.getAll('legacyHotelIds[]');
   assert.ok(target.pathname.endsWith('/data/hotel-details-read-v1.php'),'unexpected request '+url);
   return {ok:true,json:async()=>({ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,items:ids.map(profile),links:ids.map(id=>({legacyHotelId:id,anytourHotelId:Number(id)+400})),missingLegacyIds:[]})};
  };
@@ -34,6 +42,7 @@ function harness({database,api,onEvent}={}){
   throw Error('unexpected API '+action);
  }};
  const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
+ if(native)win.V2_CONFIG={andromedaApi:'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'};
  const bus=new EventTarget();win.addEventListener=bus.addEventListener.bind(bus);win.removeEventListener=bus.removeEventListener.bind(bus);win.dispatchEvent=bus.dispatchEvent.bind(bus);
  const sandbox={window:win,fetch,URL,URLSearchParams,AbortController,DOMException,structuredClone,console,setTimeout:win.setTimeout,clearTimeout:win.clearTimeout};
  vm.createContext(sandbox);
@@ -43,7 +52,7 @@ function harness({database,api,onEvent}={}){
  const poll=async()=>{const entry=[...timers].find(([,value])=>value.delay<=2500);assert.ok(entry,'pending poll required');timers.delete(entry[0]);await entry[1].fn();await flush();};
  const latest=()=>events.filter(e=>e.type==='results').at(-1)?.hotels||[];
  const providers=()=>[...new Set(latest().flatMap(h=>h.offers.map(o=>o.provider)))].sort();
- return {data,start,poll,events,calls,dbBodies,latest,providers,timers,get searchId(){return currentId;}};
+ return {data,start,poll,events,calls,dbBodies,nativeCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
 test('unlimited and explicit premium budgets use the exact request',async()=>{
@@ -62,6 +71,28 @@ test('offers stored during a search are loaded without another search start',asy
  const h=harness({database:(i,p)=>snapshot(p,i===1?['tourvisor']:['tourvisor','anex','andromeda'])});
  await h.start();assert.deepEqual(h.providers(),['tourvisor']);await h.poll();assert.deepEqual(h.providers(),['andromeda','anex','tourvisor']);
  assert.equal(h.calls.filter(c=>c.action==='search_start').length,1);
+});
+test('one user search invokes Andromeda autosave once and rereads LOCAL after it completes',async()=>{
+ let saved=false;const gate=defer();
+ const h=harness({
+  native:async body=>{await gate.promise;saved=true;return {response:{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:body.generation,hotels:[{local_id:777}]}})}};},
+  database:(i,p)=>snapshot(p,saved?['tourvisor','andromeda']:['tourvisor'])
+ });
+ await h.start();assert.equal(h.nativeCalls.length,1);assert.equal(h.nativeCalls[0].generation,1);
+ assert.deepEqual(h.nativeCalls[0].params,h.data.params(trip));await h.poll();assert.deepEqual(h.providers(),['tourvisor']);
+ gate.resolve();await flush();assert.equal(h.nativeCalls.length,1);assert.deepEqual(h.providers(),['andromeda','tourvisor']);
+ assert.equal(h.dbBodies.length,3);assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='complete'));
+});
+test('Andromeda failure is isolated from TV and LOCAL inventory',async()=>{
+ const h=harness({native:async()=>({response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}})});
+ await h.start();await flush();await h.poll();assert.ok(h.latest().length);
+ assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='error'));
+ assert.ok(h.events.some(e=>e.type==='complete'));assert.equal(h.nativeCalls.length,1);
+});
+test('stopped generation ignores a late Andromeda completion and does not reread LOCAL',async()=>{
+ const gate=defer();const h=harness({native:async body=>{await gate.promise;return {response:{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:body.generation,hotels:[]}})}};}});
+ await h.start();assert.equal(h.nativeCalls.length,1);const before=h.dbBodies.length;h.data.stop();gate.resolve();await flush();
+ assert.equal(h.dbBodies.length,before);assert.equal(h.events.some(e=>e.type==='provider'&&e.status==='complete'),false);
 });
 test('127 hotels are requested and retained, not the former 100',async()=>{
  const h=harness({api:action=>action==='search_results'?live(127):undefined});await h.start();await h.poll();
