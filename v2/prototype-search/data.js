@@ -3,7 +3,8 @@
   // Presentation adapter only. Existing API actions, source DTOs and DB guards stay authoritative.
   const rt = root.V2Runtime;
   const local = '/_preview/search3-local-candidate/';
-  const catalog = { departures: [], countries: [], meals: [] };
+  const catalog = { departures: [], countries: [], meals: [], regions: {} };
+  const regionRequests=new Map();
   const quoteReceipts = new WeakMap();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
@@ -19,6 +20,25 @@
   const plus = (d, n) => new Date(new Date(d + 'T12:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
   function meal(value){const label=text(value),record=catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)||text(x).toLocaleLowerCase('ru-RU')===label.toLocaleLowerCase('ru-RU')),full=text(value?.fullName)||text(record?.fullName);return full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?full:label;}
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
+  async function regions(country) {
+    const key=String(country);
+    if(catalog.regions[key])return catalog.regions[key];
+    if(regionRequests.has(key))return regionRequests.get(key);
+    const request=rt.api('regions',{countryId:key}).then(rows=>{
+      if(!Array.isArray(rows))throw new Error('Не удалось загрузить курорты.');
+      const seen=new Set(),items=[];
+      for(const row of rows){const id=String(row?.id||''),name=text(row).trim();if(!/^[1-9][0-9]*$/.test(id)||!name||seen.has(id)||String(row.countryId)!==key)throw new Error('Не удалось проверить справочник курортов.');seen.add(id);items.push({id,name,country:key});}
+      catalog.regions[key]=items;return items;
+    }).finally(()=>regionRequests.delete(key));
+    regionRequests.set(key,request);return request;
+  }
+  function regionIds(s,filters) {
+    return (filters.resorts||[]).map(name=>{
+      const found=(catalog.regions[String(s.country)]||[]).filter(row=>row.name===name);
+      if(found.length!==1)throw new Error('Выберите курорт из загруженного справочника.');
+      return found[0].id;
+    });
+  }
   function params(s, hotelIds = [], filters = {}) {
     const departure = catalog.departures.find(x => text(x) === s.origin || String(x.id) === s.origin);
     if (!departure || !catalog.countries.some(x => String(x.id) === String(s.country))) throw new Error('Выберите город вылета и страну из загруженного списка.');
@@ -27,7 +47,7 @@
     if (!Number.isInteger(s.minNights) || !Number.isInteger(s.maxNights) || s.minNights < 1 || s.maxNights > 28 || s.maxNights < s.minNights || s.maxNights - s.minNights > 10) throw new Error('Проверьте диапазон ночей.');
     const chosenMeal=filters.meals?.length===1?catalog.meals.find(x=>meal(x)===filters.meals[0]):null;
     const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
-    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:chosenMeal?String(chosenMeal.id):'',hotelCategory:stars.length?String(Math.min(...stars)):'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max!==null&&filters.max!==undefined&&filters.max!==''?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
+    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:chosenMeal?String(chosenMeal.id):'',hotelCategory:stars.length?String(Math.min(...stars)):'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:regionIds(s,filters),subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max!==null&&filters.max!==undefined&&filters.max!==''?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
   }
   function sameScope(request, response) {
     if (!response || response.scopeVersion !== 1 || Object.keys(response).length !== Object.keys(request).length + 1) return false;
@@ -203,6 +223,47 @@
     }
     return result;
   }
+  function observationScopeSupported(s,filters={}) {
+    // Existing observation reader describes two adults, no children, with an
+    // optional single region. Never use its aggregate for unsupported filters.
+    if(s.adults!==2||s.ages.length||filters.hotelId||filters.q||filters.min>0
+      ||filters.max!==undefined&&filters.max!==null&&filters.max!==''
+      ||['stars','meals','operators','flight','amenities'].some(key=>filters[key]?.length)
+      ||['rating','beach','family','spa'].some(key=>filters[key])||(filters.resorts||[]).length>1)return false;
+    return true;
+  }
+  async function observedCalendar(s,from,to,signal,filters={}) {
+    if(!observationScopeSupported(s,filters))return [];
+    const departure=catalog.departures.find(x=>text(x)===s.origin||String(x.id)===s.origin);
+    if(!departure||!catalog.countries.some(x=>String(x.id)===String(s.country)))return [];
+    const selected=regionIds(s,filters),query={departureId:String(departure.id),countryId:String(s.country),dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights)};
+    if(selected.length)query.regionId=selected[0];
+    const response=await fetch('/data/price-calendar-read-v1.php?'+new URLSearchParams(query),{credentials:'same-origin',signal});
+    if(!response.ok)throw new Error('Сохранённые цены календаря временно недоступны.');
+    const result=await response.json();
+    if(result?.ok!==true||result.source!=='latest-known-exact-segments-from-anytour-first-party-observations'
+      ||result.cachedPriceIsFinal!==false||result.currency!=='RUB'||result.adults!==2||result.childrenCount!==0
+      ||String(result.departureId)!==query.departureId||String(result.countryId)!==query.countryId
+      ||String(result.regionId||'')!==String(query.regionId||'')||result.dateFrom!==from||result.dateTo!==to
+      ||String(result.nightsFrom)!==query.nightsFrom||String(result.nightsTo)!==query.nightsTo||!Array.isArray(result.series))throw new Error('Сохранённые цены не соответствуют параметрам поездки.');
+    const points=[],seen=new Set();
+    for(const row of result.series){
+      if(!row||date(row.date)!==row.date||row.date<from||row.date>to||seen.has(row.date)||typeof row.observed!=='boolean')throw new Error('Некорректные даты сохранённых цен.');
+      seen.add(row.date);
+      if(row.observed){const price=amount(row.minPrice);if(price===null)throw new Error('Некорректная сохранённая цена.');points.push({date:row.date,price});}
+    }
+    return points;
+  }
+  async function calendarPrices(s,from,to,signal,filters={},onUpdate) {
+    const snapshot={hotels:[],observations:[]},show=()=>{if(!signal?.aborted&&typeof onUpdate==='function')onUpdate(structuredClone(snapshot));};
+    const settled=await Promise.allSettled([
+      calendar(s,from,to,signal,filters,rows=>{snapshot.hotels.push(...rows);show();}),
+      observedCalendar(s,from,to,signal,filters).then(rows=>{snapshot.observations=rows;show();})
+    ]);
+    if(signal?.aborted)throw new DOMException('Aborted','AbortError');
+    const failed=settled.find(row=>row.status==='rejected');if(failed)throw failed.reason;
+    return snapshot;
+  }
   async function init(origin='Москва') {
     try{const response=await fetch('/data/departures-v1.php',{credentials:'same-origin'});const data=await response.json();if(response.ok&&data.ok&&Array.isArray(data.items))catalog.departures=data.items;}catch{}
     if(!catalog.departures.length)catalog.departures=await rt.api('departures',{departureCountryId:1});
@@ -281,5 +342,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,search,continueSearch,stop,calendar,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;}});
 })(window);

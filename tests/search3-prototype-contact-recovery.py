@@ -94,6 +94,13 @@ def check_width(browser, origin, width):
             route.fulfill(content_type="image/svg+xml", body=PHOTO)
         elif url.path == "/data/departures-v1.php":
             reply({"ok": True, "items": [{"id": 1, "name": "Москва"}]})
+        elif url.path == "/data/price-calendar-read-v1.php":
+            reply({"ok": True, "source": "latest-known-exact-segments-from-anytour-first-party-observations",
+                   "cachedPriceIsFinal": False, "currency": "RUB", "adults": 2, "childrenCount": 0,
+                   "departureId": int(query["departureId"][0]), "countryId": int(query["countryId"][0]),
+                   "regionId": int(query["regionId"][0]) if query.get("regionId") else None,
+                   "dateFrom": query["dateFrom"][0], "dateTo": query["dateTo"][0],
+                   "nightsFrom": int(query["nightsFrom"][0]), "nightsTo": int(query["nightsTo"][0]), "series": []})
         elif url.path.endswith("/hotel-details-read-v1.php"):
             if "anytourHotelId" in query:
                 assert query["anytourHotelId"] == ["1"]
@@ -118,6 +125,8 @@ def check_width(browser, origin, width):
             calls.append(action)
             if action == "countries":
                 reply([{"id": 4, "name": "Турция"}])
+            elif action == "regions":
+                reply([{"id": 20, "name": "Анталья", "countryId": 4}])
             elif action == "meals":
                 reply([{"id": 7, "name": "AI"}, {"id": 5, "name": "HB"}])
             elif action == "search_start":
