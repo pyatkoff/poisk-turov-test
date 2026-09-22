@@ -188,7 +188,7 @@ jobs:
           assert p['tourvisor_dates_endpoint_used'] is False and r['tourvisor_detail_calls']==r['flight_calls']==r['calc_calls']==0
           assert r['database_writes']==r['mapping_writes']==r['booking_calls']==r['lead_writes']==r['metrika_writes']==0
           assert r['private_evidence']['raw_payload_exported'] is False and len(r['private_evidence']['response_hashes'])>0
-          assert 0<r['tv_tariff_search_units']<=286
+          assert 0<r['tv_tariff_search_units']<=101
           for x in r['stars'].values():
             assert x['tourvisor']['fully_drained'] is True and x['tourvisor']['continue_rounds'][-1]['request_count']==0
             pc=x['andromeda']['pages_count'];pd=x['andromeda']['pages_drained'];assert (pc==0 and pd==0) or pc==pd
