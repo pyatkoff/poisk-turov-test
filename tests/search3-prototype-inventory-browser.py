@@ -133,7 +133,8 @@ def check_width(browser, origin, width):
     try:
         params = urlencode({"origin": "Москва", "country": 4, "from": DATE, "to": DATE,
                             "minNights": 7, "maxNights": 7, "adults": 2, "ages": ""})
-        page.add_init_script("window.AbortController = class { constructor(){ this.signal = undefined; } abort(){} };")\n        page.goto(origin + BASE + "prototype-search/?" + params)
+        page.add_init_script("window.AbortController = class { constructor(){ this.signal = undefined; } abort(){} };")
+        page.goto(origin + BASE + "prototype-search/?" + params)
         page.locator(".search-submit:not([disabled])").wait_for()
         for amount in ("1500000.5", "25000000"):
             page.locator('#quick-budget').click()
