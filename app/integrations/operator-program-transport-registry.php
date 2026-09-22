@@ -50,6 +50,7 @@ final class AnyTourOperatorProgramTransportRegistryV1
                 'identity' => $identity,
                 'scope' => $scope,
                 'operator_family' => $family,
+                'observed_at' => $now,
             ]),
         ];
 
