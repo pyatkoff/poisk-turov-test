@@ -103,7 +103,7 @@ tvfi_search_reject($searchAnex, 'ANEX search row must stay outside this intake')
 $obs = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($base);
 tvfi_ok($obs['operator_family'] === 'intourist', 'operator retained');
 tvfi_ok($obs['amount'] === '33748' && $obs['currency'] === 'RUB', 'aggregate native fuel retained');
-tvfi_ok($obs['unit'] === 'party_roundtrip' && $obs['base_relation'] === 'excluded', 'aggregate is not divided');
+tvfi_ok($obs['unit'] === 'party_roundtrip' && $obs['base_relation'] === 'included', 'aggregate is already included in Tourvisor search total');
 tvfi_ok($obs['scope']['outbound']['flight'] === 'ZF1001' && $obs['scope']['return']['flight'] === 'ZF1002', 'exact legs retained');
 tvfi_ok(!isset($obs['scope']['nights']) && !isset($obs['scope']['hotel']), 'hotel and nights do not split rule');
 
