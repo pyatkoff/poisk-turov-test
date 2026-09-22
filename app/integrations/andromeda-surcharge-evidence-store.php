@@ -4,7 +4,7 @@ require_once __DIR__.'/andromeda-surcharge-evidence.php';
 
 final class AnyTourAndromedaSurchargeEvidenceStoreV1
 {
-    private const PREFIX='andromeda-surcharge-group-v2-';
+    private const PREFIX='andromeda-surcharge-group-v3-';
     private const MAX_BYTES=16384;
 
     public static function save(string $directory,array $evidence,array $provenance,callable $write):array
@@ -13,7 +13,7 @@ final class AnyTourAndromedaSurchargeEvidenceStoreV1
         if(!AnyTourAndromedaSurchargeEvidenceV1::valid($evidence)||!self::validProvenance($provenance))
             throw new InvalidArgumentException('ANDROMEDA_SURCHARGE_EVIDENCE_STORE_INPUT');
         $path=self::path($directory,$evidence['group_key']);
-        $next=['version'=>1,'provider'=>'andromeda','evidence'=>$evidence,'provenance'=>$provenance];
+        $next=['version'=>2,'provider'=>'andromeda','evidence'=>$evidence,'provenance'=>$provenance];
         $current=self::readEnvelope($path,true);
         if($current!==null){
             self::assertEnvelope($current,$evidence['group_key']);
@@ -69,7 +69,7 @@ final class AnyTourAndromedaSurchargeEvidenceStoreV1
     private static function assertEnvelope(array $value,string $groupKey):void
     {
         $keys=array_keys($value);sort($keys);
-        if($keys!==['evidence','provenance','provider','version']||($value['version']??null)!==1||($value['provider']??null)!=='andromeda'
+        if($keys!==['evidence','provenance','provider','version']||($value['version']??null)!==2||($value['provider']??null)!=='andromeda'
             ||!is_array($value['evidence']??null)||!AnyTourAndromedaSurchargeEvidenceV1::valid($value['evidence'])
             ||($value['evidence']['group_key']??null)!==$groupKey||!is_array($value['provenance']??null)||!self::validProvenance($value['provenance']))
             throw new DomainException('ANDROMEDA_SURCHARGE_EVIDENCE_STORE_INVALID');

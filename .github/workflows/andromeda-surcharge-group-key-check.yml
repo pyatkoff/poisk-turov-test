@@ -18,6 +18,7 @@ on:
       - 'tests/andromeda-surcharge-evidence-store-test.php'
       - 'tests/andromeda-surcharge-night-reuse-test.php'
       - 'tests/andromeda-surcharge-reuse-metrics-test.php'
+      - 'tests/andromeda-surcharge-cache-autosave-test.php'
       - '.github/workflows/andromeda-surcharge-group-key-check.yml'
   pull_request:
     paths:
@@ -35,6 +36,7 @@ on:
       - 'tests/andromeda-surcharge-evidence-store-test.php'
       - 'tests/andromeda-surcharge-night-reuse-test.php'
       - 'tests/andromeda-surcharge-reuse-metrics-test.php'
+      - 'tests/andromeda-surcharge-cache-autosave-test.php'
       - '.github/workflows/andromeda-surcharge-group-key-check.yml'
 
 permissions:
@@ -66,6 +68,7 @@ jobs:
             php -l tests/andromeda-surcharge-evidence-store-test.php
             php -l tests/andromeda-surcharge-night-reuse-test.php
             php -l tests/andromeda-surcharge-reuse-metrics-test.php
+            php -l tests/andromeda-surcharge-cache-autosave-test.php
             php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-group-key-test.php
             php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-test.php
             php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-store-test.php
@@ -145,7 +148,9 @@ jobs:
               'files': {name: meta for name, (_, meta) in payload.items()},
               'immediate_support_only': dependencies, 'complete_runtime': False,
               'contracts_log_sha256': hashlib.sha256(log).hexdigest(),
-              'group_key_version': 3, 'evidence_file_namespace_version': 2,
+              'group_key_version': 3, 'evidence_schema_version': 2,
+              'evidence_file_namespace_version': 3,
+              'reusable_surcharge_aggregation': 'single_distinct_party_markup',
               'nights_discriminator': False, 'default_background_captures': 0,
               'runtime_root': None, 'installed': False, 'activation_authorized': False,
               'live_reuse_verified': False, 'supplier_http': 0, 'live_db_writes': 0,

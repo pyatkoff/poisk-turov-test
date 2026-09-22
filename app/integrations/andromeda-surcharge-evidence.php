@@ -5,6 +5,8 @@ require_once __DIR__.'/andromeda-surcharge-group-key.php';
 final class AnyTourAndromedaSurchargeEvidenceV1
 {
     private const SOURCES=['andromeda_get_flights_transport','andromeda_get_flights_transport_converted'];
+    private const REUSE_AGGREGATION='single_distinct_party_markup';
+    private const REUSE_CLASS='program_party_markup';
 
     public static function capture(array $offer,array $request,array $fact,int $observedAt,int $expiresAt):?array
     {
@@ -13,7 +15,8 @@ final class AnyTourAndromedaSurchargeEvidenceV1
         if($key===null||$price===null||$observedAt<1||$expiresAt<=$observedAt||$expiresAt>$observedAt+300
             ||!self::factMatches($fact,$price))return null;
         $party=$fact['party_surcharge'];
-        return ['schema_version'=>1,'provider'=>'andromeda','state'=>'estimated','group_key'=>$key,
+        return ['schema_version'=>2,'provider'=>'andromeda','state'=>'estimated','group_key'=>$key,
+            'reuse_basis'=>['class'=>self::REUSE_CLASS,'aggregation'=>self::REUSE_AGGREGATION],
             'party_surcharge'=>['amount'=>$party['amount'],'currency'=>$party['currency'],'source'=>$party['source']],
             'observed_at'=>$observedAt,'expires_at'=>$expiresAt];
     }
@@ -28,14 +31,17 @@ final class AnyTourAndromedaSurchargeEvidenceV1
         $total=self::add($price['amount'],$party['amount']);if($total===null)return null;
         return ['schema_version'=>1,'provider'=>'andromeda','state'=>'estimated','search_price'=>$price,
             'party_surcharge'=>$party,'search_price_with_surcharge'=>['amount'=>$total,'currency'=>$price['currency'],'source'=>'derived_search_estimate'],
-            'surcharge_scope'=>'party','arithmetic_applied'=>true,'final_price_verified'=>false];
+            'surcharge_scope'=>'party','arithmetic_applied'=>true,'final_price_verified'=>false,
+            'reuse_basis'=>$evidence['reuse_basis']];
     }
 
     public static function valid(array $e):bool
     {
-        $party=$e['party_surcharge']??null;
-        return ($e['schema_version']??null)===1&&($e['provider']??null)==='andromeda'&&($e['state']??null)==='estimated'
+        $party=$e['party_surcharge']??null;$basis=$e['reuse_basis']??null;
+        return ($e['schema_version']??null)===2&&($e['provider']??null)==='andromeda'&&($e['state']??null)==='estimated'
             &&is_string($e['group_key']??null)&&preg_match('/^andromeda-surcharge-v3:[a-f0-9]{64}$/D',$e['group_key'])===1
+            &&is_array($basis)&&array_keys($basis)===['class','aggregation']
+            &&($basis['class']??null)===self::REUSE_CLASS&&($basis['aggregation']??null)===self::REUSE_AGGREGATION
             &&is_int($e['observed_at']??null)&&$e['observed_at']>0&&is_int($e['expires_at']??null)&&$e['expires_at']>$e['observed_at']
             &&$e['expires_at']<=$e['observed_at']+300&&is_array($party)&&is_string($party['amount']??null)&&self::money($party['amount'],true)
             &&is_string($party['currency']??null)&&preg_match('/^[A-Z]{3}$/D',$party['currency'])===1&&in_array($party['source']??null,self::SOURCES,true);
@@ -51,10 +57,11 @@ final class AnyTourAndromedaSurchargeEvidenceV1
 
     private static function factMatches(array $f,array $price):bool
     {
-        $party=$f['party_surcharge']??null;$total=$f['search_price_with_surcharge']??null;
+        $party=$f['party_surcharge']??null;$total=$f['search_price_with_surcharge']??null;$reported=$f['transport_markup_reported']??null;
         if(($f['schema_version']??null)!==1||($f['provider']??null)!=='andromeda'||($f['state']??null)!=='estimated'
             ||($f['search_price']??null)!==$price||($f['surcharge_scope']??null)!=='party'||($f['arithmetic_applied']??null)!==true
-            ||($f['final_price_verified']??null)!==false||!is_array($party)||!is_array($total)
+            ||($f['final_price_verified']??null)!==false||!is_array($party)||!is_array($total)||!is_array($reported)
+            ||($reported['aggregation']??null)!==self::REUSE_AGGREGATION||($reported['source']??null)!=='andromeda_get_flights_transport'
             ||!is_string($party['amount']??null)||!self::money($party['amount'],true)||($party['currency']??null)!==$price['currency']
             ||!in_array($party['source']??null,self::SOURCES,true)||!is_string($total['amount']??null)||!self::money($total['amount'],true)
             ||($total['currency']??null)!==$price['currency']||($total['source']??null)!=='derived_search_estimate')return false;

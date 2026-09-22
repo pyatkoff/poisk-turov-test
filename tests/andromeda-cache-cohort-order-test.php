@@ -60,8 +60,15 @@ function order_case(array $order, bool $validSeed = true, bool $missingPage = fa
             &$reads, &$resolvedPrices, $request, $dir, $ref, $now, $validSeed, $writer
         ): ?array {
             $id = $offer['local_hotel_id']; $reads[$id] = ($reads[$id] ?? 0) + 1;
+            $estimatedFact = party_surcharge();
+            $estimatedFact['transport_markup_reported'] = [
+                'amount' => $estimatedFact['party_surcharge']['amount'],
+                'currency' => $estimatedFact['party_surcharge']['currency'],
+                'source' => 'andromeda_get_flights_transport',
+                'aggregation' => 'single_distinct_party_markup',
+            ];
             $exact = $id === 102
-                ? ['state' => 'estimated', 'fact' => party_surcharge(), 'verified_quote' => null]
+                ? ['state' => 'estimated', 'fact' => $estimatedFact, 'verified_quote' => null]
                 : ($id === 105 ? order_verified($offer) : null);
             $meta = $id === 102 ? [
                 'source_sha' => $validSeed ? str_repeat('a', 40) : 'invalid',
