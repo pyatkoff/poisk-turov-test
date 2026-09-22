@@ -24,8 +24,9 @@ jobs:
     env:
       INT_BASE_SHA: 7a1823a1f9628c3807cc42b831ee919fb2e40647
       RELEASE_SHA: 03a5666e5cc0b242ba9d795f03dd83d82fee3ce1
-      OPERATION_ID: int-offer-listing-ttl-runtime-read-1493-20260922-v1
-      CLAIM_COMMENT_ID: '5769235526'
+      PREVIOUS_OPERATION_ID: int-offer-listing-ttl-runtime-read-1493-20260922-v1
+      OPERATION_ID: int-offer-listing-ttl-runtime-read-1493-20260922-v2
+      CLAIM_COMMENT_ID: '5769722567'
       SCRIPT_SHA256: b3a60e9ee9191fdb7298f53e692027ae135cc3fa936276fe68898ce76721e815
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
@@ -64,9 +65,10 @@ jobs:
           c=json.load(open(os.environ['RUNNER_TEMP']+'/claim.json'))
           body=c.get('body','')
           assert c.get('user',{}).get('login')=='pyatkoff', c.get('user')
-          assert os.environ['OPERATION_ID'] in body
-          for p in ['scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php','.github/workflows/int-offer-listing-ttl-runtime-read-v1.yml']:
-              assert p in body,p
+          for token in [os.environ['OPERATION_ID'],os.environ['PREVIOUS_OPERATION_ID'],
+                        'scripts/diagnostics/anytour_offer_listing_ttl_runtime_read_v1.php',
+                        '.github/workflows/int-offer-listing-ttl-runtime-read-v1.yml']:
+              assert token in body, token
           PY
           security_ok=false
           for _ in $(seq 1 36); do
@@ -119,7 +121,7 @@ jobs:
           cp release/v2/api-v2.php "$stage/expected/v2/"
           tar -C "$stage" -czf "$RUNNER_TEMP/runtime.tar.gz" .
           sha256sum "$RUNNER_TEMP/runtime.tar.gz" > "$RUNNER_TEMP/runtime.sha256"
-      - name: Read installed hashes and TTL metadata only
+      - name: Reconcile v1, then read installed hashes and TTL metadata only
         env:
           SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -133,6 +135,38 @@ jobs:
           ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
           test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
           opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$PREVIOUS_OPERATION_ID" > "$RUNNER_TEMP/result/reconciliation.json" <<'REMOTE'
+          set -euo pipefail
+          operation="$1"
+          ledger="$HOME/.anytour-ops/$operation"
+          php -r '
+          $op=$argv[1];$ledger=$argv[2];
+          $present=file_exists($ledger)||is_link($ledger);
+          $state=null;$receipt=null;$sha=null;
+          if($present){
+            $stateFile=$ledger."/state";
+            if(is_file($stateFile)&&!is_link($stateFile))$state=trim((string)file_get_contents($stateFile));
+            $receiptFile=$ledger."/receipt.json";
+            if(is_file($receiptFile)&&!is_link($receiptFile)&&filesize($receiptFile)>0){
+              $sha=hash_file("sha256",$receiptFile);
+              try{$v=json_decode((string)file_get_contents($receiptFile),true,128,JSON_THROW_ON_ERROR);if(is_array($v))$receipt=$v;}catch(Throwable $e){}
+            }
+          }
+          echo json_encode(["operation"=>$op,"present"=>$present,"state"=>$state,"receipt_sha256"=>$sha,"receipt"=>$receipt,"mutation"=>false],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),PHP_EOL;
+          ' "$operation" "$ledger"
+          REMOTE
+          python3 - <<'PY'
+          import json,os
+          p=os.environ['RUNNER_TEMP']+'/result/reconciliation.json'
+          r=json.load(open(p))
+          assert r['operation']==os.environ['PREVIOUS_OPERATION_ID'] and r['mutation'] is False,r
+          if r['present']:
+              print('TTL_PREVIOUS_OPERATION_PRESENT '+json.dumps(r,sort_keys=True))
+              raise SystemExit(3)
+          print('TTL_PREVIOUS_OPERATION_ABSENT')
+          PY
+
           archive="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.tar.gz"
           archive_sha=$(awk '{print $1}' "$RUNNER_TEMP/runtime.sha256")
           scp "${opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$REMOTE_USER@$HOST:$archive"
@@ -176,6 +210,6 @@ jobs:
         if: always()
         with:
           name: int-offer-listing-ttl-runtime-read-v1-${{ github.run_id }}
-          path: ${{ runner.temp }}/result/receipt.json
+          path: ${{ runner.temp }}/result/*.json
           if-no-files-found: warn
           retention-days: 30
