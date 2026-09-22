@@ -127,7 +127,7 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     $mode=$argv[1]??'';
     if($mode==='--self-test'){
         hmsaf_need(hmsaf_score('Hilton Garden Inn','Hilton Garden Inn Hotel')>=0.99,'score');
-        hmsaf_need(hmsaf_distinctive_count('Movenpick Resort Soma Bay')>=2,'distinct');
+        hmsaf_need(hmsaf_distinctive_count('Movenpick Serenity Soma Bay')>=2,'distinct');
         hmsaf_need(hmsaf_qualifiers('Example North Wing')!==hmsaf_qualifiers('Example South Wing'),'qualifier');
         echo "MATCH_LIVE_SAMO_ANEX_STRONG_FUZZY_V1_SELFTEST_OK\n";exit;
     }
