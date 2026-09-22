@@ -16,7 +16,9 @@ permissions:
 jobs:
   mobile-controls-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    # WebKit's cold Ubuntu dependencies exceed 100MB; keep tests mandatory even
+    # when the runner's default package mirror is slow. No mirror overrides.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
