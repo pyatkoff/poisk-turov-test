@@ -27,23 +27,23 @@ function hmt11_resolve(array $tvRows,array $samoRows): array {
             if($best===null||$x['score']>$best['score']){$best=$x;$pair=[$tn,$sn];}
         }
         if(($best['score']??0)<0.72)continue;
-        $matrix[$tid][$sid]=['tv_hotel_id'=>$tid,'samo_hotel_id'=>$sid,'tv_name'=>$pair[0],'samo_name'=>$pair[1],
+        $matrix[$tid][$sid]=['tv_hotel_id'=>(string)$tid,'samo_hotel_id'=>(string)$sid,'tv_name'=>$pair[0],'samo_name'=>$pair[1],
             'name_score'=>$best['score'],'name_exact_tokens'=>$best['exact'],'qualifier_conflict'=>$best['qualifier_conflict'],
             'operator_overlap'=>$overlap,'common3_overlap'=>$common3,'tv_offer_count'=>$t['offer_count'],'samo_offer_count'=>$s['offer_count']];
     }
     $tvRanks=[];$saRanks=[];
-    foreach($matrix as $tid=>$xs){$v=array_values($xs);usort($v,fn($a,$b)=>$b['name_score']<=>$a['name_score']?:strcmp($a['samo_hotel_id'],$b['samo_hotel_id']));$tvRanks[$tid]=$v;foreach($v as $x)$saRanks[$x['samo_hotel_id']][]=$x;}
-    foreach($saRanks as &$v)usort($v,fn($a,$b)=>$b['name_score']<=>$a['name_score']?:strcmp($a['tv_hotel_id'],$b['tv_hotel_id']));unset($v);
+    foreach($matrix as $tid=>$xs){$v=array_values($xs);usort($v,fn($a,$b)=>$b['name_score']<=>$a['name_score']?:strcmp((string)$a['samo_hotel_id'],(string)$b['samo_hotel_id']));$tvRanks[$tid]=$v;foreach($v as $x)$saRanks[$x['samo_hotel_id']][]=$x;}
+    foreach($saRanks as &$v)usort($v,fn($a,$b)=>$b['name_score']<=>$a['name_score']?:strcmp((string)$a['tv_hotel_id'],(string)$b['tv_hotel_id']));unset($v);
     $strong=[];$review=[];
     foreach($tvRanks as $tid=>$rank){
         $x=$rank[0];$second=$rank[1]['name_score']??0.0;$inverse=$saRanks[$x['samo_hotel_id']];$invSecond=$inverse[1]['name_score']??0.0;
         $x['tv_margin']=round($x['name_score']-$second,6);$x['samo_margin']=round($x['name_score']-$invSecond,6);
-        $x['mutual_unique']=$inverse[0]['tv_hotel_id']===$tid&&$x['tv_margin']>=0.06&&$x['samo_margin']>=0.06;
+        $x['mutual_unique']=$inverse[0]['tv_hotel_id']===(string)$tid&&$x['tv_margin']>=0.06&&$x['samo_margin']>=0.06;
         $x['tier']=($x['mutual_unique']&&!$x['qualifier_conflict']&&$x['name_score']>=0.90)?'strong_common3':'review';
         if($x['tier']==='strong_common3')$strong[]=$x;else $review[]=$x;
     }
-    usort($strong,fn($a,$b)=>$b['name_score']<=>$a['name_score']?:strcmp($a['tv_hotel_id'],$b['tv_hotel_id']));
-    usort($review,fn($a,$b)=>$b['name_score']<=>$a['name_score']?:strcmp($a['tv_hotel_id'],$b['tv_hotel_id']));
+    usort($strong,fn($a,$b)=>$b['name_score']<=>$a['name_score']?:strcmp((string)$a['tv_hotel_id'],(string)$b['tv_hotel_id']));
+    usort($review,fn($a,$b)=>$b['name_score']<=>$a['name_score']?:strcmp((string)$a['tv_hotel_id'],(string)$b['tv_hotel_id']));
     return ['tv_hotels'=>count($tv),'samo_hotels'=>count($sa),'strong_common3'=>$strong,'strong_count'=>count($strong),
         'review'=>array_slice($review,0,100),'review_count'=>count($review),
         'policy'=>'token_only_mutual_unique_score_gte_0.90_margin_0.06_common3_overlap_no_qualifier_conflict'];
