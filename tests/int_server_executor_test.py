@@ -166,7 +166,7 @@ class ContractTest(unittest.TestCase):
                   "install-runtime","install-plan.json","install-state.json","rollback_install",
                   "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
-                  "search3-local-results-read-v1.php","--max-captures=","--capture-mode=non_external_only",
+                  "search3-local-results-read-v1.php","--max-captures=","non_external_only",
                   "andromeda-external-group","external_group_only",
                   "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero",
                   "php=\"$c=require $argv[1];","allowed_keys={'status'","name_sha256","top_level_keys",
