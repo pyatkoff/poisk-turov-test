@@ -117,6 +117,17 @@
     return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),room:text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,meal:meal(t.meal)||'Питание уточняется',operator:text(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
   function project(list,s) { return list.map(rawHotel=>{const h=hotel(rawHotel,s);h.offers=(rawHotel.tours||[]).map((t,i)=>offer(t,h,s,i)).filter(Boolean);return h;}).filter(h=>h.offers.length); }
+  function canonicalUnion(){
+    if(!owner||!context)return {hotels:0,offers:0,hotelsByProvider:{},offersByProvider:{},providerSets:{}};
+    const rows=project(owner.read(raw,{}),context),hotelsByProvider={},offersByProvider={},providerSets={};let offers=0;
+    for(const row of rows){
+      const providers=[...new Set(row.offers.map(o=>o.provider).filter(Boolean))].sort();
+      if(providers.length)providerSets[providers.join('+')]=(providerSets[providers.join('+')]||0)+1;
+      for(const provider of providers)hotelsByProvider[provider]=(hotelsByProvider[provider]||0)+1;
+      for(const rowOffer of row.offers){offers++;offersByProvider[rowOffer.provider]=(offersByProvider[rowOffer.provider]||0)+1;}
+    }
+    return {hotels:rows.length,offers,hotelsByProvider,offersByProvider,providerSets};
+  }
   function publish() {if(owner&&context&&activeSearch&&current(activeSearch))notify({type:'results',hotels:project(owner.read(raw,{}),context)});}
   function current(run){return activeSearch===run&&run.generation===generation;}
   function stop(){
@@ -135,7 +146,7 @@
       await settleInitialSources(run);if(!current(run))return;
       run.pending=false;
       notify({type:'complete',partial:true,message:error.message,canContinue:!!run.searchId&&!run.expired,
-        retryRead:run.resumeOnly,continued:false,resultLimitReached:false,sources:structuredClone(run.sourceCounts)});
+        retryRead:run.resumeOnly,continued:false,resultLimitReached:false,sources:structuredClone(run.sourceCounts),union:canonicalUnion()});
       return;
     }
     run.pending=false;
@@ -268,7 +279,7 @@
         await refreshDatabase(run);if(!current(run))return;
         if(!run.continued&&!(await settleInitialSources(run)))return;
         run.pending=false;run.resumeOnly=false;
-        notify({type:'complete',canContinue:true,continued:run.continued,resultLimitReached:raw.length>=5000,sources:structuredClone(run.sourceCounts)});return;
+        notify({type:'complete',canContinue:true,continued:run.continued,resultLimitReached:raw.length>=5000,sources:structuredClone(run.sourceCounts),union:canonicalUnion()});return;
       }
       if(run.deadline&&Date.now()>=run.deadline)throw new Error('Продолжение поиска ещё не завершено. Проверьте результат повторно.');
       timer=setTimeout(()=>pollSearch(run),2500);
