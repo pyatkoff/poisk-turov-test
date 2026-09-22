@@ -1,0 +1,114 @@
+name: Read Andromeda program transport v1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/andromeda-program-transport-readonly-v1.yml'
+      - 'scripts/diagnostics/andromeda_program_transport_readonly_v1.php'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.number == 3419 &&
+       github.event.comment.body == '/read-andromeda-program-transport-3419-v1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify read-only source
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/andromeda_program_transport_readonly_v1.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/diagnostics/andromeda_program_transport_readonly_v1.php').read_text()
+          forbidden=['curl_','file_put_contents','fwrite(STDOUT','PDO','mysqli','system(','exec(','shell_exec','getFlights(','broninit','changeservice','calc(']
+          for token in forbidden:
+              if token in p:
+                  raise SystemExit('forbidden:'+token)
+          for required in ['program_key','tour_key','freight_external','supplier_calls','filesystem_writes']:
+              if required not in p:
+                  raise SystemExit('missing:'+required)
+          print('PROGRAM_TRANSPORT_READONLY_CONTRACT_OK')
+          PY
+
+  inspect:
+    needs: contract
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.number == 3419 &&
+      github.event.comment.body == '/read-andromeda-program-transport-3419-v1' &&
+      github.event.comment.user.id == 226193297 &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Prepare SSH key
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/andromeda-program-transport-readonly"
+          install -d -m 700 "$d"
+          printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > "$d/key"
+          chmod 600 "$d/key"
+          ssh-keygen -y -f "$d/key" >/dev/null
+      - name: Read retained search snapshots only
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/andromeda-program-transport-readonly"
+          ssh -T -i "$d/key" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            -o "UserKnownHostsFile=$d/known_hosts" -o ConnectTimeout=15 \
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o LogLevel=ERROR \
+            -l "$ANYTOOUR_DEPLOY_USER" "$ANYTOOUR_DEPLOY_HOST" \
+            'php -d display_errors=0 -d log_errors=0' \
+            < scripts/diagnostics/andromeda_program_transport_readonly_v1.php \
+            > "$d/result.json"
+          test -s "$d/result.json"
+      - name: Validate sanitized result
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'andromeda-program-transport-readonly/result.json'
+          d=json.loads(p.read_text())
+          if d.get('schema_version')!=1 or d.get('source')!='andromeda-program-transport-readonly-v1':
+              raise SystemExit('contract')
+          for k in ['supplier_calls','database_reads','database_writes','filesystem_writes']:
+              if d.get(k)!=0: raise SystemExit('side_effect:'+k)
+          t=d.get('target',{})
+          required=['operator','program_key','tour_key','freight_external','label_hint']
+          for k in required:
+              if k not in t: raise SystemExit('missing:'+k)
+          print(json.dumps(d,ensure_ascii=False,sort_keys=True))
+          PY
+      - name: Preserve result
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-program-transport-readonly-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-program-transport-readonly/result.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove SSH key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/andromeda-program-transport-readonly/key"
