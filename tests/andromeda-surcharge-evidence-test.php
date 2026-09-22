@@ -10,10 +10,12 @@ function offer(string $id,string $amount,string $currency='RUB'):array{return [
     'transport_context'=>['freight_external'=>true,'program_ref'=>'101','tour_ref'=>'202','spo_ref'=>'spo-'.$id],
     'room_raw'=>'STD '.$id,'meal'=>['raw_label'=>'AI'],
 ];}
-function fact(array $offer,string $surcharge='5000'):array{
+function fact(array $offer,string $surcharge='5000',string $aggregation='single_distinct_party_markup'):array{
     $base=$offer['price']['amount'];$sum=(string)((int)$base+(int)$surcharge);
     return ['schema_version'=>1,'provider'=>'andromeda','state'=>'estimated',
         'search_price'=>['amount'=>$base,'currency'=>$offer['price']['currency']],
+        'transport_markup_reported'=>['amount'=>$surcharge,'currency'=>$offer['price']['currency'],
+            'source'=>'andromeda_get_flights_transport','aggregation'=>$aggregation],
         'party_surcharge'=>['amount'=>$surcharge,'currency'=>$offer['price']['currency'],'source'=>'andromeda_get_flights_transport'],
         'search_price_with_surcharge'=>['amount'=>$sum,'currency'=>$offer['price']['currency'],'source'=>'derived_search_estimate'],
         'surcharge_scope'=>'party','arithmetic_applied'=>true,'final_price_verified'=>false];
@@ -22,6 +24,8 @@ $request=['params'=>['departureId'=>'1','countryId'=>'4']];
 $source=offer('source','100000');
 $evidence=AnyTourAndromedaSurchargeEvidenceV1::capture($source,$request,fact($source),1000,1300);
 ok(is_array($evidence),'valid source fact captured');
+ok(($evidence['schema_version']??null)===2,'evidence schema v2');
+ok(($evidence['reuse_basis']??null)===['class'=>'program_party_markup','aggregation'=>'single_distinct_party_markup'],'program reuse basis retained');
 ok(str_starts_with($evidence['group_key'],'andromeda-surcharge-v3:'),'v3 group key');
 
 $target=offer('target','110000');
@@ -32,6 +36,7 @@ ok($applied['search_price']===['amount'=>'110000','currency'=>'RUB'],'target bas
 ok($applied['party_surcharge']['amount']==='5000','party surcharge reused once');
 ok($applied['search_price_with_surcharge']['amount']==='115000','target total rebased');
 ok($applied['final_price_verified']===false,'group evidence stays estimate only');
+ok(($applied['reuse_basis']['aggregation']??null)==='single_distinct_party_markup','applied fact exposes reuse basis');
 
 // Owner rule: one program surcharge record covers 7/10/14 nights while each target keeps its own base.
 foreach ([7=>'110000',10=>'120000',14=>'130000'] as $nights=>$base) {
@@ -59,6 +64,10 @@ ok(AnyTourAndromedaSurchargeEvidenceV1::apply($target,['params'=>['departureId'=
 ok(AnyTourAndromedaSurchargeEvidenceV1::apply($target,$request,$evidence,999)===null,'future evidence rejected');
 ok(AnyTourAndromedaSurchargeEvidenceV1::apply($target,$request,$evidence,1300)===null,'expired evidence rejected');
 
+$choiceDependent=fact($source,'5000','minimum_complete_required_roundtrip_markup');
+ok(AnyTourAndromedaSurchargeEvidenceV1::capture($source,$request,$choiceDependent,1000,1300)===null,'flight-choice markup cannot seed shared cache');
+$missingBasis=fact($source);unset($missingBasis['transport_markup_reported']);
+ok(AnyTourAndromedaSurchargeEvidenceV1::capture($source,$request,$missingBasis,1000,1300)===null,'unclassified markup cannot seed shared cache');
 $badFact=fact($source);$badFact['search_price_with_surcharge']['amount']='105001';
 ok(AnyTourAndromedaSurchargeEvidenceV1::capture($source,$request,$badFact,1000,1300)===null,'tampered arithmetic rejected');
 $wrongBase=fact($source);$wrongBase['search_price']['amount']='99999';
@@ -67,4 +76,4 @@ $malformed=$source;unset($malformed['transport_context']['program_ref']);
 ok(AnyTourAndromedaSurchargeEvidenceV1::capture($malformed,$request,fact($source),1000,1300)===null,'unkeyable source rejected');
 ok(AnyTourAndromedaSurchargeEvidenceV1::capture($source,$request,fact($source),1000,1301)===null,'evidence TTL bounded');
 
-echo "ANDROMEDA_SURCHARGE_EVIDENCE_OK reuse=1 cross_night=3 rebase=1 spo_invariant=1 strict_mismatch=6 stale=2 tamper=3\n";
+echo "ANDROMEDA_SURCHARGE_EVIDENCE_OK reuse=1 cross_night=3 rebase=1 reusable_basis=1 choice_rejected=2 strict_mismatch=6 stale=2 tamper=3\n";
