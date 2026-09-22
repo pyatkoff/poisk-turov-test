@@ -5,12 +5,24 @@ on:
     branches: ['feat/int-andromeda-surcharge-group-key-20260918']
     paths:
       - 'app/integrations/andromeda-surcharge-group-key.php'
+      - 'app/integrations/andromeda-surcharge-evidence.php'
+      - 'app/integrations/andromeda-surcharge-evidence-store.php'
+      - 'app/integrations/andromeda-local-offer-collector.php'
       - 'tests/andromeda-surcharge-group-key-test.php'
+      - 'tests/andromeda-surcharge-evidence-test.php'
+      - 'tests/andromeda-surcharge-evidence-store-test.php'
+      - 'tests/andromeda-surcharge-night-reuse-test.php'
       - '.github/workflows/andromeda-surcharge-group-key-check.yml'
   pull_request:
     paths:
       - 'app/integrations/andromeda-surcharge-group-key.php'
+      - 'app/integrations/andromeda-surcharge-evidence.php'
+      - 'app/integrations/andromeda-surcharge-evidence-store.php'
+      - 'app/integrations/andromeda-local-offer-collector.php'
       - 'tests/andromeda-surcharge-group-key-test.php'
+      - 'tests/andromeda-surcharge-evidence-test.php'
+      - 'tests/andromeda-surcharge-evidence-store-test.php'
+      - 'tests/andromeda-surcharge-night-reuse-test.php'
       - '.github/workflows/andromeda-surcharge-group-key-check.yml'
 
 permissions:
@@ -27,5 +39,14 @@ jobs:
         run: |
           set -euo pipefail
           php -l app/integrations/andromeda-surcharge-group-key.php
+          php -l app/integrations/andromeda-surcharge-evidence.php
+          php -l app/integrations/andromeda-surcharge-evidence-store.php
+          php -l app/integrations/andromeda-local-offer-collector.php
           php -l tests/andromeda-surcharge-group-key-test.php
+          php -l tests/andromeda-surcharge-evidence-test.php
+          php -l tests/andromeda-surcharge-evidence-store-test.php
+          php -l tests/andromeda-surcharge-night-reuse-test.php
           php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-group-key-test.php
+          php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-test.php
+          php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-store-test.php
+          php -d allow_url_fopen=0 -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-night-reuse-test.php

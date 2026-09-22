@@ -27,7 +27,7 @@ try{
     estore_ok(is_array($evidence),'evidence fixture');
     $created=AnyTourAndromedaSurchargeEvidenceStoreV1::save($dir,$evidence,$provenance,$write);
     estore_ok($created['status']==='created'&&$created['written']===true,'cache create');
-    estore_ok(is_file($created['path'])&&basename($created['path'])==='andromeda-surcharge-group-v1-'.substr($evidence['group_key'],strlen('andromeda-surcharge-v2:')).'.json','cache path');
+    estore_ok(is_file($created['path'])&&basename($created['path'])==='andromeda-surcharge-group-v2-'.substr($evidence['group_key'],strlen('andromeda-surcharge-v3:')).'.json','cache path');
 
     $same=AnyTourAndromedaSurchargeEvidenceStoreV1::save($dir,$evidence,$provenance,$write);
     estore_ok($same['status']==='unchanged'&&$same['written']===false,'idempotent save');
@@ -36,6 +36,13 @@ try{
     $applied=AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied($dir,$target,$request,1100);
     estore_ok(is_array($applied)&&$applied['search_price_with_surcharge']['amount']==='115000','cache rebase');
     estore_ok($applied['final_price_verified']===false,'cache must stay estimate');
+
+    foreach([10,14] as $nights){
+        $nightTarget=$target;$nightTarget['nights']=$nights;$nightTarget['price']['amount']=(string)(110000+$nights);
+        $nightApplied=AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied($dir,$nightTarget,$request,1100);
+        estore_ok(is_array($nightApplied),'cross-night cache reuse '.$nights);
+        estore_ok($nightApplied['search_price']['amount']===$nightTarget['price']['amount'],'own base '.$nights);
+    }
 
     $older=AnyTourAndromedaSurchargeEvidenceV1::capture($source,$request,estore_fact($source,'4000'),900,1200);
     $kept=AnyTourAndromedaSurchargeEvidenceStoreV1::save($dir,$older,$provenance,$write);
@@ -52,8 +59,16 @@ try{
     estore_ok($applied['search_price_with_surcharge']['amount']==='115500','newer evidence served');
     estore_ok(AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied($dir,$target,$request,1400)===null,'expired evidence rejected');
 
-    $mismatch=$target;$mismatch['nights']=8;
+    $mismatch=$target;$mismatch['check_in']='2026-10-31';
     estore_ok(AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied($dir,$mismatch,$request,1200)===null,'strict group mismatch rejected');
+
+    // Old v1/v2 cache namespace must never be reinterpreted after key semantics change.
+    $legacyPath=$dir.'/andromeda-surcharge-group-v1-'.str_repeat('c',64).'.json';
+    file_put_contents($legacyPath,json_encode(['version'=>1,'provider'=>'andromeda','evidence'=>[
+        'schema_version'=>1,'provider'=>'andromeda','state'=>'estimated','group_key'=>'andromeda-surcharge-v2:'.str_repeat('c',64),
+        'party_surcharge'=>['amount'=>'9999','currency'=>'RUB','source'=>'andromeda_get_flights_transport'],'observed_at'=>1000,'expires_at'=>1300
+    ],'provenance'=>$provenance],JSON_THROW_ON_ERROR));
+    estore_ok(AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied($dir,$target,$request,1200)!==null,'legacy file does not shadow v3 cache');
 
     $badProv=$provenance;$badProv['source_sha']='bad';$badProvThrown=false;
     try{AnyTourAndromedaSurchargeEvidenceStoreV1::save($dir,$newer,$badProv,$write);}catch(InvalidArgumentException $e){$badProvThrown=true;}
@@ -65,4 +80,4 @@ try{
     foreach(glob($dir.'/*')?:[] as $path)@unlink($path);@rmdir($dir);@rmdir($root);
 }
 
-echo "ANDROMEDA_SURCHARGE_EVIDENCE_STORE_OK create=1 rebase=1 monotonic=2 conflict=1 expiry=1 malformed=1 provenance=1\n";
+echo "ANDROMEDA_SURCHARGE_EVIDENCE_STORE_OK create=1 cross_night=2 rebase=1 monotonic=2 conflict=1 expiry=1 legacy_isolation=1 malformed=1 provenance=1\n";

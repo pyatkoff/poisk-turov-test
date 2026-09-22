@@ -13,10 +13,11 @@ function reuse_check(bool $ok, string $message): void {
     if (!$ok) throw new RuntimeException($message);
 }
 function reuse_offer(int $id): array {
+    $durations=[7,10,14];
     return [
         'provider' => 'andromeda', 'offer_ref' => 'offer_' . hash('sha256', 'reuse-' . $id),
         'local_hotel_id' => 1000 + $id, 'operator' => 'FUN&SUN', 'operator_ref' => '315',
-        'check_in' => '2026-10-07', 'nights' => 7, 'adults' => 2, 'children' => 0,
+        'check_in' => '2026-10-07', 'nights' => $durations[($id-1)%3], 'adults' => 2, 'children' => 0,
         'hotel' => 'Synthetic hotel ' . $id, 'room' => 'Room ' . $id,
         'meal' => $id % 2 === 0 ? 'AI' : 'UAI',
         'price' => ['amount' => (string)(100000 + $id), 'currency' => 'RUB'],
@@ -64,7 +65,6 @@ $captures = 0; $saves = 0;
 $save = static function(array $r, string $ref, int $generation) use (&$saves, $request): array {
     reuse_check($r === $request && $ref === str_repeat('b', 64) && $generation === 31, 'Unchanged autosave scope');
     ++$saves;
-    // Receipt fixture is explicitly non-final; grouping never grants price authority.
     return ['published' => true, 'readyOfferCount' => 0, 'confirmationRequiredOfferCount' => 100];
 };
 $unavailable = static function(array $selection) use (&$captures): array {
@@ -76,7 +76,7 @@ reuse_check($captures === 1, 'SAME_GROUP_RECAPTURE: expected 1 capture, got ' . 
 reuse_check($result['capture_queue_offers'] === 1 && $result['surcharge_capture_attempts'] === 1,
     'Queue and actual capture counts');
 reuse_check($result['surcharge_group_duplicate_skips'] === 99 && $result['reusable_surcharge_groups'] === 1,
-    'Duplicate/group metrics count compatible external groups only');
+    '7/10/14 offers share one compatible external group');
 reuse_check($offers === $before && $saves === 1 && $result['eligible_offers'] === 100,
     'All offers retained for the unchanged full-cohort autosave');
 reuse_check($result['ready_offer_count'] === 0 && $result['surcharge_ready'] === 0,
@@ -114,12 +114,11 @@ try {
     };
     $cachedResult = reuse_collect($request, $offers, $unavailable, $saveAll, 100, $hasCached);
     reuse_check($captures === 0 && $cacheChecks === 1 && $applied === 100 && $saves === 1,
-        'One valid group cache check avoids all capture calls and still processes 100 offers');
+        'One valid group cache check avoids all capture calls and still processes 100 mixed-duration offers');
     reuse_check($cachedResult['surcharge_cache_checks'] === 1 && $cachedResult['surcharge_cache_hits'] === 1
         && $cachedResult['surcharge_capture_attempts'] === 0 && $cachedResult['surcharge_ready'] === 0,
         'Cache hits are groups, not invented verified offers');
 
-    // Different operator/program/tour/date/route/currency/party stay distinct.
     $otherProgram = reuse_offer(101); $otherProgram['transport_context']['program_ref'] = '6';
     $variants = [$otherProgram];
     foreach (['operator_ref' => '342', 'check_in' => '2026-10-08', 'adults' => 3] as $key => $value) {
@@ -127,13 +126,14 @@ try {
     }
     $tour = reuse_offer(120); $tour['transport_context']['tour_ref'] = '3006'; $variants[] = $tour;
     $currency = reuse_offer(121); $currency['price']['currency'] = 'USD'; $variants[] = $currency;
-    // Old flight-specific evidence is NOT relabelled as fixed program evidence.
-    foreach ([10, 14] as $nights) {
-        $variant = reuse_offer(130 + $nights); $variant['nights'] = $nights; $variants[] = $variant;
-    }
     foreach ($variants as $variant) {
         reuse_check(AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied($directory, $variant, $request, $now) === null,
-            'Do not broaden existing flight evidence scope');
+            'Non-night strict discriminator must not reuse evidence');
+    }
+    foreach ([10, 14] as $nights) {
+        $variant = reuse_offer(130 + $nights); $variant['nights'] = $nights;
+        reuse_check(AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied($directory, $variant, $request, $now) !== null,
+            'Night '.$nights.' reuses program surcharge');
     }
     foreach (['departureId' => '2', 'countryId' => '5'] as $field => $value) {
         $different = $request; $different['params'][$field] = $value;
@@ -155,7 +155,6 @@ try {
     reuse_check($captures === 1 && $cacheChecks === 2 && $mixed['surcharge_cache_hits'] === 1,
         'Cached group does not consume capture budget of another group');
 
-    // Expiry/malformed files cannot authorize reuse; no stale quote is promoted.
     $expired = static fn(array $selection, array $offer, array $r): bool =>
         AnyTourAndromedaSurchargeEvidenceStoreV1::readApplied($directory, $offer, $r, $now + 300) !== null;
     $captures = 0;
@@ -167,7 +166,6 @@ try {
     $invalidResult = reuse_collect($request, $offers, $unavailable, $save, 100, $hasCached);
     reuse_check($captures === 1 && $invalidResult['surcharge_cache_hits'] === 0, 'Corrupt cache cannot authorize reuse');
 
-    // Unknown/failed first representative never falls back to another sibling.
     $failedCalls = [];
     $failure = static function(array $selection) use (&$failedCalls, $offers): array {
         $failedCalls[] = $selection['offer_ref'];
@@ -191,7 +189,6 @@ try {
     $rejected = reuse_collect($request, $offers, $unavailable, $save, 100, $hasCached, 'all', static fn(): bool => false);
     reuse_check($captures === 0 && $rejected['eligible_offers'] === 0, 'Unmapped offers never enter capture/cache');
 
-    // Nonexternal/unknown legacy grouping is scheduling only, not reusable evidence.
     foreach ([false, null] as $freight) {
         $legacy = [$offers[0], $offers[1]];
         foreach ($legacy as &$offer) $offer['transport_context']['freight_external'] = $freight;
@@ -226,8 +223,6 @@ try {
     reuse_check($captures === 0 && $budgeted['surcharge_cache_hits'] === 1
         && $budgeted['capture_time_budget_exhausted'] === true, 'Cache preflight time also respects capture deadline');
 
-    // Execute the actual CLI unchanged except for its injected boundaries. The
-    // collector double checks the new seam against the REAL existing store.
     foreach (glob($directory . '/*.json') as $path) unlink($path);
     reuse_seed($directory, $offers[0], $request, $now);
     $cli = $root . '/cli';
@@ -237,7 +232,6 @@ try {
     };
     $put($cli . '/scripts/ops/andromeda_local_offer_collect.php',
         (string)file_get_contents(__DIR__ . '/../scripts/ops/andromeda_local_offer_collect.php'));
-    // CLI clock is real. Seed only this disposable fixture at the real current time.
     foreach (glob($directory . '/*.json') as $path) unlink($path);
     reuse_seed($directory, $offers[0], $request, time());
     $offerBytes = var_export($offers[0], true);
@@ -283,9 +277,9 @@ function v2_data_db():PDO {return new ReusePdoFixture();}
         'Actual CLI invokes existing cache reader with correct program and own price');
     reuse_check($offers === $before, 'Input offers remain immutable after all paths');
     echo 'ANDROMEDA_COLLECTOR_GROUP_REUSE_OK checks=' . $checks
-        . ' compatible_offers=100 uncached_capture_callbacks=1 cached_capture_callbacks=0 cache_hits=1'
+        . ' compatible_offers=100 durations=7/10/14 uncached_capture_callbacks=1 cached_capture_callbacks=0 cache_hits=1'
         . ' existing_evidence_applications=100 supplier_http=0 live_db_writes=0'
-        . ' cross_night_fixed_evidence=not_proven no_final_price_promotion=1' . PHP_EOL;
+        . ' cross_night_reuse=1 no_final_price_promotion=1' . PHP_EOL;
 } finally {
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
     foreach ($files as $file) {

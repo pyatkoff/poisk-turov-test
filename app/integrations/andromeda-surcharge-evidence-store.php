@@ -4,7 +4,7 @@ require_once __DIR__.'/andromeda-surcharge-evidence.php';
 
 final class AnyTourAndromedaSurchargeEvidenceStoreV1
 {
-    private const PREFIX='andromeda-surcharge-group-v1-';
+    private const PREFIX='andromeda-surcharge-group-v2-';
     private const MAX_BYTES=16384;
 
     public static function save(string $directory,array $evidence,array $provenance,callable $write):array
@@ -45,7 +45,7 @@ final class AnyTourAndromedaSurchargeEvidenceStoreV1
 
     private static function path(string $directory,string $groupKey):string
     {
-        if(preg_match('/^andromeda-surcharge-v2:([a-f0-9]{64})$/D',$groupKey,$m)!==1)
+        if(preg_match('/^andromeda-surcharge-v3:([a-f0-9]{64})$/D',$groupKey,$m)!==1)
             throw new InvalidArgumentException('ANDROMEDA_SURCHARGE_EVIDENCE_STORE_INPUT');
         return rtrim($directory,'/').'/'.self::PREFIX.$m[1].'.json';
     }
