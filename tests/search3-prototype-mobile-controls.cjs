@@ -37,13 +37,17 @@ assert.match(normalized,
   /\.offer-list-toolbar \{ font-size:16px; \}/,
   'Offer-list toolbar label must remain readable on mobile');
 assert.match(normalized,
+  /\.search-secondary label, \.search-secondary select, \.search-secondary \.more-filters \{ min-height:44px; \}/,
+  'Legacy secondary controls keep their 44px minimum tap height');
+assert.match(normalized,
+  /\.search-secondary select \{ font-size:16px; \}/,
+  'Legacy secondary selects retain the existing 16px mobile contract');
+assert.match(normalized,
   /\.quick-category legend, \.quick-field > span:first-child, \.intro \.more-filters \{ font-size:14px; \}/,
   'Real mobile search-form labels and all-filters action need readable 14px text');
 assert.match(normalized,
   /\.intro \.more-filters \{ min-height:44px; \}/,
   'Top all-filters action needs a 44px minimum tap height');
-assert.equal(normalized.includes('.search-secondary select { font-size:16px; }'), false,
-  'Do not keep a dead select override for the current quick-field search DOM');
 assert.match(normalized,
   /\.drawer-trigger, \.quick-chips \.chip, \.active-filter, \.hotel-links \.text-button, \.compare-btn, \.hotel-more \.text-button, \.offer-price \.primary, \.compare-tray > \.primary, \.calendar-heading \.text-button, \.calendar-foot \.text-button, \.destination-selection button, \.flex-dates button, \.filter-panel \.check-row, \.filter-panel \.star-options button, \.filter-top \.text-button \{ min-height:44px; \}/,
   'Frequent mobile filter, tour, calendar and destination actions need 44px minimum tap height');
