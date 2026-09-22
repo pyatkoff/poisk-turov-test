@@ -3,23 +3,24 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/operator-fuel-rule-evidence.php';
 
-/** Private fuel evidence in the existing INT searches evidence directory. */
+/** Private V2 direction-keyed fuel evidence in the existing INT searches directory. */
 final class AnyTourOperatorFuelRuleStoreV1
 {
-    private const PREFIX = 'operator-fuel-rule-v1-';
-    private const MAX_BYTES = 131072;
-    private const MAX_OBSERVATIONS = 64;
+    private const PREFIX = 'operator-fuel-rule-v2-';
+    private const MAX_BYTES = 262144;
+    private const MAX_OBSERVATIONS = 128;
 
     public static function append(string $directory, array $raw, callable $write): array
     {
         self::assertDirectory($directory);
         $obs = AnyTourOperatorFuelRuleEvidenceV1::observation($raw);
-        $digest = AnyTourOperatorFuelRuleEvidenceV1::scopeDigest($obs['scope']);
+        $digest = AnyTourOperatorFuelRuleEvidenceV1::directionDigest($obs['direction']);
         $path = self::path($directory, $digest);
         $current = self::readEnvelope($path, true);
         $rows = [];
         if ($current !== null) {
             self::assertEnvelope($current, $digest);
+            if ($current['direction'] !== $obs['direction']) throw new DomainException('OPERATOR_FUEL_STORE_CONFLICT');
             $rows = $current['observations'];
         }
         $byEvidence = [];
@@ -31,7 +32,7 @@ final class AnyTourOperatorFuelRuleStoreV1
         $rows[] = $obs;
         usort($rows, static fn(array $a,array $b): int => [$a['observed_at'],$a['evidence_sha256']] <=> [$b['observed_at'],$b['evidence_sha256']]);
         if (count($rows) > self::MAX_OBSERVATIONS) $rows = array_slice($rows, -self::MAX_OBSERVATIONS);
-        $next = ['version'=>1,'scope_sha256'=>$digest,'scope'=>$obs['scope'],'observations'=>$rows];
+        $next = ['version'=>2,'direction_sha256'=>$digest,'direction'=>$obs['direction'],'observations'=>$rows];
         $encoded = json_encode($next, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         if (strlen($encoded) > self::MAX_BYTES) throw new DomainException('OPERATOR_FUEL_STORE_SIZE');
         if ($write($path, $next) !== true) throw new RuntimeException('OPERATOR_FUEL_STORE_WRITE');
@@ -45,12 +46,18 @@ final class AnyTourOperatorFuelRuleStoreV1
     {
         try {
             self::assertDirectory($directory);
-            $provider = $target['provider'] ?? null;
             $operator = $target['operator'] ?? null;
-            $scopeRaw = $target['scope'] ?? null;
-            if (!is_array($scopeRaw)) return null;
-            $scope = AnyTourOperatorFuelRuleEvidenceV1::canonicalScope($provider, $operator, $scopeRaw);
-            $digest = AnyTourOperatorFuelRuleEvidenceV1::scopeDigest($scope);
+            if (!is_string($operator)) return null;
+            if (array_key_exists('direction', $target)) {
+                $direction = AnyTourOperatorFuelRuleEvidenceV1::canonicalDirection($operator, $target['direction']);
+            } elseif (is_array($target['search_params'] ?? null)) {
+                $direction = AnyTourOperatorFuelRuleEvidenceV1::directionFromSearch($operator, $target['search_params']);
+            } else {
+                $provider = $target['provider'] ?? null;
+                $scope = AnyTourOperatorFuelRuleEvidenceV1::canonicalScope($provider, $operator, $target['scope'] ?? null);
+                $direction = AnyTourOperatorFuelRuleEvidenceV1::directionFromScope($operator, $scope);
+            }
+            $digest = AnyTourOperatorFuelRuleEvidenceV1::directionDigest($direction);
             $envelope = self::readEnvelope(self::path($directory, $digest), true);
             if ($envelope === null) return null;
             self::assertEnvelope($envelope, $digest);
@@ -91,13 +98,14 @@ final class AnyTourOperatorFuelRuleStoreV1
     private static function assertEnvelope(array $value, string $digest): void
     {
         $keys = array_keys($value); sort($keys);
-        if ($keys !== ['observations','scope','scope_sha256','version'] || ($value['version']??null)!==1
-            || ($value['scope_sha256']??null)!==$digest || !is_array($value['scope']??null)
-            || AnyTourOperatorFuelRuleEvidenceV1::scopeDigest($value['scope']) !== $digest
+        if ($keys !== ['direction','direction_sha256','observations','version'] || ($value['version']??null)!==2
+            || ($value['direction_sha256']??null)!==$digest || !is_array($value['direction']??null)
+            || AnyTourOperatorFuelRuleEvidenceV1::directionDigest($value['direction']) !== $digest
             || !is_array($value['observations']??null) || !array_is_list($value['observations'])
             || count($value['observations']) > self::MAX_OBSERVATIONS) throw new DomainException('OPERATOR_FUEL_STORE_INVALID');
         foreach ($value['observations'] as $row) {
-            if (!is_array($row) || AnyTourOperatorFuelRuleEvidenceV1::observation($row) !== $row || $row['scope'] !== $value['scope']) {
+            if (!is_array($row) || AnyTourOperatorFuelRuleEvidenceV1::observation($row) !== $row
+                || $row['direction'] !== $value['direction']) {
                 throw new DomainException('OPERATOR_FUEL_STORE_INVALID');
             }
         }
