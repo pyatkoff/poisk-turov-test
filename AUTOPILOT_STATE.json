@@ -1,4 +1,24 @@
 {
+  "coordination_journal": {
+    "issue": 3419,
+    "url": "https://github.com/pyatkoff/poisk-turov-test/issues/3419",
+    "history_issues": [
+      2530,
+      996
+    ],
+    "updated_at": "2026-09-22",
+    "queues": {
+      "search": 1646,
+      "int": 2506,
+      "int_umbrella": 1493,
+      "match": 1971,
+      "local": 2690,
+      "site": 1719,
+      "seo": 1720
+    },
+    "rule": "Fresh claims/results/authorized commands go to #3419. Preserve inherited claims, receipts and no-replay; on blocker record/defer it and continue the next independent available task.",
+    "entrypoint": "docs/project/coordination-journal.md"
+  },
   "latest_local_hotel_filter_package": {
     "schema_version": 1,
     "date": "2026-09-09",
@@ -1268,7 +1288,7 @@
     "title": "Search3: per-axis OTA acceptance after completed technical preparation",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 1646,
-    "coordinator_issue": 996,
+    "coordinator_issue": 3419,
     "pr": null,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
@@ -1276,7 +1296,7 @@
     "last_fully_checked_release_sha": "0527c0785674792eed20f7643ab26f6730e5f426",
     "published_source_sha": "0a6372c786015c7ab2f70fa3b3fbb3f6f6fcce8f",
     "acceptance_status": "HOTEL_CARD_HIERARCHY_PREVIEW_PUBLISHED_OTA_ACCEPTANCE_IN_PROGRESS",
-    "next_action": "The bounded technical refactor-pass is COMPLETE: #2423 and docs/project/search3-technical-audit-20260912.md own its closeout; do not restart it. Continue current Search3 UX and per-axis OTA acceptance from the checked/published #2434 baseline. First read fresh #996/#1646, release/open PR/CI and active exact-path claims. At this checkpoint #2436 owns shortlist header density and shared results CSS/generated/import files; selected-flight price wrapping is independently prepared under claim5666829637 and must wait for the shared-file handoff. Recheck live ownership instead of treating these dated references as a new permanent queue. Then continue unfinished compare, selected-tour/lead and accumulated desktop/mobile acceptance in the canonical product plan. Keep full primary form direction, existing active queues and completed form/results/card work. Do not alter API/provider/matching/content, price arithmetic, lead transport/mapping, analytics or production; missing evidence stays not_measured.",
+    "next_action": "The bounded technical refactor-pass is COMPLETE: #2423 and docs/project/search3-technical-audit-20260912.md own its closeout; do not restart it. Continue current Search3 UX and per-axis OTA acceptance from the checked/published #2434 baseline. First read fresh #3419/#1646, release/open PR/CI and active exact-path claims. At this checkpoint #2436 owns shortlist header density and shared results CSS/generated/import files; selected-flight price wrapping is independently prepared under claim5666829637 and must wait for the shared-file handoff. Recheck live ownership instead of treating these dated references as a new permanent queue. Then continue unfinished compare, selected-tour/lead and accumulated desktop/mobile acceptance in the canonical product plan. Keep full primary form direction, existing active queues and completed form/results/card work. Do not alter API/provider/matching/content, price arithmetic, lead transport/mapping, analytics or production; missing evidence stays not_measured.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "local_filter_zero_match_recovery_20260910": {
@@ -10008,7 +10028,7 @@
     "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent.",
     "visual_run": 33976375814
   },
-  "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
+  "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/3419",
   "latest_results_chrome_drawer_retirement": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "base_release_sha": "b8d7282a2a90117a0fd7d291d946e6b2315399ae",
@@ -13414,7 +13434,7 @@
     ]
   },
   "development_coordination": {
-    "coordination_issue": 996,
+    "coordination_issue": 3419,
     "entrypoint": "docs/project/anytour-development.md",
     "policy": "Routing only; no new queue, scheduling, code/deploy or production authorization.",
     "workstreams": {

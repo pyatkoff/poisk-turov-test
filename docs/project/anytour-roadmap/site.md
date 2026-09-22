@@ -1,6 +1,6 @@
 # SITE — подробный план развития сайта AnyTour
 
-План направления [#1719](https://github.com/pyatkoff/poisk-turov-test/issues/1719). Координатор — #996; правила владения — [anytour-development.md](../anytour-development.md). База — `release/search3-production-ready-v1`, проверенная при составлении версия `cf3f4b6fc0a1b82b7e6b4f3e3ae6818c5d198c90`, 9 сентября 2026. Это последовательность ограниченных пакетов, а не разрешение одновременно менять все перечисленные файлы. Перед исполнением — свежие head, AGENTS, OWNER_PRIORITY, `AUTOPILOT_STATE.json.current_task`, открытые PR/CI и claim точных файлов в #996.
+План направления [#1719](https://github.com/pyatkoff/poisk-turov-test/issues/1719). Координатор — #3419; правила владения — [anytour-development.md](../anytour-development.md). База — `release/search3-production-ready-v1`, проверенная при составлении версия `cf3f4b6fc0a1b82b7e6b4f3e3ae6818c5d198c90`, 9 сентября 2026. Это последовательность ограниченных пакетов, а не разрешение одновременно менять все перечисленные файлы. Перед исполнением — свежие head, AGENTS, OWNER_PRIORITY, `AUTOPILOT_STATE.json.current_task`, открытые PR/CI и claim точных файлов в #3419.
 
 ## Результат для посетителя и текущая основа
 
