@@ -1,0 +1,23 @@
+name: MATCH TV-SAMO Side star4 v4 CI
+'on':
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php
+      - tests/hotel_match_tv_samo_common4_side_star4_v4_test.php
+      - .github/workflows/hotel-match-tv-samo-common4-side-star4-v4-ci.yml
+permissions: {contents: read}
+jobs:
+  test:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - run: |
+          php -l scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php
+          php tests/hotel_match_tv_samo_common4_side_star4_v4_test.php
+          php scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php --self-test
+          ! grep -Fq "foreach([3,4,5] as \\$star)" scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php
+          ! grep -Fq "\\$td=\\$star===3?hmc3_tv_resume" scripts/diagnostics/hotel_match_tv_samo_common4_side_star4_v4.php
