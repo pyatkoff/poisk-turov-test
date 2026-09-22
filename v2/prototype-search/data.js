@@ -385,7 +385,7 @@
     if(signal?.aborted)throw new DOMException('Aborted','AbortError');
     const failed=settled.filter(row=>row.status==='rejected');
     if(failed.length===settled.length)throw failed[0].reason;
-    return snapshot;
+    return {...snapshot,partial:failed.length>0};
   }
   async function init(origin='Москва') {
     try{const response=await fetch('/data/departures-v1.php',{credentials:'same-origin'});const data=await response.json();if(response.ok&&data.ok&&Array.isArray(data.items))catalog.departures=data.items;}catch{}
