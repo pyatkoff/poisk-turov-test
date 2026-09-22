@@ -1,0 +1,36 @@
+name: Tourvisor retained operator fuel intake
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/tourvisor-operator-fuel-retained-intake.php'
+      - 'app/integrations/operator-fuel-rule-evidence.php'
+      - 'tests/tourvisor-operator-fuel-retained-intake-test.php'
+      - '.github/workflows/tourvisor-operator-fuel-retained-intake.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate retained intake without network
+        run: |
+          php -l app/integrations/operator-fuel-rule-evidence.php
+          php -l app/integrations/tourvisor-operator-fuel-retained-intake.php
+          php -l tests/tourvisor-operator-fuel-retained-intake-test.php
+          php -d allow_url_fopen=0 tests/tourvisor-operator-fuel-retained-intake-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/tourvisor-operator-fuel-retained-intake.php').read_text()
+          for forbidden in ('curl_', 'file_get_contents(', 'PDO', 'mysqli_', 'http://', 'https://'):
+              assert forbidden not in src
+          assert "'unit' => 'party_roundtrip'" in src
+          assert "'base_relation' => 'excluded'" in src
+          assert "count($defaults) !== 1" in src
+          assert "count($value) !== 1" in src
+          print('Retained Tourvisor intake static boundary: PASS')
+          PY
