@@ -79,7 +79,7 @@ test('one user search invokes Andromeda autosave once and rereads LOCAL after it
   database:(i,p)=>snapshot(p,saved?['tourvisor','andromeda']:['tourvisor'])
  });
  await h.start();assert.equal(h.nativeCalls.length,1);assert.equal(h.nativeCalls[0].generation,1);
- assert.deepEqual(h.nativeCalls[0].params,h.data.params(trip));await h.poll();assert.deepEqual(h.providers(),['tourvisor']);
+ assert.equal(JSON.stringify(h.nativeCalls[0].params),JSON.stringify(h.data.params(trip)));await h.poll();assert.deepEqual(h.providers(),['tourvisor']);
  gate.resolve();await flush();assert.equal(h.nativeCalls.length,1);assert.deepEqual(h.providers(),['andromeda','tourvisor']);
  assert.equal(h.dbBodies.length,3);assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='complete'));
 });
