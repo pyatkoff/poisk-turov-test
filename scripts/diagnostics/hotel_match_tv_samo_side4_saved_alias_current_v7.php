@@ -29,7 +29,10 @@ function hma7_name_score(string $a,string $b): array {
     $sa=implode(' ',$ta);$sb=implode(' ',$tb);$exact=$sa===$sb;
     $inter=count(array_intersect($ta,$tb));$union=count(array_unique(array_merge($ta,$tb)));
     $j=$union?$inter/$union:0.0;$contain=$inter/min(count($ta),count($tb));
-    $max=max(strlen($sa),strlen($sb));\n    // PHP's levenshtein implementation rejects long byte strings on supported\n    // runtimes. Token similarity remains deterministic and qualifier-safe.\n    $lev=$max&&strlen($sa)<=240&&strlen($sb)<=240?1-(levenshtein($sa,$sb)/$max):0.0;
+    $max=max(strlen($sa),strlen($sb));
+    // PHP's levenshtein implementation rejects long byte strings on supported
+    // runtimes. Token similarity remains deterministic and qualifier-safe.
+    $lev=$max&&strlen($sa)<=240&&strlen($sb)<=240?1-(levenshtein($sa,$sb)/$max):0.0;
     $score=$exact?1.0:max($lev,0.68*$j+0.32*$contain);
     if($qualifierConflict)$score=min($score,0.79);
     return ['score'=>round(max(0.0,min(1.0,$score)),6),'exact'=>$exact,'qualifier_conflict'=>$qualifierConflict,'a_tokens'=>$ta,'b_tokens'=>$tb];
