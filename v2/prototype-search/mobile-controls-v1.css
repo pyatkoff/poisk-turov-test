@@ -25,8 +25,7 @@
   .flex-dates button,
   .filter-panel .check-row,
   .filter-panel .star-options button,
-  .filter-top .text-button,
-  .mobile-filter-footer .secondary {
+  .filter-top .text-button {
     min-height:44px;
   }
 
