@@ -103,3 +103,22 @@
     grid-template-rows:108px 108px;
   }
 }
+
+/* Keep the full destination catalogue reachable without pushing resorts below dozens of country rows. */
+@media (max-width:760px) {
+  .destination-countries {
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scroll-snap-type:x proximity;
+    scrollbar-width:thin;
+    padding-bottom:5px;
+  }
+
+  .destination-countries button {
+    flex:0 0 auto;
+    min-width:104px;
+    white-space:nowrap;
+    scroll-snap-align:start;
+  }
+}
