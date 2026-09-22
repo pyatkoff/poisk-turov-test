@@ -35,7 +35,7 @@ final class AnyTourAndromedaSurchargeEvidenceV1
     {
         $party=$e['party_surcharge']??null;
         return ($e['schema_version']??null)===1&&($e['provider']??null)==='andromeda'&&($e['state']??null)==='estimated'
-            &&is_string($e['group_key']??null)&&preg_match('/^andromeda-surcharge-v2:[a-f0-9]{64}$/D',$e['group_key'])===1
+            &&is_string($e['group_key']??null)&&preg_match('/^andromeda-surcharge-v3:[a-f0-9]{64}$/D',$e['group_key'])===1
             &&is_int($e['observed_at']??null)&&$e['observed_at']>0&&is_int($e['expires_at']??null)&&$e['expires_at']>$e['observed_at']
             &&$e['expires_at']<=$e['observed_at']+300&&is_array($party)&&is_string($party['amount']??null)&&self::money($party['amount'],true)
             &&is_string($party['currency']??null)&&preg_match('/^[A-Z]{3}$/D',$party['currency'])===1&&in_array($party['source']??null,self::SOURCES,true);
