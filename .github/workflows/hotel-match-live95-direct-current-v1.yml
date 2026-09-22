@@ -1,0 +1,95 @@
+name: MATCH live95 direct CURRENT v1
+on:
+  push:
+    branches: [ops/match-live95-direct-current-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_live95_direct_current_v1.php
+      - .github/workflows/hotel-match-live95-direct-current-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+env: {OPERATION_ID: hotel-match-live95-direct-current-1971-20260919-v1, BASE_SHA: e9d7bf349bfb601dff04b7fc47088c1eff38b369, CLAIM: '5743514273'}
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source, claim and immutable inputs
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/catalogs terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA";test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 2
+          php -l scripts/diagnostics/hotel_match_live95_direct_current_v1.php;php scripts/diagnostics/hotel_match_live95_direct_current_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body'];assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in b and '10588361321' in b and '05ff5be9057a1485f07ee0f3a0ac12e2e8f74b21a81ed2f3d5556ba61e84bd47' in b
+          assert 'exact95' in b and 'Provider calls0/writes0' in b
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588361321/zip >input/v2.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10588235888/zip >input/v1.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,tarfile,io,pathlib,json
+          p=pathlib.Path('input/v2.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='783aa1d3e7748c5d65414e6de23800164ccd59847ddaa12253b5e0a0cb9fbb8c'
+          with zipfile.ZipFile(p) as z:tb=z.read('server-operation.tgz')
+          with tarfile.open(fileobj=io.BytesIO(tb),mode='r:gz') as t:
+           rb=t.extractfile(t.getmember('result.json')).read();assert hashlib.sha256(rb).hexdigest()=='05ff5be9057a1485f07ee0f3a0ac12e2e8f74b21a81ed2f3d5556ba61e84bd47';pathlib.Path('input/result.json').write_bytes(rb)
+           man=json.loads(t.extractfile(t.getmember('raw-manifest.json')).read()); ledger={x['file']:x for x in man['files']}
+           cats=[n for n in ledger if n.startswith('raw-catalog-') and n not in ['raw-catalog-townfrom.json','raw-catalog-state.json']]
+           assert len(cats)==9
+           for n in cats:
+            b=t.extractfile(t.getmember(n)).read();assert len(b)==ledger[n]['bytes'] and hashlib.sha256(b).hexdigest()==ledger[n]['sha256'];pathlib.Path('input/catalogs',n).write_bytes(b)
+          p=pathlib.Path('input/v1.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='99ddb8d8b22b087198dbdf96e88d056ccbad555c67b261c79e2ad27b88f60c83'
+          with zipfile.ZipFile(p) as z:tb=z.read('server-operation.tgz')
+          with tarfile.open(fileobj=io.BytesIO(tb),mode='r:gz') as t:b=t.extractfile(t.getmember('raw-catalog-13965a9cf6.json')).read()
+          assert hashlib.sha256(b).hexdigest()=='564da2af9cb248a6860b1705285f106d4f022ffbbac36a7fcfe2630d91a74b39';pathlib.Path('input/catalogs/raw-catalog-turkey-retained.json').write_bytes(b)
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs and max(xs,key=lambda z:z['id'])['status']=='completed':assert max(xs,key=lambda z:z['id'])['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit(2)
+          PY
+      - name: Read CURRENT protection state once
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/catalogs\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_live95_direct_current_v1.php input/result.json "$remote:$op/payload/"
+          scp "${opts[@]}" input/catalogs/*.json "$remote:$op/payload/catalogs/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_RESULT_PATH=\"\$HOME/$op/payload/result.json\" MATCH_CATALOG_DIR=\"\$HOME/$op/payload/catalogs\" php \"\$HOME/$op/payload/hotel_match_live95_direct_current_v1.php\""
+          ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' >terminal/server.tgz
+      - name: Verify CURRENT result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+           for n in ['result.json','receipt.json']:pathlib.Path('terminal',n).write_bytes(t.extractfile(n).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only' and r['input_direct95']==95 and r['provider_calls']==r['database_writes']==r['mapping_writes']==0
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert all(x['safe_to_write_now'] is False for x in r['rows'])
+          print(json.dumps({'state_counts':r['state_counts'],'safe_candidate_count':r['safe_candidate_count'],'result_sha256':q['result_sha256']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-live95-current-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
