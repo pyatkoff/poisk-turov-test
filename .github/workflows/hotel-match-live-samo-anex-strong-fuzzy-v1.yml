@@ -1,0 +1,87 @@
+name: MATCH live SAMO ANEX strong review v1
+'on':
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live_samo_anex_strong_fuzzy_v1.php
+      - tests/hotel_match_live_samo_anex_strong_fuzzy_v1_test.php
+      - .github/workflows/hotel-match-live-samo-anex-strong-fuzzy-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+env:
+  OP: hotel-match-live-samo-anex-strong-fuzzy-1971-20260922-v1
+  BASE: 77140ca28d37b2792419616acb368635d5887c89
+  CLAIM: '5784534028'
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          php -l scripts/diagnostics/hotel_match_live_samo_anex_strong_fuzzy_v1.php
+          php scripts/diagnostics/hotel_match_live_samo_anex_strong_fuzzy_v1.php --self-test
+          php tests/hotel_match_live_samo_anex_strong_fuzzy_v1_test.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > claim.json
+          python3 - <<'PY'
+          import json,os,pathlib,datetime
+          c=json.load(open('claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert 'count927' in b and 'DB READ ONLY' in b and 'HTTP0' in b
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read','source_sha':os.environ['HEAD'],'database_writes':0},sort_keys=True)+'\n')
+          PY
+      - name: Require Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(80):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success';break
+              time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Execute read only audit
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_live_samo_anex_strong_fuzzy_v1.php scripts/diagnostics/hotel_match_live_samo_anex_identity_join_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/app/integrations/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_live_samo_anex_strong_fuzzy_v1.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";mkdir export;cp result.json receipt.json reservation.json export/;tar -czf - -C export ." >terminal/server.tgz
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile(): pathlib.Path('terminal',m.name.lstrip('./')).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']=='completed_read_only_strong_fuzzy' and r['frontier']==927
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          print(json.dumps({'frontier':r['frontier'],'examined':r['candidate_rows_examined'],'prepared':r['prepared_before_mutual_unique'],'unique':r['strict_mutual_unique_count'],'status':r['status_counts'],'rejects':r['reject_reasons']},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-strong-review-${{ github.run_id }}', path: terminal/, retention-days: 90}
