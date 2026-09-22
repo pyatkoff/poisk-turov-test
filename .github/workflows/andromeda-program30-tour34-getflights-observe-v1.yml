@@ -36,7 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           php -l scripts/diagnostics/andromeda_program30_tour34_getflights_observe_v1.php
-          python3 -m pytest -q tests/andromeda_program30_tour34_getflights_observe_v1_test.py
+          python3 tests/andromeda_program30_tour34_getflights_observe_v1_test.py
 
   observe:
     needs: contract
