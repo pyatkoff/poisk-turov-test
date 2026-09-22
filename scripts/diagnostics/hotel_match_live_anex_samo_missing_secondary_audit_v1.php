@@ -27,6 +27,10 @@ function hmams_hotelish_key(string $key):bool{
     $k=strtolower($key);
     return in_array($k,['f4','hotel','hotels','hotelid','hotel_id','hotelcode','hotel_code','hotellist','hotelkey','hotel_key'],true);
 }
+function hmams_lane_needs_fresh(array $lane):bool{
+    if(!empty($lane['accepted_external_ids']))return false;
+    return (string)($lane['state']??'')!=='saved_single_native_missing_secondary_edge';
+}
 function hmams_parse_link(array $r):array{
     $op=(int)($r['operator_id']??0);$ns=hmams_operator_namespace($op);
     if($ns===null)return ['state'=>'unsupported_operator','namespace'=>null,'candidates'=>[]];
@@ -134,10 +138,8 @@ function hmams_execute(PDO $db):array{
             if($hasUsable)$usableSaved++;
             $freshLanes=[];
             foreach(['bgoperator','operator_315','operator_342'] as $ns){
-                $lane=$lanes[$ns];$acceptedIds=$lane['accepted_external_ids']??[];
-                if($acceptedIds)continue;
-                if(($lane['state']??'')==='saved_single_native_missing_secondary_edge')continue;
-                $freshLanes[]=$ns;
+                $lane=$lanes[$ns];
+                if(hmams_lane_needs_fresh($lane))$freshLanes[]=$ns;
             }
             $needsFresh=$freshLanes!==[];
             if($needsFresh)$freshNeeded++;
@@ -177,6 +179,9 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
         hmams_need(($fs['state']??'')==='single_native_candidate'&&($fs['candidates'][0]??'')==='4567','hotel_code');
         $bad=hmams_parse_link(['operator_id'=>43,'operator_link'=>'https://example.test/x?session=123&hotelId=4567','operator_link_host'=>'example.test','operator_link_query'=>'session=123&hotelId=4567']);
         hmams_need(($bad['state']??'')==='secret_bearing_link','secret');
+        hmams_need(!hmams_lane_needs_fresh(['state'=>'no_saved_native','accepted_external_ids'=>['1']]),'accepted_lane');
+        hmams_need(!hmams_lane_needs_fresh(['state'=>'saved_single_native_missing_secondary_edge','accepted_external_ids'=>[]]),'saved_lane');
+        hmams_need(hmams_lane_needs_fresh(['state'=>'no_saved_native','accepted_external_ids'=>[]]),'fresh_lane');
         echo "MATCH_LIVE_ANEX_SAMO_MISSING_SECONDARY_AUDIT_V1_SELFTEST_OK\n";exit;
     }
     hmams_need($mode==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$sha=(string)getenv('MATCH_SOURCE_SHA');
