@@ -31,13 +31,23 @@ function cache_autosave_offer(string $suffix, string $base, string $program = 'p
     ];
 }
 
-function cache_autosave_fact(string $base = '185125', string $surcharge = '14265', string $total = '199390'): array
-{
+function cache_autosave_fact(
+    string $base = '185125',
+    string $surcharge = '14265',
+    string $total = '199390',
+    string $aggregation = 'single_distinct_party_markup'
+): array {
     return [
         'schema_version' => 1,
         'provider' => 'andromeda',
         'state' => 'estimated',
         'search_price' => ['amount' => $base, 'currency' => 'RUB'],
+        'transport_markup_reported' => [
+            'amount' => $surcharge,
+            'currency' => 'RUB',
+            'source' => 'andromeda_get_flights_transport',
+            'aggregation' => $aggregation,
+        ],
         'party_surcharge' => [
             'amount' => $surcharge,
             'currency' => 'RUB',
@@ -77,7 +87,7 @@ try {
         return file_put_contents($path, $encoded, LOCK_EX) === strlen($encoded);
     };
 
-    // Exact estimated pricing wins and seeds one strict group specimen.
+    // Exact program-level estimated pricing wins and seeds one strict reusable group specimen.
     $resolved = AnyTourAndromedaSurchargeCacheAutosaveV1::resolve(
         $exactEstimated, $sourceOffer, $request, $directory, $now, $meta, $writer
     );
@@ -96,6 +106,26 @@ try {
     cache_autosave_assert(($fallback['fact']['party_surcharge']['amount'] ?? null) === '14265', 'cache fallback surcharge changed');
     cache_autosave_assert(($fallback['fact']['search_price_with_surcharge']['amount'] ?? null) === '204265', 'cache fallback total');
     cache_autosave_assert(($fallback['fact']['final_price_verified'] ?? null) === false, 'cache fallback became final');
+    cache_autosave_assert(($fallback['fact']['reuse_basis']['aggregation'] ?? null) === 'single_distinct_party_markup', 'cache fallback lost reuse basis');
+
+    // A choice-dependent exact estimate remains authoritative for that offer, but cannot seed shared cache.
+    $choiceSource = cache_autosave_offer('choice-source', '200000', 'program_choice');
+    $choiceExact = ['state' => 'estimated', 'fact' => cache_autosave_fact(
+        '200000', '12000', '212000', 'minimum_complete_required_roundtrip_markup'
+    ), 'verified_quote' => null];
+    $choiceMeta = $meta;
+    $choiceMeta['source_offer_ref'] = $choiceSource['offer_ref'];
+    $beforeChoiceWrites = $writes;
+    $choiceResolved = AnyTourAndromedaSurchargeCacheAutosaveV1::resolve(
+        $choiceExact, $choiceSource, $request, $directory, $now, $choiceMeta, $writer
+    );
+    cache_autosave_assert($choiceResolved === $choiceExact, 'choice-dependent exact estimate changed');
+    cache_autosave_assert($writes === $beforeChoiceWrites, 'choice-dependent estimate seeded shared cache');
+    $choiceSibling = cache_autosave_offer('choice-sibling', '210000', 'program_choice');
+    cache_autosave_assert(
+        AnyTourAndromedaSurchargeCacheAutosaveV1::resolve(null, $choiceSibling, $request, $directory, $now) === null,
+        'choice-dependent estimate leaked to sibling'
+    );
 
     // Verified exact quote always outranks cache and never seeds/rewrites it.
     $verified = ['state' => 'verified', 'fact' => null, 'verified_quote' => [
@@ -156,7 +186,7 @@ try {
         'cache write failure suppressed exact pricing'
     );
 
-    echo "ANDROMEDA_SURCHARGE_CACHE_AUTOSAVE_OK exact=1 reuse=1 rebase=1 verified_priority=1 strict=3 expiry=1 fail_closed=2\n";
+    echo "ANDROMEDA_SURCHARGE_CACHE_AUTOSAVE_OK exact=1 reuse=1 rebase=1 choice_exact_only=1 verified_priority=1 strict=3 expiry=1 fail_closed=2\n";
 } finally {
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
