@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const OP='hotel-match-live942-samo-anex-refresh-1971-20260923-v1';
+const OP='hotel-match-live942-samo-anex-refresh-1971-20260923-v2';
 const MAX_HTTP=2200;
 
 function s942_need(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
@@ -101,7 +101,7 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
     echo s942_json(['state'=>$state,'reason'=>$reason,'samo_http_calls'=>$calls,'searched_hotels'=>count($rows),'status_counts'=>$counts,'unique_native_source_unique_count'=>$mutual])."\n";
     return in_array($state,['completed_read_only','terminal_quota_stop_no_replay'],true)?0:2;
 }
-if(($argv[1]??'')==='--self-test'){s942_need(s942_norm('АНЕКС  ТУР')==='анекс тур','norm');echo "MATCH_LIVE942_SAMO_ANEX_REFRESH_V1_SELFTEST_OK\n";exit;}
+if(($argv[1]??'')==='--self-test'){s942_need(s942_norm('АНЕКС  ТУР')==='анекс тур','norm');echo "MATCH_LIVE942_SAMO_ANEX_REFRESH_V2_SELFTEST_OK\n";exit;}
 s942_need(($argv[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$plan=(string)getenv('MATCH_PLAN_PATH');$sha=(string)getenv('MATCH_SOURCE_SHA');
 s942_need(is_dir($root)&&is_dir($dir)&&basename($dir)===OP&&is_file($plan)&&preg_match('/^[a-f0-9]{40}$/D',$sha)===1,'runtime_scope');
 exit(s942_execute($root,$dir,$plan,$sha));
