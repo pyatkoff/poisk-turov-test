@@ -1,0 +1,151 @@
+name: MATCH Side4 CURRENT DB compat probe v1
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-side4-current-db-compat-probe-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: match-side4-current-db-compat-probe-1971-20260922-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-side4-current-db-compat-probe-1971-20260922-v1
+  BASE: 1bfedf5a3897806a11718e5b5db03c50214e47af
+  CLAIM: '5782759316'
+jobs:
+  probe:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-side4-current-db-compat-probe-1971-20260922-v1' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact claim and Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD")" = ".github/workflows/hotel-match-side4-current-db-compat-probe-v1.yml"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > out/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('out/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/3419')
+          for s in [os.environ['OP'],os.environ['BASE'],'READ ONLY','Provider/Tourvisor/SAMO/ANEX/Andromeda HTTP0','DB writes0']:
+              assert s in b,s
+          PY
+          for i in $(seq 1 30); do
+            gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD/check-runs" > out/checks.json
+            state="$(python3 - <<'PY'
+          import json
+          xs=json.load(open('out/checks.json'))['check_runs']
+          g=[x for x in xs if x['name']=='guard']
+          if not g: print('pending')
+          elif any(x['conclusion']=='success' for x in g): print('success')
+          elif any(x['status']=='completed' and x['conclusion']!='success' for x in g): print('failed')
+          else: print('pending')
+          PY
+          )"
+            test "$state" != failed || { echo "Security guard failed"; exit 1; }
+            test "$state" != success || break
+            sleep 2
+          done
+          test "$state" = success
+      - name: Probe CURRENT DB read shapes
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; probe="$RUNNER_TEMP/probe.php"
+          trap 'rm -f "$key" "$known" "$probe"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          cat >"$probe" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $root=(string)getenv('ANYTOUR_ROOT');
+          $out=[
+            'operation'=>'hotel-match-side4-current-db-compat-probe-1971-20260922-v1',
+            'state'=>'started','provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,
+            'stage'=>'bootstrap'
+          ];
+          $db=null;
+          try{
+            $dbFile=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';
+            if(!is_file($dbFile))throw new RuntimeException('db_helper_missing');
+            require_once $dbFile;
+            if(!function_exists('v2_data_db'))throw new RuntimeException('db_helper_function_missing');
+            $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+            $required=[
+              'catalog_hotels'=>['id','name','country_id','country_name','region_name','subregion_name','category','is_active'],
+              'andromeda_hotel_identities'=>['supplier_namespace','external_hotel_id','local_hotel_id','decision_status','catalog_sha256','evidence_sha256','evidence_json'],
+              'anex_hotel_decisions'=>['catalog_hotel_id','decision_status'],
+            ];
+            $out['stage']='schema';
+            $out['schema']=[];
+            foreach($required as $table=>$need){
+              $rows=$db->query('SHOW COLUMNS FROM `'.$table.'`')->fetchAll(PDO::FETCH_ASSOC)?:[];
+              $cols=array_map(static fn($r)=>(string)$r['Field'],$rows);
+              $missing=array_values(array_diff($need,$cols));
+              if($missing)throw new RuntimeException('missing_columns_'.$table.'_'.implode('_',$missing));
+              $out['schema'][$table]=['column_count'=>count($cols),'required_present'=>true];
+            }
+            $out['stage']='transaction';
+            $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+            $db->exec('START TRANSACTION READ ONLY');
+            $ids=[9337,28660,37532];$ph='?,?,?';
+            $out['stage']='catalog_select';
+            $st=$db->prepare("SELECT id,name,country_id,country_name,region_name,subregion_name,category,is_active FROM catalog_hotels WHERE id IN ($ph) ORDER BY id");
+            $st->execute($ids);$catalog=$st->fetchAll(PDO::FETCH_ASSOC)?:[];
+            $out['catalog']=['row_count'=>count($catalog),'ids'=>array_values(array_map(static fn($r)=>(int)$r['id'],$catalog)),'active_count'=>count(array_filter($catalog,static fn($r)=>(int)$r['is_active']===1))];
+            $out['stage']='identity_shape_select';
+            $rows=$db->query("SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,catalog_sha256,evidence_sha256,evidence_json FROM andromeda_hotel_identities ORDER BY supplier_namespace,external_hotel_id LIMIT 3")->fetchAll(PDO::FETCH_ASSOC)?:[];
+            $out['identity_shape']=['row_count'=>count($rows),'namespaces'=>array_values(array_unique(array_map(static fn($r)=>(string)$r['supplier_namespace'],$rows)))];
+            $out['stage']='identity_target_select';
+            $st=$db->prepare("SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status FROM andromeda_hotel_identities WHERE local_hotel_id IN ($ph) ORDER BY supplier_namespace,external_hotel_id");
+            $st->execute($ids);$target=$st->fetchAll(PDO::FETCH_ASSOC)?:[];
+            $out['identity_targets']=['row_count'=>count($target),'accepted_count'=>count(array_filter($target,static fn($r)=>$r['decision_status']==='accepted'))];
+            $out['stage']='manual_select';
+            $st=$db->prepare("SELECT catalog_hotel_id,decision_status FROM anex_hotel_decisions WHERE catalog_hotel_id IN ($ph) ORDER BY catalog_hotel_id");
+            $st->execute($ids);$manual=$st->fetchAll(PDO::FETCH_ASSOC)?:[];
+            $out['manual']=['row_count'=>count($manual),'ids'=>array_values(array_map(static fn($r)=>(int)$r['catalog_hotel_id'],$manual))];
+            $db->rollBack();
+            $out['stage']='complete';$out['state']='completed_read_only_db_compat_probe';$out['database_reads_verified']=true;
+          }catch(Throwable $e){
+            if($db instanceof PDO && $db->inTransaction())$db->rollBack();
+            $msg=preg_replace('/[\r\n\t]+/',' ',mb_substr($e->getMessage(),0,240,'UTF-8'))??'';
+            $out['state']='failed_read_only_db_compat_probe';$out['error_class']=get_class($e);$out['error_code']=(string)$e->getCode();$out['error_message']=$msg;
+          }
+          echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),PHP_EOL;
+          exit($out['state']==='completed_read_only_db_compat_probe'?0:2);
+          PHP
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; remoteFile="/tmp/match-db-compat-${GITHUB_RUN_ID}.php"
+          scp "${opts[@]}" "$probe" "$remote:$remoteFile"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu; trap 'rm -f $remoteFile' EXIT; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php $remoteFile" >out/db-probe.json 2>out/remote.stderr
+          status=$?
+          set -e
+          cat out/db-probe.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('out/db-probe.json'))
+          assert x['provider_http_calls']==0 and x['database_writes']==0 and x['mapping_writes']==0
+          print(json.dumps({'state':x['state'],'stage':x['stage'],'schema':x.get('schema'), 'catalog':x.get('catalog'),'identity_targets':x.get('identity_targets'),'manual':x.get('manual'),'error':x.get('error_message')},ensure_ascii=False,sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-side4-current-db-compat-${{ github.run_id }}
+          path: out/
+          retention-days: 90
+          if-no-files-found: error
