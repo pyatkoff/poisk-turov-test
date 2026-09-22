@@ -33,8 +33,8 @@ jobs:
           p=Path('scripts/diagnostics/intourist_program_fuel_seed_state_readonly_v1.php').read_text()
           for x in ['file_put_contents','fwrite(','curl_','PDO','mysqli','getFlights(','changeService(','->calc(','rename(','unlink(','mkdir(']:
               if x in p: raise SystemExit('write/transport forbidden:'+x)
-          for x in ['supplier_calls'=>0,'database_writes'=>0,'filesystem_writes'=>0,'operator-program-fuel-v1-']:
-              pass
+          for x in ["'supplier_calls'=>0","'database_writes'=>0","'filesystem_writes'=>0","operator-program-fuel-v1-"]:
+              if x not in p: raise SystemExit('missing read contract:'+x)
           print('PROGRAM_FUEL_SEED_STATE_READONLY_CONTRACT_OK')
           PY
 
