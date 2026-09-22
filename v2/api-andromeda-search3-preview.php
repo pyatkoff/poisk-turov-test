@@ -59,7 +59,8 @@ function anytour_andromeda_search3_operator_aliases(string $name): array {
     return array_values(array_unique(array_filter($aliases,static fn($v)=>is_string($v)&&trim($v)!=='')));
 }
 
-function anytour_andromeda_search3_known_operator_name(string $id): ?string {
+function anytour_andromeda_search3_known_operator_name(string|int $id): ?string {
+    $id=(string)$id;
     return [
         '13'=>'ANEX',
         '18'=>'Библио-Глобус',
@@ -68,7 +69,8 @@ function anytour_andromeda_search3_known_operator_name(string $id): ?string {
     ][$id]??null;
 }
 
-function anytour_andromeda_search3_operator_name(array $observed,string $id): ?string {
+function anytour_andromeda_search3_operator_name(array $observed,string|int $id): ?string {
+    $id=(string)$id;
     $seen=$observed[$id]??null;
     if(!is_string($seen)||trim($seen)==='')$seen=null;
     $known=anytour_andromeda_search3_known_operator_name($id);
