@@ -21,12 +21,14 @@ END = APP.index("function openCompare(", START)
 TOGGLE = APP[START:END]
 assert TOGGLE.count("function toggleCompare(") == 1
 
+# Use the repository's responsive photo-stage geometry. A fixture-only 210px
+# minimum height would impose a 315px aspect-ratio width in a 288px mobile slot.
 FIXTURE = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/mobile-controls-v1.css">
 </head><body><main style="max-width:640px;margin:24px auto;padding:16px">
 <h1 style="font-size:20px">Проверочные кнопки сравнения</h1>
-<div class="hotel-image-wrap" style="position:relative;min-height:210px;background:#e4ebf3;margin:18px 0">
+<div class="hotel-image-wrap" style="position:relative;background:#e4ebf3;margin:18px 0">
 <button id="photo" class="compare-photo-button" data-action="toggle-compare" data-id="123"
 aria-pressed="false" aria-label="Сравнить: Проверочный отель" title="Сравнить отель"></button>
 <button id="favorite" class="favorite-button" aria-label="В избранное: Проверочный отель">♥</button>
