@@ -3,11 +3,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../v2/search3-canonical-profiles-v1.js'),'utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
+function element(tag){return{tag,children:[],attrs:{},events:{},setAttribute(k,v){this.attrs[k]=v;},appendChild(child){this.children.push(child);},addEventListener(k,fn){this.events[k]=fn;}};}
 let checks=0;function check(value,message){assert.ok(value,message);checks++;}
 function setup(route='/_preview/search3-local-candidate/poisk-turov/',clock={setTimeout,clearTimeout}){
  const events={},calls=[];let changes=0;const root={location:{pathname:route},addEventListener:(name,fn)=>events[name]=fn};
  root.fetch=(url,options)=>new Promise((resolve,reject)=>calls.push({url,options,resolve,reject}));
- vm.runInNewContext(source,{window:root,URLSearchParams,AbortController,setTimeout:clock.setTimeout,clearTimeout:clock.clearTimeout});
+ vm.runInNewContext(source,{window:root,document:{createElement:element},URLSearchParams,AbortController,setTimeout:clock.setTimeout,clearTimeout:clock.clearTimeout});
  const owner=root.Search3CanonicalProfilesV1.create(()=>changes++);
  return{owner,root,calls,events,get changes(){return changes;}};
 }
@@ -118,5 +119,37 @@ async function reply(ctx,index,value,status=200){ctx.calls[index].resolve({ok:st
   await reply(ctx,4,response([106],{106:2}));
   check(ctx.owner.read(currentRows,{}).length===1&&ctx.calls.length===5&&ctx.changes===1,'Current generation completes once without stale offers');
  }finally{ctx.owner.reset();}
+ // A rejected multi-profile response must not partially change visible cards.
+ // Conflict order must not decide which descriptions/images leak into the view.
+ for(const order of [[0,1,2],[2,0,1],[1,2,0]]){
+  ctx=setup('/_preview/search3-local-candidate/prototype-search/');
+  const baseRows=[h(101),h(102)],rows=[...baseRows,h(103),h(104),h(105),h(106)],rawBefore=JSON.stringify(rows);
+  try{
+   ctx.owner.read(baseRows,{});await tick();await reply(ctx,0,response([101,102],{101:1,102:2}));
+   const original=[ctx.owner.details({anytourHotelId:1}),ctx.owner.details({anytourHotelId:2})],viewBefore=JSON.stringify(ctx.owner.read(baseRows,{}));
+   const higher={...p(1,2),name:'Reviewed new name',description:'Reviewed new description',images:['https://fixture.invalid/new.jpg']},fresh=p(3),conflict={...p(2),name:'Same-revision conflict'};
+   ctx.owner.read(rows,{});await tick();
+   await reply(ctx,1,response([103,104,105,106],{103:1,104:2,105:3},[106],order.map(i=>[higher,fresh,conflict][i])));
+   check(ctx.owner.details({anytourHotelId:1})===original[0]&&ctx.owner.details({anytourHotelId:2})===original[1],'Rejected batch preserves existing profile objects for order '+order);
+   check(ctx.owner.details({anytourHotelId:3})===null,'Rejected batch cannot leak a new unlinked profile');
+   check(JSON.stringify(ctx.owner.read(rows,{}))===viewBefore,'Rejected batch leaves card names/photos/descriptions/offer links unchanged');
+   check(ctx.owner.read(rows,{})[0].tours[0]===baseRows[0].tours[0]&&JSON.stringify(rows)===rawBefore,'Rejected batch retains exact source offers and prices');
+   await tick();check(ctx.calls.length===2,'Conflicting response does not trigger an automatic retry loop');
+   const output={prepend(node){this.node=node;}};ctx.owner.status(output);
+   const retry=output.node&&output.node.children.find(node=>node.tag==='button');
+   check(output.node&&output.node.attrs.role==='alert'&&retry&&retry.textContent==='Повторить загрузку','Conflict remains a visible retryable error, not an empty catalogue');
+   retry.events.click();ctx.owner.read(rows,{});await tick();
+   check(ctx.calls.length===3&&ids(ctx.calls[2]).join(',')==='103,104,105,106','Explicit retry rereads the whole rejected batch, including its alleged missing ID');
+   await reply(ctx,2,response([103,104,105,106],{103:1,104:2,105:3},[106],[higher,p(2),fresh]));
+   const recovered=ctx.owner.read(rows,{});
+   check(recovered.length===3&&recovered[0].name===higher.name&&recovered[0].images[0]===higher.images[0]&&recovered[0].description===higher.description,'Valid retry commits all accepted profiles together');
+   check(recovered.map(card=>card.tours.length).join(',')==='2,2,1'&&recovered[0].tours[1]===rows[2].tours[0],'Valid retry keeps exact original offers under the right own hotel');
+   const updated=ctx.owner.details({anytourHotelId:1}),extended=[...rows,h(107)];ctx.owner.read(extended,{});await tick();
+   check(ctx.calls.length===4&&ids(ctx.calls[3]).join(',')==='107','Only a successful missing-ID response suppresses later redundant reads');
+   await reply(ctx,3,response([107],{107:1},[],[{...p(1),name:'Older revision must not overwrite'}]));
+   check(ctx.owner.details({anytourHotelId:1})===updated&&ctx.owner.read(extended,{})[0].tours.length===3,'Lower revision keeps the newer accepted profile and existing linkage semantics');
+   check(JSON.stringify(rows)===rawBefore&&ctx.calls.length===4,'Recovery has no source mutation or extra requests');
+  }finally{ctx.owner.reset();}
+ }
  console.log('SEARCH3_CANONICAL_PROFILES_OK checks='+checks+' supplier_calls=0 db_writes=0');
 })().catch(e=>{console.error(e);process.exitCode=1;});

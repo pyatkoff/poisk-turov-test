@@ -26,7 +26,8 @@ function create(refresh){
  let lifecycleGeneration=0;
  let epoch=0,raw=[],options={},links=new Map(),profiles=new Map(),anchors=new Map(),storedOffers=new Map(),legacyOffers=new Map(),legacyStates=new Map(),missing=new Set(),failed=new Set(),pending=new Set(),workers=new Set();
  function reset(){epoch++;workers.forEach(task=>task.controller.abort());workers=new Set();pending=new Set();links=new Map();profiles=new Map();anchors=new Map();storedOffers=new Map();legacyOffers=new Map();legacyStates=new Map();missing=new Set();failed=new Set();raw=[];options={};}
- function putProfile(rawProfile){const p=profile(rawProfile),key=id(p.id),previous=profiles.get(key);if(previous&&p.revision===previous.revision&&JSON.stringify(p)!==JSON.stringify(previous))throw new Error('Conflicting profile revision');if(!previous||p.revision>=previous.revision)profiles.set(key,p);return profiles.get(key);}
+ function checkedProfile(rawProfile){const p=profile(rawProfile),previous=profiles.get(id(p.id));if(previous&&p.revision===previous.revision&&JSON.stringify(p)!==JSON.stringify(previous))throw new Error('Conflicting profile revision');return previous&&p.revision<previous.revision?previous:p;}
+ function putProfile(rawProfile){const p=checkedProfile(rawProfile);profiles.set(id(p.id),p);return p;}
  async function readProfile(anytourHotelId){
   const key=id(anytourHotelId);if(!key)throw new TypeError('Invalid own hotel ID');
   const generation=epoch,controller=new AbortController(),task={controller};workers.add(task);
@@ -90,7 +91,11 @@ function create(refresh){
    const timer=setTimeout(()=>controller.abort(),15000),query=new URLSearchParams({catalog:'anytour'});requested.forEach(key=>query.append('legacyHotelIds[]',key));
    Promise.resolve().then(()=>{const fetcher=root.V2Runtime&&root.V2Runtime.fetch||root.fetch.bind(root);return fetcher(endpoint+'?'+query.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal});}).then(response=>{if(!response.ok)throw new Error('Catalogue HTTP '+response.status);return response.json();}).then(payload=>{
     if(generation!==epoch)return;if(controller.signal.aborted)throw new Error('Catalogue timeout');
-    const checked=batch(payload,requested);checked.profiles.forEach(p=>putProfile(p));checked.links.forEach((own,old)=>links.set(old,own));checked.missing.forEach(key=>missing.add(key));
+    const checked=batch(payload,requested);
+    // Validate every revision before any profile/link/missing-ID mutation. A
+    // rejected sibling must not change descriptions already visible on cards.
+    const prepared=Array.from(checked.profiles.values(),checkedProfile);
+    prepared.forEach(p=>profiles.set(id(p.id),p));checked.links.forEach((own,old)=>links.set(old,own));checked.missing.forEach(key=>missing.add(key));
    }).catch(()=>{if(generation===epoch)requested.forEach(key=>failed.add(key));}).finally(()=>{
     clearTimeout(timer);if(generation!==epoch)return;workers.delete(task);requested.forEach(key=>pending.delete(key));refresh();
    });
