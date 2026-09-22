@@ -29,7 +29,7 @@ jobs:
           for forbidden in ('curl_', 'file_get_contents(', 'PDO', 'mysqli_', 'http://', 'https://'):
               assert forbidden not in src
           assert "'unit' => 'party_roundtrip'" in src
-          assert "'base_relation' => 'excluded'" in src
+          assert "'base_relation' => 'included'" in src
           assert "count($defaults) !== 1" in src
           assert "count($value) !== 1" in src
           print('Retained Tourvisor intake static boundary: PASS')

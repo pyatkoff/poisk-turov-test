@@ -138,7 +138,7 @@ final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
                 'party' => $party,
             ],
             'unit' => 'party_roundtrip',
-            'base_relation' => 'excluded',
+            'base_relation' => 'included',
             'amount' => $amount,
             'currency' => $currency,
             'source' => 'tourvisor_flights_fuel',
