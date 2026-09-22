@@ -109,6 +109,10 @@ def check_width(browser, origin, width):
             reply({"ok": True, "data": {"source": "anytour-db-first-results-v1", "scopeVersion": 1,
                    "scope": {"scopeVersion": 1, **params}, "scopeDigest": "c" * 64,
                    "selectionAuthority": False, "hotels": []}})
+        elif url.path == "/_preview/search3-anex-candidate/api-andromeda-search3-preview.php" and request.method == "POST":
+            body = request.post_data_json
+            assert body["generation"] >= 1
+            reply({"ok": True, "data": {"provider": "andromeda", "generation": body["generation"], "hotels": []}})
         elif url.path == "/api-v2.php" and request.method == "GET":
             action = query.get("action", [""])[0]
             calls.append(action)
