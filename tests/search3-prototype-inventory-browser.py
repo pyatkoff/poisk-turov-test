@@ -356,6 +356,12 @@ def check_width(browser, origin, width):
         assert len([c for c in calls if c["action"] == "search_start"]) == 1
         assert len([c for c in calls if c["action"] == "search_continue"]) == 1
         assert len(anex_calls) == 1, "Continue must not replay direct ANEX"
+        state["hold"] = False
+        page.locator('#search-more [data-action="continue-search"]').click()
+        page.wait_for_function("document.querySelector('#search-more').hidden === true")
+        assert len([c for c in calls if c["action"] == "search_continue"]) == 2
+        assert len(anex_calls) == 1, "Exhaustion check must not replay direct ANEX"
+        assert page.evaluate("() => AnyTourPrototypeData.continueSearch()") is False
         page.screenshot(path=str(EVIDENCE / f"budget-continue-{width}.png"))
         page.reload()
         page.locator(".search-submit:not([disabled])").wait_for()
