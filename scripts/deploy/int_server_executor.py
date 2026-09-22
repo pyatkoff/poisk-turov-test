@@ -391,7 +391,7 @@ def program_fuel_readback():
     # safe uncaught-exception handler before its body so the permanent executor can
     # retain the already-sanitized partial counters instead of collapsing them to a
     # generic nonzero PHP exit. This mode is supplier-free and read-only.
-    handler=b"""
+    handler=b'''
 $out=null;
 set_exception_handler(function(Throwable $__pf_error) use (&$out): void {
     $__pf_reason=$__pf_error->getMessage();
@@ -412,7 +412,7 @@ set_exception_handler(function(Throwable $__pf_error) use (&$out): void {
     ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\\n";
     exit(0);
 });
-"""
+'''
     wrapped=script.replace(marker,marker+handler,1)
     run=subprocess.run(
         ['php','-d','display_errors=0','-d','log_errors=0'],
