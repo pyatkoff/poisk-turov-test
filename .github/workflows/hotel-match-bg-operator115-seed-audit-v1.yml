@@ -1,0 +1,179 @@
+name: MATCH BG operator115 seed namespace audit
+'on':
+  pull_request:
+    types: [synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-bg-operator115-seed-audit-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-bg-operator115-seed-audit-1971-20260922-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-bg-operator115-seed-audit-1971-20260922-v1
+  PREV: 19d1a8c96229d6d9f9f8a469754ca4261766ce51
+  CLAIM: '5774756452'
+  RETAINED_ARTIFACT: '10688472272'
+  RETAINED_ZIP_SHA256: a52b4dbdf4a9eafdd49746a5a1aae461374f8d558e088096165ff82964e2b515
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 3411 && github.event.pull_request.head.ref == 'ops/match-bg-geography-1971-20260922-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+    - name: Validate exact continuation, claim and retained evidence
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077; mkdir -p input reservation terminal
+        test "$(git rev-parse HEAD^)" = "$PREV"
+        test "$(git diff --name-only "$PREV"..HEAD | tr '\n' ' ')" = ".github/workflows/hotel-match-bg-operator115-seed-audit-v1.yml "
+        gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+        gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$RETAINED_ARTIFACT/zip" > input/retained.zip
+        python3 - <<'PY'
+        import datetime,hashlib,json,os,pathlib,zipfile
+        c=json.load(open('input/claim.json'))
+        assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297
+        assert c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530')
+        assert c['created_at']==c['updated_at']
+        for t in (os.environ['OP'],'SAME draft PR#3411','READ ONLY','supplier HTTP0','operator_115','никакого предположения F4==operator_115'):
+            assert t in c['body'], t
+        z=pathlib.Path('input/retained.zip').read_bytes()
+        assert hashlib.sha256(z).hexdigest()==os.environ['RETAINED_ZIP_SHA256']
+        with zipfile.ZipFile('input/retained.zip') as a:
+            assert set(a.namelist())=={'receipt.json','result.json'}
+            result=a.read('result.json')
+        r=json.loads(result)
+        assert r['schema']=='bg-retained-place-evidence/1'
+        assert len(r['rows'])==816 and r['counts']['official_keys_examined']==820
+        assert r['ids_promoted_to_operator115'] is False and r['mapping_writes']==0
+        pathlib.Path('input/retained.json').write_bytes(result)
+        reserve={'operation':os.environ['OP'],'state':'reserved_before_read_only_db',
+          'source_sha':os.environ['HEAD'],'previous_source_sha':os.environ['PREV'],
+          'claim_id':int(os.environ['CLAIM']),'retained_artifact_id':int(os.environ['RETAINED_ARTIFACT']),
+          'supplier_http_requests':0,'provider_calls':0,'database_writes':0,'mapping_writes':0,
+          'no_replay':True,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+        pathlib.Path('reservation/reservation.json').write_text(json.dumps(reserve,sort_keys=True)+'\n')
+        PY
+        rm input/claim.json input/retained.zip
+        cat > input/seed_audit.php <<'PHP'
+        <?php
+        declare(strict_types=1);
+        const OP='hotel-match-bg-operator115-seed-audit-1971-20260922-v1';
+        function need(bool $ok,string $why):void { if(!$ok) throw new RuntimeException($why); }
+        function readj(string $p):array { $a=json_decode((string)file_get_contents($p),true,512,JSON_THROW_ON_ERROR);need(is_array($a),'json');return $a; }
+        function savej(string $p,array $a):string { $b=json_encode($a,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";$f=fopen($p,'xb');need($f!==false,'exclusive_create');need(fwrite($f,$b)===strlen($b)&&fflush($f),'durable_write');fclose($f);return hash('sha256',$b); }
+        function sql(PDO $db,string $s):array { need(str_starts_with($s,'SELECT '),'select_only');$q=$db->query($s);need($q!==false,'query');return $q->fetchAll(PDO::FETCH_ASSOC)?:[]; }
+        function sourceRows(array $e,int $depth=0):array {
+          if($depth>12)return [];$out=[];
+          if(isset($e['source'])&&is_array($e['source'])){$s=$e['source'];$keep=array_flip(['id','name','lName','stateKey','state','stateLName','townKey','town','townLName','star','starKey','starLName','operator','operatorId','operator_id','hotelKey','hotel_id','hotelId']);$out[]=array_intersect_key($s,$keep);}
+          foreach($e as $k=>$v) if(is_array($v) && $k!=='source') $out=array_merge($out,sourceRows($v,$depth+1));
+          return $out;
+        }
+        function projectScalars(mixed $v,string $path='',int $depth=0,array &$out=[]):void {
+          if($depth>12||count($out)>=160)return;
+          if(is_array($v)){foreach($v as $k=>$x){if(count($out)>=160)break;$p=$path===''?(string)$k:$path.'.'.$k;projectScalars($x,$p,$depth+1,$out);}return;}
+          $key=strtolower((string)preg_replace('/^.*\./','',$path));
+          $allow=['operator_id','operatorid','operator','operator_name','operatorname','hotel_id','hotelid','hotelkey','native_hotel_id','external_hotel_id','source_hotel_id','catalog_hotel_id','local_hotel_id','provider','provider_id','source_id','id','name','lname','statekey','state','townkey','town','star','starkey','tour_operator_id'];
+          if(!in_array($key,$allow,true)||(!is_scalar($v)&&$v!==null))return;
+          $val=is_string($v)?mb_substr($v,0,240):$v;
+          $out[]=['path'=>$path,'value'=>$val];
+        }
+        function bgLinks(mixed $v,int $depth=0,array &$out=[]):void {
+          if($depth>12||count($out)>=32)return;
+          if(is_array($v)){foreach($v as $x)bgLinks($x,$depth+1,$out);return;}
+          if(!is_string($v)||!str_starts_with($v,'https://'))return;
+          $u=parse_url($v);if(!is_array($u)||!in_array(strtolower((string)($u['host']??'')),['bgoperator.ru','www.bgoperator.ru'],true))return;
+          $ids=[];parse_str((string)($u['query']??''),$q);$f=$q['F4']??null;
+          foreach(is_array($f)?$f:[$f] as $id)if(is_string($id)&&preg_match('/^[1-9][0-9]{0,19}$/D',$id))$ids[]=$id;
+          $out[]=['host'=>strtolower((string)$u['host']),'path'=>(string)($u['path']??''),'f4'=>array_values(array_unique($ids))];
+        }
+        $root=realpath((string)getenv('ANYTOUR_ROOT'));$dir=realpath((string)getenv('MATCH_OPERATION_DIR'));$in=realpath((string)getenv('MATCH_INPUT_DIR'));$head=(string)getenv('MATCH_SOURCE_SHA');
+        need($root!==false&&basename($root)==='anytoour.ru'&&$dir!==false&&basename($dir)===OP&&$in!==false&&preg_match('/^[a-f0-9]{40}$/D',$head)===1,'scope');
+        $reservation=readj("$in/reservation.json");need(($reservation['operation']??'')===OP&&($reservation['source_sha']??'')===$head,'reservation');
+        savej("$dir/started.json",['operation'=>OP,'state'=>'started_no_replay','source_sha'=>$head]);
+        $base=['operation'=>OP,'source_sha'=>$head,'supplier_http_requests'=>0,'provider_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true];
+        try {
+          require_once $root.(is_file("$root/data/db-v1.php")?'/data/db-v1.php':'/v2/data/db-v1.php');
+          $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+          $seed=sql($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,catalog_sha256,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='operator_115' AND decision_status='accepted' ORDER BY local_hotel_id,external_hotel_id");
+          $ids=array_values(array_unique(array_map(fn($x)=>(int)$x['local_hotel_id'],$seed)));need(count($ids)>0,'no_operator115_seeds');
+          $list=implode(',',array_map('intval',$ids));
+          $cards=sql($db,"SELECT id,name,country_id,country_name,region_id,region_name,subregion_id,subregion_name,category,is_active,latitude,longitude FROM catalog_hotels WHERE id IN ($list) ORDER BY id");
+          $neighbors=sql($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,catalog_sha256,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE local_hotel_id IN ($list) AND decision_status='accepted' AND supplier_namespace IN ('andromeda_catalog','operator_5','operator_115','operator_315','operator_342') ORDER BY local_hotel_id,supplier_namespace,external_hotel_id");
+          $db->rollBack();
+          $cat=[];foreach($cards as $h)$cat[(int)$h['id']]=$h;$by=[];
+          foreach($neighbors as $row){$raw=(string)$row['evidence_json'];$e=json_decode($raw,true);$proj=[];$links=[];if(is_array($e)){projectScalars($e,'',0,$proj);bgLinks($e,0,$links);}unset($row['evidence_json']);$row['evidence_json_sha256']=hash('sha256',$raw);$row['recorded_evidence_hash_matches']=$row['evidence_json_sha256']===$row['evidence_sha256'];$row['source_records']=is_array($e)?sourceRows($e):[];$row['selected_scalars']=$proj;$row['bgoperator_links']=$links;$by[(int)$row['local_hotel_id']][]=$row;}
+          $rows=[];$evidenceBg=0;$hashMismatch=0;
+          foreach($seed as $s){$local=(int)$s['local_hotel_id'];$own=null;foreach($by[$local]??[] as $x)if($x['supplier_namespace']==='operator_115'&&(string)$x['external_hotel_id']===(string)$s['external_hotel_id']){$own=$x;break;}need(is_array($own),'seed_projection');$evidenceBg+=count($own['bgoperator_links']);if(!$own['recorded_evidence_hash_matches'])$hashMismatch++;$rows[]=['operator115_external_hotel_id'=>(string)$s['external_hotel_id'],'local_hotel_id'=>$local,'catalog_hotel'=>$cat[$local]??null,'operator115_evidence'=>$own,'accepted_neighbors'=>$by[$local]??[]];}
+          $counts=['operator115_rows'=>count($seed),'operator115_distinct_local_hotels'=>count($ids),'local_cards'=>count($cards),'accepted_neighbor_rows'=>count($neighbors),'operator115_evidence_bgoperator_links'=>$evidenceBg,'evidence_hash_mismatches'=>$hashMismatch];
+          $result=$base+['state'=>'completed_read_only_seed_audit','snapshot_at_utc'=>gmdate('c'),'counts'=>$counts,'rows'=>$rows,'authority_note'=>'operator_115 values and evidence are retained as-is; no relation to bgoperator F4 is assumed'];
+          $sha=savej("$dir/result.json",$result);savej("$dir/receipt.json",$base+['state'=>'completed_read_only_seed_audit','result_sha256'=>$sha,'counts'=>$counts]);
+          echo json_encode($counts,JSON_THROW_ON_ERROR)."\n";
+        } catch(Throwable $e) {if(isset($db)&&$db->inTransaction())$db->rollBack();savej("$dir/failure.json",$base+['state'=>'failed_no_replay','error_class'=>get_class($e)]);exit(1);}
+        PHP
+        php -l input/seed_audit.php
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with: {name: 'match-bg-operator115-seed-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+    - name: Require exact-head Security
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import json,os,time,urllib.request
+        u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+        for _ in range(60):
+            req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(req,timeout=30) as f: rs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+            if rs and max(rs,key=lambda x:x['id'])['status']=='completed':
+                assert max(rs,key=lambda x:x['id'])['conclusion']=='success';break
+            time.sleep(5)
+        else: raise SystemExit('security_not_green')
+        PY
+    - name: Read CURRENT accepted operator115 seeds only
+      env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077
+        key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/h"; trap 'rm -f "$key" "$known"' EXIT
+        if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+        chmod 600 "$key"; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+        r="$USER@$HOST"; op=".anytoour-match/operations/$OP"; a=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+        ssh "${a[@]}" "$r" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/.anytoour-match/operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+        cp reservation/reservation.json input/reservation.json
+        scp "${a[@]}" input/seed_audit.php input/reservation.json "$r:$op/payload/"
+        set +e
+        ssh "${a[@]}" "$r" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_DIR=\"\$HOME/$op/payload\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/seed_audit.php\"" >terminal/stdout 2>terminal/stderr
+        status=$?
+        ssh "${a[@]}" "$r" "cd \"\$HOME/$op\" && tar -czf - -- *.json" >terminal/server.tgz
+        set -e
+        printf '%s\n' "$status" >terminal/exit-code.txt
+        exit "$status"
+    - name: Verify seed evidence and compare retained F4 only as non-authoritative strings
+      env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import collections,hashlib,json,os,pathlib,tarfile
+        with tarfile.open('terminal/server.tgz','r:gz') as t:
+            for n in ('started.json','result.json','receipt.json'):
+                b=t.extractfile(n).read();pathlib.Path('terminal',n).write_bytes(b)
+        r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'));ret=json.load(open('input/retained.json'))
+        assert r['state']==q['state']=='completed_read_only_seed_audit' and r['source_sha']==os.environ['HEAD']
+        assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+        assert r['supplier_http_requests']==r['provider_calls']==r['database_writes']==r['mapping_writes']==0
+        assert r['counts']['operator115_rows']>0 and r['counts']['operator115_distinct_local_hotels']>0
+        assert r['counts']['evidence_hash_mismatches']==0
+        f4={f for row in ret['rows'] for f in row['f4_candidates']}
+        ext={str(row['operator115_external_hotel_id']) for row in r['rows']}
+        exact=sorted(ext & f4)
+        prefixed=sorted((x,'102'+x) for x in ext if '102'+x in f4)
+        nsc=collections.Counter(x['supplier_namespace'] for row in r['rows'] for x in row['accepted_neighbors'])
+        analysis={'operator115_rows':len(r['rows']),'operator115_external_ids':len(ext),'retained_f4_ids':len(f4),
+          'exact_external_id_equals_retained_f4':exact,
+          'literal_102_plus_external_equals_retained_f4':prefixed,
+          'accepted_neighbor_namespaces':dict(sorted(nsc.items())),
+          'bgoperator_links_inside_operator115_evidence':r['counts']['operator115_evidence_bgoperator_links'],
+          'authority':'string relations are diagnostic only; they are NOT mappings and no prefix transform is authorized'}
+        pathlib.Path('terminal/comparison.json').write_text(json.dumps(analysis,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+        print(json.dumps(analysis,ensure_ascii=False,sort_keys=True))
+        PY
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: always()
+      with: {name: 'match-bg-operator115-seed-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
