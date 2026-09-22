@@ -131,10 +131,10 @@ test('TOP500 observation prices fill calendars even with empty normalized offer 
 test('observation prices survive failed LOCAL read and LOCAL prices survive failed observations',async()=>{
  const h=harness({database:()=>{throw Error('LOCAL unavailable');},observations:q=>observed(q)}),updates=[];
  const observationsOnly=await h.data.calendarPrices(trip,trip.from,trip.to,new AbortController().signal,{},x=>updates.push(x));
- assert.equal(observationsOnly.hotels.length,0);assert.equal(observationsOnly.observations.length,1);assert.ok(updates.some(x=>x.observations.length===1));
+ assert.equal(observationsOnly.hotels.length,0);assert.equal(observationsOnly.observations.length,1);assert.equal(observationsOnly.partial,true);assert.ok(updates.some(x=>x.observations.length===1));
  const other=harness({observations:()=>{throw Error('observations unavailable');}}),kept=[];
  const localOnly=await other.data.calendarPrices(trip,trip.from,trip.to,new AbortController().signal,{},x=>kept.push(x));
- assert.equal(localOnly.hotels.length,1);assert.equal(localOnly.observations.length,0);assert.ok(kept.some(x=>x.hotels.length===1));
+ assert.equal(localOnly.hotels.length,1);assert.equal(localOnly.observations.length,0);assert.equal(localOnly.partial,true);assert.ok(kept.some(x=>x.hotels.length===1));
 });
 test('observation aggregates never substitute for unsupported party or hotel filters',async()=>{
  const h=harness({observations:q=>observed(q)}),signal=new AbortController().signal;
