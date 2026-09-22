@@ -39,6 +39,14 @@ function strict_int($value, int $min, int $max, string $name)
     return (int)$v;
 }
 
+function search_results_limit($value): int
+{
+    // Tourvisor documents this as a count of hotel groups and does not define
+    // a 100-item maximum. Keep an explicit abuse guard without silently
+    // rewriting legitimate requests above 100.
+    return strict_int($value, 1, 5000, 'limit');
+}
+
 function optional_int($value)
 {
     if ($value === null || $value === '') return null;
@@ -317,7 +325,7 @@ switch ($action) {
 
     case 'search_results':
         $id = search_id();
-        $limit = bounded_int($_GET['limit'] ?? 25, 1, 100, 25);
+        $limit = search_results_limit($_GET['limit'] ?? 25);
         $data = tv_get('/tours/search/' . $id, ['limit' => $limit]);
         tourvisor_autosave_results($id, $limit, $data);
         out($data);
