@@ -24,7 +24,7 @@ jobs:
       github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.number == 3419 &&
-       github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v3')
+       github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v4')
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
@@ -65,7 +65,7 @@ jobs:
       !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v3'
+      github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v4'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -74,7 +74,7 @@ jobs:
         with:
           script: |
             const owner=226193297;
-            const command='/seed-intourist-program30-tour34-fuel-3419-v3';
+            const command='/seed-intourist-program30-tour34-fuel-3419-v4';
             const evidenceBlob='06972050d892df225b225958af98722bb1bbd509';
             const registryBlob='bf7952a3260781a135832b7af1e274860e78594c';
             if(process.env.GITHUB_RUN_ATTEMPT!=='1'||context.actor!=='pyatkoff'||
@@ -101,24 +101,18 @@ jobs:
           path: feature
           persist-credentials: false
 
-      - uses: actions/checkout@v4
-        with:
-          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
-          path: helper
-          persist-credentials: false
-
       - name: Seed verified 85 EUR rule from terminal receipts
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
           ANYTOOUR_DEPLOY_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
           ANYTOOUR_DEPLOY_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
-          PYTHONPATH: helper/scripts/diagnostics
         run: |
           set -euo pipefail
+          d="$RUNNER_TEMP/program-fuel-seed"
+          install -d -m 700 "$d"
           python3 - <<'PY'
-          import json, os
           from pathlib import Path
-          from anex_search3_owner_decisions import ssh_php
+          import os
 
           def body(path):
               s=Path(path).read_text()
@@ -128,13 +122,26 @@ jobs:
           registry=body('feature/app/integrations/operator-program-fuel-registry.php')
           registry=registry.replace("require_once __DIR__ . '/operator-fuel-rule-evidence.php';",'')
           seed=body('control/scripts/diagnostics/seed_intourist_program30_tour34_fuel_v1.php')
-          source=evidence+'\n'+registry+'\n'+seed
-          result=ssh_php(source,{},maximum_bytes=65536)
-
-          out=Path(os.environ['RUNNER_TEMP'])/'program-fuel-seed'
-          out.mkdir(mode=0o700)
-          (out/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
-
+          source='<?php\n'+evidence+'\n'+registry+'\n'+seed
+          (Path(os.environ['RUNNER_TEMP'])/'program-fuel-seed/runtime.php').write_text(source)
+          PY
+          php -l "$d/runtime.php" >/dev/null
+          printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > "$d/key"
+          chmod 600 "$d/key"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          ssh -T -i "$d/key" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o ControlMaster=no \
+            -o StrictHostKeyChecking=accept-new -o "UserKnownHostsFile=$d/known_hosts" \
+            -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o LogLevel=ERROR \
+            -l "$ANYTOOUR_DEPLOY_USER" "$ANYTOOUR_DEPLOY_HOST" \
+            'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' \
+            < "$d/runtime.php" > "$d/result.json"
+          test -s "$d/result.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'program-fuel-seed/result.json'
+          result=json.loads(p.read_text())
           if result.get('schema_version')!=1 or result.get('source')!='intourist-program30-tour34-fuel-seed-v1':
               raise SystemExit('seed result contract')
           if result.get('status')!='seeded_verified':
@@ -156,6 +163,7 @@ jobs:
                   raise SystemExit('digest missing: '+k)
           print(json.dumps(result,ensure_ascii=False,sort_keys=True))
           PY
+          rm -f "$d/key" "$d/runtime.php"
 
       - name: Preserve terminal seed receipt
         if: always()
