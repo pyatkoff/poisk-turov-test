@@ -48,6 +48,11 @@ foreach (['estimated', 'zero', 'ambiguous', 'unknown', 'stale'] as $case) {
         $reply['claimDocument'][0]['moneys'] = [['money'=>[
             ['currency'=>'USD','rate'=>'1','isClaimCurrency'=>'true'],
             ['currency'=>'RUB','rate'=>'100','isClaimCurrency'=>'false']]]];
+        $reply['claimDocument'][0]['services'] = [['service'=>[[
+            'type'=>'stOther','servicetype'=>'9','servicecategoryName'=>'Топливный сбор',
+            'price'=>'2500','currencyAlias'=>'RUB','routeIndex'=>'0','uid'=>'private-fuel-uid',
+            'required'=>'true','packet'=>'false',
+        ]]]];
         $reply['variants'] = [['transports'=>[['transport'=>[
             ['type'=>'ttAvia','details'=>[['detail'=>[['markup'=>$markup,'currency'=>'USD']]]]],
             ['type'=>'ttAvia','details'=>[['detail'=>[['markup'=>$case === 'ambiguous' ? '200' : $markup,'currency'=>'USD']]]]],
@@ -79,6 +84,12 @@ foreach (['estimated', 'zero', 'ambiguous', 'unknown', 'stale'] as $case) {
         surcharge_check(($diag['detail_currencies'] ?? null) === ['USD']
             && ($diag['markup_currencies'] ?? null) === ['USD']
             && ($diag['operator_rate_currencies'] ?? null) === ['RUB','USD'], 'diagnostic currencies bounded');
+        surcharge_check(($disk['fuel_evidence_complete'] ?? null) === true, 'fuel evidence retained as complete');
+        surcharge_check(($disk['fuel_surcharges_reported'] ?? null) === [[
+            'amount'=>'2500','currency'=>'RUB','route_index'=>'0','source'=>'andromeda_claim_service',
+            'service_type'=>'9','required_reported'=>true,'packet_reported'=>false,
+        ]], 'same get_flights retains separate supplier fuel rows');
+        surcharge_check($flightCalls === 1, 'fuel evidence adds no supplier call');
     }
     if (in_array($case, ['estimated', 'zero'], true)) {
         surcharge_check($fact !== null && $fact['state'] === 'estimated' && $fact['final_price_verified'] === false, 'estimate not final quote');
