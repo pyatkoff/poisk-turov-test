@@ -56,6 +56,39 @@ def name_proofs(local: str, official: str, records: list[dict]) -> list[dict]:
                         'canonical_record': rec, 'local': l, 'official': b})
     return out
 
+def geography_proof(row: dict, bg: dict, rules: dict) -> dict | None:
+    """Recheck the retained rule, not the superseded pre-reconciliation boolean."""
+    local, city, country, hotel = row['catalog_hotel'], bg['official_city'], bg['official_country'], bg['hotel']
+    if (bg.get('native_namespace') != 'bgoperator'
+        or str(hotel.get('key')) != bg.get('native_id')
+        or str(hotel.get('countryKey')) != str(country.get('id'))
+        or str(hotel.get('cityKey')) != str(city.get('id'))
+        or str(city.get('country')) != str(country.get('id'))
+        or not label(country.get('title_ru'))
+        or label(country.get('title_ru')) != label(local.get('country_name'))):
+        return None
+    for geo in row.get('retained_geography', []):
+        if not (geo.get('native_namespace') == 'bgoperator' and geo.get('native_id') == bg.get('native_id')
+                and geo.get('supported') is True and str(geo.get('official_city_id')) == str(city.get('id'))
+                and str(geo.get('official_country_id')) == str(country.get('id'))):
+            continue
+        rule = geo.get('rule')
+        if rule == 'exact_official_place_label':
+            source = {label(city.get(k)) for k in ('title_ru', 'title_en')} - {''}
+            target = {label(local.get(k)) for k in ('region_name', 'subregion_name')} - {''}
+            if source & target:
+                return {'rule': rule, 'retained': geo, 'matched_place_labels': sorted(source & target)}
+        elif rule == 'explicit_compound_place_rule:' + str(city.get('id')):
+            spec = rules.get(str(city.get('id')))
+            if not isinstance(spec, list) or len(spec) != 4:
+                continue
+            code, official_name, region, subregions = spec
+            if (country.get('code') == code and city.get('title_ru') == official_name
+                and local.get('region_name') == region
+                and (subregions is None or (isinstance(subregions, list) and local.get('subregion_name') in subregions))):
+                return {'rule': rule, 'retained': geo, 'retained_rule_specification': spec}
+    return None
+
 def run(archive: Path, expected_digest: str) -> dict:
     raw_zip = archive.read_bytes()
     if sha(raw_zip) != expected_digest.removeprefix('sha256:'):
@@ -79,7 +112,7 @@ def run(archive: Path, expected_digest: str) -> dict:
             cat_owners[str(cat)].add(row['tv_hotel_id'])
     output = []
     for row in rows:
-        holds, proof = [], []
+        holds, proof, geo_proofs = [], [], []
         tv, local = row['tv_hotel_id'], row['catalog_hotel']
         f4, cats = row['f4_candidates'], row['accepted_catalog_ids']
         if local.get('id') != tv or local.get('is_active') != 1:
@@ -117,12 +150,14 @@ def run(archive: Path, expected_digest: str) -> dict:
                 if bg['native_id'] != f4[0] or bg.get('native_namespace') != 'bgoperator':
                     continue
                 h, city, country = bg['hotel'], bg['official_city'], bg['official_country']
-                checked = (bg.get('category_exact') and bg.get('country_matches_local') and bg.get('geography_supported') and bg.get('city_country_consistent')
+                geo = geography_proof(row, bg, data['rule_table'])
+                checked = (bg.get('category_exact') and bg.get('country_matches_local') and bg.get('city_country_consistent')
                     and str(h.get('key')) == f4[0] and str(h.get('countryKey')) == str(country.get('id'))
                     and str(h.get('cityKey')) == str(city.get('id')) and str(city.get('country')) == str(country.get('id'))
                     and stars(h.get('stars')) == stars(local.get('category'))
-                    and any(g.get('native_id') == f4[0] and g.get('supported') is True for g in row.get('retained_geography', [])))
+                    and geo is not None)
                 if checked:
+                    geo_proofs.append(geo)
                     proof.extend(name_proofs(local['name'], h['name'], good_records))
             if not proof:
                 holds.append('current_title_or_saved_geography_not_confirmed')
@@ -131,7 +166,7 @@ def run(archive: Path, expected_digest: str) -> dict:
         output.append({'tv_hotel_id': tv, 'baseline_compound_evidence': baseline,
                        'new_alias_evidence_candidate': supported and not baseline,
                        'alias_evidence_supported': supported, 'evidence_holds': sorted(set(holds)),
-                       'proofs': proof, 'safe_to_write_now': False,
+                       'proofs': proof, 'geography_proofs': geo_proofs, 'safe_to_write_now': False,
                        'pending': ['prove_supplier_native_namespace_separately', 'fresh_manual_exclusion_conflict_occupancy_geography_native_owner', 'writer_authorization_reservation_capture_plan', 'post_commit_readback_and_effective_resolver'],
                        'input_row': row})
     new = [r for r in output if r['new_alias_evidence_candidate']]
