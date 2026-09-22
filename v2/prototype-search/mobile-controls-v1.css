@@ -71,6 +71,14 @@
     min-height:44px;
   }
 
+  .header .brand-logo {
+    width:clamp(136px,38vw,148px);
+  }
+
+  .header .nav-btn {
+    min-width:44px;
+  }
+
   .filter-panel.open .filter-top {
     padding-top:calc(18px + env(safe-area-inset-top));
   }
