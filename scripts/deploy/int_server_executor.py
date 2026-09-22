@@ -72,6 +72,11 @@ def parse_command(body: str) -> dict:
     if mode == 'install-runtime':
         need(len(parts) == 3, 'command_shape')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'program-fuel-readback':
+        # Supplier-free exact DB/retained-cohort acceptance through the permanent SSH lane.
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'program_fuel_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'anex-demand':
         need(len(parts) == 4, 'command_shape')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
@@ -309,7 +314,7 @@ def bundle_source(source_root: Path) -> tuple[bytes, dict[str, str]]:
     return output.getvalue(), hashes
 
 REMOTE = r"""
-import hashlib,json,os,pathlib,re,subprocess,sys,tarfile,time
+import base64,hashlib,json,os,pathlib,re,subprocess,sys,tarfile,time
 home=pathlib.Path.home()
 project=home/'www/anytoour.ru'
 runtime=project/'_preview/search3-anex-candidate'
@@ -346,6 +351,40 @@ echo json_encode($r,JSON_THROW_ON_ERROR);'''
     run=subprocess.run(['php','-r',php,provider],cwd=project,capture_output=True,text=True,timeout=30)
     if run.returncode or run.stderr: fail('db_readback_failed')
     return json.loads(run.stdout)
+def program_fuel_readback():
+    encoded=payload.get('program_fuel_readback_php_b64')
+    expected=payload.get('program_fuel_readback_php_sha256')
+    if not isinstance(encoded,str) or not isinstance(expected,str) or not re.fullmatch(r'[a-f0-9]{64}',expected):
+        fail('program_fuel_readback_source_missing')
+    try:
+        script=base64.b64decode(encoded,validate=True)
+    except Exception:
+        fail('program_fuel_readback_source_encoding')
+    if not script or len(script)>1024*1024 or hashlib.sha256(script).hexdigest()!=expected:
+        fail('program_fuel_readback_source_hash')
+    run=subprocess.run(
+        ['php','-d','display_errors=0','-d','log_errors=0'],
+        input=script,cwd=project,capture_output=True,timeout=90
+    )
+    if run.returncode!=0 or run.stderr.strip():
+        fail('program_fuel_readback_failed')
+    try:
+        data=json.loads(run.stdout.decode().strip())
+    except Exception:
+        fail('program_fuel_readback_unparseable')
+    if not isinstance(data,dict) or data.get('schema_version')!=1 or data.get('source')!='int-program-fuel-cohort-v3-readback':
+        fail('program_fuel_readback_contract')
+    if (data.get('supplier_calls')!=0 or data.get('database_reads')!=1
+            or data.get('database_writes')!=0 or data.get('filesystem_writes')!=0):
+        fail('program_fuel_readback_authority')
+    target=data.get('target',{})
+    stored=data.get('stored',{})
+    if (target.get('ready_count')!=12 or target.get('ready_valid_rule_count')!=12
+            or target.get('ready_non_target_count')!=0 or target.get('bad_ready_boundary_count')!=0
+            or stored.get('ready_count')!=12 or stored.get('verified_count')!=0
+            or stored.get('payload_hash_invalid_count')!=0 or stored.get('retained_missing_count')!=0):
+        fail('program_fuel_readback_acceptance')
+    return data
 def safe_json(path,max_size=1024*1024):
     if not safe_file(path,max_size): fail('safe_json')
     value=json.loads(path.read_text())
@@ -820,6 +859,17 @@ try:
         result['database_writes']=0
         result['runtime_changed']=result['install']['changed_files']>0
         result['public_ui_entrypoints_unchanged']=True
+    if mode=='program-fuel-readback':
+        result['before_db']=db_summary('andromeda')
+        result['program_fuel_readback']=program_fuel_readback()
+        result['after_db']=db_summary('andromeda')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        if result['before_db']!=result['after_db']: fail('program_fuel_readback_db_drift')
+        result['status']='complete'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='local-readback':
         result['before_db']=db_summary('andromeda')
         scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
@@ -876,7 +926,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -899,7 +949,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
@@ -1007,6 +1057,13 @@ def execute(command: dict, source_root: Path) -> dict:
     payload['manifest_sha256'] = hashlib.sha256(
         json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()
     ).hexdigest()
+    if command['mode'] == 'program-fuel-readback':
+        readback_path = Path(__file__).resolve().parents[2] / 'scripts/diagnostics/int_program_fuel_cohort_v3_readback.php'
+        need(readback_path.is_file() and not readback_path.is_symlink(), 'program_fuel_readback_source')
+        readback_bytes = readback_path.read_bytes()
+        need(0 < len(readback_bytes) <= 1024 * 1024, 'program_fuel_readback_source_size')
+        payload['program_fuel_readback_php_b64'] = base64.b64encode(readback_bytes).decode()
+        payload['program_fuel_readback_php_sha256'] = hashlib.sha256(readback_bytes).hexdigest()
     encoded = base64.b64encode(REMOTE.encode()).decode()
     remote_command = (
         "python3 -c 'import base64;exec(base64.b64decode(\"" + encoded + "\"))'"
