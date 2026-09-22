@@ -27,7 +27,11 @@ FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <div class=\"flex-dates\" style=\"margin-top:18px\"><button>7 ночей</button><button>10 ночей</button></div>
 <div class=\"results-toolbar\" style=\"margin-top:18px\"><button class=\"secondary drawer-trigger\">Фильтры</button><div class=\"quick-chips\"><button class=\"chip\">Первая линия</button><button class=\"chip\">Для семьи</button></div></div>
 <div class=\"active-filters\"><button class=\"active-filter\">5 ★</button></div>
-<aside class=\"filter-panel open\" style=\"position:static;display:block;width:100%;max-height:none;margin-top:18px\"><div class=\"filter-top\"><h3>Фильтры</h3><button class=\"icon-button mobile-close\" aria-label=\"Закрыть фильтры\">×</button></div></aside>
+<aside class=\"filter-panel open\" style=\"position:static;display:block;width:100%;max-height:none;margin-top:18px\">
+  <div class=\"filter-top\"><h3>Фильтры</h3><button class=\"text-button filter-reset-probe\">Сбросить</button><button class=\"icon-button mobile-close\" aria-label=\"Закрыть фильтры\">×</button></div>
+  <div class=\"filter-group\"><h4>Тип отдыха</h4><label class=\"check-row filter-check-probe\"><input type=\"checkbox\"><span>Первая линия</span><small>12</small></label></div>
+  <div class=\"filter-group\"><h4>Категория отеля</h4><div class=\"star-options\"><button class=\"filter-star-probe\">5 ★</button><button>4 ★</button></div></div>
+</aside>
 <div class=\"applied-search\" style=\"display:flex;margin-top:18px\"><button class=\"secondary\" aria-label=\"Изменить поиск\">✎</button></div>
 <div class=\"compact-search\" style=\"position:static;display:flex;margin-top:18px\"><button class=\"secondary\" aria-label=\"Изменить поиск в закреплённой панели\">✎</button></div>
 <div class=\"hotel-links\" style=\"margin-top:18px\"><button class=\"text-button\">Об отеле</button><button class=\"compare-btn\">Сравнить</button></div>
@@ -94,6 +98,9 @@ def inspect_width(browser, origin, width, screenshot=False):
             preset: style('.quick-chips .chip'),
             activeFilter: style('.active-filter'),
             drawerClose: style('.filter-top .mobile-close'),
+            filterReset: style('.filter-reset-probe'),
+            filterCheck: style('.filter-check-probe'),
+            filterStar: style('.filter-star-probe'),
             appliedEdit: style('.applied-search > .secondary'),
             compactEdit: style('.compact-search .secondary'),
             hotelLink: style('.hotel-links .text-button'),
@@ -120,8 +127,8 @@ def inspect_width(browser, origin, width, screenshot=False):
             assert values["toolbarFont"] == "16px", (width, values)
             for key in (
                 "calendarChoose", "calendarClear", "destinationAction", "dateLengthShortcut",
-                "drawer", "preset", "activeFilter", "hotelLink", "compare",
-                "expandOffers", "offerCta", "compareCta"
+                "drawer", "preset", "activeFilter", "filterReset", "filterCheck", "filterStar",
+                "hotelLink", "compare", "expandOffers", "offerCta", "compareCta"
             ):
                 assert float(values[key]["height"].removesuffix("px")) >= 44, (width, key, values[key])
             for key in (
@@ -135,6 +142,8 @@ def inspect_width(browser, origin, width, screenshot=False):
             assert values["drawer"]["minHeight"] != "44px", (width, values["drawer"])
             assert values["preset"]["minHeight"] != "44px", (width, values["preset"])
             assert values["activeFilter"]["minHeight"] != "44px", (width, values["activeFilter"])
+            for key in ("filterReset", "filterCheck", "filterStar"):
+                assert values[key]["minHeight"] != "44px", (width, key, values[key])
             for key in ("calendarChoose", "calendarClear", "destinationAction", "dateLengthShortcut"):
                 assert values[key]["minHeight"] != "44px", (width, key, values[key])
             for key in ("favorite", "photoArrow", "compareClose", "compareRemove", "modalBack", "counter", "favoriteRemove"):
