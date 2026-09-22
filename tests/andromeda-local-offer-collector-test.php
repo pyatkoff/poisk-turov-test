@@ -121,7 +121,7 @@ $emptySaveReceipts=[
     ['published'=>false,'reason'=>'already_published','readyOfferCount'=>0],
 ];
 $emptyMustNotRun=static function():array{throw new RuntimeException('empty_offer_callback_must_not_run');};
-foreach(['all','non_external_only'] as $mode)foreach($emptySaveReceipts as $saveReceipt){
+foreach(['all','non_external_only','external_group_only'] as $mode)foreach($emptySaveReceipts as $saveReceipt){
     $emptyOrder=[];
     $emptyResult=AnyTourAndromedaLocalOfferCollectorV1::collect(
         $request,
@@ -263,6 +263,44 @@ AnyTourAndromedaLocalOfferCollectorV1::collect(
 );
 ok($strictOrder===[30,33,34],'nights and SPO share one group while date/currency remain distinct');
 
+$externalProbeOrder=[];
+$externalProbe=AnyTourAndromedaLocalOfferCollectorV1::collect(
+    $request,
+    static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('5',64),'pages_count'=>1,'status'=>'complete'],
+    $priorityCohort,$allAllowed,
+    static function(array $selection)use(&$externalProbeOrder):array{
+        $externalProbeOrder[]=$selection['local_id'];
+        return ['status'=>'captured','surcharge'=>['status'=>'unavailable','fact'=>null]];
+    },
+    $priorityAutosave,30,'external_group_only'
+);
+ok($externalProbeOrder===[23],'external probe selects exactly one strict external group');
+ok($externalProbe['capture_mode']==='external_group_only'
+    &&$externalProbe['capture_queue_offers']===1
+    &&$externalProbe['reusable_surcharge_groups']===1
+    &&$externalProbe['surcharge_capture_attempts']===1,
+    'external probe has one representative and one attempt even with a larger caller budget');
+
+$externalProbeCacheChecks=0;$externalProbeCaptured=0;
+$externalProbeHit=AnyTourAndromedaLocalOfferCollectorV1::collect(
+    $request,
+    static fn(array $r):array=>['provider'=>'andromeda','search_ref'=>str_repeat('4',64),'pages_count'=>1,'status'=>'complete'],
+    $priorityCohort,$allAllowed,
+    static function(array $selection)use(&$externalProbeCaptured):array{
+        ++$externalProbeCaptured;
+        return ['status'=>'captured','surcharge'=>['status'=>'unavailable','fact'=>null]];
+    },
+    $priorityAutosave,1,'external_group_only',0,null,
+    static function(array $selection,array $row,array $req)use(&$externalProbeCacheChecks):bool{
+        ++$externalProbeCacheChecks;return true;
+    }
+);
+ok($externalProbeCacheChecks===1&&$externalProbeCaptured===0,'external probe cache hit prevents supplier capture');
+ok($externalProbeHit['surcharge_cache_hits']===1
+    &&$externalProbeHit['surcharge_cache_covered_offers']===2
+    &&$externalProbeHit['surcharge_capture_attempts']===0,
+    'external probe cache hit covers siblings and never falls through to another group');
+
 $malformedA=$offer('malformed-a','Интурист',40,'40',true,'p5','t5','spo-a');unset($malformedA['check_in']);
 $malformedB=$offer('malformed-b','Интурист',41,'40',true,'p5','t5','spo-b');unset($malformedB['check_in']);
 $malformedDistinct=$offer('malformed-c','Интурист',42,'40',true,'p6','t6','spo-c');
@@ -388,4 +426,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 night_independent_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1 persistence_fail_closed=7 cli_exit_guard=1 terminal_empty=4 empty_fail_closed=51\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 night_independent_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1 persistence_fail_closed=7 cli_exit_guard=1 external_group_probe=2 terminal_empty=6 empty_fail_closed=51\n";
