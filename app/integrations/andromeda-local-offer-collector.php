@@ -127,11 +127,21 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             ];
         }
 
+        // Keep a denominator for the exact offers that belong to evidence-backed
+        // reusable groups. This is observability only: it neither authorizes reuse nor
+        // claims that autosave/DB publication succeeded for any of these offers.
+        $reusableGroupOfferCounts = [];
+        foreach ($eligible as $candidate) {
+            if ($candidate['reusable_surcharge_group'] === null) continue;
+            $group = $candidate['transport_group'];
+            $reusableGroupOfferCounts[$group] = ($reusableGroupOfferCounts[$group] ?? 0) + 1;
+        }
+
         // get_flights is only meaningful when the supplier reports external freight.
         // The search row is not authority to skip any mapped candidate, but it is useful
         // for spending the deliberately small capture budget: true first, then unknown,
         // then explicit false. External-freight rows use the evidence-backed strict
-        // surcharge key, so route/date/nights/party/currency/tour differences cannot be
+        // surcharge key, so route/date/party/currency/tour differences cannot be
         // collapsed merely because operator/program match. Ungroupable external rows are
         // fail-closed into unique-offer buckets. Historical unknown/non-external ordering
         // stays unchanged until its separate pricing contract is replaced.
@@ -167,6 +177,7 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         $surchargeReady = 0;
         $cacheChecks = 0;
         $cacheHits = 0;
+        $cacheCoveredOffers = 0;
         $captured = [];
         $readClock = null;
         $captureStartedAt = null;
@@ -202,6 +213,8 @@ final class AnyTourAndromedaLocalOfferCollectorV1
                 if (!is_bool($cached)) throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_CACHE_RESULT');
                 if ($cached) {
                     ++$cacheHits;
+                    $group = $eligible[$key]['transport_group'];
+                    $cacheCoveredOffers += $reusableGroupOfferCounts[$group] ?? 1;
                     continue;
                 }
             }
@@ -264,9 +277,11 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             'capture_mode' => $captureMode,
             'capture_queue_offers' => count($captureQueue),
             'reusable_surcharge_groups' => count($reusableGroups),
+            'reusable_surcharge_offers' => array_sum($reusableGroupOfferCounts),
             'surcharge_group_duplicate_skips' => $sameGroupSkips,
             'surcharge_cache_checks' => $cacheChecks,
             'surcharge_cache_hits' => $cacheHits,
+            'surcharge_cache_covered_offers' => $cacheCoveredOffers,
             'capture_time_budget_seconds' => $maxCaptureSeconds > 0 ? $maxCaptureSeconds : null,
             'capture_time_budget_exhausted' => $timeBudgetExhausted,
             'surcharge_capture_attempts' => $attempted,

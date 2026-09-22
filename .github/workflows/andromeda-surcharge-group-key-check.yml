@@ -17,6 +17,7 @@ on:
       - 'tests/andromeda-surcharge-evidence-test.php'
       - 'tests/andromeda-surcharge-evidence-store-test.php'
       - 'tests/andromeda-surcharge-night-reuse-test.php'
+      - 'tests/andromeda-surcharge-reuse-metrics-test.php'
       - '.github/workflows/andromeda-surcharge-group-key-check.yml'
   pull_request:
     paths:
@@ -33,6 +34,7 @@ on:
       - 'tests/andromeda-surcharge-evidence-test.php'
       - 'tests/andromeda-surcharge-evidence-store-test.php'
       - 'tests/andromeda-surcharge-night-reuse-test.php'
+      - 'tests/andromeda-surcharge-reuse-metrics-test.php'
       - '.github/workflows/andromeda-surcharge-group-key-check.yml'
 
 permissions:
@@ -63,11 +65,13 @@ jobs:
             php -l tests/andromeda-surcharge-evidence-test.php
             php -l tests/andromeda-surcharge-evidence-store-test.php
             php -l tests/andromeda-surcharge-night-reuse-test.php
+            php -l tests/andromeda-surcharge-reuse-metrics-test.php
             php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-group-key-test.php
             php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-test.php
             php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-evidence-store-test.php
             php -d allow_url_fopen=0 -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-night-reuse-test.php
             php -d allow_url_fopen=0 tests/andromeda-collector-group-reuse-test.php
+            php -d allow_url_fopen=0 tests/andromeda-surcharge-reuse-metrics-test.php
             php tests/andromeda-local-offer-collector-cli-test.php
             php -d allow_url_fopen=0 tests/andromeda-zero-capture-collection-test.php
             php -d zend.assertions=1 -d assert.exception=1 tests/andromeda-surcharge-cache-autosave-test.php
