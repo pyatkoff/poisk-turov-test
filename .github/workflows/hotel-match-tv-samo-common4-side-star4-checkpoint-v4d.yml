@@ -1,0 +1,128 @@
+name: MATCH TV-SAMO Side star4 checkpoint v4d
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-tv-samo-common4-side-star4-checkpoint-v4d.yml]
+permissions: {contents: read, issues: read}
+env:
+  OP: hotel-match-tv-samo-common4-side-star4-1971-20260922-v4b
+  OLD_OP: hotel-match-tv-samo-common4-side-star4-1971-20260922-v4
+  BASE: 86f8fe1c96d7cd1b65c37e0685466b84011876aa
+  CLAIM: '5781361082'
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-tv-samo-common4-side-star4-checkpoint-1971-20260922-v4d' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate immutable read-only claim
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD")" = ".github/workflows/hotel-match-tv-samo-common4-side-star4-checkpoint-v4d.yml"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >terminal/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('terminal/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for s in [os.environ['OP'],os.environ['BASE'],'PROVIDER_CALLS=0','QUOTA_MUTATION=0','SERVER_MUTATION=0','RAW_EXPORT=FORBIDDEN']:assert s in b,s
+          PY
+      - name: Read and sanitize retained checkpoint
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          cat >"$RUNNER_TEMP/read.py" <<'PY'
+          import hashlib,json,os,pathlib,re
+          home=pathlib.Path.home();op=os.environ['OP'];old=os.environ['OLD_OP'];od=home/'.anytoour-match/operations'/op;oldod=home/'.anytoour-match/operations'/old
+          def load(p):return json.loads(p.read_text())
+          result=load(od/'result.json');receipt=load(od/'receipt.json');plan=load(od/'search-plan.json');reservation=load(od/'reservation.json');tariff=load(od/'tariff-reservation.json');oldrec=load(oldod/'tariff-reconcile.json')
+          assert result['operation']==receipt['operation']==plan['operation']==reservation['operation']==op
+          assert result['state']==receipt['state']=='terminal_failed_no_replay' and result['reason']=='tv_call_budget'
+          assert receipt['provider_accessed'] is True and receipt['no_replay'] is True
+          assert hashlib.sha256((od/'result.json').read_bytes()).hexdigest()==receipt['result_sha256']
+          assert oldrec['state']=='pre_provider_reservation_reconciled' and oldrec['actual']==0 and oldrec['refunded']==101 and oldrec['ledger_after']==349
+          ev=[];starts=[];continues=[];status_calls=0;result_calls=0;samo_price=[];hotels=set();tours=set()
+          metas=sorted((od/'evidence-private').glob('*.meta.json'))
+          for mp in metas:
+            m=load(mp);bp=pathlib.Path(str(mp).removesuffix('.meta.json')+'.bin');raw=bp.read_bytes()
+            assert hashlib.sha256(raw).hexdigest()==m['raw_sha256'] and len(raw)==m['bytes']
+            src=m['source'];path=str(m.get('meta',{}).get('path',''));safe={'sequence':m['sequence'],'source':src,'http_status':m['http_status'],'bytes':m['bytes'],'raw_sha256':m['raw_sha256']}
+            try:p=json.loads(raw);valid=True
+            except Exception:p=None;valid=False
+            safe['json_valid']=valid
+            if src=='tourvisor':
+              if path=='/tours/search':kind='start'
+              elif path.endswith('/continue'):kind='continue'
+              elif path.endswith('/status'):kind='status'
+              elif re.fullmatch(r'/tours/search/[1-9][0-9]*',path):kind='result'
+              else:kind='other'
+              safe['action']=kind
+              if valid:
+                def first(v,key):
+                  if isinstance(v,dict):
+                    if key in v:return v[key]
+                    for z in v.values():
+                      q=first(z,key)
+                      if q is not None:return q
+                  elif isinstance(v,list):
+                    for z in v:
+                      q=first(z,key)
+                      if q is not None:return q
+                  return None
+                if kind=='start':
+                  sid=first(p,'searchId')
+                  if isinstance(sid,(int,str)) and str(sid).isdigit():starts.append(int(sid));safe['search_id']=int(sid)
+                elif kind=='continue':
+                  q=first(p,'requestCount')
+                  q=int(q) if isinstance(q,(int,float,str)) and str(q).lstrip('-').isdigit() else None
+                  continues.append(q);safe['request_count']=q
+                elif kind=='status':status_calls+=1
+                elif kind=='result':
+                  result_calls+=1
+                  rows=p if isinstance(p,list) else next((p[k] for k in ('hotels','results','items') if isinstance(p,dict) and isinstance(p.get(k),list)),[])
+                  for h in rows:
+                    if not isinstance(h,dict):continue
+                    hid=h.get('id')
+                    if isinstance(hid,(int,str)) and str(hid):hotels.add(str(hid))
+                    for t in h.get('tours',[]) if isinstance(h.get('tours'),list) else []:
+                      if not isinstance(t,dict):continue
+                      tid=t.get('id',t.get('tourId'))
+                      tours.add(str(hid)+'|'+(str(tid) if tid not in (None,'') else hashlib.sha256(json.dumps(t,sort_keys=True,ensure_ascii=False).encode()).hexdigest()))
+            elif src=='samo-price':
+              safe['action']='price';samo_price.append({'star':m.get('meta',{}).get('star'),'page':m.get('meta',{}).get('page'),'http_status':m['http_status'],'json_valid':valid})
+            else:safe['action']='login_or_catalog'
+            ev.append(safe)
+          out={'operation':op,'state':'checkpoint_sanitized_read_only','terminal_reason':result['reason'],'provider_accessed':True,'no_replay':True,
+               'route':plan['route'],'date_from':plan['date_from'],'date_to':plan['date_to'],'nights':plan['nights'],'adults':plan['adults'],'children':plan['children'],
+               'operator_families':plan['operator_families'],'tv_operator_ids':plan['tv_operator_ids'],'samo_operator_ids':plan['samo_operator_ids'],
+               'preprovider_reconciliation':oldrec,'tariff_reservation':tariff,
+               'raw_response_count':len(ev),'raw_hashes_verified':len(ev),'source_counts':{x:sum(1 for e in ev if e['source']==x) for x in sorted({e['source'] for e in ev})},
+               'tourvisor':{'search_ids':sorted(set(starts)),'start_calls':len(starts),'continue_calls':len(continues),'status_calls':status_calls,'result_calls':result_calls,
+                 'last_continue_request_count':continues[-1] if continues else None,'request_count_zero_seen':0 in continues,'distinct_hotels_in_saved_results':len(hotels),'distinct_tours_in_saved_results':len(tours)},
+               'samo_price_pages':samo_price,'evidence':ev,'raw_payload_exported':False,'provider_calls_in_checkpoint':0,'server_mutations':0,
+               'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_writes':0}
+          print(json.dumps(out,sort_keys=True,ensure_ascii=False))
+          PY
+          ssh "${opts[@]}" "$USER@$HOST" "OP='$OP' OLD_OP='$OLD_OP' python3 -" <"$RUNNER_TEMP/read.py" >terminal/checkpoint.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('terminal/checkpoint.json'))
+          assert x['state']=='checkpoint_sanitized_read_only' and x['raw_response_count']==x['raw_hashes_verified']>0
+          assert x['provider_calls_in_checkpoint']==x['server_mutations']==x['database_writes']==x['mapping_writes']==0
+          assert x['raw_payload_exported'] is False and x['tourvisor']['start_calls']==1
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-tv-samo-side-star4-checkpoint-v4d-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
