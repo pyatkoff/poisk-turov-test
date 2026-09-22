@@ -28,6 +28,38 @@ function fixture(preview){
  return{api:window.AnyTourPrototypeLead,mount,payloads,submissions,receivedOffers,window,document,sandbox,FormDataFixture,
   setSessionError(value){sessionError=value;},setPayloadError(value){payloadError=value;},setPhoneValid(value){phoneValid=value;},setSubmitResult(value){submitResult=value;}};
 }
+async function lateSubmissionDrafts(){
+ const newer={name:'Другой тестовый турист',phone:'+7 999 000-00-02',comment:'Новый черновик после начала отправки'};
+ for(const scenario of ['new-form','same-form-input','reopen-only','reset-new-form','reset-only','late-failure','late-rejection','current-success']){
+  const f=fixture(false),offer={flight:{price:{value:133500.5}}};
+  const first=f.mount();f.api.bind(offer);
+  for(const [name,value]of Object.entries(values))first.form.elements[name].value=value;
+  await first.fire('input');first.form.elements.consent.checked=true;
+  let resolve,reject;f.setSubmitResult(new Promise((yes,no)=>{resolve=yes;reject=no;}));
+  const pending=first.fire('submit');
+  assert.equal(f.submissions.length,1,'Only the existing delivery STUB starts');
+  let active=first,expected=values;
+  if(scenario.startsWith('reset-')){f.api.reset();expected={name:'',phone:'',comment:''};}
+  if(['new-form','reopen-only','reset-new-form','late-failure','late-rejection'].includes(scenario)){
+   active=f.mount();f.api.bind({flight:{price:{value:140000}}});
+  }
+  if(['new-form','same-form-input','reset-new-form','late-failure','late-rejection'].includes(scenario)){
+   for(const [name,value]of Object.entries(newer))active.form.elements[name].value=value;
+   await active.fire('input');expected=newer;
+  }
+  if(scenario==='late-rejection')reject(new Error('Предыдущая отправка не завершена'));
+  else resolve(scenario!=='late-failure');
+  await pending;
+  if(scenario==='current-success')expected={name:'',phone:'',comment:''};
+  if(scenario==='late-rejection')assert.equal(active.message.textContent,'','An older error does not target the new form');
+  const restored=f.mount();f.api.bind(offer);
+  for(const [name,value]of Object.entries(expected))assert.equal(restored.form.elements[name].value,value,scenario+': late completion must not erase a newer draft');
+  assert.equal(restored.form.elements.consent.checked,false,'Draft retention never restores consent');
+  assert.equal(f.submissions.length,1);assert.equal(f.payloads.length,1);
+  assert.equal(f.submissions[0].form,first.form);assert.equal(f.submissions[0].options.button,first.button);
+ }
+ console.log('8 late-completion draft cases PASS: new form, ongoing edit, reopen, reset/new draft, reset-only, failure, rejection and current success; delivery is stubbed');
+}
 async function nativeRecovery(){
  const f=fixture(true),{window,document,sandbox,FormDataFixture}=f;
  const calls=[],requests=[],flight={price:{value:133500.5},fuelCharge:0,forward:[{number:'TT 211'}],backward:[{number:'TT 212'}]};
@@ -126,6 +158,7 @@ async function nativeRecovery(){
   f.api.reset();const reset=f.mount();f.api.bind(offer);for(const name of Object.keys(values))assert.equal(reset.form.elements[name].value,'');
   console.log(`Lead binder ${preview?'preview':'delivery-stub'}: rejected/pending/stale draft, submit containment, recovery, consent, validation and reset PASS`);
  }
+ await lateSubmissionDrafts();
  await nativeRecovery();
  console.log('Unit harness only; real browser/supplier/network/delivery calls: 0.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
