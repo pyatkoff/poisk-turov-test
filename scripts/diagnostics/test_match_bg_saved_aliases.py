@@ -46,9 +46,9 @@ class Actual816(unittest.TestCase):
             with zipfile.ZipFile(p,'w') as z:z.writestr('result.json',rb);z.writestr('receipt.json',json.dumps(q))
             return m.run(p,hashlib.sha256(p.read_bytes()).hexdigest())
     def test_mass_counts_and_disjoint_delta(self):
-        self.assertEqual(self.result['counts']['new_evidence_candidates'],79)
-        self.assertEqual(self.result['counts']['candidate_union_not_accepted'],335)
-        self.assertEqual(len(set(self.result['new_candidate_ids'])),79)
+        self.assertEqual(self.result['counts']['new_evidence_candidates'],124)
+        self.assertEqual(self.result['counts']['candidate_union_not_accepted'],380)
+        self.assertEqual(len(set(self.result['new_candidate_ids'])),124)
         for r in self.result['rows']:
             self.assertFalse(r['safe_to_write_now'])
             self.assertEqual(r['input_row'],next(s for s in self.source['rows'] if s['tv_hotel_id']==r['tv_hotel_id']))
@@ -75,5 +75,40 @@ class Actual816(unittest.TestCase):
     def test_multiple_canonical_never_new(self):
         for r in self.result['rows']:
             if len(r['input_row']['accepted_catalog_ids'])!=1:self.assertFalse(r['new_alias_evidence_candidate'])
+
+    def geo_sample(self):
+        row=copy.deepcopy(next(r for r in self.source['rows'] if r['tv_hotel_id']==595))
+        return row, row['official_evidence'][0], copy.deepcopy(self.source['rule_table'])
+    def test_retained_compound_geography_supersedes_stale_boolean(self):
+        row,bg,rules=self.geo_sample()
+        self.assertFalse(bg['geography_supported'])
+        self.assertIsNotNone(m.geography_proof(row,bg,rules))
+        self.assertTrue(next(r for r in self.result['rows'] if r['tv_hotel_id']==595)['new_alias_evidence_candidate'])
+    def test_wrong_subregion_not_accepted_by_broad_region(self):
+        row,bg,rules=self.geo_sample();row['catalog_hotel']['subregion_name']='Патонг'
+        self.assertIsNone(m.geography_proof(row,bg,rules))
+    def test_wrong_country_and_changed_city_id_held(self):
+        row,bg,rules=self.geo_sample();bg['official_country']['title_ru']='Турция'
+        self.assertIsNone(m.geography_proof(row,bg,rules))
+        row,bg,rules=self.geo_sample();bg['official_city']['id']='other'
+        self.assertIsNone(m.geography_proof(row,bg,rules))
+    def test_missing_rule_or_false_retained_support_held(self):
+        row,bg,rules=self.geo_sample();rules.clear()
+        self.assertIsNone(m.geography_proof(row,bg,rules))
+        row,bg,rules=self.geo_sample();row['retained_geography'][0]['supported']=False
+        self.assertIsNone(m.geography_proof(row,bg,rules))
+    def test_current_place_label_must_really_match(self):
+        row=copy.deepcopy(next(r for r in self.source['rows'] if r['tv_hotel_id']==244));bg=row['official_evidence'][0]
+        self.assertIsNotNone(m.geography_proof(row,bg,self.source['rule_table']))
+        row['catalog_hotel']['region_name']='Другой курорт';row['catalog_hotel']['subregion_name']=None
+        self.assertIsNone(m.geography_proof(row,bg,self.source['rule_table']))
+    def test_manifest_exact_membership_and_result(self):
+        fixture=HERE/'fixtures'/'match_bg_saved_aliases_20260922.json'
+        if not fixture.exists():fixture=HERE/'match_bg_saved_aliases_20260922.json'
+        f=json.loads(fixture.read_text())
+        self.assertEqual(f['counts'],self.result['counts'])
+        self.assertEqual(f['delta_tuples'],[[r['tv_hotel_id'],r['input_row']['f4_candidates'][0],r['input_row']['accepted_catalog_ids'][0]] for r in self.result['rows'] if r['new_alias_evidence_candidate']])
+        encoded=(json.dumps(self.result,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode()
+        self.assertEqual(f['full_result_sha256'],hashlib.sha256(encoded).hexdigest())
 
 if __name__=='__main__':unittest.main()
