@@ -65,6 +65,7 @@ final class AnyTourOperatorProgramFuelRegistryV1
             $key = self::keyForOffer($offer);
             if ($key === null || $now < 1) return null;
             $party = self::party($party);
+            if (($offer['adults']??null)!==$party['adults'] || ($offer['children']??null)!==$party['children']) return null;
             if (self::hasInfant($party)) return null;
 
             $envelope = self::readEnvelope(self::path($directory, self::hash($key)), true);
