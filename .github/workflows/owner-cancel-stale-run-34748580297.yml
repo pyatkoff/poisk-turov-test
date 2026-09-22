@@ -1,0 +1,172 @@
+name: Owner cancel stale run 34748580297
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/owner-cancel-stale-run-34748580297.yml]
+permissions: {contents: read, actions: write, issues: read}
+concurrency: {group: owner-cancel-stale-run-34748580297, cancel-in-progress: false}
+env:
+  OP: owner-cancel-stale-run-34748580297-20260922-v1
+  BASE: 78f074eb70c90bb75cba4767acba2420952f4541
+  CLAIM: '5773565878'
+  TARGET: '34748580297'
+jobs:
+  cancel:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'ops/owner-cancel-stale-run-34748580297-20260922-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      GH_TOKEN: ${{ github.token }}
+      HEAD: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Verify source, owner authorization and exact-head Security
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p reservation terminal
+          cat > api_local.py <<'PY'
+          import json, os, urllib.request, urllib.error
+          ROOT = 'https://api.github.com/repos/pyatkoff/poisk-turov-test/'
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  raise RuntimeError('unexpected_redirect')
+          def api(path, method='GET'):
+              if method == 'GET':
+                  assert path.startswith(('issues/comments/', 'compare/', 'actions/runs'))
+              else:
+                  assert method == 'POST' and path == 'actions/runs/34748580297/cancel'
+              req = urllib.request.Request(ROOT + path, method=method,
+                  data=b'' if method == 'POST' else None,
+                  headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],
+                           'Accept':'application/vnd.github+json',
+                           'X-GitHub-Api-Version':'2026-03-10'})
+              try:
+                  with urllib.request.build_opener(NoRedirect).open(req, timeout=30) as f:
+                      code, raw = f.status, f.read(8000001)
+                  assert len(raw) <= 8000000, 'github_response_bound'
+                  return code, json.loads(raw) if raw else None
+              except urllib.error.HTTPError as e:
+                  if method == 'POST' and e.code == 409:
+                      return 409, None
+                  raise RuntimeError('github_http_'+str(e.code)) from None
+          def save(path, obj):
+              with open(path, 'w', encoding='utf-8') as f:
+                  json.dump(obj, f, ensure_ascii=False, sort_keys=True, indent=2)
+                  f.write('\n'); f.flush(); os.fsync(f.fileno())
+          def snapshot(r):
+              keys = ['id','name','path','head_sha','event','workflow_id','created_at',
+                      'updated_at','status','conclusion','run_attempt','html_url']
+              return {k:r.get(k) for k in keys}
+          def verify_target(r):
+              expected = {'id':34748580297, 'name':'Owner Andromeda calc probe',
+                  'path':'.github/workflows/andromeda-fresh-package-live.yml',
+                  'head_sha':'12764adb21ef9cf76ac85c3213bdd7cd51bc79af',
+                  'event':'issue_comment', 'workflow_id':355780172,
+                  'created_at':'2026-09-13T08:50:44Z', 'run_attempt':1}
+              assert all(r.get(k)==v for k,v in expected.items()), 'target_fingerprint_changed'
+          PY
+          python3 - <<'PY'
+          import datetime, json, os, time
+          from api_local import api, save, snapshot, verify_target
+          save('terminal/preflight.json', {'operation':os.environ['OP'],
+              'state':'preflight_started', 'cancel_post_attempted':False,
+              'supplier_http':0, 'database_writes':0})
+          assert os.environ['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test'
+          assert os.environ['GITHUB_RUN_ATTEMPT']=='1'
+          event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
+          pr=event['pull_request']
+          assert event['action']=='opened' and pr['user']['id']==226193297
+          assert pr['head']['sha']==os.environ['HEAD']
+          assert pr['head']['ref']=='ops/owner-cancel-stale-run-34748580297-20260922-v1'
+          assert pr['head']['repo']['full_name']=='pyatkoff/poisk-turov-test'
+          _, claim=api('issues/comments/'+os.environ['CLAIM'])
+          assert claim['user']['id']==226193297 and claim['author_association']=='OWNER'
+          assert claim['issue_url'].endswith('/issues/2530')
+          for text in [os.environ['OP'], os.environ['BASE'], '34748580297',
+                       'ну так убери ее вообще', 'One regular cancel POST max']:
+              assert text in claim['body'], 'authorization_mismatch'
+          _, comparison=api('compare/'+os.environ['BASE']+'...'+os.environ['HEAD'])
+          assert comparison['merge_base_commit']['sha']==os.environ['BASE']
+          assert [(x['filename'],x['status']) for x in comparison['files']]==[
+              ('.github/workflows/owner-cancel-stale-run-34748580297.yml','added')]
+          for _ in range(60):
+              _, page=api('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')
+              checks=[r for r in page['workflow_runs'] if r['name']=='Security guard'
+                      and r['head_sha']==os.environ['HEAD']]
+              if checks and max(checks,key=lambda r:r['id'])['status']=='completed':
+                  security=max(checks,key=lambda r:r['id'])
+                  assert security['conclusion']=='success', 'security_not_green'
+                  break
+              time.sleep(2)
+          else:
+              raise RuntimeError('security_not_confirmed')
+          _, target=api('actions/runs/34748580297'); verify_target(target)
+          assert target['status'] in ['queued','in_progress','pending','waiting','requested','completed']
+          record={'operation':os.environ['OP'], 'source_sha':os.environ['HEAD'],
+              'claim':int(os.environ['CLAIM']), 'state':'reserved_before_cancel',
+              'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              'security_run':security['id'], 'target':snapshot(target),
+              'cancel_post_attempted':False, 'max_cancel_posts':1,
+              'supplier_http':0, 'database_writes':0, 'no_replay':True}
+          save('reservation/reservation.json', record)
+          print('Authorization and exact-head Security passed; target:', target['status'])
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: owner-cancel-34748580297-reservation-${{ github.run_id }}
+          path: reservation/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Cancel only the authorized run and read back terminal state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import datetime, json, os, time
+          from api_local import api, save, snapshot, verify_target
+          r=json.load(open('reservation/reservation.json'))
+          assert r['operation']==os.environ['OP'] and r['source_sha']==os.environ['HEAD']
+          verify_target(r['target'])
+          r['state']='before_target_recheck'
+          save('terminal/receipt.json',r)
+          try:
+              _, current=api('actions/runs/34748580297'); verify_target(current)
+              if current['status']!='completed':
+                  r.update(state='cancel_attempted_outcome_unknown',cancel_post_attempted=True)
+                  save('terminal/receipt.json',r)
+                  code,_=api('actions/runs/34748580297/cancel',method='POST')
+                  r['cancel_http_status']=code
+                  save('terminal/receipt.json',r)
+                  assert code in (202,409), 'unexpected_cancel_status'
+                  for _ in range(30):
+                      _, current=api('actions/runs/34748580297'); verify_target(current)
+                      if current['status']=='completed':
+                          break
+                      time.sleep(2)
+              r['after']=snapshot(current)
+              r['terminal_verified']=current['status']=='completed'
+              r['state']='terminal_verified' if r['terminal_verified'] else 'not_terminal_no_replay'
+              r['at_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat()
+              save('terminal/receipt.json',r)
+              print(json.dumps({'target':34748580297,'cancel_http_status':r.get('cancel_http_status'),
+                    'status':current['status'],'conclusion':current['conclusion'],
+                    'terminal_verified':r['terminal_verified']}))
+              assert r['terminal_verified'], 'cancel_not_terminal_within_bounded_readback'
+          except Exception as error:
+              r['error_type']=type(error).__name__
+              save('terminal/receipt.json',r)
+              raise
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: owner-cancel-34748580297-terminal-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
