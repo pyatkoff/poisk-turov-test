@@ -206,5 +206,73 @@ foreach([3,5] as $category){
 $expired=search3_local_results_build($pdo,$broad,$at->modify('+3 hours'));
 need($expired['offerCount']===0&&$expired['matchMode']==='none','expired exact and compatible snapshots never regain visibility');
 
+
+// A month differs from the saved search scope. Confirmation-only snapshots must
+// contribute without borrowing a final-ready sibling or gaining quote authority.
+$confirmationParams=$p;$confirmationParams['departureId']='3';$confirmationParams['hotelCategory']='';
+$confirmationParams['nightsFrom']='7';$confirmationParams['nightsTo']='7';
+$confirmationScope=AnyTourSearchScopeV1::fromParams($confirmationParams);
+$calendarParams=$confirmationParams;$calendarParams['dateFrom']='2026-10-01';$calendarParams['dateTo']='2026-10-22';
+$calendarScope=AnyTourSearchScopeV1::fromParams($calendarParams);
+need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$confirmationScope,$at),'confirmation-only scope indexed');
+$confirmation=dto_fixture('tourvisor',101,'confirmation-only','117777','2026-10-06',7);
+$confirmation['finalPriceReady']=false;$confirmation['finalPrice']=null;
+$confirmationToken=AnyTourOfferStoreV1::beginRefresh($pdo,'tourvisor',$confirmationScope['digest'],$at);
+AnyTourOfferStoreV1::upsertReadyOffer($pdo,$confirmationToken,$owns[101],$confirmation,$expires,$at);
+need(AnyTourOfferScopeIndexV1::compatibleDigests($pdo,$calendarScope,$at)===[],'incomplete confirmation snapshot is not nominated');
+need(search3_local_results_build($pdo,$calendarParams,$at)['offerCount']===0,'incomplete confirmation snapshot stays invisible');
+AnyTourOfferStoreV1::completeRefresh($pdo,$confirmationToken,$at);
+$confirmationExact=search3_local_results_build($pdo,$confirmationParams,$at);
+need($confirmationExact['matchMode']==='exact'&&$confirmationExact['offerCount']===1,'confirmation-only exact scope remains visible');
+need(AnyTourOfferScopeIndexV1::compatibleDigests($pdo,$calendarScope,$at)===[$confirmationScope['digest']],'confirmation-only completed scope is nominated for a month');
+$confirmationBefore=$pdo->query('SELECT * FROM anytour_offers ORDER BY id')->fetchAll();
+$confirmationCalendar=search3_local_results_build($pdo,$calendarParams,$at);
+need($confirmationCalendar['matchMode']==='compatible'&&$confirmationCalendar['offerCount']===1,'confirmation-only offer reaches the month reader');
+need($confirmationCalendar['sourceScopeDigests']===[$confirmationScope['digest']]&&$confirmationCalendar['scopeDigest']===$calendarScope['digest'],'calendar keeps current scope and discloses saved scope');
+$confirmationOffer=$confirmationCalendar['hotels'][0]['offers'][0];
+need($confirmationOffer===$confirmationExact['hotels'][0]['offers'][0],'cross-scope confirmation price and complete listing are unchanged');
+need($confirmationOffer['price']==='117777'
+    &&$confirmationOffer['listing']['listingPriceState']==='search_price_confirmation_required'
+    &&$confirmationOffer['listing']['listingPriceReady']===false
+    &&$confirmationOffer['listing']['priceConfirmationRequired']===true
+    &&$confirmationOffer['listing']['finalPriceVerified']===false
+    &&$confirmationOffer['listing']['selection_state']==='refresh_required'
+    &&$confirmationOffer['listing']['booking_enabled']===false
+    &&!isset($confirmationOffer['listing']['context'])
+    &&$confirmationCalendar['selectionAuthority']===false,'calendar cannot promote a confirmation price or restore booking authority');
+need($confirmationBefore===$pdo->query('SELECT * FROM anytour_offers ORDER BY id')->fetchAll(),'confirmation-only reads do not mutate stored rows');
+foreach(['date','nights','ages','departure'] as $fault){
+    $unrelated=$calendarParams;
+    if($fault==='date'){$unrelated['dateFrom']='2026-10-08';$unrelated['dateTo']='2026-10-09';}
+    if($fault==='nights'){$unrelated['nightsFrom']='8';$unrelated['nightsTo']='8';}
+    if($fault==='ages')$unrelated['childs']=[8];
+    if($fault==='departure')$unrelated['departureId']='4';
+    need(search3_local_results_build($pdo,$unrelated,$at)['offerCount']===0,'confirmation offer keeps exact '.$fault.' constraints');
+}
+$confirmationActive=$pdo->prepare('UPDATE anytour_offers SET is_active=? WHERE scope_sha256=?');
+$confirmationActive->execute([0,$confirmationScope['digest']]);
+need(AnyTourOfferScopeIndexV1::compatibleDigests($pdo,$calendarScope,$at)===[],'inactive confirmation scope is not nominated');
+need(search3_local_results_build($pdo,$calendarParams,$at)['offerCount']===0,'inactive confirmation offer stays invisible');
+$confirmationActive->execute([1,$confirmationScope['digest']]);
+need(search3_local_results_build($pdo,$calendarParams,$expires)['offerCount']===0,'confirmation offer expires at the same exact boundary');
+
+$nextConfirmation=dto_fixture('tourvisor',101,'confirmation-next','116666','2026-10-06',7);
+$nextConfirmation['finalPriceReady']=false;$nextConfirmation['finalPrice']=null;
+$pendingToken=AnyTourOfferStoreV1::beginRefresh($pdo,'tourvisor',$confirmationScope['digest'],$at2);
+AnyTourOfferStoreV1::upsertReadyOffer($pdo,$pendingToken,$owns[101],$nextConfirmation,$expires,$at2);
+$whilePending=search3_local_results_build($pdo,$calendarParams,$at2);
+need($whilePending['offerCount']===1&&$whilePending['hotels'][0]['offers'][0]['price']==='117777','unfinished replacement cannot displace completed confirmation snapshot');
+AnyTourOfferStoreV1::completeRefresh($pdo,$pendingToken,$at2);
+$afterPending=search3_local_results_build($pdo,$calendarParams,$at2);
+need($afterPending['offerCount']===1&&$afterPending['hotels'][0]['offers'][0]['price']==='116666','completed replacement is the only visible confirmation snapshot');
+
+$readyToken=AnyTourOfferStoreV1::beginRefresh($pdo,'anex',$confirmationScope['digest'],$at2);
+AnyTourOfferStoreV1::upsertReadyOffer($pdo,$readyToken,$owns[101],dto_fixture('anex',101,'confirmation-sibling','118888','2026-10-06',7),$expires,$at2);
+AnyTourOfferStoreV1::completeRefresh($pdo,$readyToken,$at2);
+$mixedConfirmation=search3_local_results_build($pdo,$calendarParams,$at2);
+need((array)$mixedConfirmation['providerOfferCounts']===['anex'=>1,'tourvisor'=>1],'mixed ready and confirmation scope keeps both providers');
+need(array_column($mixedConfirmation['hotels'][0]['offers'],'price')===['116666','118888'],'mixed scope preserves original amounts and sorting');
+echo "SEARCH3_CONFIRMATION_SCOPE_OK exact=1 compatible=1 incomplete_hidden=1 active_expiry=1 no_price_promotion=1 same_trip=1 mixed=1 writes=0\n";
+
 $pdo->exec("UPDATE anytour_offers SET payload_json='{}' WHERE provider='tourvisor'");$integrityFailed=false;try{search3_local_results_build($pdo,$p,$at);}catch(RuntimeException $e){$integrityFailed=str_contains($e->getMessage(),'PAYLOAD_INTEGRITY');}need($integrityFailed,'corrupt stored payload fails closed');
 echo "SEARCH3_LOCAL_DB_RESULTS_OK scope_v1=1 compatible_filters=1 offer_date_nights=1 departure_hard=1 scope_union=1 exact_duplicate_wins=1 store_v2=1 rendered=2 revoked_identity_hidden=2 writes=0\n";
