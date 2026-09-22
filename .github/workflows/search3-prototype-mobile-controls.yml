@@ -9,13 +9,16 @@ on:
       - 'tests/search3-prototype-mobile-controls-browser.py'
       - 'tests/search3-prototype-mobile-header-browser.py'
       - 'tests/search3-prototype-mobile-destination-browser.py'
+      - 'tests/search3-prototype-compare-photo-browser.py'
       - '.github/workflows/search3-prototype-mobile-controls.yml'
 permissions:
   contents: read
 jobs:
   mobile-controls-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    # WebKit's cold Ubuntu dependencies exceed 100MB; keep tests mandatory even
+    # when the runner's default package mirror is slow. No mirror overrides.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -28,15 +31,18 @@ jobs:
           python -m py_compile tests/search3-prototype-mobile-controls-browser.py
           python -m py_compile tests/search3-prototype-mobile-header-browser.py
           python -m py_compile tests/search3-prototype-mobile-destination-browser.py
+          python -m py_compile tests/search3-prototype-compare-photo-browser.py
       - name: Install pinned browser tools
         run: |
           python -m pip install playwright==1.57.0
-          python -m playwright install --with-deps chromium
+          python -m playwright install --with-deps chromium webkit
       - name: Browser acceptance at mobile boundary and desktop
         run: |
           python tests/search3-prototype-mobile-controls-browser.py
           python tests/search3-prototype-mobile-header-browser.py
           python tests/search3-prototype-mobile-destination-browser.py
+          python tests/search3-prototype-compare-photo-browser.py
+          python tests/search3-prototype-compare-photo-browser.py --browser webkit
       - name: Retain responsive evidence
         if: always()
         uses: actions/upload-artifact@v4
