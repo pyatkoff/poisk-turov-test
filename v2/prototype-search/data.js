@@ -10,15 +10,36 @@
   let calendarWindowBytes=0,calendarVersion=0;
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
-  function nativeEndpoint(value){
-    if(typeof value!=='string'||!root.location)return null;
-    try{const url=new URL(value,root.location.href);return url.origin===root.location.origin&&url.pathname==='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'&&!url.search&&!url.hash?url:null;}catch{return null;}
+  function nativeEndpoint(value,expectedPath){
+    if(typeof value!=='string'||typeof expectedPath!=='string'||!root.location)return null;
+    try{const url=new URL(value,root.location.href);return url.origin===root.location.origin&&url.pathname===expectedPath&&!url.search&&!url.hash?url:null;}catch{return null;}
   }
   const text = value => typeof value === 'object' && value ? String(value.russianName || value.name || '') : String(value ?? '');
   const amount = value => { const n = Number(value && typeof value === 'object' ? value.value : value); return Number.isFinite(n) && n > 0 ? n : null; };
   const date = value => { const s = String(value || '').slice(0, 10), p = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/); return p ? `${p[3]}-${p[2]}-${p[1]}` : /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''; };
   const plus = (d, n) => new Date(new Date(d + 'T12:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
-  function meal(value){const label=text(value),record=catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)||text(x).toLocaleLowerCase('ru-RU')===label.toLocaleLowerCase('ru-RU')),full=text(value?.fullName)||text(record?.fullName);return full&&(!label||/^[A-Z]{1,5}\+?$/.test(label))?full:label;}
+  const mealAliases=Object.freeze({
+    RO:'Без питания','NO MEAL':'Без питания',
+    BB:'Завтраки','BED AND BREAKFAST':'Завтраки',
+    HB:'Полупансион','HALF BOARD':'Полупансион',
+    FB:'Полный пансион','FULL BOARD':'Полный пансион',
+    AI:'Всё включено',ALL:'Всё включено','ALL INCLUSIVE':'Всё включено',
+    UAI:'Ультра всё включено','ULTRA ALL INCLUSIVE':'Ультра всё включено',
+    'AI-WITHOUT ALCOHOL':'Всё включено без алкоголя','AI WITHOUT ALCOHOL':'Всё включено без алкоголя'
+  });
+  function meal(value){
+    const label=text(value).trim(),record=catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)
+      ||text(x).trim().toLocaleLowerCase('ru-RU')===label.toLocaleLowerCase('ru-RU'));
+    const candidates=[label,text(value?.fullName),text(value?.russianName),text(record?.fullName),text(record?.russianName),text(record)]
+      .map(value=>value.trim()).filter(Boolean);
+    for(const candidate of candidates){
+      const normalized=candidate.toUpperCase().replace(/\s+/g,' ');
+      if(mealAliases[normalized])return mealAliases[normalized];
+      const coded=normalized.match(/^(RO|BB|HB|FB|AI|UAI|ALL)\s*(?:[-—:]\s*|\s+).+$/);
+      if(coded&&mealAliases[coded[1]])return mealAliases[coded[1]];
+    }
+    return candidates.find(candidate=>!(/^[A-Z]{1,7}\+?$/).test(candidate))||candidates[0]||'';
+  }
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
   async function regions(country) {
     const key=String(country);
@@ -45,7 +66,9 @@
     if (!date(s.from) || !date(s.to) || s.from > s.to || (new Date(s.to) - new Date(s.from)) / 86400000 > 21) throw new Error('Выберите диапазон вылета не больше 21 дня.');
     if (!Number.isInteger(s.adults) || s.adults < 1 || s.adults > 6 || !Array.isArray(s.ages) || s.ages.length > 3 || s.ages.some(x => !Number.isInteger(x) || x < 0 || x > 17)) throw new Error('Укажите возраст каждого ребёнка.');
     if (!Number.isInteger(s.minNights) || !Number.isInteger(s.maxNights) || s.minNights < 1 || s.maxNights > 28 || s.maxNights < s.minNights || s.maxNights - s.minNights > 10) throw new Error('Проверьте диапазон ночей.');
-    const chosenMeal=filters.meals?.length===1?catalog.meals.find(x=>meal(x)===filters.meals[0]):null;
+    const selectedMeal=filters.meals?.length===1?meal(filters.meals[0]):'';
+    const chosenMeal=selectedMeal?catalog.meals.find(x=>meal(x)===selectedMeal):null;
+    if(selectedMeal&&!chosenMeal)throw new Error('Выберите питание из загруженного справочника.');
     const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
     return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:chosenMeal?String(chosenMeal.id):'',hotelCategory:stars.length?String(Math.min(...stars)):'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:regionIds(s,filters),subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max!==null&&filters.max!==undefined&&filters.max!==''?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
   }
@@ -101,38 +124,128 @@
     activeSearch?.controller.abort();activeSearch=null;
     return generation;
   }
-  function searchError(run,error){
+  async function searchError(run,error){
     if(!current(run))return;
-    run.pending=false;
     // An expired supplier search cannot be continued. A lost response is not
     // evidence that search_continue failed: subsequent recovery only reads it.
     if(error?.status===404||error?.status===410)run.expired=true;
+    if(!run.continued){
+      run.sourceCounts.tourvisor={status:'error',hotels:raw.length,offers:raw.reduce((sum,h)=>sum+(Array.isArray(h?.tours)?h.tours.length:0),0)};
+      notify({type:'provider',provider:'tourvisor',status:'error'});
+      await settleInitialSources(run);if(!current(run))return;
+      run.pending=false;
+      notify({type:'complete',partial:true,message:error.message,canContinue:!!run.searchId&&!run.expired,
+        retryRead:run.resumeOnly,continued:false,resultLimitReached:false,sources:structuredClone(run.sourceCounts)});
+      return;
+    }
+    run.pending=false;
     notify({type:'error',message:error.message,canContinue:!!run.searchId&&!run.expired,retryRead:run.resumeOnly});
   }
   function readDatabase(run){
     return db(run.search,run.controller.signal,run.hotelIds,run.filters).then(data=>{
       if(!current(run)||!owner)return;
-      clearCalendarWindows();root.AnyTourLocalDbProviderV1.apply(owner,data);if(current(run))notify({type:'database'});
-    }).catch(error=>{if(current(run))notify({type:'database-error',message:error.message});});
+      clearCalendarWindows();root.AnyTourLocalDbProviderV1.apply(owner,data);
+      const providerOfferCounts=data.providerOfferCounts&&typeof data.providerOfferCounts==='object'?structuredClone(data.providerOfferCounts):{};
+      run.sourceCounts.database={status:'complete',hotels:Number(data.hotelCount)||0,offers:Number(data.offerCount)||0,storedOffers:Number(data.storedOfferCount)||0,providerOfferCounts};
+      if(current(run))notify({type:'database',...run.sourceCounts.database});
+    }).catch(error=>{
+      if(!current(run))return;
+      run.sourceCounts.database={status:'error'};
+      notify({type:'database-error',message:error.message});
+    });
   }
   function refreshDatabase(run){
     // Serial snapshots cannot overwrite a later snapshot with an earlier one.
     // Provider completion uses the same reader; no parallel store or DTO.
     return run.database=run.database.then(()=>{if(current(run))return readDatabase(run);});
   }
+  function directAnexOffer(hotel,tour,run,p,seen){
+    if(!tour||typeof tour!=='object'||!tour.price||tour.price.currency!=='RUB'
+      ||typeof tour.price.amount!=='string'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(tour.price.amount)
+      ||Number(tour.price.amount)<=0)throw new Error('Invalid ANEX price');
+    const day=date(tour.checkin),nights=Number(tour.nights),searchRef=String(tour.search_ref||''),offerRef=String(tour.offer_ref||'');
+    if(!day||day<p.dateFrom||day>p.dateTo||!Number.isInteger(nights)||nights<Number(p.nightsFrom)||nights>Number(p.nightsTo)
+      ||Number(tour.adults)!==Number(p.adults)||Number(tour.children)!==p.childs.length
+      ||!(/^[a-f0-9]{32}$/).test(searchRef)||!(/^anex_online:[a-f0-9]{64}$/).test(offerRef)
+      ||tour.selection_enabled!==false||tour.final_price_verified!==false||seen.has(offerRef))throw new Error('Invalid ANEX offer');
+    seen.add(offerRef);
+    const total=Number(tour.price.amount),mealName=meal(tour.meal)||'Питание уточняется';
+    if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo))throw new Error('ANEX price outside requested scope');
+    const selectedMeals=(run.filters.meals||[]).map(meal).filter(Boolean);
+    if(selectedMeals.length&&!selectedMeals.includes(mealName))return null;
+    const flight=String(tour.flight_type||'').toLowerCase();
+    return {id:offerRef,offerRef,searchRef,provider:'anex',price:total,date:day,nights,
+      meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:'',
+      operator:{name:'ANEX'},isCharter:flight==='charter'?true:flight==='regular'?false:undefined,
+      cachedListing:false,selectionEnabled:false,finalPriceVerified:false,anexKind:String(tour.kind||''),
+      anexLocalHotelId:hotel.local_id};
+  }
+  function applyDirectAnex(run,data,p){
+    if(!data||data.provider!=='anex'||data.generation!==run.generation||!Array.isArray(data.hotels)||data.hotels.length>300
+      ||!data.date_range||data.date_range.from!==p.dateFrom||!date(data.date_range.to)||data.date_range.to<p.dateFrom||data.date_range.to>p.dateTo
+      ||typeof data.search_ref!=='string'||!(/^[a-f0-9]{32}$/).test(data.search_ref))throw new Error('Invalid ANEX search response');
+    const expectedEnd=plus(p.dateFrom,6)<p.dateTo?plus(p.dateFrom,6):p.dateTo;
+    if(data.date_range.to!==expectedEnd)throw new Error('Invalid ANEX date range');
+    const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let receivedOffers=0;
+    for(const hotel of data.hotels){
+      if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||seenHotels.has(hotel.local_id)
+        ||hotel.catalog?.source!=='tourvisor'||Number(hotel.catalog?.hotel_id)!==hotel.local_id
+        ||!Array.isArray(hotel.tours)||hotel.tours.length<1||hotel.tours.length>300)throw new Error('Invalid ANEX hotel');
+      seenHotels.add(hotel.local_id);receivedOffers+=hotel.tours.length;
+      for(const tour of hotel.tours){
+        if(tour.search_ref!==data.search_ref)throw new Error('Invalid ANEX search identity');
+        const normalized=directAnexOffer(hotel,tour,run,p,seenOffers);
+        if(normalized)prepared.push({legacyHotelId:hotel.local_id,tour:normalized});
+      }
+    }
+    if(receivedOffers>300)throw new Error('Invalid ANEX result size');
+    owner.clearOffers('direct-anex');
+    for(const entry of prepared)owner.upsertLegacyOffer(entry.legacyHotelId,entry.tour,{source:'direct-anex'});
+    owner.refresh();
+    const visibleHotels=new Set(prepared.map(entry=>entry.legacyHotelId)).size,partialRange=data.date_range.to!==p.dateTo;
+    run.sourceCounts.anex={status:partialRange?'partial':'complete',hotels:visibleHotels,offers:prepared.length,
+      receivedHotels:data.hotels.length,receivedOffers,dateFrom:data.date_range.from,dateTo:data.date_range.to};
+    return run.sourceCounts.anex;
+  }
+  async function enrichAnex(run,p){
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+    if(!url||!current(run)){run.sourceCounts.anex={status:'skipped',hotels:0,offers:0};return;}
+    notify({type:'provider',provider:'anex',status:'loading'});if(!current(run))return;
+    try{
+      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,
+        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
+        body:JSON.stringify({action:'search',generation:run.generation,params:p})});
+      const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!current(run))return;
+      if(!response.ok||payload?.ok!==true)throw new Error('ANEX search unavailable');
+      const result=applyDirectAnex(run,data,p);if(!current(run))return;
+      notify({type:'provider',provider:'anex',...result});
+    }catch(error){
+      if(!current(run)||error?.name==='AbortError')return;
+      run.sourceCounts.anex={status:'error',hotels:0,offers:0};
+      notify({type:'provider',provider:'anex',status:'error'});
+    }
+  }
   async function enrichAndromeda(run,p){
-    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi);if(!url||!current(run))return;
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');
+    if(!url||!current(run)){run.sourceCounts.andromeda={status:'skipped',hotels:0,offers:0};return;}
     notify({type:'provider',provider:'andromeda',status:'loading'});if(!current(run))return;
     try{
       const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({generation:run.generation,params:p})});
       const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!current(run))return;
       if(!response.ok||payload?.ok!==true||!data||data.provider!=='andromeda'||data.generation!==run.generation)throw new Error('Andromeda search unavailable');
       await refreshDatabase(run);if(!current(run))return;
-      notify({type:'provider',provider:'andromeda',status:'complete',hotels:Array.isArray(data.hotels)?data.hotels.length:0});
+      const offers=Array.isArray(data.hotels)?data.hotels.reduce((sum,h)=>sum+(Array.isArray(h?.tours)?h.tours.length:0),0):0;
+      run.sourceCounts.andromeda={status:'complete',hotels:Array.isArray(data.hotels)?data.hotels.length:0,offers};
+      notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda});
     }catch(error){
       if(!current(run)||error?.name==='AbortError')return;
+      run.sourceCounts.andromeda={status:'error',hotels:0,offers:0};
       notify({type:'provider',provider:'andromeda',status:'error'});
     }
+  }
+  async function settleInitialSources(run){
+    await Promise.allSettled([run.anex,run.andromeda]);if(!current(run))return false;
+    await run.database;return current(run);
   }
   async function pollSearch(run){
     if(!current(run))return;
@@ -149,24 +262,33 @@
         raw=rows;run.lastProgress=progress;run.lastRead=Date.now();publish();if(!current(run))return;
       }
       if(complete){
-        run.pending=false;run.resumeOnly=false;refreshDatabase(run);
-        notify({type:'complete',canContinue:true,continued:run.continued,resultLimitReached:raw.length>=5000});return;
+        const tvOffers=raw.reduce((sum,h)=>sum+(Array.isArray(h?.tours)?h.tours.length:0),0);
+        run.sourceCounts.tourvisor={status:'complete',hotels:raw.length,offers:tvOffers};
+        notify({type:'provider',provider:'tourvisor',...run.sourceCounts.tourvisor});
+        await refreshDatabase(run);if(!current(run))return;
+        if(!run.continued&&!(await settleInitialSources(run)))return;
+        run.pending=false;run.resumeOnly=false;
+        notify({type:'complete',canContinue:true,continued:run.continued,resultLimitReached:raw.length>=5000,sources:structuredClone(run.sourceCounts)});return;
       }
       if(run.deadline&&Date.now()>=run.deadline)throw new Error('Продолжение поиска ещё не завершено. Проверьте результат повторно.');
       timer=setTimeout(()=>pollSearch(run),2500);
-    }catch(error){searchError(run,error);}
+    }catch(error){await searchError(run,error);}
   }
   async function search(s, callback, hotelIds=[], filters={}) {
     const p=params(s,hotelIds,filters),epoch=stop();notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
-    const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,lastProgress:-10,lastRead:0,deadline:0};
-    activeSearch=run;callback({type:'loading'});if(!current(run))return;run.database=readDatabase(run);void enrichAndromeda(run,p);
+    const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,lastProgress:-10,lastRead:0,deadline:0,sourceCounts:{}};
+    activeSearch=run;callback({type:'loading'});if(!current(run))return;
+    run.database=readDatabase(run);
+    run.andromeda=enrichAndromeda(run,p);
+    run.anex=enrichAnex(run,p);
+    notify({type:'provider',provider:'tourvisor',status:'loading'});if(!current(run))return;
     try{
       const started=await rt.api('search_start',p);if(!current(run))return;
       searchId=Number(started.searchId);
       if(!Number.isSafeInteger(searchId)||searchId<1)throw new Error('Не удалось запустить поиск.');
       run.searchId=searchId;rt.setSearchId(searchId);
       timer=setTimeout(()=>pollSearch(run),1000);
-    }catch(error){searchError(run,error);}
+    }catch(error){await searchError(run,error);}
   }
   async function continueSearch(){
     const run=activeSearch;
@@ -178,7 +300,7 @@
     try{
       if(!retryRead){await rt.api('search_continue',{searchId:run.searchId});if(!current(run))return false;}
       await pollSearch(run);return current(run);
-    }catch(error){searchError(run,error);return false;}
+    }catch(error){await searchError(run,error);return false;}
   }
   function clearCalendarWindows(){calendarWindows.clear();calendarWindowBytes=0;calendarVersion++;}
   function retainCalendarWindow(key,rows,data,startedAt){
@@ -261,7 +383,8 @@
       observedCalendar(s,from,to,signal,filters).then(rows=>{snapshot.observations=rows;show();})
     ]);
     if(signal?.aborted)throw new DOMException('Aborted','AbortError');
-    const failed=settled.find(row=>row.status==='rejected');if(failed)throw failed.reason;
+    const failed=settled.filter(row=>row.status==='rejected');
+    if(failed.length===settled.length)throw failed[0].reason;
     return snapshot;
   }
   async function init(origin='Москва') {
