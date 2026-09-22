@@ -172,6 +172,9 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             }
             foreach ($eligible as $key => $candidate) {
                 if ($candidate['freight_external'] !== $priority || isset($captureQueue[$key])) continue;
+                if ($captureMode === 'external_group_only'
+                    && ($selectedProbeGroup === null
+                        || $candidate['reusable_surcharge_group'] !== $selectedProbeGroup)) continue;
                 // A proven compatible surcharge group gets one representative attempt,
                 // not one attempt per hotel/room/SPO. Failure is not permission to retry
                 // another sibling. Unknown/non-external legacy groups are only ordering
