@@ -12,6 +12,7 @@ import re
 import shlex
 import subprocess
 import tarfile
+import time
 import urllib.request
 
 REPO = 'pyatkoff/poisk-turov-test'
@@ -30,6 +31,10 @@ FIXED = [
     'v2/api-anex-search3-preview.php',
     'v2/api-andromeda-search3-preview.php',
     'v2/data/hotel-details-v1.php',
+    'scripts/diagnostics/hotel_match_anex_effective_coverage.php',
+    'scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php',
+    'scripts/diagnostics/hotel_match_live942_tv_anex_refresh_v1.py',
+    'scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php',
 ]
 
 # Persistent installation is intentionally narrower than the source bundle:
@@ -114,6 +119,17 @@ def parse_command(body: str) -> dict:
             'meal': '' if meal == '-' else meal, 'region': region,
             'max_captures': 1,
         }
+    if mode in ('match-tv942', 'match-samo942'):
+        need(len(parts) == 5, 'command_shape')
+        offset = integer(parts[3], 0, 941, 'match_offset')
+        limit = integer(parts[4], 1, 350, 'match_limit')
+        need(offset + limit <= 942, 'match_scope')
+        if mode == 'match-tv942':
+            need(operation.startswith('int-anex-'), 'match_operation_namespace')
+        else:
+            need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'offset': offset, 'limit': limit}
     if mode == 'andromeda-scope':
         need(len(parts) == 12, 'command_shape')
         departure = integer(parts[3], 1, 999999999, 'departure')
@@ -169,6 +185,35 @@ def checked_event(token: str, event: dict, control_sha: str) -> dict:
     feature = api_get('/git/ref/heads/' + FEATURE, token)['object']['sha']
     need(feature == command['source_sha'], 'feature_changed')
     return command
+
+def ensure_supplier_slot(token: str) -> None:
+    own = int(os.environ.get('GITHUB_RUN_ID', '0') or '0')
+    words = ('match','andromeda','anex','tourvisor','search3','seasonal live evidence')
+    import datetime as dt
+    for _ in range(36):
+        busy = []
+        now = dt.datetime.now(dt.timezone.utc)
+        for status in ('in_progress','queued'):
+            payload = api_get('/actions/runs?status=' + status + '&per_page=100', token)
+            for run in payload.get('workflow_runs', []):
+                if int(run.get('id', 0)) == own or run.get('name') == 'Security guard':
+                    continue
+                created = run.get('created_at')
+                if not isinstance(created, str):
+                    continue
+                try:
+                    stamp = dt.datetime.fromisoformat(created.replace('Z', '+00:00'))
+                except ValueError:
+                    continue
+                if (now - stamp).total_seconds() > 21600:
+                    continue
+                name = str(run.get('name', '')).lower()
+                if any(word in name for word in words):
+                    busy.append((run.get('id'), run.get('name'), status))
+        if not busy:
+            return
+        time.sleep(5)
+    raise ValueError('supplier_slot_busy')
 
 def bundle_source(source_root: Path) -> tuple[bytes, dict[str, str]]:
     source_root = source_root.resolve()
@@ -517,6 +562,65 @@ def install_runtime(stage,files,op):
               'manifest_sha256':payload['manifest_sha256']}
     write_private_json(op/'install-state.json',complete)
     return complete
+def run_match942(stage, mode, offset, limit):
+    match_root=home/'.anytoour-match/operations'
+    match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
+    lane='tv-anex' if mode=='match-tv942' else 'samo-anex'
+    child='hotel-match-live942-'+lane+'-refresh-1971-20260923-o'+str(offset)+'-n'+str(limit)+'-v2'
+    child_dir=match_root/child
+    if child_dir.exists() or child_dir.is_symlink(): fail('match_child_exists_no_replay')
+    child_dir.mkdir(mode=0o700)
+    reservation={'operation':child,'state':'reserved_before_db_and_provider','source_sha':source,
+                 'parent_operation':operation,'frontier_expected':942,'offset':offset,'limit':limit,
+                 'database_writes':0,'mapping_writes':0,'reserved_at':int(time.time())}
+    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
+    os.chmod(child_dir/'reservation.json',0o600)
+    planner=stage/'scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php'
+    helper=stage/'scripts/diagnostics/hotel_match_anex_effective_coverage.php'
+    if not safe_file(planner) or not safe_file(helper): fail('match_plan_source_missing')
+    env={**os.environ,'ANYTOUR_ROOT':str(project)}
+    planned=subprocess.run(['php',str(planner),'--execute'],cwd=project,env=env,
+                           capture_output=True,text=True,timeout=90)
+    if planned.returncode or planned.stderr.strip(): fail('match_plan_failed')
+    try: plan=json.loads(planned.stdout)
+    except Exception: fail('match_plan_unparseable')
+    if (plan.get('state')!='original_live942_ready' or plan.get('frontier_count')!=942
+            or plan.get('current_missing_count')!=927 or plan.get('control_written_count')!=15
+            or not isinstance(plan.get('rows'),list) or len(plan['rows'])!=942):
+        fail('match_plan_guard')
+    plan_path=child_dir/'plan.json'
+    plan_path.write_text(json.dumps(plan,ensure_ascii=False,separators=(',',':')))
+    os.chmod(plan_path,0o600)
+    run_env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
+             'MATCH_PLAN_PATH':str(plan_path),'MATCH_CHILD_OPERATION':child,
+             'MATCH_OFFSET':str(offset),'MATCH_LIMIT':str(limit),'MATCH_SOURCE_SHA':source}
+    if mode=='match-tv942':
+        runner=stage/'scripts/diagnostics/hotel_match_live942_tv_anex_refresh_v1.py'
+        command=['python3',str(runner),'--execute']
+    else:
+        runner=stage/'scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php'
+        command=['php',str(runner),'--execute']
+    if not safe_file(runner): fail('match_runner_missing')
+    call=subprocess.run(command,cwd=project,env=run_env,capture_output=True,text=True,timeout=900)
+    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
+    if not safe_file(result_path,8*1024*1024) or not safe_file(receipt_path,1024*1024):
+        fail('match_terminal_receipt_missing')
+    child_result=safe_json(result_path,8*1024*1024);receipt=safe_json(receipt_path,1024*1024)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    if receipt.get('result_sha256')!=digest: fail('match_terminal_hash')
+    if (child_result.get('frontier_count')!=942 or child_result.get('scope_offset')!=offset
+            or child_result.get('scope_count')!=limit or child_result.get('database_writes')!=0
+            or child_result.get('mapping_writes')!=0):
+        fail('match_terminal_guard')
+    allowed={'completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'}
+    if call.returncode!=0 or child_result.get('state') not in allowed:
+        fail('match_terminal_nonzero_no_replay')
+    summary={k:v for k,v in child_result.items() if k not in ('rows','edges','batches')}
+    return {'child_operation':child,'scope_offset':offset,'scope_count':limit,
+            'state':child_result.get('state'),'result_sha256':digest,'summary':summary,
+            'provider_stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
+            'provider_stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
+
 try:
     if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):
         fail('operation_invalid')
@@ -593,7 +697,16 @@ try:
         result['database_writes']=0
         result['production_unchanged']=True
         __RECONCILED__=True
-    if mode not in ('reconcile','local-readback','install-runtime'):
+    if mode in ('match-tv942','match-samo942'):
+        result['match942']=run_match942(stage,mode,int(payload['offset']),int(payload['limit']))
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=result['match942']['summary'].get('provider_calls',
+            result['match942']['summary'].get('samo_http_calls','bounded'))
+        result['database_writes']=0
+        result['production_unchanged']=True
+    if mode not in ('reconcile','local-readback','install-runtime','match-tv942','match-samo942'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -615,7 +728,7 @@ try:
           '--max-captures='+str(payload['max_captures']),'--max-capture-seconds='+('240' if payload['max_captures']>0 else '0'),
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
-    if mode not in ('reconcile','local-readback','install-runtime'):
+    if mode not in ('reconcile','local-readback','install-runtime','match-tv942','match-samo942'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
@@ -762,6 +875,8 @@ def main() -> None:
         for key,value in command.items():
             print(f'{key}={value}')
         return
+    if command['mode'] in ('match-tv942','match-samo942'):
+        ensure_supplier_slot(token)
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
     if result.get('status') not in ('complete','reconciled_read_only','installed'):
