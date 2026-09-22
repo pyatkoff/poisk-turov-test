@@ -104,6 +104,18 @@ test('meal labels collapse supplier codes and Russian aliases into one taxonomy'
  assert.equal(h.data.params(trip,[],{meals:['Все Включено']}).meal,'5');
  assert.equal(h.data.params(trip,[],{meals:['Всё включено','Полупансион']}).meal,'');
 });
+test('operator labels collapse known cross-provider aliases without touching source identity',async()=>{
+ const h=harness();
+ assert.equal(h.data.operator('Biblio Globus'),'Библио-Глобус');
+ assert.equal(h.data.operator('Библио-Глобус'),'Библио-Глобус');
+ assert.equal(h.data.operator('Intourist'),'Интурист');
+ assert.equal(h.data.operator('Интурист'),'Интурист');
+ assert.equal(h.data.operator('FUN SUN'),'FUN&SUN');
+ assert.equal(h.data.operator('FUN&SUN (RU)'),'FUN&SUN');
+ assert.equal(h.data.operator('Coral'),'Coral Travel');
+ assert.equal(h.data.operator('Pegas Touristik'),'Pegas Touristik');
+ assert.equal(h.data.operator('LOTI'),'LOTI');
+});
 test('first search unions direct ANEX once and waits for it before complete',async()=>{
  const gate=defer();const h=harness({anex:async body=>{await gate.promise;return {response:{ok:true,json:async()=>directAnex(body)}};}});
  await h.start();assert.equal(h.anexCalls.length,1);assert.equal(h.anexCalls[0].action,'search');
