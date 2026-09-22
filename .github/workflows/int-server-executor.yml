@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       owner_command:
-        description: Exact /run-int-server-v1 command
+        description: Exact /run-int-server-v1 command, including install-runtime
         required: true
         type: string
   issue_comment:
@@ -82,7 +82,7 @@ jobs:
           ref: ${{ steps.command.outputs.source_sha }}
           path: source
           persist-credentials: false
-      - name: Execute bounded private INT operation and DB/LOCAL readback
+      - name: Execute bounded private INT operation, install, or DB/LOCAL readback
         env:
           GH_TOKEN: ${{ github.token }}
           INT_OWNER_COMMAND: ${{ inputs.owner_command }}

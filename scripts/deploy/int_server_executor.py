@@ -32,6 +32,12 @@ FIXED = [
     'v2/data/hotel-details-v1.php',
 ]
 
+# Persistent installation is intentionally narrower than the source bundle:
+# only provider/runtime PHP and the existing Andromeda collector entrypoint.
+# Public endpoints, UI, LOCAL readers and configuration are never copied.
+INSTALL_PREFIX = 'app/integrations/'
+INSTALL_FIXED = ['scripts/ops/andromeda_local_offer_collect.php']
+
 def need(condition: bool, reason: str) -> None:
     if not condition:
         raise ValueError(reason)
@@ -58,6 +64,9 @@ def parse_command(body: str) -> dict:
     source, mode, operation = parts[:3]
     need(SHA_RE.fullmatch(source) is not None, 'source_sha')
     need(OP_RE.fullmatch(operation) is not None, 'operation_id')
+    if mode == 'install-runtime':
+        need(len(parts) == 3, 'command_shape')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'anex-demand':
         need(len(parts) == 4, 'command_shape')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
@@ -361,6 +370,133 @@ echo json_encode(['readbackError'=>$code,'errorClass'=>get_class($e),
             continue
         parsed['status']='complete';parsed.update(meta);rows.append(parsed)
     return rows
+
+install_started=False
+install_previous={}
+install_applied=[]
+install_expected={}
+install_temps={}
+
+def write_private_json(path,value):
+    encoded=json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+    tmp=path.with_name('.'+path.name+'.'+operation+'.tmp')
+    if tmp.exists() or tmp.is_symlink(): fail('install_private_temp_exists')
+    fd=os.open(tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    try:
+        os.write(fd,encoded);os.fsync(fd)
+    finally:
+        os.close(fd)
+    os.replace(tmp,path);os.chmod(path,0o600)
+
+def stage_target_bytes(target,data,mode):
+    parent=target.parent
+    if not parent.is_dir() or parent.is_symlink() or parent.resolve()!=parent:
+        fail('install_target_parent')
+    tmp=parent/('.'+target.name+'.'+operation+'.tmp')
+    if tmp.exists() or tmp.is_symlink(): fail('install_target_temp_exists')
+    fd=os.open(tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    try:
+        os.write(fd,data);os.fsync(fd)
+    finally:
+        os.close(fd)
+    if hashlib.sha256(tmp.read_bytes()).hexdigest()!=hashlib.sha256(data).hexdigest():
+        fail('install_target_temp_hash')
+    os.chmod(tmp,mode)
+    return tmp
+
+def rollback_install(op):
+    restored=[]
+    for relative in reversed(install_applied):
+        target=project/relative
+        prior=install_previous[relative]
+        if prior['exists']:
+            backup=op/'backup'/relative
+            if not safe_file(backup,2*1024*1024): fail('rollback_backup_missing')
+            temp=stage_target_bytes(target,backup.read_bytes(),prior['mode'])
+            os.replace(temp,target)
+        else:
+            if target.is_symlink() or (target.exists() and not target.is_file()):
+                fail('rollback_target_invalid')
+            target.unlink(missing_ok=True)
+        restored.append(relative)
+    for relative,prior in install_previous.items():
+        target=project/relative
+        if prior['exists']:
+            if (not safe_file(target,2*1024*1024)
+                    or hashlib.sha256(target.read_bytes()).hexdigest()!=prior['sha256']):
+                fail('rollback_hash')
+        elif target.exists() or target.is_symlink():
+            fail('rollback_absent')
+    for temp in install_temps.values():
+        try: temp.unlink(missing_ok=True)
+        except OSError: pass
+    return restored
+
+def install_runtime(stage,files,op):
+    global install_started
+    selected=sorted(
+        relative for relative in files
+        if relative.startswith('app/integrations/')
+        or relative=='scripts/ops/andromeda_local_offer_collect.php'
+    )
+    if len(selected)<20 or not any(x=='app/integrations/three-provider-fuel-evidence.php' for x in selected):
+        fail('install_inventory')
+    backup_root=op/'backup';backup_root.mkdir(mode=0o700)
+    changed=[]
+    for relative in selected:
+        if (not re.fullmatch(r'[A-Za-z0-9._/-]{1,240}',relative)
+                or relative.startswith('/') or '..' in pathlib.PurePosixPath(relative).parts):
+            fail('install_relative')
+        source_path=stage/relative
+        expected=files.get(relative)
+        if (not safe_file(source_path,2*1024*1024)
+                or not isinstance(expected,str)
+                or hashlib.sha256(source_path.read_bytes()).hexdigest()!=expected):
+            fail('install_source_hash')
+        lint=subprocess.run(['php','-l',str(source_path)],capture_output=True,text=True,timeout=20)
+        if lint.returncode!=0: fail('install_source_lint')
+        target=project/relative
+        if not target.parent.is_dir() or target.parent.is_symlink() or target.parent.resolve()!=target.parent:
+            fail('install_target_parent')
+        prior={'exists':False,'sha256':None,'mode':0o644}
+        if target.exists() or target.is_symlink():
+            if not safe_file(target,2*1024*1024): fail('install_target_invalid')
+            data=target.read_bytes()
+            prior={'exists':True,'sha256':hashlib.sha256(data).hexdigest(),
+                   'mode':target.stat().st_mode&0o777}
+            backup=backup_root/relative;backup.parent.mkdir(parents=True,exist_ok=True)
+            backup.write_bytes(data);os.chmod(backup,0o600)
+            if hashlib.sha256(backup.read_bytes()).hexdigest()!=prior['sha256']:
+                fail('install_backup_hash')
+        install_previous[relative]=prior
+        install_expected[relative]=expected
+        if prior['sha256']!=expected:
+            changed.append(relative)
+            install_temps[relative]=stage_target_bytes(target,source_path.read_bytes(),prior['mode'])
+    plan={'schema_version':1,'source_sha':source,'files':selected,'changed_files':changed,
+          'previous':install_previous,'expected':install_expected,'status':'prepared'}
+    write_private_json(op/'install-plan.json',plan)
+    install_started=True
+    for relative in changed:
+        target=project/relative
+        os.replace(install_temps[relative],target)
+        install_applied.append(relative)
+        os.chmod(target,install_previous[relative]['mode'])
+        write_private_json(op/'install-state.json',
+            {'status':'applying','source_sha':source,'applied':install_applied})
+    for relative,expected in install_expected.items():
+        target=project/relative
+        if (not safe_file(target,2*1024*1024)
+                or hashlib.sha256(target.read_bytes()).hexdigest()!=expected):
+            fail('install_readback_hash')
+        lint=subprocess.run(['php','-l',str(target)],capture_output=True,text=True,timeout=20)
+        if lint.returncode!=0: fail('install_readback_lint')
+    complete={'status':'installed','source_sha':source,'files':len(selected),
+              'changed_files':len(changed),'created_files':sum(
+                  1 for relative in changed if not install_previous[relative]['exists']),
+              'manifest_sha256':payload['manifest_sha256']}
+    write_private_json(op/'install-state.json',complete)
+    return complete
 try:
     if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):
         fail('operation_invalid')
@@ -385,8 +521,13 @@ try:
                 fail('archive_entry')
         package.extractall(stage,filter='data')
     manifest=json.loads((stage/'manifest.json').read_text())
+    if manifest.get('schema_version')!=1: fail('manifest_schema')
     files=manifest.get('files',{})
     if not isinstance(files,dict) or len(files)<20: fail('manifest')
+    calculated_manifest=hashlib.sha256(
+        json.dumps(files,sort_keys=True,separators=(',',':')).encode()
+    ).hexdigest()
+    if calculated_manifest!=payload.get('manifest_sha256'): fail('manifest_digest')
     for relative,sha in files.items():
         path=stage/relative
         if (not safe_file(path,2*1024*1024)
@@ -394,6 +535,15 @@ try:
             fail('source_hash')
     (op/'installed-source.json').write_text(json.dumps({'source_sha':source,'files':files},sort_keys=True))
     os.chmod(op/'installed-source.json',0o600)
+    if mode=='install-runtime':
+        result['install']=install_runtime(stage,files,op)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='installed'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['runtime_changed']=result['install']['changed_files']>0
+        result['public_ui_entrypoints_unchanged']=True
     if mode=='local-readback':
         result['before_db']=db_summary('andromeda')
         scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
@@ -422,7 +572,7 @@ try:
         result['database_writes']=0
         result['production_unchanged']=True
         __RECONCILED__=True
-    if mode not in ('reconcile','local-readback'):
+    if mode not in ('reconcile','local-readback','install-runtime'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -444,7 +594,7 @@ try:
           '--max-captures='+str(payload['max_captures']),'--max-capture-seconds='+('240' if payload['max_captures']>0 else '0'),
           '--capture-mode=non_external_only']
         if payload['region']: command.append('--region='+str(payload['region']))
-    if mode not in ('reconcile','local-readback'):
+    if mode not in ('reconcile','local-readback','install-runtime'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
@@ -479,7 +629,22 @@ try:
         result['database_writes']='collector_owned' if result['status']=='complete' else 'unknown'
         result['production_unchanged']=True
 except Exception as exc:
-    if result.get('status')=='reserved':
+    if mode=='install-runtime' and install_started:
+        failure=str(exc)
+        result['install_failure_class']=failure if re.fullmatch(r'[A-Za-z0-9_:-]{1,96}',failure) else type(exc).__name__
+        try:
+            result['rollback']={'status':'complete','restored_files':len(rollback_install(op))}
+            result['status']='rolled_back'
+            result['supplier_calls']=0
+            result['database_writes']=0
+            result['runtime_changed']=False
+            result['public_ui_entrypoints_unchanged']=fingerprints()==before
+        except Exception as rollback_error:
+            value=str(rollback_error)
+            result['rollback']={'status':'failed','failure_class':
+                value if re.fullmatch(r'[A-Za-z0-9_:-]{1,96}',value) else type(rollback_error).__name__}
+            result['status']='rollback_failed_no_replay'
+    elif result.get('status')=='reserved':
         result['status']='unknown_no_replay';result['reason']=str(exc)
     elif result.get('status')=='blocked':
         result['reason']=str(exc)
@@ -578,7 +743,7 @@ def main() -> None:
         return
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
-    if result.get('status') not in ('complete','reconciled_read_only'):
+    if result.get('status') not in ('complete','reconciled_read_only','installed'):
         raise SystemExit(1)
 
 if __name__ == '__main__':

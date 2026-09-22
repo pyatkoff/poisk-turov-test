@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import importlib.util
+import hashlib
+import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,6 +15,10 @@ m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 SHA='cde183f7d33cef6bd1df4d0ff16dad0904d53570'
 
 class ParseTest(unittest.TestCase):
+    def test_install_runtime(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} install-runtime int-andromeda-runtime-install-20260922-v1')
+        self.assertEqual('install-runtime',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
     def test_anex(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} anex-demand int-anex-current-demand-20260921-v1 3')
         self.assertEqual(3,v['limit']);self.assertEqual('anex-demand',v['mode'])
@@ -40,6 +48,7 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} anex-demand ../../bad 3',
           f'/run-int-server-v1 {SHA} reconcile int-andromeda-reconcile-turkey-20260921-v1 ../../bad',
           f'/run-int-server-v1 {SHA} reconcile int-andromeda-current-turkey-20260921-v1 int-andromeda-current-turkey-20260921-v1',
+          f'/run-int-server-v1 {SHA} install-runtime int-andromeda-runtime-install-20260922-v1 extra',
         ]
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
@@ -84,11 +93,70 @@ class BundleTest(unittest.TestCase):
             p=root/m.FIXED[0];p.unlink();p.symlink_to(app/'x0.php')
             with self.assertRaises(ValueError):m.bundle_source(root)
 
+class InstallRuntimeTest(unittest.TestCase):
+    def fixture(self, root: Path, operation: str, fail_target_lint: bool = False):
+        source=root/'source';app=source/'app/integrations';app.mkdir(parents=True)
+        for i in range(21):(app/f'x{i}.php').write_text('<?php\n')
+        # The functional fuel consumer must be in the exact installed inventory.
+        (app/'three-provider-fuel-evidence.php').write_text('<?php\n')
+        for rel in m.FIXED:
+            p=source/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('<?php\n')
+        bundle,manifest=m.bundle_source(source)
+        archive=root/'source.tar.gz';archive.write_bytes(bundle)
+        home=root/'home';project=home/'www/anytoour.ru'
+        (project/'app/integrations').mkdir(parents=True)
+        (project/'scripts/ops').mkdir(parents=True)
+        (project/'app/integrations/x0.php').write_text('<?php /* old */\n')
+        bindir=root/'bin';bindir.mkdir()
+        php=bindir/'php'
+        php.write_text(
+            '#!/bin/sh\n'
+            'if [ "${FAKE_PHP_FAIL_TARGET:-0}" = 1 ] && echo "$2" | grep -q "/www/anytoour.ru/"; then exit 1; fi\n'
+            'exit 0\n'
+        )
+        php.chmod(0o755)
+        payload={'source_sha':SHA,'mode':'install-runtime','operation_id':operation,
+                 'archive':str(archive),'manifest_sha256':hashlib.sha256(
+                     json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()
+                 ).hexdigest()}
+        env=dict(os.environ,HOME=str(home),PATH=str(bindir)+os.pathsep+os.environ.get('PATH',''))
+        if fail_target_lint:env['FAKE_PHP_FAIL_TARGET']='1'
+        run=subprocess.run(['python3','-c',m.REMOTE],input=json.dumps(payload),
+                           text=True,capture_output=True,env=env,timeout=30)
+        self.assertEqual('',run.stderr)
+        self.assertEqual(0,run.returncode)
+        return json.loads(run.stdout),home,project
+
+    def test_exact_install_backup_and_readback(self):
+        with tempfile.TemporaryDirectory() as td:
+            result,home,project=self.fixture(Path(td),'int-andromeda-runtime-install-20260922-v1')
+            self.assertEqual('installed',result['status'])
+            self.assertEqual(23,result['install']['files'])
+            self.assertEqual('<?php\n',(project/'app/integrations/x0.php').read_text())
+            backup=home/'.anytoour-int-executor/int-andromeda-runtime-install-20260922-v1/backup/app/integrations/x0.php'
+            self.assertEqual('<?php /* old */\n',backup.read_text())
+            self.assertTrue(result['public_ui_entrypoints_unchanged'])
+            self.assertEqual(0,result['supplier_calls'])
+            self.assertEqual(0,result['database_writes'])
+
+    def test_post_install_failure_rolls_back_every_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            result,home,project=self.fixture(
+                Path(td),'int-andromeda-runtime-install-20260922-v2',True)
+            self.assertEqual('rolled_back',result['status'])
+            self.assertEqual('complete',result['rollback']['status'])
+            self.assertEqual('<?php /* old */\n',(project/'app/integrations/x0.php').read_text())
+            self.assertFalse((project/'app/integrations/x1.php').exists())
+            self.assertFalse((project/'app/integrations/three-provider-fuel-evidence.php').exists())
+            self.assertFalse(result['runtime_changed'])
+
 class ContractTest(unittest.TestCase):
     def test_control_boundaries(self):
         text=SCRIPT.read_text()
         for x in ["ISSUE = 3419","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
                   "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged",
+                  "install-runtime","install-plan.json","install-state.json","rollback_install",
+                  "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
                   "search3-local-results-read-v1.php","--max-captures=","--capture-mode=non_external_only",
                   "reconcile_target","collector_stderr_sha256","skipped_after_collector_nonzero",
