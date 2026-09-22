@@ -134,7 +134,7 @@ $operationDir=$private.'/'.SEED_OPERATION;
 if(file_exists($operationDir)||is_link($operationDir))seed_fail('operation_exists_no_replay');
 if(!mkdir($operationDir,0700))seed_fail('operation_reserve');
 file_put_contents($operationDir.'/reservation.json',json_encode([
-    'operation'=>SEED_OPERATION,'feature_source'=>'1ef85df9d6c1c56f26dc5d76b8bec5f293e7483c','created_at'=>time()
+    'operation'=>SEED_OPERATION,'feature_source'=>'531b83c00a79358cd76f365015c66309fceea94d','created_at'=>time()
 ],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),LOCK_EX);
 chmod($operationDir.'/reservation.json',0600);
 
