@@ -22,6 +22,10 @@ final class AnyTourIntOfferSnapshotProducerV1
         'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money', 'confirmation_required'
     ];
 
+    private const FUEL_OFFER_KEYS = [
+        'anytour_hotel_id', 'offer', 'retained', 'current', 'priced_money', 'operator_fuel'
+    ];
+
     /**
      * @param callable(string,array,array,DateTimeImmutable):array $ingest
      */
@@ -58,12 +62,14 @@ final class AnyTourIntOfferSnapshotProducerV1
         $notReady = 0;
         $confirmationCount = 0;
         $nowTs = $now->getTimestamp();
+        $fuelApplied = 0; $fuelRules = []; $fuelRejections = []; $fuelInputCount = 0;
 
         foreach ($refresh['offers'] as $entry) {
             $verifiedShape = is_array($entry) && self::exactKeys($entry, self::VERIFIED_OFFER_KEYS);
             $confirmationShape = is_array($entry) && self::exactKeys($entry, self::CONFIRMATION_OFFER_KEYS);
+            $fuelShape = is_array($entry) && self::exactKeys($entry, self::FUEL_OFFER_KEYS);
             if (!is_array($entry)
-                || (!self::exactKeys($entry, self::OFFER_KEYS) && !$verifiedShape && !$confirmationShape)) {
+                || (!self::exactKeys($entry, self::OFFER_KEYS) && !$verifiedShape && !$confirmationShape && !$fuelShape)) {
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_OFFER');
             }
             $offer = $entry['offer'];
@@ -78,6 +84,7 @@ final class AnyTourIntOfferSnapshotProducerV1
                 || ($verifiedShape && !is_array($verifiedQuote))
                 || ($verifiedShape && $pricedMoney !== null)
                 || ($confirmationShape && ($confirmationRequired !== true || $pricedMoney !== null))
+                || ($fuelShape && (!is_array($entry['operator_fuel']) || $pricedMoney !== null))
                 || ($verifiedShape && $confirmationShape)) {
                 throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_OFFER');
             }
@@ -108,6 +115,25 @@ final class AnyTourIntOfferSnapshotProducerV1
                 $dto['finalPrice'] = $verifiedAmount;
                 $dto['price'] = $verifiedAmount;
                 $dto['currency'] = 'RUB';
+            } elseif ($fuelShape) {
+                require_once __DIR__ . '/three-provider-fuel-evidence.php';
+                // Validate the canonical source and its own price BEFORE applying
+                // typed, server-owned fuel evidence. A failed rule remains a base
+                // confirmation row; it never blocks unrelated operators/rules.
+                $baseDto = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
+                    $offer, $retained, $current, $nowTs
+                );
+                $fuel = AnyTourThreeProviderFuelEvidenceV1::apply($baseDto, $entry['operator_fuel'], $nowTs);
+                $dto = $fuel['dto'];
+                ++$fuelInputCount;
+                $confirmationRequired = !$fuel['applied'];
+                if ($fuel['applied']) {
+                    ++$fuelApplied;
+                    $fuelRules[$dto['money']['operator_fuel_rule']['rule_sha256']] = true;
+                } else {
+                    $reason = $fuel['reason'];
+                    $fuelRejections[$reason] = ($fuelRejections[$reason] ?? 0) + 1;
+                }
             } elseif ($confirmationRequired === true) {
                 $dto = AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
                     $offer,
@@ -204,7 +230,11 @@ final class AnyTourIntOfferSnapshotProducerV1
             throw new RuntimeException('ANYTOUR_INT_SNAPSHOT_INGEST_RECEIPT');
         }
 
-        return [
+        $fuelReceipt = $fuelInputCount === 0 ? [] : ['operatorFuel' => [
+            'inputOfferCount' => $fuelInputCount, 'appliedOfferCount' => $fuelApplied,
+            'ruleCount' => count($fuelRules), 'rejections' => $fuelRejections,
+        ]];
+        return $fuelReceipt + [
             'source' => 'anytour-int-offer-snapshot-producer-v1',
             'provider' => $provider,
             'published' => true,
