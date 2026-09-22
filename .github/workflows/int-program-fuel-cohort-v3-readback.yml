@@ -18,7 +18,7 @@ jobs:
       github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.number == 3419 &&
-       github.event.comment.body == '/read-int-program-fuel-cohort-v3-3419')
+       github.event.comment.body == '/read-int-program-fuel-cohort-v4-3419')
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
@@ -64,7 +64,7 @@ jobs:
       !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/read-int-program-fuel-cohort-v3-3419'
+      github.event.comment.body == '/read-int-program-fuel-cohort-v4-3419'
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
@@ -81,13 +81,26 @@ jobs:
           install -d -m 700 "$d"
           printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > "$d/key"; chmod 600 "$d/key"
           ssh-keygen -y -f "$d/key" >/dev/null
-          ssh -T -i "$d/key" -o IdentitiesOnly=yes -o BatchMode=yes -o ControlMaster=no \
-            -o StrictHostKeyChecking=accept-new -o "UserKnownHostsFile=$d/known_hosts" \
-            -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o LogLevel=ERROR \
-            -l "$ANYTOOUR_DEPLOY_USER" "$ANYTOOUR_DEPLOY_HOST" \
-            'php -d display_errors=0 -d log_errors=0' \
-            < scripts/diagnostics/int_program_fuel_cohort_v3_readback.php > "$d/result.json"
-          test -s "$d/result.json"
+          set +e
+          rc=255
+          for attempt in 1 2; do
+            : > "$d/result.json"
+            ssh -T -i "$d/key" -o IdentitiesOnly=yes -o BatchMode=yes -o ControlMaster=no \
+              -o StrictHostKeyChecking=accept-new -o "UserKnownHostsFile=$d/known_hosts" \
+              -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o LogLevel=ERROR \
+              -l "$ANYTOOUR_DEPLOY_USER" "$ANYTOOUR_DEPLOY_HOST" \
+              'php -d display_errors=0 -d log_errors=0' \
+              < scripts/diagnostics/int_program_fuel_cohort_v3_readback.php > "$d/result.json"
+            rc=$?
+            if [ "$rc" -eq 0 ] && [ -s "$d/result.json" ]; then break; fi
+            rm -f "$d/result.json"
+            sleep 2
+          done
+          set -e
+          if [ "$rc" -ne 0 ] || [ ! -s "$d/result.json" ]; then
+            echo "READBACK_SSH_UNCONFIRMED exit=$rc" >&2
+            exit 1
+          fi
           python3 - <<'PY'
           import json, os
           from pathlib import Path
