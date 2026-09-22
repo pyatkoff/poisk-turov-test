@@ -55,6 +55,11 @@ class ParseTest(unittest.TestCase):
         samo=m.parse_command(f'/run-int-server-v1 {SHA} match-samo942 int-andromeda-match-samo942-20260923-v1 700 242')
         self.assertEqual('match-samo942',samo['mode']);self.assertEqual(700,samo['offset']);self.assertEqual(242,samo['limit'])
 
+    def test_match_secondary_audit_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-secondary-audit int-andromeda-match-secondary-audit-20260923-v1')
+        self.assertEqual('match-secondary-audit',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
+
     def test_match_readback_mode(self):
         tv=m.parse_command(f'/run-int-server-v1 {SHA} match-readback int-anex-match-tv942-readback-20260923-v1 tv 0 350')
         self.assertEqual('match-readback',tv['mode']);self.assertEqual('tv',tv['lane'])
@@ -94,6 +99,8 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} match-readback int-anex-match-tv942-readback-20260923-v1 nope 0 100',
           f'/run-int-server-v1 {SHA} match-readback int-andromeda-match-tv942-readback-20260923-v1 tv 0 100',
           f'/run-int-server-v1 {SHA} match-readback int-anex-match-tv942-readback-20260923-v1 tv 900 43',
+          f'/run-int-server-v1 {SHA} match-secondary-audit int-anex-match-secondary-audit-20260923-v1',
+          f'/run-int-server-v1 {SHA} match-secondary-audit int-andromeda-match-secondary-audit-20260923-v1 extra',
         ]
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
@@ -223,7 +230,9 @@ class ContractTest(unittest.TestCase):
                   "hotel_match_live942_tv_anex_refresh_v1.py",
                   "hotel_match_live942_samo_anex_refresh_v1.php",
                   ".anytoour-match/operations","match_terminal_hash",
-                  "match-readback","match942_child_name","read_match942",
+                  "match-secondary-audit","run_match_secondary_audit",
+                  "hotel_match_live_anex_samo_missing_secondary_audit_v1.php",
+                  "match_secondary_terminal_hash","match-readback","match942_child_name","read_match942",
                   "install-runtime','match-readback','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
