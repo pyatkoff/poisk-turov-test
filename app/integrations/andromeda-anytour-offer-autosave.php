@@ -250,10 +250,22 @@ final class AnyTourAndromedaOfferAutosaveV1
         $digestRows = [];
         foreach ($entries as $entry) {
             $verifiedQuote = $entry['verified_quote'] ?? null;
+            $searchMoney = $entry['offer']['money'] ?? null;
+            if (!is_array($searchMoney)) {
+                throw new RuntimeException('ANDROMEDA_ANYTOUR_MONEY_DIGEST');
+            }
             $digestRows[] = [
                 'anytour_hotel_id' => $entry['anytour_hotel_id'],
                 'identity' => $entry['current']['identity'],
                 'page' => $entry['current']['page'],
+                // Confirmation-required Andromeda rows intentionally have priced_money=null.
+                // Hash the canonical supplier search money separately so a changed base or
+                // validated retained surcharge/provenance reaches LOCAL instead of being
+                // hidden by an older already-published checkpoint.
+                'search_money_digest' => hash('sha256', json_encode(
+                    $searchMoney,
+                    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+                )),
                 'priced' => $entry['priced_money']['search_price_with_surcharge'] ?? null,
                 'verified_final' => is_array($verifiedQuote) ? ($verifiedQuote['final_price'] ?? null) : null,
                 // Idempotency must advance when already-validated supplier evidence changes,
