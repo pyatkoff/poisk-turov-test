@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@d23441a48e516b6e75b540449e92b4886f43607fa02
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - run: php -l scripts/diagnostics/hotel_match_tv_samo_side4_saved_token_alias_v11.php
       - run: php tests/hotel_match_tv_samo_side4_saved_token_alias_v11_test.php
       - run: "! grep -Fq 'levenshtein(' scripts/diagnostics/hotel_match_tv_samo_side4_saved_token_alias_v11.php"
