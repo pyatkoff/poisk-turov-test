@@ -170,7 +170,13 @@
     // Provider completion uses the same reader; no parallel store or DTO.
     return run.database=run.database.then(()=>{if(current(run))return readDatabase(run);});
   }
-  function directAnexOffer(hotel,tour,run,p,seen){
+  async function digestRef(value){
+    const subtle=root.crypto&&root.crypto.subtle,Encoder=root.TextEncoder||globalThis.TextEncoder;
+    if(!subtle||typeof subtle.digest!=='function'||typeof Encoder!=='function')throw new Error('Offer identity digest unavailable');
+    const bytes=await subtle.digest('SHA-256',new Encoder().encode(value));
+    return Array.from(new Uint8Array(bytes),byte=>byte.toString(16).padStart(2,'0')).join('');
+  }
+  async function directAnexOffer(hotel,tour,run,p,seen){
     if(!tour||typeof tour!=='object'||!tour.price||tour.price.currency!=='RUB'
       ||typeof tour.price.amount!=='string'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(tour.price.amount)
       ||Number(tour.price.amount)<=0)throw new Error('Invalid ANEX price');
@@ -184,14 +190,14 @@
     if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo))throw new Error('ANEX price outside requested scope');
     const selectedMeals=(run.filters.meals||[]).map(meal).filter(Boolean);
     if(selectedMeals.length&&!selectedMeals.includes(mealName))return null;
-    const flight=String(tour.flight_type||'').toLowerCase();
-    return {id:offerRef,offerRef,searchRef,provider:'anex',price:total,date:day,nights,
+    const flight=String(tour.flight_type||'').toLowerCase(),offerIdentityDigest=await digestRef(offerRef);
+    return {id:offerRef,offerRef,offerIdentityDigest,searchRef,provider:'anex',price:total,date:day,nights,
       meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:'',
       operator:{name:'ANEX'},isCharter:flight==='charter'?true:flight==='regular'?false:undefined,
       cachedListing:false,selectionEnabled:false,finalPriceVerified:false,anexKind:String(tour.kind||''),
       anexLocalHotelId:hotel.local_id};
   }
-  function applyDirectAnex(run,data,p){
+  async function applyDirectAnex(run,data,p){
     if(!data||data.provider!=='anex'||data.generation!==run.generation||!Array.isArray(data.hotels)||data.hotels.length>300
       ||!data.date_range||data.date_range.from!==p.dateFrom||!date(data.date_range.to)||data.date_range.to<p.dateFrom||data.date_range.to>p.dateTo
       ||typeof data.search_ref!=='string'||!(/^[a-f0-9]{32}$/).test(data.search_ref))throw new Error('Invalid ANEX search response');
@@ -205,7 +211,7 @@
       seenHotels.add(hotel.local_id);receivedOffers+=hotel.tours.length;
       for(const tour of hotel.tours){
         if(tour.search_ref!==data.search_ref)throw new Error('Invalid ANEX search identity');
-        const normalized=directAnexOffer(hotel,tour,run,p,seenOffers);
+        const normalized=await directAnexOffer(hotel,tour,run,p,seenOffers);
         if(normalized)prepared.push({legacyHotelId:hotel.local_id,tour:normalized});
       }
     }
@@ -228,7 +234,7 @@
         body:JSON.stringify({action:'search',generation:run.generation,params:p})});
       const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!current(run))return;
       if(!response.ok||payload?.ok!==true)throw new Error('ANEX search unavailable');
-      const result=applyDirectAnex(run,data,p);if(!current(run))return;
+      const result=await applyDirectAnex(run,data,p);if(!current(run))return;
       notify({type:'provider',provider:'anex',...result});
     }catch(error){
       if(!current(run)||error?.name==='AbortError')return;
