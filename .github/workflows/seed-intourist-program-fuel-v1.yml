@@ -24,7 +24,7 @@ jobs:
       github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.number == 3419 &&
-       github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v2')
+       github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v3')
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
@@ -65,7 +65,7 @@ jobs:
       !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v2'
+      github.event.comment.body == '/seed-intourist-program30-tour34-fuel-3419-v3'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -74,8 +74,9 @@ jobs:
         with:
           script: |
             const owner=226193297;
-            const command='/seed-intourist-program30-tour34-fuel-3419-v2';
-            const featureSha='531b83c00a79358cd76f365015c66309fceea94d';
+            const command='/seed-intourist-program30-tour34-fuel-3419-v3';
+            const evidenceBlob='06972050d892df225b225958af98722bb1bbd509';
+            const registryBlob='bf7952a3260781a135832b7af1e274860e78594c';
             if(process.env.GITHUB_RUN_ATTEMPT!=='1'||context.actor!=='pyatkoff'||
                context.payload.sender?.id!==owner||process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('owner/attempt mismatch');
             const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:3419,per_page:100});
@@ -83,8 +84,10 @@ jobs:
             if(commands.length!==1||commands[0].id!==context.payload.comment.id) throw new Error('duplicate/edited command');
             const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
             if(main.object.sha!==context.sha) throw new Error('main advanced');
-            const {data:feature}=await github.rest.git.getRef({...context.repo,ref:'heads/feature/anex-search-adapter-20260907'});
-            if(feature.object.sha!==featureSha) throw new Error('INT feature advanced; review rather than seed');
+            const evidence=await github.rest.repos.getContent({...context.repo,path:'app/integrations/operator-fuel-rule-evidence.php',ref:'feature/anex-search-adapter-20260907'});
+            const registry=await github.rest.repos.getContent({...context.repo,path:'app/integrations/operator-program-fuel-registry.php',ref:'feature/anex-search-adapter-20260907'});
+            if(Array.isArray(evidence.data)||evidence.data.sha!==evidenceBlob) throw new Error('fuel evidence source changed; review rather than seed');
+            if(Array.isArray(registry.data)||registry.data.sha!==registryBlob) throw new Error('program fuel registry changed; review rather than seed');
 
       - uses: actions/checkout@v4
         with:
