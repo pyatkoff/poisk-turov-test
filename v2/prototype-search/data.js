@@ -5,6 +5,8 @@
   const local = '/_preview/search3-local-candidate/';
   const catalog = { departures: [], countries: [], meals: [] };
   const quoteReceipts = new WeakMap();
+  const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
+  let calendarWindowBytes=0,calendarVersion=0;
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
   function nativeEndpoint(value){
@@ -60,7 +62,7 @@
   function publish() {if(owner&&context&&activeSearch&&current(activeSearch))notify({type:'results',hotels:project(owner.read(raw,{}),context)});}
   function current(run){return activeSearch===run&&run.generation===generation;}
   function stop(){
-    generation++;clearTimeout(timer);timer=null;
+    clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
     return generation;
   }
@@ -75,7 +77,7 @@
   function readDatabase(run){
     return db(run.search,run.controller.signal,run.hotelIds,run.filters).then(data=>{
       if(!current(run)||!owner)return;
-      root.AnyTourLocalDbProviderV1.apply(owner,data);if(current(run))notify({type:'database'});
+      clearCalendarWindows();root.AnyTourLocalDbProviderV1.apply(owner,data);if(current(run))notify({type:'database'});
     }).catch(error=>{if(current(run))notify({type:'database-error',message:error.message});});
   }
   function refreshDatabase(run){
@@ -143,14 +145,40 @@
       await pollSearch(run);return current(run);
     }catch(error){searchError(run,error);return false;}
   }
+  function clearCalendarWindows(){calendarWindows.clear();calendarWindowBytes=0;calendarVersion++;}
+  function retainCalendarWindow(key,rows,data,startedAt){
+    if(!rows.length)return;
+    let until=startedAt+CALENDAR_REUSE_MS,offers=0;
+    for(const group of data.hotels)for(const row of group.offers){
+      // LOCAL listing expiry is independent of the short supplier quote context.
+      const raw=row.expiresAt;
+      if(typeof raw!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(raw))return;
+      const expires=Date.parse(raw);if(!Number.isFinite(expires))return;
+      until=Math.min(until,expires);offers++;
+    }
+    if(!offers||until<=Date.now())return;
+    // Bound retained serialized payload, not the returned inventory or budget.
+    const size=2*(JSON.stringify(rows).length+key.length);if(size>CALENDAR_CACHE_BYTES)return;
+    const old=calendarWindows.get(key);if(old){calendarWindowBytes-=old.size;calendarWindows.delete(key);}
+    while(calendarWindows.size&&(calendarWindows.size>=8||calendarWindowBytes+size>CALENDAR_CACHE_BYTES)){
+      const first=calendarWindows.keys().next().value;calendarWindowBytes-=calendarWindows.get(first).size;calendarWindows.delete(first);
+    }
+    calendarWindows.set(key,{rows:structuredClone(rows),until,startedAt,size});calendarWindowBytes+=size;
+  }
   async function calendar(s,from,to,signal,filters={}) {
-    const result=[];
+    const result=[],version=calendarVersion,queryFilters=structuredClone(filters),search=structuredClone(s);
     for(let start=from;start<=to;start=plus(start,22)) {
       if(signal?.aborted)throw new DOMException('Aborted','AbortError');
-      const scope={...s,from:start,to:plus(start,21)<to?plus(start,21):to};
-      const data=await db(scope,signal,[],filters),parsed=root.AnyTourLocalDbProviderV1.parse(data);
+      const scope={...search,from:start,to:plus(start,21)<to?plus(start,21):to};
+      const key=JSON.stringify([scope,params(scope,[],queryFilters)]),now=Date.now();
+      for(const [id,entry]of calendarWindows)if(entry.until<=now||now<entry.startedAt){calendarWindowBytes-=entry.size;calendarWindows.delete(id);}
+      const hit=version===calendarVersion?calendarWindows.get(key):null;
+      if(hit){calendarWindows.delete(key);calendarWindows.set(key,hit);result.push(...structuredClone(hit.rows));continue;}
+      const data=await db(scope,signal,[],queryFilters),parsed=root.AnyTourLocalDbProviderV1.parse(data);
+      if(signal?.aborted)throw new DOMException('Aborted','AbortError');
       const list=parsed.hotels.map(g=>({...g.hotel,anytourHotelId:g.anytourHotelId,canonicalLegacyIds:[...new Set(g.offers.map(o=>o.legacyHotelId))],tours:g.offers.map(o=>o.tour)}));
-      result.push(...project(list,scope));
+      const rows=project(list,scope);result.push(...rows);
+      if(version===calendarVersion)retainCalendarWindow(key,rows,data,now);
     }
     return result;
   }
