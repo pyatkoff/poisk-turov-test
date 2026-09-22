@@ -84,7 +84,8 @@ function restoreURL(){
  state.filters.stars=(p.get('stars')||'').split('|').map(Number).filter(n=>[3,4,5].includes(n));
  for(const k of ['min','max'])if(p.has(k)&&p.get(k).trim()!==''&&Number.isFinite(Number(p.get(k))))state.filters[k]=Math.max(0,Number(p.get(k)));
  if(state.filters.max!==null&&state.filters.min>state.filters.max)state.filters.min=state.filters.max;
- for(const k of ['meals','resorts','operators'])state.filters[k]=[...new Set((p.get(k)||'').split('|').filter(Boolean))];
+ state.filters.meals=[...new Set((p.get('meals')||'').split('|').filter(Boolean).map(data.meal).filter(Boolean))];
+ for(const k of ['resorts','operators'])state.filters[k]=[...new Set((p.get(k)||'').split('|').filter(Boolean))];
  state.filters.amenities=[...new Set((p.get('amenities')||'').split('|').filter(x=>/^(1|2|3|5|8):[1-9]\d*$/.test(x)))];
  state.filters.q=p.get('q')||'';state.filters.rating=p.get('rating')==='1';
  if(['recommended','price','rating'].includes(p.get('sort')))state.sort=p.get('sort');
@@ -292,14 +293,14 @@ function loadResultCalendar(){
  resultCalendar.controller?.abort();const request={key,hotels:[],observations:[],phase:'loading',controller:new AbortController()};resultCalendar=request;
  const show=snapshot=>{if(resultCalendar!==request)return;request.hotels=snapshot.hotels;request.observations=snapshot.observations;renderCalendarStrip();};
  data.calendarPrices(s,s.from,s.to,request.controller.signal,filters,show).then(snapshot=>{
-  if(resultCalendar!==request)return;request.hotels=snapshot.hotels;request.observations=snapshot.observations;request.phase='complete';renderCalendarStrip();
+  if(resultCalendar!==request)return;request.hotels=snapshot.hotels;request.observations=snapshot.observations;request.phase=snapshot.partial?'partial':'complete';renderCalendarStrip();
  }).catch(error=>{if(resultCalendar!==request||error.name==='AbortError')return;request.phase='error';renderCalendarStrip();});
 }
 function renderCalendarStrip(){
  loadResultCalendar();
  const s=state.search,days=[];for(let day=s.from;day<=s.to;day=addDays(day,1))days.push(day);
  const calendarRows=[...hotels,...resultCalendar.hotels],prices=days.map(day=>calendarMinimum(day,{calendarHotels:calendarRows},resultCalendar.observations)),known=prices.filter(p=>p!==null),min=Math.min(...known),max=Math.max(...known);
- const source=resultCalendar.phase==='loading'?'Загружаем цены из базы…':resultCalendar.phase==='error'?'База цен временно недоступна · показаны найденные предложения':'Из базы и найденных предложений · цена требует проверки';
+ const source=resultCalendar.phase==='loading'?'Загружаем цены из базы…':resultCalendar.phase==='error'?'База цен временно недоступна · показаны найденные предложения':resultCalendar.phase==='partial'?'Часть базы цен временно недоступна · показаны доступные цены и найденные предложения':'Из базы и найденных предложений · цена требует проверки';
  $('#calendar-caption').textContent=`Цена от за ${guestsText()} · ${durationText()} · ${source} · прочерк — нет цены`;
  $('#price-strip').setAttribute('aria-busy',String(resultCalendar.phase==='loading'));
  $('#price-strip').innerHTML=days.map((day,i)=>`<button class="date-price ${prices[i]!==null&&prices[i]===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${prices[i]!==null?', от '+money(prices[i]):', цена пока неизвестна'}"><span class="date">${dateText(day)}</span><strong>${prices[i]===null?'—':money(prices[i])}</strong><span class="calendar-bar" style="--bar-height:${prices[i]===null?5:12+Math.round((prices[i]-min)/Math.max(1,max-min)*22)}px"></span></button>`).join('');
@@ -473,7 +474,7 @@ function createDateContext(source='form'){
 }
 const dateContextLabel=s=>`${countryNames[s.country]||''} · из ${s.origin==='Москва'?'Москвы':s.origin==='Казань'?'Казани':'Санкт-Петербурга'} · ${guestsText(s)} · ${durationText(s)}`;
 function openMeals(){
- mealDraft=[...state.filters.meals];showModal('meals','Какое питание включить?','ПИТАНИЕ',`<p class="modal-intro">Можно выбрать несколько вариантов.</p><div class="meal-options">${[['','Любое питание'],...[...new Set([...Object.keys(mealNames),...mealDraft])].map(m=>[m,m])].map(([v,label])=>`<label class="meal-option"><input type="checkbox" data-meal-choice value="${esc(v)}" ${v?mealDraft.includes(v)?'checked':'':!mealDraft.length?'checked':''}><span><strong>${esc(label)}</strong>${v==='AI'?'<small>В том числе ультра всё включено</small>':v==='HB'?'<small>Два приёма пищи в день</small>':''}</span></label>`).join('')}</div>`);
+ mealDraft=[...state.filters.meals];showModal('meals','Какое питание включить?','ПИТАНИЕ',`<p class="modal-intro">Можно выбрать несколько вариантов.</p><div class="meal-options">${[['','Любое питание'],...[...new Set([...Object.keys(mealNames),...mealDraft])].map(m=>[m,m])].map(([v,label])=>`<label class="meal-option"><input type="checkbox" data-meal-choice value="${esc(v)}" ${v?mealDraft.includes(v)?'checked':'':!mealDraft.length?'checked':''}><span><strong>${esc(label)}</strong>${v==='Всё включено'?'<small>В том числе варианты «всё включено»</small>':v==='Полупансион'?'<small>Два приёма пищи в день</small>':''}</span></label>`).join('')}</div>`);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-meals">Применить</button>';
 }
 function openBudget(){showModal('budget','Бюджет на весь тур','НА ВСЕХ ТУРИСТОВ',`<p class="modal-intro">Бюджет на весь тур и всех туристов. Актуальность цены и обязательные сборы уточняются при выборе предложения.</p><div class="form-row"><label>От, ₽<input type="number" class="input" id="budget-min" min="0" step="any" value="${state.filters.min}"></label><label>До, ₽<input type="number" class="input" id="budget-max" min="0" step="any" value="${state.filters.max??''}" placeholder="Без ограничений"></label></div><div class="budget-presets">${[150000,200000,300000,null].map(n=>`<button class="chip" data-action="budget-preset" data-value="${n??''}">${n===null?'Без ограничений':'До '+money(n)}</button>`).join('')}</div><p class="error-text" id="budget-error" role="alert"></p>`);$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-budget">Применить бюджет</button>';}
@@ -702,7 +703,7 @@ function clearSearchTimers(){data.stop();clearTimeout(searchTimer);clearTimeout(
 function stopSearch(){clearSearchTimers();searchResponse.pending=false;searchResponse.phase='cancelled';renderResults({keepFilters:true});}
 function renderSearchStatus(items,total){
  const r=searchResponse,node=$('#search-status'),more=$('#search-more'),exactMatch=r.exactRefreshTarget&&items.some(item=>item.offers.some(o=>!needsRefresh(o)&&sameSelectedTourConditions(o,r.exactRefreshTarget))),noCurrent=r.phase==='complete'&&r.exactRefresh&&!exactMatch;
- const providerPending=Object.values(r.providers||{}).includes('loading'),providerError=Object.values(r.providers||{}).includes('error'),partialError=providerError||r.databaseError;
+ const providerStates=Object.values(r.providers||{}),providerPending=providerStates.includes('loading'),providerError=providerStates.some(status=>status==='error'||status==='partial'),partialError=providerError||r.databaseError;
  more.hidden=!state.hasSearched||r.pending||!r.canContinue;
  more.innerHTML=more.hidden?'':`<div class="search-status-top"><div><h3>Продолжить подбор</h3><p>${r.resultLimitReached?'Получена большая выборка. Уточните условия, чтобы увидеть другие предложения.':'Запросите ещё варианты. Найденные туры и выбранные фильтры сохранятся.'}</p></div></div><div class="search-status-actions"><button class="primary" data-action="continue-search">${r.retryRead?'Проверить результат':'Продолжить поиск'}</button></div>`;
  node.hidden=!state.hasSearched||r.phase==='complete'&&!noCurrent&&!providerPending&&!partialError;
@@ -733,7 +734,7 @@ function runSearch(options={}){
   if(event.type==='database-error')searchResponse.databaseError=true;
   if(event.type==='database')searchResponse.databaseError=false;
   if(event.type==='progress')searchResponse.message='Получаем предложения · '+event.progress+'%';
-  if(event.type==='complete'){searchResponse.pending=false;searchResponse.phase='complete';searchResponse.canContinue=event.canContinue===true;searchResponse.retryRead=false;searchResponse.resultLimitReached=event.resultLimitReached===true;}
+  if(event.type==='complete'){searchResponse.pending=false;searchResponse.phase='complete';searchResponse.canContinue=event.canContinue===true;searchResponse.retryRead=event.retryRead===true;searchResponse.resultLimitReached=event.resultLimitReached===true;searchResponse.sources=event.sources||searchResponse.sources||{};}
   if(event.type==='error'){searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=event.message;searchResponse.canContinue=event.canContinue===true;searchResponse.retryRead=event.retryRead===true;}
   renderResults();updateSearchUI();if(modalType==='dates')refreshCalendarPrices();
  },options.hotelIds||(state.filters.hotelId?destinationHotel(state.filters.hotelId)?.legacyIds||[]:[]),structuredClone(state.filters)).catch(error=>{searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=error.message;renderResults();});
@@ -874,7 +875,7 @@ function loadCalendarPrices(){
   if(loads.has(month)||controller.signal.aborted)return;loads.set(month,'loading');legend();
   const from=month<startDay?startDay:month,next=dateObj(month);next.setUTCMonth(next.getUTCMonth()+1);next.setUTCDate(0);const to=iso(next)>endDay?endDay:iso(next);
   const show=snapshot=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;snapshots.set(month,snapshot);calendarHotels=[...snapshots.values()].flatMap(row=>row.hotels);calendarObservations=[...snapshots.values()].flatMap(row=>row.observations);refreshCalendarPrices();};
-  try{await data.calendarPrices(ctx.search,from,to,controller.signal,ctx.filters,show);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;loads.set(month,'complete');legend();}
+  try{const snapshot=await data.calendarPrices(ctx.search,from,to,controller.signal,ctx.filters,show);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;show(snapshot);loads.set(month,snapshot.partial?'error':'complete');legend();}
   catch(error){if(error.name!=='AbortError'){loads.set(month,'error');legend();}}
  };
  // Desktop displays two months; mobile reads each month as it comes into view.
