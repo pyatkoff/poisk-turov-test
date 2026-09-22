@@ -35,6 +35,7 @@ function hm17_manifest(array $v16):array{
         $k='bgoperator|'.$ext;hm17_need(!isset($keys[$k])&&!isset($targets[$tv]),'manifest_uniqueness');
         $keys[$k]=true;$targets[$tv]=true;
         $hotel=$r['catalog_hotel']??null;hm17_need(is_array($hotel)&&(int)($hotel['id']??0)===$tv,'manifest_target');
+        hm17_need(preg_match('/^[0-9a-f]{64}$/D',(string)($r['operator_link_sha256']??''))===1,'manifest_link_hash');
         $rows[]=[
             'supplier_namespace'=>'bgoperator','external_hotel_id'=>$ext,'tv_hotel_id'=>$tv,
             'operator'=>(string)($r['operator']??'biblio'),'operator_id'=>(int)($r['operator_id']??18),
@@ -47,8 +48,9 @@ function hm17_manifest(array $v16):array{
     return $rows;
 }
 function hm17_target_facts(array $h):array{
+    $numeric=['id'=>true,'country_id'=>true,'region_id'=>true,'subregion_id'=>true,'is_active'=>true];
     $keys=['id','name','country_id','country_name','region_id','region_name','subregion_id','subregion_name','category','is_active'];
-    $out=[];foreach($keys as $k)$out[$k]=$h[$k]??null;return $out;
+    $out=[];foreach($keys as $k){$v=$h[$k]??null;$out[$k]=isset($numeric[$k])&&$v!==null?(string)$v:($v===null?null:(string)$v);}return $out;
 }
 function hm17_anchor_projection(array $a):array{
     $out=[];foreach(['supplier_namespace','external_hotel_id','local_hotel_id','decision_status','catalog_sha256','evidence_sha256'] as $k)$out[$k]=$a[$k]??null;return $out;
@@ -125,7 +127,7 @@ function hm17_write(PDO $db,array $manifest,string $sourceSha,?string $opDir=nul
                 'supplier_namespace'=>'bgoperator','external_hotel_id'=>$m['external_hotel_id'],'local_hotel_id'=>$m['tv_hotel_id'],
                 'decision_status'=>'accepted','catalog_sha256'=>(string)$checked['anchor']['catalog_sha256'],
                 'evidence_sha256'=>$eh,'evidence_json'=>$ej,
-                'anchor_before_hash'=>hm17_row_hash($checked['anchor']),
+                'anchor_key'=>hm17_key($checked['anchor']),'anchor_before_hash'=>hm17_row_hash($checked['anchor']),
             ];
         }
         hm17_need(count($planned)===HM17_EXPECTED_ROWS,'planned_count');
@@ -140,7 +142,7 @@ function hm17_write(PDO $db,array $manifest,string $sourceSha,?string $opDir=nul
         foreach($planned as $p){
             $k=$p['supplier_namespace'].'|'.$p['external_hotel_id'];hm17_need(isset($afterByKey[$k]),'staged_insert_missing');
             foreach(['supplier_namespace','external_hotel_id','local_hotel_id','decision_status','catalog_sha256','evidence_sha256','evidence_json'] as $f)hm17_need((string)$afterByKey[$k][$f]===(string)$p[$f],'staged_insert_mismatch');
-            $anchorKey='andromeda_catalog|'.$p['local_hotel_id'];hm17_need(isset($afterByKey[$anchorKey])&&hm17_row_hash($afterByKey[$anchorKey])===$p['anchor_before_hash'],'anchor_changed_before_commit');
+            $anchorKey=$p['anchor_key'];hm17_need(isset($afterByKey[$anchorKey])&&hm17_row_hash($afterByKey[$anchorKey])===$p['anchor_before_hash'],'anchor_changed_before_commit');
         }
         if($opDir!==null){
             hm17_save($opDir.'/pre-commit.json',['operation'=>HM17_OP,'state'=>'verified_before_commit','planned_writes'=>HM17_EXPECTED_ROWS,'preexisting_rows'=>count($before),'preexisting_rows_hash'=>hash('sha256',hm17_json($beforeHashes))]);
@@ -159,9 +161,7 @@ function hm17_write(PDO $db,array $manifest,string $sourceSha,?string $opDir=nul
         if($committed)$state='post_commit_verification_failed_no_replay';
         elseif($commitAttempted)$state='commit_unknown_no_replay';
         else $state='rolled_back_no_write';
-        $x=new RuntimeException($state.':'.preg_replace('/[^A-Za-z0-9_.:-]+/','_',mb_substr($e->getMessage(),0,80,'UTF-8')));
-        $x->hm17_state=$state; // dynamic property retained only for immediate CLI catch on current PHP runtime
-        throw $x;
+        throw new RuntimeException($state.':'.preg_replace('/[^A-Za-z0-9_.:-]+/','_',mb_substr($e->getMessage(),0,80,'UTF-8')));
     }
 }
 
