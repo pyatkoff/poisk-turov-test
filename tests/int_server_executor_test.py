@@ -224,6 +224,7 @@ class ContractTest(unittest.TestCase):
                   "hotel_match_live942_samo_anex_refresh_v1.php",
                   ".anytoour-match/operations","match_terminal_hash",
                   "match-readback","match942_child_name","read_match942",
+                  "install-runtime','match-readback','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
