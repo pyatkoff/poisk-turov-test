@@ -84,12 +84,15 @@ tvpf_ok(($tour2['status']??null)==='tour_retained','second tour retained');
 $fuel2 = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id2,tvpf_flights(),$directory,$now->modify('+30 seconds'));
 tvpf_ok(($fuel2['observationCount']??null)===2 && ($fuel2['ruleConfirmed']??null)===true,'two hotels/nights confirm one rule');
 
-$rules = glob($directory.'/operator-fuel-rule-v1-*.json');
+$rules = glob($directory.'/operator-fuel-rule-v2-*.json');
 tvpf_ok(is_array($rules) && count($rules)===1,'one existing rule-store envelope');
 $stored = json_decode((string)file_get_contents($rules[0]),true,64,JSON_THROW_ON_ERROR);
 tvpf_ok(count($stored['observations']??[])===2,'two independent observations stored');
-tvpf_ok(($stored['scope']['party']['child_ages']??null)===[],'exact party retained');
-tvpf_ok(!isset($stored['scope']['hotel'])&&!isset($stored['scope']['nights']),'hotel/nights absent from scope');
+tvpf_ok(($stored['direction']['operator_family']??null)==='intourist'
+    && is_string($stored['direction']['market']??null)
+    && is_string($stored['direction']['destination']??null),'operator+direction store key retained');
+tvpf_ok(($stored['observations'][0]['scope']['party']['child_ages']??null)===[],'exact party retained in provenance');
+tvpf_ok(!isset($stored['observations'][0]['scope']['hotel'])&&!isset($stored['observations'][0]['scope']['nights']),'hotel/nights absent from provenance scope');
 tvpf_ok(glob($directory.'/tourvisor-fuel-pending-v1-*.json')===[],'paired pending state removed');
 tvpf_ok((int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===2,'runtime made no DB writes');
 

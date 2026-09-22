@@ -1,0 +1,43 @@
+name: INT operator program fuel registry
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'app/integrations/operator-program-fuel-registry.php'
+      - 'tests/operator-program-fuel-registry-test.php'
+      - 'v2/api-andromeda-search3-preview.php'
+      - '.github/workflows/operator-program-fuel-registry.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  program-fuel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact program fuel reuse
+        run: |
+          set -euo pipefail
+          php -l app/integrations/operator-program-fuel-registry.php
+          php -l v2/api-andromeda-search3-preview.php
+          php tests/operator-program-fuel-registry-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          r=Path('app/integrations/operator-program-fuel-registry.php').read_text()
+          api=Path('v2/api-andromeda-search3-preview.php').read_text()
+          for token in ('curl_','getFlights(','changeService(','->calc(','bron_ticket','PDO','mysqli'):
+              if token in r:
+                  raise SystemExit('registry must be supplier/db passive: '+token)
+          exact="$fact=$readSurcharge!==null?$readSurcharge($offer):null;"
+          fallback="$fact=AnyTourOperatorProgramFuelRegistryV1::priceForOffer"
+          if exact not in api or fallback not in api or api.index(exact)>api.index(fallback):
+              raise SystemExit('offer-specific surcharge must outrank exact program fallback')
+          if "programFuelDirectory" not in api:
+              raise SystemExit('program registry not wired')
+          print('PROGRAM_FUEL_REGISTRY_CONTRACT_OK')
+          PY

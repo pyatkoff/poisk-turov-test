@@ -5,6 +5,8 @@ $andromedaApp=is_file(__DIR__.'/app/integrations/andromeda-client.php')?__DIR__.
 foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-pagination','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';
 $andromedaAutosave=$andromedaApp.'/andromeda-anytour-offer-autosave.php';
 if(is_file($andromedaAutosave)&&!is_link($andromedaAutosave))require_once $andromedaAutosave;
+$andromedaProgramFuel=$andromedaApp.'/operator-program-fuel-registry.php';
+if(is_file($andromedaProgramFuel)&&!is_link($andromedaProgramFuel))require_once $andromedaProgramFuel;
 
 /** Resolve one semantic supplier value from the saved provider dictionary. */
 function anytour_andromeda_search3_dictionary_id(array $rows,array $names,string $error): string {
@@ -241,10 +243,18 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
             };
         }
     }
+    $programFuelDirectory=null;
+    if(class_exists('AnyTourOperatorProgramFuelRegistryV1') && is_string($retained['directory']??null)
+        && is_dir($retained['directory']) && !is_link($retained['directory']))$programFuelDirectory=$retained['directory'];
+    $party=['adults'=>(int)($request['params']['adults']??0),'children'=>count($request['params']['childs']??[]),
+        'child_ages'=>array_values(array_map('intval',$request['params']['childs']??[]))];
     $converted=[];$ids=[];
     foreach($offers as $index=>$offer){
         $id=$offer['local_hotel_id'];if(!$id || (isset($request['hotel_scope']) && $id!==$request['hotel_scope']['local_id']))continue;$ids[$id]=true;
         $fact=$readSurcharge!==null?$readSurcharge($offer):null;
+        if($fact===null && $programFuelDirectory!==null){
+            $fact=AnyTourOperatorProgramFuelRegistryV1::priceForOffer($programFuelDirectory,$offer,$party,time());
+        }
         if($fact!==null && $fact['search_price']===['amount'=>(string)$offer['price']['amount'],'currency'=>$offer['price']['currency']]){
             // Display copy only: the retained snapshot and selected DTO keep their
             // original base price, so later calc comparison cannot add markup twice.
