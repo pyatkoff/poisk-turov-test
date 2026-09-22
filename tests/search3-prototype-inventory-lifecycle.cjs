@@ -317,6 +317,34 @@ test('stop rejects a late completion snapshot',async()=>{
  const pending=defer();const h=harness({database:(i,p)=>i===2?pending.promise:snapshot(p)});await h.start();const completing=h.poll();await flush();assert.equal(h.dbBodies.length,2);h.data.stop();const count=h.events.length;
  pending.resolve(snapshot(h.dbBodies[1],['andromeda']));await completing;await flush();assert.equal(h.events.length,count);
 });
+test('continuation stops after a completed read adds no Tourvisor inventory',async()=>{
+ const h=harness();await h.start();await h.poll();
+ assert.equal(h.events.filter(e=>e.type==='complete').at(-1).canContinue,true);
+ await h.data.continueSearch();await flush();
+ const final=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.equal(final.continued,true);assert.equal(final.canContinue,false);
+ assert.deepEqual(final.continuationGrowth,{before:{hotels:1,offers:1},after:{hotels:1,offers:1},grew:false});
+ assert.equal(await h.data.continueSearch(),false);
+ assert.equal(h.calls.filter(c=>c.action==='search_continue').length,1);
+});
+test('continuation remains available only while Tourvisor inventory grows',async()=>{
+ let continued=0;
+ const h=harness({api:(action)=>{
+  if(action==='search_continue'){continued++;return {requestCount:1};}
+  if(action==='search_results')return live(continued?2:1);
+ }});
+ await h.start();await h.poll();
+ await h.data.continueSearch();await flush();
+ let final=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.equal(final.canContinue,true);assert.equal(final.continuationGrowth.grew,true);
+ assert.deepEqual(final.continuationGrowth.before,{hotels:1,offers:1});
+ assert.deepEqual(final.continuationGrowth.after,{hotels:2,offers:2});
+ await h.data.continueSearch();await flush();
+ final=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.equal(final.canContinue,false);assert.equal(final.continuationGrowth.grew,false);
+ assert.equal(await h.data.continueSearch(),false);
+ assert.equal(h.calls.filter(c=>c.action==='search_continue').length,2);
+});
 test('continuation keeps search identity and synchronously rejects double click',async()=>{
  const pending=defer();const h=harness({api:action=>action==='search_continue'?pending.promise:undefined});await h.start();await h.poll();
  const first=h.data.continueSearch();assert.equal(await h.data.continueSearch(),false);pending.resolve({requestCount:1});await first;await flush();
