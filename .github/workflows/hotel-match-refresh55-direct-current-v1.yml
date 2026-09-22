@@ -1,0 +1,106 @@
+name: MATCH refresh55 direct CURRENT v1
+on:
+  push:
+    branches: [ops/match-refresh55-direct-current-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_refresh55_direct_current_v1.php
+      - .github/workflows/hotel-match-refresh55-direct-current-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+env:
+  OPERATION_ID: hotel-match-refresh55-direct-current-1971-20260919-v1
+  BASE_SHA: 93915088f169716d89e2e6426d6d8700dbcf0416
+  CLAIM: '5744939781'
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim and immutable saved evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/v1 input/v5 terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA";test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 2
+          php -l scripts/diagnostics/hotel_match_refresh55_direct_current_v1.php;php scripts/diagnostics/hotel_match_refresh55_direct_current_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body'];assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in b and '10591054615' in b and '10591406713' in b and '10591695073' in b and '10590289815' in b
+          assert '55 direct' in b and '32 pairs' in b and 'Provider calls0' in b
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10590289815/zip >input/router.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10591695073/zip >input/detail.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10591054615/zip >input/v1.zip
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10591406713/zip >input/v5.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,pathlib
+          specs=[('router.zip','bfab7db29e01671632e5a907f7bc22f0e545a07a9e19196723939e6d0070832e','3b189d1b7313eb85743a6d22be48aa7323725fe6fb57e8d47b6e5ea220b1cb8f','router.json'),('detail.zip','bc9157f7ec36e2e3f556a90077613a3cb33682263845d4e3b6f68f8bf283a7c3','9d8be005458ca901dac8f94a7224662ae25833882dda2ed6687d184a660af034','detail.json')]
+          for fn,zh,rh,out in specs:
+           p=pathlib.Path('input',fn);assert hashlib.sha256(p.read_bytes()).hexdigest()==zh
+           with zipfile.ZipFile(p) as z:
+            hits=[z.read(i) for i in z.infolist() if not i.is_dir() and i.file_size<16_000_000 and hashlib.sha256(z.read(i)).hexdigest()==rh]
+           assert len(hits)==1;pathlib.Path('input',out).write_bytes(hits[0])
+          p=pathlib.Path('input/v1.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='49031bd52ee0fd46b15761df65cfbc9d5b603298711de5d20f36ca842f9ffd95'
+          with zipfile.ZipFile(p) as z:
+           for i in z.infolist():
+            n=pathlib.PurePosixPath(i.filename).name
+            if n.startswith('raw-price-') or n.startswith('raw-catalog-'):pathlib.Path('input/v1',n).write_bytes(z.read(i))
+          p=pathlib.Path('input/v5.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='5a0a7cec348f1239c01ca8ce286a4f93212edc62039477985bd63d01a160a478'
+          with zipfile.ZipFile(p) as z:
+           for i in z.infolist():
+            n=pathlib.PurePosixPath(i.filename).name
+            if n.startswith('raw-price-'):pathlib.Path('input/v5',n).write_bytes(z.read(i))
+          assert len(list(pathlib.Path('input/v1').glob('raw-price-*.json')))==3
+          assert len(list(pathlib.Path('input/v5').glob('raw-price-*.json')))==12
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs and max(xs,key=lambda z:z['id'])['status']=='completed':assert max(xs,key=lambda z:z['id'])['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit(2)
+          PY
+      - name: Read CURRENT protections once
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/v1\" \"\$HOME/$op/payload/v5\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_refresh55_direct_current_v1.php input/router.json input/detail.json "$remote:$op/payload/"
+          scp "${opts[@]}" input/v1/*.json "$remote:$op/payload/v1/"
+          scp "${opts[@]}" input/v5/*.json "$remote:$op/payload/v5/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_ROUTER=\"\$HOME/$op/payload/router.json\" MATCH_DETAIL=\"\$HOME/$op/payload/detail.json\" MATCH_V1_DIR=\"\$HOME/$op/payload/v1\" MATCH_V5_DIR=\"\$HOME/$op/payload/v5\" php \"\$HOME/$op/payload/hotel_match_refresh55_direct_current_v1.php\""
+          ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' >terminal/server.tgz
+      - name: Verify current result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+           for n in ['result.json','receipt.json']:pathlib.Path('terminal',n).write_bytes(t.extractfile(n).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only' and r['direct_edge_count']==55 and r['unique_pair_count']==32 and r['unique_source_count']==32 and r['unique_target_count']==31
+          assert r['provider_calls']==r['database_writes']==r['mapping_writes']==0 and q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert sum(r['state_counts'].values())==32 and all(x['safe_to_write_now'] is False for x in r['rows'])
+          print(json.dumps({'state_counts':r['state_counts'],'safe_candidate_count':r['safe_candidate_count'],'result_sha256':q['result_sha256']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-refresh55-current-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
