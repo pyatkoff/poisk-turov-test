@@ -36,6 +36,8 @@ function hmc_write(string $path,array $v): string {
 }
 $GLOBALS['HMC_PRIVATE_EVIDENCE_DIR']=null;
 $GLOBALS['HMC_PRIVATE_EVIDENCE_HASHES']=[];
+$GLOBALS['HMC_TV_TARIFF_UNITS']=0;
+$GLOBALS['HMC_SAMO_PHYSICAL_CALLS']=0;
 
 function hmc_private_evidence_init(string $opDir): void {
     $dir=$opDir.'/evidence-private';
@@ -61,6 +63,31 @@ function hmc_private_evidence_record(string $source,array $meta,array $payload):
     $GLOBALS['HMC_PRIVATE_EVIDENCE_HASHES'][]=$sha;
     return $sha;
 }
+function hmc_private_evidence_record_raw(string $source,array $meta,int $status,string $body): string {
+    $dir=$GLOBALS['HMC_PRIVATE_EVIDENCE_DIR']??null;
+    if(!is_string($dir)||$dir==='')throw new RuntimeException('evidence_not_initialized');
+    $seq=count($GLOBALS['HMC_PRIVATE_EVIDENCE_HASHES'])+1;
+    $safe=preg_replace('/[^a-z0-9_-]+/i','-',strtolower($source));
+    $sha=hash('sha256',$body);
+    $base=$dir.'/'.sprintf('%04d-%s',$seq,$safe);
+    $f=@fopen($base.'.bin','x+b');if(!$f)throw new RuntimeException('evidence_raw_create');
+    try{
+        if(fwrite($f,$body)!==strlen($body)||!fflush($f))throw new RuntimeException('evidence_raw_write');
+        if(function_exists('fsync')&&!fsync($f))throw new RuntimeException('evidence_raw_sync');
+    }finally{fclose($f);}
+    @chmod($base.'.bin',0600);
+    $metaRaw=hmc_json(['schema'=>1,'source'=>$source,'sequence'=>$seq,'captured_at'=>gmdate('c'),'http_status'=>$status,
+        'raw_sha256'=>$sha,'bytes'=>strlen($body),'meta'=>$meta])."\n";
+    $mf=@fopen($base.'.meta.json','x+b');if(!$mf)throw new RuntimeException('evidence_meta_create');
+    try{
+        if(fwrite($mf,$metaRaw)!==strlen($metaRaw)||!fflush($mf))throw new RuntimeException('evidence_meta_write');
+        if(function_exists('fsync')&&!fsync($mf))throw new RuntimeException('evidence_meta_sync');
+    }finally{fclose($mf);}
+    @chmod($base.'.meta.json',0600);
+    $GLOBALS['HMC_PRIVATE_EVIDENCE_HASHES'][]=$sha;
+    return $sha;
+}
+
 function hmc_week_dates(): array {
     $tz=new DateTimeZone('UTC');
     $from=DateTimeImmutable::createFromFormat('!Y-m-d',HMC_DATE_FROM,$tz);
@@ -264,9 +291,30 @@ function hmc_tv_merge_rows(array $acc,array $rows): array {
 }
 function hmc_tv_call(string $path,array $params,array &$counter): array {
     if(++$counter['calls']>HMC_MAX_TV_CALLS)throw new RuntimeException('tv_call_budget');
-    $reply=v2_data_tv_get($path,$params);
-    hmc_private_evidence_record('tourvisor',['path'=>$path,'params'=>$params],$reply);
-    return $reply;
+    $tariff=$path==='/tours/search'||str_ends_with($path,'/continue');
+    if($tariff)++$GLOBALS['HMC_TV_TARIFF_UNITS'];
+    static $lastStarted=0.0;
+    $wait=.25-(microtime(true)-$lastStarted);if($wait>0)usleep((int)ceil($wait*1000000));
+    $token=v2_data_tourvisor_token();if($token==='')throw new RuntimeException('tv_token');
+    $url='https://api.tourvisor.ru/search/api/v1'.$path;
+    $query=v2_data_query_string($params);if($query!=='')$url.='?'.$query;
+    $ch=curl_init($url);if($ch===false)throw new RuntimeException('tv_curl');
+    $lastStarted=microtime(true);
+    try{
+        if(!curl_setopt_array($ch,[
+            CURLOPT_RETURNTRANSFER=>true,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,
+            CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>65,
+            CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$token,'Accept: application/json'],
+        ]))throw new RuntimeException('tv_curl_options');
+        $body=curl_exec($ch);$errno=curl_errno($ch);$status=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);
+        if($body===false)$body='';
+        hmc_private_evidence_record_raw('tourvisor',['path'=>$path,'params'=>$params,'tariff_unit'=>$tariff],$status,(string)$body);
+        if($errno!==0)throw new RuntimeException('tv_network');
+        if($status<200||$status>=300)throw new RuntimeException('tv_http_'.$status);
+        $reply=json_decode((string)$body,true,64,JSON_THROW_ON_ERROR);
+        if(!is_array($reply))throw new RuntimeException('tv_json_shape');
+        return $reply;
+    }finally{curl_close($ch);}
 }
 function hmc_tv_wait(int $sid,array &$counter): void {
     for($i=0;$i<45;$i++){
@@ -435,11 +483,14 @@ function hmc_execute(string $root,string $opDir,string $user,string $pass): arra
     $transport=new AnyTourAndromedaTransport(false);
     $catalog=new AnyTourAndromedaClient(function(string $url,array $options)use($transport,&$samoCalls){
         if(++$samoCalls>HMC_MAX_SAMO_CALLS)throw new RuntimeException('samo_call_budget');
-        return $transport($url,$options);
+        ++$GLOBALS['HMC_SAMO_PHYSICAL_CALLS'];
+        $raw=$transport($url,$options);
+        hmc_private_evidence_record_raw('samo-http',['kind'=>'login_or_catalog','url_sha256'=>hash('sha256',$url)],
+            (int)($raw['status']??0),(string)($raw['body']??''));
+        return $raw;
     },true);
     $catalog->login($user,$pass);
     $all=$catalog->catalog('all',['TOWNFROMINC'=>HMC_DEPARTURE,'STATEINC'=>HMC_SAMO_STATE]);
-    hmc_private_evidence_record('samo-catalog',['scope'=>'all','town_from'=>HMC_DEPARTURE,'state'=>HMC_SAMO_STATE],$all);
     $session=$catalog->privateSession();
 
     $opInfo=hmc_common_operators($tvOps,$all['OPERATORS']);
@@ -493,12 +544,15 @@ function hmc_execute(string $root,string $opDir,string $user,string $pass): arra
                 'TOWNTOINC'=>(string)$town[0]['id'],'PACKETTYPE'=>0,'PAGE'=>$page,'GROUP_BY'=>32,
             ];
             $tr=new AnyTourAndromedaTransport(true);
-            $cl=new AnyTourAndromedaClient(function(string $url,array $options)use($tr,&$samoCalls){
+            $cl=new AnyTourAndromedaClient(function(string $url,array $options)use($tr,&$samoCalls,$star,$page,$params){
                 if(++$samoCalls>HMC_MAX_SAMO_CALLS)throw new RuntimeException('samo_call_budget');
-                return $tr($url,$options);
+                ++$GLOBALS['HMC_SAMO_PHYSICAL_CALLS'];
+                $raw=$tr($url,$options);
+                hmc_private_evidence_record_raw('samo-price',['star'=>$star,'page'=>$page,'params'=>$params,'url_sha256'=>hash('sha256',$url)],
+                    (int)($raw['status']??0),(string)($raw['body']??''));
+                return $raw;
             },true);
             $cl->restorePrivateSession($session);$reply=$cl->price($params);
-            hmc_private_evidence_record('samo-price',['star'=>$star,'page'=>$page,'params'=>$params],$reply);
             $pagesCount=$reply['PAGES_COUNT'];
             if($pagesCount>HMC_MAX_SAMO_PAGES)throw new RuntimeException('samo_page_cap');
             $before=count($samoRows);
@@ -542,7 +596,8 @@ function hmc_execute(string $root,string $opDir,string $user,string $pass): arra
         'date_window'=>['from'=>$date,'to'=>$dateTo,'days'=>count($weekDates),'source'=>'retained-live-2026-10-05'],
         'search_plan_sha256'=>$planSha,
         'tv_region'=>$region[0],'samo_townto'=>$town[0],'samo_star_ids'=>$starIds,
-        'tv_calls'=>$tvCounter['calls'],'andromeda_calls'=>$samoCalls,'tourvisor_detail_calls'=>0,
+        'tv_calls'=>$tvCounter['calls'],'tv_tariff_search_units'=>$GLOBALS['HMC_TV_TARIFF_UNITS'],
+        'andromeda_calls'=>$GLOBALS['HMC_SAMO_PHYSICAL_CALLS'],'andromeda_price_calls'=>$samoCalls,'tourvisor_detail_calls'=>0,
         'private_evidence'=>['response_hashes'=>$GLOBALS['HMC_PRIVATE_EVIDENCE_HASHES'],'raw_payload_exported'=>false,'server_directory'=>'evidence-private'],
         'detail_queue_state'=>'pending_current_and_fuel_reconcile','flight_calls'=>0,'calc_calls'=>0,
         'stars'=>$stars,
