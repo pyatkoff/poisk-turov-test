@@ -317,8 +317,9 @@ dialog.flight-picker-dialog{width:min(900px,calc(100% - 40px))}
  .flight-picker-dialog #modal-footer button{width:100%;font-size:14px;padding:10px 8px}
 }
 @media(max-width:374px){
+ .hotel-price{grid-template-columns:minmax(0,1fr)}
  .starting-price>strong{font-size:25px}
- .hotel-price .primary{font-size:13px;padding:10px}
+ .hotel-price .primary{grid-column:1;grid-row:5;width:100%;max-width:none;margin-top:11px;font-size:13px;padding:10px;white-space:normal}
  .flight-option{padding:14px 11px}
  .flight-option-heading strong{font-size:13px}
  .flight-pair-delta{font-size:13px}
