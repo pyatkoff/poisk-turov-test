@@ -87,11 +87,21 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
 const observed=(q,price=97500)=>({ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:2,childrenCount:0,departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:q.regionId?Number(q.regionId):null,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]});
-test('meal labels collapse supplier codes into one Russian taxonomy',async()=>{
- const h=harness();h.data.catalog.meals.push({id:5,name:'AI',fullName:'AI — Всё включено'},{id:3,name:'HB',fullName:'HB — Полупансион'});
+test('meal labels collapse supplier codes and Russian aliases into one taxonomy',async()=>{
+ const h=harness();h.data.catalog.meals.push(
+  {id:5,name:'AI',fullName:'AI — Всё включено'},
+  {id:3,name:'HB',fullName:'HB — Полупансион'},
+  {id:6,name:'Все Включено'},
+  {id:7,name:'Завтрак'},
+  {id:8,name:'BB',fullName:'BB - Только завтрак'},
+  {id:9,name:'Ультра Все Вкл'}
+ );
  assert.equal(h.data.meal('AI'),'Всё включено');assert.equal(h.data.meal({name:'AI',fullName:'AI — Всё включено'}),'Всё включено');
- assert.equal(h.data.meal('ALL INCLUSIVE'),'Всё включено');assert.equal(h.data.meal('HB'),'Полупансион');
- assert.equal(h.data.params(trip,[],{meals:['Всё включено']}).meal,'5');
+ assert.equal(h.data.meal('ALL INCLUSIVE'),'Всё включено');assert.equal(h.data.meal('Все Включено'),'Всё включено');
+ assert.equal(h.data.meal('ВСЁ ВКЛЮЧЕНО'),'Всё включено');assert.equal(h.data.meal('Завтрак'),'Завтраки');
+ assert.equal(h.data.meal('Только завтрак'),'Завтраки');assert.equal(h.data.meal('BB - Только завтрак'),'Завтраки');
+ assert.equal(h.data.meal('Ультра Все Вкл'),'Ультра всё включено');assert.equal(h.data.meal('HB'),'Полупансион');
+ assert.equal(h.data.params(trip,[],{meals:['Все Включено']}).meal,'5');
  assert.equal(h.data.params(trip,[],{meals:['Всё включено','Полупансион']}).meal,'');
 });
 test('first search unions direct ANEX once and waits for it before complete',async()=>{
