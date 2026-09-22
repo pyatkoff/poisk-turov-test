@@ -153,7 +153,7 @@ def check_width(browser, origin, width):
         assert first_start["params"].get("priceTo", [""]) == [""]
         providers = page.evaluate("""() => {
             const owner = Search3CanonicalProfilesV1.current();
-            return [...new Set(owner.read(owner.source(), {}).flatMap(h => h.tours.map(t => t.provider)))].sort();
+            return [...new Set(owner.read(owner.source(), {}).flatMap(h => h.providers || []))].sort();
         }""")
         assert providers == ["andromeda", "anex", "tourvisor"], providers
         state["hold"] = True
