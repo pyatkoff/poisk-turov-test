@@ -39,7 +39,11 @@ function create(refresh){
    if(controller.signal.aborted)throw new Error('Catalogue timeout');
    if(!payload||payload.ok!==true||payload.source!=='anytour-canonical-catalog'||payload.catalog!=='anytour'||id(payload.item&&payload.item.id)!==key)throw new Error('Invalid own profile response');
    return putProfile(payload.item);
-  }finally{clearTimeout(timer);workers.delete(task);}
+  }finally{
+   clearTimeout(timer);workers.delete(task);
+   // Standalone/favourite reads share batch capacity; resume waiting results.
+   if(generation===epoch)pump();
+  }
  }
  function clearOffers(source){
   const key=String(source||'');if(!key)throw new TypeError('Offer source required');
