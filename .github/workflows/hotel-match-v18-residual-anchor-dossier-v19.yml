@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail;umask 077;mkdir -p input reservation terminal
           test "$(git rev-parse HEAD)" = "$HEAD"
           test "$(git merge-base HEAD "$BASE")" = "$BASE"
-          expected=".github/workflows/hotel-match-v18-residual-anchor-dossier-v19.yml scripts/diagnostics/hotel_match_v18_residual_anchor_dossier_v19.php tests/hotel_match_v18_residual_anchor-dossier-v19_test.php "
+          expected=".github/workflows/hotel-match-v18-residual-anchor-dossier-v19.yml scripts/diagnostics/hotel_match_v18_residual_anchor_dossier_v19.php tests/hotel_match_v18_residual_anchor_dossier_v19_test.php "
           actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
           test "$actual" = "$expected"
           php -l scripts/diagnostics/hotel_match_v18_residual_anchor_dossier_v19.php
