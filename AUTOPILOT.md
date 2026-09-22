@@ -1,5 +1,13 @@
 # poisk-turov-test — Autopilot Roadmap
 
+## Текущий журнал координации — 2026-09-22
+
+Все новые claims, handoff, результаты и разрешённые команды: [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419).
+#2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
+При блокере зафиксировать причину и продолжать следующую доступную независимую задачу.
+Маршрутизация и действующие исполнители: [coordination-journal.md](docs/project/coordination-journal.md).
+Перенос журнала не разрешает повтор операций и не расширяет доступ или production-допуск.
+
 Updated: 2026-09-02
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priority source; `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md` owns architecture and `TEST_MATRIX.md` owns CI/test mapping.

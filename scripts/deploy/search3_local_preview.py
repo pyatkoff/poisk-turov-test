@@ -36,7 +36,7 @@ def checked_request(event, env):
     need(event.get('sender', {}).get('id') == 226193297 and event['sender'].get('login') == 'pyatkoff', 'sender_identity')
     need(env.get('GITHUB_EVENT_NAME') == 'issue_comment' and event.get('action') == 'created', 'new_command_only')
     issue = event.get('issue', {}); c = event.get('comment', {})
-    need(issue.get('number') == 2530 and 'pull_request' not in issue, 'coordination_only')
+    need(issue.get('number') == 3419 and 'pull_request' not in issue, 'coordination_only')
     need(c.get('user', {}).get('id') == 226193297 and c.get('author_association') == 'OWNER', 'comment_owner')
     body = c.get('body', '')
     need(isinstance(body, str) and body.startswith(PREFIX) and '\n' not in body and '\r' not in body, 'command_syntax')

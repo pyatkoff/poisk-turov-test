@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SCRIPT=Path(__file__).resolve().parents[1]/'scripts/deploy/int_server_executor.py'
 spec=importlib.util.spec_from_file_location('int_server_executor',SCRIPT)
@@ -43,6 +44,31 @@ class ParseTest(unittest.TestCase):
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):m.parse_command(value)
 
+class CoordinatorTest(unittest.TestCase):
+    def test_only_current_journal_can_authorize_a_server_command(self):
+        body=f'/run-int-server-v1 {SHA} anex-demand int-anex-current-demand-20260922-v1 3'
+        comment={'id':123,'body':body,'user':{'id':226193297},'author_association':'OWNER'}
+        replies={
+            '/issues/comments/123':comment,
+            '/git/ref/heads/main':{'object':{'sha':'a'*40}},
+            '/git/ref/heads/'+m.FEATURE:{'object':{'sha':SHA}},
+        }
+        with patch.object(m,'api_get',side_effect=lambda path,token:replies[path]) as api:
+            event={'issue':{'number':3419},'comment':comment}
+            self.assertEqual(m.checked_event('fixture',event,'a'*40)['source_sha'],SHA)
+            for number in (2530,996,1646):
+                api.reset_mock()
+                event={'issue':{'number':number},'comment':comment}
+                with self.subTest(issue=number),self.assertRaisesRegex(ValueError,'issue'):
+                    m.checked_event('fixture',event,'a'*40)
+                api.assert_not_called()
+
+    def test_workflow_uses_the_same_current_journal(self):
+        text=(SCRIPT.parents[2]/'.github/workflows/int-server-executor.yml').read_text()
+        self.assertIn('github.event.issue.number == 3419',text)
+        self.assertNotIn('github.event.issue.number == 2530',text)
+
+
 class BundleTest(unittest.TestCase):
     def test_private_inventory_only(self):
         with tempfile.TemporaryDirectory() as td:
@@ -61,7 +87,7 @@ class BundleTest(unittest.TestCase):
 class ContractTest(unittest.TestCase):
     def test_control_boundaries(self):
         text=SCRIPT.read_text()
-        for x in ["ISSUE = 2530","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
+        for x in ["ISSUE = 3419","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
                   "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
                   "search3-local-results-read-v1.php","--max-captures=","--capture-mode=non_external_only",
