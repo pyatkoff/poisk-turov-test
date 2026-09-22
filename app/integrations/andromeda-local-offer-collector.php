@@ -18,7 +18,7 @@ final class AnyTourAndromedaLocalOfferCollectorV1
         callable $candidateAllowed,
         callable $captureSurcharge,
         callable $autosave,
-        int $maxCaptures = 2,
+        int $maxCaptures = 0,
         string $captureMode = 'all',
         int $maxCaptureSeconds = 0,
         ?callable $clock = null,
