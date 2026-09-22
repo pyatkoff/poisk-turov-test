@@ -1,0 +1,114 @@
+name: MATCH V9 operator edges CURRENT V16
+'on':
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_v9_operator_edges_current_v16.php
+      - tests/hotel_match_v9_operator_edges_current_v16_test.php
+      - .github/workflows/hotel-match-v9-operator-edges-current-v16.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-v9-operator-edges-current-reconcile-1971-20260922-v16, cancel-in-progress: false}
+env:
+  OP: hotel-match-v9-operator-edges-current-reconcile-1971-20260922-v16
+  BASE: a31154d9eabd5d3e3fbe14f0507efadd538aa33d
+  CLAIM: '5783555795'
+  INPUT_ARTIFACT: '10634643226'
+jobs:
+  reconcile:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'feat/match-v9-operator-edges-current-1971-20260922-v16' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source, immutable input and reserve
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-v9-operator-edges-current-v16.yml scripts/diagnostics/hotel_match_v9_operator_edges_current_v16.php tests/hotel_match_v9_operator_edges_current_v16_test.php "
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
+          php -l scripts/diagnostics/hotel_match_v9_operator_edges_current_v16.php
+          php scripts/diagnostics/hotel_match_v9_operator_edges_current_v16.php --self-test
+          php tests/hotel_match_v9_operator_edges_current_v16_test.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for token in [os.environ['OP'],'1456','1326' if False else 'CURRENT DB READ ONLY','Provider/Tourvisor/SAMO/ANEX/Andromeda HTTP0','writes0']:
+              assert token in b, token
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$INPUT_ARTIFACT/zip" > input/v9.zip
+          echo "0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0  input/v9.zip" | sha256sum -c -
+          python3 - <<'PY'
+          import zipfile,hashlib,pathlib,json,os,datetime
+          with zipfile.ZipFile('input/v9.zip') as z:
+              b=z.read('reconciliation.json')
+          assert hashlib.sha256(b).hexdigest()=='0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814'
+          pathlib.Path('input/reconciliation.json').write_bytes(b)
+          r={'operation':os.environ['OP'],'state':'reserved_before_db_read','source_sha':os.environ['HEAD'],
+             'input_sha256':hashlib.sha256(b).hexdigest(),'provider_http_calls':0,'database_writes':0,'mapping_writes':0,
+             'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+          php scripts/diagnostics/hotel_match_v9_operator_edges_current_v16.php --validate-input input/reconciliation.json
+          rm input/v9.zip input/claim.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-v16-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(80):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion']; break
+              time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Execute CURRENT DB read-only reconciliation
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json input/reconciliation.json scripts/diagnostics/hotel_match_v9_operator_edges_current_v16.php "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "set -eu;mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\";cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_FILE=\"\$HOME/$op/payload/reconciliation.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/hotel_match_v9_operator_edges_current_v16.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";mkdir export;for f in reservation.json result.json receipt.json;do cp \"\$f\" export/;done;tar -czf - -C export ." >terminal/server.tgz
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  n=m.name.lstrip('./')
+                  if m.isfile(): pathlib.Path('terminal',n).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json')); q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only_current_reconcile'
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['input_counts']=={'edges':1456,'direct':1326,'input_holds':130}
+          assert len(r['rows'])==1326 and all(x['safe_to_write_now'] is False for x in r['rows'])
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          print(json.dumps({'state':r['state'],'status_counts':r['status_counts'],'writer_ready':r['writer_ready_count'],
+              'top_missing_geo':list(r['current_missing_by_geo'].items())[:10],
+              'top_writer_ready_geo':list(r['writer_ready_by_geo'].items())[:10]},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-v16-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
