@@ -2,12 +2,12 @@
 declare(strict_types=1);
 
 /**
- * Canonical, provider-neutral evidence for a reusable tour-operator fuel rule.
+ * Provider-neutral reusable operator fuel evidence.
  *
- * This class performs no supplier I/O and no persistence. It accepts only already
- * retained, source-bound facts. The first arithmetic-capable unit is an explicit
- * party roundtrip total. Per-leg/per-person facts may be retained by upstream code,
- * but are never converted here without an explicit compatible unit.
+ * V2 separates the reusable identity (canonical operator family + direction) from
+ * exact flight/provider/party facts. Exact scope is retained as provenance only.
+ * It must never narrow a direction rule by date, nights, hotel, room, meal,
+ * program/SPO, carrier or flight number.
  */
 final class AnyTourOperatorFuelRuleEvidenceV1
 {
@@ -24,7 +24,7 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         return null;
     }
 
-    /** Normalize one already-saved explicit fuel observation. */
+    /** Normalize one source-bound fuel observation. */
     public static function observation(array $row): array
     {
         $provider = $row['provider'] ?? null;
@@ -32,7 +32,13 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         $operatorRaw = $row['operator_raw'] ?? ($row['operator'] ?? null);
         $family = self::operatorFamily($operatorRaw);
         if ($family === null || !in_array($family, self::TARGET_OPERATORS, true)) throw new InvalidArgumentException('OPERATOR_FUEL_OPERATOR');
+
         $scope = self::canonicalScope($provider, $operatorRaw, $row['scope'] ?? null);
+        $direction = array_key_exists('direction', $row)
+            ? self::canonicalDirection($operatorRaw, $row['direction'])
+            : self::directionFromScope($operatorRaw, $scope);
+        if ($direction['operator_family'] !== $family) throw new InvalidArgumentException('OPERATOR_FUEL_DIRECTION');
+
         $unit = $row['unit'] ?? null;
         if (!in_array($unit, ['party_roundtrip', 'per_person_one_way', 'route_reported_unknown', 'unknown'], true)) {
             throw new InvalidArgumentException('OPERATOR_FUEL_UNIT');
@@ -57,10 +63,11 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         if (!is_bool($other)) throw new InvalidArgumentException('OPERATOR_FUEL_REQUIRED_CHARGES');
         $sourceResponse = self::digest($row['source_response_sha256'] ?? null, 'OPERATOR_FUEL_SOURCE_DIGEST');
         return [
-            'schema_version' => 1,
+            'schema_version' => 2,
             'provider' => $provider,
             'operator_family' => $family,
             'operator_raw' => trim((string)$operatorRaw),
+            'direction' => $direction,
             'scope' => $scope,
             'kind' => 'fuel',
             'unit' => $unit,
@@ -74,29 +81,31 @@ final class AnyTourOperatorFuelRuleEvidenceV1
             'source' => $source,
             'observed_at' => $observed,
             'expires_at' => $expires,
+            // Retained as source provenance only. V2 does not use this period as a
+            // rule discriminator or target-date gate.
             'valid_from' => $validFrom,
             'valid_to' => $validTo,
         ];
     }
 
     /**
-     * Build the exact input already consumed by AnyTourThreeProviderFuelEvidenceV1.
-     * Two independent offers + two evidence digests must agree. Nights/hotel/room/meal
-     * are intentionally absent from the rule identity.
+     * Compile one reusable direction-rate input for the existing price handoff.
+     *
+     * Two independent observations still corroborate a rate, but they may be from
+     * different flights/dates/hotels/night counts. Exact flight equality is no longer
+     * required. A party-roundtrip total is never divided into a per-person rate and
+     * is therefore reusable only for the same party composition. Infant-containing
+     * party totals are not generalized because infant pricing is a separate rule.
      */
     public static function confirmedInput(array $target, array $rows, int $now, ?array $exchange = null): ?array
     {
         if ($now < 1) throw new InvalidArgumentException('OPERATOR_FUEL_NOW');
-        $provider = $target['provider'] ?? null;
         $operator = $target['operator'] ?? null;
-        $scope = self::canonicalScope($provider, $operator, $target['scope'] ?? null);
         $family = self::operatorFamily($operator);
         if ($family === null) return null;
+        $direction = self::targetDirection($target, $operator);
+        $party = self::targetParty($target);
         $offerDigest = self::digest($target['offer_ref_digest'] ?? null, 'OPERATOR_FUEL_TARGET_OFFER');
-        $dates = $target['flight_dates'] ?? null;
-        if (!is_array($dates) || !array_is_list($dates) || count($dates) !== 2) throw new InvalidArgumentException('OPERATOR_FUEL_TARGET_DATES');
-        $dates = [self::date($dates[0]), self::date($dates[1])];
-        if ($dates[0] > $dates[1]) throw new InvalidArgumentException('OPERATOR_FUEL_TARGET_DATES');
 
         $compatible = [];
         $facts = [];
@@ -105,12 +114,14 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         foreach ($rows as $raw) {
             if (!is_array($raw)) continue;
             try { $obs = self::observation($raw); } catch (InvalidArgumentException $ignored) { continue; }
-            if ($obs['provider'] !== $provider || $obs['operator_family'] !== $family || $obs['scope'] !== $scope) continue;
-            if ($obs['unit'] !== 'party_roundtrip' || !in_array($obs['base_relation'], ['included', 'excluded'], true)
+            if ($obs['operator_family'] !== $family || $obs['direction'] !== $direction) continue;
+            if ($obs['unit'] !== 'party_roundtrip'
+                || !in_array($obs['base_relation'], ['included', 'excluded'], true)
                 || $obs['base_includes_other_required_charges'] !== true) continue;
             if ($obs['observed_at'] > $now || $obs['expires_at'] <= $now) continue;
-            if ($dates[0] < $obs['valid_from'] || $dates[1] > $obs['valid_to']) continue;
-            $fact = $obs['amount'] . '|' . $obs['currency'] . '|' . $obs['base_relation'];
+            $sourceParty = $obs['scope']['party'];
+            if ($sourceParty !== $party || self::hasInfant($sourceParty)) continue;
+            $fact = $obs['amount'] . '|' . $obs['currency'] . '|' . $obs['base_relation'] . '|party_roundtrip';
             $facts[$fact] = true;
             if (count($facts) > 1) return null;
             $offers[$obs['offer_ref_digest']] = true;
@@ -122,28 +133,103 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         $inputObs = [];
         foreach ($compatible as $obs) {
             $inputObs[] = [
-                'scope' => $obs['scope'], 'kind' => 'fuel', 'unit' => 'party_roundtrip',
-                'base_includes_other_required_charges' => true, 'base_relation' => $obs['base_relation'],
-                'offer_ref_digest' => $obs['offer_ref_digest'], 'evidence_sha256' => $obs['evidence_sha256'],
-                'observed_at' => $obs['observed_at'], 'expires_at' => $obs['expires_at'],
-                'valid_from' => $obs['valid_from'], 'valid_to' => $obs['valid_to'],
-                'amount' => $obs['amount'], 'currency' => $obs['currency'],
+                'direction' => $obs['direction'],
+                'provider' => $obs['provider'],
+                'provenance_scope' => $obs['scope'],
+                'party' => $obs['scope']['party'],
+                'kind' => 'fuel',
+                'unit' => 'party_roundtrip',
+                'base_includes_other_required_charges' => true,
+                'base_relation' => $obs['base_relation'],
+                'offer_ref_digest' => $obs['offer_ref_digest'],
+                'evidence_sha256' => $obs['evidence_sha256'],
+                'observed_at' => $obs['observed_at'],
+                'expires_at' => $obs['expires_at'],
+                'evidence_valid_from' => $obs['valid_from'],
+                'evidence_valid_to' => $obs['valid_to'],
+                'amount' => $obs['amount'],
+                'currency' => $obs['currency'],
             ];
         }
         return [
             'offer_ref_digest' => $offerDigest,
-            'scope' => $scope,
-            'flight_dates' => $dates,
+            'direction' => $direction,
+            'party' => $party,
             'observations' => $inputObs,
             'exchange' => $exchange,
         ];
     }
 
+    public static function directionDigest(array $direction): string
+    {
+        return self::hash($direction);
+    }
+
+    /** Backward-compatible helper retained for callers that hash provenance. */
     public static function scopeDigest(array $scope): string
     {
         return self::hash($scope);
     }
 
+    public static function canonicalDirection(mixed $operator, mixed $value): array
+    {
+        $family = self::operatorFamily($operator);
+        if ($family === null || !is_array($value) || array_is_list($value)) {
+            throw new InvalidArgumentException('OPERATOR_FUEL_DIRECTION');
+        }
+        $keys = array_keys($value); sort($keys);
+        if ($keys === ['destination','market']) {
+            return [
+                'operator_family' => $family,
+                'market' => self::normalizeMarket($value['market']),
+                'destination' => self::label($value['destination']),
+            ];
+        }
+        if ($keys === ['destination','market','operator_family']) {
+            if (($value['operator_family'] ?? null) !== $family) throw new InvalidArgumentException('OPERATOR_FUEL_DIRECTION');
+            return [
+                'operator_family' => $family,
+                'market' => self::normalizeMarket($value['market']),
+                'destination' => self::label($value['destination']),
+            ];
+        }
+        throw new InvalidArgumentException('OPERATOR_FUEL_DIRECTION');
+    }
+
+    public static function directionFromSearch(mixed $operator, array $params): array
+    {
+        $departure = $params['departureId'] ?? null;
+        $country = $params['countryId'] ?? null;
+        foreach ([&$departure, &$country] as &$value) {
+            if (is_int($value) && $value > 0) $value = (string)$value;
+            if (!is_string($value) || preg_match('/\A[1-9][0-9]{0,12}\z/D', $value) !== 1) {
+                throw new InvalidArgumentException('OPERATOR_FUEL_DIRECTION');
+            }
+        }
+        unset($value);
+        return self::canonicalDirection($operator, [
+            'market' => 'departure:' . $departure,
+            'destination' => 'country:' . $country,
+        ]);
+    }
+
+    public static function directionFromScope(mixed $operator, array $scope): array
+    {
+        $market = $scope['market'] ?? null;
+        $outbound = $scope['outbound'] ?? null;
+        $return = $scope['return'] ?? null;
+        if (!is_array($outbound) || !is_array($return)
+            || ($outbound['destination'] ?? null) !== ($return['origin'] ?? null)
+            || ($outbound['origin'] ?? null) !== ($return['destination'] ?? null)) {
+            throw new InvalidArgumentException('OPERATOR_FUEL_DIRECTION');
+        }
+        return self::canonicalDirection($operator, [
+            'market' => $market,
+            'destination' => $outbound['destination'],
+        ]);
+    }
+
+    /** Exact source scope retained only as provenance. */
     public static function canonicalScope(mixed $provider, mixed $operator, mixed $value): array
     {
         if (!in_array($provider, ['tourvisor', 'andromeda'], true) || !is_string($operator) || trim($operator) === '') {
@@ -190,6 +276,38 @@ final class AnyTourOperatorFuelRuleEvidenceV1
             return $v;
         };
         return hash('sha256', json_encode($canonical($value), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    }
+
+    private static function targetDirection(array $target, mixed $operator): array
+    {
+        if (array_key_exists('direction', $target)) return self::canonicalDirection($operator, $target['direction']);
+        if (is_array($target['search_params'] ?? null)) return self::directionFromSearch($operator, $target['search_params']);
+        $provider = $target['provider'] ?? null;
+        $scope = self::canonicalScope($provider, $operator, $target['scope'] ?? null);
+        return self::directionFromScope($operator, $scope);
+    }
+
+    private static function targetParty(array $target): array
+    {
+        if (array_key_exists('party', $target)) return self::party($target['party']);
+        $scope = $target['scope'] ?? null;
+        if (!is_array($scope) || !array_key_exists('party', $scope)) throw new InvalidArgumentException('OPERATOR_FUEL_PARTY');
+        return self::party($scope['party']);
+    }
+
+    private static function hasInfant(array $party): bool
+    {
+        foreach ($party['child_ages'] as $age) if ($age < 2) return true;
+        return false;
+    }
+
+    private static function normalizeMarket(mixed $value): string
+    {
+        $market = self::label($value);
+        if (preg_match('/\A(?:tourvisor|andromeda):(.+)\z/iD', $market, $m) === 1) {
+            $market = self::label($m[1]);
+        }
+        return $market;
     }
 
     private static function leg(mixed $value): array
