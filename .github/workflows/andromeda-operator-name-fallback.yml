@@ -1,0 +1,27 @@
+name: INT Andromeda operator-name fallback
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'v2/api-andromeda-search3-preview.php'
+      - 'tests/andromeda-operator-name-fallback-test.php'
+      - '.github/workflows/andromeda-operator-name-fallback.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify provider-neutral operator fallback
+        run: |
+          set -euo pipefail
+          php -l v2/api-andromeda-search3-preview.php
+          php -l tests/andromeda-operator-name-fallback-test.php
+          php tests/andromeda-operator-name-fallback-test.php
