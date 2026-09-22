@@ -218,10 +218,13 @@ try {
                 'price_units'=>$units,'currency'=>$currency,
                 'mapped'=>is_int($offer['local_hotel_id'] ?? null) && $offer['local_hotel_id'] > 0,
             ];
-            if (!isset($candidates[$spo])
-                || [$row['mapped'] ? 0 : 1,$row['price_units'],$offerRef]
-                    <=> [$candidates[$spo]['mapped'] ? 0 : 1,$candidates[$spo]['price_units'],$candidates[$spo]['offer']['offer_ref']] < 0) {
+            if (!isset($candidates[$spo])) {
                 $candidates[$spo] = $row;
+            } else {
+                $current = $candidates[$spo];
+                $rank = [$row['mapped'] ? 0 : 1, $row['price_units'], $offerRef];
+                $currentRank = [$current['mapped'] ? 0 : 1, $current['price_units'], $current['offer']['offer_ref']];
+                if (($rank <=> $currentRank) < 0) $candidates[$spo] = $row;
             }
         }
     }
