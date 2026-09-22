@@ -55,7 +55,7 @@ def check_width(browser, origin, width):
     context = browser.new_context(viewport={"width": width, "height": 900})
     page = context.new_page()
     page.set_default_timeout(15000)
-    calls, forbidden, errors, held = [], [], [], []
+    calls, native_calls, forbidden, errors, held = [], [], [], [], []
     state = {"native": False, "continued": False, "hold": False}
     page.on("pageerror", lambda error: errors.append(str(error)))
 
@@ -83,6 +83,13 @@ def check_width(browser, origin, width):
             reply({"ok": True, "data": {"source": "anytour-db-first-results-v1", "scopeVersion": 1,
                    "scope": {"scopeVersion": 1, **params}, "scopeDigest": "c" * 64,
                    "selectionAuthority": False, "hotels": rows}})
+        elif url.path == "/_preview/search3-anex-candidate/api-andromeda-search3-preview.php" and request.method == "POST":
+            body = request.post_data_json
+            native_calls.append(body)
+            assert body["generation"] >= 1
+            assert body["params"]["countryId"] == "4"
+            state["native"] = True
+            reply({"ok": True, "data": {"provider": "andromeda", "generation": body["generation"], "hotels": []}})
         elif url.path == "/api-v2.php" and request.method == "GET":
             action = query.get("action", [""])[0]
             calls.append({"action": action, "params": query})
@@ -106,7 +113,6 @@ def check_width(browser, origin, width):
                 rows = [tour(101, 185451), tour(102, 508504), tour(103, 1506295)]
                 if state["continued"]:
                     rows.append(tour(110, 2100000))
-                state["native"] = True
                 reply(rows)
             else:
                 forbidden.append(request.url)
@@ -156,6 +162,7 @@ def check_width(browser, origin, width):
             return [...new Set(owner.read(owner.source(), {}).flatMap(h => h.providers || []))].sort();
         }""")
         assert providers == ["andromeda", "anex", "tourvisor"], providers
+        assert len(native_calls) == 1
         state["hold"] = True
         page.locator('[data-action="continue-search"]').click()
         page.wait_for_timeout(100)
@@ -196,12 +203,13 @@ def check_width(browser, origin, width):
         count(4)
         last_start = [c for c in calls if c["action"] == "search_start"][-1]
         assert last_start["params"].get("priceTo") == ["600000"]
+        assert len(native_calls) == 2
         assert not page.evaluate("document.documentElement.scrollWidth > innerWidth"), "Document overflow"
         assert not forbidden, forbidden
         assert not errors, errors
         page.screenshot(path=str(EVIDENCE / f"restored-budget-{width}.png"))
         return {"width": width, "status": "passed", "providers": providers,
-                "calls": calls, "forbidden": forbidden, "browser_errors": errors}
+                "calls": calls, "mocked_andromeda_requests": native_calls, "forbidden": forbidden, "browser_errors": errors}
     except Exception:
         page.screenshot(path=str(EVIDENCE / f"failure-{width}.png"))
         print(json.dumps({"width": width, "calls": calls, "forbidden": forbidden,
