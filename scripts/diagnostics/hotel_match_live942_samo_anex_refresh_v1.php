@@ -13,10 +13,26 @@ function s942_save(string $p,array $v):string{
 }
 function s942_read(string $p):array{$x=json_decode((string)file_get_contents($p),true,64,JSON_THROW_ON_ERROR);s942_need(is_array($x),'json_shape');return $x;}
 function s942_norm(mixed $v):string{$s=mb_strtolower(trim((string)$v),'UTF-8');$s=str_replace('ё','е',$s);return trim(preg_replace('/\s+/u',' ',$s)??$s);}
-function s942_one(array $rows,array $aliases):int{
+function s942_ids(array $rows,array $aliases):array{
     $want=array_fill_keys(array_map('s942_norm',$aliases),true);$ids=[];
-    foreach($rows as $r){if(!is_array($r))continue;$name=s942_norm($r['name']??$r['lName']??'');if(isset($want[$name])&&preg_match('/^[1-9][0-9]{0,12}$/D',(string)($r['id']??'')))$ids[(int)$r['id']]=true;}
-    s942_need(count($ids)===1,'dictionary_binding');return (int)array_key_first($ids);
+    foreach($rows as $r){
+        if(!is_array($r)||!preg_match('/^[1-9][0-9]{0,12}$/D',(string)($r['id']??'')))continue;
+        foreach(['name','lName'] as $key){$name=s942_norm($r[$key]??'');if($name!==''&&isset($want[$name])){$ids[(int)$r['id']]=true;break;}}
+    }
+    $out=array_map('intval',array_keys($ids));sort($out,SORT_NUMERIC);return $out;
+}
+function s942_one(array $rows,array $aliases):int{
+    $ids=s942_ids($rows,$aliases);s942_need(count($ids)===1,'dictionary_binding');return $ids[0];
+}
+function s942_date_ymd(mixed $v):?string{
+    $s=trim((string)$v);if(preg_match('/^\\d{4}-\\d{2}-\\d{2}$/D',$s)!==1)return null;
+    $d=DateTimeImmutable::createFromFormat('!Y-m-d',$s,new DateTimeZone('UTC'));
+    return $d&&$d->format('Y-m-d')===$s?str_replace('-','',$s):null;
+}
+function s942_child_ages(int $children,string $signature):?array{
+    if($children===0)return [];
+    $ages=[];foreach(explode(',',$signature) as $raw){$raw=trim($raw);if($raw==='')continue;if(preg_match('/^(?:0|[1-9]|1[0-7])$/D',$raw)!==1)return null;$ages[]=(int)$raw;}
+    return count($ages)===$children?$ages:null;
 }
 function s942_budget(string $root,string $op,int $call):void{
     $p=$root.'/monthly-requests.json';$lock=fopen($p.'.lock','c');s942_need($lock!==false&&flock($lock,LOCK_EX),'budget_lock');
@@ -50,30 +66,51 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
         return $transport($url,$opts);
     };
     $base=['operation'=>OP,'source_sha'=>$sourceSha,'frontier_count'=>942,'tourvisor_calls'=>0,'direct_anex_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
-    $state='failed_before_provider_access';$reason=null;$rows=[];$dicts=[];
+    $state='failed_before_provider_access';$reason=null;$rows=[];$dicts=[];$bindings=[];$contextCounts=[];
     try{
-        s942_save($dir.'/samo-login-reserved.json',['operation'=>OP,'state'=>'reserved_before_login']);
-        $login=new AnyTourAndromedaClient($wrap,true);$login->login($cfg['username'],$cfg['password']);$session=$login->privateSession();s942_need(is_array($session)&&$session!==[],'login');
-        s942_save($dir.'/samo-login-result.json',['operation'=>OP,'state'=>'login_succeeded']);
-        $today=new DateTimeImmutable('now',new DateTimeZone('Europe/Moscow'));$beg=$today->modify('+7 days')->format('Ymd');$end=$today->modify('+28 days')->format('Ymd');
-        foreach($scope as $ix=>$target){
-            $tv=(int)$target['tv_hotel_id'];$country=(int)$target['country_id'];$anchors=array_values(array_unique(array_map('intval',$target['samo_hotel_ids']??[])));sort($anchors);
-            s942_need($tv>0&&$country>0&&$anchors!==[],'target_shape');
+        foreach($scope as $target){
+            $tv=(int)($target['tv_hotel_id']??0);$country=(int)($target['country_id']??0);
+            $anchors=array_values(array_unique(array_map('intval',$target['samo_hotel_ids']??[])));sort($anchors);
+            $departureName=trim((string)($target['departure_name']??''));
+            s942_need($tv>0&&$country>0&&$anchors!==[]&&$departureName!=='','target_shape');
             if(!isset($dicts[$country])){
                 $saved=s942_catalog($cfg['catalog_path'],$country);$stateInc=(int)($saved['all']['params']['STATEINC']??0);s942_need($stateInc>0,'state_missing_'.$country);
-                $dep=s942_one($saved['townfrom']['payload']['TOWNFROM']??[],['Москва','Moscow']);
                 $anex=s942_one($saved['all']['payload']['OPERATORS']??[],['Anex','Anex Tour','AnexTour','Анекс','Анекс Тур']);
                 s942_need($anex===5,'anex_operator_binding_changed_'.$anex);
                 $hotelSet=[];foreach($saved['all']['payload']['HOTELS']??[] as $h)if(is_array($h)&&isset($h['id']))$hotelSet[(string)$h['id']]=true;
-                $dicts[$country]=['state'=>$stateInc,'departure'=>$dep,'operator'=>$anex,'hotels'=>$hotelSet];
+                $dicts[$country]=['state'=>$stateInc,'operator'=>$anex,'hotels'=>$hotelSet,'townfrom'=>$saved['townfrom']['payload']['TOWNFROM']??[]];
             }
-            $d=$dicts[$country];$attempts=[];$native=[];$catalog=[];$offerRows=0;
+            $depIds=s942_ids($dicts[$country]['townfrom'],[$departureName]);
+            $bindingState=count($depIds)===1?'ready':(count($depIds)===0?'departure_binding_missing':'departure_binding_ambiguous');
+            $date=s942_date_ymd($target['departure_date']??null);
+            $children=max(0,min(3,(int)($target['children_count']??0)));$ages=s942_child_ages($children,(string)($target['child_ages_signature']??''));
+            if($bindingState==='ready'&&$date===null)$bindingState='date_context_invalid';
+            if($bindingState==='ready'&&$ages===null)$bindingState='child_age_context_invalid';
+            $bindings[$tv]=['state'=>$bindingState,'departure_id'=>count($depIds)===1?$depIds[0]:null,'departure_name'=>$departureName,'date'=>$date,'ages'=>$ages];
+            $contextCounts[$bindingState]=($contextCounts[$bindingState]??0)+1;
+        }
+        ksort($contextCounts);
+        s942_save($dir.'/samo-context-preflight.json',['operation'=>OP,'scope_count'=>count($scope),'status_counts'=>$contextCounts,'provider_calls'=>0]);
+        if(($contextCounts['ready']??0)>0){
+            s942_save($dir.'/samo-login-reserved.json',['operation'=>OP,'state'=>'reserved_before_login']);
+            $login=new AnyTourAndromedaClient($wrap,true);$login->login($cfg['username'],$cfg['password']);$session=$login->privateSession();s942_need(is_array($session)&&$session!==[],'login');
+            s942_save($dir.'/samo-login-result.json',['operation'=>OP,'state'=>'login_succeeded']);
+        }else{$session=[];}
+        foreach($scope as $ix=>$target){
+            $tv=(int)$target['tv_hotel_id'];$country=(int)$target['country_id'];$anchors=array_values(array_unique(array_map('intval',$target['samo_hotel_ids']??[])));sort($anchors);
+            $d=$dicts[$country];$binding=$bindings[$tv];$attempts=[];$native=[];$catalog=[];$offerRows=0;
+            if(($binding['state']??'')!=='ready'){
+                $row=['tv_hotel_id'=>$tv,'country_id'=>$country,'samo_anchor_count'=>count($anchors),'attempted_anchors'=>0,'operator_price_rows'=>0,'state'=>$binding['state'],'anex_native_candidates'=>[],'catalog_candidates'=>[],'attempts'=>[],'departure_name'=>$binding['departure_name'],'safe_to_write_now'=>false];
+                s942_save($dir.'/samo-hotel-'.$tv.'.json',$row);$rows[]=$row;continue;
+            }
+            $beg=$end=(string)$binding['date'];$nights=max(1,min(28,(int)($target['nights']??7)));$adults=max(1,min(6,(int)($target['adults']??2)));$children=max(0,min(3,(int)($target['children_count']??0)));$ages=$binding['ages'];
             foreach($anchors as $anchor){
                 $a=(string)$anchor;
                 if(!isset($d['hotels'][$a])){$attempts[]=['samo_hotel_id'=>$anchor,'state'=>'anchor_not_in_current_catalog'];continue;}
                 s942_save($dir.'/samo-target-'.$tv.'-'.$anchor.'-reserved.json',['operation'=>OP,'tv_hotel_id'=>$tv,'samo_hotel_id'=>$anchor,'state'=>'reserved_before_price']);
                 $cl=new AnyTourAndromedaClient($wrap,true);$cl->restorePrivateSession($session);
-                $params=['TOWNFROMINC'=>$d['departure'],'STATEINC'=>$d['state'],'CHECKIN_BEG'=>$beg,'CHECKIN_END'=>$end,'NIGHTS_FROM'=>5,'NIGHTS_TILL'=>14,'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>643,'PACKETTYPE'=>0,'PAGE'=>1,'OPERATORS'=>'5','HOTELS'=>$a];
+                $params=['TOWNFROMINC'=>$binding['departure_id'],'STATEINC'=>$d['state'],'CHECKIN_BEG'=>$beg,'CHECKIN_END'=>$end,'NIGHTS_FROM'=>$nights,'NIGHTS_TILL'=>$nights,'ADULT'=>$adults,'CHILD'=>$children,'CURRENCYINC'=>643,'PACKETTYPE'=>0,'PAGE'=>1,'OPERATORS'=>'5','HOTELS'=>$a];
+                if($children>0)$params['AGES']=implode(',',$ages);
                 $raw=$cl->price($params);$rawHash=hash('sha256',s942_json($raw));file_put_contents($dir.'/samo-target-'.$tv.'-'.$anchor.'-raw.json',s942_json($raw)."\n");chmod($dir.'/samo-target-'.$tv.'-'.$anchor.'-raw.json',0600);
                 $seen=[];$opNative=[];$catIds=[];$count=0;
                 foreach(($raw['PRICES']??[]) as $z){
@@ -82,12 +119,12 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
                     if($flag==='1')$opNative[$id]=true;else $catIds[$id]=true;
                 }
                 $offerRows+=$count;foreach($opNative as $id=>$_)$native[$id]=true;foreach($catIds as $id=>$_)$catalog[$id]=true;
-                $attempts[]=['samo_hotel_id'=>$anchor,'state'=>$count>0?'returned':'not_returned','operator_price_rows'=>$count,'operator_native_ids'=>array_map('intval',array_keys($opNative)),'catalog_ids'=>array_map('intval',array_keys($catIds)),'response_sha256'=>$rawHash];
+                $attempts[]=['samo_hotel_id'=>$anchor,'state'=>$count>0?'returned':'not_returned','operator_price_rows'=>$count,'operator_native_ids'=>array_map('intval',array_keys($opNative)),'catalog_ids'=>array_map('intval',array_keys($catIds)),'departure_id'=>$binding['departure_id'],'departure_name'=>$binding['departure_name'],'checkin'=>$beg,'nights'=>$nights,'adults'=>$adults,'children'=>$children,'response_sha256'=>$rawHash];
                 s942_save($dir.'/samo-target-'.$tv.'-'.$anchor.'-result.json',end($attempts));
                 if(count($native)===1)break;
             }
             $ids=array_map('intval',array_keys($native));sort($ids);$st=count($ids)===1?'unique_operator_native':(count($ids)>1?'ambiguous_operator_native':($offerRows>0?'returned_without_operator_native':'not_returned'));
-            $row=['tv_hotel_id'=>$tv,'country_id'=>$country,'samo_anchor_count'=>count($anchors),'attempted_anchors'=>count($attempts),'operator_price_rows'=>$offerRows,'state'=>$st,'anex_native_candidates'=>$ids,'catalog_candidates'=>array_map('intval',array_keys($catalog)),'attempts'=>$attempts,'safe_to_write_now'=>false];
+            $row=['tv_hotel_id'=>$tv,'country_id'=>$country,'samo_anchor_count'=>count($anchors),'attempted_anchors'=>count($attempts),'operator_price_rows'=>$offerRows,'state'=>$st,'anex_native_candidates'=>$ids,'catalog_candidates'=>array_map('intval',array_keys($catalog)),'departure_id'=>$binding['departure_id'],'departure_name'=>$binding['departure_name'],'checkin'=>$beg,'nights'=>$nights,'adults'=>$adults,'children'=>$children,'attempts'=>$attempts,'safe_to_write_now'=>false];
             s942_save($dir.'/samo-hotel-'.$tv.'.json',$row);$rows[]=$row;
         }
         $state='completed_read_only';
@@ -99,12 +136,18 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
     if($rows===[]){foreach(glob($dir.'/samo-hotel-*.json')?:[] as $p)$rows[]=s942_read($p);}
     $counts=[];$nativeSources=[];foreach($rows as $r){$counts[$r['state']]=($counts[$r['state']]??0)+1;if($r['state']==='unique_operator_native')$nativeSources[(string)$r['anex_native_candidates'][0]][]=(int)$r['tv_hotel_id'];}ksort($counts);
     $mutual=0;foreach($nativeSources as $tvIds)if(count(array_unique($tvIds))===1)$mutual++;
-    $out=$base+['state'=>$state,'reason'=>$reason,'scope_offset'=>$offset,'scope_count'=>count($scope),'samo_http_calls'=>$calls,'searched_hotels'=>count($rows),'date_window'=>[$beg??null,$end??null],'operator_id'=>5,'status_counts'=>$counts,'unique_native_source_unique_count'=>$mutual,'rows'=>$rows];
+    $out=$base+['state'=>$state,'reason'=>$reason,'scope_offset'=>$offset,'scope_count'=>count($scope),'samo_http_calls'=>$calls,'searched_hotels'=>count($rows),'context_mode'=>'retained_exact_per_target','context_status_counts'=>$contextCounts,'operator_id'=>5,'status_counts'=>$counts,'unique_native_source_unique_count'=>$mutual,'rows'=>$rows];
     $h=s942_save($dir.'/result.json',$out);s942_save($dir.'/receipt.json',$base+['state'=>$state,'result_sha256'=>$h,'samo_http_calls'=>$calls,'searched_hotels'=>count($rows),'no_replay'=>$calls>0]);
     echo s942_json(['state'=>$state,'reason'=>$reason,'samo_http_calls'=>$calls,'searched_hotels'=>count($rows),'status_counts'=>$counts,'unique_native_source_unique_count'=>$mutual])."\n";
     return in_array($state,['completed_read_only','terminal_quota_stop_no_replay'],true)?0:2;
 }
-if(($argv[1]??'')==='--self-test'){s942_need(s942_norm('АНЕКС  ТУР')==='анекс тур','norm');echo "MATCH_LIVE942_SAMO_ANEX_REFRESH_V2_SELFTEST_OK\n";exit;}
+if(($argv[1]??'')==='--self-test'){
+    s942_need(s942_norm('АНЕКС  ТУР')==='анекс тур','norm');
+    $ids=s942_ids([['id'=>1,'name'=>'Moscow','lName'=>'Москва'],['id'=>2,'name'=>'Kazan','lName'=>'Казань']],['Москва']);s942_need($ids===[1],'townfrom');
+    s942_need(s942_date_ymd('2026-10-11')==='20261011'&&s942_date_ymd('2026-99-11')===null,'date');
+    s942_need(s942_child_ages(2,'5, 12')===[5,12]&&s942_child_ages(1,'')===null,'ages');
+    echo "MATCH_LIVE942_SAMO_ANEX_REFRESH_V3_SELFTEST_OK\n";exit;
+}
 s942_need(($argv[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$plan=(string)getenv('MATCH_PLAN_PATH');$sha=(string)getenv('MATCH_SOURCE_SHA');
 s942_need(is_dir($root)&&is_dir($dir)&&basename($dir)===OP&&is_file($plan)&&preg_match('/^[a-f0-9]{40}$/D',$sha)===1,'runtime_scope');
 exit(s942_execute($root,$dir,$plan,$sha));
