@@ -93,7 +93,7 @@ function zeroCaptureCase(string $mode, int $seconds, array $verifiedPricing): vo
         $default = AnyTourAndromedaLocalOfferCollectorV1::collect($request, $search, $load, $allow,
             static function() use (&$positiveCaptures): array { ++$positiveCaptures; return ['status' => 'captured']; },
             static fn(): array => ['published' => false, 'reason' => 'already_published', 'readyOfferCount' => 1]);
-        aassert($positiveCaptures === 2 && $default['surcharge_capture_attempts'] === 2, 'default capture budget changed');
+        aassert($positiveCaptures === 0 && $default['surcharge_capture_attempts'] === 0, 'default capture budget must remain zero');
     } finally { cleanup_dir($dir); }
 }
 foreach (['all', 'non_external_only'] as $mode) foreach ([0, 210] as $seconds) zeroCaptureCase($mode, $seconds, $verifiedPricing);
@@ -123,4 +123,4 @@ try {
         $unexpected, $unexpected, $unexpected, $unexpected, 0);
 } catch (RuntimeException $error) { $refused = $error->getMessage() === 'ANDROMEDA_LOCAL_COLLECTOR_SEARCH'; }
 aassert($refused, 'zero capture bypassed completeness');
-echo "ANDROMEDA_ZERO_CAPTURE_OK real_autosave=4 cli=2 invalid_cli=5 invalid_core=2 incomplete_search=1 default_unchanged=1 supplier_http=0 live_db=0\n";
+echo "ANDROMEDA_ZERO_CAPTURE_OK real_autosave=4 cli=2 invalid_cli=5 invalid_core=2 incomplete_search=1 default_zero=1 supplier_http=0 live_db=0\n";
