@@ -29,7 +29,10 @@ function hma7_name_score(string $a,string $b): array {
     $sa=implode(' ',$ta);$sb=implode(' ',$tb);$exact=$sa===$sb;
     $inter=count(array_intersect($ta,$tb));$union=count(array_unique(array_merge($ta,$tb)));
     $j=$union?$inter/$union:0.0;$contain=$inter/min(count($ta),count($tb));
-    $max=max(strlen($sa),strlen($sb));$lev=$max?1-(levenshtein($sa,$sb)/$max):0.0;
+    $max=max(strlen($sa),strlen($sb));
+    // PHP's levenshtein implementation rejects long byte strings on supported
+    // runtimes. Token similarity remains deterministic and qualifier-safe.
+    $lev=$max&&strlen($sa)<=240&&strlen($sb)<=240?1-(levenshtein($sa,$sb)/$max):0.0;
     $score=$exact?1.0:max($lev,0.68*$j+0.32*$contain);
     if($qualifierConflict)$score=min($score,0.79);
     return ['score'=>round(max(0.0,min(1.0,$score)),6),'exact'=>$exact,'qualifier_conflict'=>$qualifierConflict,'a_tokens'=>$ta,'b_tokens'=>$tb];
@@ -73,28 +76,6 @@ function hma7_resolve(array $tvRows,array $samoRows): array {
     return ['tv_hotels'=>count($tv),'samo_hotels'=>count($sa),'strong_common3'=>$strong,'review'=>array_slice($review,0,100),
         'strong_count'=>count($strong),'review_count'=>count($review),'policy'=>'mutual_unique_name_score_gte_0.90_margin_0.06_common3_overlap_no_qualifier_conflict'];
 }
-function hma7_baseline_pairs(array $baseline): array {
-    $out=[];
-    foreach(($baseline['hotel_candidates']??[]) as $c){
-        if(!is_array($c))continue;
-        $ops=array_values(array_filter(array_map('strval',$c['operator_overlap']['operators']??[])));sort($ops,SORT_STRING);
-        $common3=array_values(array_intersect($ops,['anex','funsun','intourist']));sort($common3,SORT_STRING);
-        $tier=count($common3)>0?'baseline_exact_common3':(in_array('biblio',$ops,true)?'baseline_exact_biblio_only':'baseline_exact_no_common3');
-        $out[]=[
-            'tv_hotel_id'=>(string)$c['tv_hotel_id'],'samo_hotel_id'=>(string)$c['samo_hotel_id'],
-            'tv_name'=>(string)($c['tv_name']??''),'samo_name'=>(string)($c['samo_name']??''),
-            'name_score'=>1.0,'name_exact_generic'=>(bool)($c['name_exact']??false),'qualifier_conflict'=>false,
-            'operator_overlap'=>$ops,'common3_overlap'=>$common3,'tier'=>$tier,
-            'baseline_evidence_class'=>(string)($c['hotel_evidence_class']??'exact_hotel_name_plus_operator_fingerprint'),
-        ];
-    }
-    usort($out,fn($a,$b)=>strcmp($a['tv_hotel_id'],$b['tv_hotel_id'])?:strcmp($a['samo_hotel_id'],$b['samo_hotel_id']));
-    return $out;
-}
-function hma7_unresolved_rows(array $tvRows,array $baselinePairs): array {
-    $resolved=[];foreach($baselinePairs as $c)$resolved[(string)$c['tv_hotel_id']]=true;
-    return array_values(array_filter($tvRows,fn($r)=>is_array($r)&&!isset($resolved[(string)($r['hotel_id']??'')])));
-}
 function hma7_query(PDO $db,string $sql,array $params=[]): array {$st=$db->prepare($sql);$st->execute(array_values($params));return $st->fetchAll(PDO::FETCH_ASSOC)?:[];}
 function hma7_current(PDO $db,array $candidates): array {
     if(!$candidates)return ['rows'=>[],'counts'=>[]];
@@ -124,20 +105,12 @@ function hma7_execute(string $opDir,string $root): array {
     if(($reservation['operation']??null)!==HMA7_OP||($reservation['state']??null)!=='reserved_read_only_current_audit')throw new RuntimeException('reservation');
     $operations=dirname($opDir);$saved=hmc6_samo_rows($operations.'/'.HMA7_SOURCE_OP);$checkpoint=hmc3_previous_checkpoint($operations.'/'.HMC_PREVIOUS_OP);
     $common=['anex'=>['tv'=>['id'=>13,'name'=>'ANEX']], 'biblio'=>['tv'=>['id'=>18,'name'=>'Библио-Глобус']], 'funsun'=>['tv'=>['id'=>25,'name'=>'FUN&SUN']], 'intourist'=>['tv'=>['id'=>43,'name'=>'Интурист']]];
-    $tv=hmc_tv_offer_rows($checkpoint['rows'],HMC_DATE_FROM,$common);
-    $baseline=hmf_resolve($tv,$saved['rows'],[]);$baselinePairs=hma7_baseline_pairs($baseline);
-    if(count($baselinePairs)!==3)throw new RuntimeException('baseline_exact_count');
-    $unresolvedRows=hma7_unresolved_rows($tv,$baselinePairs);$unresolvedHotels=hma7_hotels($unresolvedRows);
-    if(count($unresolvedHotels)!==137)throw new RuntimeException('unresolved_tv_count');
-    $aliases=hma7_resolve($unresolvedRows,$saved['rows']);
-    $audit=[];$seen=[];
-    foreach(array_merge($baselinePairs,$aliases['strong_common3']) as $c){$k=$c['tv_hotel_id'].'|'.$c['samo_hotel_id'];if(isset($seen[$k]))continue;$seen[$k]=true;$audit[]=$c;}
-    require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$current=hma7_current(v2_data_db(),$audit);
+    $tv=hmc_tv_offer_rows($checkpoint['rows'],HMC_DATE_FROM,$common);$resolved=hma7_resolve($tv,$saved['rows']);
+    require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$current=hma7_current(v2_data_db(),$resolved['strong_common3']);
     return ['operation'=>HMA7_OP,'state'=>'completed_read_only_current_audit','source_operation'=>HMA7_SOURCE_OP,
-        'scope'=>['resort'=>'Side','date_from'=>HMC_DATE_FROM,'date_to'=>HMC_DATE_TO,'nights'=>7,'adults'=>2,'children'=>0,'retained_tv_hotels'=>140,'retained_tv_offers'=>1809,'retained_samo_offers'=>count($saved['rows']),'baseline_exact_pairs'=>count($baselinePairs),'alias_unresolved_tv_hotels'=>count($unresolvedHotels)],
+        'scope'=>['resort'=>'Side','date_from'=>HMC_DATE_FROM,'date_to'=>HMC_DATE_TO,'nights'=>7,'adults'=>2,'children'=>0,'retained_tv_hotels'=>140,'retained_tv_offers'=>1809,'retained_samo_offers'=>count($saved['rows'])],
         'acquisition_policy'=>'COMMON3_ANEX_FUNSUN_INTOURIST_FOR_NEW_MATCH','biblio_history_preserved'=>true,'biblio_fuel_policy'=>'owner_policy_zero_included_no_fuel_sample',
-        'resolver'=>['baseline_exact'=>$baselinePairs,'baseline_exact_count'=>count($baselinePairs),'unresolved_tv_hotels'=>count($unresolvedHotels),'alias'=>$aliases,'current_audit_candidate_count'=>count($audit)],
-        'current'=>$current,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_writes'=>0,'search_visibility_verified'=>false];
+        'resolver'=>$resolved,'current'=>$current,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_writes'=>0,'search_visibility_verified'=>false];
 }
 
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
