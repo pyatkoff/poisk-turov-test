@@ -438,7 +438,6 @@ def install_runtime(stage,files,op):
     selected=sorted(
         relative for relative in files
         if relative.startswith('app/integrations/')
-        or relative in []
     )
     if len(selected)<20 or not any(x=='app/integrations/three-provider-fuel-evidence.php' for x in selected):
         fail('install_inventory')
