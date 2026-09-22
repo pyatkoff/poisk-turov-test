@@ -293,14 +293,14 @@ function loadResultCalendar(){
  resultCalendar.controller?.abort();const request={key,hotels:[],observations:[],phase:'loading',controller:new AbortController()};resultCalendar=request;
  const show=snapshot=>{if(resultCalendar!==request)return;request.hotels=snapshot.hotels;request.observations=snapshot.observations;renderCalendarStrip();};
  data.calendarPrices(s,s.from,s.to,request.controller.signal,filters,show).then(snapshot=>{
-  if(resultCalendar!==request)return;request.hotels=snapshot.hotels;request.observations=snapshot.observations;request.phase='complete';renderCalendarStrip();
+  if(resultCalendar!==request)return;request.hotels=snapshot.hotels;request.observations=snapshot.observations;request.phase=snapshot.partial?'partial':'complete';renderCalendarStrip();
  }).catch(error=>{if(resultCalendar!==request||error.name==='AbortError')return;request.phase='error';renderCalendarStrip();});
 }
 function renderCalendarStrip(){
  loadResultCalendar();
  const s=state.search,days=[];for(let day=s.from;day<=s.to;day=addDays(day,1))days.push(day);
  const calendarRows=[...hotels,...resultCalendar.hotels],prices=days.map(day=>calendarMinimum(day,{calendarHotels:calendarRows},resultCalendar.observations)),known=prices.filter(p=>p!==null),min=Math.min(...known),max=Math.max(...known);
- const source=resultCalendar.phase==='loading'?'Загружаем цены из базы…':resultCalendar.phase==='error'?'База цен временно недоступна · показаны найденные предложения':'Из базы и найденных предложений · цена требует проверки';
+ const source=resultCalendar.phase==='loading'?'Загружаем цены из базы…':resultCalendar.phase==='error'?'База цен временно недоступна · показаны найденные предложения':resultCalendar.phase==='partial'?'Часть базы цен временно недоступна · показаны доступные цены и найденные предложения':'Из базы и найденных предложений · цена требует проверки';
  $('#calendar-caption').textContent=`Цена от за ${guestsText()} · ${durationText()} · ${source} · прочерк — нет цены`;
  $('#price-strip').setAttribute('aria-busy',String(resultCalendar.phase==='loading'));
  $('#price-strip').innerHTML=days.map((day,i)=>`<button class="date-price ${prices[i]!==null&&prices[i]===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${prices[i]!==null?', от '+money(prices[i]):', цена пока неизвестна'}"><span class="date">${dateText(day)}</span><strong>${prices[i]===null?'—':money(prices[i])}</strong><span class="calendar-bar" style="--bar-height:${prices[i]===null?5:12+Math.round((prices[i]-min)/Math.max(1,max-min)*22)}px"></span></button>`).join('');
@@ -875,7 +875,7 @@ function loadCalendarPrices(){
   if(loads.has(month)||controller.signal.aborted)return;loads.set(month,'loading');legend();
   const from=month<startDay?startDay:month,next=dateObj(month);next.setUTCMonth(next.getUTCMonth()+1);next.setUTCDate(0);const to=iso(next)>endDay?endDay:iso(next);
   const show=snapshot=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;snapshots.set(month,snapshot);calendarHotels=[...snapshots.values()].flatMap(row=>row.hotels);calendarObservations=[...snapshots.values()].flatMap(row=>row.observations);refreshCalendarPrices();};
-  try{await data.calendarPrices(ctx.search,from,to,controller.signal,ctx.filters,show);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;loads.set(month,'complete');legend();}
+  try{const snapshot=await data.calendarPrices(ctx.search,from,to,controller.signal,ctx.filters,show);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;show(snapshot);loads.set(month,snapshot.partial?'error':'complete');legend();}
   catch(error){if(error.name!=='AbortError'){loads.set(month,'error');legend();}}
  };
  // Desktop displays two months; mobile reads each month as it comes into view.
