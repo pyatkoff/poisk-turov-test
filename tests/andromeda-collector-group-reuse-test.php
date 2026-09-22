@@ -32,6 +32,8 @@ function reuse_fact(array $offer): array {
     $base = $offer['price'];
     return ['schema_version' => 1, 'provider' => 'andromeda', 'state' => 'estimated',
         'search_price' => $base,
+        'transport_markup_reported' => ['amount' => '15000.50', 'currency' => 'RUB',
+            'source' => 'andromeda_get_flights_transport', 'aggregation' => 'single_distinct_party_markup'],
         'party_surcharge' => ['amount' => '15000.50', 'currency' => 'RUB',
             'source' => 'andromeda_get_flights_transport'],
         'search_price_with_surcharge' => ['amount' => ((int)$base['amount'] + 15000) . '.50',
