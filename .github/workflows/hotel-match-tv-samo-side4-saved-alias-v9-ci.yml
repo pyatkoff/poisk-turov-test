@@ -1,0 +1,18 @@
+name: MATCH Side4 saved alias v9 CI
+'on':
+  pull_request:
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_side4_saved_alias_current_v7.php
+      - tests/hotel_match_tv_samo_side4_saved_alias_current_v7_test.php
+      - scripts/diagnostics/hotel_match_tv_samo_side4_saved_alias_v9.php
+      - tests/hotel_match_tv_samo_side4_saved_alias_v9_test.php
+      - .github/workflows/hotel-match-tv-samo-side4-saved-alias-v9-ci.yml
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - run: php -l scripts/diagnostics/hotel_match_tv_samo_side4_saved_alias_v9.php
+      - run: php tests/hotel_match_tv_samo_side4_saved_alias_current_v7_test.php
+      - run: php tests/hotel_match_tv_samo_side4_saved_alias_v9_test.php
