@@ -19,8 +19,7 @@ def prepare():
 def run(a,input=None,timeout=90):return subprocess.run(a,input=input,capture_output=True,check=True,timeout=timeout).stdout
 def install():
  src,rel,bl,prev=ev();need(api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==rel,'release_moved');meta=api('/actions/artifacts/'+os.environ['READY_ARTIFACT_ID']);need(not meta['expired'] and meta['workflow_run']['id']==int(os.environ['GITHUB_RUN_ID']),'artifact_identity')
- q=urllib.request.Request(meta['archive_download_url'],headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','User-Agent':'search3-root-installer'});packed=urllib.request.urlopen(q,timeout=30).read()
- with zipfile.ZipFile(io.BytesIO(packed)) as z:b=z.read('api-v2.php');req=json.loads(z.read('request.json'))
+ ready=pathlib.Path(os.environ['READY_DIR']); need(ready.is_dir() and not ready.is_symlink(),'ready_dir'); files={p.name:p for p in ready.rglob('*') if p.is_file()}; need(set(files)=={'api-v2.php','request.json'},'ready_inventory'); b=files['api-v2.php'].read_bytes(); req=json.loads(files['request.json'].read_text())
  need(req=={'source':src,'release':rel,'blob':bl,'sha256':sha(b),'previous':prev},'artifact_request')
  work=pathlib.Path(os.environ['RUNNER_TEMP'])/'search3-root-gateway-install';work.mkdir();f=work/'api-v2.php';f.write_bytes(b);key=work/'key';known=work/'known';raw=os.environ['PREVIEW_KEY'].replace('\r','')
  if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
