@@ -10,6 +10,8 @@ on:
       - 'v2/prototype-search/hotel-popularity-v1.js'
       - 'v2/prototype-search/index.php'
       - 'v2/prototype-search/index.html'
+      - 'v2/prototype-search/app.js'
+      - 'v2/prototype-search/styles.css'
       - 'tests/search3-prototype-hotel-popularity-v1.cjs'
       - '.github/workflows/search3-hotel-popularity-v1.yml'
 
