@@ -1,4 +1,5 @@
 name: MATCH SAMO live30 COMMON4 current v3
+# synchronize after initial workflow registration
 on:
   pull_request:
     branches: [feature/anex-search-adapter-20260907]
