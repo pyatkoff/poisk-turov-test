@@ -8,12 +8,15 @@
       response.pending = true;
       response.phase = 'loading';
       response.continued = event.continued === true;
+      response.cachedResume = event.cachedResume === true;
       response.canContinue = false;
-      response.message = event.retryRead
-        ? 'Проверяем результат предыдущего запроса без повторного запуска.'
-        : event.continued
-          ? 'Запрашиваем дополнительные варианты. Найденные предложения сохраняются.'
-          : '';
+      response.message = event.cachedResume
+        ? 'Восстанавливаем сохранённые предложения без нового запроса к туроператорам.'
+        : event.retryRead
+          ? 'Проверяем результат предыдущего запроса без повторного запуска.'
+          : event.continued
+            ? 'Запрашиваем дополнительные варианты. Найденные предложения сохраняются.'
+            : '';
     }
     if (event.type === 'provider') {
       response.providers ??= {};
@@ -28,6 +31,7 @@
       response.canContinue = event.canContinue === true;
       response.retryRead = event.retryRead === true;
       response.resultLimitReached = event.resultLimitReached === true;
+      response.cachedResume = event.cachedResume === true;
       response.sources = event.sources || response.sources || {};
     }
     if (event.type === 'error') {
@@ -72,7 +76,10 @@
 
       let pending;
       try {
-        pending = data.search(prepared.search, receive, prepared.hotelIds || [], prepared.filters || {});
+        const resumeOnly=runOptions.resumeOnly===true;
+        const runner=resumeOnly?data.resumeCached:data.search;
+        if(typeof runner!=='function')throw new Error(resumeOnly?'Prototype cached resume is unavailable.':'Prototype search is unavailable.');
+        pending = runner.call(data,prepared.search, receive, prepared.hotelIds || [], prepared.filters || {});
       } catch (error) {
         fail(error);
         return false;
