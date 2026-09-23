@@ -1,0 +1,39 @@
+name: MATCH live942 SAMO retained-cohort CI
+'on':
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php
+      - scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php
+      - tests/hotel_match_live942_samo_retained_context_v1_test.php
+      - .github/workflows/hotel-match-live942-samo-retained-cohort-ci.yml
+permissions: {contents: read}
+jobs:
+  test:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php
+          php -l scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php
+          php -l tests/hotel_match_live942_samo_retained_context_v1_test.php
+          php scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php --self-test
+          php scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php --self-test
+          php tests/hotel_match_live942_samo_retained_context_v1_test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          planner=Path('scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php').read_text()
+          runner=Path('scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php').read_text()
+          assert 'retained_terminal_tv_plan' in planner
+          assert 'retained_tv_plans_incomplete_' in planner
+          assert 'departure_name_missing_count' in planner
+          assert "'departure_name_missing'" in runner
+          for bad in ['INSERT INTO','UPDATE ','DELETE FROM','booking(','lead_send']:
+              assert bad not in planner, bad
+              assert bad not in runner, bad
+          print('MATCH_LIVE942_SAMO_RETAINED_COHORT_BOUNDARY_OK')
+          PY
