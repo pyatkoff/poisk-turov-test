@@ -419,6 +419,10 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'match-common4-resume-readback':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'match-common4-readback':
         need(len(parts) == 5, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
@@ -1946,6 +1950,44 @@ def run_match_common4_continuation_acquire(stage, offset, limit):
             'provider_stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
 
 
+def read_match_common4_resume_day():
+    root=home/'.anytoour-match/operations'
+    prefix='hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n'
+    matches=[p for p in root.iterdir() if p.is_dir() and not p.is_symlink() and p.name.startswith(prefix) and p.name.endswith('-v1')]
+    if len(matches)!=1: fail('match_common4_resume_readback_directory_count')
+    directory=matches[0]
+    reservation_path=directory/'reservation.json'
+    if not safe_file(reservation_path,1024*1024): fail('match_common4_resume_readback_reservation_missing')
+    reservation=safe_json(reservation_path,1024*1024)
+    out={'child_operation':directory.name,'reservation':{k:reservation.get(k) for k in (
+        'state','source_sha','resume_from_operation','resume_previous_result_sha256','resume_plan_sha256',
+        'attempted_search_groups','attempted_hotel_count','remaining_count','call_cap')}}
+    requests=sorted(directory.glob('tv-request-*.json'))
+    responses=sorted(directory.glob('tv-response-*.json'))
+    batches=sorted(directory.glob('tv-batch-*-result.json'))
+    action_counts={}
+    for path in requests:
+        if not safe_file(path,1024*1024): continue
+        value=safe_json(path,1024*1024);action=str(value.get('action') or 'unknown')
+        action_counts[action]=action_counts.get(action,0)+1
+    out['progress']={'request_files':len(requests),'response_files':len(responses),'completed_batch_files':len(batches),'action_counts':action_counts}
+    result_path=directory/'result.json';receipt_path=directory/'receipt.json'
+    if safe_file(result_path,32*1024*1024) and safe_file(receipt_path,1024*1024):
+        raw=result_path.read_bytes();digest=hashlib.sha256(raw).hexdigest()
+        result=safe_json(result_path,32*1024*1024);receipt=safe_json(receipt_path,1024*1024)
+        if receipt.get('result_sha256')!=digest: fail('match_common4_resume_readback_hash')
+        out['terminal']=True;out['result_sha256']=digest;out['receipt_state']=receipt.get('state')
+        out['result_summary']={k:result.get(k) for k in (
+            'state','reason','frontier_count','scope_count','searched_hotels','planned_groups','completed_batches',
+            'returned_targets','returned_missing_operator_pairs','returned_operator_pairs','provider_calls',
+            'operation_tariff_units','daily_tariff_units_after_local_ledger','physical_http_attempts',
+            'tourvisor_account','single_native_chunk_unique_count','single_native_by_operator',
+            'incomplete_status_batches','database_writes','mapping_writes')}
+    else:
+        out['terminal']=False
+    return out
+
+
 def run_match_common4_continuation_resume_day(stage):
     previous='hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1'
     match_root=home/'.anytoour-match/operations'
@@ -2512,6 +2554,14 @@ try:
         result['supplier_calls']=result['match_common4_continuation_resume_day']['summary'].get('provider_calls','bounded')
         result['database_writes']=0
         result['production_unchanged']=True
+    if mode=='match-common4-resume-readback':
+        result['match_common4_resume_readback']=read_match_common4_resume_day()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='reconciled_read_only'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='match-tv234-secondary':
         result['match_tv234_secondary']=run_match_tv234_secondary(stage,int(payload['offset']),int(payload['limit']))
         result['production_after']=fingerprints()
@@ -2537,7 +2587,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -2560,7 +2610,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
