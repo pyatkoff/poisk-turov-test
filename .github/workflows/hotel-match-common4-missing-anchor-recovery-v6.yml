@@ -9,9 +9,9 @@ name: MATCH COMMON4 missing-anchor recovery v6
 permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-common4-missing-anchor-recovery-1971-20260923-v6, cancel-in-progress: false}
 env:
-  OP: hotel-match-common4-missing-anchor-recovery-1971-20260923-v6
+  OP: hotel-match-common4-missing-anchor-recovery-1971-20260923-v7
   BASE: c70c86f3e83373072ad13bec57c9d602c43c7d15
-  CLAIM: '5801796658'
+  CLAIM: '5801938680'
   AUDIT_OP: hotel-match-live30-common4-current-1971-20260923-v2
   AUDIT_SHA: 69bbd1ab7673f0d5ecd2759604c6a6f7e1182a167ba21f78c3f7aeefe05a069f
 jobs:
