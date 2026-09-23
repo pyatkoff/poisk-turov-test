@@ -1,0 +1,27 @@
+name: MATCH live30 COMMON4 current v2
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_live30_common4_current_v2.php'
+      - 'tests/hotel_match_live30_common4_current_v2_test.php'
+      - '.github/workflows/hotel-match-live30-common4-current-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint
+        run: php -l scripts/diagnostics/hotel_match_live30_common4_current_v2.php
+      - name: Self test
+        run: php scripts/diagnostics/hotel_match_live30_common4_current_v2.php --self-test
+      - name: Contract test
+        run: php tests/hotel_match_live30_common4_current_v2_test.php
+      - name: Supplier and write boundary
+        run: |
+          ! grep -E 'curl_|file_get_contents\(.*https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_live30_common4_current_v2.php
