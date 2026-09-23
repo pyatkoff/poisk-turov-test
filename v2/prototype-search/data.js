@@ -311,7 +311,8 @@
       meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:'',
       operator:{name:'ANEX'},isCharter:flight==='charter'?true:flight==='regular'?false:undefined,
       cachedListing:false,selectionEnabled:false,finalPriceVerified:false,anexKind:String(tour.kind||''),
-      anexLocalHotelId:hotel.local_id};
+      anexLocalHotelId:hotel.local_id,anexGeneration:Number.isInteger(run?.generation)?run.generation:generation,
+      anexSessionCurrent:run?.anexSessionCurrent===true};
   }
   function directAnexWindows(p){
     const windows=[];let from=p.dateFrom;
@@ -827,7 +828,7 @@
       const seen=new Set(),normalized=[];
       for(const tour of expanded.hotels[0].tours){
         if(tour?.kind!=='concrete'||tour?.search_ref!==searched.search_ref)throw new Error('ANEX вернул некорректный конкретный вариант.');
-        const item=await directAnexOffer(expanded.hotels[0],tour,{filters},p,seen);
+        const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch,anexSessionCurrent:true},p,seen);
         if(item)normalized.push(item);
       }
       if(!normalized.length)throw new Error('Конкретные варианты ANEX больше недоступны.');
@@ -837,6 +838,43 @@
       }
       return Object.freeze({hotelId:o.hotelId,offers:projected.map(item=>structuredClone(item))});
     }finally{if(activeVerification===controller)activeVerification=null;}
+  }
+  function normalizeAnexConcrete(value,o){
+    const raw=o?.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');
+    if(!value||value.provider!=='anex'||value.generation!==epoch||value.search_ref!==searchRef||value.offer_ref!==offerRef
+      ||value.status!=='current'||value.selection_state!=='disabled'||!value.offer||value.offer.final_price_verified!==false
+      ||value.offer.context?.current_context_verified!==true||typeof value.finalPriceReady!=='boolean')return null;
+    const ready=value.finalPriceReady;
+    let finalPrice=null;
+    if(ready){
+      const amount=String(value.finalPrice??'');
+      if(!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(amount)||Number(amount)<=0||String(value.price??'')!==amount)return null;
+      finalPrice=Object.freeze({amount,currency:'RUB'});
+    }else if(value.finalPrice!==null&&value.finalPrice!==undefined||value.price!==null&&value.price!==undefined)return null;
+    return Object.freeze({state:'current',currentContextVerified:true,finalPriceReady:ready,finalPrice,
+      finalPriceVerified:false,localHotelId:localId,searchRef,offerRef});
+  }
+  async function verifyAnexConcrete(o){
+    const raw=o&&o.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');
+    if(!o||o.cached||o.provider!=='anex'||raw?.selectionEnabled!==false||raw?.anexKind!=='concrete'||raw?.anexSessionCurrent!==true
+      ||!Number.isSafeInteger(localId)||localId<1||!Number.isInteger(epoch)||epoch!==generation
+      ||!(/^anex_online:[a-f0-9]{64}$/).test(offerRef)||!(/^[a-f0-9]{32}$/).test(searchRef)){
+      throw new Error('Конкретное предложение ANEX устарело. Откройте актуальные варианты.');
+    }
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+    if(!url)throw new Error('ANEX сейчас недоступен.');
+    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    const timeout=setTimeout(()=>controller.abort(),30000);
+    try{
+      const body={action:'offer',generation:epoch,search_ref:searchRef,offer_ref:offerRef,local_hotel_id:localId};
+      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
+      const payload=await response.json().catch(()=>null);
+      if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
+      if(!response.ok||payload?.ok!==true||!payload.data)throw new Error(response.status===429?'Лимит проверки ANEX временно исчерпан.':'ANEX не смог проверить выбранное предложение.');
+      const currentOffer=normalizeAnexConcrete(payload.data,o);if(!currentOffer)throw new Error('ANEX вернул ответ для другого или устаревшего предложения.');
+      return currentOffer;
+    }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
   function andromedaContext(value,depth=0){
     if(!value||depth>1||value.provider!=='andromeda'||!(/^offer_[a-f0-9]{64}$/).test(String(value.offer_ref||''))
@@ -969,5 +1007,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAndromeda,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAndromeda,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);
