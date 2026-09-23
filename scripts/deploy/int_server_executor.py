@@ -49,6 +49,8 @@ FIXED = [
     'scripts/diagnostics/hotel_match_live30_common4_acquire_v1.py',
     'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py',
     'scripts/diagnostics/hotel_match_live30_common4_remainder_v1.py',
+    'scripts/diagnostics/hotel_match_common4_resume_salvage_v1.py',
+    'scripts/diagnostics/hotel_match_common4_mass_current_v13.php',
     'scripts/diagnostics/hotel_match_live30_common4_current_v2.php',
     'scripts/diagnostics/int_funsun_direction_fx_seed_v1.php',
     'scripts/diagnostics/int_operator_direction_fuel_mass_readback_v1.php',
@@ -433,6 +435,14 @@ def parse_command(body: str) -> dict:
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'limit': integer(parts[3], 1, 300, 'match_limit')}
+    if mode == 'match-common4-resume-salvage':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'match-common4-mass-current':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'match-common4-readback':
         need(len(parts) == 5, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
@@ -2909,6 +2919,93 @@ def execute(command: dict, source_root: Path) -> dict:
                     'mode':command['mode'],'status':'complete','match_common4_continuation_remainder':out,
                     'supplier_calls':supplier_calls,'database_writes':0,'booking_calls':0,'lead_calls':0,
                     'production_unchanged':True}
+            (output/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+            return result
+        finally:
+            subprocess.run(['ssh',*options,'-l',user,host,'rm -rf -- '+q(stage)+'; rm -f -- '+q(remote_archive)],
+                           stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
+            key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+
+    if command['mode'] == 'match-common4-resume-salvage':
+        stage='/tmp/' + command['operation_id'] + '-source'
+        q=shlex.quote
+        remote_script=(
+            'set -eu; umask 077; '
+            'stage='+q(stage)+'; rm -rf "$stage"; mkdir -p "$stage"; '
+            'tar -xzf '+q(remote_archive)+' -C "$stage"; '
+            'root="$HOME/www/anytoour.ru"; before="$(sha256sum "$root/index.php" | awk \'{print $1}\')"; '
+            'MATCH_OPERATIONS_ROOT="$HOME/.anytoour-match/operations" MATCH_SOURCE_SHA='+q(command['source_sha'])+' '
+            'python3 "$stage/scripts/diagnostics/hotel_match_common4_resume_salvage_v1.py" --execute >"$stage/salvage.out"; '
+            'after="$(sha256sum "$root/index.php" | awk \'{print $1}\')"; test "$before" = "$after"; cat "$stage/salvage.out"'
+        )
+        try:
+            run=subprocess.run(['ssh',*options,'-l',user,host,remote_script],
+                               capture_output=True,text=True,timeout=180)
+            need(run.returncode==0,'match_common4_salvage_remote_exit')
+            out=json.loads(run.stdout.strip());need(isinstance(out,dict),'match_common4_salvage_output')
+            need(out.get('state')=='terminal_wrapper_timeout_salvaged_no_replay'
+                 and out.get('searched_hotels')==761 and out.get('unstarted_hotel_count')==138,
+                 'match_common4_salvage_guard')
+            result={'schema_version':1,'operation_id':command['operation_id'],'source_sha':command['source_sha'],
+                    'mode':command['mode'],'status':'complete','match_common4_resume_salvage':out,
+                    'supplier_calls':0,'database_writes':0,'booking_calls':0,'lead_calls':0,'production_unchanged':True}
+            (output/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+            return result
+        finally:
+            subprocess.run(['ssh',*options,'-l',user,host,'rm -rf -- '+q(stage)+'; rm -f -- '+q(remote_archive)],
+                           stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
+            key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+
+    if command['mode'] == 'match-common4-mass-current':
+        stage='/tmp/' + command['operation_id'] + '-source'
+        q=shlex.quote
+        audit='hotel-match-common4-mass-current-1971-20260924-v13'
+        children=[
+          'hotel-match-live30-common4-continuation-acquire-1971-20260923-c35-n100-v1',
+          'hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1',
+          'hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1',
+          'hotel-match-live30-common4-continuation-resume-1971-20260924-r2-n138-v1',
+        ]
+        manifest_code=(
+          "import hashlib,json,pathlib,sys;"
+          "root=pathlib.Path.home()/'.anytoour-match/operations';"
+          "names=json.loads(sys.argv[1]);rows=[];"
+          "\nfor n in names:"
+          "\n p=root/n/'result.json';q=root/n/'receipt.json';"
+          "\n assert p.is_file() and q.is_file();raw=p.read_bytes();sha=hashlib.sha256(raw).hexdigest();"
+          "\n receipt=json.loads(q.read_text());assert receipt.get('result_sha256')==sha;"
+          "\n rows.append({'operation':n,'result_sha256':sha});"
+          "\nprint(json.dumps({'children':rows},separators=(',',':')))"
+        )
+        names_json=json.dumps(children,separators=(',',':'))
+        remote_script=(
+            'set -eu; umask 077; stage='+q(stage)+'; rm -rf "$stage"; mkdir -p "$stage"; '
+            'tar -xzf '+q(remote_archive)+' -C "$stage"; root="$HOME/www/anytoour.ru"; '
+            'ops="$HOME/.anytoour-match/operations"; audit="$ops/'+audit+'"; test ! -e "$audit"; mkdir -m 700 "$audit"; '
+            'printf "%s\\n" '+q(json.dumps({'operation':audit,'state':'reserved_before_db_read'},separators=(',',':')))+' >"$audit/reservation.json"; chmod 600 "$audit/reservation.json"; '
+            'python3 -c '+q(manifest_code)+' '+q(names_json)+' >"$audit/manifest.json"; chmod 600 "$audit/manifest.json"; '
+            'before="$(sha256sum "$root/index.php" | awk \'{print $1}\')"; '
+            'ANYTOUR_ROOT="$root" MATCH_OPERATION_DIR="$audit" MATCH_OPERATIONS_ROOT="$ops" MATCH_CHILD_MANIFEST="$audit/manifest.json" MATCH_SOURCE_SHA='+q(command['source_sha'])+' '
+            'php "$stage/scripts/diagnostics/hotel_match_common4_mass_current_v13.php" --execute >"$audit/stdout.txt"; '
+            'after="$(sha256sum "$root/index.php" | awk \'{print $1}\')"; test "$before" = "$after"; '
+            'python3 -c '+q(
+              "import json,pathlib;d=pathlib.Path.home()/'.anytoour-match/operations'/"+repr(audit)+
+              ";r=json.loads((d/'result.json').read_text());"
+              "print(json.dumps({k:r.get(k) for k in ('operation','state','searched_hotels','input_single_native_edges','status_counts','anchor_state_counts','writer_ready_counts','supplier_calls','provider_http_calls','database_writes','mapping_writes')},separators=(',',':')))"
+            )
+        )
+        try:
+            run=subprocess.run(['ssh',*options,'-l',user,host,remote_script],
+                               capture_output=True,text=True,timeout=300)
+            need(run.returncode==0,'match_common4_mass_current_remote_exit')
+            out=json.loads(run.stdout.strip());need(isinstance(out,dict),'match_common4_mass_current_output')
+            need(out.get('state')=='completed_read_only_mass_current'
+                 and out.get('supplier_calls')==0 and out.get('provider_http_calls')==0
+                 and out.get('database_writes')==0 and out.get('mapping_writes')==0,
+                 'match_common4_mass_current_guard')
+            result={'schema_version':1,'operation_id':command['operation_id'],'source_sha':command['source_sha'],
+                    'mode':command['mode'],'status':'complete','match_common4_mass_current':out,
+                    'supplier_calls':0,'database_writes':0,'booking_calls':0,'lead_calls':0,'production_unchanged':True}
             (output/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
             return result
         finally:
