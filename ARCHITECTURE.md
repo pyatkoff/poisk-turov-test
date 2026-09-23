@@ -89,6 +89,20 @@ Do not fork these behaviors into SEO or content pages.
 
 The mature search flow is protected. Structural extraction/de-minification is allowed only when behavior can be proven unchanged with focused and broader regression evidence.
 
+### Search3 prototype ownership
+
+For `v2/prototype-search/`, the current canonical ownership is:
+
+- `index.php` — preview headers plus cache-busted delivery of the declarative `index.html` asset graph; it must not inject post-app behavior layers.
+- `data.js` — supplier orchestration, canonical inventory union, request construction and the single supplier-scope policy (`supplierScope` / `supplierScopeCovered`).
+- `source-receipt-v1.js` — observational source/union receipt wrapper only; it does not own search or filter policy.
+- `search-lifecycle-v1.js` — one search-form submit path, async search generation/stale-response guard, response lifecycle reduction and supplier-scope/date-triggered resubmission.
+- `app.js` — prototype UI/domain state, applied/draft filters, date-modal context, canonical result merge and rendering; it delegates async search execution to `search-lifecycle-v1.js`.
+- `lead.js` — prototype lead UI around the protected lead-session contract.
+- `../tour-controller-v4.js` — required compatibility dependency for the prototype's protected lead handoff: `data.js::leadSession()` delegates to `V2TourController.createLeadSession()`. Do not remove it from the prototype asset graph until that lead-session contract has a separately proven canonical replacement.
+
+The retired `results-date-refresh-v1.js` and `inventory-scope-refresh-v1.js` patch layers are not valid owners after the 2026-09-23 prototype refactor pass. The older #2423 technical audit remains historical evidence only and does not redefine this ownership map.
+
 ## External contracts — protected
 
 Without explicit user approval, architecture work must preserve:
