@@ -43,6 +43,8 @@ FIXED = [
     'scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php',
     'scripts/diagnostics/hotel_match_current_coverage_wrapper_v1.php',
     'scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php',
+    'scripts/diagnostics/hotel_match_live30_common4_plan_v1.php',
+    'scripts/diagnostics/hotel_match_live30_common4_acquire_v1.py',
 ]
 
 # Persistent installation is intentionally narrower than the source bundle:
@@ -358,6 +360,14 @@ def parse_command(body: str) -> dict:
             'meal': '' if meal == '-' else meal, 'region': region,
             'max_captures': 1,
         }
+    if mode == 'match-common4-acquire':
+        need(len(parts) == 5, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        offset = integer(parts[3], 0, 1798, 'match_offset')
+        limit = integer(parts[4], 1, 100, 'match_limit')
+        need(offset + limit <= 1799, 'match_scope')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'offset': offset, 'limit': limit}
     if mode == 'match-tv234-secondary':
         need(len(parts) == 5, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
@@ -1544,6 +1554,72 @@ def read_match_tv234_secondary(offset, limit):
             'receipt_state':receipt.get('state'),'receipt_no_replay':receipt.get('no_replay'),
             'summary':summary}
 
+
+def run_match_common4_acquire(stage, offset, limit):
+    child='hotel-match-live30-common4-acquire-1971-20260923-o'+str(offset)+'-n'+str(limit)+'-v1'
+    match_root=home/'.anytoour-match/operations'
+    match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
+    child_dir=match_root/child
+    if child_dir.exists() or child_dir.is_symlink(): fail('match_common4_child_exists_no_replay')
+    child_dir.mkdir(mode=0o700)
+    reservation={'operation':child,'state':'reserved_before_db_and_provider','source_sha':source,
+                 'parent_operation':operation,'frontier_expected':1799,'offset':offset,'limit':limit,
+                 'call_cap':900,'database_writes':0,'mapping_writes':0,'reserved_at':int(time.time())}
+    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
+    os.chmod(child_dir/'reservation.json',0o600)
+
+    planner=stage/'scripts/diagnostics/hotel_match_live30_common4_plan_v1.php'
+    runner=stage/'scripts/diagnostics/hotel_match_live30_common4_acquire_v1.py'
+    matrix=stage/'scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php'
+    helper=stage/'scripts/diagnostics/hotel_match_anex_effective_coverage.php'
+    for path in (planner,runner,matrix,helper):
+        if not safe_file(path): fail('match_common4_source_missing')
+
+    env={**os.environ,'ANYTOUR_ROOT':str(project)}
+    planned=subprocess.run(['php',str(planner),'--execute'],cwd=project,env=env,
+                           capture_output=True,text=True,timeout=120)
+    if planned.returncode or planned.stderr.strip(): fail('match_common4_plan_failed')
+    try: plan=json.loads(planned.stdout)
+    except Exception: fail('match_common4_plan_unparseable')
+    if (plan.get('state')!='live30_common4_ready' or plan.get('frontier_count')!=1799
+            or plan.get('expected_frontier')!=1799
+            or not isinstance(plan.get('rows'),list) or len(plan['rows'])!=1799
+            or plan.get('operator_ids')!=[13,18,25,43]
+            or plan.get('provider_http_calls')!=0 or plan.get('database_writes')!=0
+            or plan.get('mapping_writes')!=0):
+        fail('match_common4_plan_guard')
+
+    plan_path=child_dir/'plan.json'
+    plan_path.write_text(json.dumps(plan,ensure_ascii=False,separators=(',',':')))
+    os.chmod(plan_path,0o600)
+    run_env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
+             'MATCH_PLAN_PATH':str(plan_path),'MATCH_CHILD_OPERATION':child,
+             'MATCH_OFFSET':str(offset),'MATCH_LIMIT':str(limit),'MATCH_CALL_CAP':'900',
+             'MATCH_SOURCE_SHA':source}
+    call=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=run_env,
+                        capture_output=True,text=True,timeout=1200)
+    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
+    if not safe_file(result_path,32*1024*1024) or not safe_file(receipt_path,1024*1024):
+        fail('match_common4_terminal_missing')
+    child_result=safe_json(result_path,32*1024*1024);receipt=safe_json(receipt_path,1024*1024)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    if receipt.get('result_sha256')!=digest: fail('match_common4_terminal_hash')
+    if (child_result.get('frontier_count')!=1799 or child_result.get('scope_offset')!=offset
+            or child_result.get('scope_count')!=limit or child_result.get('database_writes')!=0
+            or child_result.get('mapping_writes')!=0 or child_result.get('operator_ids')!=[13,18,25,43]
+            or child_result.get('continue_calls')!=0 or child_result.get('dates_calls')!=0):
+        fail('match_common4_terminal_guard')
+    calls=child_result.get('provider_calls')
+    if not isinstance(calls,int) or calls<0 or calls>900: fail('match_common4_call_cap_guard')
+    allowed={'completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'}
+    if call.returncode!=0 or child_result.get('state') not in allowed:
+        fail('match_common4_terminal_nonzero_no_replay')
+    summary={k:v for k,v in child_result.items() if k not in ('edges','batches')}
+    return {'child_operation':child,'scope_offset':offset,'scope_count':limit,
+            'state':child_result.get('state'),'result_sha256':digest,'summary':summary,
+            'provider_stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
+            'provider_stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
+
 def run_match_tv234_secondary(stage, offset, limit):
     child='hotel-match-live234-tv-secondary-1971-20260923-o'+str(offset)+'-n'+str(limit)+'-v1'
     match_root=home/'.anytoour-match/operations'
@@ -1849,6 +1925,14 @@ try:
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
+    if mode=='match-common4-acquire':
+        result['match_common4_acquire']=run_match_common4_acquire(stage,int(payload['offset']),int(payload['limit']))
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=result['match_common4_acquire']['summary'].get('provider_calls','bounded')
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='match-tv234-secondary':
         result['match_tv234_secondary']=run_match_tv234_secondary(stage,int(payload['offset']),int(payload['limit']))
         result['production_after']=fingerprints()
@@ -1874,7 +1958,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -1897,7 +1981,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
@@ -2064,7 +2148,7 @@ def main() -> None:
         for key,value in command.items():
             print(f'{key}={value}')
         return
-    if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','program-fuel-probe'):
+    if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','program-fuel-probe'):
         ensure_supplier_slot(token)
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
