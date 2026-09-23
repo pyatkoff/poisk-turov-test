@@ -16,10 +16,8 @@ if (is_file($popularitySource)) {
 }
 // The host caches JS/CSS for a day. Bind each URL to the deployed file bytes.
 $html = file_get_contents(__DIR__ . '/index.html');
-$bootstrap = '<script>window.AnyTourTopHotelLegacyIds=Object.freeze('
-    . json_encode(array_values($priorityHotelIds), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)
-    . ');</script>';
-$html = str_replace('  <script src="./config.js"></script>', '  ' . $bootstrap . "\n  <script src=\"./config.js\"></script>', $html);
+$legacyIdAttribute = htmlspecialchars(implode(',', array_values($priorityHotelIds)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$html = str_replace('<body>', '<body data-popular-hotel-legacy-ids="' . $legacyIdAttribute . '">', $html);
 echo preg_replace_callback(
     '/\b(src|href)="(\.\.?\/[^"?]+\.(?:js|css))"/',
     function ($match) {
