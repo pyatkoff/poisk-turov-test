@@ -43,12 +43,14 @@ operator_config_check(
 );
 
 // The saved-package bridge keeps its existing callers compatible while exposing
-// one trailing private config parameter. No supplier call is made by reflection.
+// trailing private config plus an optional typed server capability. No supplier call is made by reflection.
 $saved = new ReflectionFunction('anytour_andromeda_capture_saved_package');
 $params = $saved->getParameters();
-$last = $params[array_key_last($params)];
-operator_config_check($last->getName() === 'operatorConfig', 'saved_bridge_config_missing');
-operator_config_check($last->isOptional() && $last->getDefaultValue() === [], 'saved_bridge_default_changed');
+$configParam = $params[count($params)-2];
+$capabilityParam = $params[count($params)-1];
+operator_config_check($configParam->getName() === 'operatorConfig', 'saved_bridge_config_missing');
+operator_config_check($configParam->isOptional() && $configParam->getDefaultValue() === [], 'saved_bridge_default_changed');
+operator_config_check($capabilityParam->getName() === 'capability' && $capabilityParam->isOptional() && $capabilityParam->getDefaultValue() === null, 'saved_bridge_capability_changed');
 
 $runtime = file_get_contents(__DIR__ . '/../app/integrations/andromeda-saved-package-runtime.php');
 operator_config_check(is_string($runtime), 'runtime_source_unreadable');
@@ -57,7 +59,7 @@ operator_config_check(
     'runtime_config_validation_count'
 );
 operator_config_check(
-    str_contains($runtime, '$flightRequest, $config);'),
+    str_contains($runtime, '$flightRequest, $config'),
     'selected_wrapper_config_not_forwarded'
 );
 

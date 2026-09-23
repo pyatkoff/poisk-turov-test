@@ -1,6 +1,20 @@
 <?php
 declare(strict_types=1);
 
+final class AnyTourAndromedaPrivateRuntimeCapability
+{
+    private function __construct() {}
+    public static function fromTrustedConfig(array $config): self
+    {
+        if (($config['enabled'] ?? false) !== true
+            || !is_string($config['catalog_path'] ?? null)
+            || $config['catalog_path'] === '') {
+            throw new RuntimeException('ANDROMEDA_PACKAGE_DISABLED');
+        }
+        return new self();
+    }
+}
+
 /**
  * Opt-in private CLI bridge, not a public endpoint or a quote/booking permission.
  * Caller supplies the configured private searches directory, current mapping
@@ -11,9 +25,9 @@ declare(strict_types=1);
 function anytour_andromeda_capture_saved_package(string $directory, array $context,
     string $source, callable $mappingAllows, callable $transport, bool $enabled = false,
     ?callable $clock = null, bool $withSurcharge = false, ?callable $flightRequest = null,
-    array $operatorConfig = []): array
+    array $operatorConfig = [], ?AnyTourAndromedaPrivateRuntimeCapability $capability = null): array
 {
-    if (!$enabled || PHP_SAPI !== 'cli') throw new RuntimeException('ANDROMEDA_PACKAGE_DISABLED');
+    if (!$enabled || (PHP_SAPI !== 'cli' && $capability === null)) throw new RuntimeException('ANDROMEDA_PACKAGE_DISABLED');
     require_once __DIR__ . '/andromeda-operator-config.php';
     [$operatorLogin, $operatorPassword] = anytour_andromeda_operator_credentials_from_config($operatorConfig);
     require_once __DIR__ . '/andromeda-package-capture.php';
@@ -166,7 +180,7 @@ function anytour_andromeda_capture_saved_package(string $directory, array $conte
         if ($withSurcharge) {
             $receipt['surcharge'] = anytour_andromeda_saved_package_surcharge(
                 $directory, $stem . '-surcharge-v1.json', $source, $result, $storeState,
-                $created, $context, $mappingAllows, $read, $clock, $flightRequest);
+                $created, $context, $mappingAllows, $read, $clock, $flightRequest, $capability);
         }
         return $receipt;
     } finally {
@@ -219,9 +233,10 @@ function anytour_andromeda_capture_selected_package(array $config, array $catalo
 /** Internal to the opt-in capture owner; its existing exclusive search lock is held. */
 function anytour_andromeda_saved_package_surcharge(string $directory, string $path, string $source,
     array $package, array $storeState, int $created, array $context, callable $mappingAllows,
-    callable $read, callable $clock, ?callable $flightRequest): array
+    callable $read, callable $clock, ?callable $flightRequest,
+    ?AnyTourAndromedaPrivateRuntimeCapability $capability = null): array
 {
-    if (PHP_SAPI !== 'cli') throw new RuntimeException('ANDROMEDA_PACKAGE_DISABLED');
+    if (PHP_SAPI !== 'cli' && $capability === null) throw new RuntimeException('ANDROMEDA_PACKAGE_DISABLED');
     $store = new AnyTourAndromedaOfferStore($storeState, true);
     $now = $clock();
     $resolved = AnyTourAndromedaSelectedOffer::resolve($store, $context, $mappingAllows, $now);
