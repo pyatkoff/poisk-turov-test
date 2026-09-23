@@ -197,6 +197,14 @@ class ParseTest(unittest.TestCase):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-continuation-resume-readback int-andromeda-match-common4-continuation-resume-readback-20260924-v1')
         self.assertEqual('match-common4-continuation-resume-readback',v['mode'])
 
+    def test_match_common4_resume_salvage_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-resume-salvage int-andromeda-match-common4-resume-salvage-20260924-v1')
+        self.assertEqual('match-common4-resume-salvage',v['mode'])
+
+    def test_match_common4_mass_current_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-mass-current int-andromeda-match-common4-mass-current-20260924-v1')
+        self.assertEqual('match-common4-mass-current',v['mode'])
+
     def test_match_common4_current_v2_mode(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-current-v2 int-andromeda-match-common4-current-20260923-v1')
         self.assertEqual('match-common4-current-v2',v['mode'])
@@ -568,6 +576,8 @@ class ContractTest(unittest.TestCase):
                   "hotel_match_live942_tv_anex_refresh_v1.py",
                   "hotel_match_live942_samo_anex_refresh_v1.php",
                   "hotel_match_live30_common4_remainder_v1.py",
+                  "hotel_match_common4_resume_salvage_v1.py",
+                  "hotel_match_common4_mass_current_v13.php",
                   ".anytoour-match/operations","match_terminal_hash",
                   "match-secondary-audit","run_match_secondary_audit",
                   "hotel_match_live_anex_samo_missing_secondary_audit_v1.php",
