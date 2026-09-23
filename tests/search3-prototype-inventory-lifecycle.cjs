@@ -10,13 +10,13 @@ function snapshot(params,providers=['tourvisor']){
  return {source:'anytour-db-first-results-v1',scopeVersion:1,scopeDigest:hash('fixture'),scope:{...params,scopeVersion:1},hotelCount:providers.length?1:0,eligibleHotelCount:providers.length?1:0,offerCount:providers.length,storedOfferCount:providers.length,withheldOfferCount:0,categoryFilteredOfferCount:0,omittedHotelCount:0,omittedOfferCount:0,providerOfferCounts:Object.fromEntries(providers.map(provider=>[provider,1])),selectionAuthority:false,hotels:providers.length?[{anytourHotelId:501,hotel:profile(101),offers:providers.map(provider=>({provider,legacyHotelId:'101',currency:'RUB',price:1500000,listing:{schema_version:1,provider,currency:'RUB',selection_state:'refresh_required',booking_enabled:false,listingPrice:1500000,listingPriceState:'search_price_confirmation_required',listingPriceReady:false,priceConfirmationRequired:true,quoteState:'unknown',finalPriceVerified:false,quoteEvidenceDigest:null,identity:{offer_ref_digest:hash(provider),search_ref_digest:hash('search-'+provider),provider_hotel_ref_digest:hash('hotel-'+provider)},tour:{checkin:params.dateFrom,nights:7,meal:{raw:'AI'},room:{raw:'STANDARD'},placement:{raw:'DBL'},party:{adults:2,children:0}},operator:{raw:'FICTIONAL '+provider}}}))}]:[]};
 }
 const live=(n=1)=>Array.from({length:n},(_,i)=>({id:101+i,provider:'tourvisor',tours:[{id:'fictional-live-'+i,provider:'tourvisor',price:1500000+i,date:trip.from,nights:7,meal:{name:'AI'},roomType:'STANDARD',operator:{name:'FICTIONAL TV'}}]}));
-const directAnex=body=>{
- const searchRef='a'.repeat(32),offerRef='anex_online:'+'b'.repeat(64);
+const directAnex=(body,{offerRef='anex_online:'+'b'.repeat(64),localId=101,searchRef='a'.repeat(32),empty=false}={})=>{
+ const hotels=empty?[]:[{local_id:localId,name:'FICTIONAL HOTEL '+localId,
+  category:5,rating:4.7,country:'Турция',region:'Сиде',catalog:{hotel_id:localId,source:'tourvisor',image_url:null,description:'',address:'',subregion:'',sea_distance:null},
+  tours:[{price:{amount:'1490000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,meal:'AI',room:'STANDARD',
+   kind:'group_minimum',flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:offerRef,selection_enabled:false}]}];
  return {ok:true,data:{generation:body.generation,provider:'anex',date_range:{from:body.params.dateFrom,to:body.params.dateTo},
-  search_ref:searchRef,external_search_pending:false,pages_read:1,first_page_only:true,hotels:[{local_id:101,name:'FICTIONAL HOTEL 101',
-   category:5,rating:4.7,country:'Турция',region:'Сиде',catalog:{hotel_id:101,source:'tourvisor',image_url:null,description:'',address:'',subregion:'',sea_distance:null},
-   tours:[{price:{amount:'1490000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,meal:'AI',room:'STANDARD',
-    kind:'group_minimum',flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:offerRef,selection_enabled:false}]}]}};
+  search_ref:searchRef,external_search_pending:false,pages_read:1,first_page_only:true,hotels}};
 };
 const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),localId=101,pagesCount=1,status='complete',searchRef='c'.repeat(64)}={})=>{
  const page=Number(body.page),hotels=empty?[]:[{local_id:localId,mapping_status:'resolved',tours:[{
@@ -364,6 +364,72 @@ test('cached URL resume fails closed to LOCAL without supplier fallback',async()
  const complete=h.events.filter(e=>e.type==='complete').at(-1);
  assert.equal(complete.cachedResume,true);assert.equal(complete.sources.database.status,'error');
  assert.equal(complete.canContinue,false,'cached failure requires an explicit fresh retry');
+});
+test('direct ANEX covers a 21-day search in three explicit background windows',async()=>{
+ const search={...trip,to:'2026-10-19'},second=defer();
+ const ref=index=>'anex_online:'+String(index+1).repeat(64);
+ const h=harness({
+  anex:async body=>{
+   const index=body.params.dateFrom==='2026-09-29'?0:body.params.dateFrom==='2026-10-06'?1:2;
+   if(index===1)await second.promise;
+   return {response:{ok:true,json:async()=>directAnex(body,{offerRef:ref(index),localId:301+index,searchRef:String(index+10).repeat(32).slice(0,32)})}};
+  },
+  database:(i,p)=>snapshot(p,[])
+ });
+ await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();
+ assert.deepEqual(h.anexCalls.map(call=>[call.params.dateFrom,call.params.dateTo]),[['2026-09-29','2026-10-05']],
+  'initial ANEX request must be one explicit seven-day window');
+ await h.poll();
+ assert.deepEqual(h.anexCalls.map(call=>[call.params.dateFrom,call.params.dateTo]),[
+  ['2026-09-29','2026-10-05'],['2026-10-06','2026-10-12']
+ ],'second ANEX window starts only after initial source settlement');
+ const first=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.ok(first,'first search completion must not wait for ANEX window 2');
+ assert.equal(first.sources.anex.status,'partial');assert.equal(first.sources.anex.windowsLoaded,1);assert.equal(first.sources.anex.windowsTotal,3);
+ second.resolve();
+ await waitFor(()=>h.anexCalls.length===3&&h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.windowsLoaded===3),
+  'background ANEX continuation must reach the final window');
+ assert.deepEqual(h.anexCalls.map(call=>[call.params.dateFrom,call.params.dateTo]),[
+  ['2026-09-29','2026-10-05'],['2026-10-06','2026-10-12'],['2026-10-13','2026-10-19']
+ ]);
+ const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='anex'&&e.windowsLoaded===3).at(-1);
+ assert.equal(receipt.status,'complete');assert.equal(receipt.windowsTotal,3);assert.equal(receipt.offers,3);
+ await waitFor(()=>h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='anex').length===3,
+  'all ANEX windows must join the canonical union');
+ assert.ok(h.dbBodies.length>=3,'completed ANEX background windows must perform a final LOCAL reread');
+});
+test('late ANEX window failure preserves earlier accepted windows',async()=>{
+ const search={...trip,to:'2026-10-19'};
+ const h=harness({
+  anex:async body=>body.params.dateFrom==='2026-09-29'
+   ?{response:{ok:true,json:async()=>directAnex(body,{offerRef:'anex_online:'+'1'.repeat(64),localId:311,searchRef:'1'.repeat(32)})}}
+   :{response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}},
+  database:(i,p)=>snapshot(p,[])
+ });
+ await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();await h.poll();
+ await waitFor(()=>h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.continuationFailed===true),
+  'late ANEX failure must emit a retained partial receipt');
+ const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='anex'&&e.continuationFailed===true).at(-1);
+ assert.deepEqual(h.anexCalls.map(call=>call.params.dateFrom),['2026-09-29','2026-10-06']);
+ assert.equal(receipt.status,'partial');assert.equal(receipt.windowsLoaded,1);assert.equal(receipt.windowsTotal,3);assert.equal(receipt.offers,1);
+ await waitFor(()=>h.latest().flatMap(hotel=>hotel.offers).some(offer=>offer.provider==='anex'),
+  'late ANEX failure must not clear the first accepted window');
+});
+test('stop aborts pending ANEX background window and prevents later windows',async()=>{
+ const search={...trip,to:'2026-10-19'},second=defer();
+ const h=harness({
+  anex:async body=>{
+   if(body.params.dateFrom==='2026-10-06')await second.promise;
+   const idx=body.params.dateFrom==='2026-09-29'?0:1;
+   return {response:{ok:true,json:async()=>directAnex(body,{offerRef:'anex_online:'+String(idx+1).repeat(64),localId:321+idx,searchRef:String(idx+1).repeat(32)})}};
+  },
+  database:(i,p)=>snapshot(p,[])
+ });
+ await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();await h.poll();
+ assert.deepEqual(h.anexCalls.map(call=>call.params.dateFrom),['2026-09-29','2026-10-06']);
+ const before=h.events.length;h.data.stop();second.resolve();await flush();
+ assert.deepEqual(h.anexCalls.map(call=>call.params.dateFrom),['2026-09-29','2026-10-06'],'stopped generation must never request ANEX window 3');
+ assert.equal(h.events.length,before,'stopped generation must ignore the late ANEX window');
 });
 test('offers stored during a search are loaded without another search start',async()=>{
  const h=harness({database:(i,p)=>snapshot(p,i===1?['tourvisor']:['tourvisor','anex','andromeda'])});
