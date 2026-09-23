@@ -163,7 +163,19 @@ def check_width(browser, origin, width):
                    "requestedLegacyIds": ids, "missingLegacyIds": [], "items": [profile(int(i)) for i in ids],
                    "links": [{"legacyHotelId": i, "anytourHotelId": int(i) + 400} for i in ids]})
         elif url.path.endswith("/search3-local-results-read-v1.php"):
-            params = request.post_data_json["params"]
+            body = request.post_data_json
+            if body.get("action") == "meal_catalog":
+                assert body == {"action": "meal_catalog", "provider": "tourvisor", "scopeKey": "global"}, body
+                assert request.headers.get("x-requested-with") == "AnyTourSearch3"
+                reply({"ok": True, "data": {"source": "anytour-search-meal-v1", "provider": "tourvisor", "scopeKey": "global",
+                       "available": True, "revision": "a" * 64, "plans": [
+                           {"id": 2, "code": "breakfast", "nameRu": "Завтраки", "nativeIds": ["3"]},
+                           {"id": 3, "code": "half-board", "nameRu": "Полупансион", "nativeIds": ["4"]},
+                           {"id": 7, "code": "all-inclusive", "nameRu": "Всё включено", "nativeIds": ["7"]},
+                           {"id": 8, "code": "ultra-all-inclusive", "nameRu": "Ультра всё включено", "nativeIds": ["9"]},
+                       ]}})
+                return
+            params = body["params"]
             if state['database_failure']:
                 reply({'ok': False}, 503)
                 return
