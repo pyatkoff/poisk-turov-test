@@ -20,6 +20,7 @@ function hmc4c8_load(string $p):array{$v=json_decode((string)file_get_contents($
 function hmc4c8_save(string $p,array $v):string{$raw=hmc4c8_json($v)."\n";$f=@fopen($p,'x+b');hmc4c8_need($f!==false,'exclusive_create');try{hmc4c8_need(fwrite($f,$raw)===strlen($raw)&&fflush($f),'durable_write');if(function_exists('fsync'))hmc4c8_need(fsync($f),'durable_sync');}finally{fclose($f);}return hash('sha256',$raw);}
 function hmc4c8_child_name(int $o,int $n):string{return 'hotel-match-live30-common4-acquire-1971-20260923-o'.$o.'-n'.$n.'-v1';}
 function hmc4c8_id_digest(array $ids):string{$ids=array_map('intval',$ids);sort($ids,SORT_NUMERIC);return hash('sha256',hmc4c8_json($ids));}
+function hmc4c8_sequence_digest(array $ids):string{return hash('sha256',hmc4c8_json(array_map('intval',$ids)));}
 function hmc4c8_partition(array $currentIds,array $attempted):array{
     $current=[];foreach($currentIds as $id)$current[(int)$id]=true;
     $attempt=[];foreach($attempted as $id)$attempt[(int)$id]=true;
@@ -44,7 +45,7 @@ function hmc4c8_attempted(string $root):array{
         $rows=$p['rows']??null;hmc4c8_need(is_array($rows)&&count($rows)===HMC4C8_ORIGINAL_FRONTIER,'plan_rows_'.$o);
         $ids=[];foreach($rows as $x){$id=(int)($x['tv_hotel_id']??0);hmc4c8_need($id>0,'plan_id_'.$o);$ids[]=$id;}
         hmc4c8_need(count(array_unique($ids))===HMC4C8_ORIGINAL_FRONTIER,'plan_unique_'.$o);
-        $d=hmc4c8_id_digest($ids);if($frontierDigest===null)$frontierDigest=$d;else hmc4c8_need($frontierDigest===$d,'original_frontier_digest_drift_'.$o);
+        $d=hmc4c8_sequence_digest($ids);if($frontierDigest===null)$frontierDigest=$d;else hmc4c8_need($frontierDigest===$d,'original_frontier_sequence_drift_'.$o);
         $slice=array_slice($ids,$o,$n);hmc4c8_need(count($slice)===$n,'slice_count_'.$o);
         foreach($slice as $id){hmc4c8_need(!isset($attempted[$id]),'attempted_overlap_'.$id);$attempted[$id]=true;}
         $children[]=['operation'=>$name,'offset'=>$o,'count'=>$n,'result_sha256'=>$sha];
