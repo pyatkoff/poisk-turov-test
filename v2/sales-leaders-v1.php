@@ -1,5 +1,6 @@
 <?php
 /** Internal AnyTour sales-leader enrichment for V2 search results. */
+require_once __DIR__.'/data/hotel-popularity-v1.php';
 function sales_leader_normalize(string $value): string
 {
     $value=trim($value);
@@ -65,6 +66,13 @@ function sales_leader_index(): array
 }
 function sales_leader_match(array $hotel): ?array
 {
+    $legacyId=filter_var($hotel['id']??null,FILTER_VALIDATE_INT);
+    if($legacyId!==false){
+        $rank=v2_hotel_popularity_legacy_rank((int)$legacyId);
+        if($rank!==null)return ['rank'=>$rank];
+    }
+    // Compatibility fallback for legacy payloads that do not carry a stable
+    // Tourvisor hotel ID. New Search3 ranking never relies on fuzzy name identity.
     $country=sales_leader_country_key($hotel['country']??'');
     $name=trim((string)($hotel['name']??''));
     if($country===''||$name==='')return null;
