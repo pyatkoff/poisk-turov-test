@@ -64,7 +64,7 @@ echo "SEARCH3_LOCAL_SCOPE_UNION_PURE_OK exact_copy=1 provider_identity=1 concret
 
 $dsn=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_DSN');$password=(string)getenv('ANYTOUR_LOCAL_RESULTS_TEST_PASSWORD');if(!str_starts_with($dsn,'mysql:'))throw new RuntimeException('fixture DSN required');
 $pdo=new PDO($dsn,'root',$password,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
-$pdo->exec('SET FOREIGN_KEY_CHECKS=0');foreach(['anytour_offer_scopes','anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','andromeda_hotel_identities','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $t)$pdo->exec("DROP TABLE IF EXISTS `$t`");$pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+$pdo->exec('SET FOREIGN_KEY_CHECKS=0');foreach(['tour_price_observations','anytour_offer_scopes','anytour_offers','anytour_offer_scope_state','anytour_offer_refreshes','anytour_offer_store_control','andromeda_hotel_identities','anytour_hotel_sources','anytour_hotels','anytour_catalog_control'] as $t)$pdo->exec("DROP TABLE IF EXISTS `$t`");$pdo->exec('SET FOREIGN_KEY_CHECKS=1');
 exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260916-anytour-canonical-catalog.sql');exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260916-anytour-offer-store.sql');
 $schema1Rejected=false;try{search3_local_results_build($pdo,$p,new DateTimeImmutable('2026-10-06T10:00:00Z'));}catch(RuntimeException $e){$schema1Rejected=str_contains($e->getMessage(),'Unsupported AnyTour offer-store schema');}need($schema1Rejected,'schema v1 read path retired fail closed');
 exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260917-anytour-offer-store-v2.sql');exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260917-anytour-offer-scope-index.sql');
@@ -96,6 +96,36 @@ need(AnyTourProviderIdentityBridgeV1::allowsOffer(
  $pdo,'andromeda',hash('sha256','andromeda_catalog:7001'),202,$owns[202]
 ),'current Andromeda identity accepted');
 $at=new DateTimeImmutable('2026-10-06T10:00:00Z');$expires=$at->modify('+2 hours');
+
+$pdo->exec("CREATE TABLE tour_price_observations (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ departure_id INT NOT NULL,country_id INT NOT NULL,region_id INT NULL,hotel_id BIGINT UNSIGNED NOT NULL,
+ departure_date DATE NOT NULL,nights INT NOT NULL,adults INT NOT NULL,children_count INT NOT NULL,child_ages_signature VARCHAR(32) NOT NULL,
+ meal_id INT NULL,room_id INT NULL,room_type VARCHAR(255) NULL,operator_id INT NULL,currency CHAR(3) NOT NULL,
+ price DECIMAL(12,2) NOT NULL,search_id BIGINT UNSIGNED NOT NULL,observed_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+$obs=$pdo->prepare("INSERT INTO tour_price_observations
+ (departure_id,country_id,region_id,hotel_id,departure_date,nights,adults,children_count,child_ages_signature,meal_id,room_id,room_type,operator_id,currency,price,search_id,observed_at)
+ VALUES(1,4,23,?,?,?,?,2,?,NULL,NULL,'STANDARD',NULL,'RUB',?,?,?)");
+$obs->execute([501,'2026-10-06',7,1,'3,7','99000',11,'2026-10-06 09:00:00']);
+$obs->execute([502,'2026-10-06',7,1,'4,7','1000',12,'2026-10-06 09:05:00']);
+$obs->execute([503,'2026-10-07',7,1,'3,7','110000',13,'2026-10-06 09:10:00']);
+$calendar=search3_local_price_calendar($pdo,[
+ 'action'=>'price_calendar','departureId'=>1,'countryId'=>4,'regionId'=>23,
+ 'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07','nightsFrom'=>7,'nightsTo'=>7,
+ 'adults'=>1,'childs'=>[7,3],
+],$at);
+need($calendar['ok']===true&&$calendar['adults']===1&&$calendar['childrenCount']===2
+    &&$calendar['childAges']===[3,7]&&$calendar['childAgesSignature']==='3,7','price calendar exact party echoed');
+need($calendar['observedDays']===2&&$calendar['bestDate']==='2026-10-06'&&(float)$calendar['bestPrice']===99000.0,'price calendar excludes wrong child ages');
+need((float)$calendar['series'][0]['minPrice']===99000.0&&(float)$calendar['series'][1]['minPrice']===110000.0,'price calendar exact-party daily prices');
+$badCalendar=false;try{search3_local_price_calendar($pdo,[
+ 'action'=>'price_calendar','departureId'=>1,'countryId'=>4,'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07',
+ 'nightsFrom'=>7,'nightsTo'=>7,'adults'=>1,'childs'=>[18],
+],$at);}catch(InvalidArgumentException){$badCalendar=true;}
+need($badCalendar,'price calendar invalid child fails closed');
+echo "SEARCH3_LOCAL_PRICE_CALENDAR_OK exact_party=1 wrong_party_excluded=1 writes=0\n";
+
 need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$scope,$at),'narrow scope indexed');
 foreach([
  ['tourvisor',101,'tv','120000','2026-10-05',7],

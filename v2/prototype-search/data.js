@@ -555,9 +555,15 @@
     const childAges=[...s.ages].sort((a,b)=>a-b),childSignature=childAges.join(',');
     const selected=regionIds(s,filters),query={departureId:String(departure.id),countryId:String(s.country),dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights),adults:String(s.adults),childs:childSignature};
     if(selected.length)query.regionId=selected[0];
-    const response=await fetch(local+'data/price-calendar-read-v1.php?'+new URLSearchParams(query),{credentials:'same-origin',signal});
+    const response=await fetch(local+'data/search3-local-results-read-v1.php',{
+      method:'POST',credentials:'same-origin',cache:'no-store',signal,
+      headers:{Accept:'application/json','Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
+      body:JSON.stringify({action:'price_calendar',departureId:Number(query.departureId),countryId:Number(query.countryId),regionId:selected.length?Number(selected[0]):0,
+        dateFrom:from,dateTo:to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:childAges})
+    });
     if(!response.ok)throw new Error('Сохранённые цены календаря временно недоступны.');
-    const result=await response.json();
+    const payload=await response.json(),result=payload?.data;
+    if(payload?.ok!==true)throw new Error('Сохранённые цены календаря временно недоступны.');
     if(result?.ok!==true||result.source!=='latest-known-exact-segments-from-anytour-first-party-observations'
       ||result.cachedPriceIsFinal!==false||result.currency!=='RUB'||result.adults!==s.adults||result.childrenCount!==childAges.length
       ||!Array.isArray(result.childAges)||result.childAges.length!==childAges.length||result.childAges.some((age,index)=>age!==childAges[index])||result.childAgesSignature!==childSignature

@@ -124,6 +124,18 @@ def check_width(browser, origin, width):
                            {"id": 8, "code": "ultra-all-inclusive", "nameRu": "Ультра всё включено", "nativeIds": ["9"]},
                        ]}})
                 return
+            if body.get("action") == "price_calendar":
+                child_ages = sorted(int(age) for age in body.get("childs", []))
+                child_signature = ",".join(str(age) for age in child_ages)
+                reply({"ok": True, "data": {"ok": True,
+                       "source": "latest-known-exact-segments-from-anytour-first-party-observations",
+                       "cachedPriceIsFinal": False, "currency": "RUB", "adults": int(body["adults"]),
+                       "childrenCount": len(child_ages), "childAges": child_ages, "childAgesSignature": child_signature,
+                       "departureId": int(body["departureId"]), "countryId": int(body["countryId"]),
+                       "regionId": int(body["regionId"]) if int(body.get("regionId", 0)) > 0 else None,
+                       "dateFrom": body["dateFrom"], "dateTo": body["dateTo"],
+                       "nightsFrom": int(body["nightsFrom"]), "nightsTo": int(body["nightsTo"]), "series": []}})
+                return
             params = body["params"]
             reply({"ok": True, "data": {"source": "anytour-db-first-results-v1", "scopeVersion": 1,
                    "scope": {"scopeVersion": 1, **params}, "scopeDigest": "c" * 64,

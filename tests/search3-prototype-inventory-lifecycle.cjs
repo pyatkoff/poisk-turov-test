@@ -36,11 +36,6 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
  const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],observationCalls=[],mealCatalogCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
-  if(target.pathname==='/_preview/search3-local-candidate/data/price-calendar-read-v1.php'){
-   const query=Object.fromEntries(target.searchParams);observationCalls.push(query);
-   assert.ok(observations,'unexpected observation request');
-   return {ok:true,json:async()=>observations(query,options.signal)};
-  }
   if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'){
    assert.ok(native,'unexpected Andromeda request');
    const body=JSON.parse(options.body);nativeCalls.push(structuredClone(body));
@@ -68,6 +63,14 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
       {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']}
      ]
     }})};
+   }
+   if(body.action==='price_calendar'){
+    const childAges=[...(body.childs||[])].map(Number).sort((a,b)=>a-b);
+    const query={departureId:String(body.departureId),countryId:String(body.countryId),dateFrom:body.dateFrom,dateTo:body.dateTo,
+      nightsFrom:String(body.nightsFrom),nightsTo:String(body.nightsTo),adults:String(body.adults),childs:childAges.join(',')};
+    if(Number(body.regionId)>0)query.regionId=String(body.regionId);
+    observationCalls.push(query);assert.ok(observations,'unexpected observation request');
+    return {ok:true,json:async()=>({ok:true,data:await observations(query,options.signal)})};
    }
    const params=body.params;dbBodies.push(structuredClone(params));
    const data=database?await database(++readIndex,params,options.signal):snapshot(params);
