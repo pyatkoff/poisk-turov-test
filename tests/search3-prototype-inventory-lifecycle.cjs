@@ -7,7 +7,7 @@ const trip={origin:'Москва',country:'4',from:'2026-09-29',to:'2026-10-05',
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 const profile=id=>({id:Number(id)+400,catalog:'anytour',revision:1,name:'FICTIONAL HOTEL '+id,category:5,country:{id:4,name:'Турция'},images:[]});
 function snapshot(params,providers=['tourvisor']){
- return {source:'anytour-db-first-results-v1',scopeVersion:1,scopeDigest:hash('fixture'),scope:{...params,scopeVersion:1},selectionAuthority:false,hotels:providers.length?[{anytourHotelId:501,hotel:profile(101),offers:providers.map(provider=>({provider,legacyHotelId:'101',currency:'RUB',price:1500000,listing:{schema_version:1,provider,currency:'RUB',selection_state:'refresh_required',booking_enabled:false,listingPrice:1500000,listingPriceState:'search_price_confirmation_required',listingPriceReady:false,priceConfirmationRequired:true,quoteState:'unknown',finalPriceVerified:false,quoteEvidenceDigest:null,identity:{offer_ref_digest:hash(provider),search_ref_digest:hash('search-'+provider),provider_hotel_ref_digest:hash('hotel-'+provider)},tour:{checkin:params.dateFrom,nights:7,meal:{raw:'AI'},room:{raw:'STANDARD'},placement:{raw:'DBL'},party:{adults:2,children:0}},operator:{raw:'FICTIONAL '+provider}}}))}]:[]};
+ return {source:'anytour-db-first-results-v1',scopeVersion:1,scopeDigest:hash('fixture'),scope:{...params,scopeVersion:1},hotelCount:providers.length?1:0,eligibleHotelCount:providers.length?1:0,offerCount:providers.length,storedOfferCount:providers.length,withheldOfferCount:0,categoryFilteredOfferCount:0,omittedHotelCount:0,omittedOfferCount:0,providerOfferCounts:Object.fromEntries(providers.map(provider=>[provider,1])),selectionAuthority:false,hotels:providers.length?[{anytourHotelId:501,hotel:profile(101),offers:providers.map(provider=>({provider,legacyHotelId:'101',currency:'RUB',price:1500000,listing:{schema_version:1,provider,currency:'RUB',selection_state:'refresh_required',booking_enabled:false,listingPrice:1500000,listingPriceState:'search_price_confirmation_required',listingPriceReady:false,priceConfirmationRequired:true,quoteState:'unknown',finalPriceVerified:false,quoteEvidenceDigest:null,identity:{offer_ref_digest:hash(provider),search_ref_digest:hash('search-'+provider),provider_hotel_ref_digest:hash('hotel-'+provider)},tour:{checkin:params.dateFrom,nights:7,meal:{raw:'AI'},room:{raw:'STANDARD'},placement:{raw:'DBL'},party:{adults:2,children:0}},operator:{raw:'FICTIONAL '+provider}}}))}]:[]};
 }
 const live=(n=1)=>Array.from({length:n},(_,i)=>({id:101+i,provider:'tourvisor',tours:[{id:'fictional-live-'+i,provider:'tourvisor',price:1500000+i,date:trip.from,nights:7,meal:{name:'AI'},roomType:'STANDARD',operator:{name:'FICTIONAL TV'}}]}));
 const directAnex=body=>{
@@ -166,6 +166,28 @@ test('first search unions direct ANEX once and waits for it before complete',asy
  assert.equal(final.union.hotelsByProvider.anex,1);assert.equal(final.union.hotelsByProvider.tourvisor,1);assert.equal(final.union.providerSets['anex+tourvisor'],1);
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='complete'));
  await h.data.continueSearch();await flush();assert.equal(h.anexCalls.length,1,'Continue never replays direct ANEX');
+});
+test('LOCAL source accounting preserves backend losses and malformed counts fail closed',async()=>{
+ const h=harness({database:(i,p)=>({...snapshot(p,['andromeda','anex']),
+  storedOfferCount:8,withheldOfferCount:2,categoryFilteredOfferCount:3,eligibleHotelCount:2,
+  hotelCount:1,omittedHotelCount:1,omittedOfferCount:1,offerCount:2,providerOfferCounts:{andromeda:1,anex:1}
+ })});
+ await h.start();await h.poll();
+ const dbEvent=h.events.filter(e=>e.type==='database').at(-1);
+ assert.deepEqual(dbEvent,{type:'database',status:'complete',hotels:1,offers:2,storedOffers:8,receivedOffers:8,mappedOffers:6,
+  visibleOffers:2,withheldOffers:2,scopeFilteredOffers:3,eligibleHotels:2,omittedHotels:1,omittedOffers:1,
+  providerOfferCounts:{andromeda:1,anex:1}});
+ const final=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.equal(final.sources.database.receivedOffers,8);assert.equal(final.sources.database.mappedOffers,6);
+ assert.equal(final.sources.database.withheldOffers,2);assert.equal(final.sources.database.scopeFilteredOffers,3);
+ assert.equal(final.sources.database.eligibleHotels,2);assert.equal(final.sources.database.omittedHotels,1);
+ assert.equal(final.sources.database.omittedOffers,1);assert.equal(final.sources.database.visibleOffers,2);
+
+ const bad=harness({database:(i,p)=>({...snapshot(p),withheldOfferCount:'1'})});
+ await bad.start();await bad.poll();
+ assert.ok(bad.events.some(e=>e.type==='database-error'&&/Invalid LOCAL accounting/.test(e.message)));
+ const badFinal=bad.events.filter(e=>e.type==='complete').at(-1);
+ assert.deepEqual(badFinal.sources.database,{status:'error'});
 });
 test('direct ANEX and LOCAL dedupe the same normalized ANEX offer identity',async()=>{
  const offerRef='anex_online:'+'b'.repeat(64);
