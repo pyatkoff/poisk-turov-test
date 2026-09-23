@@ -105,30 +105,46 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         if ($family === null) return null;
         $direction = self::targetDirection($target, $operator);
         $party = self::targetParty($target);
+        if (self::hasInfant($party)) return null;
         $offerDigest = self::digest($target['offer_ref_digest'] ?? null, 'OPERATOR_FUEL_TARGET_OFFER');
 
-        $compatible = [];
-        $facts = [];
-        $offers = [];
-        $evidence = [];
+        $groups = [
+            'party_roundtrip' => ['compatible'=>[], 'facts'=>[], 'offers'=>[], 'evidence'=>[]],
+            'per_person_one_way' => ['compatible'=>[], 'facts'=>[], 'offers'=>[], 'evidence'=>[]],
+        ];
         foreach ($rows as $raw) {
             if (!is_array($raw)) continue;
             try { $obs = self::observation($raw); } catch (InvalidArgumentException $ignored) { continue; }
             if ($obs['operator_family'] !== $family || $obs['direction'] !== $direction) continue;
-            if ($obs['unit'] !== 'party_roundtrip'
+            $unit = $obs['unit'];
+            if (!isset($groups[$unit])
                 || !in_array($obs['base_relation'], ['included', 'excluded'], true)
                 || $obs['base_includes_other_required_charges'] !== true) continue;
             if ($obs['observed_at'] > $now || $obs['expires_at'] <= $now) continue;
+
             $sourceParty = $obs['scope']['party'];
-            if ($sourceParty !== $party || self::hasInfant($sourceParty)) continue;
-            $fact = $obs['amount'] . '|' . $obs['currency'] . '|' . $obs['base_relation'] . '|party_roundtrip';
-            $facts[$fact] = true;
-            if (count($facts) > 1) return null;
-            $offers[$obs['offer_ref_digest']] = true;
-            $evidence[$obs['evidence_sha256']] = true;
-            $compatible[] = $obs;
+            if (self::hasInfant($sourceParty)) continue;
+            if ($unit === 'party_roundtrip' && $sourceParty !== $party) continue;
+
+            $fact = $obs['amount'] . '|' . $obs['currency'] . '|' . $obs['base_relation'] . '|' . $unit;
+            $groups[$unit]['facts'][$fact] = true;
+            if (count($groups[$unit]['facts']) > 1) return null;
+            $groups[$unit]['offers'][$obs['offer_ref_digest']] = true;
+            $groups[$unit]['evidence'][$obs['evidence_sha256']] = true;
+            $groups[$unit]['compatible'][] = $obs;
         }
-        if (count($offers) < 2 || count($evidence) < 2 || $compatible === []) return null;
+
+        $confirmed = [];
+        foreach ($groups as $unit => $group) {
+            if (count($group['offers']) >= 2 && count($group['evidence']) >= 2 && $group['compatible'] !== []) {
+                $confirmed[$unit] = $group['compatible'];
+            }
+        }
+        // Two independently confirmed but differently-scoped units are ambiguous.
+        // Never choose between a party total and a per-person rate implicitly.
+        if (count($confirmed) !== 1) return null;
+        $unit = array_key_first($confirmed);
+        $compatible = $confirmed[$unit];
 
         $inputObs = [];
         foreach ($compatible as $obs) {
@@ -138,7 +154,7 @@ final class AnyTourOperatorFuelRuleEvidenceV1
                 'provenance_scope' => $obs['scope'],
                 'party' => $obs['scope']['party'],
                 'kind' => 'fuel',
-                'unit' => 'party_roundtrip',
+                'unit' => $unit,
                 'base_includes_other_required_charges' => true,
                 'base_relation' => $obs['base_relation'],
                 'offer_ref_digest' => $obs['offer_ref_digest'],
