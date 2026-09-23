@@ -12,6 +12,8 @@ require_once __DIR__ . '/three-provider-offer-context.php';
 require_once __DIR__ . '/three-provider-search-handoff.php';
 require_once __DIR__ . '/anytour-offer-snapshot-producer.php';
 require_once __DIR__ . '/biblio-fuel-owner-policy.php';
+require_once __DIR__ . '/operator-program-fuel-registry.php';
+require_once __DIR__ . '/operator-fuel-rule-store.php';
 require_once __DIR__ . '/andromeda-pagination.php';
 
 /**
@@ -759,6 +761,54 @@ function anytour_andromeda_anytour_offer_canonical_targets(PDO $db, array $legac
     return $out;
 }
 
+/**
+ * Compose retained pricing in canonical precedence without supplier I/O:
+ * exact saved pricing > exact program/tour fuel > reusable operator fallback.
+ */
+function anytour_andromeda_anytour_offer_pricing(
+    string $directory,
+    array $offer,
+    array $request,
+    int $now,
+    ?array $exact
+): ?array {
+    if ($exact !== null) return $exact;
+    try {
+        $children = $request['params']['childs'] ?? null;
+        $adults = $request['params']['adults'] ?? null;
+        if (!is_array($children) || !array_is_list($children)
+            || (!is_int($adults) && !is_string($adults))
+            || preg_match('/\\A[1-9][0-9]?\\z/D',(string)$adults)!==1) return null;
+        $ages=[];
+        foreach($children as $age){
+            if(is_bool($age)||(!is_int($age)&&!is_string($age))
+                ||preg_match('/\\A(?:0|[1-9][0-9]?)\\z/D',(string)$age)!==1)return null;
+            $n=(int)$age;if($n<0||$n>17)return null;$ages[]=$n;
+        }
+        sort($ages,SORT_NUMERIC);
+        $party=['adults'=>(int)$adults,'children'=>count($ages),'child_ages'=>$ages];
+
+        $program = AnyTourOperatorProgramFuelRegistryV1::priceForOffer($directory,$offer,$party,$now);
+        if ($program !== null) return ['state'=>'program_fuel','program_fuel'=>$program];
+
+        $offerRef=$offer['offer_ref']??null;
+        $operator=$offer['operator']??null;
+        if(!is_string($offerRef)||preg_match('/\\Aoffer_[a-f0-9]{64}\\z/D',$offerRef)!==1
+            ||!is_string($operator)||trim($operator)==='')return null;
+        return AnyTourOperatorFuelRuleStoreV1::pricingEnvelopeForTarget($directory,[
+            'operator'=>$operator,
+            'search_params'=>[
+                'departureId'=>$request['params']['departureId']??null,
+                'countryId'=>$request['params']['countryId']??null,
+            ],
+            'party'=>$party,
+            'offer_ref_digest'=>hash('sha256',$offerRef),
+        ],$now);
+    } catch(Throwable $ignored) {
+        return null;
+    }
+}
+
 /** Best-effort runtime adapter. Search response must survive persistence failure. */
 function anytour_andromeda_anytour_offer_autosave_runtime(
     array $request,
@@ -802,7 +852,7 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
             $now,
             static fn(array $offers): array => anytour_andromeda_search3_current_mappings($db, $country, $offers),
             static fn(array $legacyIds): array => anytour_andromeda_anytour_offer_canonical_targets($db, $legacyIds),
-            static function(array $state, int $created, array $offer, array $current) use ($directory, $searchRef, $generation, $nowTs): ?array {
+            static function(array $state, int $created, array $offer, array $current) use ($directory, $searchRef, $generation, $nowTs, $request): ?array {
                 $allows = static function(array $candidate) use ($current): bool {
                     $key = json_encode([$candidate['supplier_namespace'] ?? null, (string)($candidate['external_hotel_id'] ?? '')]);
                     return is_int($candidate['local_hotel_id'] ?? null)
@@ -812,9 +862,10 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
                     'provider' => 'andromeda', 'search_ref' => $searchRef, 'generation' => $generation,
                     'page' => $state['store']['snapshot']['page'], 'offer_ref' => $offer['offer_ref'],
                 ];
-                return anytour_andromeda_read_saved_pricing(
+                $exact = anytour_andromeda_read_saved_pricing(
                     $directory, $state['store'], $created, $context, $allows, $nowTs
                 );
+                return anytour_andromeda_anytour_offer_pricing($directory,$offer,$request,$nowTs,$exact);
             },
             static fn(string $path, array $value): bool => anytour_andromeda_search3_save($path, $value),
             static function(string $provider, array $search, array $rows, DateTimeImmutable $at) use ($db): array {
