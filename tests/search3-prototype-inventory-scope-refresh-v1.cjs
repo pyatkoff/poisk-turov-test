@@ -120,8 +120,10 @@ function harness(search, {hidden=true, disabled=false}={}) {
   {
     const editing = harness('?searched=1&max=600000', {hidden:false});
     editing.location.search='?searched=1';
-    await editing.fire('click');
-    assert.equal(editing.submissions, 0, 'expanded main search form must still wait for explicit Find tours');
+    const click = editing.fire('click');
+    editing.form.hidden=true;
+    await click;
+    assert.equal(editing.submissions, 0, 'explicit Find tours click must not queue a second refresh after the form collapses');
   }
 
   {
