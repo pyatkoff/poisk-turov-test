@@ -42,6 +42,7 @@ FIXED = [
     'scripts/diagnostics/hotel_match_live234_tv_secondary_refresh_v1.py',
     'scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php',
     'scripts/diagnostics/hotel_match_current_coverage_wrapper_v1.php',
+    'scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php',
 ]
 
 # Persistent installation is intentionally narrower than the source bundle:
@@ -389,6 +390,10 @@ def parse_command(body: str) -> dict:
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'match-coverage':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'match-coverage-v2':
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
@@ -1257,6 +1262,91 @@ def run_match_coverage(stage):
             'summary':summary,'stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
             'stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
 
+
+def run_match_coverage_v2(stage):
+    coverage_child='hotel-match-current-coverage-1971-20260923-v2'
+    matrix_child='hotel-match-live30-common4-gap-matrix-1971-20260923-v1'
+    match_root=home/'.anytoour-match/operations'
+    match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
+    coverage_dir=match_root/coverage_child
+    matrix_dir=match_root/matrix_child
+    if coverage_dir.exists() or coverage_dir.is_symlink(): fail('match_coverage_v2_child_exists_no_replay')
+    if matrix_dir.exists() or matrix_dir.is_symlink(): fail('match_common4_matrix_child_exists_no_replay')
+    coverage_dir.mkdir(mode=0o700);matrix_dir.mkdir(mode=0o700)
+    for child,directory in ((coverage_child,coverage_dir),(matrix_child,matrix_dir)):
+        reservation={'operation':child,'state':'reserved_before_db_read','source_sha':source,
+                     'parent_operation':operation,'provider_http_calls':0,'database_writes':0,'mapping_writes':0}
+        (directory/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
+        os.chmod(directory/'reservation.json',0o600)
+
+    coverage_runner=stage/'scripts/diagnostics/hotel_match_current_coverage_wrapper_v1.php'
+    coverage_diag=stage/'scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php'
+    matrix_runner=stage/'scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php'
+    helper=stage/'scripts/diagnostics/hotel_match_anex_effective_coverage.php'
+    for path in (coverage_runner,coverage_diag,matrix_runner,helper):
+        if not safe_file(path): fail('match_coverage_v2_source_missing')
+
+    env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(coverage_dir),
+         'MATCH_SOURCE_SHA':source,'MATCH_CHILD_OPERATION':coverage_child}
+    coverage_call=subprocess.run(['php',str(coverage_runner),'--execute'],cwd=project,env=env,
+                                 capture_output=True,text=True,timeout=240)
+    coverage_result_path=coverage_dir/'result.json';coverage_receipt_path=coverage_dir/'receipt.json'
+    if not safe_file(coverage_result_path,128*1024*1024) or not safe_file(coverage_receipt_path,1024*1024):
+        fail('match_coverage_v2_terminal_missing')
+    coverage_result=safe_json(coverage_result_path,128*1024*1024)
+    coverage_receipt=safe_json(coverage_receipt_path,1024*1024)
+    coverage_digest=hashlib.sha256(coverage_result_path.read_bytes()).hexdigest()
+    if coverage_receipt.get('result_sha256')!=coverage_digest: fail('match_coverage_v2_terminal_hash')
+    for key in ('provider_http_calls','tourvisor_calls','samo_calls','anex_calls','database_writes','mapping_writes'):
+        if coverage_result.get(key)!=0: fail('match_coverage_v2_nonzero_'+key)
+    if coverage_call.returncode!=0 or coverage_result.get('state')!='completed_read_only_coverage':
+        fail('match_coverage_v2_terminal_guard')
+
+    env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(matrix_dir),
+         'MATCH_SOURCE_SHA':source}
+    matrix_call=subprocess.run(['php',str(matrix_runner),'--execute'],cwd=project,env=env,
+                               capture_output=True,text=True,timeout=240)
+    matrix_result_path=matrix_dir/'result.json';matrix_receipt_path=matrix_dir/'receipt.json'
+    if not safe_file(matrix_result_path,64*1024*1024) or not safe_file(matrix_receipt_path,1024*1024):
+        fail('match_common4_matrix_terminal_missing')
+    matrix_result=safe_json(matrix_result_path,64*1024*1024)
+    matrix_receipt=safe_json(matrix_receipt_path,1024*1024)
+    matrix_digest=hashlib.sha256(matrix_result_path.read_bytes()).hexdigest()
+    if matrix_receipt.get('result_sha256')!=matrix_digest: fail('match_common4_matrix_terminal_hash')
+    for key in ('provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes'):
+        if matrix_result.get(key)!=0: fail('match_common4_matrix_nonzero_'+key)
+    if matrix_call.returncode!=0 or matrix_result.get('state')!='completed_read_only_common4_gap_matrix':
+        fail('match_common4_matrix_terminal_guard')
+
+    live30=coverage_result.get('live_30d') if isinstance(coverage_result.get('live_30d'),dict) else {}
+    active=coverage_result.get('active_tv') if isinstance(coverage_result.get('active_tv'),dict) else {}
+    samo_live30=coverage_result.get('samo_live_30d') if isinstance(coverage_result.get('samo_live_30d'),dict) else {}
+    matrix_summary={k:v for k,v in matrix_result.items() if k not in ('rows','definitions','source_sha')}
+    return {
+        'coverage':{
+            'child_operation':coverage_child,'state':coverage_result.get('state'),
+            'result_sha256':coverage_digest,'result_bytes':coverage_result_path.stat().st_size,
+            'summary':{
+                'generated_at_utc':coverage_result.get('generated_at_utc'),
+                'edge_counts':coverage_result.get('edge_counts'),
+                'active_counts':active.get('counts'),
+                'live30_counts':live30.get('counts'),
+                'live30_top_missing_geographies':live30.get('top_missing_geographies'),
+                'samo_live30':samo_live30,
+            },
+            'stdout_sha256':hashlib.sha256(coverage_call.stdout.encode()).hexdigest(),
+            'stderr_sha256':hashlib.sha256(coverage_call.stderr.encode()).hexdigest() if coverage_call.stderr else None,
+        },
+        'common4_gap_matrix':{
+            'child_operation':matrix_child,'state':matrix_result.get('state'),
+            'result_sha256':matrix_digest,'result_bytes':matrix_result_path.stat().st_size,
+            'summary':matrix_summary,
+            'stdout_sha256':hashlib.sha256(matrix_call.stdout.encode()).hexdigest(),
+            'stderr_sha256':hashlib.sha256(matrix_call.stderr.encode()).hexdigest() if matrix_call.stderr else None,
+        },
+        'provider_http_calls':0,'database_writes':0,'mapping_writes':0,
+    }
+
 def run_match_secondary_audit(stage):
     child='hotel-match-live-anex-samo-missing-secondary-audit-1971-20260923-v1'
     match_root=home/'.anytoour-match/operations'
@@ -1653,6 +1743,14 @@ try:
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
+    if mode=='match-coverage-v2':
+        result['match_coverage_v2']=run_match_coverage_v2(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='match-coverage-readback':
         result['match_coverage_readback']=read_match_coverage()
         result['production_after']=fingerprints()
@@ -1710,7 +1808,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -1733,7 +1831,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
