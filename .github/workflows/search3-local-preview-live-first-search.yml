@@ -1,0 +1,48 @@
+name: Search3 LOCAL preview live first-search union
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/search3-local-preview-live-first-search.cjs'
+      - '.github/workflows/search3-local-preview-live-first-search.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  live-first-search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Guard one-shot diagnostic surface
+        run: |
+          set -euo pipefail
+          node --check tests/search3-local-preview-live-first-search.cjs
+          ! grep -En 'continue-search.*\.click|confirm-tour.*\.click|selected-tour.*\.click' tests/search3-local-preview-live-first-search.cjs
+          ! grep -En 'secrets\.|ssh|scp|rsync' tests/search3-local-preview-live-first-search.cjs
+      - name: Install pinned browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/search3-live-tools" --no-audit --no-fund --no-save playwright@1.55.0
+          "$RUNNER_TEMP/search3-live-tools/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Capture one real first-search source receipt
+        env:
+          NODE_PATH: ${{ runner.temp }}/search3-live-tools/node_modules
+          SEARCH3_LOCAL_LIVE_URL: https://anytoour.ru/_preview/search3-local-candidate/prototype-search/
+          SEARCH3_LOCAL_LIVE_OUTPUT: ${{ runner.temp }}/search3-local-live-first-search
+        run: node tests/search3-local-preview-live-first-search.cjs
+      - name: Retain source receipt evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-local-live-first-search-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-local-live-first-search/
+          if-no-files-found: warn
+          retention-days: 7
