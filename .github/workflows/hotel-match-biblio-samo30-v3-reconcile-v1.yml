@@ -1,0 +1,89 @@
+name: MATCH reconcile Biblio SAMO30 v3
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-biblio-samo30-v3-reconcile-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: match-biblio-samo30-v3-reconcile-v1, cancel-in-progress: false}
+env:
+  BASE: 2321db22b5dede7f1cb9b6d5dc9a098521ed86f6
+  CLAIM: '5766555856'
+  REMOTE_OP: hotel-match-biblio-samo30-1971-20260921-v3
+jobs:
+  reconcile:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate isolated read-only reconciliation
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; mkdir -p terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE"..HEAD)" = ".github/workflows/hotel-match-biblio-samo30-v3-reconcile-v1.yml"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > terminal/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('terminal/claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in ['hotel-match-biblio-samo30-v3-reconcile-1971-20260921-v1','READ ONLY','DO NOT rerun v3','No provider/Tourvisor/SAMO/Andromeda call']:
+              assert x in c['body'],x
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              with urllib.request.urlopen(urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']}),timeout=30) as f:
+                  r=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if r and max(r,key=lambda x:x['id'])['status']=='completed':
+                  assert max(r,key=lambda x:x['id'])['conclusion']=='success';break
+              time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Read existing remote durable files only
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/h"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          r="$USER@$HOST"; op=".anytoour-match/operations/$REMOTE_OP"; a=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          ssh "${a[@]}" "$r" "set -eu; cd \"\$HOME/$op\"; for f in started.json failure.json login-reserved.json login-result.json result.json receipt.json call-*-reserved.json call-*-result.json; do if [ -f \"\$f\" ]; then printf '%s\\0' \"\$f\"; fi; done | tar --null -T - -czf -" > terminal/server.tgz
+      - name: Classify durable supplier-call state
+        run: |
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          root=pathlib.Path('terminal/extracted');root.mkdir()
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              names=t.getnames()
+              assert names and all('/' not in n and n!='payload' for n in names)
+              for m in t.getmembers():
+                  assert m.isfile()
+                  (root/m.name).write_bytes(t.extractfile(m).read())
+          docs={}
+          for p in root.glob('*.json'):
+              docs[p.name]=json.loads(p.read_text())
+          assert docs.get('started.json',{}).get('operation')=='hotel-match-biblio-samo30-1971-20260921-v3'
+          reserved=sorted(root.glob('call-*-reserved.json')); results=sorted(root.glob('call-*-result.json'))
+          login_reserved=(root/'login-reserved.json').exists(); login_result=(root/'login-result.json').exists()
+          failure=docs.get('failure.json'); result=docs.get('result.json'); receipt=docs.get('receipt.json')
+          if receipt and result:
+              state='terminal_completed'; calls=result.get('andromeda_calls')
+          elif failure:
+              state='terminal_failed_no_replay'; calls=failure.get('andromeda_calls')
+          else:
+              state='unknown_no_replay'; calls=None
+          summary={'operation':'hotel-match-biblio-samo30-v3-reconcile-1971-20260921-v1','remote_operation':'hotel-match-biblio-samo30-1971-20260921-v3','state':state,'durable_andromeda_calls':calls,'login_reserved':login_reserved,'login_result':login_result,'price_reserved':len(reserved),'price_results':len(results),'remote_files':sorted(docs),'file_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in root.glob('*.json')},'provider_calls_this_reconciliation':0,'database_reads_this_reconciliation':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          pathlib.Path('terminal/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-biblio-samo30-v3-reconcile-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
