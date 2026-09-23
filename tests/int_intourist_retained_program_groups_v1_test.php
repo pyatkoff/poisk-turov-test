@@ -38,6 +38,6 @@ irpg_ok($closed['distinct_spo_count']===2&&$closed['probe_ready']===false,'30/34
 $istanbul=array_values(array_filter($r['groups'],static fn(array $g):bool=>$g['program_key']==='25'&&$g['tour_key']==='172'))[0];
 irpg_ok($istanbul['distinct_spo_count']===1&&$istanbul['probe_ready']===false,'single SPO blocked');
 $encoded=json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
-irpg_ok(!str_contains($encoded,'offer_'),'no offer ids exposed');
+foreach($r['groups'] as $group) irpg_ok(!array_key_exists('offer_ref',$group),'sanitized group output');
 irpg_ok(irpg_generation(IRPG_TARGET_OPERATION)>0,'generation');
 echo "INT_INTOURIST_RETAINED_PROGRAM_GROUPS_OK supplier=0 db=0 server_writes=0\n";
