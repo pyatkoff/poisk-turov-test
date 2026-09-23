@@ -171,5 +171,31 @@ assert.match(source, /function runSearch\(options=\{\}\)\{return searchLifecycle
 assert.match(source, /exactRefreshTarget:selectedTourOfferSnapshot\(o\)/, 'refresh carries the immutable canonical target');
 assert.match(source, /sameSelectedTourConditions\(o,r\.exactRefreshTarget\)/, 'completion requires the same tour conditions');
 
+const urlStateStart=source.indexOf('function restoreURL()');
+const urlStateEnd=source.indexOf('\nfunction renderSummary',urlStateStart);
+assert.ok(urlStateStart>=0&&urlStateEnd>urlStateStart,'URL state block is present');
+const urlStateSource=source.slice(urlStateStart,urlStateEnd);
+assert.match(urlStateSource,/p\.get\('searched'\)==='1'/,'searched=1 restores the searched state on reload');
+assert.match(urlStateSource,/state\.filters\.flight=.*regular.*charter.*unknown/s,'flight filter round-trips through the URL');
+for(const key of ['beach','rating','family','spa'])assert.match(urlStateSource,new RegExp("p\\.get\\(k\\)==='1'"),key+' boolean filters use the canonical URL flag parser');
+assert.match(urlStateSource,/state\.onlyFavorites=p\.get\('favorites'\)==='1'/,'favorites-only mode round-trips through the URL');
+assert.match(urlStateSource,/history\[push\?'pushState':'replaceState'\]/,'URL owner can distinguish fresh search history from local replacements');
+const commitURLSource=source.slice(source.indexOf('function commitSearchDraft()'),source.indexOf('\nconst searchLifecycle=',source.indexOf('function commitSearchDraft()')));
+assert.match(commitURLSource,/updateURL\(\{push:true\}\)/,'an explicit committed search creates a distinct browser history entry');
+const popStateStart=source.indexOf("addEventListener('popstate'");
+const popStateEnd=source.indexOf('\nfunction showModal',popStateStart);
+assert.ok(popStateStart>=0&&popStateEnd>popStateStart,'browser popstate owner is present');
+const popStateSource=source.slice(popStateStart,popStateEnd);
+assert.match(popStateSource,/location\.search!==currentURLQuery\(\).*location\.reload\(\)/s,'Back/Forward across different search URLs reloads the browser-restored query');
+assert.ok(popStateSource.indexOf('e.state?.[uiHistoryKey]')<popStateSource.indexOf('location.reload()'),'modal/drawer history is consumed before search-URL reload');
+const bootSource=source.slice(source.indexOf('async function bootRealData()'),source.indexOf("\ndocument.addEventListener('click'",source.indexOf('async function bootRealData()')));
+assert.match(bootSource,/const resumeURL=restoreURL\(\)/,'boot captures whether URL represents completed search state');
+assert.match(bootSource,/if\(resumeURL\)runSearch\(\{resumeOnly:true\}\)/,'searched URL boots through supplier-free cached resume');
+const prepareResumeSource=source.slice(source.indexOf('function prepareSearchRun(options={})'),source.indexOf('\nfunction mergeSearchResults'));
+assert.match(prepareResumeSource,/const resumeOnly=options\.resumeOnly===true/,'search preparation recognizes cached resume explicitly');
+assert.match(prepareResumeSource,/if\(!resumeOnly\)\{[^}]*demoteSavedTour\(\)/s,'cached resume never demotes the saved selected-tour observation');
+assert.match(source,/Сохранённых предложений пока нет/,'empty cached resume explains that no saved rows were available');
+assert.match(source,/Условия восстановлены из ссылки без нового запроса к туроператорам/,'cached empty state is honest about supplier-free restoration');
+
 execFileSync(process.execPath,['tests/search3-prototype-search-lifecycle-v1.cjs'],{stdio:'inherit'});
 console.log('search3 prototype selected-tour retention: ok');

@@ -36,11 +36,16 @@ function harness({reject=false,hidden=false,covered=true,previous={kind:'previou
    requestSubmit(){requests++;for(const listener of submitListeners)listener({preventDefault(){}});}
  };
  const eventTarget={addEventListener(type,listener){if(eventListeners[type])eventListeners[type].push(listener);}};
+ const cachedCalls=[];
  const data={
    currentSupplierScope:previous,
    search(search,callback,hotelIds,appliedFilters){
      calls.push({search:structuredClone(search),callback,hotelIds:structuredClone(hotelIds),filters:structuredClone(appliedFilters)});
      return reject?Promise.reject(new Error('synthetic search failure')):Promise.resolve();
+   },
+   resumeCached(search,callback,hotelIds,appliedFilters){
+     cachedCalls.push({search:structuredClone(search),callback,hotelIds:structuredClone(hotelIds),filters:structuredClone(appliedFilters)});
+     return reject?Promise.reject(new Error('synthetic cached resume failure')):Promise.resolve();
    },
    supplierScope(nextFilters){scopeCalls.push(structuredClone(nextFilters));return {kind:'next',filters:structuredClone(nextFilters)};},
    supplierScopeCovered(before,next){return typeof covered==='function'?covered(before,next):covered;}
@@ -62,7 +67,7 @@ function harness({reject=false,hidden=false,covered=true,previous={kind:'previou
  });
  const fire=async (type,event={})=>{for(const listener of eventListeners[type]||[])listener(event);await flush();};
  return {
-   lifecycle,form,data,calls,results,events,failures,starts,submits,submitListeners,eventListeners,scopeCalls,fire,
+   lifecycle,form,data,calls,cachedCalls,results,events,failures,starts,submits,submitListeners,eventListeners,scopeCalls,fire,
    get prepareCount(){return prepareCount;},get commitCount(){return commitCount;},get requests(){return requests;},
    set currentKey(value){currentKey=value;},set filters(value){filters=value;},set enabled(value){enabled=value;}
  };
@@ -92,6 +97,27 @@ function harness({reject=false,hidden=false,covered=true,previous={kind:'previou
   const complete=h.events.at(-1).response;assert.equal(complete.pending,false);assert.equal(complete.phase,'complete');assert.equal(complete.canContinue,true);assert.equal(complete.retryRead,true);assert.deepEqual(complete.sources,{tourvisor:{status:'complete'}});
   send({type:'error',message:'synthetic provider error',canContinue:false,retryRead:false});
   const failed=h.events.at(-1).response;assert.equal(failed.phase,'error');assert.equal(failed.message,'synthetic provider error');assert.equal(failed.canContinue,false);
+ }
+ {
+  const h=harness();
+  assert.equal(h.lifecycle.run({resumeOnly:true}),true);
+  assert.equal(h.calls.length,0,'resumeOnly must not call the full supplier search');
+  assert.equal(h.cachedCalls.length,1,'resumeOnly uses exactly the cached data runner');
+  const send=h.cachedCalls[0].callback;
+  send({type:'loading',cachedResume:true});
+  const loading=h.events.at(-1).response;
+  assert.equal(loading.cachedResume,true);
+  assert.equal(loading.message,'Восстанавливаем сохранённые предложения без нового запроса к туроператорам.');
+  send({type:'results',hotels:[{id:8}]});assert.deepEqual(h.results,[[{id:8}]]);
+  send({type:'complete',cachedResume:true,canContinue:false,retryRead:false,resultLimitReached:false,sources:{database:{status:'complete'}}});
+  const complete=h.events.at(-1).response;
+  assert.equal(complete.cachedResume,true);assert.equal(complete.pending,false);assert.equal(complete.canContinue,false);
+ }
+ {
+  const h=harness();delete h.data.resumeCached;
+  assert.equal(h.lifecycle.run({resumeOnly:true}),false,'missing cached runner must fail closed');
+  assert.equal(h.calls.length,0,'missing cached runner must never fall back to full supplier search');
+  assert.equal(h.failures.length,1);assert.equal(h.failures[0].message,'Prototype cached resume is unavailable.');
  }
  {
   const h=harness();h.lifecycle.run({});const stale=h.calls[0].callback;

@@ -405,15 +405,27 @@ def check_width(browser, origin, width):
         assert len(anex_calls) == 1, "Exhaustion check must not replay direct ANEX"
         assert page.evaluate("() => AnyTourPrototypeData.continueSearch()") is False
         page.screenshot(path=str(EVIDENCE / f"budget-continue-{width}.png"))
+        starts_before_reload = len([c for c in calls if c["action"] == "search_start"])
+        native_before_reload = len(native_calls)
+        anex_before_reload = len(anex_calls)
         page.reload()
-        page.locator(".search-submit:not([disabled])").wait_for()
+        page.wait_for_function("document.querySelector('#search-form').hidden === true")
+        page.locator(".hotel-card").first.wait_for()
+        assert len([c for c in calls if c["action"] == "search_start"]) == starts_before_reload, "Reload must not replay Tourvisor"
+        assert len(native_calls) == native_before_reload, "Reload must not replay direct Andromeda"
+        assert len(anex_calls) == anex_before_reload, "Reload must not replay direct ANEX"
+        assert page.locator(".search-submit").is_hidden(), "Restored searched URL must stay on result state"
         assert "600" in page.locator('#budget-label').inner_text()
+        assert parse_qs(urlparse(page.url).query)["max"] == ["600000"]
+        page.locator('[data-action="edit-search"]').first.click()
+        page.locator(".search-submit:not([disabled])").wait_for()
         page.locator('.search-submit').click()
         count(4)
         last_start = [c for c in calls if c["action"] == "search_start"][-1]
         assert last_start["params"].get("priceTo") == ["600000"]
-        assert len(native_calls) == 2
-        assert len(anex_calls) == 2
+        assert len([c for c in calls if c["action"] == "search_start"]) == starts_before_reload + 1
+        assert len(native_calls) == native_before_reload + 1
+        assert len(anex_calls) == anex_before_reload + 1
         state["calendar_partial"] = True
         page.locator('[data-action="edit-search"]').first.click()
         page.locator('[data-action="dates"]').click()
