@@ -154,20 +154,39 @@ def chunks(rows):
     grouped={}
     for x in rows:
         if not x.get('missing_operator_ids'):continue
-        k=(int(x['departure_id']),int(x['country_id']),str(x['departure_date']),int(x['nights']),int(x['adults']),str(x.get('child_ages_signature','')))
-        grouped.setdefault(k,[]).append(int(x['tv_hotel_id']))
+        k=(int(x['departure_id']),int(x['country_id']),int(x['adults']),str(x.get('child_ages_signature','')))
+        grouped.setdefault(k,[]).append({
+            'tv_hotel_id':int(x['tv_hotel_id']),
+            'departure_date':str(x['departure_date']),
+            'nights':int(x['nights']),
+        })
     out=[]
-    for k,ids in grouped.items():
-        ids=sorted(set(ids))
-        for i in range(0,len(ids),30):
-            out.append({'departure_id':k[0],'country_id':k[1],'departure_date':k[2],'nights':k[3],'adults':k[4],'child_ages_signature':k[5],'hotel_ids':ids[i:i+30]})
-    out.sort(key=lambda g:(-len(g['hotel_ids']),g['country_id'],g['departure_date'],g['nights'],g['hotel_ids'][0]))
+    for k,members in grouped.items():
+        members.sort(key=lambda x:(x['departure_date'],x['nights'],x['tv_hotel_id']))
+        bucket=[]
+        def emit(items):
+            dates=[dt.date.fromisoformat(x['departure_date']) for x in items]
+            nights=[x['nights'] for x in items]
+            out.append({
+                'departure_id':k[0],'country_id':k[1],'adults':k[2],'child_ages_signature':k[3],
+                'date_from':min(dates).isoformat(),'date_to':max(dates).isoformat(),
+                'nights_from':min(nights),'nights_to':max(nights),
+                'hotel_ids':[x['tv_hotel_id'] for x in items],
+            })
+        for item in members:
+            if bucket:
+                dates=[dt.date.fromisoformat(x['departure_date']) for x in bucket+[item]]
+                if len(bucket)>=30 or (max(dates)-min(dates)).days>20:
+                    emit(bucket);bucket=[]
+            bucket.append(item)
+        if bucket:emit(bucket)
+    out.sort(key=lambda g:(-len(g['hotel_ids']),g['country_id'],g['date_from'],g['nights_from'],g['hotel_ids'][0]))
     return out
 
 def run_batch(p,opdir,index,g,missing_by_hotel):
     ages=[int(z) for z in g['child_ages_signature'].split(',') if re.fullmatch(r'[0-9]{1,2}',z)]
-    params={'departureId':g['departure_id'],'countryId':g['country_id'],'dateFrom':g['departure_date'],'dateTo':g['departure_date'],
-            'nightsFrom':g['nights'],'nightsTo':g['nights'],'adults':g['adults'],'childs':ages,'currency':'RUB','onlyCharter':False,
+    params={'departureId':g['departure_id'],'countryId':g['country_id'],'dateFrom':g['date_from'],'dateTo':g['date_to'],
+            'nightsFrom':g['nights_from'],'nightsTo':g['nights_to'],'adults':g['adults'],'childs':ages,'currency':'RUB','onlyCharter':False,
             'operatorIds':list(OPS),'hotelIds':g['hotel_ids']}
     _,st=p.call('search_start','/tours/search',params);st=unwrap(st)
     sid=num((st or {}).get('searchId') if isinstance(st,dict) else None) or num((st or {}).get('id') if isinstance(st,dict) else None)
