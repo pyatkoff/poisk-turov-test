@@ -596,3 +596,10 @@ def test_match_common4_continuation_bulk_limit():
         raise AssertionError('overflow accepted')
     except ValueError as exc:
         assert str(exc) in ('match_scope','match_limit')
+
+
+class MatchContinuationResumeParseTest(unittest.TestCase):
+    def test_match_common4_continuation_resume_day(self):
+        cmd=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-continuation-resume-day int-andromeda-match-common4-continuation-resume-day-20260924-v1')
+        self.assertEqual(cmd['mode'],'match-common4-continuation-resume-day')
+        self.assertEqual(cmd['operation_id'],'int-andromeda-match-common4-continuation-resume-day-20260924-v1')
