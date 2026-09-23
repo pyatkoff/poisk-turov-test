@@ -29,6 +29,15 @@ class ParseTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.parse_command(f'/run-int-server-v1 {SHA} install-andromeda-preview int-andromeda-preview-install-20260923-v1 extra')
 
+    def test_install_andromeda_quote_preview(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} install-andromeda-quote-preview int-andromeda-quote-preview-install-20260923-v1')
+        self.assertEqual('install-andromeda-quote-preview',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
+        with self.assertRaises(ValueError):
+            m.parse_command(f'/run-int-server-v1 {SHA} install-andromeda-quote-preview int-anex-quote-preview-install-20260923-v1')
+        with self.assertRaises(ValueError):
+            m.parse_command(f'/run-int-server-v1 {SHA} install-andromeda-quote-preview int-andromeda-quote-preview-install-20260923-v1 extra')
+
     def test_program_fuel_readback(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} program-fuel-readback int-andromeda-program-fuel-readback-20260923-v1')
         self.assertEqual('program-fuel-readback',v['mode'])
@@ -339,6 +348,8 @@ class InstallRuntimeTest(unittest.TestCase):
         (runtime/'app/integrations/x0.php').write_text('<?php /* old */\n')
         if mode == 'install-andromeda-preview':
             (runtime/'api-andromeda-search3-preview.php').write_text('<?php /* old endpoint */\n')
+        if mode == 'install-andromeda-quote-preview':
+            (runtime/'api-andromeda-quote-preview.php').write_text('<?php /* old quote endpoint */\n')
         bindir=root/'bin';bindir.mkdir()
         php=bindir/'php'
         php.write_text(
@@ -389,6 +400,23 @@ class InstallRuntimeTest(unittest.TestCase):
             self.assertEqual(0,result['supplier_calls'])
             self.assertEqual(0,result['database_writes'])
 
+    def test_andromeda_quote_preview_install_backup_and_readback(self):
+        with tempfile.TemporaryDirectory() as td:
+            result,home,project=self.fixture(
+                Path(td),'int-andromeda-quote-preview-install-20260923-v1',mode='install-andromeda-quote-preview')
+            self.assertEqual('installed',result['status'])
+            self.assertEqual(23,result['install']['files'])
+            endpoint=result['install']['endpoint']
+            self.assertEqual('v2/api-andromeda-quote-preview.php',endpoint['source'])
+            self.assertEqual('api-andromeda-quote-preview.php',endpoint['target'])
+            self.assertTrue(endpoint['changed'])
+            self.assertEqual('<?php\n',(project/'_preview/search3-anex-candidate/api-andromeda-quote-preview.php').read_text())
+            backup=home/'.anytoour-int-executor/int-andromeda-quote-preview-install-20260923-v1/backup/api-andromeda-quote-preview.php'
+            self.assertEqual('<?php /* old quote endpoint */\n',backup.read_text())
+            self.assertTrue(result['public_ui_entrypoints_unchanged'])
+            self.assertEqual(0,result['supplier_calls'])
+            self.assertEqual(0,result['database_writes'])
+
     def test_post_install_failure_rolls_back_every_file(self):
         with tempfile.TemporaryDirectory() as td:
             result,home,project=self.fixture(
@@ -405,8 +433,8 @@ class ContractTest(unittest.TestCase):
         text=SCRIPT.read_text()
         for x in ["ISSUE = 3419","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
                   "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged",
-                  "install-runtime","install-andromeda-preview","install-plan.json","preview-install-plan.json","install-state.json","rollback_install",
-                  "v2/api-andromeda-search3-preview.php","api-andromeda-search3-preview.php",
+                  "install-runtime","install-andromeda-preview","install-andromeda-quote-preview","install-plan.json","preview-install-plan.json","quote-preview-install-plan.json","install-state.json","rollback_install",
+                  "v2/api-andromeda-search3-preview.php","api-andromeda-search3-preview.php","v2/api-andromeda-quote-preview.php","api-andromeda-quote-preview.php",
                   "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
                   "search3-local-results-read-v1.php","--max-captures=","non_external_only",
@@ -462,7 +490,7 @@ class ContractTest(unittest.TestCase):
                   "match-tv942-write","run_match_tv942_write",
                   "hotel_match_live942_tv_writer_v1.php",
                   "match_tv_writer_manifest_hash","match_tv_writer_terminal_guard",
-                  "install-runtime','install-andromeda-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-readback','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
+                  "install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-readback','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
