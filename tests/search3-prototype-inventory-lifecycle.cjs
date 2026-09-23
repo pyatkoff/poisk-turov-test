@@ -651,7 +651,7 @@ test('Andromeda flight choice continuation accepts only retained outbound and re
  const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
  const pending=await h.data.verifyAndromeda(offer);
  assert.equal(pending.state,'flight_selection_required');assert.equal(pending.finalPrice,null);assert.equal(pending.flightSelectionRequired,true);
- assert.deepEqual(pending.flights.map(row=>[row.direction,row.flightRef]),[
+ assert.deepEqual(JSON.parse(JSON.stringify(pending.flights.map(row=>[row.direction,row.flightRef]))),[
   ['0','flight_'+'1'.repeat(32)],['0','flight_'+'2'.repeat(32)],['1','flight_'+'3'.repeat(32)]
  ]);
  await assert.rejects(h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'9'.repeat(32),return_ref:'flight_'+'3'.repeat(32)}),/устарело/);
@@ -659,7 +659,7 @@ test('Andromeda flight choice continuation accepts only retained outbound and re
  const verified=await h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)});
  assert.equal(h.andromedaQuoteCalls.length,2);const continuation=h.andromedaQuoteCalls[1];
  assert.equal(continuation.action,'quote_select_flights');
- assert.deepEqual(continuation.flight_selection,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)});
+ assert.deepEqual(JSON.parse(JSON.stringify(continuation.flight_selection)),{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)});
  assert.equal(verified.state,'quote_verified');assert.equal(verified.finalPrice.amount,'1512345');
  await assert.rejects(h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)}),/устарело/);
  assert.equal(h.andromedaQuoteCalls.length,2,'verified continuation cannot be replayed from cleared retained refs');
