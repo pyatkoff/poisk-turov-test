@@ -101,6 +101,26 @@ for (const [field, value] of [['hotelId', 78], ['day', '2026-10-06'], ['nights',
 assert.equal(api.same({...candidate, adults: 3}, target), false, 'party size cannot be silently substituted');
 assert.equal(api.same({...candidate, ages: [7]}, target), false, 'child composition cannot be silently substituted');
 
+const priceCopyStart = source.indexOf('const needsRefresh=');
+const priceCopyEnd = source.indexOf('const mealLabel=', priceCopyStart);
+assert.ok(priceCopyStart >= 0 && priceCopyEnd > priceCopyStart, 'price provenance helpers are present');
+const priceCopyContext = {};
+vm.createContext(priceCopyContext);
+vm.runInContext(source.slice(priceCopyStart, priceCopyEnd) + '\nthis.priceCopyTest={needsRefresh,offerActionLabel,priceNote,offerMetaNote};', priceCopyContext);
+const priceCopy = priceCopyContext.priceCopyTest;
+const cachedLocal = {cached:true,provider:'local',raw:{selectionEnabled:false}};
+const directAnex = {cached:false,provider:'anex',raw:{selectionEnabled:false}};
+const directAndromeda = {cached:false,provider:'andromeda',raw:{selectionEnabled:false}};
+const freshTourvisor = {cached:false,provider:'tourvisor',raw:{selectionEnabled:true}};
+assert.equal(priceCopy.priceNote(cachedLocal),'Сохранённая цена · требует проверки','cached LOCAL price keeps saved provenance');
+assert.equal(priceCopy.priceNote(directAnex),'Цена из текущего поиска · требует подтверждения','fresh direct ANEX is not mislabeled as saved');
+assert.equal(priceCopy.priceNote(directAndromeda),'Цена из текущего поиска · требует подтверждения','fresh direct Andromeda is not mislabeled as saved');
+assert.equal(priceCopy.priceNote(freshTourvisor),'Цена предложения · сборы уточняются','fresh selectable Tourvisor keeps current offer copy');
+assert.equal(priceCopy.offerMetaNote(directAnex),'Цена из текущего поиска · требует подтверждения','compact direct-provider row uses truthful provenance');
+assert.equal(priceCopy.offerMetaNote(freshTourvisor),'Рейсы и багаж — при выборе','fresh Tourvisor compact row keeps selection detail hint');
+assert.equal(priceCopy.offerActionLabel(directAndromeda),'Смотреть условия','direct-provider selection authority remains unchanged');
+assert.equal(priceCopy.offerActionLabel(freshTourvisor),'Выбрать тур','Tourvisor selection CTA remains unchanged');
+
 const prepareSearch = source.slice(source.indexOf('function prepareSearchRun(options={})'), source.indexOf('\nfunction mergeSearchResults'));
 assert.match(prepareSearch, /demoteSavedTour\(\)/, 'new search retains a demoted observation before lifecycle orchestration');
 assert.doesNotMatch(prepareSearch, /savedSelection=null/, 'new search no longer deletes the saved tour');
