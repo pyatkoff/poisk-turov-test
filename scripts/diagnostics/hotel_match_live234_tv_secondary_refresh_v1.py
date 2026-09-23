@@ -165,7 +165,7 @@ def run_batch(p,opdir,index,g):
     # A bounded status timeout is not proof of an empty search. Tourvisor can
     # already expose useful results while status is still incomplete. Read the
     # current result set once and trust only actually returned target/operator
-    # pairs; never infer absence and never call /continue.
+    # pairs; never infer absence and never request continuation pagination.
     _,res=p.call('search_results',f'/tours/search/{sid}',{'limit':10000})
     wanted=set(g['hotel_ids']);edges=[];returned=set()
     for h in hotel_rows(res):
