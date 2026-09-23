@@ -28,6 +28,11 @@ const expandedAnex=(body,{groupRef='anex_online:'+'b'.repeat(64),searchRef='c'.r
    flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:'anex_online:'+'2'.repeat(64),selection_enabled:false}
  ]}]
 }});
+const currentAnexConcrete=(body,{ready=false}={})=>({ok:true,data:{
+ provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'current',selection_state:'disabled',
+ finalPriceReady:ready,finalPrice:ready?'1530000':null,price:ready?'1530000':null,
+ offer:{final_price_verified:false,context:{current_context_verified:true}}
+}});
 const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),localId=101,pagesCount=1,status='complete',searchRef='c'.repeat(64)}={})=>{
  const page=Number(body.page),hotels=empty?[]:[{local_id:localId,mapping_status:'resolved',tours:[{
   provider:'andromeda',price:{amount:'1480000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,
@@ -245,6 +250,46 @@ test('direct ANEX group verification re-searches exact scope and expands without
  assert.equal(verifyCalls[1].offer_ref,groupRef);assert.equal(verifyCalls[1].search_ref,verifyRef);assert.equal(verifyCalls[1].local_hotel_id,101);
  assert.equal(result.hotelId,offer.hotelId);assert.equal(result.offers.length,2);
  assert.ok(result.offers.every(item=>item.provider==='anex'&&item.raw.anexKind==='concrete'&&item.raw.anexLocalHotelId===101));
+});
+test('expanded concrete ANEX offer verifies in the same provider session without Tourvisor fallback',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const h=harness({anex:async body=>{
+  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
+  if(body.action==='offer')return {response:{ok:true,status:200,json:async()=>currentAnexConcrete(body)}};
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();
+ const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');verification=true;
+ const expanded=await h.data.expandAnexGroup(group),concrete=expanded.offers[0];assert.ok(concrete);
+ assert.equal(concrete.raw.anexKind,'concrete');assert.equal(concrete.raw.anexSessionCurrent,true);
+ const beforeTourvisor=h.calls.filter(call=>call.action==='search_start').length;
+ const current=await h.data.verifyAnexConcrete(concrete);
+ assert.equal(h.calls.filter(call=>call.action==='search_start').length,beforeTourvisor,'concrete verification never launches Tourvisor');
+ const request=h.anexCalls.at(-1);assert.equal(request.action,'offer');assert.equal(request.generation,concrete.raw.anexGeneration);
+ assert.equal(request.search_ref,verifyRef);assert.equal(request.offer_ref,concrete.raw.offerRef);assert.equal(request.local_hotel_id,101);
+ assert.equal(current.state,'current');assert.equal(current.currentContextVerified,true);assert.equal(current.finalPriceReady,false);
+ assert.equal(current.finalPrice,null);assert.equal(current.finalPriceVerified,false);
+});
+test('only exact-expanded session-current ANEX concrete rows can use provider follow-up',async()=>{
+ const h=harness();const raw={selectionEnabled:false,anexKind:'concrete',anexLocalHotelId:101,anexGeneration:1,
+  searchRef:'c'.repeat(32),offerRef:'anex_online:'+'1'.repeat(64),anexSessionCurrent:false};
+ await assert.rejects(h.data.verifyAnexConcrete({cached:false,provider:'anex',raw}),/устарело/);
+ assert.equal(h.anexCalls.length,0,'non-current concrete row cannot reach ANEX follow-up');
+});
+test('Stop aborts pending concrete ANEX verification and rejects stale response',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32),gate=defer();let verification=false,offerSignal=null;
+ const h=harness({anex:async(body,signal)=>{
+  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
+  if(body.action==='offer'){offerSignal=signal;await gate.promise;return {response:{ok:true,status:200,json:async()=>currentAnexConcrete(body)}};}
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');verification=true;
+ const concrete=(await h.data.expandAnexGroup(group)).offers[0],pending=h.data.verifyAnexConcrete(concrete);
+ await waitFor(()=>offerSignal!==null,'pending concrete ANEX request required');assert.equal(offerSignal.aborted,false);
+ h.data.stop();assert.equal(offerSignal.aborted,true);gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
+ assert.equal(h.anexCalls.filter(call=>call.action==='offer').length,1,'stale concrete follow-up is never replayed');
 });
 test('Stop invalidates and aborts a pending direct ANEX group verification',async()=>{
  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32),gate=defer();let verification=false,expandSignal=null;
