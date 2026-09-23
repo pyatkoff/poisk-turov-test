@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/operator-fuel-rule-evidence.php';
 require_once __DIR__ . '/operator-fuel-rule-store.php';
+require_once __DIR__ . '/andromeda-search-surcharge.php';
 
 /**
  * Saved-only SAMO/Andromeda fuel intake.
@@ -53,6 +54,30 @@ final class AnyTourAndromedaOperatorFuelRetainedIntakeV1
         $validTo = self::date($retained['valid_to'] ?? null, 'ANDROMEDA_FUEL_PERIOD');
         if ($validFrom > $validTo) throw new InvalidArgumentException('ANDROMEDA_FUEL_PERIOD');
         $responseDigest = self::digest($retained['source_response_sha256'] ?? null, 'ANDROMEDA_FUEL_SOURCE_DIGEST');
+        $exchange = null;
+        if ($currency !== 'RUB') {
+            $rate = AnyTourAndromedaSearchSurcharge::directExchangeRate($claim, $currency, 'RUB');
+            if ($rate !== null) {
+                $fxExpires = min($expiresAt, $observedAt + 86400);
+                if ($fxExpires > $observedAt) {
+                    $exchange = [
+                        'from'=>$currency,
+                        'to'=>'RUB',
+                        'rate'=>$rate,
+                        'source'=>'andromeda_claim_money',
+                        'observed_at'=>$observedAt,
+                        'expires_at'=>$fxExpires,
+                        'evidence_sha256'=>AnyTourOperatorFuelRuleEvidenceV1::hash([
+                            'source_response_sha256'=>$responseDigest,
+                            'from'=>$currency,
+                            'to'=>'RUB',
+                            'rate'=>$rate,
+                            'source'=>'andromeda_claim_money',
+                        ]),
+                    ];
+                }
+            }
+        }
 
         $raw = [
             'provider' => 'andromeda',
@@ -81,6 +106,12 @@ final class AnyTourAndromedaOperatorFuelRetainedIntakeV1
             ]),
             'source_response_sha256' => $responseDigest,
         ];
+        if (array_key_exists('direction', $retained)) {
+            // When the saved search owner knows canonical Search3 origin/destination
+            // identity, use it so retained evidence and mass autosave share one key.
+            $raw['direction'] = $retained['direction'];
+        }
+        if ($exchange !== null) $raw['exchange'] = $exchange;
         $raw['evidence_sha256'] = AnyTourOperatorFuelRuleEvidenceV1::hash([
             'source_response_sha256'=>$responseDigest,
             'offer_ref'=>$offerRef,
@@ -89,6 +120,8 @@ final class AnyTourAndromedaOperatorFuelRetainedIntakeV1
             'unit'=>$unit,
             'base_relation'=>$relation,
             'other_required_clear'=>$otherRequiredClear,
+            'direction'=>$raw['direction'] ?? null,
+            'exchange'=>$exchange,
         ]);
         return AnyTourOperatorFuelRuleEvidenceV1::observation($raw);
     }
