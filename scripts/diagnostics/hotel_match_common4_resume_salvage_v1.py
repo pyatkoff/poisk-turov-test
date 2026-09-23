@@ -43,9 +43,9 @@ def execute(ops_root,source_sha):
     groups=tvplan.get('groups');need(isinstance(groups,list) and groups,'tvplan_groups')
     need(tvplan.get('operator_ids')==ALLOWED_OPS,'tvplan_ops')
 
-    requests=[];actions=collections.Counter();starts=[];started=set();latest=0.0
+    request_records=[];actions=collections.Counter();starts=[];started=set();latest=0.0
     for p in sorted(d.glob('tv-request-*.json')):
-        q=readj(p);requests.append(q);latest=max(latest,p.stat().st_mtime)
+        q=readj(p);request_records.append(q);latest=max(latest,p.stat().st_mtime)
         a=str(q.get('action',''));actions[a]+=1
         if a=='search_start':
             params=q.get('params');ids=params.get('hotelIds') if isinstance(params,dict) else None
@@ -97,7 +97,7 @@ def execute(ops_root,source_sha):
       'searched_hotels':len(started),'incomplete_status_batches':sum(1 for b in batches if not b.get('search_complete',False)),
       'returned_targets':sum(int(b.get('returned_targets',0)) for b in batches),
       'returned_missing_operator_pairs':sum(int(b.get('returned_missing_operator_pairs',0)) for b in batches),
-      'returned_operator_pairs':len(edges),'provider_calls':len(requests),'physical_http_attempts':len(requests),
+      'returned_operator_pairs':len(edges),'provider_calls':len(request_records),'physical_http_attempts':len(request_records),
       'operation_tariff_units':actions.get('search_start',0)+actions.get('search_continue',0)+actions.get('flights_actualization',0),
       'daily_tariff_units_after_local_ledger':None,'tourvisor_account':'TOURVISOR_ANEX_JWT','provider_day':'2026-09-24',
       'call_counts':dict(actions),'edge_state_counts':dict(state_counts),'link_state_counts':dict(link_counts),
@@ -109,10 +109,10 @@ def execute(ops_root,source_sha):
     }
     digest=save(result_path,out)
     save(receipt_path,{'operation':child,'state':out['state'],'result_sha256':digest,'continuation_plan_sha256':plan_sha,
-                       'provider_calls':len(requests),'searched_hotels':len(started),'no_replay':True,
+                       'provider_calls':len(request_records),'searched_hotels':len(started),'no_replay':True,
                        'database_writes':0,'mapping_writes':0,'salvaged_after_wrapper_timeout':True})
     print(json.dumps({'state':out['state'],'child_operation':child,'result_sha256':digest,
-                      'searched_hotels':len(started),'provider_calls':len(requests),
+                      'searched_hotels':len(started),'provider_calls':len(request_records),
                       'single_native_chunk_unique_count':unique,'single_native_by_operator':dict(single),
                       'unstarted_hotel_count':expected-len(started)},sort_keys=True))
     return 0
