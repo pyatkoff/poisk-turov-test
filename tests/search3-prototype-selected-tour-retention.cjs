@@ -201,7 +201,7 @@ const anexAdditionalApplyEnd=source.indexOf('\nasync function refreshHotel',anex
 assert.ok(anexAdditionalApplyStart>=0&&anexAdditionalApplyEnd>anexAdditionalApplyStart,'ANEX explicit AdditionalPrices action exists');
 const anexAdditionalApplySource=source.slice(anexAdditionalApplyStart,anexAdditionalApplyEnd);
 assert.match(anexAdditionalApplySource,/await data\.verifyAnexAdditional\(draft\.offer\)/,'ANEX UI delegates arithmetic/transport to data owner');
-assert.doesNotMatch(anexAdditionalApplySource,/\+|partySurcharge.*searchPrice|searchPrice.*partySurcharge/,'ANEX UI performs no client price arithmetic');
+assert.doesNotMatch(anexAdditionalApplySource,/searchPrice|partySurcharge|calculatedTotal/,'ANEX UI does not inspect or recompute server money components');
 assert.match(source,/case 'anex-additional-prices':applyAnexAdditionalPrices\(\)/,'ANEX mandatory additions have one explicit click action');
 assert.match(refreshSource,/o\.provider==='andromeda'.*o\.raw\?\.quoteRequired===true/s,'Andromeda quote-required offer owns a same-provider verification branch');
 assert.match(refreshSource,/await data\.verifyAndromeda\(o\)/,'Andromeda verification calls the dedicated same-provider quote owner');
