@@ -1,0 +1,20 @@
+name: MATCH TV tail writer sources
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_common4_tail_writer_v15.php'
+      - 'tests/hotel_match_common4_tail_writer_v15_test.php'
+      - 'scripts/diagnostics/hotel_match_common4_tail_anex_writer_v17.php'
+      - 'tests/hotel_match_common4_tail_anex_writer_v17_test.php'
+      - '.github/workflows/hotel-match-tv-tail-writer-sources.yml'
+permissions: {contents: read}
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: php -l scripts/diagnostics/hotel_match_common4_tail_writer_v15.php
+      - run: php tests/hotel_match_common4_tail_writer_v15_test.php
+      - run: php -l scripts/diagnostics/hotel_match_common4_tail_anex_writer_v17.php
+      - run: php tests/hotel_match_common4_tail_anex_writer_v17_test.php
