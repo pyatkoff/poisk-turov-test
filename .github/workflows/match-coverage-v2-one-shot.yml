@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           test "$(git diff --name-only '${{ github.event.pull_request.base.sha }}' '${{ github.event.pull_request.head.sha }}' | wc -l)" -eq 1
           test "$(git diff --name-only '${{ github.event.pull_request.base.sha }}' '${{ github.event.pull_request.head.sha }}')" = '.github/workflows/match-coverage-v2-one-shot.yml'
-          grep -Fq 'match-coverage-v2 int-andromeda-match-coverage-v2-20260923-v2' .github/workflows/match-coverage-v2-one-shot.yml
+          grep -Fq 'match-coverage-v2-readback int-andromeda-match-coverage-v2-readback-20260923-v1' .github/workflows/match-coverage-v2-one-shot.yml
           grep -Fq 'e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd' .github/workflows/match-coverage-v2-one-shot.yml
 
   execute:
@@ -65,10 +65,10 @@ jobs:
           ref: e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd
           path: source
           persist-credentials: false
-      - name: Execute exact supplier-free CURRENT coverage v2
+      - name: Read existing supplier-free CURRENT coverage v2
         env:
           GH_TOKEN: ${{ github.token }}
-          INT_OWNER_COMMAND: /run-int-server-v1 e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd match-coverage-v2 int-andromeda-match-coverage-v2-20260923-v2
+          INT_OWNER_COMMAND: /run-int-server-v1 e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd match-coverage-v2-readback int-andromeda-match-coverage-v2-readback-20260923-v1
           INT_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           INT_SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           INT_SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
