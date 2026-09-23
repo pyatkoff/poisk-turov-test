@@ -2010,7 +2010,120 @@ def match_common4_continuation_attempted():
             or plan.get('provider_http_calls')!=0 or plan.get('database_writes')!=0 or plan.get('mapping_writes')!=0):
         fail('match_common4_remainder_plan_guard')
     attempted=set();children=[];now=time.time();max_r=0
-    pat=re.compile(r'^hotel-match-live30-common4-continuation-(?:acquire-1971-20260923-c[0-9]+-n[0-9]+|resume-1971-20260924-r([0-9]+)-n[0-9]+)-v1    previous='hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1'
+    pat=re.compile(r'^hotel-match-live30-common4-continuation-(?:acquire-1971-20260923-c[0-9]+-n[0-9]+|resume-1971-20260924-r([0-9]+)-n[0-9]+)-v1$')
+    for directory in sorted(match_root.iterdir(),key=lambda p:p.name):
+        if not directory.is_dir() or directory.is_symlink(): continue
+        m=pat.fullmatch(directory.name)
+        if not m: continue
+        if m.group(1): max_r=max(max_r,int(m.group(1)))
+        requests=sorted(directory.glob('tv-request-*.json'))
+        starts=0;latest=0.0
+        for path in requests:
+            if not safe_file(path,1024*1024): continue
+            latest=max(latest,path.stat().st_mtime)
+            value=safe_json(path,1024*1024)
+            if value.get('action')=='search_start': starts+=1
+        tv_plan_path=directory/'tv-plan.json'
+        if starts:
+            if not safe_file(tv_plan_path,32*1024*1024): fail('match_common4_remainder_tv_plan_missing')
+            tv_plan=safe_json(tv_plan_path,32*1024*1024);groups=tv_plan.get('groups')
+            if not isinstance(groups,list) or starts>len(groups): fail('match_common4_remainder_group_count')
+            for group in groups[:starts]:
+                ids=group.get('hotel_ids') if isinstance(group,dict) else None
+                if not isinstance(ids,list) or not ids: fail('match_common4_remainder_group_shape')
+                for raw in ids:
+                    try: tv=int(raw)
+                    except Exception: fail('match_common4_remainder_group_id')
+                    if tv<1: fail('match_common4_remainder_group_id')
+                    attempted.add(tv)
+        result_path=directory/'result.json';receipt_child=directory/'receipt.json'
+        terminal=safe_file(result_path,32*1024*1024) and safe_file(receipt_child,1024*1024)
+        if not terminal and starts:
+            for pattern in ('tv-response-*.json','tv-batch-*-result.json'):
+                for path in directory.glob(pattern):
+                    if path.is_file() and not path.is_symlink(): latest=max(latest,path.stat().st_mtime)
+            if latest<=0 or now-latest<120: fail('match_common4_remainder_recent_nonterminal_child')
+        children.append({'operation':directory.name,'search_start':starts,'terminal':terminal,
+                         'last_activity_age_seconds':None if latest<=0 else int(now-latest)})
+    row_ids=[]
+    for row in rows:
+        if not isinstance(row,dict): fail('match_common4_remainder_row')
+        try: tv=int(row.get('tv_hotel_id'))
+        except Exception: fail('match_common4_remainder_row_id')
+        if tv<1: fail('match_common4_remainder_row_id')
+        row_ids.append(tv)
+    if len(set(row_ids))!=1349: fail('match_common4_remainder_plan_duplicates')
+    if attempted-set(row_ids): fail('match_common4_remainder_attempted_outside_plan')
+    remaining=[row for row in rows if int(row['tv_hotel_id']) not in attempted]
+    return plan,digest,attempted,remaining,children,max_r
+
+
+def run_match_common4_continuation_remainder(stage,limit):
+    plan,plan_digest,attempted,remaining,children,max_r=match_common4_continuation_attempted()
+    if not remaining:
+        return {'state':'nothing_remaining','attempted_hotel_count':len(attempted),'remaining_before':0,
+                'provider_calls':0,'database_writes':0,'mapping_writes':0,'children':children}
+    selected=remaining[:min(limit,len(remaining))]
+    selected_ids=sorted(int(row['tv_hotel_id']) for row in selected)
+    selected_digest=hashlib.sha256(json.dumps(selected_ids,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+    reduced=dict(plan)
+    reduced['operation']='hotel-match-live30-common4-continuation-remainder-plan-1971-20260924-v1'
+    reduced['source_sha']=source
+    reduced['acquisition_target_count']=len(selected)
+    reduced['acquisition_target_id_sha256']=selected_digest
+    reduced['rows']=selected
+    reduced['remainder_attempted_hotel_count']=len(attempted)
+    reduced['remainder_remaining_before']=len(remaining)
+    reduced['remainder_attempted_hotel_id_sha256']=hashlib.sha256(json.dumps(sorted(attempted),separators=(',',':')).encode()).hexdigest()
+    r=max_r+1
+    child='hotel-match-live30-common4-continuation-resume-1971-20260924-r'+str(r)+'-n'+str(len(selected))+'-v1'
+    match_root=home/'.anytoour-match/operations';child_dir=match_root/child
+    if child_dir.exists() or child_dir.is_symlink(): fail('match_common4_remainder_child_exists_no_replay')
+    child_dir.mkdir(mode=0o700)
+    plan_path=child_dir/'plan.json';plan_path.write_text(json.dumps(reduced,ensure_ascii=False,separators=(',',':')));os.chmod(plan_path,0o600)
+    reduced_digest=hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    reservation={'operation':child,'state':'reserved_before_provider','source_sha':source,'parent_operation':operation,
+                 'original_plan_sha256':plan_digest,'reduced_plan_sha256':reduced_digest,
+                 'attempted_hotel_count':len(attempted),'remaining_before':len(remaining),'selected_count':len(selected),
+                 'selected_target_id_sha256':selected_digest,'call_cap':5000,'database_writes':0,'mapping_writes':0,
+                 'reserved_at':int(time.time())}
+    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True));os.chmod(child_dir/'reservation.json',0o600)
+    runner=stage/'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py'
+    if not safe_file(runner): fail('match_common4_remainder_runner_missing')
+    run_env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
+             'MATCH_PLAN_PATH':str(plan_path),'MATCH_CHILD_OPERATION':child,'MATCH_OFFSET':'0',
+             'MATCH_LIMIT':str(len(selected)),'MATCH_CALL_CAP':'5000','MATCH_SOURCE_SHA':source}
+    call=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=run_env,capture_output=True,text=True,timeout=1200)
+    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
+    if not safe_file(result_path,32*1024*1024) or not safe_file(receipt_path,1024*1024):
+        fail('match_common4_remainder_terminal_missing')
+    child_result=safe_json(result_path,32*1024*1024);child_receipt=safe_json(receipt_path,1024*1024)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    if child_receipt.get('result_sha256')!=digest: fail('match_common4_remainder_terminal_hash')
+    if (child_result.get('continuation_plan_sha256')!=reduced_digest
+            or child_result.get('frontier_count')!=len(selected)
+            or child_result.get('frontier_id_sha256')!=selected_digest
+            or child_result.get('scope_offset')!=0 or child_result.get('scope_count')!=len(selected)
+            or child_result.get('tourvisor_account')!='TOURVISOR_ANEX_JWT'
+            or child_result.get('database_writes')!=0 or child_result.get('mapping_writes')!=0
+            or child_result.get('operator_ids')!=[13,18,25,43]
+            or child_result.get('continue_calls')!=0 or child_result.get('dates_calls')!=0):
+        fail('match_common4_remainder_terminal_guard')
+    calls=child_result.get('provider_calls')
+    if not isinstance(calls,int) or calls<0 or calls>5000: fail('match_common4_remainder_call_cap_guard')
+    allowed={'completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'}
+    if call.returncode!=0 or child_result.get('state') not in allowed:
+        fail('match_common4_remainder_terminal_nonzero_no_replay')
+    summary={k:v for k,v in child_result.items() if k not in ('edges','batches')}
+    return {'child_operation':child,'state':child_result.get('state'),'result_sha256':digest,
+            'attempted_hotel_count_before':len(attempted),'remaining_before':len(remaining),
+            'selected_count':len(selected),'selected_target_id_sha256':selected_digest,
+            'summary':summary,'provider_stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
+            'provider_stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
+
+
+def run_match_common4_continuation_resume_day(stage):
+    previous='hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1'
     match_root=home/'.anytoour-match/operations'
     prev_dir=match_root/previous
     result_path=prev_dir/'result.json';receipt_path=prev_dir/'receipt.json';tv_plan_path=prev_dir/'tv-plan.json'
@@ -2809,918 +2922,6 @@ def main() -> None:
             print(f'{key}={value}')
         return
     if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-continuation-remainder','program-fuel-probe'):
-        ensure_supplier_slot(token)
-    result = execute(command, Path(args.source_root))
-    print(json.dumps(result,sort_keys=True))
-    if result.get('status') not in ('complete','reconciled_read_only','installed'):
-        raise SystemExit(1)
-
-if __name__ == '__main__':
-    main()
-)
-    for directory in sorted(match_root.iterdir(),key=lambda p:p.name):
-        if not directory.is_dir() or directory.is_symlink(): continue
-        m=pat.fullmatch(directory.name)
-        if not m: continue
-        if m.group(1): max_r=max(max_r,int(m.group(1)))
-        requests=sorted(directory.glob('tv-request-*.json'))
-        starts=0;latest=0.0
-        for path in requests:
-            if not safe_file(path,1024*1024): continue
-            latest=max(latest,path.stat().st_mtime)
-            value=safe_json(path,1024*1024)
-            if value.get('action')=='search_start': starts+=1
-        tv_plan_path=directory/'tv-plan.json'
-        if starts:
-            if not safe_file(tv_plan_path,32*1024*1024): fail('match_common4_remainder_tv_plan_missing')
-            tv_plan=safe_json(tv_plan_path,32*1024*1024);groups=tv_plan.get('groups')
-            if not isinstance(groups,list) or starts>len(groups): fail('match_common4_remainder_group_count')
-            for group in groups[:starts]:
-                ids=group.get('hotel_ids') if isinstance(group,dict) else None
-                if not isinstance(ids,list) or not ids: fail('match_common4_remainder_group_shape')
-                for raw in ids:
-                    try: tv=int(raw)
-                    except Exception: fail('match_common4_remainder_group_id')
-                    if tv<1: fail('match_common4_remainder_group_id')
-                    attempted.add(tv)
-        result_path=directory/'result.json';receipt_child=directory/'receipt.json'
-        terminal=safe_file(result_path,32*1024*1024) and safe_file(receipt_child,1024*1024)
-        if not terminal and starts:
-            for pattern in ('tv-response-*.json','tv-batch-*-result.json'):
-                for path in directory.glob(pattern):
-                    if path.is_file() and not path.is_symlink(): latest=max(latest,path.stat().st_mtime)
-            if latest<=0 or now-latest<120: fail('match_common4_remainder_recent_nonterminal_child')
-        children.append({'operation':directory.name,'search_start':starts,'terminal':terminal,
-                         'last_activity_age_seconds':None if latest<=0 else int(now-latest)})
-    row_ids=[]
-    for row in rows:
-        if not isinstance(row,dict): fail('match_common4_remainder_row')
-        try: tv=int(row.get('tv_hotel_id'))
-        except Exception: fail('match_common4_remainder_row_id')
-        if tv<1: fail('match_common4_remainder_row_id')
-        row_ids.append(tv)
-    if len(set(row_ids))!=1349: fail('match_common4_remainder_plan_duplicates')
-    unknown=attempted-set(row_ids)
-    if unknown: fail('match_common4_remainder_attempted_outside_plan')
-    remaining=[row for row in rows if int(row['tv_hotel_id']) not in attempted]
-    return plan,digest,attempted,remaining,children,max_r
-
-
-def run_match_common4_continuation_remainder(stage,limit):
-    plan,plan_digest,attempted,remaining,children,max_r=match_common4_continuation_attempted()
-    if not remaining: return {'state':'nothing_remaining','attempted_hotel_count':len(attempted),'remaining_before':0,
-                              'provider_calls':0,'database_writes':0,'mapping_writes':0,'children':children}
-    selected=remaining[:min(limit,len(remaining))]
-    selected_ids=sorted(int(row['tv_hotel_id']) for row in selected)
-    selected_digest=hashlib.sha256(json.dumps(selected_ids,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
-    reduced=dict(plan)
-    reduced['operation']='hotel-match-live30-common4-continuation-remainder-plan-1971-20260924-v1'
-    reduced['source_sha']=source
-    reduced['acquisition_target_count']=len(selected)
-    reduced['acquisition_target_id_sha256']=selected_digest
-    reduced['rows']=selected
-    reduced['remainder_attempted_hotel_count']=len(attempted)
-    reduced['remainder_remaining_before']=len(remaining)
-    reduced['remainder_attempted_hotel_id_sha256']=hashlib.sha256(json.dumps(sorted(attempted),separators=(',',':')).encode()).hexdigest()
-    r=max_r+1
-    child='hotel-match-live30-common4-continuation-resume-1971-20260924-r'+str(r)+'-n'+str(len(selected))+'-v1'
-    match_root=home/'.anytoour-match/operations';child_dir=match_root/child
-    if child_dir.exists() or child_dir.is_symlink(): fail('match_common4_remainder_child_exists_no_replay')
-    child_dir.mkdir(mode=0o700)
-    plan_path=child_dir/'plan.json';plan_path.write_text(json.dumps(reduced,ensure_ascii=False,separators=(',',':')));os.chmod(plan_path,0o600)
-    reduced_digest=hashlib.sha256(plan_path.read_bytes()).hexdigest()
-    reservation={'operation':child,'state':'reserved_before_provider','source_sha':source,'parent_operation':operation,
-                 'original_plan_sha256':plan_digest,'reduced_plan_sha256':reduced_digest,
-                 'attempted_hotel_count':len(attempted),'remaining_before':len(remaining),'selected_count':len(selected),
-                 'selected_target_id_sha256':selected_digest,'call_cap':5000,'database_writes':0,'mapping_writes':0,
-                 'reserved_at':int(time.time())}
-    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True));os.chmod(child_dir/'reservation.json',0o600)
-    runner=stage/'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py'
-    if not safe_file(runner): fail('match_common4_remainder_runner_missing')
-    run_env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
-             'MATCH_PLAN_PATH':str(plan_path),'MATCH_CHILD_OPERATION':child,'MATCH_OFFSET':'0',
-             'MATCH_LIMIT':str(len(selected)),'MATCH_CALL_CAP':'5000','MATCH_SOURCE_SHA':source}
-    call=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=run_env,capture_output=True,text=True,timeout=1200)
-    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
-    if not safe_file(result_path,32*1024*1024) or not safe_file(receipt_path,1024*1024):
-        fail('match_common4_remainder_terminal_missing')
-    child_result=safe_json(result_path,32*1024*1024);child_receipt=safe_json(receipt_path,1024*1024)
-    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
-    if child_receipt.get('result_sha256')!=digest: fail('match_common4_remainder_terminal_hash')
-    if (child_result.get('continuation_plan_sha256')!=reduced_digest
-            or child_result.get('frontier_count')!=len(selected)
-            or child_result.get('frontier_id_sha256')!=selected_digest
-            or child_result.get('scope_offset')!=0 or child_result.get('scope_count')!=len(selected)
-            or child_result.get('tourvisor_account')!='TOURVISOR_ANEX_JWT'
-            or child_result.get('database_writes')!=0 or child_result.get('mapping_writes')!=0
-            or child_result.get('operator_ids')!=[13,18,25,43]
-            or child_result.get('continue_calls')!=0 or child_result.get('dates_calls')!=0):
-        fail('match_common4_remainder_terminal_guard')
-    calls=child_result.get('provider_calls')
-    if not isinstance(calls,int) or calls<0 or calls>5000: fail('match_common4_remainder_call_cap_guard')
-    allowed={'completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'}
-    if call.returncode!=0 or child_result.get('state') not in allowed:
-        fail('match_common4_remainder_terminal_nonzero_no_replay')
-    summary={k:v for k,v in child_result.items() if k not in ('edges','batches')}
-    return {'child_operation':child,'state':child_result.get('state'),'result_sha256':digest,
-            'attempted_hotel_count_before':len(attempted),'remaining_before':len(remaining),
-            'selected_count':len(selected),'selected_target_id_sha256':selected_digest,
-            'summary':summary,'provider_stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
-            'provider_stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
-
-
-def run_match_common4_continuation_resume_day(stage):
-    previous='hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1'
-    match_root=home/'.anytoour-match/operations'
-    prev_dir=match_root/previous
-    result_path=prev_dir/'result.json';receipt_path=prev_dir/'receipt.json';tv_plan_path=prev_dir/'tv-plan.json'
-    if not safe_file(result_path,32*1024*1024) or not safe_file(receipt_path,1024*1024) or not safe_file(tv_plan_path,32*1024*1024):
-        fail('match_common4_resume_previous_missing')
-    prior=safe_json(result_path,32*1024*1024);receipt=safe_json(receipt_path,1024*1024);tv_plan=safe_json(tv_plan_path,32*1024*1024)
-    prior_digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
-    if receipt.get('result_sha256')!=prior_digest: fail('match_common4_resume_previous_hash')
-    if (prior.get('operation')!=previous or prior.get('state')!='terminal_day_changed_no_replay'
-            or prior.get('tourvisor_account')!='TOURVISOR_ANEX_JWT'
-            or prior.get('scope_offset')!=135 or prior.get('scope_count')!=1214
-            or prior.get('database_writes')!=0 or prior.get('mapping_writes')!=0):
-        fail('match_common4_resume_previous_guard')
-    starts=(prior.get('call_counts') or {}).get('search_start')
-    groups=tv_plan.get('groups')
-    if not isinstance(starts,int) or starts<1 or not isinstance(groups,list) or starts>len(groups):
-        fail('match_common4_resume_group_count')
-    attempted=[]
-    for group in groups[:starts]:
-        if not isinstance(group,dict) or not isinstance(group.get('hotel_ids'),list) or not group['hotel_ids']:
-            fail('match_common4_resume_group_shape')
-        for raw in group['hotel_ids']:
-            try: tv=int(raw)
-            except Exception: fail('match_common4_resume_group_id')
-            if tv<1: fail('match_common4_resume_group_id')
-            attempted.append(tv)
-    attempted_set=set(attempted)
-    if len(attempted_set)!=len(attempted): fail('match_common4_resume_group_overlap')
-
-    plan_operation='hotel-match-live30-common4-continuation-plan-1971-20260923-v9'
-    plan_dir=match_root/plan_operation
-    plan_result_path=plan_dir/'result.json';plan_receipt_path=plan_dir/'receipt.json'
-    if not safe_file(plan_result_path,32*1024*1024) or not safe_file(plan_receipt_path,1024*1024):
-        fail('match_common4_resume_plan_missing')
-    plan=safe_json(plan_result_path,32*1024*1024);plan_receipt=safe_json(plan_receipt_path,1024*1024)
-    plan_digest=hashlib.sha256(plan_result_path.read_bytes()).hexdigest()
-    if plan_receipt.get('result_sha256')!=plan_digest: fail('match_common4_resume_plan_hash')
-    rows=plan.get('rows')
-    if (plan.get('state')!='live30_common4_continuation_ready' or plan.get('acquisition_target_count')!=1349
-            or not isinstance(rows,list) or len(rows)!=1349 or plan.get('provider_http_calls')!=0
-            or plan.get('database_writes')!=0 or plan.get('mapping_writes')!=0):
-        fail('match_common4_resume_plan_guard')
-    prior_scope=rows[135:1349]
-    prior_scope_ids=set()
-    for row in prior_scope:
-        if not isinstance(row,dict): fail('match_common4_resume_plan_row')
-        try: tv=int(row.get('tv_hotel_id'))
-        except Exception: fail('match_common4_resume_plan_id')
-        prior_scope_ids.add(tv)
-    if len(prior_scope_ids)!=1214 or not attempted_set.issubset(prior_scope_ids):
-        fail('match_common4_resume_membership')
-    remaining_rows=[row for row in prior_scope if int(row.get('tv_hotel_id')) not in attempted_set]
-    remaining_count=len(remaining_rows)
-    if remaining_count!=1214-len(attempted_set) or remaining_count<1:
-        fail('match_common4_resume_remaining_count')
-    remaining_ids=sorted(int(row['tv_hotel_id']) for row in remaining_rows)
-    remaining_digest=hashlib.sha256(json.dumps(remaining_ids,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
-    reduced=dict(plan)
-    reduced['operation']='hotel-match-live30-common4-continuation-resume-plan-1971-20260924-v1'
-    reduced['source_sha']=source
-    reduced['acquisition_target_count']=remaining_count
-    reduced['acquisition_target_id_sha256']=remaining_digest
-    reduced['rows']=remaining_rows
-    reduced['resume_from_operation']=previous
-    reduced['resume_attempted_search_groups']=starts
-    reduced['resume_attempted_hotel_count']=len(attempted_set)
-    reduced['resume_attempted_hotel_id_sha256']=hashlib.sha256(json.dumps(sorted(attempted_set),separators=(',',':')).encode()).hexdigest()
-
-    child='hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n'+str(remaining_count)+'-v1'
-    child_dir=match_root/child
-    if child_dir.exists() or child_dir.is_symlink(): fail('match_common4_resume_child_exists_no_replay')
-    child_dir.mkdir(mode=0o700)
-    plan_path=child_dir/'plan.json'
-    plan_path.write_text(json.dumps(reduced,ensure_ascii=False,separators=(',',':')))
-    os.chmod(plan_path,0o600)
-    reduced_digest=hashlib.sha256(plan_path.read_bytes()).hexdigest()
-    reservation={'operation':child,'state':'reserved_before_provider','source_sha':source,
-                 'parent_operation':operation,'resume_from_operation':previous,
-                 'resume_previous_result_sha256':prior_digest,'resume_plan_sha256':reduced_digest,
-                 'attempted_search_groups':starts,'attempted_hotel_count':len(attempted_set),
-                 'remaining_count':remaining_count,'call_cap':5000,'database_writes':0,'mapping_writes':0,
-                 'reserved_at':int(time.time())}
-    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
-    os.chmod(child_dir/'reservation.json',0o600)
-
-    runner=stage/'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py'
-    if not safe_file(runner): fail('match_common4_resume_source_missing')
-    run_env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
-             'MATCH_PLAN_PATH':str(plan_path),'MATCH_CHILD_OPERATION':child,
-             'MATCH_OFFSET':'0','MATCH_LIMIT':str(remaining_count),'MATCH_CALL_CAP':'5000',
-             'MATCH_SOURCE_SHA':source}
-    call=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=run_env,
-                        capture_output=True,text=True,timeout=1200)
-    child_result_path=child_dir/'result.json';child_receipt_path=child_dir/'receipt.json'
-    if not safe_file(child_result_path,32*1024*1024) or not safe_file(child_receipt_path,1024*1024):
-        fail('match_common4_resume_terminal_missing')
-    child_result=safe_json(child_result_path,32*1024*1024);child_receipt=safe_json(child_receipt_path,1024*1024)
-    digest=hashlib.sha256(child_result_path.read_bytes()).hexdigest()
-    if child_receipt.get('result_sha256')!=digest: fail('match_common4_resume_terminal_hash')
-    if (child_result.get('continuation_plan_sha256')!=reduced_digest
-            or child_result.get('frontier_count')!=remaining_count
-            or child_result.get('frontier_id_sha256')!=remaining_digest
-            or child_result.get('scope_offset')!=0 or child_result.get('scope_count')!=remaining_count
-            or child_result.get('tourvisor_account')!='TOURVISOR_ANEX_JWT'
-            or child_result.get('database_writes')!=0 or child_result.get('mapping_writes')!=0
-            or child_result.get('operator_ids')!=[13,18,25,43]
-            or child_result.get('continue_calls')!=0 or child_result.get('dates_calls')!=0):
-        fail('match_common4_resume_terminal_guard')
-    calls=child_result.get('provider_calls')
-    if not isinstance(calls,int) or calls<0 or calls>5000: fail('match_common4_resume_call_cap_guard')
-    allowed={'completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'}
-    if call.returncode!=0 or child_result.get('state') not in allowed:
-        fail('match_common4_resume_terminal_nonzero_no_replay')
-    summary={k:v for k,v in child_result.items() if k not in ('edges','batches')}
-    summary['resume_attempted_search_groups']=starts
-    summary['resume_attempted_hotel_count']=len(attempted_set)
-    summary['resume_remaining_count']=remaining_count
-    return {'child_operation':child,'state':child_result.get('state'),'result_sha256':digest,
-            'resume_from_operation':previous,'resume_previous_result_sha256':prior_digest,
-            'attempted_search_groups':starts,'attempted_hotel_count':len(attempted_set),
-            'remaining_count':remaining_count,'remaining_target_id_sha256':remaining_digest,
-            'summary':summary,
-            'provider_stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
-            'provider_stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
-
-
-def run_match_common4_acquire(stage, offset, limit):
-    child='hotel-match-live30-common4-acquire-1971-20260923-o'+str(offset)+'-n'+str(limit)+'-v1'
-    match_root=home/'.anytoour-match/operations'
-    match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
-    child_dir=match_root/child
-    if child_dir.exists() or child_dir.is_symlink(): fail('match_common4_child_exists_no_replay')
-    child_dir.mkdir(mode=0o700)
-    reservation={'operation':child,'state':'reserved_before_db_and_provider','source_sha':source,
-                 'parent_operation':operation,'frontier_expected':1799,'offset':offset,'limit':limit,
-                 'call_cap':900,'database_writes':0,'mapping_writes':0,'reserved_at':int(time.time())}
-    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
-    os.chmod(child_dir/'reservation.json',0o600)
-
-    planner=stage/'scripts/diagnostics/hotel_match_live30_common4_plan_v1.php'
-    runner=stage/'scripts/diagnostics/hotel_match_live30_common4_acquire_v1.py'
-    matrix=stage/'scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php'
-    helper=stage/'scripts/diagnostics/hotel_match_anex_effective_coverage.php'
-    for path in (planner,runner,matrix,helper):
-        if not safe_file(path): fail('match_common4_source_missing')
-
-    env={**os.environ,'ANYTOUR_ROOT':str(project)}
-    planned=subprocess.run(['php',str(planner),'--execute'],cwd=project,env=env,
-                           capture_output=True,text=True,timeout=120)
-    if planned.returncode or planned.stderr.strip(): fail('match_common4_plan_failed')
-    try: plan=json.loads(planned.stdout)
-    except Exception: fail('match_common4_plan_unparseable')
-    if (plan.get('state')!='live30_common4_ready' or plan.get('frontier_count')!=1799
-            or plan.get('expected_frontier')!=1799
-            or not isinstance(plan.get('rows'),list) or len(plan['rows'])!=1799
-            or plan.get('operator_ids')!=[13,18,25,43]
-            or plan.get('provider_http_calls')!=0 or plan.get('database_writes')!=0
-            or plan.get('mapping_writes')!=0):
-        fail('match_common4_plan_guard')
-
-    plan_path=child_dir/'plan.json'
-    plan_path.write_text(json.dumps(plan,ensure_ascii=False,separators=(',',':')))
-    os.chmod(plan_path,0o600)
-    run_env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
-             'MATCH_PLAN_PATH':str(plan_path),'MATCH_CHILD_OPERATION':child,
-             'MATCH_OFFSET':str(offset),'MATCH_LIMIT':str(limit),'MATCH_CALL_CAP':'900',
-             'MATCH_SOURCE_SHA':source}
-    call=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=run_env,
-                        capture_output=True,text=True,timeout=1200)
-    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
-    if not safe_file(result_path,32*1024*1024) or not safe_file(receipt_path,1024*1024):
-        fail('match_common4_terminal_missing')
-    child_result=safe_json(result_path,32*1024*1024);receipt=safe_json(receipt_path,1024*1024)
-    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
-    if receipt.get('result_sha256')!=digest: fail('match_common4_terminal_hash')
-    if (child_result.get('frontier_count')!=1799 or child_result.get('scope_offset')!=offset
-            or child_result.get('scope_count')!=limit or child_result.get('database_writes')!=0
-            or child_result.get('mapping_writes')!=0 or child_result.get('operator_ids')!=[13,18,25,43]
-            or child_result.get('continue_calls')!=0 or child_result.get('dates_calls')!=0):
-        fail('match_common4_terminal_guard')
-    calls=child_result.get('provider_calls')
-    if not isinstance(calls,int) or calls<0 or calls>900: fail('match_common4_call_cap_guard')
-    allowed={'completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'}
-    if call.returncode!=0 or child_result.get('state') not in allowed:
-        fail('match_common4_terminal_nonzero_no_replay')
-    summary={k:v for k,v in child_result.items() if k not in ('edges','batches')}
-    return {'child_operation':child,'scope_offset':offset,'scope_count':limit,
-            'state':child_result.get('state'),'result_sha256':digest,'summary':summary,
-            'provider_stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
-            'provider_stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
-
-def run_match_tv234_secondary(stage, offset, limit):
-    child='hotel-match-live234-tv-secondary-1971-20260923-o'+str(offset)+'-n'+str(limit)+'-v1'
-    match_root=home/'.anytoour-match/operations'
-    match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
-    child_dir=match_root/child
-    if child_dir.exists() or child_dir.is_symlink(): fail('match_tv234_child_exists_no_replay')
-    child_dir.mkdir(mode=0o700)
-    reservation={'operation':child,'state':'reserved_before_db_and_provider','source_sha':source,
-                 'parent_operation':operation,'frontier_expected':234,'offset':offset,'limit':limit,
-                 'database_writes':0,'mapping_writes':0,'reserved_at':int(time.time())}
-    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
-    os.chmod(child_dir/'reservation.json',0o600)
-    planner=stage/'scripts/diagnostics/hotel_match_live234_frontier_plan_v1.php'
-    runner=stage/'scripts/diagnostics/hotel_match_live234_tv_secondary_refresh_v1.py'
-    helper=stage/'scripts/diagnostics/hotel_match_anex_effective_coverage.php'
-    if not safe_file(planner) or not safe_file(runner) or not safe_file(helper):
-        fail('match_tv234_source_missing')
-    env={**os.environ,'ANYTOUR_ROOT':str(project)}
-    planned=subprocess.run(['php',str(planner),'--execute'],cwd=project,env=env,
-                           capture_output=True,text=True,timeout=90)
-    if planned.returncode or planned.stderr.strip(): fail('match_tv234_plan_failed')
-    try: plan=json.loads(planned.stdout)
-    except Exception: fail('match_tv234_plan_unparseable')
-    if (plan.get('state')!='live234_ready' or plan.get('frontier_count')!=234
-            or not isinstance(plan.get('rows'),list) or len(plan['rows'])!=234
-            or plan.get('operator_ids')!=[18,25,43]):
-        fail('match_tv234_plan_guard')
-    plan_path=child_dir/'plan.json'
-    plan_path.write_text(json.dumps(plan,ensure_ascii=False,separators=(',',':')))
-    os.chmod(plan_path,0o600)
-    run_env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
-             'MATCH_PLAN_PATH':str(plan_path),'MATCH_CHILD_OPERATION':child,
-             'MATCH_OFFSET':str(offset),'MATCH_LIMIT':str(limit),'MATCH_SOURCE_SHA':source}
-    call=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=run_env,
-                        capture_output=True,text=True,timeout=900)
-    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
-    if not safe_file(result_path,16*1024*1024) or not safe_file(receipt_path,1024*1024):
-        fail('match_tv234_terminal_missing')
-    child_result=safe_json(result_path,16*1024*1024);receipt=safe_json(receipt_path,1024*1024)
-    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
-    if receipt.get('result_sha256')!=digest: fail('match_tv234_terminal_hash')
-    if (child_result.get('frontier_count')!=234 or child_result.get('scope_offset')!=offset
-            or child_result.get('scope_count')!=limit or child_result.get('database_writes')!=0
-            or child_result.get('mapping_writes')!=0 or child_result.get('operator_ids')!=[18,25,43]):
-        fail('match_tv234_terminal_guard')
-    allowed={'completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'}
-    if call.returncode!=0 or child_result.get('state') not in allowed:
-        fail('match_tv234_terminal_nonzero_no_replay')
-    summary={k:v for k,v in child_result.items() if k not in ('edges','batches')}
-    return {'child_operation':child,'scope_offset':offset,'scope_count':limit,
-            'state':child_result.get('state'),'result_sha256':digest,'summary':summary,
-            'provider_stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
-            'provider_stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
-
-def run_match942(stage, mode, offset, limit):
-    match_root=home/'.anytoour-match/operations'
-    match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
-    lane='tv' if mode=='match-tv942' else 'samo'
-    child=match942_child_name(lane,offset,limit)
-    child_dir=match_root/child
-    if child_dir.exists() or child_dir.is_symlink(): fail('match_child_exists_no_replay')
-    child_dir.mkdir(mode=0o700)
-    reservation={'operation':child,'state':'reserved_before_db_and_provider','source_sha':source,
-                 'parent_operation':operation,'frontier_expected':942,'offset':offset,'limit':limit,
-                 'database_writes':0,'mapping_writes':0,'reserved_at':int(time.time())}
-    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
-    os.chmod(child_dir/'reservation.json',0o600)
-    planner=stage/'scripts/diagnostics/hotel_match_live942_frontier_plan_v1.php'
-    helper=stage/'scripts/diagnostics/hotel_match_anex_effective_coverage.php'
-    if not safe_file(planner) or not safe_file(helper): fail('match_plan_source_missing')
-    env={**os.environ,'ANYTOUR_ROOT':str(project)}
-    planned=subprocess.run(['php',str(planner),'--execute'],cwd=project,env=env,
-                           capture_output=True,text=True,timeout=90)
-    if planned.returncode or planned.stderr.strip(): fail('match_plan_failed')
-    try: plan=json.loads(planned.stdout)
-    except Exception: fail('match_plan_unparseable')
-    if (plan.get('state')!='original_live942_ready' or plan.get('frontier_count')!=942
-            or plan.get('current_missing_count')!=927 or plan.get('control_written_count')!=15
-            or not isinstance(plan.get('rows'),list) or len(plan['rows'])!=942):
-        fail('match_plan_guard')
-    plan_path=child_dir/'plan.json'
-    plan_path.write_text(json.dumps(plan,ensure_ascii=False,separators=(',',':')))
-    os.chmod(plan_path,0o600)
-    run_env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
-             'MATCH_PLAN_PATH':str(plan_path),'MATCH_CHILD_OPERATION':child,
-             'MATCH_OFFSET':str(offset),'MATCH_LIMIT':str(limit),'MATCH_SOURCE_SHA':source}
-    if mode=='match-tv942':
-        runner=stage/'scripts/diagnostics/hotel_match_live942_tv_anex_refresh_v1.py'
-        command=['python3',str(runner),'--execute']
-    else:
-        runner=stage/'scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php'
-        command=['php',str(runner),'--execute']
-    if not safe_file(runner): fail('match_runner_missing')
-    call=subprocess.run(command,cwd=project,env=run_env,capture_output=True,text=True,timeout=900)
-    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
-    if not safe_file(result_path,8*1024*1024) or not safe_file(receipt_path,1024*1024):
-        fail('match_terminal_receipt_missing')
-    child_result=safe_json(result_path,8*1024*1024);receipt=safe_json(receipt_path,1024*1024)
-    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
-    if receipt.get('result_sha256')!=digest: fail('match_terminal_hash')
-    if (child_result.get('frontier_count')!=942 or child_result.get('scope_offset')!=offset
-            or child_result.get('scope_count')!=limit or child_result.get('database_writes')!=0
-            or child_result.get('mapping_writes')!=0):
-        fail('match_terminal_guard')
-    allowed={'completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'}
-    if call.returncode!=0 or child_result.get('state') not in allowed:
-        fail('match_terminal_nonzero_no_replay')
-    summary={k:v for k,v in child_result.items() if k not in ('rows','edges','batches')}
-    return {'child_operation':child,'scope_offset':offset,'scope_count':limit,
-            'state':child_result.get('state'),'result_sha256':digest,'summary':summary,
-            'provider_stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
-            'provider_stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
-
-try:
-    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):
-        fail('operation_invalid')
-    if not re.fullmatch(r'[a-f0-9]{40}',source): fail('source_invalid')
-    if project.resolve()!=project or project.name!='anytoour.ru': fail('project_invalid')
-    if runtime.resolve()!=runtime or not runtime.is_dir() or runtime.is_symlink(): fail('runtime_invalid')
-    private.mkdir(mode=0o700,exist_ok=True)
-    op=private/operation
-    if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')
-    op.mkdir(mode=0o700)
-    reservation={'operation_id':operation,'source_sha':source,'mode':mode,'reserved_at':int(time.time())}
-    (op/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
-    os.chmod(op/'reservation.json',0o600)
-    result['status']='reserved'
-    before=fingerprints(); result['production_before']=before
-    archive=pathlib.Path(payload['archive']); stage=op/'source'; stage.mkdir(mode=0o700)
-    with tarfile.open(archive,'r:gz') as package:
-        members=package.getmembers()
-        for member in members:
-            pure=pathlib.PurePosixPath(member.name)
-            if (not member.isfile() or member.issym() or member.islnk()
-                    or pure.is_absolute() or '..' in pure.parts):
-                fail('archive_entry')
-        package.extractall(stage,filter='data')
-    manifest=json.loads((stage/'manifest.json').read_text())
-    if manifest.get('schema_version')!=1: fail('manifest_schema')
-    files=manifest.get('files',{})
-    if not isinstance(files,dict) or len(files)<20: fail('manifest')
-    calculated_manifest=hashlib.sha256(
-        json.dumps(files,sort_keys=True,separators=(',',':')).encode()
-    ).hexdigest()
-    if calculated_manifest!=payload.get('manifest_sha256'): fail('manifest_digest')
-    for relative,sha in files.items():
-        path=stage/relative
-        if (not safe_file(path,2*1024*1024)
-                or hashlib.sha256(path.read_bytes()).hexdigest()!=sha):
-            fail('source_hash')
-    (op/'installed-source.json').write_text(json.dumps({'source_sha':source,'files':files},sort_keys=True))
-    os.chmod(op/'installed-source.json',0o600)
-    if mode in ('install-runtime','install-andromeda-preview','install-andromeda-quote-preview'):
-        if mode=='install-andromeda-preview':
-            result['install']=install_andromeda_preview(stage,files,op)
-        elif mode=='install-andromeda-quote-preview':
-            result['install']=install_andromeda_quote_preview(stage,files,op)
-        else:
-            result['install']=install_runtime(stage,files,op)
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='installed'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['runtime_changed']=result['install']['changed_files']>0
-        result['public_ui_entrypoints_unchanged']=True
-    if mode=='program-fuel-readback':
-        result['before_db']=db_summary('andromeda')
-        readback=program_fuel_readback()
-        result['program_fuel_readback']=readback
-        result['after_db']=db_summary('andromeda')
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        if result['before_db']!=result['after_db']: fail('program_fuel_readback_db_drift')
-        result['status']='complete' if readback.get('acceptance_pass') is True else 'blocked'
-        result['reason']=None if readback.get('acceptance_pass') is True else readback.get('failure_reason','program_fuel_readback_acceptance')
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='funsun-direction-fuel-seed':
-        result['before_db']=db_summary('andromeda')
-        result['direction_fuel_seed']=funsun_direction_fuel_seed()
-        result['after_db']=db_summary('andromeda')
-        if result['after_db']!=result['before_db']: fail('direction_fuel_seed_db_drift')
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='funsun-direction-fx-seed':
-        result['before_db']=db_summary('andromeda')
-        result['direction_fx_seed']=funsun_direction_fx_seed()
-        result['after_db']=db_summary('andromeda')
-        if result['after_db']!=result['before_db']: fail('direction_fx_seed_db_drift')
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['private_evidence_writes']=1 if result['direction_fx_seed']['write_state']=='created' else 0
-        result['production_unchanged']=True
-    if mode=='operator-direction-fuel-readback':
-        result['before_db']=db_summary('andromeda')
-        result['operator_direction_fuel_readback']=operator_direction_fuel_readback()
-        result['after_db']=db_summary('andromeda')
-        if result['after_db']!=result['before_db']: fail('direction_fuel_readback_db_drift')
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='program-fuel-probe':
-        result['before_db']=db_summary('andromeda')
-        result['program_fuel_probe']=program_fuel_probe()
-        result['after_db']=db_summary('andromeda')
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        if result['before_db']!=result['after_db']: fail('program_fuel_probe_db_drift')
-        probe_status=result['program_fuel_probe'].get('status')
-        if probe_status in ('complete','supplier_rejected'):
-            result['status']='complete'
-        elif probe_status=='blocked_before_supplier':
-            result['status']='blocked'
-        else:
-            result['status']='unknown_no_replay'
-        result['supplier_calls']=result['program_fuel_probe'].get('supplier_calls','unknown')
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='local-readback':
-        result['before_db']=db_summary('andromeda')
-        scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
-                 'regionId':payload['region'] or None,'dateFrom':payload['date_from'],
-                 'dateTo':payload['date_to'],'nights':payload['nights'],
-                 'adults':payload['adults'],'childAges':[]}]
-        result['local_readback']=local_read(scopes)
-        result['after_db']=db_summary('andromeda')
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-        __LOCAL_READBACK__=True
-    if mode=='andromeda-operator-preflight':
-        result['before_db']=db_summary('andromeda')
-        result['operator_preflight']=operator_preflight(stage)
-        result['after_db']=db_summary('andromeda')
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        if result['before_db']!=result['after_db']: fail('operator_preflight_db_drift')
-        result['status']='preflight_complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='reconcile':
-        target_name=payload['target_operation_id']
-        provider='anex' if target_name.startswith('int-anex-') else 'andromeda'
-        result['before_db']=db_summary(provider)
-        result['reconciliation']=reconcile_target(target_name)
-        result['after_db']=db_summary(provider)
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='reconciled_read_only'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-        __RECONCILED__=True
-    if mode=='match-secondary-audit':
-        result['match_secondary_audit']=run_match_secondary_audit(stage)
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-coverage':
-        result['match_coverage']=run_match_coverage(stage)
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-coverage-v2':
-        result['match_coverage_v2']=run_match_coverage_v2(stage)
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-coverage-v2-readback':
-        result['match_coverage_v2_readback']=read_match_coverage_v2()
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='reconciled_read_only'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-coverage-readback':
-        result['match_coverage_readback']=read_match_coverage()
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='reconciled_read_only'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-tv942-reconcile':
-        result['match_tv942_reconcile']=run_match_tv942_reconcile(stage)
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-tv942-write':
-        result['match_tv942_write']=run_match_tv942_write(stage)
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=result['match_tv942_write']['inserted']
-        result['production_unchanged']=True
-    if mode=='match-tv234-readback':
-        result['match_tv234_readback']=read_match_tv234_secondary(int(payload['offset']),int(payload['limit']))
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='reconciled_read_only'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-common4-readback':
-        result['match_common4_readback']=read_match_common4(int(payload['offset']),int(payload['limit']))
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='reconciled_read_only'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-common4-current-v2':
-        result['match_common4_current_v2']=run_match_common4_current_v2(stage)
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-common4-acquire':
-        result['match_common4_acquire']=run_match_common4_acquire(stage,int(payload['offset']),int(payload['limit']))
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=result['match_common4_acquire']['summary'].get('provider_calls','bounded')
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-common4-continuation-acquire':
-        result['match_common4_continuation_acquire']=run_match_common4_continuation_acquire(stage,int(payload['offset']),int(payload['limit']))
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=result['match_common4_continuation_acquire']['summary'].get('provider_calls','bounded')
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-common4-continuation-resume-day':
-        result['match_common4_continuation_resume_day']=run_match_common4_continuation_resume_day(stage)
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=result['match_common4_continuation_resume_day']['summary'].get('provider_calls','bounded')
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-common4-resume-readback':
-        result['match_common4_resume_readback']=read_match_common4_resume_day()
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='reconciled_read_only'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-tv234-secondary':
-        result['match_tv234_secondary']=run_match_tv234_secondary(stage,int(payload['offset']),int(payload['limit']))
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=result['match_tv234_secondary']['summary'].get('provider_calls','bounded')
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode=='match-readback':
-        result['match_readback']=read_match942(payload['lane'],int(payload['offset']),int(payload['limit']))
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='reconciled_read_only'
-        result['supplier_calls']=0
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode in ('match-tv942','match-samo942'):
-        result['match942']=run_match942(stage,mode,int(payload['offset']),int(payload['limit']))
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete'
-        result['supplier_calls']=result['match942']['summary'].get('provider_calls',
-            result['match942']['summary'].get('samo_http_calls','bounded'))
-        result['database_writes']=0
-        result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-continuation-remainder','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
-        provider='anex' if mode=='anex-demand' else 'andromeda'
-        result['before_db']=db_summary(provider)
-        env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
-        env['ANYTOUR_PROJECT_ROOT']=str(project)
-        generation=str(2100000000-(int(hashlib.sha256(operation.encode()).hexdigest()[:6],16)%1000000))
-    if mode=='anex-demand':
-        command=['php',str(stage/'scripts/ops/anex_local_offer_demand_fill.php'),
-          '--limit='+str(payload['limit']),'--lookback-hours=168','--horizon-days=21',
-          '--max-expands=600','--max-apd=600','--generation-base='+generation]
-    elif mode in ('andromeda-scope','andromeda-external-group','andromeda-operator-scope'):
-        config=project/'_preview/search3-anex-candidate/.andromeda-private.php'
-        if not safe_file(config,65536): fail('andromeda_private_config_missing')
-        command=['php',str(stage/'scripts/ops/andromeda_local_offer_collect.php'),
-          '--site-root='+str(project),'--private-config='+str(config),'--source-sha='+source,
-          '--departure='+str(payload['departure']),'--country='+str(payload['country']),
-          '--date-from='+payload['date_from'],'--date-to='+payload['date_to'],
-          '--nights='+str(payload['nights']),'--adults='+str(payload['adults']),
-          '--meal='+payload['meal'],'--generation='+generation,
-          '--max-captures='+str(payload['max_captures']),'--max-capture-seconds='+('240' if payload['max_captures']>0 else '0'),
-          '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
-        if payload['region']: command.append('--region='+str(payload['region']))
-        if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-continuation-remainder','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
-        run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
-        result['collector_exit']=run.returncode
-        stderr=run.stderr.strip()
-        result['collector_stderr_nonempty']=bool(stderr)
-        result['collector_stderr_sha256']=hashlib.sha256(stderr.encode()).hexdigest() if stderr else None
-        code_match=re.search(r'(?:RuntimeException|DomainException|InvalidArgumentException):\s*([A-Z][A-Z0-9_]{2,80})',stderr)
-        result['collector_error_code']=code_match.group(1) if code_match else ('PHP_FATAL' if 'PHP Fatal error' in stderr else None)
-        try: collector=json.loads(run.stdout.strip())
-        except Exception: collector={'status':'unparseable'}
-        result['collector']=collector
-        result['after_db']=db_summary(provider)
-        parseable=collector.get('status')!='unparseable'
-        if run.returncode==0 and parseable:
-            if mode=='anex-demand':
-                scopes=[x.get('scope',{}) for x in collector.get('results',[])
-                        if isinstance(x,dict) and isinstance(x.get('scope'),dict)]
-            else:
-                scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
-                         'regionId':payload['region'] or None,'dateFrom':payload['date_from'],
-                         'dateTo':payload['date_to'],'nights':payload['nights'],
-                         'adults':payload['adults'],'childAges':[],
-                         'operatorId':payload.get('operator_id')}]
-            try:
-                result['local_readback']=local_read(scopes) if scopes else []
-            except Exception as exc:
-                result['local_readback']={'status':'failed','reason':str(exc)}
-        else:
-            result['local_readback']={'status':'skipped_after_collector_nonzero'}
-        result['production_after']=fingerprints()
-        if result['production_after']!=before: fail('production_drift')
-        result['status']='complete' if run.returncode==0 and parseable else 'unknown_no_replay'
-        result['supplier_calls']='bounded_by_collector' if result['status']=='complete' else 'unknown'
-        result['database_writes']='collector_owned' if result['status']=='complete' else 'unknown'
-        result['production_unchanged']=True
-except Exception as exc:
-    if mode in ('install-runtime','install-andromeda-preview') and install_started:
-        failure=str(exc)
-        result['install_failure_class']=failure if re.fullmatch(r'[A-Za-z0-9_:-]{1,96}',failure) else type(exc).__name__
-        try:
-            result['rollback']={'status':'complete','restored_files':len(rollback_install(op))}
-            result['status']='rolled_back'
-            result['supplier_calls']=0
-            result['database_writes']=0
-            result['runtime_changed']=False
-            result['public_ui_entrypoints_unchanged']=fingerprints()==before
-        except Exception as rollback_error:
-            value=str(rollback_error)
-            result['rollback']={'status':'failed','failure_class':
-                value if re.fullmatch(r'[A-Za-z0-9_:-]{1,96}',value) else type(rollback_error).__name__}
-            result['status']='rollback_failed_no_replay'
-    elif result.get('status')=='reserved':
-        result['status']='unknown_no_replay';result['reason']=str(exc)
-    elif result.get('status')=='blocked':
-        result['reason']=str(exc)
-    elif result.get('status') not in ('complete','terminal_nonzero_no_replay'):
-        result['status']='unknown_no_replay';result['reason']=str(exc)
-finally:
-    try:
-        if 'op' in globals() and op.exists():
-            (op/'result.json').write_text(json.dumps(result,sort_keys=True,separators=(',',':')))
-            os.chmod(op/'result.json',0o600)
-    except Exception:
-        pass
-print(json.dumps(result,separators=(',',':')))
-"""
-
-def ssh_options(key: Path, known: Path) -> list[str]:
-    return [
-        '-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes',
-        '-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),
-        '-o','GlobalKnownHostsFile=/dev/null','-o','ConnectTimeout=15',
-        '-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-o','LogLevel=ERROR'
-    ]
-
-def execute(command: dict, source_root: Path) -> dict:
-    host, user, raw_key = (
-        os.environ.get(name, '').strip()
-        for name in ('INT_SSH_HOST','INT_SSH_USER','INT_SSH_KEY')
-    )
-    need(bool(host and user and raw_key), 'ssh_config')
-    need(not host.startswith('-') and not user.startswith('-')
-         and not any(c.isspace() for c in host + user), 'ssh_identity')
-    bundle, manifest = bundle_source(source_root)
-    output = Path(os.environ['RUNNER_TEMP']) / 'int-server-executor'
-    output.mkdir(mode=0o700, exist_ok=True)
-    key, known, archive = output/'key', output/'known_hosts', output/'source.tar.gz'
-    key.write_text(raw_key.rstrip() + '\n'); key.chmod(0o600)
-    subprocess.run(['ssh-keygen','-y','-f',str(key)], stdout=subprocess.DEVNULL,
-                   stderr=subprocess.PIPE, check=True, timeout=10)
-    scan = subprocess.run(['ssh-keyscan','-T','15','-t','ed25519',host],
-                          capture_output=True, check=True, timeout=20).stdout
-    need(bool(scan), 'ssh_hostkey')
-    known.write_bytes(scan); known.chmod(0o600)
-    archive.write_bytes(bundle); archive.chmod(0o600)
-    options = ssh_options(key, known)
-    remote_archive = (
-        '/tmp/' + command['operation_id'] + '-' +
-        hashlib.sha256(bundle).hexdigest()[:16] + '.tar.gz'
-    )
-    subprocess.run(['scp',*options,str(archive),user+'@'+host+':'+remote_archive],
-                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                   timeout=60)
-    payload = dict(command)
-    payload['archive'] = remote_archive
-    payload['manifest_sha256'] = hashlib.sha256(
-        json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()
-    ).hexdigest()
-    if command['mode'] == 'program-fuel-readback':
-        readback_path = Path(__file__).resolve().parents[2] / 'scripts/diagnostics/int_program_fuel_cohort_v3_readback.php'
-        need(readback_path.is_file() and not readback_path.is_symlink(), 'program_fuel_readback_source')
-        readback_bytes = readback_path.read_bytes()
-        need(0 < len(readback_bytes) <= 1024 * 1024, 'program_fuel_readback_source_size')
-        payload['program_fuel_readback_php_b64'] = base64.b64encode(readback_bytes).decode()
-        payload['program_fuel_readback_php_sha256'] = hashlib.sha256(readback_bytes).hexdigest()
-    if command['mode'] == 'funsun-direction-fuel-seed':
-        seed_bytes = FUNSUN_DIRECTION_FUEL_SEED_PHP.encode()
-        need(0 < len(seed_bytes) <= 256 * 1024, 'direction_fuel_seed_source_size')
-        payload['funsun_direction_fuel_seed_php_b64'] = base64.b64encode(seed_bytes).decode()
-        payload['funsun_direction_fuel_seed_php_sha256'] = hashlib.sha256(seed_bytes).hexdigest()
-    if command['mode'] == 'program-fuel-probe':
-        probe_path = Path(__file__).resolve().parents[2] / 'scripts/diagnostics/int_andromeda_program_getflights_probe_v1.php'
-        need(probe_path.is_file() and not probe_path.is_symlink(), 'program_fuel_probe_source')
-        probe_bytes = probe_path.read_bytes()
-        need(0 < len(probe_bytes) <= 1024 * 1024, 'program_fuel_probe_source_size')
-        payload['program_fuel_probe_php_b64'] = base64.b64encode(probe_bytes).decode()
-        payload['program_fuel_probe_php_sha256'] = hashlib.sha256(probe_bytes).hexdigest()
-    compressed = zlib.compress(REMOTE.encode(), 9)
-    encoded = base64.b64encode(compressed).decode()
-    remote_command = (
-        "python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\"" + encoded + "\")))'"
-    )
-    need(len(remote_command.encode()) <= 65536, 'remote_command_size')
-    try:
-        run = subprocess.run(
-            ['ssh',*options,'-l',user,host,remote_command],
-            input=json.dumps(payload,separators=(',',':')), text=True,
-            capture_output=True, timeout=1000
-        )
-        need(run.returncode == 0, 'ssh_remote_exit')
-        result = json.loads(run.stdout.strip())
-        need(isinstance(result,dict)
-             and result.get('operation_id') == command['operation_id']
-             and result.get('source_sha') == command['source_sha'],
-             'remote_receipt')
-        (output/'result.json').write_text(
-            json.dumps(result,sort_keys=True,indent=2) + '\n'
-        )
-        return result
-    finally:
-        subprocess.run(
-            ['ssh',*options,'-l',user,host,'rm -f -- '+shlex.quote(remote_archive)],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30
-        )
-        key.unlink(missing_ok=True); known.unlink(missing_ok=True)
-
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--parse-only', action='store_true')
-    parser.add_argument('--source-root', default='source')
-    args = parser.parse_args()
-    event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
-    token = os.environ.get('GH_TOKEN','')
-    need(bool(token), 'gh_token')
-    command = checked_event(token, event, os.environ['GITHUB_SHA'])
-    if args.parse_only:
-        for key,value in command.items():
-            print(f'{key}={value}')
-        return
-    if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','program-fuel-probe'):
         ensure_supplier_slot(token)
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
