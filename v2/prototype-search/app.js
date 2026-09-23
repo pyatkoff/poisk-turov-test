@@ -591,7 +591,8 @@ async function refreshHotel(id){
  const o=selectedOffer,h=selectedTourHotel(o);
  if(!o||o.hotelId!==id||!needsRefresh(o)||!h?.legacyIds.length){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}
  if(o.provider==='anex'&&o.raw?.anexKind==='group_minimum'){
-  const run=++selectionGeneration;selectedOffer={...o,loading:true,quoteError:''};renderRealOffer();
+  const run=++selectionGeneration;terminalizeSearchForVerification();renderResults({keepFilters:true});
+  selectedOffer={...o,loading:true,quoteError:''};renderRealOffer();
   try{
    const expanded=await data.expandAnexGroup(o);
    if(run!==selectionGeneration||!$('#modal').open||modalType!=='offer'||selectedOffer?.key!==o.key)return;
@@ -742,10 +743,12 @@ $('#filter-backdrop').addEventListener('click',closeFilters);
 function selectDate(day,fromMonth=false){if(fromMonth&&(day<state.search.from||day>state.search.to)){state.search.from=day;state.search.to=day;draft.from=day;draft.to=day}state.selectedDate=day;state.openHotel=null;updateSearchUI();renderResults({keepFilters:true});updateURL();if(fromMonth)closeModal();}
 function resetFilters(){state.filters=defaultFilters();state.onlyFavorites=false;state.selectedDate=null;syncFilters();updateURL();}
 function clearSearchTimers(){data.stop();clearTimeout(searchTimer);clearTimeout(searchStageTimer);}
-function stopSearch(){
- clearSearchTimers();
+function terminalizeSearchForVerification(){
  if(searchResponse.providers)for(const provider of Object.keys(searchResponse.providers))if(searchResponse.providers[provider]==='loading')searchResponse.providers[provider]='cancelled';
  searchResponse.pending=false;searchResponse.canContinue=false;searchResponse.retryRead=false;searchResponse.phase='cancelled';
+}
+function stopSearch(){
+ clearSearchTimers();terminalizeSearchForVerification();
  renderResults({keepFilters:true});
 }
 function renderSearchStatus(items,total){
