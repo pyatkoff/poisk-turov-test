@@ -84,6 +84,7 @@
 
     const submit = event => {
       event?.preventDefault?.();
+      if (!canSubmit()) return false;
       const runOptions = typeof options.commit === 'function' ? options.commit(event) : {};
       if (runOptions === false) return false;
       const started = run(runOptions && typeof runOptions === 'object' ? runOptions : {});
