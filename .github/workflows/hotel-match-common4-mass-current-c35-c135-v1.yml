@@ -11,9 +11,9 @@ permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-common4-mass-current-1971-20260924-c35-c135-v1, cancel-in-progress: false}
 
 env:
-  OP: hotel-match-common4-mass-current-1971-20260924-c35-c135-v3
+  OP: hotel-match-common4-mass-current-1971-20260924-c35-c135-v4
   BASE: 1ae5390ff969c860441427e0ef476ad7443f54e7
-  CLAIM: '5803366222'
+  CLAIM: '5803410042'
   C35_SHA: b68accef8caadc3e49acb87a542ef41700ade8c924d936c036597cab1bcc7538
   C135_SHA: 9abce890e0bbf83a36c20bd745822e2a3740970df75f07176cb3d882b11c25fd
 
