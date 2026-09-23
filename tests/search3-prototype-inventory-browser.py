@@ -145,6 +145,14 @@ def check_width(browser, origin, width):
                    "regionId": int(query["regionId"][0]) if query.get("regionId") else None,
                    "dateFrom": first, "dateTo": last, "nightsFrom": int(query["nightsFrom"][0]),
                    "nightsTo": int(query["nightsTo"][0]), "series": series})
+        elif url.path.endswith("/search3-meal-catalog-read-v1.php"):
+            reply({"ok": True, "source": "anytour-search-meal-v1", "provider": "tourvisor", "scopeKey": "global",
+                   "available": True, "revision": "a" * 64, "plans": [
+                       {"id": 2, "code": "breakfast", "nameRu": "Завтраки", "nativeIds": ["3"]},
+                       {"id": 3, "code": "half-board", "nameRu": "Полупансион", "nativeIds": ["4"]},
+                       {"id": 7, "code": "all-inclusive", "nameRu": "Всё включено", "nativeIds": ["7"]},
+                       {"id": 8, "code": "ultra-all-inclusive", "nameRu": "Ультра всё включено", "nativeIds": ["9"]},
+                   ]})
         elif url.path.endswith("/hotel-details-read-v1.php"):
             ids = query.get("legacyHotelIds[]", [])
             assert ids, query
@@ -204,11 +212,10 @@ def check_width(browser, origin, width):
                 reply([{"id": 20, "name": "Анталья", "countryId": 4}, {"id": 23, "name": "Сиде", "countryId": 4}])
             elif action == "meals":
                 reply([
+                    {"id": 3, "name": "BB", "fullName": "BB - Только завтрак"},
+                    {"id": 4, "name": "HB", "fullName": "HB - Полупансион"},
                     {"id": 7, "name": "AI", "fullName": "AI - Все Включено"},
-                    {"id": 8, "name": "Все Включено"},
-                    {"id": 9, "name": "BB", "fullName": "BB - Только завтрак"},
-                    {"id": 10, "name": "Завтрак"},
-                    {"id": 11, "name": "Ультра Все Вкл"},
+                    {"id": 9, "name": "UAI", "fullName": "ULTRA ALL"},
                 ])
             elif action == "search_start":
                 reply({"searchId": 123})
