@@ -47,6 +47,8 @@ FIXED = [
     'scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php',
     'scripts/diagnostics/hotel_match_live30_common4_plan_v1.php',
     'scripts/diagnostics/hotel_match_live30_common4_acquire_v1.py',
+    'scripts/diagnostics/int_funsun_direction_fx_seed_v1.php',
+    'scripts/diagnostics/int_operator_direction_fuel_mass_readback_v1.php',
 ]
 
 # Persistent installation is intentionally narrower than the source bundle:
@@ -302,11 +304,36 @@ def parse_command(body: str) -> dict:
         need(operation.startswith('int-andromeda-'), 'program_fuel_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'funsun-direction-fuel-seed':
-        # Supplier-free one-shot persistence from the two already terminal FUN&SUN 114/78 probes.
+        # Historical supplier-derived 140-EUR seed mode; retained for no-replay compatibility only.
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-funsun-antalya-direction-fuel-seed-'),
              'direction_fuel_seed_operation')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'funsun-direction-fx-seed':
+        # Supplier-free FX-only persistence from two explicitly named terminal probe receipts.
+        need(len(parts) == 5, 'command_shape')
+        first, second = parts[3], parts[4]
+        for target in (first, second):
+            need(OP_RE.fullmatch(target) is not None and target.startswith('int-andromeda-')
+                 and target != operation, 'direction_fx_seed_target')
+        need(first != second, 'direction_fx_seed_targets_distinct')
+        need(operation.startswith('int-andromeda-funsun-') and '-fx-' in operation,
+             'direction_fx_seed_operation')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'probe_operation_a': first, 'probe_operation_b': second}
+    if mode == 'operator-direction-fuel-readback':
+        # Supplier-free DB/retained acceptance for one exact terminal collector cohort.
+        need(len(parts) == 7, 'command_shape')
+        target, family = parts[3], parts[4]
+        need(OP_RE.fullmatch(target) is not None and target.startswith('int-andromeda-')
+             and target != operation, 'direction_readback_target')
+        need(operation.startswith('int-andromeda-'), 'direction_readback_operation')
+        need(family in ('fun_and_sun','intourist','biblio_globus'), 'direction_readback_family')
+        departure = integer(parts[5], 1, 999999999, 'departure')
+        country = integer(parts[6], 1, 999999999, 'country')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'target_operation_id': target, 'operator_family': family,
+                'departure': departure, 'country': country}
     if mode == 'program-fuel-probe':
         # One exact retained operator/program/tour + one distinct-SPO sample.
         need(len(parts) == 8, 'command_shape')
@@ -855,6 +882,63 @@ def funsun_direction_fuel_seed():
             or not isinstance(exchange.get('evidence_sha256'),str)
             or not re.fullmatch(r'[a-f0-9]{64}',exchange['evidence_sha256'])):
         fail('direction_fuel_seed_exchange')
+    return data
+def funsun_direction_fx_seed():
+    script=stage/'scripts/diagnostics/int_funsun_direction_fx_seed_v1.php'
+    if not safe_file(script,512*1024): fail('direction_fx_seed_source_missing')
+    run=subprocess.run(
+        ['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+         str(script),payload['probe_operation_a'],payload['probe_operation_b']],
+        cwd=stage,capture_output=True,text=True,timeout=90
+    )
+    if run.returncode!=0 or run.stderr.strip(): fail('direction_fx_seed_failed')
+    try: data=json.loads(run.stdout.strip())
+    except Exception: fail('direction_fx_seed_unparseable')
+    if (not isinstance(data,dict) or data.get('schema_version')!=1
+            or data.get('source')!='int-funsun-direction-fx-seed-v1'
+            or data.get('status')!='seeded_verified'
+            or data.get('direction')!={'operator_family':'fun_and_sun','market':'departure:1','destination':'country:4'}
+            or data.get('independent_probe_count')!=2
+            or data.get('supplier_calls')!=0 or data.get('database_reads')!=0
+            or data.get('database_writes')!=0 or data.get('fuel_rule_writes')!=0
+            or data.get('final_price_verified') is not False
+            or data.get('write_state') not in ('created','already_present')
+            or not isinstance(data.get('rate'),str)
+            or not re.fullmatch(r'(?:0|[1-9][0-9]{0,5})(?:\.[0-9]{1,8})?',data['rate'])
+            or not isinstance(data.get('evidence_sha256'),str)
+            or not re.fullmatch(r'[a-f0-9]{64}',data['evidence_sha256'])):
+        fail('direction_fx_seed_acceptance')
+    return data
+def operator_direction_fuel_readback():
+    script=stage/'scripts/diagnostics/int_operator_direction_fuel_mass_readback_v1.php'
+    if not safe_file(script,1024*1024): fail('direction_fuel_readback_source_missing')
+    env=dict(os.environ)
+    env.update({
+        'INT_DIRECTION_FUEL_READBACK_OPERATION':str(payload['target_operation_id']),
+        'INT_DIRECTION_FUEL_OPERATOR_FAMILY':str(payload['operator_family']),
+        'INT_DIRECTION_FUEL_DEPARTURE_ID':str(payload['departure']),
+        'INT_DIRECTION_FUEL_COUNTRY_ID':str(payload['country']),
+    })
+    run=subprocess.run(
+        ['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',str(script)],
+        cwd=stage,env=env,capture_output=True,text=True,timeout=90
+    )
+    if run.returncode!=0 or run.stderr.strip(): fail('direction_fuel_readback_failed')
+    try: data=json.loads(run.stdout.strip())
+    except Exception: fail('direction_fuel_readback_unparseable')
+    expected={'operator_family':payload['operator_family'],
+              'market':'departure:'+str(payload['departure']),
+              'destination':'country:'+str(payload['country'])}
+    if (not isinstance(data,dict)
+            or data.get('source')!='int-operator-direction-fuel-mass-readback-v1'
+            or data.get('operation_id')!=payload['target_operation_id']
+            or data.get('direction')!=expected
+            or data.get('supplier_calls')!=0 or data.get('db_writes')!=0
+            or not isinstance(data.get('stored_scope_count'),int)
+            or not isinstance(data.get('stored_target_count'),int)
+            or not isinstance(data.get('ready_target_count'),int)
+            or not isinstance(data.get('verified_target_count'),int)):
+        fail('direction_fuel_readback_acceptance')
     return data
 def safe_json(path,max_size=1024*1024):
     if not safe_file(path,max_size): fail('safe_json')
@@ -1959,6 +2043,29 @@ try:
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
+    if mode=='funsun-direction-fx-seed':
+        result['before_db']=db_summary('andromeda')
+        result['direction_fx_seed']=funsun_direction_fx_seed()
+        result['after_db']=db_summary('andromeda')
+        if result['after_db']!=result['before_db']: fail('direction_fx_seed_db_drift')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['private_evidence_writes']=1 if result['direction_fx_seed']['write_state']=='created' else 0
+        result['production_unchanged']=True
+    if mode=='operator-direction-fuel-readback':
+        result['before_db']=db_summary('andromeda')
+        result['operator_direction_fuel_readback']=operator_direction_fuel_readback()
+        result['after_db']=db_summary('andromeda')
+        if result['after_db']!=result['before_db']: fail('direction_fuel_readback_db_drift')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='program-fuel-probe':
         result['before_db']=db_summary('andromeda')
         result['program_fuel_probe']=program_fuel_probe()
@@ -2120,7 +2227,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-readback','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-readback','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -2143,7 +2250,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-readback','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-readback','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
