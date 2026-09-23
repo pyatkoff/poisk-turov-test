@@ -8,6 +8,87 @@ declare(strict_types=1);
  */
 final class AnyTourAnexLocalOfferCollectorV1
 {
+    /**
+     * Split one user-visible direct-ANEX date intent into supplier-safe windows.
+     * The owner contract is at most 21 inclusive days; ANEX keeps its existing
+     * seven-day request boundary. Invalid/reversed/too-wide ranges fail before I/O.
+     *
+     * @return list<array{from:string,to:string}>
+     */
+    public static function dateWindows(string $from, string $to): array
+    {
+        $parse = static function (string $value): DateTimeImmutable {
+            if (!preg_match('/\A(\d{4})-(\d{2})-(\d{2})\z/D', $value, $m)
+                || !checkdate((int)$m[2], (int)$m[3], (int)$m[1])) {
+                throw new InvalidArgumentException('ANEX_LOCAL_COLLECTOR_DATE_RANGE');
+            }
+            return new DateTimeImmutable($value, new DateTimeZone('UTC'));
+        };
+        $start = $parse($from);
+        $end = $parse($to);
+        if ($end < $start) throw new InvalidArgumentException('ANEX_LOCAL_COLLECTOR_DATE_RANGE');
+        $inclusiveDays = (int)$start->diff($end)->days + 1;
+        if ($inclusiveDays < 1 || $inclusiveDays > 21) {
+            throw new InvalidArgumentException('ANEX_LOCAL_COLLECTOR_DATE_RANGE');
+        }
+
+        $windows = [];
+        for ($cursor = $start; $cursor <= $end;) {
+            $windowEnd = $cursor->modify('+6 days');
+            if ($windowEnd > $end) $windowEnd = $end;
+            $windows[] = ['from' => $cursor->format('Y-m-d'), 'to' => $windowEnd->format('Y-m-d')];
+            $cursor = $windowEnd->modify('+1 day');
+        }
+        return $windows;
+    }
+
+    /**
+     * Run supplier-safe windows sequentially and fail-stop before later windows.
+     * A caller owns all per-window state/persistence details through the callback.
+     *
+     * @param callable(array,int,array):array $collectWindow
+     */
+    public static function collectRange(
+        array $searchRequest,
+        string $from,
+        string $to,
+        callable $collectWindow
+    ): array {
+        if (($searchRequest['action'] ?? null) !== 'search'
+            || !is_int($searchRequest['generation'] ?? null)
+            || !is_array($searchRequest['params'] ?? null)) {
+            throw new InvalidArgumentException('ANEX_LOCAL_COLLECTOR_INPUT');
+        }
+        $windows = self::dateWindows($from, $to);
+        $receipts = [];
+        $completed = 0;
+        $status = 'complete';
+        foreach ($windows as $index => $window) {
+            $request = $searchRequest;
+            $request['params']['dateFrom'] = $window['from'];
+            $request['params']['dateTo'] = $window['to'];
+            $result = $collectWindow($request, $index, $window);
+            if (!is_array($result) || !is_string($result['status'] ?? null)) {
+                throw new RuntimeException('ANEX_LOCAL_COLLECTOR_RANGE_RESULT');
+            }
+            $receipts[] = ['date_range' => $window, 'result' => $result];
+            if ($result['status'] !== 'complete') {
+                $status = 'incomplete';
+                break;
+            }
+            ++$completed;
+        }
+        return [
+            'source' => 'anex-local-offer-collector-range-v1',
+            'status' => $status,
+            'requested_date_range' => ['from' => $from, 'to' => $to],
+            'window_count' => count($windows),
+            'windows_completed' => $completed,
+            'windows' => $receipts,
+            'selection_authority' => false,
+        ];
+    }
+
     public static function collect(
         array $searchRequest,
         array &$state,
