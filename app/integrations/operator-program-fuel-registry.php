@@ -140,6 +140,60 @@ final class AnyTourOperatorProgramFuelRegistryV1
         }
     }
 
+    /**
+     * Return the freshest unambiguous Andromeda claim EUR->RUB rate retained in
+     * this existing registry. This is currency evidence only: no program fuel
+     * amount, relation or flight fact is promoted by this reader.
+     */
+    public static function latestFreshExchange(string $directory, int $now): ?array
+    {
+        try {
+            self::assertDirectory($directory);
+            if ($now < 1) return null;
+            $files = glob(rtrim($directory,'/') . '/' . self::PREFIX . '*.json', GLOB_NOSORT);
+            if ($files === false || count($files) > 512) return null;
+            $latestObserved = 0;
+            $candidates = [];
+            foreach ($files as $path) {
+                if (!is_string($path) || is_link($path)) return null;
+                $name = basename($path);
+                if (preg_match('/\\A' . preg_quote(self::PREFIX,'/') . '([a-f0-9]{64})\\.json\\z/D', $name, $m) !== 1) {
+                    return null;
+                }
+                $envelope = self::readEnvelope($path, false);
+                self::assertEnvelope($envelope, $m[1]);
+                foreach ($envelope['observations'] as $obs) {
+                    $fx = $obs['exchange'] ?? null;
+                    if (!is_array($fx) || ($fx['from'] ?? null) !== 'EUR' || ($fx['to'] ?? null) !== 'RUB'
+                        || ($fx['observed_at'] ?? 0) > $now || ($fx['expires_at'] ?? 0) <= $now) continue;
+                    $seen = (int)$fx['observed_at'];
+                    if ($seen > $latestObserved) {
+                        $latestObserved = $seen;
+                        $candidates = [$fx];
+                    } elseif ($seen === $latestObserved) {
+                        $candidates[] = $fx;
+                    }
+                }
+            }
+            if ($candidates === []) return null;
+            $rates = [];
+            foreach ($candidates as $fx) $rates[$fx['rate']] = true;
+            if (count($rates) !== 1) return null;
+            usort($candidates, static function(array $a,array $b): int {
+                $expiry = $b['expires_at'] <=> $a['expires_at'];
+                return $expiry !== 0 ? $expiry : strcmp($a['evidence_sha256'],$b['evidence_sha256']);
+            });
+            $picked = $candidates[0];
+            return [
+                'from'=>'EUR','to'=>'RUB','rate'=>$picked['rate'],'source'=>'andromeda_claim_money',
+                'observed_at'=>$picked['observed_at'],'expires_at'=>$picked['expires_at'],
+                'evidence_sha256'=>$picked['evidence_sha256'],
+            ];
+        } catch (Throwable $ignored) {
+            return null;
+        }
+    }
+
     public static function apply(array $dto,array $input,int $now):array
     {
         $hold=static fn(string $reason):array=>['dto'=>$dto,'applied'=>false,'reason'=>$reason];
