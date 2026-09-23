@@ -7,7 +7,7 @@ const source = fs.readFileSync(process.argv[2] || 'v2/prototype-search/source-re
 const host = {dataset:{}};
 let calls = 0;
 let callbackEvents = [];
-const data = {
+const data = Object.freeze({
   search(search, callback, ...args) {
     calls++;
     assert.deepEqual(search, {country:'4'});
@@ -23,12 +23,18 @@ const data = {
     ];
     for (const event of events) callback(event);
     return Promise.resolve('same-return');
-  }
-};
+  },
+  get searchId(){return 42;}
+});
 const context = {window:{AnyTourPrototypeData:data},document:{getElementById:id=>id==='results'?host:null},console};
 vm.runInNewContext(source, context, {filename:'source-receipt-v1.js'});
-assert.equal(data.__searchReceiptV1, true);
-const returned = data.search({country:'4'}, event=>callbackEvents.push(event), ['hotel-1'], {max:200000});
+const wrapped = context.window.AnyTourPrototypeData;
+assert.notEqual(wrapped, data, 'frozen data API must be wrapped, not mutated');
+assert.equal(Object.isFrozen(wrapped), true);
+assert.equal(Object.isFrozen(data), true);
+assert.equal(wrapped.__searchReceiptV1, true);
+assert.equal(wrapped.searchId, 42, 'getters from the frozen data API must survive wrapping');
+const returned = wrapped.search({country:'4'}, event=>callbackEvents.push(event), ['hotel-1'], {max:200000});
 assert.equal(calls, 1);
 assert.equal(callbackEvents.length, 4);
 assert.equal(callbackEvents[1].secret, 'do-not-export', 'wrapper must not mutate original callback event');
@@ -47,12 +53,8 @@ returned.then(value=>assert.equal(value,'same-return'));
 
 host.dataset.searchReceipt = JSON.stringify({stale:true});
 callbackEvents = [];
-const resetData = context.window.AnyTourPrototypeData;
-resetData.search = resetData.search.bind(resetData);
-// A second search synchronously writes a new loading receipt before any provider callback.
-const original = resetData.search;
 let snapshotAtCallback = null;
-original({country:'4'}, event=>{if(!snapshotAtCallback) snapshotAtCallback=JSON.parse(host.dataset.searchReceipt);}, ['hotel-1'], {max:200000});
+wrapped.search({country:'4'}, event=>{if(!snapshotAtCallback) snapshotAtCallback=JSON.parse(host.dataset.searchReceipt);}, ['hotel-1'], {max:200000});
 assert.equal(snapshotAtCallback.schemaVersion,1);
 assert.equal('stale' in snapshotAtCallback,false);
 assert.equal(calls,2);
