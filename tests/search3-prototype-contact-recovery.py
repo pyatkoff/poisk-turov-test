@@ -112,7 +112,19 @@ def check_width(browser, origin, width):
                        "requestedLegacyIds": ids, "missingLegacyIds": [], "items": [PROFILE],
                        "links": [{"legacyHotelId": 101, "anytourHotelId": 1}]})
         elif url.path.endswith("/search3-local-results-read-v1.php"):
-            params = request.post_data_json["params"]
+            body = request.post_data_json
+            if body.get("action") == "meal_catalog":
+                assert body == {"action": "meal_catalog", "provider": "tourvisor", "scopeKey": "global"}, body
+                assert request.headers.get("x-requested-with") == "AnyTourSearch3"
+                reply({"ok": True, "data": {"source": "anytour-search-meal-v1", "provider": "tourvisor", "scopeKey": "global",
+                       "available": True, "revision": "a" * 64, "plans": [
+                           {"id": 2, "code": "breakfast", "nameRu": "Завтраки", "nativeIds": ["3"]},
+                           {"id": 3, "code": "half-board", "nameRu": "Полупансион", "nativeIds": ["4"]},
+                           {"id": 7, "code": "all-inclusive", "nameRu": "Всё включено", "nativeIds": ["7"]},
+                           {"id": 8, "code": "ultra-all-inclusive", "nameRu": "Ультра всё включено", "nativeIds": ["9"]},
+                       ]}})
+                return
+            params = body["params"]
             reply({"ok": True, "data": {"source": "anytour-db-first-results-v1", "scopeVersion": 1,
                    "scope": {"scopeVersion": 1, **params}, "scopeDigest": "c" * 64,
                    "selectionAuthority": False, "hotels": []}})
