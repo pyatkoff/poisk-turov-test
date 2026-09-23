@@ -1,0 +1,109 @@
+name: INT Intourist retained program groups
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/diagnostics/int_intourist_retained_program_groups_v1.php'
+      - 'tests/int_intourist_retained_program_groups_v1_test.php'
+      - '.github/workflows/int-intourist-retained-program-groups-v1.yml'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.number == 3419 &&
+       github.event.comment.body == '/read-int-intourist-program-groups-3419-v1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Validate supplier-free inventory
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/int_intourist_retained_program_groups_v1.php
+          php -l tests/int_intourist_retained_program_groups_v1_test.php
+          php -d allow_url_fopen=0 tests/int_intourist_retained_program_groups_v1_test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/diagnostics/int_intourist_retained_program_groups_v1.php').read_text()
+          for token in ['curl_','PDO','mysqli','file_put_contents','rename(','getFlights(','changeService(','->calc(','booking']:
+              if token in p:
+                  raise SystemExit('forbidden:'+token)
+          for token in ["'supplier_calls'=>0","'database_reads'=>0","'database_writes'=>0","'filesystem_writes'=>0",
+                        "'distinct_spo_count'","'probe_ready_groups'","IRPG_TARGET_OPERATION"]:
+              if token not in p:
+                  raise SystemExit('missing:'+token)
+          print('INTOURIST_GROUP_INVENTORY_BOUNDARY_OK')
+          PY
+
+  read:
+    needs: contract
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 3419 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/read-int-intourist-program-groups-3419-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Read retained Intourist groups
+        env:
+          INT_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          INT_SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          INT_SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/int-intourist-groups"
+          install -d -m 700 "$d"
+          printf '%s\n' "$INT_SSH_KEY" > "$d/key"; chmod 600 "$d/key"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$INT_SSH_HOST" > "$d/known_hosts"
+          test -s "$d/known_hosts"; chmod 600 "$d/known_hosts"
+          ssh -T -i "$d/key" -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 \
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o LogLevel=ERROR \
+            -l "$INT_SSH_USER" "$INT_SSH_HOST" 'php -d display_errors=0 -d log_errors=0' \
+            < scripts/diagnostics/int_intourist_retained_program_groups_v1.php > "$d/result.json"
+          test -s "$d/result.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'int-intourist-groups/result.json'
+          d=json.loads(p.read_text())
+          if d.get('schema_version')!=1 or d.get('source')!='int-intourist-retained-program-groups-v1':
+              raise SystemExit('contract')
+          if d.get('target_operation')!='int-andromeda-intourist-program-fuel-20260923-v2':
+              raise SystemExit('target')
+          for k in ('supplier_calls','database_reads','database_writes','filesystem_writes'):
+              if d.get(k)!=0: raise SystemExit('side_effect:'+k)
+          print(json.dumps(d,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: int-intourist-program-groups-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/int-intourist-groups/result.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove SSH material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/int-intourist-groups/key" "$RUNNER_TEMP/int-intourist-groups/known_hosts"
