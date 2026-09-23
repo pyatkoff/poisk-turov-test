@@ -173,6 +173,19 @@ assert.match(refreshSource,/await data\.expandAnexGroup\(o\)/,'ANEX group refres
 assert.match(refreshSource,/terminalizeSearchForVerification\(\);renderResults\(\{keepFilters:true\}\)/,'ANEX verification terminalizes the old provider UI before awaiting the exact provider');
 assert.ok(refreshSource.indexOf('expandAnexGroup(o)')<refreshSource.indexOf('runSearch({hotelIds:'),'ANEX same-provider expansion runs before the generic Tourvisor refresh fallback');
 assert.match(refreshSource,/h\.offers=\[\.\.\.h\.offers\.filter.*\.\.\.expanded\.offers\]/s,'expanded concrete ANEX variants replace the selected group minimum in the existing hotel offer list');
+assert.match(refreshSource,/o\.provider==='anex'.*o\.raw\?\.anexKind==='concrete'.*o\.raw\?\.anexSessionCurrent===true/s,'expanded concrete ANEX owns a same-provider current-offer branch');
+assert.match(refreshSource,/await data\.verifyAnexConcrete\(o\)/,'expanded concrete ANEX verifies through the retained provider session');
+assert.ok(refreshSource.indexOf('verifyAnexConcrete(o)')<refreshSource.indexOf('runSearch({hotelIds:'),'concrete ANEX provider follow-up runs before generic Tourvisor fallback');
+assert.match(refreshSource,/openAnexConcreteCurrent\(o,current\)/,'current concrete ANEX result uses provider-current UI');
+
+const anexCurrentStart=source.indexOf('function openAnexConcreteCurrent(o,current)');
+const anexCurrentEnd=source.indexOf('\nasync function refreshHotel',anexCurrentStart);
+assert.ok(anexCurrentStart>=0&&anexCurrentEnd>anexCurrentStart,'ANEX provider-current result owner exists');
+const anexCurrentSource=source.slice(anexCurrentStart,anexCurrentEnd);
+assert.match(anexCurrentSource,/finalPriceReady/,'ANEX result distinguishes a retained calculated total from search price');
+assert.match(anexCurrentSource,/не помечается как финально подтверждённая цена/,'ANEX calculated total remains explicitly non-final');
+assert.match(anexCurrentSource,/обязательные доплаты и итоговая цена ещё требуют подтверждения/,'ANEX search-price fallback remains truthful');
+assert.doesNotMatch(anexCurrentSource,/openLeadPreview|completeTour|AnyTourPrototypeLead|leadSession/,'ANEX provider-current result cannot enter Tourvisor lead path');
 assert.match(refreshSource,/o\.provider==='andromeda'.*o\.raw\?\.quoteRequired===true/s,'Andromeda quote-required offer owns a same-provider verification branch');
 assert.match(refreshSource,/await data\.verifyAndromeda\(o\)/,'Andromeda verification calls the dedicated same-provider quote owner');
 assert.ok(refreshSource.indexOf('verifyAndromeda(o)')<refreshSource.indexOf('runSearch({hotelIds:'),'Andromeda same-provider quote runs before generic Tourvisor fallback');

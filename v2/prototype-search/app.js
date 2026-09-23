@@ -623,9 +623,29 @@ async function applyAndromedaFlightChoice(){
   }
  }
 }
+function openAnexConcreteCurrent(o,current){
+ const h=selectedTourHotel(o),ready=current?.finalPriceReady===true,price=ready?Number(current.finalPrice?.amount):Number(o.total);
+ if(!h||!Number.isFinite(price)||price<=0){selectedOffer={...o,loading:false,quoteError:'ANEX не вернул корректную цену предложения.'};renderRealOffer();return;}
+ selectedOffer={...o,loading:false};
+ showModal('anex-current','Тур ANEX проверен','ANEX · АКТУАЛЬНОЕ ПРЕДЛОЖЕНИЕ',`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span><strong>${money(price)}</strong></div><p class="modal-intro">${ready?'ANEX подтвердил текущее предложение. Показанная сумма включает сохранённую расчётную обязательную доплату, но не помечается как финально подтверждённая цена.':'ANEX подтвердил, что конкретное предложение всё ещё актуально. Показана цена из текущего поиска; обязательные доплаты и итоговая цена ещё требуют подтверждения.'}</p><p class="modal-intro">Оформление заявки из ANEX в этой preview-версии пока не подключено.</p>`,true);
+ $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="close-modal">Готово</button>`;
+}
 async function refreshHotel(id){
  const o=selectedOffer,h=selectedTourHotel(o);
  if(!o||o.hotelId!==id||!needsRefresh(o)||!h){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}
+ if(o.provider==='anex'&&o.raw?.anexKind==='concrete'&&o.raw?.anexSessionCurrent===true){
+  const run=++selectionGeneration;selectedOffer={...o,loading:true,quoteError:''};renderRealOffer();
+  try{
+   const current=await data.verifyAnexConcrete(o);
+   if(run!==selectionGeneration||!$('#modal').open||modalType!=='offer'||selectedOffer?.key!==o.key)return;
+   openAnexConcreteCurrent(o,current);
+  }catch(error){
+   if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===o.key){
+    selectedOffer={...o,loading:false,quoteError:error.message};renderRealOffer();
+   }
+  }
+  return;
+ }
  if(o.provider==='andromeda'&&o.raw?.quoteRequired===true){
   const run=++selectionGeneration;selectedOffer={...o,loading:true,quoteError:''};renderRealOffer();
   try{
