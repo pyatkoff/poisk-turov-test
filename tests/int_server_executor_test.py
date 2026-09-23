@@ -603,3 +603,7 @@ class MatchContinuationResumeParseTest(unittest.TestCase):
         cmd=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-continuation-resume-day int-andromeda-match-common4-continuation-resume-day-20260924-v1')
         self.assertEqual(cmd['mode'],'match-common4-continuation-resume-day')
         self.assertEqual(cmd['operation_id'],'int-andromeda-match-common4-continuation-resume-day-20260924-v1')
+
+    def test_match_common4_resume_readback(self):
+        cmd=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-resume-readback int-andromeda-match-common4-resume-readback-20260924-v1')
+        self.assertEqual(cmd['mode'],'match-common4-resume-readback')
