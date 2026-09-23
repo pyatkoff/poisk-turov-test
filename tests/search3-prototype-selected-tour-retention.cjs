@@ -152,6 +152,18 @@ assert.match(priceCopy.refreshOfferNotice(cachedLocal),/^Сохранённое 
 assert.doesNotMatch(priceCopy.refreshOfferNotice(directAndromeda),/Сохранённое предложение/,'fresh direct offer is not described as saved in details');
 assert.match(priceCopy.refreshOfferNotice(directAndromeda),/найдено в текущем поиске/,'fresh direct offer describes current-search provenance');
 
+const mealFilterSource = source.slice(source.indexOf('function hotelOffers(h,options={})'), source.indexOf('\nfunction recommendedHotelScore'));
+assert.match(mealFilterSource,/selectedMealPlanIds/,'top-level meal filter resolves canonical plan IDs');
+assert.match(mealFilterSource,/selectedMealPlanIds\.includes\(o\.mealPlanId\)/,'offer filtering compares canonical plan IDs');
+assert.doesNotMatch(mealFilterSource,/f\.meals\.includes\(o\.meal\)/,'raw/display meal strings never own the top-level filter');
+const mergeMealsSource = source.slice(source.indexOf('function mergeSearchResults(event)'), source.indexOf('\nfunction commitSearchDraft'));
+assert.match(mergeMealsSource,/o\.mealPlanId/,'result facets require canonical meal plan identity');
+assert.match(mergeMealsSource,/o\.mealFacet/,'canonical Russian plan label is the facet display');
+assert.doesNotMatch(mergeMealsSource,/mealNames\[o\.meal\]/,'raw meal wording cannot register a top-level facet');
+const applyCatalogSource = source.slice(source.indexOf('function applyCatalog(c)'), source.indexOf('\nasync function loadCountries'));
+assert.match(applyCatalogSource,/data\.catalog\.mealPlans/,'initial meal choices come from reviewed canonical catalogue');
+assert.doesNotMatch(applyCatalogSource,/data\.catalog\.meals\.forEach/,'supplier raw meal catalogue cannot seed top-level choices');
+
 const prepareSearch = source.slice(source.indexOf('function prepareSearchRun(options={})'), source.indexOf('\nfunction mergeSearchResults'));
 assert.match(prepareSearch, /demoteSavedTour\(\)/, 'new search retains a demoted observation before lifecycle orchestration');
 assert.doesNotMatch(prepareSearch, /savedSelection=null/, 'new search no longer deletes the saved tour');
