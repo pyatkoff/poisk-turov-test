@@ -114,7 +114,21 @@ try {
 
     $pricing = AnyTourOperatorFuelRuleStoreV1::pricingEnvelopeForTarget($searches, $target, $now);
     assert_same('operator_fuel', $pricing['state'] ?? null, 'pricing envelope state');
-    assert_same($input, $pricing['operator_fuel'] ?? null, 'pricing envelope carries confirmed direction input');
+    $pricedInput = $pricing['operator_fuel'] ?? null;
+    assert_true(is_array($pricedInput), 'pricing envelope carries direction input');
+    assert_same([
+        'schema_version'=>1,
+        'source'=>'owner_policy',
+        'policy_date'=>'2026-09-23',
+        'operator_family'=>'fun_and_sun',
+        'destination'=>'country:4',
+        'amount'=>'70.00',
+        'currency'=>'EUR',
+        'unit'=>'per_person_one_way',
+        'base_relation'=>'excluded',
+    ], $pricedInput['owner_policy'] ?? null, 'pricing envelope carries owner 70 EUR Turkey fallback');
+    unset($pricedInput['owner_policy']);
+    assert_same($input, $pricedInput, 'owner policy does not rewrite retained 140 EUR supplier evidence');
 
     $files = glob($searches . '/operator-fuel-rule-v2-*.json') ?: [];
     assert_same(1, count($files), 'both samples collapse into one reusable direction store');

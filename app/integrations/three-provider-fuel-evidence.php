@@ -82,6 +82,13 @@ final class AnyTourThreeProviderFuelEvidenceV1
                 return $hold('fuel_independent_evidence_missing');
             }
             [$nativeRateOrTotal, $currency, $relation, $unit] = array_values($amounts)[0];
+            $ownerPolicy = self::ownerPolicy($input['owner_policy'] ?? null, $family, $direction);
+            if ($ownerPolicy !== null) {
+                $nativeRateOrTotal = self::units($ownerPolicy['amount']);
+                $currency = $ownerPolicy['currency'];
+                $relation = $ownerPolicy['base_relation'];
+                $unit = $ownerPolicy['unit'];
+            }
             $nativeTotal = $nativeRateOrTotal;
             $passengers = $party['adults'] + $party['children'];
             if ($unit === 'per_person_one_way') {
@@ -136,6 +143,7 @@ final class AnyTourThreeProviderFuelEvidenceV1
                 'evidence_count'=>count($digests),
                 'evidence_sha256'=>self::hash($evidenceKeys),
             ];
+            if ($ownerPolicy !== null) $rule['owner_policy'] = $ownerPolicy;
             if ($unit === 'per_person_one_way') {
                 $rule['direction_count'] = 2;
                 $rule['passenger_count'] = $passengers;
@@ -143,7 +151,9 @@ final class AnyTourThreeProviderFuelEvidenceV1
             }
             $out = $dto;
             $out['money']['fuel_charge_reported'] = [
-                'amount'=>self::format($converted), 'currency'=>'RUB', 'source'=>'operator_fuel_direction_rule'
+                'amount'=>self::format($converted),
+                'currency'=>'RUB',
+                'source'=>$ownerPolicy === null ? 'operator_fuel_direction_rule' : 'operator_fuel_owner_policy',
             ];
             $out['money']['operator_fuel_rule'] = $rule + [
                 'rule_sha256'=>self::hash($rule),
@@ -174,6 +184,29 @@ final class AnyTourThreeProviderFuelEvidenceV1
             return $v;
         };
         return hash('sha256', json_encode($canonical($value), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    }
+
+    private static function ownerPolicy(mixed $value, string $family, array $direction): ?array
+    {
+        if ($value === null) return null;
+        $expected = [
+            'schema_version'=>1,
+            'source'=>'owner_policy',
+            'policy_date'=>'2026-09-23',
+            'operator_family'=>'fun_and_sun',
+            'destination'=>'country:4',
+            'amount'=>'70.00',
+            'currency'=>'EUR',
+            'unit'=>'per_person_one_way',
+            'base_relation'=>'excluded',
+        ];
+        if (!is_array($value) || array_is_list($value) || $value !== $expected
+            || $family !== 'fun_and_sun'
+            || ($direction['operator_family'] ?? null) !== 'fun_and_sun'
+            || ($direction['destination'] ?? null) !== 'country:4') {
+            throw new InvalidArgumentException('fuel_owner_policy');
+        }
+        return $expected;
     }
 
     private static function direction(mixed $value): array

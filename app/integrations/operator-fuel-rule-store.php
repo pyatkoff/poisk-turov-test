@@ -70,7 +70,22 @@ final class AnyTourOperatorFuelRuleStoreV1
     public static function pricingEnvelopeForTarget(string $directory, array $target, int $now, ?array $exchange = null): ?array
     {
         $input = self::inputForTarget($directory, $target, $now, $exchange);
-        return $input === null ? null : ['state'=>'operator_fuel','operator_fuel'=>$input];
+        if ($input === null) return null;
+        if (($input['direction']['operator_family'] ?? null) === 'fun_and_sun'
+            && ($input['direction']['destination'] ?? null) === 'country:4') {
+            $input['owner_policy'] = [
+                'schema_version'=>1,
+                'source'=>'owner_policy',
+                'policy_date'=>'2026-09-23',
+                'operator_family'=>'fun_and_sun',
+                'destination'=>'country:4',
+                'amount'=>'70.00',
+                'currency'=>'EUR',
+                'unit'=>'per_person_one_way',
+                'base_relation'=>'excluded',
+            ];
+        }
+        return ['state'=>'operator_fuel','operator_fuel'=>$input];
     }
 
     private static function path(string $directory, string $digest): string
