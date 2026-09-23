@@ -31,6 +31,7 @@ final class AnyTourFunSunFuelOwnerReferenceV1
         foreach (self::rules() as $rule) {
             if ($rule['destination'] !== $destination) continue;
             if (isset($rule['flight']) && $rule['flight'] !== $flight) continue;
+            if (isset($rule['flight_set']) && !in_array($flight, $rule['flight_set'], true)) continue;
             if (isset($rule['prefix']) && !str_starts_with($flight, $rule['prefix'])) continue;
             if (isset($rule['carrier']) && $rule['carrier'] !== $carrierFamily) continue;
             if ($rule['from'] !== null && $travelDate < $rule['from']) continue;
