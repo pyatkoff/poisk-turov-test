@@ -750,6 +750,9 @@ function commitSearchDraft(){
 const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
  form:$('#search-form'),
  data,
+ events:document,
+ canSubmit:()=>!$('.search-submit').disabled,
+ supplierFilters:()=>structuredClone(state.filters),
  prepare:prepareSearchRun,
  currentKey:()=>searchKey(state.search),
  onResults:mergeSearchResults,
@@ -830,7 +833,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'month-prev':case 'month-next':{const d=dateObj(calendarMonth);d.setUTCMonth(d.getUTCMonth()+(action==='month-next'?1:-1));calendarMonth=iso(d);renderDateCalendar();loadCalendarPrices();break}
  case 'day-pick':{const day=b.dataset.date;dateDraft.flex=0;if(dateDraft.phase===0){dateDraft.from=day;dateDraft.to=day;dateDraft.phase=1;dateAnchor=day}else{if(day<dateDraft.from){dateDraft.to=dateDraft.from;dateDraft.from=day}else dateDraft.to=day;dateDraft.phase=0}updateDateSelection();break}
  case 'flex-date':{const n=+b.dataset.value;dateDraft.flex=n;dateDraft.from=addDays(dateAnchor,-n)<startDay?startDay:addDays(dateAnchor,-n);dateDraft.to=addDays(dateAnchor,n)>endDay?endDay:addDays(dateAnchor,n);dateDraft.phase=0;updateDateSelection();break}
- case 'apply-dates':{const from=$('#date-from').value,to=$('#date-to').value;if(!from||!to||from<startDay||to>endDay||from>to||(dateObj(to)-dateObj(from))/86400000>21){$('#date-error').textContent='Выберите корректный диапазон не больше 21 дня между датами.';return}draft.from=from;draft.to=to;if(dateContext.source==='results'){state.search.from=from;state.search.to=to;state.selectedDate=from===to?from:null;state.openHotel=null;renderResults({keepFilters:true})}else if(state.selectedDate){state.selectedDate=null;renderResults({keepFilters:true})}closeModal();updateSearchUI();break}
+ case 'apply-dates':{const from=$('#date-from').value,to=$('#date-to').value;if(!from||!to||from<startDay||to>endDay||from>to||(dateObj(to)-dateObj(from))/86400000>21){$('#date-error').textContent='Выберите корректный диапазон не больше 21 дня между датами.';return}const refreshResults=dateContext.source==='results'&&(from!==dateContext.search.from||to!==dateContext.search.to);draft.from=from;draft.to=to;if(dateContext.source==='results'){state.search.from=from;state.search.to=to;state.selectedDate=from===to?from:null;state.openHotel=null;renderResults({keepFilters:true})}else if(state.selectedDate){state.selectedDate=null;renderResults({keepFilters:true})}closeModal();updateSearchUI();if(refreshResults)searchLifecycle.requestSubmit();break}
  case 'adults-minus':guestDraft.adults=Math.max(1,guestDraft.adults-1);renderGuests();break;
  case 'adults-plus':guestDraft.adults=Math.min(6,guestDraft.adults+1);renderGuests();break;
  case 'children-minus':guestDraft.ages.pop();renderGuests();break;
