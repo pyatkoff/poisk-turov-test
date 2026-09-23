@@ -79,7 +79,6 @@ function endpointKind(url) {
   const cardCount = await page.locator('.hotel-card').count();
   const summary = await page.locator('#results-summary').innerText().catch(()=>'');
   const statusText = await page.locator('#search-status').innerText().catch(()=>'');
-  await page.screenshot({ path:path.join(OUTPUT,'first-search-1440.png'), fullPage:true, animations:'disabled' });
 
   const compactRequests = {};
   for (const row of requests) compactRequests[row.kind] = (compactRequests[row.kind] || 0) + 1;
@@ -104,6 +103,11 @@ function endpointKind(url) {
   };
   fs.writeFileSync(path.join(OUTPUT,'result.json'), JSON.stringify(result,null,2));
   console.log('SEARCH3_LIVE_FIRST_SEARCH_RESULT ' + JSON.stringify(result));
+  try {
+    await page.screenshot({ path:path.join(OUTPUT,'first-search-1440.png'), fullPage:false, animations:'disabled' });
+  } catch (error) {
+    fs.writeFileSync(path.join(OUTPUT,'screenshot-error.txt'), String(error));
+  }
   assert.deepEqual(leadWrites, [], 'live diagnostic must not submit leads');
   assert.equal(pageErrors.length, 0, 'page errors: ' + pageErrors.join(' | '));
 
