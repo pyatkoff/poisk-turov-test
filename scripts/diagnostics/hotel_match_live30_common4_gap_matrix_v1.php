@@ -66,15 +66,15 @@ function hmc4_parse_link(array $row):array{
             $candidates[$id]=true;$ambiguousInput++;
         }
     }
-    $ids=array_keys($candidates);sort($ids,SORT_NATURAL);$qkeys=array_keys($keys);sort($qkeys,SORT_NATURAL);
+    $ids=array_values(array_map('strval',array_keys($candidates)));sort($ids,SORT_NATURAL);$qkeys=array_keys($keys);sort($qkeys,SORT_NATURAL);
     if(count($ids)===1)return ['state'=>'single_native_candidate','namespace'=>$ns,'candidates'=>$ids,'host'=>$host,'query_keys'=>$qkeys];
     if(count($ids)>1||$ambiguousInput>1)return ['state'=>'ambiguous_native_candidates','namespace'=>$ns,'candidates'=>$ids,'host'=>$host,'query_keys'=>$qkeys];
     return ['state'=>$numeric?'numeric_nonhotel_only':'no_native_candidate','namespace'=>$ns,'candidates'=>[],'host'=>$host,'query_keys'=>$qkeys];
 }
 function hmc4_lane(array $accepted,array $saved,array $sourceTargets):array{
     $accepted=array_values(array_unique(array_map('strval',$accepted)));sort($accepted,SORT_NATURAL);
-    $exact=array_keys($saved['exact']??[]);sort($exact,SORT_NATURAL);
-    $amb=array_keys($saved['ambiguous']??[]);sort($amb,SORT_NATURAL);
+    $exact=array_values(array_map('strval',array_keys($saved['exact']??[])));sort($exact,SORT_NATURAL);
+    $amb=array_values(array_map('strval',array_keys($saved['ambiguous']??[])));sort($amb,SORT_NATURAL);
     $observations=(int)($saved['observations']??0);
     $state='no_retained_operator_result';$exactEvidence=false;
     if($accepted!==[]){$state='accepted_current';$exactEvidence=true;}
