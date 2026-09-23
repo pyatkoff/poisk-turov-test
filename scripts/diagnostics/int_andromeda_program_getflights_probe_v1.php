@@ -67,6 +67,26 @@ function ipf_operator_matches(?string $operator, string $family): bool {
         default => false,
     };
 }
+function ipf_sort_representatives(array $rows): array {
+    usort($rows, static function(array $a,array $b): int {
+        $mapped = ($a['mapped'] ? 0 : 1) <=> ($b['mapped'] ? 0 : 1);
+        if ($mapped !== 0) return $mapped;
+        $price = $a['price_units'] <=> $b['price_units'];
+        return $price !== 0 ? $price : strcmp($a['offer']['offer_ref'], $b['offer']['offer_ref']);
+    });
+    return $rows;
+}
+function ipf_choose_representatives(array $spoCandidates,array $charterHotelCandidates,string $family,array $freightCounts): array {
+    if ($spoCandidates !== []) {
+        return ['basis'=>'distinct_spo','rows'=>ipf_sort_representatives(array_values($spoCandidates))];
+    }
+    if ($family !== 'intourist') ipf_fail('target_group_missing');
+    if (($freightCounts['true'] ?? 0) !== 0 || ($freightCounts['null'] ?? 0) !== 0
+        || ($freightCounts['false'] ?? 0) < 2) ipf_fail('charter_group_not_strict');
+    $rows=ipf_sort_representatives(array_values($charterHotelCandidates));
+    if (count($rows) < 2) ipf_fail('charter_independent_samples_missing');
+    return ['basis'=>'distinct_mapped_hotel','rows'=>$rows];
+}
 function ipf_counter(string $directory): array {
     $path = $directory . '/monthly-requests.json';
     $month = gmdate('Y-m');
@@ -123,6 +143,8 @@ function ipf_selected_flight(array $flight): array {
     $out['markup'] = count($markup) === 1 ? array_values($markup)[0] : null;
     return $out;
 }
+
+if (getenv('INT_PROGRAM_PROBE_LIBRARY_ONLY') === '1') return;
 
 $out = [
     'schema_version'=>1,
@@ -189,6 +211,8 @@ try {
     ksort($paths, SORT_NUMERIC);
 
     $candidates = [];
+    $charterHotelCandidates = [];
+    $groupFreightCounts = ['true'=>0,'false'=>0,'null'=>0];
     $allGroupOffers = 0;
     foreach ($paths as $page=>$path) {
         $state = ipf_json($path);
@@ -202,9 +226,10 @@ try {
             if (!ipf_operator_matches($ctx['operator'], $family)
                 || $ctx['program_key'] !== $program || $ctx['tour_key'] !== $tour) continue;
             ++$allGroupOffers;
+            ++$groupFreightCounts[$ctx['freight_external']===true?'true':($ctx['freight_external']===false?'false':'null')];
             $offerRef = $offer['offer_ref'] ?? null;
             $spo = $ctx['spo_key'];
-            if (!is_string($offerRef) || preg_match('/\Aoffer_[a-f0-9]{64}\z/D', $offerRef) !== 1 || $spo === null) continue;
+            if (!is_string($offerRef) || preg_match('/\Aoffer_[a-f0-9]{64}\z/D', $offerRef) !== 1) continue;
             $supplierId = $rawIds[$offerRef] ?? null;
             if (is_int($supplierId)) $supplierId = (string)$supplierId;
             if (!is_string($supplierId) || $supplierId === '' || strlen($supplierId) > 512
@@ -213,29 +238,34 @@ try {
             $units = ipf_money_units($price['amount'] ?? null);
             $currency = $price['currency'] ?? null;
             if ($units === null || !is_string($currency) || preg_match('/\A[A-Z0-9_]{2,8}\z/D', $currency) !== 1) continue;
+            $localHotelId = is_int($offer['local_hotel_id'] ?? null) && $offer['local_hotel_id'] > 0
+                ? $offer['local_hotel_id'] : null;
             $row = [
                 'offer'=>$offer,'context'=>$ctx,'supplier_id'=>$supplierId,
-                'price_units'=>$units,'currency'=>$currency,
-                'mapped'=>is_int($offer['local_hotel_id'] ?? null) && $offer['local_hotel_id'] > 0,
+                'price_units'=>$units,'currency'=>$currency,'mapped'=>$localHotelId!==null,
             ];
-            if (!isset($candidates[$spo])) {
-                $candidates[$spo] = $row;
-            } else {
-                $current = $candidates[$spo];
-                $rank = [$row['mapped'] ? 0 : 1, $row['price_units'], $offerRef];
-                $currentRank = [$current['mapped'] ? 0 : 1, $current['price_units'], $current['offer']['offer_ref']];
-                if (($rank <=> $currentRank) < 0) $candidates[$spo] = $row;
+            if ($spo !== null) {
+                if (!isset($candidates[$spo])) {
+                    $candidates[$spo] = $row;
+                } else {
+                    $current = $candidates[$spo];
+                    $rank = [$row['mapped'] ? 0 : 1, $row['price_units'], $offerRef];
+                    $currentRank = [$current['mapped'] ? 0 : 1, $current['price_units'], $current['offer']['offer_ref']];
+                    if (($rank <=> $currentRank) < 0) $candidates[$spo] = $row;
+                }
+            } elseif ($family === 'intourist' && $ctx['freight_external'] === false && $localHotelId !== null) {
+                $hotelKey=(string)$localHotelId;
+                if (!isset($charterHotelCandidates[$hotelKey])
+                    || [$row['price_units'],$offerRef] < [$charterHotelCandidates[$hotelKey]['price_units'],$charterHotelCandidates[$hotelKey]['offer']['offer_ref']]) {
+                    $charterHotelCandidates[$hotelKey]=$row;
+                }
             }
         }
     }
-    if ($allGroupOffers < 1 || $candidates === []) ipf_fail('target_group_missing');
-    $representatives = array_values($candidates);
-    usort($representatives, static function(array $a,array $b): int {
-        $mapped = ($a['mapped'] ? 0 : 1) <=> ($b['mapped'] ? 0 : 1);
-        if ($mapped !== 0) return $mapped;
-        $price = $a['price_units'] <=> $b['price_units'];
-        return $price !== 0 ? $price : strcmp($a['offer']['offer_ref'], $b['offer']['offer_ref']);
-    });
+    if ($allGroupOffers < 1) ipf_fail('target_group_missing');
+    $selection=ipf_choose_representatives($candidates,$charterHotelCandidates,$family,$groupFreightCounts);
+    $sampleBasis=$selection['basis'];
+    $representatives=$selection['rows'];
     if (!isset($representatives[$sampleIndex])) ipf_fail('sample_index_missing');
     $picked = $representatives[$sampleIndex];
 
@@ -264,9 +294,12 @@ try {
         'program_label'=>$ctx['program_label'],
         'tour_key'=>$tour,
         'tour_label'=>$ctx['tour_label'],
-        'sample_distinct_spo_index'=>$sampleIndex,
+        'sample_basis'=>$sampleBasis,
+        'sample_distinct_spo_index'=>$sampleBasis==='distinct_spo'?$sampleIndex:null,
+        'sample_distinct_mapped_hotel_index'=>$sampleBasis==='distinct_mapped_hotel'?$sampleIndex:null,
         'retained_group_offer_count'=>$allGroupOffers,
-        'retained_distinct_spo_count'=>count($representatives),
+        'retained_distinct_spo_count'=>count($candidates),
+        'retained_distinct_mapped_hotel_count'=>count($charterHotelCandidates),
         'spo_key'=>$ctx['spo_key'],
         'spo_label'=>$ctx['spo_label'],
         'retained_freight_external'=>$ctx['freight_external'],
