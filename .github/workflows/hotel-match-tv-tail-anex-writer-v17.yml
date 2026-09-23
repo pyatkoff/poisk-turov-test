@@ -1,0 +1,108 @@
+name: MATCH TV tail ANEX writer v17
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - '.github/workflows/hotel-match-tv-tail-anex-writer-v17.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-common4-tail-anex-writer-1971-20260924-v17, cancel-in-progress: false}
+env:
+  OP: hotel-match-common4-tail-anex-writer-1971-20260924-v17
+  BASE: dd659dfdec6ad5bc69683c545ab637070d865cf7
+  CLAIM: '5804468591'
+  AUDIT_ARTIFACT: '10780823859'
+  AUDIT_ARCHIVE_SHA: b3a0d90bfedc809bb5f517bf05a01542204d2271cc56766d66023dd3e9499d2c
+  EXPECTED_WRITES: '41'
+jobs:
+  live:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-tv-tail-anex-writer-20260924'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source claim Security and audit
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/audit terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-tv-tail-anex-writer-v17.yml "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],'exact expected writes=41',os.environ['AUDIT_ARCHIVE_SHA'],'SERIALIZABLE','rollback']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$AUDIT_ARTIFACT/zip" -o input/audit.zip
+          test "$(sha256sum input/audit.zip|awk '{print $1}')" = "$AUDIT_ARCHIVE_SHA"
+          unzip -q input/audit.zip -d input/audit
+          result="$(find input/audit -type f -name result.json -print -quit)"; receipt="$(find input/audit -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt";cp "$result" input/audit-result.json;cp "$receipt" input/audit-receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('input/audit-result.json'));q=json.load(open('input/audit-receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('input/audit-result.json').read_bytes()).hexdigest()
+          assert r['operation']=='hotel-match-common4-mass-current-1971-20260924-v14'
+          assert r['state']=='completed_read_only_mass_current'
+          assert r['writer_ready_counts']=={'anex':41,'identity':367}
+          assert r['supplier_calls']==0 and r['database_writes']==0 and r['mapping_writes']==0
+          PY
+      - name: Execute exact 41-row guarded ANEX writer v17
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_write','expected_writes':int(os.environ['EXPECTED_WRITES'])},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
+          scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" input/audit-result.json "$remote:$op/payload/audit-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_common4_tail_anex_writer_v17.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/app/integrations/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA="$(sha256sum input/audit-result.json|awk '{print $1}')" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_common4_tail_anex_writer_v17.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";mkdir -p export;for f in reservation.json pre-commit.json commit-attempt.json result.json receipt.json;do test -f \"\$f\"&&cp \"\$f\" export/;done;tar -czf - -C export ." >terminal/server.tgz
+          set -e
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  n=m.name.lstrip('./')
+                  if m.isfile():pathlib.Path('terminal',n).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          if r['state']!='committed_verified':
+              print(json.dumps({'state':r['state'],'reason':r.get('reason'),'database_writes':r.get('database_writes')},sort_keys=True));raise SystemExit(2)
+          assert r['inserted']==41 and r['database_writes']==41 and r['mapping_writes']==41 and r['readback_verified'] is True and r['registry_readback_verified'] is True
+          assert q['state']=='committed_verified'
+          print(json.dumps({'state':r['state'],'inserted':r['inserted'],'mapping_digest':r['mapping_digest'],'readback_verified':True,'registry_readback_verified':True},sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-tv-tail-anex-writer-v17-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
