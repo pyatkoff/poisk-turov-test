@@ -26,7 +26,9 @@ $saved=['local_country_id'=>4,'townfrom'=>['payload'=>['TOWNFROM'=>[['id'=>1,'na
         'STARS'=>[['id'=>2,'name'=>'2*'],['id'=>3,'name'=>'3*'],['id'=>4,'name'=>'4*'],['id'=>5,'name'=>'5*']]
     ]],
     'excluded_operator_ids'=>[]];
-$params=['departureId'=>1,'countryId'=>4,'dateFrom'=>'2026-09-22','dateTo'=>'2026-09-22','nightsFrom'=>7,'nightsTo'=>7,
+$tripDate=(new DateTimeImmutable('today',new DateTimeZone('UTC')))->modify('+30 days');
+$tripIso=$tripDate->format('Y-m-d');$tripSupplier=$tripDate->format('d.m.Y');
+$params=['departureId'=>1,'countryId'=>4,'dateFrom'=>$tripIso,'dateTo'=>$tripIso,'nightsFrom'=>7,'nightsTo'=>7,
     'adults'=>2,'childs'=>[],'meal'=>'','currency'=>'RUB','hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],
     'arrivalId'=>'','operatorIds'=>[],'hotelServices'=>[],'hotelTypes'=>[],'onlyDirect'=>false,'onlyCharter'=>false,
     'hotelCategory'=>'','hotelRating'=>'','priceFrom'=>'','priceTo'=>''];
@@ -35,11 +37,11 @@ $criteria=anytour_andromeda_search3_params($baseRequest,$pdo,$saved);$refBase=$c
 $ref=hash('sha256','paged-v1'.$session.json_encode($refBase));$now=time();
 $resolver=AnyTourAndromedaHotelResolver::fromRows([['supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>'3414',
     'decision_status'=>'accepted','catalog_hotel_id'=>'900','existing_catalog_hotel_id'=>'900']],str_repeat('a',64));
-$makeState=static function(int $page,int $pages,string $id,int $price,string $room)use($criteria,$ref,$generation,$now,$resolver):array{
+$makeState=static function(int $page,int $pages,string $id,int $price,string $room)use($criteria,$ref,$generation,$now,$resolver,$tripSupplier):array{
     $storeState=[];$store=new AnyTourAndromedaOfferStore($storeState,true);$store->begin($ref,$generation,$now);
     $pageCriteria=$criteria;$pageCriteria['PAGE']=$page;
     $row=['id'=>$id,'hotelKey'=>3414,'operatorKey'=>5,'isOperatorHotelKey'=>0,'price'=>$price,'currency'=>'RUB','currencyKey'=>643,
-        'checkIn'=>'22.09.2026','nights'=>'7','hotel'=>'Cache Hotel','operator'=>'Anex Tour','meal'=>'AI','mealKey'=>6,
+        'checkIn'=>$tripSupplier,'nights'=>'7','hotel'=>'Cache Hotel','operator'=>'Anex Tour','meal'=>'AI','mealKey'=>6,
         'room'=>$room,'htplace'=>'DBL','adult'=>'2','child'=>'0'];
     $projection=$store->capture(['PAGE'=>$page,'PAGES_COUNT'=>$pages,'PRICES'=>[$row]],$pageCriteria,$ref,$generation,$now+1,$resolver);
     return ['version'=>1,'search_ref'=>$ref,'generation'=>$generation,'status'=>$page<$pages?'partial':'complete',
