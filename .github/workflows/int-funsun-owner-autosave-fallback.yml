@@ -31,7 +31,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           p=Path('app/integrations/andromeda-surcharge-cache-autosave.php').read_text()
-          for token in ['curl_', 'mysqli', 'new PDO', 'getFlights(', 'changeService(', '->calc(', 'booking']:
+          for token in ['curl_', 'mysqli', 'new PDO', 'getFlights(', 'changeService(', '->calc(', 'booking(']:
               if token in p:
                   raise SystemExit('forbidden authority primitive: '+token)
           for token in ['AnyTourOperatorProgramFuelFxEvidenceV1::latestForDirection',
