@@ -44,6 +44,210 @@ FIXED = [
 INSTALL_PREFIX = 'app/integrations/'
 INSTALL_FIXED = []
 
+FUNSUN_DIRECTION_FUEL_SEED_PHP = r'''
+<?php
+declare(strict_types=1);
+
+function fsdf_fail(string $reason): never { throw new RuntimeException($reason); }
+function fsdf_json(string $path): array {
+    if (!is_file($path) || is_link($path) || filesize($path) < 2 || filesize($path) > 1048576) fsdf_fail('probe_receipt_missing');
+    $value=json_decode((string)file_get_contents($path),true,96,JSON_THROW_ON_ERROR);
+    if (!is_array($value)) fsdf_fail('probe_receipt_invalid');
+    return $value;
+}
+function fsdf_money_units(mixed $value): int {
+    if (!is_string($value) || preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D',$value)!==1) fsdf_fail('money_invalid');
+    [$whole,$fraction]=array_pad(explode('.',$value,2),2,'');
+    return ((int)$whole)*100+(int)str_pad($fraction,2,'0');
+}
+function fsdf_money(int $units): string {
+    return intdiv($units,100).'.'.str_pad((string)($units%100),2,'0',STR_PAD_LEFT);
+}
+function fsdf_rate(array $probe): string {
+    $rows=$probe['search_surcharge_estimate']['operator_currency_rates_reported']??null;
+    if (!is_array($rows) || !array_is_list($rows)) fsdf_fail('fx_missing');
+    $eur=null;$rub=null;
+    foreach($rows as $row){
+        if(!is_array($row)||($row['source']??null)!=='andromeda_claim_money') continue;
+        if(($row['currency']??null)==='EUR'&&($row['is_claim_currency']??null)===true&&($row['rate']??null)==='1') $eur='1';
+        if(($row['currency']??null)==='RUB'&&($row['is_claim_currency']??null)===false&&is_string($row['rate']??null)) $rub=$row['rate'];
+    }
+    if($eur!=='1'||$rub!=='102.7') fsdf_fail('fx_mismatch');
+    return $rub;
+}
+function fsdf_probe(array $outer,string $operation,int $sampleIndex): array {
+    if(($outer['schema_version']??null)!==1||($outer['status']??null)!=='complete'
+        ||($outer['mode']??null)!=='program-fuel-probe'||($outer['operation_id']??null)!==$operation
+        ||($outer['database_writes']??null)!==0||($outer['production_unchanged']??null)!==true) fsdf_fail('outer_contract');
+    $probe=$outer['program_fuel_probe']??null;
+    if(!is_array($probe)||($probe['schema_version']??null)!==1
+        ||($probe['source']??null)!=='int-andromeda-program-getflights-probe-v1'
+        ||($probe['status']??null)!=='complete'||($probe['final_price_verified']??null)!==false
+        ||($probe['database_writes']??null)!==0||($probe['mapping_writes']??null)!==0) fsdf_fail('probe_contract');
+    $calls=$probe['supplier_calls']??null;
+    if(!is_array($calls)||($calls['login_attempted']??null)!==true||($calls['package']??null)!==1
+        ||($calls['get_flights']??null)!==1||($calls['changeservice']??null)!==0
+        ||($calls['calc']??null)!==0||($calls['booking']??null)!==0) fsdf_fail('probe_authority');
+    $target=$probe['target']??null;
+    if(!is_array($target)||($target['operator_family']??null)!=='funsun'||($target['operator']??null)!=='Fun&Sun'
+        ||($target['program_key']??null)!=='114'||($target['tour_key']??null)!=='78'
+        ||($target['tour_label']??null)!=='Turkey Antalya MOW'
+        ||($target['target_operation']??null)!=='int-andromeda-flight-observe-20260922-v2'
+        ||($target['retained_group_offer_count']??null)!==354||($target['retained_distinct_spo_count']??null)!==193
+        ||($target['sample_distinct_spo_index']??null)!==$sampleIndex
+        ||($target['mapped_local_hotel']??null)!==true||($target['retained_freight_external']??null)!==false
+        ||!is_string($target['spo_key']??null)||!preg_match('/\A[1-9][0-9]{0,18}\z/D',$target['spo_key'])
+        ||!is_string($target['selected_offer_ref_sha256']??null)
+        ||!preg_match('/\A[a-f0-9]{64}\z/D',$target['selected_offer_ref_sha256'])) fsdf_fail('target_contract');
+
+    $fuel=$probe['fuel_surcharges_reported']??null;
+    if(!is_array($fuel)||count($fuel)!==2) fsdf_fail('fuel_shape');
+    usort($fuel,static fn(array $a,array $b):int=>strcmp((string)($a['route_index']??''),(string)($b['route_index']??'')));
+    foreach([0,1] as $i){
+        $row=$fuel[$i]??null;
+        if(!is_array($row)||($row['route_index']??null)!==(string)$i||($row['amount']??null)!=='140'
+            ||($row['currency']??null)!=='EUR'||($row['required_reported']??null)!==true
+            ||($row['packet_reported']??null)!==false||($row['service_type']??null)!=='9'
+            ||($row['source']??null)!=='andromeda_claim_service') fsdf_fail('fuel_mismatch');
+    }
+
+    $selection=$probe['cheapest_selection']??null;
+    if(!is_array($selection)||($selection['candidate_counts']??null)!==[35,35]
+        ||($selection['target_currency']??null)!=='RUB') fsdf_fail('selection_contract');
+    $flights=$selection['selected_flights']??null;
+    if(!is_array($flights)||count($flights)!==2) fsdf_fail('selection_flights');
+    usort($flights,static fn(array $a,array $b):int=>strcmp((string)($a['direction']??''),(string)($b['direction']??'')));
+    $expectedFlights=['U6 3555','ZF 3004'];
+    $expectedDates=['2026-10-11','2026-10-18'];
+    foreach([0,1] as $i){
+        $flight=$flights[$i]??null;$markup=is_array($flight)?($flight['markup']??null):null;
+        if(!is_array($flight)||($flight['direction']??null)!==(string)$i
+            ||($flight['flight_numbers']??null)!==[$expectedFlights[$i]]
+            ||!is_array($markup)||($markup['amount']??null)!=='280.00'||($markup['currency']??null)!=='EUR') fsdf_fail('selection_mismatch');
+        if(fsdf_money_units($markup['amount'])!==fsdf_money_units('140')*2) fsdf_fail('unit_corroboration');
+        $departures=$flight['departure_datetimes']??null;
+        if(!is_array($departures)||count($departures)!==1||substr((string)$departures[0],0,10)!==$expectedDates[$i]) fsdf_fail('date_mismatch');
+    }
+    return [
+        'operation'=>$operation,'probe'=>$probe,'target'=>$target,'rate'=>fsdf_rate($probe),
+        'outbound_flight'=>$expectedFlights[0],'return_flight'=>$expectedFlights[1],
+        'valid_from'=>$expectedDates[0],'valid_to'=>$expectedDates[1],
+    ];
+}
+function fsdf_write(string $path,array $value): bool {
+    $dir=dirname($path);
+    if(!is_dir($dir)||is_link($dir)||is_link($path)) return false;
+    $tmp=tempnam($dir,'.direction-fuel-seed.');
+    if(!is_string($tmp)) return false;
+    try{
+        chmod($tmp,0600);
+        $json=json_encode($value,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+        if(file_put_contents($tmp,$json,LOCK_EX)===false) return false;
+        if(!rename($tmp,$path)) return false;
+        chmod($path,0600);
+        return true;
+    } finally {
+        if(file_exists($tmp)) @unlink($tmp);
+    }
+}
+
+$sourceRoot=getenv('INT_DIRECTION_SEED_SOURCE_ROOT');
+$storeDir=getenv('INT_DIRECTION_SEED_STORE_DIR');
+$opsRoot=getenv('INT_DIRECTION_SEED_OPS_ROOT');
+if(!is_string($sourceRoot)||!is_dir($sourceRoot)||!is_string($storeDir)||!is_dir($storeDir)
+    ||!is_string($opsRoot)||!is_dir($opsRoot)) fsdf_fail('seed_environment');
+require_once rtrim($sourceRoot,'/').'/app/integrations/operator-fuel-rule-evidence.php';
+require_once rtrim($sourceRoot,'/').'/app/integrations/operator-fuel-rule-store.php';
+
+$expected=[
+    ['int-andromeda-funsun-antalya-fuel-probe-20260923-v1',0],
+    ['int-andromeda-funsun-antalya-fuel-probe-20260923-v2',1],
+];
+$samples=[];
+foreach($expected as [$operation,$index]){
+    $path=rtrim($opsRoot,'/').'/'.$operation.'/result.json';
+    $outer=fsdf_json($path);
+    $sample=fsdf_probe($outer,$operation,$index);
+    $mtime=filemtime($path);
+    if(!is_int($mtime)||$mtime<1||$mtime>time()+60) fsdf_fail('receipt_time');
+    $sample['observed_at']=$mtime;
+    $samples[]=$sample;
+}
+if($samples[0]['target']['spo_key']===$samples[1]['target']['spo_key']
+    ||$samples[0]['target']['selected_offer_ref_sha256']===$samples[1]['target']['selected_offer_ref_sha256']) fsdf_fail('independent_evidence');
+
+$direction=['market'=>'departure:1','destination'=>'country:4'];
+$receipts=[];
+foreach($samples as $sample){
+    $observed=$sample['observed_at'];
+    $sourceResponse=AnyTourOperatorFuelRuleEvidenceV1::hash([
+        'operation'=>$sample['operation'],
+        'program_fuel_probe'=>$sample['probe'],
+    ]);
+    $exchange=[
+        'from'=>'EUR','to'=>'RUB','rate'=>$sample['rate'],'source'=>'andromeda_claim_money',
+        'observed_at'=>$observed,'expires_at'=>$observed+86400,
+        'evidence_sha256'=>AnyTourOperatorFuelRuleEvidenceV1::hash([
+            'operation'=>$sample['operation'],'source_response_sha256'=>$sourceResponse,
+            'from'=>'EUR','to'=>'RUB','rate'=>$sample['rate'],
+        ]),
+    ];
+    $raw=[
+        'provider'=>'andromeda','operator'=>'Fun&Sun',
+        'direction'=>$direction,
+        'scope'=>[
+            'market'=>'andromeda:departure:1',
+            'outbound'=>['origin'=>'departure:1','destination'=>'country:4','carrier'=>'not_exposed_by_probe','flight'=>$sample['outbound_flight']],
+            'return'=>['origin'=>'country:4','destination'=>'departure:1','carrier'=>'not_exposed_by_probe','flight'=>$sample['return_flight']],
+            'party'=>['adults'=>2,'children'=>0,'child_ages'=>[]],
+        ],
+        'unit'=>'per_person_one_way','base_relation'=>'excluded','amount'=>'140.00','currency'=>'EUR',
+        'observed_at'=>$observed,'expires_at'=>$observed+2592000,
+        'base_includes_other_required_charges'=>true,
+        'valid_from'=>$sample['valid_from'],'valid_to'=>$sample['valid_to'],
+        'offer_ref_digest'=>$sample['target']['selected_offer_ref_sha256'],
+        'source_response_sha256'=>$sourceResponse,
+        'source'=>'andromeda_claim_service',
+        'exchange'=>$exchange,
+    ];
+    $raw['evidence_sha256']=AnyTourOperatorFuelRuleEvidenceV1::hash([
+        'operation'=>$sample['operation'],'source_response_sha256'=>$sourceResponse,
+        'derivation'=>'two_distinct_spo_required_fuel_equals_cheapest_party2_markup',
+        'amount'=>'140.00','currency'=>'EUR','unit'=>'per_person_one_way',
+        'direction'=>$direction,'flight_pair'=>[$sample['outbound_flight'],$sample['return_flight']],
+        'exchange_rate'=>$sample['rate'],
+    ]);
+    $receipts[]=AnyTourOperatorFuelRuleStoreV1::append($storeDir,$raw,'fsdf_write');
+}
+$now=time();
+$input=AnyTourOperatorFuelRuleStoreV1::inputForTarget($storeDir,[
+    'operator'=>'FUN&SUN','search_params'=>['departureId'=>1,'countryId'=>4],
+    'party'=>['adults'=>2,'children'=>0,'child_ages'=>[]],
+    'offer_ref_digest'=>$samples[0]['target']['selected_offer_ref_sha256'],
+],$now);
+if(!is_array($input)||($input['direction']??null)!==[
+        'operator_family'=>'fun_and_sun','market'=>'departure:1','destination'=>'country:4'
+    ]||count($input['observations']??[])<2||($input['exchange']['rate']??null)!=='102.7') fsdf_fail('store_readback');
+$facts=[];
+foreach($input['observations'] as $row){
+    $facts[]=($row['amount']??null).'|'.($row['currency']??null).'|'.($row['unit']??null).'|'.($row['base_relation']??null);
+}
+if(array_values(array_unique($facts))!==['140.00|EUR|per_person_one_way|excluded']) fsdf_fail('confirmed_rule_mismatch');
+$paths=array_values(array_unique(array_map(static fn(array $r):string=>basename((string)($r['path']??'')),$receipts)));
+if(count($paths)!==1||preg_match('/\Aoperator-fuel-rule-v2-[a-f0-9]{64}\.json\z/D',$paths[0])!==1) fsdf_fail('store_path');
+echo json_encode([
+    'schema_version'=>1,'source'=>'int-funsun-direction-fuel-seed-v1','status'=>'complete',
+    'direction'=>$input['direction'],'amount'=>'140.00','currency'=>'EUR','unit'=>'per_person_one_way',
+    'base_relation'=>'excluded','independent_offer_count'=>2,'evidence_count'=>2,
+    'exchange'=>array_intersect_key($input['exchange'],array_flip(['from','to','rate','observed_at','expires_at','evidence_sha256'])),
+    'store_file'=>$paths[0],
+    'append_statuses'=>array_map(static fn(array $r):string=>(string)($r['status']??''),$receipts),
+    'supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,'mapping_writes'=>0,
+    'final_price_verified'=>false,
+],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+
+'''
+
 def need(condition: bool, reason: str) -> None:
     if not condition:
         raise ValueError(reason)
@@ -77,6 +281,12 @@ def parse_command(body: str) -> dict:
         # Supplier-free exact DB/retained-cohort acceptance through the permanent SSH lane.
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'program_fuel_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'funsun-direction-fuel-seed':
+        # Supplier-free one-shot persistence from the two already terminal FUN&SUN 114/78 probes.
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-funsun-antalya-direction-fuel-seed-'),
+             'direction_fuel_seed_operation')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'program-fuel-probe':
         # One exact retained operator/program/tour + one distinct-SPO sample.
@@ -517,6 +727,59 @@ def program_fuel_probe():
             fail('program_fuel_probe_supplier_rejection')
     elif data.get('status') not in ('blocked_before_supplier','unknown_no_replay'):
         fail('program_fuel_probe_status')
+    return data
+def funsun_direction_fuel_seed():
+    encoded=payload.get('funsun_direction_fuel_seed_php_b64')
+    expected=payload.get('funsun_direction_fuel_seed_php_sha256')
+    if not isinstance(encoded,str) or not isinstance(expected,str) or not re.fullmatch(r'[a-f0-9]{64}',expected):
+        fail('direction_fuel_seed_source_missing')
+    try:
+        script=base64.b64decode(encoded,validate=True)
+    except Exception:
+        fail('direction_fuel_seed_source_encoding')
+    if not script or len(script)>256*1024 or hashlib.sha256(script).hexdigest()!=expected:
+        fail('direction_fuel_seed_source_hash')
+    config=project/'_preview/search3-anex-candidate/.andromeda-private.php'
+    if not safe_file(config,65536): fail('andromeda_private_config_missing')
+    q=subprocess.run(
+        ['php','-r',"$c=require $argv[1];$p=$c['catalog_path']??null;if(!is_string($p)||$p==='')exit(2);echo dirname($p).'/searches';",str(config)],
+        capture_output=True,text=True,timeout=20
+    )
+    if q.returncode or not q.stdout.strip(): fail('direction_fuel_seed_store_root')
+    store=pathlib.Path(q.stdout.strip())
+    if not store.is_dir() or store.is_symlink(): fail('direction_fuel_seed_store_root')
+    env=dict(os.environ)
+    env.update({
+        'INT_DIRECTION_SEED_SOURCE_ROOT':str(stage),
+        'INT_DIRECTION_SEED_STORE_DIR':str(store),
+        'INT_DIRECTION_SEED_OPS_ROOT':str(private),
+    })
+    run=subprocess.run(
+        ['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0'],
+        input=script,cwd=stage,env=env,capture_output=True,timeout=90
+    )
+    if run.returncode!=0 or run.stderr.strip(): fail('direction_fuel_seed_failed')
+    try:
+        data=json.loads(run.stdout.decode().strip())
+    except Exception:
+        fail('direction_fuel_seed_unparseable')
+    if (not isinstance(data,dict) or data.get('schema_version')!=1
+            or data.get('source')!='int-funsun-direction-fuel-seed-v1'
+            or data.get('status')!='complete'
+            or data.get('direction')!={'operator_family':'fun_and_sun','market':'departure:1','destination':'country:4'}
+            or data.get('amount')!='140.00' or data.get('currency')!='EUR'
+            or data.get('unit')!='per_person_one_way' or data.get('base_relation')!='excluded'
+            or data.get('independent_offer_count')!=2 or data.get('evidence_count')!=2
+            or data.get('supplier_calls')!=0 or data.get('database_reads')!=0
+            or data.get('database_writes')!=0 or data.get('mapping_writes')!=0
+            or data.get('final_price_verified') is not False):
+        fail('direction_fuel_seed_acceptance')
+    exchange=data.get('exchange')
+    if (not isinstance(exchange,dict) or exchange.get('from')!='EUR'
+            or exchange.get('to')!='RUB' or exchange.get('rate')!='102.7'
+            or not isinstance(exchange.get('evidence_sha256'),str)
+            or not re.fullmatch(r'[a-f0-9]{64}',exchange['evidence_sha256'])):
+        fail('direction_fuel_seed_exchange')
     return data
 def safe_json(path,max_size=1024*1024):
     if not safe_file(path,max_size): fail('safe_json')
@@ -1036,6 +1299,17 @@ try:
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
+    if mode=='funsun-direction-fuel-seed':
+        result['before_db']=db_summary('andromeda')
+        result['direction_fuel_seed']=funsun_direction_fuel_seed()
+        result['after_db']=db_summary('andromeda')
+        if result['after_db']!=result['before_db']: fail('direction_fuel_seed_db_drift')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='program-fuel-probe':
         result['before_db']=db_summary('andromeda')
         result['program_fuel_probe']=program_fuel_probe()
@@ -1117,7 +1391,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -1140,7 +1414,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-readback','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
@@ -1255,6 +1529,11 @@ def execute(command: dict, source_root: Path) -> dict:
         need(0 < len(readback_bytes) <= 1024 * 1024, 'program_fuel_readback_source_size')
         payload['program_fuel_readback_php_b64'] = base64.b64encode(readback_bytes).decode()
         payload['program_fuel_readback_php_sha256'] = hashlib.sha256(readback_bytes).hexdigest()
+    if command['mode'] == 'funsun-direction-fuel-seed':
+        seed_bytes = FUNSUN_DIRECTION_FUEL_SEED_PHP.encode()
+        need(0 < len(seed_bytes) <= 256 * 1024, 'direction_fuel_seed_source_size')
+        payload['funsun_direction_fuel_seed_php_b64'] = base64.b64encode(seed_bytes).decode()
+        payload['funsun_direction_fuel_seed_php_sha256'] = hashlib.sha256(seed_bytes).hexdigest()
     if command['mode'] == 'program-fuel-probe':
         probe_path = Path(__file__).resolve().parents[2] / 'scripts/diagnostics/int_andromeda_program_getflights_probe_v1.php'
         need(probe_path.is_file() and not probe_path.is_symlink(), 'program_fuel_probe_source')

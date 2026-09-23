@@ -29,6 +29,38 @@ class ParseTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.parse_command(f'/run-int-server-v1 {SHA} program-fuel-readback int-andromeda-program-fuel-readback-20260923-v1 extra')
 
+    def test_funsun_direction_fuel_seed(self):
+        v=m.parse_command(
+            f'/run-int-server-v1 {SHA} funsun-direction-fuel-seed '
+            'int-andromeda-funsun-antalya-direction-fuel-seed-20260923-v1'
+        )
+        self.assertEqual('funsun-direction-fuel-seed',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
+        for bad in [
+            f'/run-int-server-v1 {SHA} funsun-direction-fuel-seed int-anex-funsun-antalya-direction-fuel-seed-20260923-v1',
+            f'/run-int-server-v1 {SHA} funsun-direction-fuel-seed int-andromeda-other-direction-fuel-seed-20260923-v1',
+            f'/run-int-server-v1 {SHA} funsun-direction-fuel-seed int-andromeda-funsun-antalya-direction-fuel-seed-20260923-v1 extra',
+        ]:
+            with self.subTest(bad=bad),self.assertRaises(ValueError):
+                m.parse_command(bad)
+
+    def test_funsun_direction_seed_source_is_bounded(self):
+        seed=m.FUNSUN_DIRECTION_FUEL_SEED_PHP
+        for required in [
+            'int-andromeda-funsun-antalya-fuel-probe-20260923-v1',
+            'int-andromeda-funsun-antalya-fuel-probe-20260923-v2',
+            "program_key']??null)!=='114'", "tour_key']??null)!=='78'",
+            "'amount']??null)!=='140'", "markup['amount']",
+            "['adults'=>2,'children'=>0,'child_ages'=>[]]",
+            "'per_person_one_way'", "'excluded'", "'102.7'",
+            'AnyTourOperatorFuelRuleStoreV1::append',
+            'AnyTourOperatorFuelRuleStoreV1::inputForTarget',
+            "'final_price_verified'=>false",
+        ]:
+            self.assertIn(required,seed)
+        for forbidden in ['curl_', 'http://', 'https://', 'PDO(', 'mysqli_', 'changeservice(', 'calc(', 'booking(']:
+            self.assertNotIn(forbidden,seed)
+
     def test_program_fuel_probe(self):
         v=m.parse_command(
             f'/run-int-server-v1 {SHA} program-fuel-probe int-andromeda-funsun-antalya-fuel-probe-20260923-v1 '
@@ -274,6 +306,10 @@ class ContractTest(unittest.TestCase):
                   "int-program-fuel-readback-wrapper-v1","set_exception_handler","diagnostic_status","partial",
                   "program-fuel-probe","program_fuel_probe","program_fuel_probe_php_b64",
                   "program_fuel_probe_acceptance","program_fuel_probe_db_drift",
+                  "funsun-direction-fuel-seed","funsun_direction_fuel_seed",
+                  "funsun_direction_fuel_seed_php_b64","direction_fuel_seed_acceptance",
+                  "direction_fuel_seed_db_drift","int-funsun-direction-fuel-seed-v1",
+                  "AnyTourOperatorFuelRuleStoreV1::append","per_person_one_way",
                   "LOCAL_READER_MISSING","LOCAL_DB_CONNECTION","LOCAL_DB_NOT_CONFIGURED",
                   "require_once $config","errorSha256","attempt_state","package_record",
                   "diagnostic_code","actualization","failure_class","actions_used",
