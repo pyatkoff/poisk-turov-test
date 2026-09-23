@@ -6,8 +6,9 @@ declare(strict_types=1);
  *
  * The permanent executor reserves the parent operation before this script runs.
  * This script never books, changes service or calls calc. It selects one retained
- * offer from one exact operator/program/tour + distinct-SPO ordinal, then performs
- * only login/package/get_flights through the installed private Andromeda runtime.
+ * offer from one exact operator/program/tour. Distinct-SPO remains the default;
+ * Intourist all-charter groups with no SPO may use a strict distinct-mapped-hotel
+ * fallback. The probe then performs only login/package/get_flights through the installed private runtime.
  */
 
 function ipf_fail(string $reason): never { throw new RuntimeException($reason); }
@@ -255,8 +256,9 @@ try {
                 }
             } elseif ($family === 'intourist' && $ctx['freight_external'] === false && $localHotelId !== null) {
                 $hotelKey=(string)$localHotelId;
-                if (!isset($charterHotelCandidates[$hotelKey])
-                    || [$row['price_units'],$offerRef] < [$charterHotelCandidates[$hotelKey]['price_units'],$charterHotelCandidates[$hotelKey]['offer']['offer_ref']]) {
+                $current=$charterHotelCandidates[$hotelKey]??null;
+                if (!is_array($current)
+                    || ([$row['price_units'],$offerRef] <=> [$current['price_units'],$current['offer']['offer_ref']]) < 0) {
                     $charterHotelCandidates[$hotelKey]=$row;
                 }
             }
