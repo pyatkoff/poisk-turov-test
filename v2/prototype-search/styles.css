@@ -505,7 +505,3 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 .hotel-photos.photo-unavailable .hotel-image{opacity:0}
 .hotel-photos.photo-unavailable .hotel-image-button::after{content:'Фото пока недоступно';position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:13px}
 .hotel-photos.photo-unavailable .card-thumbs,.hotel-photos.photo-unavailable .card-photo-arrow,.hotel-photos.photo-unavailable .photo-count{display:none}
-
-/* Hotel popularity is a canonical hotel-level signal; it never implies price verification. */
-.hotel-popularity-badge{display:inline-flex;align-items:center;min-height:25px;margin:0 0 8px;padding:4px 9px;border:1px solid #ffd3c2;border-radius:999px;background:#fff3ed;color:#b63b0b;font-size:12px;font-weight:750;line-height:1.25;letter-spacing:.01em}
-@media(max-width:760px){.hotel-popularity-badge{min-height:23px;margin-bottom:6px;padding:3px 8px;font-size:11px}}
