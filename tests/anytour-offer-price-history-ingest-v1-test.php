@@ -209,7 +209,7 @@ $brokenHistory=$withoutTable;
 $brokenHistory['dto']=history_ingest_dto('same-offer','185000',$issued+240,'2026-09-23T10:04:00Z');
 $brokenHistory['expires_at']='2026-09-23T10:19:00Z';
 $failedHistory=AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db,'anex',$params,[$brokenHistory],$now->modify('+4 minutes'));
-history_ingest_check(($failedHistory['priceHistory']['installed']??'sentinel')===null,'broken history marked unknown');
+history_ingest_check(array_key_exists('installed',$failedHistory['priceHistory']) && $failedHistory['priceHistory']['installed']===null,'broken history marked unknown');
 history_ingest_check(($failedHistory['priceHistory']['error']??'')==='history_write_failed','broken history fail-open receipt');
 history_ingest_check(($failedHistory['selectionAuthority']??null)===false,'failed history cannot gain selection authority');
 $visible=AnyTourOfferStoreReadV2::readScope($db,$scope,$now->modify('+4 minutes'));
