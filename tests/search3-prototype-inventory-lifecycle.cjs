@@ -18,6 +18,16 @@ const directAnex=(body,{offerRef='anex_online:'+'b'.repeat(64),localId=101,searc
  return {ok:true,data:{generation:body.generation,provider:'anex',date_range:{from:body.params.dateFrom,to:body.params.dateTo},
   search_ref:searchRef,external_search_pending:false,pages_read:1,first_page_only:true,hotels}};
 };
+const expandedAnex=(body,{groupRef='anex_online:'+'b'.repeat(64),searchRef='c'.repeat(32),localId=101}={})=>({ok:true,data:{
+ provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:groupRef,status:'expanded',offer:null,selection_state:'disabled',
+ external_search_pending:false,first_page_only:true,hotels:[{local_id:localId,name:'FICTIONAL HOTEL '+localId,category:5,rating:4.7,country:'Турция',region:'Сиде',
+ catalog:{hotel_id:localId,source:'tourvisor',image_url:null,description:'',address:'',subregion:'',sea_distance:null},tours:[
+  {price:{amount:'1510000',currency:'RUB'},checkin:trip.from,nights:7,adults:2,children:0,meal:'AI',room:'STANDARD SEA VIEW',kind:'concrete',
+   flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:'anex_online:'+'1'.repeat(64),selection_enabled:false},
+  {price:{amount:'1520000',currency:'RUB'},checkin:trip.from,nights:7,adults:2,children:0,meal:'AI',room:'DELUXE SEA VIEW',kind:'concrete',
+   flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:'anex_online:'+'2'.repeat(64),selection_enabled:false}
+ ]}]
+}});
 const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),localId=101,pagesCount=1,status='complete',searchRef='c'.repeat(64)}={})=>{
  const page=Number(body.page),hotels=empty?[]:[{local_id:localId,mapping_status:'resolved',tours:[{
   provider:'andromeda',price:{amount:'1480000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,
@@ -194,6 +204,57 @@ test('first search unions direct ANEX once and waits for it before complete',asy
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='complete'));
  await h.data.continueSearch();await flush();assert.equal(h.anexCalls.length,1,'Continue never replays direct ANEX');
 });
+test('direct ANEX group verification re-searches exact scope and expands without Tourvisor fallback',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const h=harness({anex:async body=>{
+  if(body.action==='search'&&verification){
+   return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  }
+  if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');assert.ok(offer);assert.equal(offer.raw.anexKind,'group_minimum');
+ verification=true;const beforeTourvisor=h.calls.filter(call=>call.action==='search_start').length;
+ const result=await h.data.expandAnexGroup(offer);
+ assert.equal(h.calls.filter(call=>call.action==='search_start').length,beforeTourvisor,'verification must not launch Tourvisor');
+ const verifyCalls=h.anexCalls.slice(-2);assert.deepEqual(verifyCalls.map(call=>call.action),['search','expand']);
+ assert.equal(verifyCalls[0].params.dateFrom,trip.from);assert.equal(verifyCalls[0].params.dateTo,trip.from);
+ assert.equal(verifyCalls[0].params.nightsFrom,7);assert.equal(verifyCalls[0].params.nightsTo,7);
+ assert.deepEqual(verifyCalls[0].params.hotelIds,['101']);assert.equal(verifyCalls[0].params.meal,'7');
+ assert.equal(verifyCalls[1].offer_ref,groupRef);assert.equal(verifyCalls[1].search_ref,verifyRef);assert.equal(verifyCalls[1].local_hotel_id,101);
+ assert.equal(result.hotelId,offer.hotelId);assert.equal(result.offers.length,2);
+ assert.ok(result.offers.every(item=>item.provider==='anex'&&item.raw.anexKind==='concrete'&&item.raw.anexLocalHotelId===101));
+});
+test('Stop invalidates and aborts a pending direct ANEX group verification',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32),gate=defer();let verification=false,expandSignal=null;
+ const h=harness({anex:async(body,signal)=>{
+  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  if(body.action==='expand'){expandSignal=signal;await gate.promise;return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};}
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');assert.ok(offer);
+ const before=JSON.stringify(h.latest());
+ verification=true;const pending=h.data.expandAnexGroup(offer);
+ await waitFor(()=>h.anexCalls.at(-1)?.action==='expand','pending ANEX expand request required');
+ assert.ok(expandSignal);assert.equal(expandSignal.aborted,false);
+ h.data.stop();assert.equal(expandSignal.aborted,true,'Stop aborts exact-provider verification immediately');
+ gate.resolve();
+ await assert.rejects(pending,/Условия поиска изменились/);
+ assert.equal(JSON.stringify(h.latest()),before,'stale verification cannot mutate canonical result inventory');
+ assert.equal(h.anexCalls.filter(call=>call.action==='expand').length,1,'stale verification is never replayed');
+});
+test('direct ANEX group verification fails closed when exact group identity is no longer returned',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),otherRef='anex_online:'+'d'.repeat(64);let verification=false;
+ const h=harness({anex:async body=>{
+  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:otherRef,localId:101,searchRef:'e'.repeat(32)})}};
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ verification=true;await assert.rejects(h.data.expandAnexGroup(offer),/предложение ANEX изменилось/);
+ assert.equal(h.anexCalls.at(-1).action,'search');assert.equal(h.anexCalls.some(call=>call.action==='expand'),false);
+});
 test('LOCAL source accounting preserves backend losses and malformed counts fail closed',async()=>{
  const h=harness({database:(i,p)=>({...snapshot(p,['andromeda','anex']),
   storedOfferCount:8,withheldOfferCount:2,categoryFilteredOfferCount:3,eligibleHotelCount:2,
@@ -365,7 +426,7 @@ test('cached URL resume fails closed to LOCAL without supplier fallback',async()
  assert.equal(complete.cachedResume,true);assert.equal(complete.sources.database.status,'error');
  assert.equal(complete.canContinue,false,'cached failure requires an explicit fresh retry');
 });
-test('direct ANEX covers a 21-day search in three explicit background windows',async()=>{
+test('direct ANEX completes a 21-day first union across three explicit windows',async()=>{
  const search={...trip,to:'2026-10-19'},second=defer();
  const ref=index=>'anex_online:'+String(index+1).repeat(64);
  const h=harness({
@@ -377,31 +438,27 @@ test('direct ANEX covers a 21-day search in three explicit background windows',a
   database:(i,p)=>snapshot(p,[])
  });
  await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();
- assert.deepEqual(h.anexCalls.map(call=>[call.params.dateFrom,call.params.dateTo]),[['2026-09-29','2026-10-05']],
-  'initial ANEX request must be one explicit seven-day window');
- await h.poll();
+ await waitFor(()=>h.anexCalls.length===2,'ANEX window 2 must start while Tourvisor is still running');
  assert.deepEqual(h.anexCalls.map(call=>[call.params.dateFrom,call.params.dateTo]),[
   ['2026-09-29','2026-10-05'],['2026-10-06','2026-10-12']
- ],'second ANEX window starts only after initial source settlement');
+ ],'remaining ANEX windows start inside the initial provider promise');
  const anexLoading=h.events.filter(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='loading'&&e.background===true).at(-1);
- assert.ok(anexLoading,'background ANEX continuation must be surfaced as loading');
+ assert.ok(anexLoading,'in-progress ANEX continuation remains visible as background loading');
  assert.equal(anexLoading.windowsLoaded,1);assert.equal(anexLoading.windowsTotal,3);assert.equal(anexLoading.offers,1);
- const first=h.events.filter(e=>e.type==='complete').at(-1);
- assert.ok(first,'first search completion must not wait for ANEX window 2');
- assert.equal(first.sources.anex.status,'partial');assert.equal(first.sources.anex.windowsLoaded,1);assert.equal(first.sources.anex.windowsTotal,3);
- second.resolve();
- await waitFor(()=>h.anexCalls.length===3&&h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.windowsLoaded===3),
-  'background ANEX continuation must reach the final window');
+ const completing=h.poll();await flush();
+ assert.equal(h.events.some(e=>e.type==='complete'),false,'first overall completion waits for terminal direct ANEX accounting');
+ second.resolve();await completing;await flush();
  assert.deepEqual(h.anexCalls.map(call=>[call.params.dateFrom,call.params.dateTo]),[
   ['2026-09-29','2026-10-05'],['2026-10-06','2026-10-12'],['2026-10-13','2026-10-19']
  ]);
  const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='anex'&&e.windowsLoaded===3).at(-1);
  assert.equal(receipt.status,'complete');assert.equal(receipt.windowsTotal,3);assert.equal(receipt.offers,3);
- await waitFor(()=>h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='anex').length===3,
-  'all ANEX windows must join the canonical union');
- assert.ok(h.dbBodies.length>=3,'completed ANEX background windows must perform a final LOCAL reread');
+ const complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
+ assert.equal(complete.sources.anex.status,'complete');assert.equal(complete.sources.anex.windowsLoaded,3);assert.equal(complete.sources.anex.windowsTotal,3);
+ assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='anex').length,3,'all ANEX windows join the first completed union');
+ assert.ok(h.dbBodies.length>=3,'completed ANEX windows perform serial LOCAL rereads before first complete');
 });
-test('late ANEX window failure preserves earlier accepted windows',async()=>{
+test('late ANEX window failure makes the first union explicitly partial and preserves earlier windows',async()=>{
  const search={...trip,to:'2026-10-19'};
  const h=harness({
   anex:async body=>body.params.dateFrom==='2026-09-29'
@@ -409,16 +466,17 @@ test('late ANEX window failure preserves earlier accepted windows',async()=>{
    :{response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}},
   database:(i,p)=>snapshot(p,[])
  });
- await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();await h.poll();
- await waitFor(()=>h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.continuationFailed===true),
-  'late ANEX failure must emit a retained partial receipt');
+ await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();
+ await waitFor(()=>h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.continuationFailed===true),'late ANEX failure must emit a retained partial receipt');
+ await h.poll();
  const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='anex'&&e.continuationFailed===true).at(-1);
  assert.deepEqual(h.anexCalls.map(call=>call.params.dateFrom),['2026-09-29','2026-10-06']);
  assert.equal(receipt.status,'partial');assert.equal(receipt.windowsLoaded,1);assert.equal(receipt.windowsTotal,3);assert.equal(receipt.offers,1);
- await waitFor(()=>h.latest().flatMap(hotel=>hotel.offers).some(offer=>offer.provider==='anex'),
-  'late ANEX failure must not clear the first accepted window');
+ assert.ok(h.latest().flatMap(hotel=>hotel.offers).some(offer=>offer.provider==='anex'),'late ANEX failure must not clear the first accepted window');
+ const complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
+ assert.equal(complete.sources.anex.status,'partial');assert.equal(complete.sources.anex.continuationFailed,true,'first completion discloses retained partial ANEX coverage');
 });
-test('stop aborts pending ANEX background window and prevents later windows',async()=>{
+test('stop aborts pending ANEX first-union continuation and prevents later windows',async()=>{
  const search={...trip,to:'2026-10-19'},second=defer();
  const h=harness({
   anex:async body=>{
@@ -428,8 +486,8 @@ test('stop aborts pending ANEX background window and prevents later windows',asy
   },
   database:(i,p)=>snapshot(p,[])
  });
- await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();await h.poll();
- assert.deepEqual(h.anexCalls.map(call=>call.params.dateFrom),['2026-09-29','2026-10-06']);
+ await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();
+ await waitFor(()=>h.anexCalls.length===2,'ANEX window 2 must already be pending before Tourvisor completion');
  const before=h.events.length;h.data.stop();second.resolve();await flush();
  assert.deepEqual(h.anexCalls.map(call=>call.params.dateFrom),['2026-09-29','2026-10-06'],'stopped generation must never request ANEX window 3');
  assert.equal(h.events.length,before,'stopped generation must ignore the late ANEX window');
@@ -452,7 +510,7 @@ test('one user search invokes Andromeda autosave once and rereads LOCAL after it
  gate.resolve();await completing;await flush();assert.equal(h.nativeCalls.length,1);assert.deepEqual(h.providers(),['andromeda','tourvisor']);
  assert.equal(h.dbBodies.length,3);assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='complete'));assert.equal(h.events.at(-1).type,'complete');
 });
-test('remaining Andromeda pages load in background without delaying first completion',async()=>{
+test('remaining Andromeda pages join the first union before overall completion',async()=>{
  const page2=defer(),ref=page=>'offer_'+String(page).repeat(64);
  const h=harness({
   native:async body=>{
@@ -462,27 +520,23 @@ test('remaining Andromeda pages load in background without delaying first comple
   database:(i,p)=>snapshot(p,[])
  });
  await h.start();await flush();
- const completing=h.poll();await flush();await completing;
- assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2],'page 2 starts only after the bounded initial source settles');
+ await waitFor(()=>h.nativeCalls.length===2,'Andromeda page 2 must start while Tourvisor is still running');
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2]);
  const andromedaLoading=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='loading'&&e.background===true).at(-1);
- assert.ok(andromedaLoading,'background Andromeda continuation must be surfaced as loading');
+ assert.ok(andromedaLoading,'in-progress Andromeda pagination remains visible as background loading');
  assert.equal(andromedaLoading.pagesLoaded,1);assert.equal(andromedaLoading.pagesTotal,3);assert.equal(andromedaLoading.offers,1);
- const first=h.events.filter(e=>e.type==='complete').at(-1);
- assert.ok(first,'Tourvisor/LOCAL completion must not wait for Andromeda page 2');
- assert.equal(first.sources.andromeda.status,'partial');assert.equal(first.sources.andromeda.pagesLoaded,1);assert.equal(first.sources.andromeda.pagesTotal,3);
- assert.equal(first.sources.andromeda.offers,1);
- page2.resolve();
- await waitFor(()=>h.nativeCalls.length===3&&h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.pagesLoaded===3),
-  'background Andromeda continuation must reach every advertised page');
- await flush();
+ const completing=h.poll();await flush();
+ assert.equal(h.events.some(e=>e.type==='complete'),false,'first overall completion waits for terminal Andromeda pagination');
+ page2.resolve();await completing;await flush();
  assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2,3]);
  const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.pagesLoaded===3).at(-1);
  assert.equal(receipt.status,'complete');assert.equal(receipt.pagesTotal,3);assert.equal(receipt.offers,3);
- await waitFor(()=>h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda').length===3,
-  'all mapped Andromeda pages must join the canonical union');
- assert.ok(h.dbBodies.length>=4,'completed background pagination must perform one final LOCAL readback');
+ const complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
+ assert.equal(complete.sources.andromeda.status,'complete');assert.equal(complete.sources.andromeda.pagesLoaded,3);assert.equal(complete.sources.andromeda.pagesTotal,3);
+ assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda').length,3,'all mapped Andromeda pages join the first completed union');
+ assert.ok(h.dbBodies.length>=4,'completed initial pagination performs serial LOCAL readback before first complete');
 });
-test('late Andromeda page failure preserves accepted pages and stops the sequence',async()=>{
+test('late Andromeda page failure makes the first union partial while preserving accepted pages',async()=>{
  const ref=page=>'offer_'+String(page).repeat(64);
  const h=harness({
   native:async body=>body.page===1
@@ -490,16 +544,17 @@ test('late Andromeda page failure preserves accepted pages and stops the sequenc
    :{response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}},
   database:(i,p)=>snapshot(p,[])
  });
- await h.start();await flush();await h.poll();
- await waitFor(()=>h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.continuationFailed===true),
-  'late page failure must produce a partial retained receipt');
+ await h.start();await flush();
+ await waitFor(()=>h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.continuationFailed===true),'late page failure must produce a partial retained receipt');
+ await h.poll();
  const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.continuationFailed===true).at(-1);
  assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2]);assert.equal(receipt.status,'partial');
  assert.equal(receipt.pagesLoaded,1);assert.equal(receipt.pagesTotal,3);assert.equal(receipt.offers,1);
- await waitFor(()=>h.latest().flatMap(hotel=>hotel.offers).some(offer=>offer.provider==='andromeda'),
-  'a late page failure must not clear the accepted first page');
+ assert.ok(h.latest().flatMap(hotel=>hotel.offers).some(offer=>offer.provider==='andromeda'),'a late page failure must not clear the accepted first page');
+ const complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
+ assert.equal(complete.sources.andromeda.status,'partial');assert.equal(complete.sources.andromeda.continuationFailed,true,'first completion discloses retained partial Andromeda coverage');
 });
-test('stop aborts a pending Andromeda background continuation before another page is applied',async()=>{
+test('stop aborts a pending Andromeda first-union continuation before another page is applied',async()=>{
  const page2=defer(),ref=page=>'offer_'+String(page).repeat(64);
  const h=harness({
   native:async body=>{
@@ -508,11 +563,11 @@ test('stop aborts a pending Andromeda background continuation before another pag
   },
   database:(i,p)=>snapshot(p,[])
  });
- await h.start();await flush();await h.poll();
- assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2]);
+ await h.start();await flush();
+ await waitFor(()=>h.nativeCalls.length===2,'Andromeda page 2 must already be pending before Tourvisor completion');
  const before=h.events.length;h.data.stop();page2.resolve();await flush();
  assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2],'stopped generation must never request page 3');
- assert.equal(h.events.length,before,'stopped generation must ignore the late page 2 response');
+ assert.equal(h.events.length,before,'stopped generation must ignore the late Andromeda page');
 });
 test('native Andromeda offers are visible even when LOCAL reread fails',async()=>{
  const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),database:async()=>{throw new Error('fictional LOCAL outage');}});
