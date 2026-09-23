@@ -595,7 +595,7 @@
         body:JSON.stringify({action:'meal_catalog',provider:'tourvisor',scopeKey:'global'})
       });
       const payload=await response.json();
-      if(!response.ok||payload?.ok!==true||!installMealPlans(payload.data))throw new Error('Invalid canonical meal catalogue');
+      if(!response.ok||payload?.ok!==true||!payload.data||!installMealPlans({ok:true,...payload.data}))throw new Error('Invalid canonical meal catalogue');
     }catch{catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}
     return countries(origin);
   }
