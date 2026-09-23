@@ -55,7 +55,11 @@ function parse(data){
    // The DB reader can retain legacy display rows without identity. Withhold that
    // row, never invent an ID or discard independently identified sibling offers.
    if(listing&&!Object.prototype.hasOwnProperty.call(listing,'identity')){withheldOfferCount++;continue;}
-   const tour=offerTour(stored,own),legacyHotelId=positiveId(stored&&stored.legacyHotelId);if(!tour||!legacyHotelId)return null;
+   const tour=offerTour(stored,own),legacyHotelId=positiveId(stored&&stored.legacyHotelId);
+   // Per-offer corruption must fail closed for that offer, not erase unrelated
+   // valid DB-first siblings. Top-level/group shape and global caps still reject
+   // the whole snapshot above.
+   if(!tour||!legacyHotelId){withheldOfferCount++;continue;}
    offers.push({tour,legacyHotelId});offerCount++;
   }
   if(offers.length)hotels.push({anytourHotelId:own,hotel,offers});
