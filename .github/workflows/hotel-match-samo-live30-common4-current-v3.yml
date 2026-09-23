@@ -1,0 +1,71 @@
+name: MATCH SAMO live30 COMMON4 current v3
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_samo_live30_common4_current_v3.php'
+      - 'tests/hotel_match_samo_live30_common4_current_v3_test.php'
+      - '.github/workflows/hotel-match-samo-live30-common4-current-v3.yml'
+permissions: {contents: read, actions: read, issues: read}
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: php -l scripts/diagnostics/hotel_match_samo_live30_common4_current_v3.php
+      - run: php scripts/diagnostics/hotel_match_samo_live30_common4_current_v3.php --self-test
+      - run: php tests/hotel_match_samo_live30_common4_current_v3_test.php
+      - run: "! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\\(' scripts/diagnostics/hotel_match_samo_live30_common4_current_v3.php"
+  live:
+    needs: focused
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - name: Validate Security and inputs
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;mkdir -p input/v1 input/v2 terminal
+          gh api repos/$GITHUB_REPOSITORY/issues/comments/5804654928 >input/claim.json
+          grep -q 'edge count=1084' input/claim.json || grep -q '1 084 edge' input/claim.json
+          for i in $(seq 1 60); do x="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$HEAD&per_page=100" --jq '.workflow_runs[]|select(.name=="Security guard")|[.status,.conclusion]|@tsv'|head -1)"; [ "$x" = $'completed\tsuccess' ]&&break;sleep 3;done
+          [ "$x" = $'completed\tsuccess' ]
+          for spec in "10780668144:6f2a49cd7629cd97ac95b5878a2081f11dce18ea53356ac9cb6e7fadba48bdba:v1" "10781837857:5bd3a1e2fd76231a6be932d4ea04099c90426b5c67b0149f9a7151b53b8d5377:v2"; do
+            IFS=: read -r id sha d <<<"$spec";curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" -o input/$d.zip
+            test "$(sha256sum input/$d.zip|awk '{print $1}')" = "$sha";unzip -q input/$d.zip -d input/$d
+            r="$(find input/$d -name result.json -print -quit)";q="$(find input/$d -name receipt.json -print -quit)";cp "$r" input/$d-result.json;cp "$q" input/$d-receipt.json
+          done
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          for d in ('v1','v2'):
+            p=pathlib.Path('input/'+d+'-result.json');r=json.load(open(p));q=json.load(open('input/'+d+'-receipt.json'));assert q['result_sha256']==hashlib.sha256(p.read_bytes()).hexdigest()
+          PY
+      - name: Execute CURRENT read-only audit
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/k";known="$RUNNER_TEMP/h";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 -d>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null)
+          op=".anytoour-match/operations/hotel-match-samo-live30-common4-current-1971-20260924-v3"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e "\$HOME/$op";mkdir -p "\$HOME/$op/payload";printf '%s\n' '{"state":"reserved_before_db_read"}' >"\$HOME/$op/reservation.json""
+          scp "${opts[@]}" input/v1-result.json "$remote:$op/payload/v1.json";scp "${opts[@]}" input/v2-result.json "$remote:$op/payload/v2.json";scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_live30_common4_current_v3.php "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd "\$HOME/www/anytoour.ru";ANYTOUR_ROOT="\$HOME/www/anytoour.ru" MATCH_OPERATION_DIR="\$HOME/$op" MATCH_V1_RESULT="\$HOME/$op/payload/v1.json" MATCH_V2_RESULT="\$HOME/$op/payload/v2.json" MATCH_SOURCE_SHA='$HEAD' php "\$HOME/$op/payload/hotel_match_samo_live30_common4_current_v3.php" --execute" >terminal/out
+          ssh "${opts[@]}" "$remote" "tar -czf - -C "\$HOME/$op" result.json receipt.json" >terminal/server.tgz
+          python3 - <<'PY'
+          import tarfile,json,pathlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:t.extractall('terminal/x')
+          r=json.load(open('terminal/x/result.json'))
+          assert r['state']=='completed_read_only_samo_common4_current' and r['edge_count']==1084
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          print(json.dumps({k:r[k] for k in ['edge_count','v2_override_count','final_state_counts','status_counts','hold_counts','writer_ready_count']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: match-samo-live30-current-v3-${{ github.run_id }}, path: terminal/, retention-days: 90}
