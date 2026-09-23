@@ -1,0 +1,114 @@
+name: MATCH COMMON4 continuation acquire v2
+'on':
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py
+      - tests/hotel_match_live30_common4_acquire_v2_test.py
+      - .github/workflows/hotel-match-live30-common4-acquire-v2.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-live30-common4-continuation-acquire-1971-20260923-o0-n30-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-live30-common4-continuation-acquire-1971-20260923-o0-n30-v1
+  BASE: 02f011cdff3d8aba80fadfaa0b03db0024230e6f
+  CLAIM: '5802091573'
+  PLAN_ARTIFACT: '10773544262'
+  PLAN_ARCHIVE_SHA: 308d83f4bb08424546a549ab8529b81204cdcd78d8d00eb419a24390059ba8ae
+  PLAN_RESULT_SHA: b66f8cfac90f0a83484a9d4a1d4cdd95bd2af1dfbdcc6b31aa7c97fd3cc244b9
+  PLAN_TARGET_SHA: ce464a7b71dc72cf425197c73c1b8a4770adaf586ee05d169f4c67f8fc43ccca
+jobs:
+  unit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-continuation-acquire-v2-20260923'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py
+          python3 tests/hotel_match_live30_common4_acquire_v2_test.py
+          python3 scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py --self-test
+  live:
+    needs: unit
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-continuation-acquire-v2-20260923'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source, claim, Security and immutable plan
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/plan terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-live30-common4-acquire-v2.yml scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py tests/hotel_match_live30_common4_acquire_v2_test.py "
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],'10773544262',os.environ['PLAN_ARCHIVE_SHA'],os.environ['PLAN_RESULT_SHA'],'offset0/count30','call cap=220']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$PLAN_ARTIFACT/zip" >input/plan.zip
+          echo "$PLAN_ARCHIVE_SHA  input/plan.zip" | sha256sum -c -
+          unzip -q input/plan.zip -d input/plan
+          result="$(find input/plan -type f -name result.json -print -quit)";test -n "$result";cp "$result" input/plan-result.json
+          echo "$PLAN_RESULT_SHA  input/plan-result.json" | sha256sum -c -
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('input/plan-result.json'))
+          assert r['state']=='live30_common4_continuation_ready' and r['acquisition_target_count']==1349 and len(r['rows'])==1349
+          assert r['acquisition_target_id_sha256']==os.environ['PLAN_TARGET_SHA'] and r['attempted_hotel_count']==450
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False
+          PY
+      - name: Execute first 30 never-attempted hotels
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\";printf '%s\n' '{\"operation\":\"$OP\",\"state\":\"reserved_before_provider\",\"plan_result_sha256\":\"$PLAN_RESULT_SHA\",\"offset\":0,\"limit\":30,\"call_cap\":220,\"database_writes\":0,\"mapping_writes\":0}' > \"\$HOME/$op/reservation.json\""
+          scp "${opts[@]}" input/plan-result.json scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py "$remote:$op/payload/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_PLAN_PATH=\"\$HOME/$op/payload/plan-result.json\" MATCH_CHILD_OPERATION='$OP' MATCH_OFFSET=0 MATCH_LIMIT=30 MATCH_CALL_CAP=220 MATCH_SOURCE_SHA='$HEAD' python3 \"\$HOME/$op/payload/hotel_match_live30_common4_acquire_v2.py\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";mkdir -p export;for f in reservation.json tv-plan.json quota-reservation.json result.json receipt.json;do test -f \"\$f\"&&cp \"\$f\" export/;done;tar -czf - -C export ." >terminal/server.tgz
+          set -e
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  n=m.name.lstrip('./')
+                  if m.isfile():pathlib.Path('terminal',n).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state'] in ('completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay')
+          assert r['continuation_plan_sha256']==__import__('os').environ['PLAN_RESULT_SHA'] and r['continuation_target_set_sha256']==__import__('os').environ['PLAN_TARGET_SHA']
+          assert r['frontier_count']==1349 and r['scope_offset']==0 and r['scope_count']==30 and len(r['scope_hotel_ids'])==30
+          assert r['database_writes']==r['mapping_writes']==0 and r['continue_calls']==r['dates_calls']==0 and r['provider_calls']<=220
+          if r['daily_accounted_after_local_ledger'] is not None: assert r['daily_accounted_after_local_ledger']<=3000
+          print(json.dumps({k:r[k] for k in ['state','reason','scope_count','searched_hotels','planned_groups','completed_batches','returned_targets','returned_missing_operator_pairs','returned_operator_pairs','provider_calls','daily_accounted_after_local_ledger','edge_state_counts','link_state_counts','single_native_chunk_unique_count','single_native_by_operator']},sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-common4-continuation-acquire-v2-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
