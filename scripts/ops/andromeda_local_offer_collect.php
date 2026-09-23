@@ -188,9 +188,12 @@ $hasReusableSurcharge=static function(array $selection,array $offer,array $req)u
     )!==null;
 };
 
-$windows=AnyTourAndromedaLocalOfferCollectorV1::dateWindows($from,$to);
-if(count($windows)>1 && $maxCaptures>0)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_RANGE_CAPTURE_UNSUPPORTED');
-if(count($windows)===1){
+$rangeStart=new DateTimeImmutable($from,new DateTimeZone('UTC'));
+$rangeEnd=new DateTimeImmutable($to,new DateTimeZone('UTC'));
+$inclusiveDays=(int)$rangeStart->diff($rangeEnd)->days+1;
+if($rangeEnd<$rangeStart||$inclusiveDays<1||$inclusiveDays>21)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_DATE_RANGE');
+if($inclusiveDays>7 && $maxCaptures>0)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_RANGE_CAPTURE_UNSUPPORTED');
+if($inclusiveDays<=7){
     $result=AnyTourAndromedaLocalOfferCollectorV1::collect(
         $request,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
         $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
