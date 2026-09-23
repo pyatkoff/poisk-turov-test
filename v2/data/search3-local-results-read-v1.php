@@ -9,6 +9,7 @@ require_once __DIR__.'/anytour-stay-catalog-v1.php';
 require_once __DIR__.'/anytour-hotel-stay-catalog-v2.php';
 require_once __DIR__.'/anytour-search-scope-v1.php';
 require_once __DIR__.'/anytour-search-meal-catalog-v1.php';
+require_once __DIR__.'/price-calendar-core-v1.php';
 
 const SEARCH3_LOCAL_RESULTS_MAX_OFFERS=15000;
 const SEARCH3_LOCAL_RESULTS_MAX_HOTELS=5000;
@@ -224,6 +225,93 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw$e;}
 }
 
+function search3_local_calendar_int(mixed $raw,int $min,int $max,string $name): int
+{
+    if(is_bool($raw)||is_array($raw)||is_object($raw)||$raw===null)throw new InvalidArgumentException('Invalid '.$name);
+    $value=filter_var($raw,FILTER_VALIDATE_INT);
+    if($value===false||(int)$value<$min||(int)$value>$max)throw new InvalidArgumentException('Invalid '.$name);
+    return (int)$value;
+}
+
+/** Read-only exact-party calendar through the already-public LOCAL Search3 endpoint. */
+function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $now=null): array
+{
+    $allowed=['action','departureId','countryId','regionId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'];
+    foreach(array_keys($input) as $key)if(!in_array($key,$allowed,true))throw new InvalidArgumentException('Invalid price calendar envelope');
+    foreach(['departureId','countryId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'] as $key)if(!array_key_exists($key,$input))throw new InvalidArgumentException('Invalid price calendar envelope');
+    if(($input['action']??null)!=='price_calendar'||!is_array($input['childs']))throw new InvalidArgumentException('Invalid price calendar envelope');
+
+    $departureId=search3_local_calendar_int($input['departureId'],1,1000000,'departureId');
+    $countryId=search3_local_calendar_int($input['countryId'],1,1000000,'countryId');
+    $regionId=search3_local_calendar_int($input['regionId']??0,0,1000000,'regionId');
+    $nightsFrom=search3_local_calendar_int($input['nightsFrom'],1,30,'nightsFrom');
+    $nightsTo=search3_local_calendar_int($input['nightsTo'],1,30,'nightsTo');
+    if($nightsTo<$nightsFrom)throw new InvalidArgumentException('Invalid nights');
+    $party=v2_price_calendar_party($input['adults'],$input['childs']);
+
+    $dateFrom=is_string($input['dateFrom'])?trim($input['dateFrom']):'';
+    $dateTo=is_string($input['dateTo'])?trim($input['dateTo']):'';
+    $from=v2_price_calendar_date($dateFrom);$to=v2_price_calendar_date($dateTo);
+    if($to<$from||((int)$from->diff($to)->format('%a')+1)>31)throw new InvalidArgumentException('Invalid calendar range');
+    $clock=$now??new DateTimeImmutable('now',new DateTimeZone('UTC'));
+    $clock=$clock->setTimezone(new DateTimeZone('UTC'));
+    $today=$clock->setTime(0,0);
+    if($from<$today)throw new InvalidArgumentException('dateFrom must not be in the past');
+
+    $regionSql=$regionId>0?' AND o.region_id=:region_id':'';
+    $sql="WITH ranked AS (
+        SELECT o.*,
+               ROW_NUMBER() OVER (
+                 PARTITION BY o.departure_id,o.hotel_id,o.departure_date,o.nights,
+                              o.adults,o.children_count,o.child_ages_signature,
+                              COALESCE(o.meal_id,0),COALESCE(o.room_id,0),COALESCE(o.room_type,''),
+                              COALESCE(o.operator_id,0),o.currency
+                 ORDER BY o.observed_at DESC,o.id DESC
+               ) AS rn
+          FROM tour_price_observations o
+         WHERE o.observed_at>=:observed_since
+           AND o.departure_id=:departure_id
+           AND o.country_id=:country_id
+           {$regionSql}
+           AND o.departure_date BETWEEN :date_from AND :date_to
+           AND o.nights BETWEEN :nights_from AND :nights_to
+           AND o.adults=:adults
+           AND o.children_count=:children_count
+           AND o.child_ages_signature=:child_ages_signature
+           AND o.price>0 AND o.currency='RUB'
+    )
+    SELECT departure_date,
+           MIN(price) AS min_price,
+           COUNT(DISTINCT hotel_id) AS hotel_count,
+           COUNT(DISTINCT search_id) AS independent_search_count,
+           MAX(observed_at) AS latest_observed_at
+      FROM ranked
+     WHERE rn=1
+     GROUP BY departure_date
+     HAVING MIN(price)>0 AND COUNT(DISTINCT hotel_id)>0 AND COUNT(DISTINCT search_id)>0
+     ORDER BY departure_date";
+    $stmt=$pdo->prepare($sql);
+    $params=[
+        'observed_since'=>$clock->modify('-72 hours')->format('Y-m-d H:i:s'),
+        'departure_id'=>$departureId,'country_id'=>$countryId,
+        'date_from'=>$dateFrom,'date_to'=>$dateTo,
+        'nights_from'=>$nightsFrom,'nights_to'=>$nightsTo,
+        'adults'=>$party['adults'],'children_count'=>$party['childrenCount'],
+        'child_ages_signature'=>$party['childAgesSignature'],
+    ];
+    if($regionId>0)$params['region_id']=$regionId;
+    $stmt->execute($params);
+    $calendar=v2_price_calendar_build($stmt->fetchAll(PDO::FETCH_ASSOC)?:[],$dateFrom,$dateTo);
+    return $calendar+[
+        'ok'=>true,'departureId'=>$departureId,'countryId'=>$countryId,'regionId'=>$regionId>0?$regionId:null,
+        'nightsFrom'=>$nightsFrom,'nightsTo'=>$nightsTo,
+        'adults'=>$party['adults'],'childrenCount'=>$party['childrenCount'],
+        'childAges'=>$party['childAges'],'childAgesSignature'=>$party['childAgesSignature'],
+        'currency'=>'RUB','observationWindowHours'=>72,
+        'source'=>'latest-known-exact-segments-from-anytour-first-party-observations','cachedPriceIsFinal'=>false,
+    ];
+}
+
 function search3_local_results_out(array $payload,int $status=200): never
 {
     http_response_code($status);header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
@@ -242,6 +330,10 @@ if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
             if(count($input)!==3||!isset($input['provider'],$input['scopeKey'])||!is_string($input['provider'])||!is_string($input['scopeKey']))throw new InvalidArgumentException('Invalid meal catalogue envelope');
             AnyTourSearchMealCatalogV1::scope($input['provider'],$input['scopeKey']);
             $result=(new AnyTourSearchMealCatalogV1(v2_data_db()))->catalogue($input['provider'],$input['scopeKey']);
+            search3_local_results_out(['ok'=>true,'data'=>$result]);
+        }
+        if(is_array($input)&&($input['action']??null)==='price_calendar'){
+            $result=search3_local_price_calendar(v2_data_db(),$input);
             search3_local_results_out(['ok'=>true,'data'=>$result]);
         }
         if(!is_array($input)||array_keys($input)!==['params']||!is_array($input['params']))throw new InvalidArgumentException('Invalid request envelope');
