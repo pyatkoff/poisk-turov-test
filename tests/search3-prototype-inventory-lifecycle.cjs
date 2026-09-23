@@ -618,6 +618,83 @@ test('native Andromeda and LOCAL autosave dedupe the same offer identity',async(
  const final=h.events.filter(e=>e.type==='complete').at(-1);
  assert.equal(final.union.offersByProvider.andromeda,1);
 });
+test('direct Andromeda verification uses exact same-provider quote without Tourvisor fallback',async()=>{
+ const h=harness({
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+  andromedaQuote:async body=>({response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101,'1499000')})}})
+ });
+ await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');assert.ok(offer);
+ const beforeTourvisor=h.calls.filter(call=>call.action==='search_start').length;
+ const quote=await h.data.verifyAndromeda(offer);
+ assert.equal(h.calls.filter(call=>call.action==='search_start').length,beforeTourvisor,'Andromeda verification never launches Tourvisor');
+ assert.equal(h.andromedaQuoteCalls.length,1);
+ const body=h.andromedaQuoteCalls[0],context=offer.raw.offer_context;
+ assert.equal(body.action,'quote');assert.equal(body.generation,context.generation);assert.equal(body.page,context.page);
+ assert.deepEqual(body.offer_context,{provider:'andromeda',search_ref:context.search_ref,generation:context.generation,page:context.page,offer_ref:context.offer_ref});
+ assert.equal(body.listing_price_ref,'listing_'+'e'.repeat(64));assert.deepEqual(body.params,h.nativeCalls[0].params);
+ assert.equal(Object.hasOwn(body,'price'),false);assert.equal(Object.hasOwn(body,'local_hotel_id'),false);
+ assert.equal(quote.state,'quote_verified');assert.deepEqual(quote.finalPrice,{amount:'1499000',currency:'RUB'});
+ assert.equal(quote.finalPriceVerified,true);assert.equal(quote.flightSelectionRequired,false);assert.equal(quote.flights.length,2);
+ assert.ok(quote.flights.every(row=>!Object.hasOwn(row,'flightRef')),'verified public flights never invent continuation refs');
+});
+test('Andromeda flight choice continuation accepts only retained outbound and return refs',async()=>{
+ let first=true;
+ const h=harness({
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+  andromedaQuote:async body=>{
+   if(first){first=false;return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaChoice(101)})}};}
+   return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101,'1512345')})}};
+  }
+ });
+ await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
+ const pending=await h.data.verifyAndromeda(offer);
+ assert.equal(pending.state,'flight_selection_required');assert.equal(pending.finalPrice,null);assert.equal(pending.flightSelectionRequired,true);
+ assert.deepEqual(pending.flights.map(row=>[row.direction,row.flightRef]),[
+  ['0','flight_'+'1'.repeat(32)],['0','flight_'+'2'.repeat(32)],['1','flight_'+'3'.repeat(32)]
+ ]);
+ await assert.rejects(h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'9'.repeat(32),return_ref:'flight_'+'3'.repeat(32)}),/устарело/);
+ assert.equal(h.andromedaQuoteCalls.length,1,'unknown opaque ref is rejected before HTTP');
+ const verified=await h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)});
+ assert.equal(h.andromedaQuoteCalls.length,2);const continuation=h.andromedaQuoteCalls[1];
+ assert.equal(continuation.action,'quote_select_flights');
+ assert.deepEqual(continuation.flight_selection,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)});
+ assert.equal(verified.state,'quote_verified');assert.equal(verified.finalPrice.amount,'1512345');
+ await assert.rejects(h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)}),/устарело/);
+ assert.equal(h.andromedaQuoteCalls.length,2,'verified continuation cannot be replayed from cleared retained refs');
+});
+test('Stop aborts pending Andromeda quote and stale result cannot be accepted',async()=>{
+ const gate=defer();let quoteSignal=null;
+ const h=harness({
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+  andromedaQuote:async(body,signal)=>{quoteSignal=signal;await gate.promise;return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101)})}};}
+ });
+ await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
+ const pending=h.data.verifyAndromeda(offer);await waitFor(()=>quoteSignal!==null,'pending Andromeda quote required');
+ assert.equal(quoteSignal.aborted,false);h.data.stop();assert.equal(quoteSignal.aborted,true);
+ gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
+});
+test('Andromeda quote response fails closed on price, identity and flight-ref corruption',async()=>{
+ const invalid=[
+  {...andromedaVerified(102)},
+  {...andromedaVerified(101),booking_enabled:true},
+  {...andromedaVerified(101),final_price_verified:false},
+  {...andromedaVerified(101),final_price:{amount:'0',currency:'RUB'}},
+  {...andromedaVerified(101),final_price:{amount:'1000',currency:'USD'}},
+  {...andromedaChoice(101),flights:[{...andromedaChoice(101).flights[0],flight_ref:'bad'}]},
+  {...andromedaChoice(101),flights:andromedaChoice(101).flights.filter(row=>row.direction==='0')}
+ ];
+ for(const payload of invalid){
+  const h=harness({
+   native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+   andromedaQuote:async()=>({response:{ok:true,status:200,json:async()=>({ok:true,data:payload})}})
+  });
+  await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
+  await assert.rejects(h.data.verifyAndromeda(offer),/некорректное подтверждение/);
+ }
+});
 test('Andromeda failure is isolated from TV and LOCAL inventory',async()=>{
  const h=harness({native:async()=>({response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}})});
  await h.start();await flush();await h.poll();assert.ok(h.latest().length);
