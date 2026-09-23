@@ -1,0 +1,160 @@
+name: MATCH Biblio frontier CURRENT dossier
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-biblio-frontier-current-dossier-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-biblio-frontier-current-dossier-1971-20260922-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-biblio-frontier-current-dossier-1971-20260922-v1
+  BASE: 3fe25fe95621f56354ee6ffdd4d0f448d614b06e
+  CLAIM: '5772644854'
+  SCRIPT_SHA: eed90b07a9cb1020236344bc6564de02e68303943d4d4a72b0d78afa30684a89
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-biblio-frontier-current-dossier-1971-20260922-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+    - name: Validate exact read-only dossier and reserve
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077; mkdir -p input reservation terminal
+        cat > input/current_dossier.php <<'PHP_DOSSIER_EOF'
+        <?php
+        declare(strict_types=1);
+        const OP='hotel-match-biblio-frontier-current-dossier-1971-20260922-v1';
+        const V9='0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814';
+        function need(bool $ok,string $why):void { if(!$ok) throw new RuntimeException($why); }
+        function readj(string $p):array { $a=json_decode((string)file_get_contents($p),true,512,JSON_THROW_ON_ERROR);need(is_array($a),'json');return $a; }
+        function save(string $p,array $a):string { $b=json_encode($a,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";$f=fopen($p,'xb');need($f!==false,'exclusive_create');need(fwrite($f,$b)===strlen($b)&&fflush($f),'durable_write');fclose($f);return hash('sha256',$b); }
+        function sql(PDO $db,string $s):array { need(str_starts_with($s,'SELECT '),'select_only');$q=$db->query($s);need($q!==false,'query');return $q->fetchAll(PDO::FETCH_ASSOC)?:[]; }
+        function f4(string $url):array {
+         $u=parse_url($url);need(is_array($u)&&($u['scheme']??'')==='https'&&in_array($u['host']??'',['bgoperator.ru','www.bgoperator.ru'],true)&&!isset($u['user'])&&!isset($u['pass'])&&(!isset($u['port'])||$u['port']===443),'link_origin');
+         $out=[];foreach(explode('&',$u['query']??'') as $part){$p=explode('=',$part,2);if(count($p)===2&&strcasecmp(rawurldecode($p[0]),'F4')===0){$s=rawurldecode($p[1]);need(preg_match('/^[1-9][0-9]{0,19}$/D',$s)===1,'f4_literal');$out[]=$s;}}
+         need(count($out)>0,'f4_missing');return array_values(array_unique($out));
+        }
+        function frontier(array $data):array {
+         need(($data['operation']??'')==='hotel-match-v9-reconcile-1971-20260921-v1','input_operation');$out=[];$all=[];$single=0;$multi=0;
+         foreach($data['source_result']['edges'] as $e){if((int)$e['operator_id']!==18)continue;
+          need(hash('sha256',$e['operator_link'])===$e['operator_link_sha256'],'link_hash');$ids=f4($e['operator_link']);$tv=(int)$e['tv_hotel_id'];need($tv>0&&!isset($out[$tv]),'tv_unique');
+          count($ids)===1?$single++:$multi++;foreach($ids as $id){need(!isset($all[$id])||$all[$id]===$tv,'cross_tv_f4_collision');$all[$id]=$tv;}
+          $out[$tv]=['tv_hotel_id'=>$tv,'f4_candidates'=>$ids,'operator_link'=>$e['operator_link'],'operator_link_sha256'=>$e['operator_link_sha256'],'search_id'=>$e['search_id'],'tour_id'=>$e['tour_id'],'batch'=>$e['batch']];
+         }
+         need(count($out)===816&&count($all)===838&&$single===794&&$multi===22,'frontier_shape');ksort($out);return $out;
+        }
+        function sourceRows(array $e,int $depth=0):array {
+         if($depth>12)return [];$out=[];
+         if(isset($e['source'])&&is_array($e['source'])){$s=$e['source'];$keep=array_flip(['id','name','lName','stateKey','state','stateLName','townKey','town','townLName','star','starKey','starLName','latitude','longitude']);$out[]=array_intersect_key($s,$keep);}
+         if(isset($e['prior_evidence'])&&is_array($e['prior_evidence']))$out=array_merge($out,sourceRows($e['prior_evidence'],$depth+1));return $out;
+        }
+        if(($argv[1]??'')==='--self-test'){
+         need(f4('https://www.bgoperator.ru/?F4=102123&F4=102456')===['102123','102456'],'repeated_f4');
+         foreach(['https://evil.invalid/?F4=1','https://www.bgoperator.ru/?F4=0','https://www.bgoperator.ru/?F4=-1','https://www.bgoperator.ru/?F4=1,2'] as $u){$bad=false;try{f4($u);}catch(RuntimeException $e){$bad=true;}need($bad,'invalid_url_test');}
+         need(sourceRows(['prior_evidence'=>['source'=>['id'=>123,'name'=>'Fixture','secret'=>'discard']]])===[['id'=>123,'name'=>'Fixture']],'prior_source_projection');echo "OK\n";exit;
+        }
+        if(($argv[1]??'')==='--validate-input'){need(hash_file('sha256',$argv[2])===V9,'input_digest');echo count(frontier(readj($argv[2])))."\n";exit;}
+        need(($argv[1]??'')==='--execute','mode');$in=realpath((string)getenv('MATCH_INPUT_DIR'));$root=realpath((string)getenv('ANYTOUR_ROOT'));$dir=realpath((string)getenv('MATCH_OPERATION_DIR'));$head=(string)getenv('MATCH_SOURCE_SHA');
+        need($in!==false&&$root!==false&&basename($root)==='anytoour.ru'&&$dir!==false&&basename($dir)===OP&&preg_match('/^[a-f0-9]{40}$/D',$head)===1,'scope');
+        need(hash_file('sha256',"$in/v9.json")===V9,'input_hash');$front=frontier(readj("$in/v9.json"));$r=readj("$in/reservation.json");
+        need($r['operation']===OP&&$r['source_sha']===$head&&$r['script_sha256']===hash_file('sha256',__FILE__),'reservation');
+        save("$dir/started.json",['operation'=>OP,'state'=>'started_no_replay','source_sha'=>$head]);
+        $base=['operation'=>OP,'source_sha'=>$head,'supplier_http_requests'=>0,'provider_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true];
+        try{
+         require_once $root.(is_file("$root/data/db-v1.php")?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+         $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+         $list=implode(',',array_map('intval',array_keys($front)));$ns="'andromeda_catalog','operator_5','operator_115','operator_315','operator_342'";
+         $hotels=sql($db,"SELECT id,name,country_id,country_name,region_id,region_name,subregion_id,subregion_name,category,is_active,latitude,longitude FROM catalog_hotels WHERE id IN ($list) ORDER BY id");
+         $identities=sql($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,catalog_sha256,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE local_hotel_id IN ($list) AND supplier_namespace IN ($ns) ORDER BY local_hotel_id,supplier_namespace,external_hotel_id");
+         $manual=sql($db,"SELECT catalog_hotel_id,decision_status FROM anex_hotel_decisions WHERE catalog_hotel_id IN ($list) ORDER BY catalog_hotel_id");
+         $stats=sql($db,"SELECT supplier_namespace,decision_status,COUNT(*) AS identity_rows,COUNT(DISTINCT local_hotel_id) AS distinct_local_hotels FROM andromeda_hotel_identities WHERE supplier_namespace IN ($ns) GROUP BY supplier_namespace,decision_status ORDER BY supplier_namespace,decision_status");
+         $db->rollBack();$cat=[];$by=[];$man=[];foreach($hotels as $h)$cat[(int)$h['id']]=$h;
+         foreach($identities as $row){$raw=$row['evidence_json'];$decoded=json_decode($raw,true);$row['source_records']=is_array($decoded)?sourceRows($decoded):[];$row['evidence_json_sha256']=hash('sha256',$raw);$row['recorded_evidence_hash_matches']=hash('sha256',$raw)===$row['evidence_sha256'];unset($row['evidence_json']);$by[(int)$row['local_hotel_id']][]=$row;}
+         foreach($manual as $m)$man[(int)$m['catalog_hotel_id']][]=$m;
+         $counts=['tv_hotels'=>816,'distinct_f4'=>838,'local_cards_present'=>count($hotels),'local_cards_absent'=>816-count($hotels),'single_accepted_catalog'=>0,'multiple_accepted_catalog'=>0,'no_accepted_catalog'=>0,'manual_rows_hotels'=>0];$rows=[];
+         foreach($front as $tv=>$f){$is=$by[$tv]??[];$anchors=array_values(array_filter($is,fn($x)=>$x['supplier_namespace']==='andromeda_catalog'&&$x['decision_status']==='accepted'));
+         $kind=count($anchors)===0?'no_accepted_catalog':(count($anchors)===1?'single_accepted_catalog':'multiple_accepted_catalog');$counts[$kind]++;if(isset($man[$tv]))$counts['manual_rows_hotels']++;
+         $rows[]=$f+['catalog_hotel'=>$cat[$tv]??null,'anchor_class'=>$kind,'accepted_catalog_ids'=>array_column($anchors,'external_hotel_id'),'identities'=>$is,'manual'=>$man[$tv]??[],'safe_to_write_now'=>false];}
+         $result=$base+['state'=>'completed_read_only','snapshot_at_utc'=>gmdate('c'),'input_sha256'=>V9,'counts'=>$counts,'registry_counts'=>$stats,'rows'=>$rows];$hash=save("$dir/result.json",$result);save("$dir/receipt.json",$base+['state'=>'completed_read_only','result_sha256'=>$hash,'counts'=>$counts]);echo json_encode(['counts'=>$counts,'result_sha256'=>$hash],JSON_THROW_ON_ERROR)."\n";
+        }catch(Throwable $e){if(isset($db)&&$db->inTransaction())$db->rollBack();save("$dir/failure.json",$base+['state'=>'failed_no_replay','error_class'=>get_class($e)]);exit(1);}
+        PHP_DOSSIER_EOF
+        test "$(git rev-parse HEAD)" = "$HEAD"
+        test "$(git merge-base HEAD "$BASE")" = "$BASE"
+        test "$(git diff --name-only "$BASE"..HEAD | tr '\n' ' ')" = ".github/workflows/hotel-match-biblio-frontier-current-dossier-v1.yml "
+        echo "$SCRIPT_SHA  input/current_dossier.php" | sha256sum -c -
+        php -l input/current_dossier.php; php input/current_dossier.php --self-test
+        gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+        gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10634643226/zip" > input/v9.zip
+        python3 - <<'PY'
+        import json,os,zipfile,pathlib,hashlib,datetime
+        c=json.load(open('input/claim.json'))
+        assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530')
+        assert c['created_at']==c['updated_at']
+        for t in (os.environ['OP'],os.environ['BASE'],'READ ONLY','supplier HTTP0','DB/mapping writes0'): assert t in c['body'], 'claim_scope'
+        assert hashlib.sha256(pathlib.Path('input/v9.zip').read_bytes()).hexdigest()=='0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0'
+        with zipfile.ZipFile('input/v9.zip') as z: b=z.read('reconciliation.json')
+        assert hashlib.sha256(b).hexdigest()=='0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814'
+        pathlib.Path('input/v9.json').write_bytes(b)
+        r={'operation':os.environ['OP'],'state':'reserved_before_db_read','source_sha':os.environ['HEAD'],'script_sha256':os.environ['SCRIPT_SHA'],'database_writes':0,'mapping_writes':0,'supplier_http_requests':0,'no_replay':True,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+        pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+        PY
+        php input/current_dossier.php --validate-input input/v9.json
+        rm input/claim.json input/v9.zip
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with: {name: 'match-biblio-current-dossier-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+    - name: Require exact-head Security
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import json,os,time,urllib.request
+        u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+        for _ in range(60):
+            req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(req,timeout=30) as f: rs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+            if rs and max(rs,key=lambda x:x['id'])['status']=='completed':
+                assert max(rs,key=lambda x:x['id'])['conclusion']=='success'; break
+            time.sleep(5)
+        else: raise SystemExit('security_not_green')
+        PY
+    - name: Read CURRENT identities and local cards without supplier access
+      env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077
+        key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/h"; trap 'rm -f "$key" "$known"' EXIT
+        if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+        chmod 600 "$key"; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+        r="$USER@$HOST"; op=".anytoour-match/operations/$OP"; a=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+        ssh "${a[@]}" "$r" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/.anytoour-match/operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+        cp reservation/reservation.json input/reservation.json
+        scp "${a[@]}" input/current_dossier.php input/v9.json input/reservation.json "$r:$op/payload/"
+        set +e
+        ssh "${a[@]}" "$r" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_DIR=\"\$HOME/$op/payload\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/current_dossier.php\" --execute" >terminal/stdout 2>terminal/stderr
+        status=$?
+        ssh "${a[@]}" "$r" "cd \"\$HOME/$op\" && tar -czf - -- *.json" >terminal/server.tgz
+        set -e
+        printf '%s\n' "$status" >terminal/exit-code.txt
+        exit "$status"
+    - name: Verify full 816-hotel CURRENT dossier
+      env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import tarfile,pathlib,json,hashlib,os
+        with tarfile.open('terminal/server.tgz','r:gz') as t:
+            for name in ('started.json','result.json','receipt.json'):
+                b=t.extractfile(name).read(); pathlib.Path('terminal',name).write_bytes(b)
+        r=json.load(open('terminal/result.json')); q=json.load(open('terminal/receipt.json'))
+        assert r['state']==q['state']=='completed_read_only' and r['source_sha']==os.environ['HEAD'] and r['operation']==os.environ['OP']
+        assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+        assert r['supplier_http_requests']==r['provider_calls']==r['database_writes']==r['mapping_writes']==0
+        assert len(r['rows'])==816 and len({x['tv_hotel_id'] for x in r['rows']})==816
+        assert len({f for x in r['rows'] for f in x['f4_candidates']})==838
+        c=r['counts']; assert c['single_accepted_catalog']+c['multiple_accepted_catalog']+c['no_accepted_catalog']==816
+        pathlib.Path('terminal/summary.json').write_text(json.dumps({k:v for k,v in r.items() if k!='rows'},indent=2)+'\n')
+        print(json.dumps(c,sort_keys=True,indent=2))
+        PY
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: always()
+      with: {name: 'match-biblio-current-dossier-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
