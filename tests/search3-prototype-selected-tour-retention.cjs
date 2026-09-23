@@ -126,6 +126,19 @@ assert.equal(priceCopy.offerMetaNote(directAnex),'Цена из текущего
 assert.equal(priceCopy.offerMetaNote(freshTourvisor),'Рейсы и багаж — при выборе','fresh Tourvisor compact row keeps selection detail hint');
 assert.equal(priceCopy.offerActionLabel(directAndromeda),'Смотреть условия','direct-provider selection authority remains unchanged');
 assert.equal(priceCopy.offerActionLabel(freshTourvisor),'Выбрать тур','Tourvisor selection CTA remains unchanged');
+
+const compareLabelStart = source.indexOf('const comparisonVariantLabel=');
+const compareLabelEnd = source.indexOf('\nfunction normalizeComparison', compareLabelStart);
+assert.ok(compareLabelStart >= 0 && compareLabelEnd > compareLabelStart, 'comparison variant label helper is present');
+const compareLabelContext = {};
+vm.createContext(compareLabelContext);
+vm.runInContext(source.slice(compareLabelStart, compareLabelEnd) + '\nthis.comparisonVariantLabelTest=comparisonVariantLabel;', compareLabelContext);
+const compareLabel = compareLabelContext.comparisonVariantLabelTest;
+const compareAI = {room:'Standard Sea View',meal:'Всё включено',operator:'ANEX'};
+const compareBB = {...compareAI,meal:'Завтраки'};
+assert.equal(compareLabel(compareAI),'Standard Sea View · Всё включено · ANEX','compare selector includes exact room, meal and operator');
+assert.equal(compareLabel(compareBB),'Standard Sea View · Завтраки · ANEX','meal differentiates otherwise identical compare variants');
+assert.notEqual(compareLabel(compareAI),compareLabel(compareBB),'different meal offers never have identical compare labels');
 const favoritesStart = source.indexOf('function renderFavorites()');
 const favoritesEnd = source.indexOf('\nfunction openFilters()', favoritesStart);
 assert.ok(favoritesStart >= 0 && favoritesEnd > favoritesStart, 'favorites renderer is present');
