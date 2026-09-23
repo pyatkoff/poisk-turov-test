@@ -34,7 +34,7 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
         foreach(['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','database_writes','mapping_writes'] as $k)hmcw_need(($result[$k]??null)===0,'nonzero_'.$k);
         $h=hmcw_save($dir.'/result.json',$result);
         hmcw_save($dir.'/receipt.json',['operation'=>$op,'state'=>$result['state'],'result_sha256'=>$h,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$h,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]);
-        echo hmcw_json(['state'=>$result['state'],'edge_counts'=>$result['edge_counts'],'active'=>$result['active_tv']['counts'],'live30'=>$result['live_30d']['counts']])."\n";
+        echo hmcw_json(['state'=>$result['state'],'edge_counts'=>$result['edge_counts'],'active'=>$result['active_tv']['counts'],'live30'=>$result['live_30d']['counts'],'samo_live30'=>$result['samo_live_30d']??null])."\n";
     }catch(Throwable $e){
         $f=['operation'=>$op,'state'=>'failed_read_only_coverage','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',mb_substr($e->getMessage(),0,160,'UTF-8')),'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0];
         $h=hmcw_save($dir.'/result.json',$f);hmcw_save($dir.'/receipt.json',['operation'=>$op,'state'=>$f['state'],'result_sha256'=>$h,'readback_verified'=>true,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]);
