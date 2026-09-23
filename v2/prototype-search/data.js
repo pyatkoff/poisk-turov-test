@@ -589,9 +589,13 @@
     if(!Array.isArray(catalog.departures)||!catalog.departures.length)throw new Error('Не удалось загрузить города вылета.');
     try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
     try{
-      const response=await fetch(local+'data/search3-meal-catalog-read-v1.php',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+      const response=await fetch(local+'data/search3-local-results-read-v1.php',{
+        method:'POST',credentials:'same-origin',cache:'no-store',
+        headers:{Accept:'application/json','Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
+        body:JSON.stringify({action:'meal_catalog',provider:'tourvisor',scopeKey:'global'})
+      });
       const payload=await response.json();
-      if(!response.ok||!installMealPlans(payload))throw new Error('Invalid canonical meal catalogue');
+      if(!response.ok||payload?.ok!==true||!payload.data||!installMealPlans({ok:true,...payload.data}))throw new Error('Invalid canonical meal catalogue');
     }catch{catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}
     return countries(origin);
   }
