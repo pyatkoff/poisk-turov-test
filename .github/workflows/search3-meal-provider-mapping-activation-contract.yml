@@ -44,7 +44,7 @@ jobs:
           php -l tests/search3_meal_provider_mapping_activate_v1_test.php
           ! grep -Eq 'issue_comment:|workflow_dispatch:|repository_dispatch:|schedule:' .github/workflows/search3-meal-provider-mapping-activation-contract.yml
           ! grep -Eq 'secrets\.|ssh-action|scp-action|ssh[[:space:]]+-' .github/workflows/search3-meal-provider-mapping-activation-contract.yml
-          ! grep -Eq 'curl[[:space:]]|file_get_contents\([[:space:]]*["'"']https?://' scripts/deploy/search3_meal_provider_mapping_activate_v1.php
+          ! grep -Eq 'curl[[:space:]]|https?://' scripts/deploy/search3_meal_provider_mapping_activate_v1.php
           grep -Fq 'SEARCH3_MEAL_WRITE_NOT_AUTHORIZED' scripts/deploy/search3_meal_provider_mapping_activate_v1.php
           grep -Fq '20260923-anytour-search-meal-provider-mappings-v1.sql' scripts/deploy/search3_meal_provider_mapping_activate_v1.php
           ! grep -Fq 'anytour_search_meal_memberships_v1' v2/data/migrations/20260923-anytour-search-meal-provider-mappings-v1.sql
