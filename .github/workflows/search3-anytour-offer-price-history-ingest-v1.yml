@@ -1,0 +1,51 @@
+name: Search3 offer price history ingest contract
+
+on:
+  pull_request:
+    branches:
+      - release/search3-production-ready-v1
+    paths:
+      - 'v2/data/anytour-offer-snapshot-ingest-v1.php'
+      - 'v2/data/anytour-offer-price-history-v1.php'
+      - 'v2/data/migrations/20260923-anytour-offer-price-history-v1.sql'
+      - 'tests/anytour-offer-price-history-ingest-v1-test.php'
+      - '.github/workflows/search3-anytour-offer-price-history-ingest-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: anytour_offer_history_ingest_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql
+      - name: Validate installed-only fail-open history ingest
+        env:
+          ANYTOUR_OFFER_HISTORY_INGEST_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=anytour_offer_history_ingest_test;charset=utf8mb4
+          ANYTOUR_OFFER_HISTORY_INGEST_TEST_USER: root
+          ANYTOUR_OFFER_HISTORY_INGEST_TEST_PASSWORD: root
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/anytour-offer-price-history-v1.php >/dev/null
+          php -l v2/data/anytour-offer-snapshot-ingest-v1.php >/dev/null
+          php -l tests/anytour-offer-price-history-ingest-v1-test.php >/dev/null
+          php tests/anytour-offer-price-history-ingest-v1-test.php
