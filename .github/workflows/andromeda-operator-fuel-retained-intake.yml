@@ -8,9 +8,11 @@ on:
       - 'app/integrations/andromeda-search-surcharge.php'
       - 'app/integrations/operator-fuel-rule-evidence.php'
       - 'app/integrations/operator-fuel-rule-store.php'
+      - 'app/integrations/funsun-turkey-fuel-owner-policy.php'
       - 'tests/andromeda-operator-fuel-retained-intake-test.php'
       - 'tests/operator-fuel-rule-evidence-test.php'
       - 'tests/int-funsun-direction-fuel-store-contract.php'
+      - 'tests/funsun-turkey-fuel-owner-policy-test.php'
       - '.github/workflows/andromeda-operator-fuel-retained-intake.yml'
 
 permissions:
@@ -34,12 +36,15 @@ jobs:
           php -l app/integrations/andromeda-search-surcharge.php
           php -l app/integrations/operator-fuel-rule-evidence.php
           php -l app/integrations/andromeda-operator-fuel-retained-intake.php
+          php -l app/integrations/funsun-turkey-fuel-owner-policy.php
           php -l tests/operator-fuel-rule-evidence-test.php
           php -l tests/andromeda-operator-fuel-retained-intake-test.php
           php -l tests/int-funsun-direction-fuel-store-contract.php
+          php -l tests/funsun-turkey-fuel-owner-policy-test.php
           php -d allow_url_fopen=0 tests/operator-fuel-rule-evidence-test.php
           php -d allow_url_fopen=0 tests/andromeda-operator-fuel-retained-intake-test.php
           php -d allow_url_fopen=0 tests/int-funsun-direction-fuel-store-contract.php
+          php -d allow_url_fopen=0 tests/funsun-turkey-fuel-owner-policy-test.php
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/andromeda-operator-fuel-retained-intake.php').read_text()
