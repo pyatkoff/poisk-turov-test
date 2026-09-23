@@ -12,6 +12,7 @@ require_once __DIR__ . '/anytour-search-scope-v1.php';
 require_once __DIR__ . '/anytour-offer-scope-index-v1.php';
 require_once __DIR__ . '/anytour-offer-store-v1.php';
 require_once __DIR__ . '/anytour-provider-identity-bridge-v1.php';
+require_once __DIR__ . '/anytour-offer-price-history-v1.php';
 
 final class AnyTourOfferSnapshotIngestV1
 {
@@ -39,7 +40,7 @@ final class AnyTourOfferSnapshotIngestV1
 
         $scope = AnyTourSearchScopeV1::fromParams($searchParams);
         $prepared = self::prepareRows($provider, $rows, $now);
-        return self::persistSnapshot($db, $provider, $scope, $prepared, $now, false);
+        return self::persistSnapshot($db, $provider, $scope, $searchParams, $prepared, $now, false);
     }
 
     /**
@@ -64,13 +65,14 @@ final class AnyTourOfferSnapshotIngestV1
 
         $scope = AnyTourSearchScopeV1::fromParams($searchParams);
         $prepared = self::prepareRows($provider, $rows, $now);
-        return self::persistSnapshot($db, $provider, $scope, $prepared, $now, true);
+        return self::persistSnapshot($db, $provider, $scope, $searchParams, $prepared, $now, true);
     }
 
     private static function persistSnapshot(
         PDO $db,
         string $provider,
         array $scope,
+        array $searchParams,
         array $prepared,
         DateTimeImmutable $now,
         bool $partial
@@ -120,6 +122,38 @@ final class AnyTourOfferSnapshotIngestV1
             throw $error;
         }
 
+        // Historical analytics must never gain current-offer authority. Record only
+        // freshly observed rows after the provider snapshot is already atomically
+        // completed. Missing/unavailable history storage is deliberately fail-open.
+        $priceHistory = [
+            'source' => 'anytour-offer-price-history-v1',
+            'installed' => false,
+            'inputCount' => count($prepared),
+            'written' => 0,
+            'duplicates' => 0,
+        ];
+        try {
+            $priceHistory = AnyTourOfferPriceHistoryV1::recordIfInstalled(
+                $db,
+                $searchParams,
+                $prepared,
+                $now
+            );
+        } catch (Throwable $historyError) {
+            error_log(
+                'anytour-offer-snapshot-ingest-v1 price history: '
+                . mb_substr($historyError->getMessage(), 0, 500, 'UTF-8')
+            );
+            $priceHistory = [
+                'source' => 'anytour-offer-price-history-v1',
+                'installed' => null,
+                'inputCount' => count($prepared),
+                'written' => 0,
+                'duplicates' => 0,
+                'error' => 'history_write_failed',
+            ];
+        }
+
         $hotels = [];
         foreach ($written as $item) {
             $hotels[(int)$item['anytourHotelId']] = true;
@@ -137,6 +171,7 @@ final class AnyTourOfferSnapshotIngestV1
             'hotelCount' => count($hotels),
             'carriedForward' => $carriedForward,
             'expiredUnseen' => (int)($complete['expiredUnseen'] ?? 0),
+            'priceHistory' => $priceHistory,
             'selectionAuthority' => false,
         ];
     }
