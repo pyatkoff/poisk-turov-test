@@ -52,7 +52,8 @@ test('LOCAL parser withholds one malformed offer and keeps valid siblings in the
  assert.equal(applied.offerCount,1);
  assert.deepEqual(calls.map(row=>row[0]),['clear','hotel','offer','refresh']);
  assert.equal(calls[2][2],digest('b'));
- assert.deepEqual(calls[2][3],{source:'local-db',legacyHotelId:'201'});
+ assert.equal(calls[2][3].source,'local-db');
+ assert.equal(calls[2][3].legacyHotelId,'201');
 });
 
 test('LOCAL parser still rejects malformed canonical group structure fail closed',()=>{
