@@ -10,7 +10,7 @@ concurrency: {group: hotel-match-common4-tail-writer-1971-20260924-v15-w2, cance
 env:
   OP: hotel-match-common4-tail-writer-1971-20260924-v15-w2
   BASE: dd659dfdec6ad5bc69683c545ab637070d865cf7
-  CLAIM: '5804607382'
+  CLAIM: '5804468591'
   AUDIT_ARTIFACT: '10780823859'
   AUDIT_ARCHIVE_SHA: b3a0d90bfedc809bb5f517bf05a01542204d2271cc56766d66023dd3e9499d2c
   EXPECTED_WRITES: '67'
