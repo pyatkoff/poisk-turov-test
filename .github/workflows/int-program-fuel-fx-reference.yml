@@ -1,0 +1,48 @@
+name: INT program fuel FX reference
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/operator-program-fuel-fx-evidence.php'
+      - 'tests/int-program-fuel-fx-reference-test.php'
+      - '.github/workflows/int-program-fuel-fx-reference.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fx-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint bounded INT source
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/integrations/operator-program-fuel-fx-evidence.php
+          php -l tests/int-program-fuel-fx-reference-test.php
+      - name: Reject authority creep
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/integrations/operator-program-fuel-fx-evidence.php').read_text()
+          forbidden=[
+              'curl_', 'PDO', 'mysqli', 'file_put_contents', 'fwrite(', 'rename(',
+              'getFlights(', 'changeService(', '->calc(', 'booking',
+          ]
+          for token in forbidden:
+              if token in p:
+                  raise SystemExit('forbidden authority primitive: '+token)
+          for token in ['latestForDirection', 'scope_sha256', "'andromeda_get_flights'", "'EUR'", "'RUB'"]:
+              if token not in p:
+                  raise SystemExit('missing FX evidence contract token: '+token)
+          print('PROGRAM_FUEL_FX_AUTHORITY_OK supplier=0 db=0 fswrite=0 booking=0 fuel_inference=0')
+          PY
+      - name: Run focused FX evidence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -d allow_url_fopen=0 tests/int-program-fuel-fx-reference-test.php
