@@ -1,0 +1,71 @@
+name: Inspect isolated local-catalog Search3 preview predecessor
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-search3-local-preview.yml'
+      - 'scripts/deploy/search3_local_preview_inspect.py'
+      - 'scripts/deploy/search3_local_preview_update_remote.py'
+      - 'scripts/deploy/search3_preview_publish.py'
+      - 'tests/search3_local_preview_inspect_test.py'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-local-preview-contracts:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify read-only inspector contracts
+        run: |
+          python3 -m py_compile scripts/deploy/search3_local_preview_inspect.py
+          python3 tests/search3_local_preview_inspect_test.py -v
+          python3 tests/search3_local_preview_update_test.py -v
+
+  inspect-local-preview-predecessor:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event_name == 'issue_comment' && github.event.issue.number == 3419 &&
+      !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/inspect-search3-local-preview'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify read-only inspector contracts
+        run: |
+          python3 -m py_compile scripts/deploy/search3_local_preview_inspect.py
+          python3 tests/search3_local_preview_inspect_test.py -v
+      - name: Inspect fixed LOCAL preview predecessor without activation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          PREVIEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PREVIEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: python3 scripts/deploy/search3_local_preview_inspect.py
+      - name: Retain sanitized read-only receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-local-inspect-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-local-inspect/evidence.json
+          if-no-files-found: warn
+          retention-days: 30
