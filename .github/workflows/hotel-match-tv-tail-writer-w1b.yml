@@ -33,7 +33,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          for x in [os.environ['OP'],'exact expected writes=300',os.environ['AUDIT_ARCHIVE_SHA'],'SERIALIZABLE','rollback']:
+          for x in [os.environ['OP'],'exact expected writes=300',os.environ['AUDIT_ARCHIVE_SHA'],'SERIALIZABLE','rolls back all300']:
               assert x in b,x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(100):
