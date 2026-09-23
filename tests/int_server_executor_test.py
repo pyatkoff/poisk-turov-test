@@ -332,6 +332,15 @@ class BundleTest(unittest.TestCase):
             p=root/m.FIXED[0];p.unlink();p.symlink_to(app/'x0.php')
             with self.assertRaises(ValueError):m.bundle_source(root)
 
+class RemoteTransportTest(unittest.TestCase):
+    def test_embedded_remote_executor_command_stays_bounded(self):
+        compressed=__import__('zlib').compress(m.REMOTE.encode(),9)
+        encoded=__import__('base64').b64encode(compressed).decode()
+        command="python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\"" + encoded + "\")))'"
+        self.assertLessEqual(len(command.encode()),65536)
+        self.assertEqual(m.REMOTE.encode(),__import__('zlib').decompress(__import__('base64').b64decode(encoded)))
+        self.assertLess(len(compressed),len(m.REMOTE.encode()))
+
 class InstallRuntimeTest(unittest.TestCase):
     def fixture(self, root: Path, operation: str, fail_target_lint: bool = False, mode: str = 'install-runtime'):
         source=root/'source';app=source/'app/integrations';app.mkdir(parents=True)
@@ -432,7 +441,7 @@ class ContractTest(unittest.TestCase):
     def test_control_boundaries(self):
         text=SCRIPT.read_text()
         for x in ["ISSUE = 3419","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
-                  "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged",
+                  "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged","remote_command_size","zlib.compress",
                   "install-runtime","install-andromeda-preview","install-andromeda-quote-preview","install-plan.json","preview-install-plan.json","quote-preview-install-plan.json","install-state.json","rollback_install",
                   "v2/api-andromeda-search3-preview.php","api-andromeda-search3-preview.php","v2/api-andromeda-quote-preview.php","api-andromeda-quote-preview.php",
                   "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",
