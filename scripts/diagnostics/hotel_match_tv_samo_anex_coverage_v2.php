@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__.'/hotel_match_anex_effective_coverage.php';
 
-const HMTSAC_OP='hotel-match-tv-samo-anex-coverage-1971-20260924-v2';
+const HMTSAC_OP='hotel-match-tv-samo-anex-coverage-1971-20260924-v3';
 
 function hmtsac_need(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
 function hmtsac_json(mixed $v):string{return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
