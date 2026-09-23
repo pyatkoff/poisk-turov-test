@@ -184,7 +184,7 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(0,v['offset']);self.assertEqual(30,v['limit'])
         for bad in [
             f'/run-int-server-v1 {SHA} match-common4-continuation-acquire int-anex-match-common4-continuation-c0-20260923-v1 0 30',
-            f'/run-int-server-v1 {SHA} match-common4-continuation-acquire int-andromeda-match-common4-continuation-c0-20260923-v1 0 101',
+            f'/run-int-server-v1 {SHA} match-common4-continuation-acquire int-andromeda-match-common4-continuation-c0-20260923-v1 0 1350',
             f'/run-int-server-v1 {SHA} match-common4-continuation-acquire int-andromeda-match-common4-continuation-c0-20260923-v1 1300 50',
         ]:
             with self.subTest(bad=bad),self.assertRaises(ValueError):
