@@ -14,7 +14,7 @@ function r6_save(string $p,array $v):string{$raw=r6_json($v)."\n";$f=@fopen($p,'
 function r6_query(PDO $db,string $sql,array $args=[]):array{$st=$db->prepare($sql);$st->execute(array_values($args));return $st->fetchAll(PDO::FETCH_ASSOC)?:[];}
 function r6_norm(mixed $v):string{
     $s=mb_strtolower(trim((string)$v),'UTF-8');$s=str_replace('ё','е',$s);
-    $s=preg_replace('/[^p{L}p{N}]+/u',' ',$s)??$s;return trim(preg_replace('/s+/u',' ',$s)??$s);
+    $s=preg_replace('/[^\\p{L}\\p{N}]+/u',' ',$s)??$s;return trim(preg_replace('/\\s+/u',' ',$s)??$s);
 }
 function r6_num(mixed $v):?float{
     if($v===null||$v==='')return null;$s=str_replace(',','.',trim((string)$v));if(!is_numeric($s))return null;$x=(float)$s;
