@@ -365,6 +365,14 @@ def parse_command(body: str) -> dict:
         need(offset + limit <= 234, 'match_scope')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'offset': offset, 'limit': limit}
+    if mode == 'match-tv234-readback':
+        need(len(parts) == 5, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        offset = integer(parts[3], 0, 233, 'match_offset')
+        limit = integer(parts[4], 1, 78, 'match_limit')
+        need(offset + limit <= 234, 'match_scope')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'offset': offset, 'limit': limit}
     if mode in ('match-tv942', 'match-samo942'):
         need(len(parts) == 5, 'command_shape')
         offset = integer(parts[3], 0, 941, 'match_offset')
@@ -1366,6 +1374,28 @@ def run_match_tv942_write(stage):
             'stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
             'stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
 
+def read_match_tv234_secondary(offset, limit):
+    child='hotel-match-live234-tv-secondary-1971-20260923-o'+str(offset)+'-n'+str(limit)+'-v1'
+    child_dir=home/'.anytoour-match/operations'/child
+    if not child_dir.is_dir() or child_dir.is_symlink(): fail('match_tv234_child_missing')
+    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
+    if not safe_file(result_path,16*1024*1024) or not safe_file(receipt_path,1024*1024):
+        fail('match_tv234_readback_missing')
+    child_result=safe_json(result_path,16*1024*1024);receipt=safe_json(receipt_path,1024*1024)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    if receipt.get('result_sha256')!=digest: fail('match_tv234_readback_hash')
+    if (child_result.get('frontier_count')!=234 or child_result.get('scope_offset')!=offset
+            or child_result.get('scope_count')!=limit or child_result.get('database_writes')!=0
+            or child_result.get('mapping_writes')!=0 or child_result.get('operator_ids')!=[18,25,43]):
+        fail('match_tv234_readback_guard')
+    keys=('state','reason','planned_groups','completed_batches','searched_hotels','returned_targets',
+          'returned_operator_pairs','provider_calls','daily_accounted_after_local_ledger','call_counts',
+          'edge_state_counts','link_state_counts','single_native_chunk_unique_count')
+    summary={k:child_result.get(k) for k in keys}
+    return {'child_operation':child,'result_sha256':digest,'result_bytes':result_path.stat().st_size,
+            'receipt_state':receipt.get('state'),'receipt_no_replay':receipt.get('no_replay'),
+            'summary':summary}
+
 def run_match_tv234_secondary(stage, offset, limit):
     child='hotel-match-live234-tv-secondary-1971-20260923-o'+str(offset)+'-n'+str(limit)+'-v1'
     match_root=home/'.anytoour-match/operations'
@@ -1647,6 +1677,14 @@ try:
         result['supplier_calls']=0
         result['database_writes']=result['match_tv942_write']['inserted']
         result['production_unchanged']=True
+    if mode=='match-tv234-readback':
+        result['match_tv234_readback']=read_match_tv234_secondary(int(payload['offset']),int(payload['limit']))
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='reconciled_read_only'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='match-tv234-secondary':
         result['match_tv234_secondary']=run_match_tv234_secondary(stage,int(payload['offset']),int(payload['limit']))
         result['production_after']=fingerprints()
@@ -1672,7 +1710,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -1695,7 +1733,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
