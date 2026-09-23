@@ -1,0 +1,18 @@
+name: MATCH COMMON4 mass current v14
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_common4_mass_current_v14.php
+      - tests/hotel_match_common4_mass_current_v14_test.php
+      - .github/workflows/hotel-match-common4-mass-current-v14.yml
+permissions: {contents: read}
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: php -l scripts/diagnostics/hotel_match_common4_mass_current_v14.php
+      - run: php scripts/diagnostics/hotel_match_common4_mass_current_v14.php --self-test
+      - run: php tests/hotel_match_common4_mass_current_v14_test.php
+      - run: "! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\\(' scripts/diagnostics/hotel_match_common4_mass_current_v14.php"
