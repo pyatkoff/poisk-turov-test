@@ -843,14 +843,14 @@
     const raw=o?.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');
     if(!value||value.provider!=='anex'||value.generation!==epoch||value.search_ref!==searchRef||value.offer_ref!==offerRef
       ||value.status!=='current'||value.selection_state!=='disabled'||!value.offer||value.offer.final_price_verified!==false
-      ||value.offer.context?.current_context_verified!==true)return null;
-    const ready=value.finalPriceReady===true;
+      ||value.offer.context?.current_context_verified!==true||typeof value.finalPriceReady!=='boolean')return null;
+    const ready=value.finalPriceReady;
     let finalPrice=null;
     if(ready){
       const amount=String(value.finalPrice??'');
-      if(!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(amount)||Number(amount)<=0)return null;
+      if(!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(amount)||Number(amount)<=0||String(value.price??'')!==amount)return null;
       finalPrice=Object.freeze({amount,currency:'RUB'});
-    }else if(value.finalPrice!==null&&value.finalPrice!==undefined)return null;
+    }else if(value.finalPrice!==null&&value.finalPrice!==undefined||value.price!==null&&value.price!==undefined)return null;
     return Object.freeze({state:'current',currentContextVerified:true,finalPriceReady:ready,finalPrice,
       finalPriceVerified:false,localHotelId:localId,searchRef,offerRef});
   }
