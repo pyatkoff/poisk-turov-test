@@ -5,7 +5,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive"><meta name="theme-color" content="#2743CB">
   <meta name="description" content="AnyTour Search3 — поиск туров и календарь сохранённых цен. Отдельная версия для проверки.">
   <title>AnyTour — найдите свой отдых</title>
-  <link rel="icon" href="./assets/favicon.png" type="image/png"><link rel="stylesheet" href="./styles.css">
+  <link rel="icon" href="./assets/favicon.png" type="image/png"><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./mobile-controls-v1.css">
   <script src="./config.js"></script>
   <script src="../runtime-v3.js" defer></script>
   <script src="../lead-search-context.js" defer></script>
@@ -14,6 +14,8 @@
   <script src="../search3-canonical-profiles-v1.js" defer></script>
   <script src="../search3-local-db-provider-v1.js" defer></script>
   <script src="./data.js" defer></script>
+  <script src="./source-receipt-v1.js" defer></script>
+  <script src="./search-lifecycle-v1.js" defer></script>
   <script src="./lead.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
@@ -56,6 +58,7 @@
       <div class="calendar-card" id="price-calendar"><div class="calendar-heading"><div><h3><span data-icon="calendar"></span> Календарь цен</h3><p id="calendar-caption"></p></div><button class="text-button" data-action="calendar">Выбрать даты <span>↗</span></button></div><div class="price-strip" id="price-strip"></div><div class="calendar-foot"><span><i class="legend-dot"></i> Минимальная цена среди этих дат</span><button class="text-button" data-action="clear-date" id="clear-date" hidden>Все даты</button></div></div>
       <div class="results-toolbar"><button class="secondary drawer-trigger" data-action="filters"><span data-icon="sliders"></span> Фильтры <span id="drawer-filter-count"></span></button><div class="quick-chips"><button data-action="preset" data-preset="beach" class="chip" id="beach-chip"><span data-icon="waves"></span> Первая линия</button><button data-action="preset" data-preset="rating" class="chip" id="rating-chip">Рейтинг 4,5+</button><button data-action="preset" data-preset="family" class="chip" id="family-chip"><span data-icon="users"></span> Для семьи</button></div><label class="sort-label"><span class="sr-only">Сортировать</span><select id="sort"><option value="recommended">Рекомендуемые</option><option value="price">Сначала дешевле</option><option value="rating">По рейтингу</option></select></label></div>
       <div id="active-filters" class="active-filters"></div><div id="cards" class="cards"></div>
+      <div id="search-more" class="search-status" hidden></div>
     </div>
   </div>
 </section>

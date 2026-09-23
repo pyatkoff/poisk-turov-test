@@ -1,6 +1,6 @@
 # Порядок разработки, интеграции и выпуска
 
-Координатор — #996. Четыре направления дают части одного AnyTour. Этот документ
+Координатор — #3419. Четыре направления дают части одного AnyTour. Этот документ
 определяет зависимости и условия перехода; состояние конкретной работы остаётся
 в существующих issues и `current_task`, не в новой параллельной базе задач.
 
@@ -74,7 +74,7 @@ flowchart TD
 ```text
 ID и issue; направление; status: ready/in_progress/blocked/done
 Пользовательский результат; подтверждённый дефект/согласованный сценарий
-Source branch/SHA; receiving branch/SHA; exact owned paths; claim в #996
+Source branch/SHA; receiving branch/SHA; exact owned paths; claim в #3419
 Зависимости и входные fixtures/источник фактов; unknown
 Модель/effort/роль; независимый reviewer при существенном риске
 Действия и предел: scope, supplier/DB budget, protected contracts

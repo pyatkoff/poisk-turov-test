@@ -1,4 +1,24 @@
 {
+  "coordination_journal": {
+    "issue": 3419,
+    "url": "https://github.com/pyatkoff/poisk-turov-test/issues/3419",
+    "history_issues": [
+      2530,
+      996
+    ],
+    "updated_at": "2026-09-22",
+    "queues": {
+      "search": 1646,
+      "int": 2506,
+      "int_umbrella": 1493,
+      "match": 1971,
+      "local": 2690,
+      "site": 1719,
+      "seo": 1720
+    },
+    "rule": "Fresh claims/results/authorized commands go to #3419. Preserve inherited claims, receipts and no-replay; on blocker record/defer it and continue the next independent available task.",
+    "entrypoint": "docs/project/coordination-journal.md"
+  },
   "latest_local_hotel_filter_package": {
     "schema_version": 1,
     "date": "2026-09-09",
@@ -1245,7 +1265,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Bounded technical preparation closed in merged #2423 (TECHNICAL_REFACTOR_PASS_COMPLETE in the existing dated audit). The checked release baseline is 0527c0785674792eed20f7643ab26f6730e5f426 after #2434: hotel minimum price is clearer, wide-desktop cards use a dedicated price/action column and larger real photo, and mobile exact-offer density is preserved. Source0a6372c786015c7ab2f70fa3b3fbb3f6f6fcce8f passed whole-site34863733705 and the required focused checks; actual mobile/desktop screenshots were inspected. Exact site artifact10356174334 was published only to the isolated preview by run34864845980, receipt artifact10356596803: 9 routes200, served asset hashes verified, noindex, counter0, lead403, production unchanged and rollback retained. Coordination receipt5666759367 records the evidence. Current independent follow-ups are coordinated shortlist header density #2436 and selected-flight currency wrapping claim5666829637; shared files remain with their current writer until handoff. This state-only resume correction changes no runtime and requires no republish. Product-wide 9.5 and physical Safari/iPhone acceptance remain unmeasured/deferred."
+    "last_execution_continuation": "2026-09-23 accumulated Search3 functional update published successfully. Exact checked source 74d17728478691e4c87f99f160a85934f4c361da / release fb066b0eec80017507a4fe586af6ffc9d8dca425 was installed by guarded updater run35829449669 from predecessor f78668ba3fb74615b34ed5f1a4737dce5d1c2500. Terminal receipt artifact10735963930: published_update/activated/published, 9 routes HTTP200, canonical HTTP200, lead403, supplier searches0, real leads0, production and sibling preview unchanged, rollback retained. Installed runtime adds #3599 fail-closed disabled submit, #3601 truthful fresh direct-provider price provenance, #3602 LOCAL confirmation/estimate/verified display states. Command5790501295 is terminal/no-replay. Interactive live/physical Safari remains unmeasured; source browser/prototype gate35829185219 is green. Resume functional SEARCH; claim5790142651 currently owns data.js/source-receipt accounting."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1268,16 +1288,16 @@
     "title": "Search3: per-axis OTA acceptance after completed technical preparation",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 1646,
-    "coordinator_issue": 996,
+    "coordinator_issue": 3419,
     "pr": null,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "Owner 2026-09-12/13: run a bounded Search3 technical refactor-pass before the next UI packages, then reach >=9.5 on every SEARCH-QUALITY-1 axis. Preserve the full OTA primary form direction of 2026-09-11, current active queues and all protected boundaries.",
-    "last_fully_checked_release_sha": "0527c0785674792eed20f7643ab26f6730e5f426",
-    "published_source_sha": "0a6372c786015c7ab2f70fa3b3fbb3f6f6fcce8f",
-    "acceptance_status": "HOTEL_CARD_HIERARCHY_PREVIEW_PUBLISHED_OTA_ACCEPTANCE_IN_PROGRESS",
-    "next_action": "The bounded technical refactor-pass is COMPLETE: #2423 and docs/project/search3-technical-audit-20260912.md own its closeout; do not restart it. Continue current Search3 UX and per-axis OTA acceptance from the checked/published #2434 baseline. First read fresh #996/#1646, release/open PR/CI and active exact-path claims. At this checkpoint #2436 owns shortlist header density and shared results CSS/generated/import files; selected-flight price wrapping is independently prepared under claim5666829637 and must wait for the shared-file handoff. Recheck live ownership instead of treating these dated references as a new permanent queue. Then continue unfinished compare, selected-tour/lead and accumulated desktop/mobile acceptance in the canonical product plan. Keep full primary form direction, existing active queues and completed form/results/card work. Do not alter API/provider/matching/content, price arithmetic, lead transport/mapping, analytics or production; missing evidence stays not_measured.",
-    "audit": "docs/project/search3-results-clarity-product.json"
+    "owner_request": "Owner 2026-09-23: complete the new bounded prototype-specific Search3 refactor pass without replaying old #2423, then reconcile the exact LOCAL-preview predecessor, publish the accumulated checked Search3 source through the guarded updater, perform live target acceptance, and continue the functional SEARCH roadmap. Do not open another refactor pass without new defect/dependency evidence.",
+    "last_fully_checked_release_sha": "fb066b0eec80017507a4fe586af6ffc9d8dca425",
+    "published_source_sha": "74d17728478691e4c87f99f160a85934f4c361da",
+    "acceptance_status": "FUNCTIONAL_ACCUMULATION_PUBLISHED_HTTP_READBACK_GREEN_INTERACTIVE_LIVE_ACCEPTANCE_OPEN",
+    "next_action": "Accumulated functional Search3 update is installed in the isolated LOCAL preview. Command5790501295 / run35829449669 is terminal SUCCESS/no-replay: source 74d17728478691e4c87f99f160a85934f4c361da, release fb066b0eec80017507a4fe586af6ffc9d8dca425, predecessor f78668ba3fb74615b34ed5f1a4737dce5d1c2500; routes200=9, canonical200, lead403, supplier_searches0, real_leads0, production/sibling unchanged, rollback retained. Installed behavior includes disabled canonical-submit fail-closed, truthful current-search ANEX/Andromeda price provenance, and visible LOCAL readiness states. Do NOT repeat this publisher. Continue highest-priority functional #1646 from fresh claims/release; active claim5790142651 owns data.js/source-receipt LOCAL accounting until released. Fresh interactive target click-through/physical Safari remains not_measured because the public browser reader in this session cannot access the target. Do not reopen either completed refactor pass without new defect evidence.",
+    "audit": "ARCHITECTURE.md#search3-prototype-ownership"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
@@ -10008,7 +10028,7 @@
     "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent.",
     "visual_run": 33976375814
   },
-  "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
+  "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/3419",
   "latest_results_chrome_drawer_retirement": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "base_release_sha": "b8d7282a2a90117a0fd7d291d946e6b2315399ae",
@@ -13414,7 +13434,7 @@
     ]
   },
   "development_coordination": {
-    "coordination_issue": 996,
+    "coordination_issue": 3419,
     "entrypoint": "docs/project/anytour-development.md",
     "policy": "Routing only; no new queue, scheduling, code/deploy or production authorization.",
     "workstreams": {

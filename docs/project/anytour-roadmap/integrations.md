@@ -7,7 +7,7 @@
 Перед исполнением каждого пакета эти SHA освежаются; они не разрешают запуск старого кода.
 
 Этот документ разбивает согласованную работу на пакеты и зависимости. Активный
-пакет назначается в #996 и текущей таблице `docs/integrations/anex-search3-autopilot.md`.
+пакет назначается в #3419 и текущей таблице `docs/integrations/anex-search3-autopilot.md`.
 Здесь нет второй очереди автоматического исполнения. Роли моделей ARCH, BUILD,
 REVIEW и ASSIST определены в [модельной политике](models.md); они не заменяют владельца
 компонента, допуска на запись или одобрение production.
@@ -176,7 +176,7 @@ owner-сессии только штатным механизмом входа; 
 существующий механизм публикации. Общая поисковая UI-ветка не затрагивается.
 
 **Вход:** INT-02, INT-03; exact source/artifact provenance и текущий route owner
-в #996. Готовые formatter/gallery/queue pagination не строить повторно.
+в #3419. Готовые formatter/gallery/queue pagination не строить повторно.
 
 **Выход:** собственная защищённая страница
 `/_preview/search3-anex-candidate/anex-hotel-review.php`, noindex/no-store/CSP,
@@ -238,7 +238,7 @@ registry без supplier поисков для проверки каждого a
 поставщиковый контекст и верные условия. Минимум карточки не становится «выбранным туром».
 
 **Владелец:** INT contract + SEARCH consumer, один согласованный writer границы в
-#996/#1646. Owned INT paths: `app/integrations/anex-normalizer.php`, `anex-search.php`,
+#3419/#1646. Owned INT paths: `app/integrations/anex-normalizer.php`, `anex-search.php`,
 `anex-preview-gateway.php`, `v2/api-anex-search3-preview.php`. UI consumers и
 `v2/anex-search3-preview-v1.js` принадлежат SEARCH, не редактируются параллельно.
 
@@ -424,7 +424,7 @@ accepted/review/source_error/unmatched с происхождением. Толь
 **Польза:** владелец проверяет один сайт и один поиск, а добавление источника не
 создаёт самостоятельную версию интерфейса.
 
-**Владелец:** принимающий SEARCH owner в #996, INT поставляет адаптер/контракт и
+**Владелец:** принимающий SEARCH owner в #3419, INT поставляет адаптер/контракт и
 проверяет его границу. ARCH согласует source/target manifest; BUILD одного владельца
 редактирует shared files; REVIEW проверяет отсутствие старых layers. Branch — короткая
 от **свежей** `release/search3-production-ready-v1`, не broad merge #1493.
@@ -490,4 +490,4 @@ whole-site preview publisher фиксирует exact artifact/readback. Физ�
 - [#1647 — панель](https://github.com/pyatkoff/poisk-turov-test/issues/1647),
   [#1717 — Андромеда](https://github.com/pyatkoff/poisk-turov-test/issues/1717),
   [#1685 — авиадоплаты](https://github.com/pyatkoff/poisk-turov-test/pull/1685),
-  [#996 — координация](https://github.com/pyatkoff/poisk-turov-test/issues/996).
+  [#3419 — координация](https://github.com/pyatkoff/poisk-turov-test/issues/3419).

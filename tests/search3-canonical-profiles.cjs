@@ -3,11 +3,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../v2/search3-canonical-profiles-v1.js'),'utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
+function element(tag){return{tag,children:[],attrs:{},events:{},setAttribute(k,v){this.attrs[k]=v;},appendChild(child){this.children.push(child);},addEventListener(k,fn){this.events[k]=fn;}};}
 let checks=0;function check(value,message){assert.ok(value,message);checks++;}
-function setup(route='/_preview/search3-local-candidate/poisk-turov/'){
+function setup(route='/_preview/search3-local-candidate/poisk-turov/',clock={setTimeout,clearTimeout}){
  const events={},calls=[];let changes=0;const root={location:{pathname:route},addEventListener:(name,fn)=>events[name]=fn};
  root.fetch=(url,options)=>new Promise((resolve,reject)=>calls.push({url,options,resolve,reject}));
- vm.runInNewContext(source,{window:root,URLSearchParams,AbortController,setTimeout,clearTimeout});
+ vm.runInNewContext(source,{window:root,document:{createElement:element},URLSearchParams,AbortController,setTimeout:clock.setTimeout,clearTimeout:clock.clearTimeout});
  const owner=root.Search3CanonicalProfilesV1.create(()=>changes++);
  return{owner,root,calls,events,get changes(){return changes;}};
 }
@@ -74,5 +75,81 @@ async function reply(ctx,index,value,status=200){ctx.calls[index].resolve({ok:st
  check(await pending===null&&ctx.calls[0].options.signal.aborted&&ctx.owner.details({anytourHotelId:901})===null,'Late profile cannot survive a search reset');
  for(const invalid of ['0901','0','javascript:901',Number.MAX_SAFE_INTEGER+1])await assert.rejects(ctx.owner.readProfile(invalid));
  check(ctx.calls.length===1,'Invalid own IDs make no request');
+ // Direct profile reads share the result-batch worker slots. A terminal search
+ // must resume hydration when favourites finish, without another render/poll.
+ for(const mode of ['success','http','invalid','network','timeout']){
+  let nextTimer=0;const timers=new Map(),clock={setTimeout:fn=>{timers.set(++nextTimer,fn);return nextTimer;},clearTimeout:key=>timers.delete(key)};
+  ctx=setup('/_preview/search3-local-candidate/prototype-search/',clock);
+  const first=ctx.owner.readProfile(901),settled=mode==='success'?first:assert.rejects(first);
+  const second=ctx.owner.readProfile(902),rows=Array.from({length:105},(_,i)=>h(2000+i)),saved=JSON.stringify(rows);
+  try{
+   check(ctx.owner.read(rows,{sort:'price'}).length===0,'Results await their own profiles during '+mode);await tick();
+   check(ctx.calls.length===2&&ctx.changes===0,'Direct reads occupy both result-batch slots');
+   if(mode==='network'){ctx.calls[0].reject(new Error('Fixture network error'));await tick();}
+   else{
+    if(mode==='timeout'){timers.get(1)();check(ctx.calls[0].options.signal.aborted,'Profile timeout aborts the request');}
+    await reply(ctx,0,{ok:true,catalog:'anytour',source:'anytour-canonical-catalog',item:p(mode==='invalid'?999:901)},mode==='http'?503:200);
+   }
+   await settled;await tick();
+   check(ctx.calls.length===3&&ids(ctx.calls[2]).length===100,'Freed slot resumes current result batch after '+mode+' without read/refresh');
+   check(ctx.changes===0,'Standalone completion does not invent a result render');
+   await reply(ctx,1,{ok:true,catalog:'anytour',source:'anytour-canonical-catalog',item:p(902)});await second;await tick();
+   check(ctx.calls.length===4&&ids(ctx.calls[3]).length===5,'Second freed slot resumes only the remaining bounded batch');
+   check(ids(ctx.calls[2]).concat(ids(ctx.calls[3])).join(',')===rows.map(row=>row.id).join(','),'Exact current legacy IDs once, no favourite ID or duplicate');
+   check(ctx.calls.slice(2).every(call=>call.url.startsWith('/_preview/search3-local-candidate/data/hotel-details-read-v1.php?')&&call.options.cache==='no-store'&&call.options.credentials==='same-origin'),'Resumed batches retain the existing isolated catalogue contract');
+   for(const index of [2,3])await reply(ctx,index,response(ids(ctx.calls[index]),Object.fromEntries(ids(ctx.calls[index]).map(key=>[key,key]))));
+   const projected=ctx.owner.read(rows,{sort:'price'});
+   check(projected.length===105&&projected.every((card,index)=>card.tours[0]===rows[index].tours[0]),'All eligible original offers project after hydration');
+   check(JSON.stringify(rows)===saved&&ctx.calls.length===4&&ctx.changes===2,'No source mutation, extra lookup or refresh loop');
+   check(timers.size===0,'All direct and batch timers are cleared');
+  }finally{ctx.owner.reset();}
+ }
+ // A late old-generation direct read must neither hydrate nor wake new results.
+ ctx=setup('/_preview/search3-local-candidate/prototype-search/');
+ const oldProfile=ctx.owner.readProfile(901),oldError=assert.rejects(ctx.owner.readProfile(902));
+ ctx.owner.read([h(102)],{});ctx.owner.reset();
+ const currentA=ctx.owner.readProfile(903),currentB=ctx.owner.readProfile(904),currentRows=[h(106)];
+ try{
+  ctx.owner.read(currentRows,{});await tick();check(ctx.calls.length===4,'Current direct reads occupy their own generation slots');
+  await reply(ctx,0,{ok:true,catalog:'anytour',source:'anytour-canonical-catalog',item:p(901)});ctx.calls[1].reject(new Error('Old request aborted'));await oldError;await tick();
+  check(await oldProfile===null&&ctx.calls.length===4&&ctx.changes===0&&ctx.owner.details({anytourHotelId:901})===null,'Late success/error cannot resume or populate the new generation');
+  await reply(ctx,2,{ok:true,catalog:'anytour',source:'anytour-canonical-catalog',item:p(903)});await currentA;await tick();
+  check(ctx.calls.length===5&&ids(ctx.calls[4]).join(',')==='106','Only current result IDs resume when a current slot is released');
+  await reply(ctx,3,{ok:true,catalog:'anytour',source:'anytour-canonical-catalog',item:p(904)});await currentB;
+  await reply(ctx,4,response([106],{106:2}));
+  check(ctx.owner.read(currentRows,{}).length===1&&ctx.calls.length===5&&ctx.changes===1,'Current generation completes once without stale offers');
+ }finally{ctx.owner.reset();}
+ // A rejected multi-profile response must not partially change visible cards.
+ // Conflict order must not decide which descriptions/images leak into the view.
+ for(const order of [[0,1,2],[2,0,1],[1,2,0]]){
+  ctx=setup('/_preview/search3-local-candidate/prototype-search/');
+  const baseRows=[h(101),h(102)],rows=[...baseRows,h(103),h(104),h(105),h(106)],rawBefore=JSON.stringify(rows);
+  try{
+   ctx.owner.read(baseRows,{});await tick();await reply(ctx,0,response([101,102],{101:1,102:2}));
+   const original=[ctx.owner.details({anytourHotelId:1}),ctx.owner.details({anytourHotelId:2})],viewBefore=JSON.stringify(ctx.owner.read(baseRows,{}));
+   const higher={...p(1,2),name:'Reviewed new name',description:'Reviewed new description',images:['https://fixture.invalid/new.jpg']},fresh=p(3),conflict={...p(2),name:'Same-revision conflict'};
+   ctx.owner.read(rows,{});await tick();
+   await reply(ctx,1,response([103,104,105,106],{103:1,104:2,105:3},[106],order.map(i=>[higher,fresh,conflict][i])));
+   check(ctx.owner.details({anytourHotelId:1})===original[0]&&ctx.owner.details({anytourHotelId:2})===original[1],'Rejected batch preserves existing profile objects for order '+order);
+   check(ctx.owner.details({anytourHotelId:3})===null,'Rejected batch cannot leak a new unlinked profile');
+   check(JSON.stringify(ctx.owner.read(rows,{}))===viewBefore,'Rejected batch leaves card names/photos/descriptions/offer links unchanged');
+   check(ctx.owner.read(rows,{})[0].tours[0]===baseRows[0].tours[0]&&JSON.stringify(rows)===rawBefore,'Rejected batch retains exact source offers and prices');
+   await tick();check(ctx.calls.length===2,'Conflicting response does not trigger an automatic retry loop');
+   const output={prepend(node){this.node=node;}};ctx.owner.status(output);
+   const retry=output.node&&output.node.children.find(node=>node.tag==='button');
+   check(output.node&&output.node.attrs.role==='alert'&&retry&&retry.textContent==='Повторить загрузку','Conflict remains a visible retryable error, not an empty catalogue');
+   retry.events.click();ctx.owner.read(rows,{});await tick();
+   check(ctx.calls.length===3&&ids(ctx.calls[2]).join(',')==='103,104,105,106','Explicit retry rereads the whole rejected batch, including its alleged missing ID');
+   await reply(ctx,2,response([103,104,105,106],{103:1,104:2,105:3},[106],[higher,p(2),fresh]));
+   const recovered=ctx.owner.read(rows,{});
+   check(recovered.length===3&&recovered[0].name===higher.name&&recovered[0].images[0]===higher.images[0]&&recovered[0].description===higher.description,'Valid retry commits all accepted profiles together');
+   check(recovered.map(card=>card.tours.length).join(',')==='2,2,1'&&recovered[0].tours[1]===rows[2].tours[0],'Valid retry keeps exact original offers under the right own hotel');
+   const updated=ctx.owner.details({anytourHotelId:1}),extended=[...rows,h(107)];ctx.owner.read(extended,{});await tick();
+   check(ctx.calls.length===4&&ids(ctx.calls[3]).join(',')==='107','Only a successful missing-ID response suppresses later redundant reads');
+   await reply(ctx,3,response([107],{107:1},[],[{...p(1),name:'Older revision must not overwrite'}]));
+   check(ctx.owner.details({anytourHotelId:1})===updated&&ctx.owner.read(extended,{})[0].tours.length===3,'Lower revision keeps the newer accepted profile and existing linkage semantics');
+   check(JSON.stringify(rows)===rawBefore&&ctx.calls.length===4,'Recovery has no source mutation or extra requests');
+  }finally{ctx.owner.reset();}
+ }
  console.log('SEARCH3_CANONICAL_PROFILES_OK checks='+checks+' supplier_calls=0 db_writes=0');
 })().catch(e=>{console.error(e);process.exitCode=1;});

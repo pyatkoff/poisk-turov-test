@@ -1,6 +1,6 @@
 (function(root){
   'use strict';
-  let draft={name:'',phone:'',comment:''};
+  let draft={name:'',phone:'',comment:''},draftRevision=0;
   const preview=new URL(root.V2_CONFIG.leadApi,root.location.href).pathname.endsWith('/preview-lead-disabled.php');
   function markup(){
     return `<form id="prototype-lead-form">
@@ -15,28 +15,31 @@
   function action(){return `<button class="primary" type="submit" form="prototype-lead-form">${preview?'Проверить заявку':'Отправить заявку'}</button>`;}
   function bind(offer){
     const form=document.getElementById('prototype-lead-form');if(!form)return;
+    draftRevision++;
     const phone=form.elements.phone,button=document.querySelector('[type="submit"][form="prototype-lead-form"]'),message=form.querySelector('.lead-message');
     for(const name of ['name','phone','comment'])form.elements[name].value=draft[name];
     let session;
     try{session=root.AnyTourPrototypeData.leadSession(offer);}
-    catch(error){message.textContent=error.message;message.setAttribute('role','alert');button.disabled=true;return;}
+    catch(error){message.textContent=error.message;message.setAttribute('role','alert');button.disabled=true;message.scrollIntoView({block:'nearest'});}
     form.addEventListener('input',()=>{
+      draftRevision++;
       for(const name of ['name','phone','comment'])draft[name]=form.elements[name].value;
       root.V2LeadFormGuard.validatePhone(phone);
-      if(preview){message.textContent='';delete form.dataset.checked;}
+      if(preview&&session){message.textContent='';delete form.dataset.checked;}
     });
     form.addEventListener('submit',async event=>{
       event.preventDefault();
-      if(form.dataset.sent==='1'||button.disabled)return;
+      if(!session||form.dataset.sent==='1'||button.disabled)return;
       if(!root.V2LeadFormGuard.validatePhone(phone)||!form.reportValidity()){phone.reportValidity();return;}
       try{
         // Construct through the same owner even in preview; no preview request is sent.
         session.payload(new FormData(form));
         if(preview){form.dataset.checked='1';message.setAttribute('role','status');message.textContent='Данные проверены. Тур, выбранный рейс и контакты готовы к передаче. В этой версии заявка не отправлена.';message.scrollIntoView({block:'nearest'});return;}
-        if(await session.submit(form,{button}))draft={name:'',phone:'',comment:''};
+        const submittedRevision=draftRevision;
+        if(await session.submit(form,{button})&&draftRevision===submittedRevision)reset();
       }catch(error){message.textContent=error.message;message.setAttribute('role','alert');}
     });
   }
-  function reset(){draft={name:'',phone:'',comment:''};}
+  function reset(){draftRevision++;draft={name:'',phone:'',comment:''};}
   root.AnyTourPrototypeLead=Object.freeze({markup,action,bind,reset});
 })(window);
