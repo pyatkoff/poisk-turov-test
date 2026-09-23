@@ -11,9 +11,9 @@ permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-common4-mass-current-1971-20260924-c35-c135-v1, cancel-in-progress: false}
 
 env:
-  OP: hotel-match-common4-mass-current-1971-20260924-c35-c135-v2
+  OP: hotel-match-common4-mass-current-1971-20260924-c35-c135-v3
   BASE: 1ae5390ff969c860441427e0ef476ad7443f54e7
-  CLAIM: '5803280372'
+  CLAIM: '5803366222'
   C35_SHA: b68accef8caadc3e49acb87a542ef41700ade8c924d936c036597cab1bcc7538
   C135_SHA: 9abce890e0bbf83a36c20bd745822e2a3740970df75f07176cb3d882b11c25fd
 
@@ -70,7 +70,7 @@ jobs:
           op=".anytoour-match/operations/$OP"
           python3 - <<'PY'
           import json,os,pathlib
-          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read'},sort_keys=True)+'\\n')
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read'},sort_keys=True)+'\n')
           PY
           ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
           scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
