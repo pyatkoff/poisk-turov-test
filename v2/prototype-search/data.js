@@ -535,6 +535,22 @@
       timer=setTimeout(()=>pollSearch(run),2500);
     }catch(error){await searchError(run,error);}
   }
+  async function resumeCached(s, callback, hotelIds=[], filters={}) {
+    const plan=requestPlan(s,hotelIds,filters),p=plan.request,epoch=stop();
+    currentSupplierScope=plan.scope;notify=callback;context=structuredClone(s);searchParams=structuredClone(p);
+    raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
+    const skipped=()=>({status:'skipped',hotels:0,offers:0});
+    const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),
+      controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:false,
+      continueBaseline:null,lastProgress:-10,lastRead:0,deadline:0,
+      sourceCounts:{tourvisor:skipped(),anex:skipped(),andromeda:skipped()}};
+    activeSearch=run;callback({type:'loading',cachedResume:true});if(!current(run))return false;
+    run.database=readDatabase(run);await run.database;if(!current(run))return false;
+    run.pending=false;run.canContinue=false;
+    notify({type:'complete',cachedResume:true,partial:run.sourceCounts.database?.status!=='complete',
+      canContinue:false,retryRead:false,resultLimitReached:false,sources:structuredClone(run.sourceCounts),union:canonicalUnion()});
+    return true;
+  }
   async function search(s, callback, hotelIds=[], filters={}) {
     const plan=requestPlan(s,hotelIds,filters),p=plan.request,epoch=stop();currentSupplierScope=plan.scope;notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
     const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:true,continueBaseline:null,lastProgress:-10,lastRead:0,deadline:0,sourceCounts:{}};
@@ -743,5 +759,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);
