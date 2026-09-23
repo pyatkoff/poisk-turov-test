@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 const HMC14_OP='hotel-match-common4-tail-writer-1971-20260924-v15';
-const HMC14_AUDIT_OP='hotel-match-common4-tail-current-1971-20260924-v15';
+const HMC14_AUDIT_OP='hotel-match-common4-mass-current-1971-20260924-v14';
 const HMC14_TOTAL_READY=367;
 const HMC14_ALLOWED=['bgoperator'=>18,'operator_315'=>25,'operator_342'=>43];
 
