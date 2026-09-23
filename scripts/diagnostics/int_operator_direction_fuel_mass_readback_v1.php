@@ -101,6 +101,31 @@ function odfr_owner_policy(mixed $value, string $family, array $direction): bool
         && ($direction['operator_family'] ?? null) === 'fun_and_sun'
         && ($direction['destination'] ?? null) === 'country:4';
 }
+function odfr_direction_matches(mixed $value, array $expected): bool {
+    if (!is_array($value) || array_is_list($value)) return false;
+    $actual = $value;
+    ksort($actual, SORT_STRING);
+    $canonical = $expected;
+    ksort($canonical, SORT_STRING);
+    return $actual === $canonical;
+}
+function odfr_direction_summary(mixed $value): array {
+    if (!is_array($value) || array_is_list($value)) return ['shape'=>'invalid'];
+    $keys = array_keys($value);
+    sort($keys, SORT_STRING);
+    $family = $value['operator_family'] ?? null;
+    $market = $value['market'] ?? null;
+    $destination = $value['destination'] ?? null;
+    return [
+        'keys'=>$keys,
+        'operator_family'=>is_string($family) && in_array($family, ['fun_and_sun','intourist','biblio_globus'], true)
+            ? $family : null,
+        'market'=>is_string($market) && preg_match('/\Adeparture:[1-9][0-9]{0,12}\z/D', $market) === 1
+            ? $market : null,
+        'destination'=>is_string($destination) && preg_match('/\Acountry:[1-9][0-9]{0,12}\z/D', $destination) === 1
+            ? $destination : null,
+    ];
+}
 function odfr_set_add(array &$set, mixed $v): void {
     $key = is_scalar($v) || $v === null
         ? gettype($v) . ':' . (string)$v
@@ -118,8 +143,10 @@ function odfr_evaluate_rows(array $dbRows, array $retainedFamilies, string $fami
     $directionRows = 0; $directionValid = 0; $readyNonTarget = 0; $payloadHashInvalid = 0;
     $targetMissingRetained = 0; $targetReadyNoDirection = 0; $badReadyBoundary = 0;
     $validationFailures = []; $listingMismatch = 0;
+    $listingEqualsBase = 0; $listingEqualsTotal = 0; $listingInvalid = 0; $listingOther = 0;
     $ruleAmounts=[]; $ruleCurrencies=[]; $ruleUnits=[]; $ruleRelations=[]; $ruleNativeTotals=[];
     $rulePassengers=[]; $ruleDirections=[]; $ruleAuthorities=[]; $fuelSources=[];
+    $actualDirectionSummaries=[]; $actualDirectionDigests=[];
     $fxRates=[]; $fuelCharges=[]; $basePrices=[]; $derivedTotals=[]; $displayPrices=[];
     $expectedDirection = ['operator_family'=>$family, 'market'=>'departure:'.$departure, 'destination'=>'country:'.$country];
 
@@ -160,6 +187,13 @@ function odfr_evaluate_rows(array $dbRows, array $retainedFamilies, string $fami
         $money = is_array($payload['money'] ?? null) ? $payload['money'] : [];
         $rule = is_array($money['operator_fuel_rule'] ?? null) ? $money['operator_fuel_rule'] : null;
         if ($rule === null) { ++$targetReadyNoDirection; continue; }
+        $actualDirection = $rule['direction'] ?? null;
+        $directionSummary = odfr_direction_summary($actualDirection);
+        odfr_set_add($actualDirectionSummaries, $directionSummary);
+        odfr_set_add($actualDirectionDigests, hash('sha256', json_encode(
+            $directionSummary,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+        )));
         $hasOwnerPolicy = array_key_exists('owner_policy', $rule);
         $ownerPolicyValid = $hasOwnerPolicy && odfr_owner_policy($rule['owner_policy'], $family, $expectedDirection);
         $authority = $hasOwnerPolicy ? 'owner_policy' : 'supplier_direction_evidence';
@@ -195,13 +229,14 @@ function odfr_evaluate_rows(array $dbRows, array $retainedFamilies, string $fami
         $baseUnits = odfr_units($base['amount'] ?? null);
         $totalUnits = odfr_units($total['amount'] ?? null);
         $displayUnits = odfr_units((string)($row['display_price'] ?? ''));
+        $listingUnits = odfr_units($payload['listingPrice'] ?? null);
         $expectedTotal = ($baseUnits !== null && $converted !== null)
             ? $baseUnits + ($relation === 'excluded' ? $converted : 0) : null;
 
         $checks = [
             'rule_schema'=>(($rule['schema_version'] ?? null) === 2),
             'rule_kind'=>(($rule['kind'] ?? null) === 'fuel'),
-            'rule_direction'=>(($rule['direction'] ?? null) === $expectedDirection),
+            'rule_direction'=>odfr_direction_matches($actualDirection, $expectedDirection),
             'rule_unit'=>(in_array($unit, ['per_person_one_way','party_roundtrip'], true)),
             'rule_relation'=>(in_array($relation, ['included','excluded'], true)),
             'rule_amount'=>($amount !== null && $amount > 0),
@@ -235,7 +270,11 @@ function odfr_evaluate_rows(array $dbRows, array $retainedFamilies, string $fami
         }
         if ($valid) ++$directionValid;
 
-        if (($payload['listingPrice'] ?? null) !== ($total['amount'] ?? null)) ++$listingMismatch;
+        if ($listingUnits === null) ++$listingInvalid;
+        elseif ($totalUnits !== null && $listingUnits === $totalUnits) ++$listingEqualsTotal;
+        elseif ($baseUnits !== null && $listingUnits === $baseUnits) ++$listingEqualsBase;
+        else ++$listingOther;
+        if ($listingUnits === null || $totalUnits === null || $listingUnits !== $totalUnits) ++$listingMismatch;
         odfr_set_add($ruleAmounts, $rule['amount'] ?? null);
         odfr_set_add($ruleCurrencies, $currency);
         odfr_set_add($ruleUnits, $unit);
@@ -268,7 +307,13 @@ function odfr_evaluate_rows(array $dbRows, array $retainedFamilies, string $fami
         'payload_hash_invalid_count'=>$payloadHashInvalid,
         'db_rows_missing_retained_count'=>$targetMissingRetained,
         'payload_listing_vs_total_mismatch_count'=>$listingMismatch,
+        'payload_listing_equals_base_count'=>$listingEqualsBase,
+        'payload_listing_equals_total_count'=>$listingEqualsTotal,
+        'payload_listing_invalid_count'=>$listingInvalid,
+        'payload_listing_other_count'=>$listingOther,
         'validation_failure_counts'=>$validationFailures,
+        'actual_rule_direction_summaries'=>odfr_values($actualDirectionSummaries),
+        'actual_rule_direction_summary_sha256'=>odfr_values($actualDirectionDigests),
         'rule_amounts'=>odfr_values($ruleAmounts),
         'rule_currencies'=>odfr_values($ruleCurrencies),
         'rule_units'=>odfr_values($ruleUnits),
