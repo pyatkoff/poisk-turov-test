@@ -26,7 +26,7 @@ const params={
     const response=await fetch('/_preview/search3-anex-candidate/api-andromeda-search3-preview.php',{
       method:'POST',credentials:'same-origin',cache:'no-store',
       headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'AnyTourSearch3'},
-      body:JSON.stringify({generation:910004,params})
+      body:JSON.stringify({generation:910005,page:1,params})
     });
     let payload;try{payload=await response.json();}catch{payload={error:'non_json'};}
     return {status:response.status,payload};
