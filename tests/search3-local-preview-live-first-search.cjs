@@ -73,7 +73,7 @@ function endpointKind(url) {
     } catch {
       return false;
     }
-  }, { timeout: 150000 });
+  }, null, { timeout: 150000 });
 
   const receipt = await page.evaluate(() => JSON.parse(document.querySelector('#results').dataset.searchReceipt));
   const cardCount = await page.locator('.hotel-card').count();
