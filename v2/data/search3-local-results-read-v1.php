@@ -236,14 +236,24 @@ function search3_local_calendar_int(mixed $raw,int $min,int $max,string $name): 
 /** Read-only exact-party calendar through the already-public LOCAL Search3 endpoint. */
 function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $now=null): array
 {
-    $allowed=['action','departureId','countryId','regionId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'];
+    $allowed=['action','departureId','countryId','regionId','regionIds','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'];
     foreach(array_keys($input) as $key)if(!in_array($key,$allowed,true))throw new InvalidArgumentException('Invalid price calendar envelope');
     foreach(['departureId','countryId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'] as $key)if(!array_key_exists($key,$input))throw new InvalidArgumentException('Invalid price calendar envelope');
     if(($input['action']??null)!=='price_calendar'||!is_array($input['childs']))throw new InvalidArgumentException('Invalid price calendar envelope');
 
     $departureId=search3_local_calendar_int($input['departureId'],1,1000000,'departureId');
     $countryId=search3_local_calendar_int($input['countryId'],1,1000000,'countryId');
-    $regionId=search3_local_calendar_int($input['regionId']??0,0,1000000,'regionId');
+    $legacyRegionId=search3_local_calendar_int($input['regionId']??0,0,1000000,'regionId');
+    $regionIds=[];
+    if(array_key_exists('regionIds',$input)){
+        if(!is_array($input['regionIds'])||count($input['regionIds'])>20)throw new InvalidArgumentException('Invalid regionIds');
+        foreach($input['regionIds'] as $rawRegionId)$regionIds[search3_local_calendar_int($rawRegionId,1,1000000,'regionIds')]=true;
+        $regionIds=array_keys($regionIds);sort($regionIds,SORT_NUMERIC);
+    }
+    if($legacyRegionId>0){
+        if($regionIds!==[]&&$regionIds!==[$legacyRegionId])throw new InvalidArgumentException('Ambiguous region scope');
+        $regionIds=[$legacyRegionId];
+    }
     $nightsFrom=search3_local_calendar_int($input['nightsFrom'],1,30,'nightsFrom');
     $nightsTo=search3_local_calendar_int($input['nightsTo'],1,30,'nightsTo');
     if($nightsTo<$nightsFrom)throw new InvalidArgumentException('Invalid nights');
@@ -258,7 +268,12 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
     $today=$clock->setTime(0,0);
     if($from<$today)throw new InvalidArgumentException('dateFrom must not be in the past');
 
-    $regionSql=$regionId>0?' AND o.region_id=:region_id':'';
+    $regionParams=[];$regionSql='';
+    if($regionIds!==[]){
+        $placeholders=[];
+        foreach($regionIds as $index=>$regionId){$key='region_id_'.$index;$placeholders[]=':'.$key;$regionParams[$key]=$regionId;}
+        $regionSql=' AND o.region_id IN ('.implode(',',$placeholders).')';
+    }
     $sql="WITH ranked AS (
         SELECT o.*,
                ROW_NUMBER() OVER (
@@ -299,11 +314,11 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
         'adults'=>$party['adults'],'children_count'=>$party['childrenCount'],
         'child_ages_signature'=>$party['childAgesSignature'],
     ];
-    if($regionId>0)$params['region_id']=$regionId;
+    $params+=$regionParams;
     $stmt->execute($params);
     $calendar=v2_price_calendar_build($stmt->fetchAll(PDO::FETCH_ASSOC)?:[],$dateFrom,$dateTo);
     return $calendar+[
-        'ok'=>true,'departureId'=>$departureId,'countryId'=>$countryId,'regionId'=>$regionId>0?$regionId:null,
+        'ok'=>true,'departureId'=>$departureId,'countryId'=>$countryId,'regionId'=>count($regionIds)===1?$regionIds[0]:null,'regionIds'=>$regionIds,
         'nightsFrom'=>$nightsFrom,'nightsTo'=>$nightsTo,
         'adults'=>$party['adults'],'childrenCount'=>$party['childrenCount'],
         'childAges'=>$party['childAges'],'childAgesSignature'=>$party['childAgesSignature'],
