@@ -62,6 +62,43 @@ class ParseTest(unittest.TestCase):
             with self.subTest(bad=bad),self.assertRaises(ValueError):
                 m.parse_command(bad)
 
+    def test_funsun_direction_fx_seed(self):
+        a='int-andromeda-funsun-antalya-fuel-probe-20260923-v1'
+        b='int-andromeda-funsun-antalya-fuel-probe-20260923-v2'
+        v=m.parse_command(
+            f'/run-int-server-v1 {SHA} funsun-direction-fx-seed '
+            f'int-andromeda-funsun-turkey-fx-seed-20260923-v1 {a} {b}'
+        )
+        self.assertEqual('funsun-direction-fx-seed',v['mode'])
+        self.assertEqual(a,v['probe_operation_a']);self.assertEqual(b,v['probe_operation_b'])
+        for bad in [
+            f'/run-int-server-v1 {SHA} funsun-direction-fx-seed int-andromeda-funsun-turkey-fx-seed-20260923-v1 {a} {a}',
+            f'/run-int-server-v1 {SHA} funsun-direction-fx-seed int-anex-funsun-turkey-fx-seed-20260923-v1 {a} {b}',
+            f'/run-int-server-v1 {SHA} funsun-direction-fx-seed int-andromeda-funsun-turkey-seed-20260923-v1 {a} {b}',
+            f'/run-int-server-v1 {SHA} funsun-direction-fx-seed int-andromeda-funsun-turkey-fx-seed-20260923-v1 int-anex-bad-20260923-v1 {b}',
+        ]:
+            with self.subTest(bad=bad),self.assertRaises(ValueError):
+                m.parse_command(bad)
+
+    def test_operator_direction_fuel_readback(self):
+        target='int-andromeda-funsun-turkey-autosave-20260923-v1'
+        v=m.parse_command(
+            f'/run-int-server-v1 {SHA} operator-direction-fuel-readback '
+            f'int-andromeda-funsun-direction-readback-20260923-v1 {target} fun_and_sun 1 4'
+        )
+        self.assertEqual('operator-direction-fuel-readback',v['mode'])
+        self.assertEqual(target,v['target_operation_id'])
+        self.assertEqual('fun_and_sun',v['operator_family'])
+        self.assertEqual(1,v['departure']);self.assertEqual(4,v['country'])
+        for bad in [
+            f'/run-int-server-v1 {SHA} operator-direction-fuel-readback int-anex-readback-20260923-v1 {target} fun_and_sun 1 4',
+            f'/run-int-server-v1 {SHA} operator-direction-fuel-readback int-andromeda-readback-20260923-v1 {target} funsun 1 4',
+            f'/run-int-server-v1 {SHA} operator-direction-fuel-readback int-andromeda-readback-20260923-v1 int-anex-bad-20260923-v1 fun_and_sun 1 4',
+            f'/run-int-server-v1 {SHA} operator-direction-fuel-readback int-andromeda-readback-20260923-v1 {target} fun_and_sun 0 4',
+        ]:
+            with self.subTest(bad=bad),self.assertRaises(ValueError):
+                m.parse_command(bad)
+
     def test_funsun_direction_seed_source_is_bounded(self):
         seed=m.FUNSUN_DIRECTION_FUEL_SEED_PHP
         for required in [
@@ -463,6 +500,12 @@ class ContractTest(unittest.TestCase):
                   "funsun-direction-fuel-seed","funsun_direction_fuel_seed",
                   "funsun_direction_fuel_seed_php_b64","direction_fuel_seed_acceptance",
                   "direction_fuel_seed_db_drift","int-funsun-direction-fuel-seed-v1",
+                  "funsun-direction-fx-seed","funsun_direction_fx_seed",
+                  "int_funsun_direction_fx_seed_v1.php","direction_fx_seed_acceptance",
+                  "direction_fx_seed_db_drift","fuel_rule_writes","private_evidence_writes",
+                  "operator-direction-fuel-readback","operator_direction_fuel_readback",
+                  "int_operator_direction_fuel_mass_readback_v1.php","direction_fuel_readback_acceptance",
+                  "direction_fuel_readback_db_drift","INT_DIRECTION_FUEL_READBACK_OPERATION",
                   "AnyTourOperatorFuelRuleStoreV1::append","per_person_one_way",
                   "LOCAL_READER_MISSING","LOCAL_DB_CONNECTION","LOCAL_DB_NOT_CONFIGURED",
                   "require_once $config","errorSha256","attempt_state","package_record",
