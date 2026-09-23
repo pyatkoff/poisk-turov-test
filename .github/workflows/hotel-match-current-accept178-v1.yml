@@ -1,0 +1,178 @@
+name: MATCH CURRENT acceptance of remaining178
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_current_accept178_v1.php
+      - tests/hotel_match_current_accept178_test.php
+      - .github/workflows/hotel-match-current-accept178-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-current-accept178-1971-20260921-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-current-accept178-1971-20260921-v1
+  BASE_SHA: 2321db22b5dede7f1cb9b6d5dc9a098521ed86f6
+  SCRIPT_PATH: scripts/diagnostics/hotel_match_current_accept178_v1.php
+  TEST_PATH: tests/hotel_match_current_accept178_test.php
+  WORKFLOW_PATH: .github/workflows/hotel-match-current-accept178-v1.yml
+  SCRIPT_SHA256: 3e483ee2ce9869179bebbf93e3bbf875bd016cb6dace7aa65b78cb8d128f5bb1
+  TEST_SHA256: edc3348eb6aaacc56f9bdbf3ee26df796204ddbb3b6a7d20706468cb6a627202
+  RESOLVER_SHA256: 805ad9509de681c95a18ee7f96ae8e1b77d1eb2b29221e35e2d38ce9b6f52754
+  CLAIM: '5764370246'
+  CLAIM_SHA256: f83e45255e2aa23e5f408c5b04b1371996ff9ea474327d7866a819e25e317888
+jobs:
+  accept:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-current-accept178-1971-20260921-v1' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and new owner scope
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          printf '%s\n' 'pre_access_validation' > terminal/stage.txt
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import hashlib,os,pathlib,subprocess
+          want={os.environ[k] for k in ['SCRIPT_PATH','TEST_PATH','WORKFLOW_PATH']}
+          got=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert got==want,(got,want)
+          for name,path in [('SCRIPT_SHA256',os.environ['SCRIPT_PATH']),('TEST_SHA256',os.environ['TEST_PATH']),('RESOLVER_SHA256','app/integrations/andromeda-hotel-resolver.php')]:
+              assert hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()==os.environ[name],name
+          PY
+          php -l "$SCRIPT_PATH"; php -l "$TEST_PATH"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import hashlib,json,os
+          c=json.load(open('input/claim.json'))
+          assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url']=='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/issues/2530'
+          assert c['created_at']==c['updated_at']=='2026-09-21T17:03:35Z'
+          assert hashlib.sha256(c['body'].encode()).hexdigest()==os.environ['CLAIM_SHA256']
+          for s in [os.environ['OPERATION_ID'],os.environ['BASE_SHA'],os.environ['SCRIPT_PATH'],os.environ['TEST_PATH'],os.environ['WORKFLOW_PATH'],'>=100','no supplier HTTP','SERIALIZABLE']:
+              assert s in c['body'],s
+          PY
+      - name: Verify immutable evidence and predecessor no-write result
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,io,os,pathlib,subprocess,zipfile
+          specs=[
+          ('10634643226','0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0',{'reconciliation.json':('v9.json','0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814')}),
+          ('10635515907','ecb6c14ecfcb97c7a8c6b10076d1ecbc5e91c191578d4d9c54111a7f3f0b6fb9',{'result.json':('precommit178.json','8cb977214acf20bd93226103d752119d0615bb49692aa95191ede30bec4a0d1d')}),
+          ('10642134460','2bfb467a251c2bedf39ed7523fd09dc3d267556f0a8e192a5b2f50cb51e4db4a',{'result.json':('committed328.json','e7e8b2aa9210514629d2849307ee436608b283b22700dabb12020cea8fafe9f7')}),
+          ('10647515176','38ce61fdfc288cb122546764395b5b77f358e5746cbd4e06704ce57683310436',{'result.json':('terminal178.json','be99d0f141ca2feac27dcb3bc1c760bd91b136f87694636db98ad80a023cd449')}),
+          ('10645399682','bf216bbe9159c4243c3884a055316cdc61f601aede30d931de48e0c60e629e1d',{
+            'andromeda_hotel_identities.json':('andromeda_hotel_identities.json','2135ee882e58ad2524075897239556c683860bfef8cc5d7fe4db496a50244a1d'),
+            'catalog_hotels.json':('catalog_hotels.json','70d5c41ba73979080723017759bd95a903667c67f8ffa571497560e93af9a011'),
+            'anex_hotel_decisions.json':('anex_hotel_decisions.json','7feabb1cb259bd9dc52180cdbdf4b0a85033de0c25293419b771e4f57c9ea056')}),
+          ('10649746132','313c19db6ef1cebb04162195eed9b8d108510ccb5efbfe81a8648b5a018355f3',{'result.json':('catalog-tail.json','4918cfb628799f11c2f0a22d7be2d38f695653877c183b01c6dd1df17f16b903')})]
+          for aid,zsha,files in specs:
+              b=subprocess.check_output(['gh','api','repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/artifacts/'+aid+'/zip'])
+              assert hashlib.sha256(b).hexdigest()==zsha,(aid,'zip')
+              with zipfile.ZipFile(io.BytesIO(b)) as z:
+                  for member,(out,h) in files.items():
+                      assert z.namelist().count(member)==1
+                      data=z.read(member); assert hashlib.sha256(data).hexdigest()==h,(aid,member)
+                      pathlib.Path('input',out).write_bytes(data)
+          PY
+      - name: Run full offline predicate transaction and no-replay tests
+        run: |
+          set -euo pipefail
+          MATCH_INPUT_DIR="$PWD/input" php "$SCRIPT_PATH" --plan > terminal/offline-plan.json
+          php -d memory_limit=1G "$TEST_PATH" "$PWD/input" > terminal/offline-tests.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('terminal/offline-plan.json'));t=json.load(open('terminal/offline-tests.json'))
+          assert p['candidates']==178 and p['unique_hotels']==150 and len(set(p['keys']))==178
+          assert t['state']=='offline_tests_passed' and t['full_predicate_matches']==178 and t['exclusive_no_replay'] is True
+          print(json.dumps(t))
+          PY
+      - name: Reserve new CURRENT acceptance before database access
+        env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import datetime,json,os
+          p=json.load(open('terminal/offline-plan.json'))
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db','source_sha':os.environ['HEAD_SHA'],'script_sha256':os.environ['SCRIPT_SHA256'],'candidate_keys':p['keys'],'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider_calls':0,'no_replay':True}
+          with open('reservation/reservation.json','x') as f:f.write(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-current-accept178-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Require exact-head Security before server access
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD_SHA']]
+              if runs and max(runs,key=lambda x:x['id'])['status']=='completed':
+                  assert max(runs,key=lambda x:x['id'])['conclusion']=='success';break
+              time.sleep(5)
+          else:raise SystemExit('exact_security_not_green')
+          PY
+      - name: Execute one fresh guarded CURRENT acceptance
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/match-current-key"; known="$RUNNER_TEMP/match-current-known"; trap 'rm -f "$key" "$known"' EXIT
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"; script="${SCRIPT_PATH##*/}"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          printf '%s\n' 'server_preflight' > terminal/stage.txt
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; cd \"\$HOME/.anytoour-match/operations/hotel-match-v9-provider178-write-1971-20260921-v1\"; echo 'be99d0f141ca2feac27dcb3bc1c760bd91b136f87694636db98ad80a023cd449  result.json' | sha256sum -c -; test ! -e \"\$HOME/$op\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\"" > terminal/predecessor-check.txt
+          scp "${opts[@]}" "$SCRIPT_PATH" app/integrations/andromeda-hotel-resolver.php input/v9.json input/precommit178.json input/committed328.json input/terminal178.json reservation/reservation.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op/payload\"; echo '$SCRIPT_SHA256  $script' | sha256sum -c - && echo '$RESOLVER_SHA256  andromeda-hotel-resolver.php' | sha256sum -c - && php -l '$script'" > terminal/server-preflight.txt
+          printf '%s\n' 'current_acceptance_started_no_replay' > terminal/stage.txt
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_DIR=\"\$HOME/$op/payload\" MATCH_SOURCE_SHA='$HEAD_SHA' php \"\$HOME/$op/payload/$script\" --accept-current" > terminal/remote.stdout 2> terminal/remote.stderr
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > terminal/exit-code.txt
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\" && tar -czf - -- *.json" > terminal/server.tgz
+      - name: Verify actual receipt and exact written membership
+        env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          allowed={'started.json','capture.json','plan.json','pre-commit.json','commit-attempt.json','result.json','receipt.json','failure.json'}
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              assert set(t.getnames())<=allowed
+              for n in t.getnames():
+                  m=t.getmember(n);assert m.isfile();pathlib.Path('terminal',n).write_bytes(t.extractfile(m).read())
+          assert pathlib.Path('terminal/exit-code.txt').read_text().strip()=='0','execution_failed_no_replay'
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'));p=json.load(open('terminal/offline-plan.json'))
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID'] and r['source_sha']==q['source_sha']==os.environ['HEAD_SHA']
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest() and q['no_replay'] is True
+          assert r['state']==q['state'] and r['input_candidates']==178
+          assert all(r[k]==0 for k in ['provider_calls','tourvisor_calls','samo_calls','andromeda_calls'])
+          assert r['mapping_writes']==q['mapping_writes']==r['database_writes']==q['database_writes']
+          held={x['key'] for x in r['holds']};w=r.get('written_rows',[]);keys={x['supplier_namespace']+'|'+x['external_hotel_id'] for x in w}
+          assert not held&keys
+          if r['state']=='committed_verified':
+              assert 100<=len(w)==len(keys)==r['current_safe']==r['mapping_writes']==r['post_commit_verified']==r['resolver_verified']<=178
+              assert r['readback_verified'] is q['readback_verified'] is True and keys|held==set(p['keys'])
+              pre=json.load(open('input/precommit178.json'));expected={x['supplier_namespace']+'|'+x['native_hotel_id']:x for x in pre['rows']}
+              for x in w:
+                  e=expected[x['supplier_namespace']+'|'+x['external_hotel_id']]
+                  assert x['local_hotel_id']==e['tv_hotel_id'] and x['canonical_samo_id']==str(e['canonical_anchor']['external_hotel_id'])
+              done=json.load(open('input/committed328.json'))['written_rows']
+              assert not keys&{x['supplier_namespace']+'|'+x['external_hotel_id'] for x in done}
+              assert not {(x['supplier_namespace'],x['local_hotel_id']) for x in w}&{(x['supplier_namespace'],x['local_hotel_id']) for x in done}
+          else:
+              assert r['state']=='completed_no_write_below_threshold' and r['mapping_writes']==0 and r['current_safe']<100
+          pathlib.Path('terminal/stage.txt').write_text(r['state']+'\n')
+          summary={k:r[k] for k in ['operation','state','current_safe','mapping_writes','readback_verified','hold_counts']}
+          summary['result_sha256']=q['result_sha256'];pathlib.Path('terminal/summary.json').write_text(json.dumps(summary,indent=2)+'\n');print(json.dumps(summary))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-current-accept178-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
