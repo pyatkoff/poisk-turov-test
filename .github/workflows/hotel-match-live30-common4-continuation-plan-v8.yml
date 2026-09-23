@@ -14,7 +14,7 @@ env:
   CLAIM: '5802082676'
 jobs:
   unit:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-continuation-plan-v8-20260923'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-continuation-plan-v9-20260923'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -27,7 +27,7 @@ jobs:
           ! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_live30_common4_continuation_plan_v8.php
   live:
     needs: unit
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-continuation-plan-v8-20260923'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-continuation-plan-v9-20260923'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
