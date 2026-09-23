@@ -3,7 +3,9 @@
   if (window.AnyTourPrototypeInventoryScopeRefreshV1) return;
 
   const form = document.getElementById('search-form');
-  if (!form || typeof form.requestSubmit !== 'function') return;
+  const data = window.AnyTourPrototypeData;
+  if (!form || typeof form.requestSubmit !== 'function'
+    || !data || typeof data.supplierScope !== 'function' || typeof data.supplierScopeCovered !== 'function') return;
 
   const values = (params, key) => [...new Set((params.get(key) || '').split('|').filter(Boolean))].sort();
   const amount = (params, key, fallback) => {
@@ -13,58 +15,35 @@
   };
   const scope = () => {
     const params = new URLSearchParams(location.search);
-    return {
-      searched: params.get('searched') === '1',
-      hotel: params.get('hotel') || '',
+    if (params.get('searched') !== '1') return null;
+    const min = amount(params, 'min', 0), max = amount(params, 'max', null);
+    if (!Number.isFinite(min) || max !== null && !Number.isFinite(max)) return null;
+    const hotel = params.get('hotel') || '', hotelId = /^[1-9]\d*$/.test(hotel) && Number.isSafeInteger(Number(hotel)) ? Number(hotel) : 0;
+    const filters = {
+      hotelId,
       resorts: values(params, 'resorts'),
-      stars: values(params, 'stars'),
+      stars: values(params, 'stars').map(Number).filter(value => [3,4,5].includes(value)),
       meals: values(params, 'meals'),
-      min: amount(params, 'min', 0),
-      max: amount(params, 'max', null)
+      min,
+      max
     };
-  };
-  const contains = (superset, subset) => subset.every(value => superset.includes(value));
-  const covered = (previous, next) => {
-    if (!previous || !next || !Number.isFinite(previous.min) || !Number.isFinite(next.min)) return false;
-    if (previous.max !== null && !Number.isFinite(previous.max)) return false;
-    if (next.max !== null && !Number.isFinite(next.max)) return false;
-
-    // Empty hotel/region scope means the upstream request was broad. Otherwise
-    // only the same hotel or a subset of already requested OR-regions is safe.
-    if (previous.hotel && previous.hotel !== next.hotel) return false;
-    if (previous.resorts.length && (!next.resorts.length || !contains(previous.resorts, next.resorts))) return false;
-
-    // Search3 currently sends a supplier category/meal only for a single
-    // selected value. Zero or multiple values are broad upstream requests.
-    // Keep single-value coverage conservative: changing it requires a search.
-    if (previous.stars.length === 1 && (next.stars.length !== 1 || next.stars[0] !== previous.stars[0])) return false;
-    if (previous.meals.length === 1 && (next.meals.length !== 1 || next.meals[0] !== previous.meals[0])) return false;
-
-    // A previously fetched budget range may satisfy a narrower range locally,
-    // but removing/raising its ceiling or lowering its floor needs new offers.
-    if (next.min < previous.min) return false;
-    if (previous.max !== null && (next.max === null || next.max > previous.max)) return false;
-    return true;
+    try { return data.supplierScope(filters); } catch { return null; }
   };
 
-  let searchedScope = scope().searched ? scope() : null;
   let scheduled = false;
   const inspect = () => {
     scheduled = false;
-    if (!searchedScope || form.hidden !== true) return;
-    const next = scope();
-    if (!next.searched || covered(searchedScope, next)) return;
+    if (form.hidden !== true) return;
+    const previous = data.currentSupplierScope, next = scope();
+    if (!previous || !next || data.supplierScopeCovered(previous, next)) return;
     const submit = document.querySelector('.search-submit');
     if (submit?.disabled) return;
-    // Record before requestSubmit(): the submit event is synchronous and this
-    // prevents the same UI event from scheduling a duplicate provider search.
-    searchedScope = next;
     form.requestSubmit();
   };
   const scheduleInspect = () => {
     // Result-side filters are edited while the main search form is collapsed.
-    // Ignore events that originate during explicit form editing so the click on
-    // "Найти туры" cannot queue a second search after the form collapses.
+    // The actual previous supplier scope comes from data.search(); do not keep
+    // a second URL-derived lifecycle state here.
     if (form.hidden !== true || scheduled) return;
     scheduled = true;
     queueMicrotask(inspect);
@@ -72,10 +51,6 @@
 
   document.addEventListener('click', scheduleInspect);
   document.addEventListener('change', scheduleInspect);
-  form.addEventListener('submit', () => queueMicrotask(() => {
-    const current = scope();
-    if (current.searched) searchedScope = current;
-  }));
 
   window.AnyTourPrototypeInventoryScopeRefreshV1 = true;
 })();
