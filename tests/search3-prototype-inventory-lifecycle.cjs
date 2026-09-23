@@ -18,6 +18,16 @@ const directAnex=(body,{offerRef='anex_online:'+'b'.repeat(64),localId=101,searc
  return {ok:true,data:{generation:body.generation,provider:'anex',date_range:{from:body.params.dateFrom,to:body.params.dateTo},
   search_ref:searchRef,external_search_pending:false,pages_read:1,first_page_only:true,hotels}};
 };
+const expandedAnex=(body,{groupRef='anex_online:'+'b'.repeat(64),searchRef='c'.repeat(32),localId=101}={})=>({ok:true,data:{
+ provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:groupRef,status:'expanded',offer:null,selection_state:'disabled',
+ external_search_pending:false,first_page_only:true,hotels:[{local_id:localId,name:'FICTIONAL HOTEL '+localId,category:5,rating:4.7,country:'Турция',region:'Сиде',
+ catalog:{hotel_id:localId,source:'tourvisor',image_url:null,description:'',address:'',subregion:'',sea_distance:null},tours:[
+  {price:{amount:'1510000',currency:'RUB'},checkin:trip.from,nights:7,adults:2,children:0,meal:'AI',room:'STANDARD SEA VIEW',kind:'concrete',
+   flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:'anex_online:'+'1'.repeat(64),selection_enabled:false},
+  {price:{amount:'1520000',currency:'RUB'},checkin:trip.from,nights:7,adults:2,children:0,meal:'AI',room:'DELUXE SEA VIEW',kind:'concrete',
+   flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:'anex_online:'+'2'.repeat(64),selection_enabled:false}
+ ]}]
+}});
 const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),localId=101,pagesCount=1,status='complete',searchRef='c'.repeat(64)}={})=>{
  const page=Number(body.page),hotels=empty?[]:[{local_id:localId,mapping_status:'resolved',tours:[{
   provider:'andromeda',price:{amount:'1480000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,
@@ -193,6 +203,38 @@ test('first search unions direct ANEX once and waits for it before complete',asy
  assert.equal(final.union.hotelsByProvider.anex,1);assert.equal(final.union.hotelsByProvider.tourvisor,1);assert.equal(final.union.providerSets['anex+tourvisor'],1);
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='complete'));
  await h.data.continueSearch();await flush();assert.equal(h.anexCalls.length,1,'Continue never replays direct ANEX');
+});
+test('direct ANEX group verification re-searches exact scope and expands without Tourvisor fallback',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const h=harness({anex:async body=>{
+  if(body.action==='search'&&verification){
+   return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  }
+  if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');assert.ok(offer);assert.equal(offer.raw.anexKind,'group_minimum');
+ verification=true;const beforeTourvisor=h.calls.filter(call=>call.action==='search_start').length;
+ const result=await h.data.expandAnexGroup(offer);
+ assert.equal(h.calls.filter(call=>call.action==='search_start').length,beforeTourvisor,'verification must not launch Tourvisor');
+ const verifyCalls=h.anexCalls.slice(-2);assert.deepEqual(verifyCalls.map(call=>call.action),['search','expand']);
+ assert.equal(verifyCalls[0].params.dateFrom,trip.from);assert.equal(verifyCalls[0].params.dateTo,trip.from);
+ assert.equal(verifyCalls[0].params.nightsFrom,7);assert.equal(verifyCalls[0].params.nightsTo,7);
+ assert.deepEqual(verifyCalls[0].params.hotelIds,['101']);assert.equal(verifyCalls[0].params.meal,'7');
+ assert.equal(verifyCalls[1].offer_ref,groupRef);assert.equal(verifyCalls[1].search_ref,verifyRef);assert.equal(verifyCalls[1].local_hotel_id,101);
+ assert.equal(result.hotelId,offer.hotelId);assert.equal(result.offers.length,2);
+ assert.ok(result.offers.every(item=>item.provider==='anex'&&item.raw.anexKind==='concrete'&&item.raw.anexLocalHotelId===101));
+});
+test('direct ANEX group verification fails closed when exact group identity is no longer returned',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),otherRef='anex_online:'+'d'.repeat(64);let verification=false;
+ const h=harness({anex:async body=>{
+  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:otherRef,localId:101,searchRef:'e'.repeat(32)})}};
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ verification=true;await assert.rejects(h.data.expandAnexGroup(offer),/предложение ANEX изменилось/);
+ assert.equal(h.anexCalls.at(-1).action,'search');assert.equal(h.anexCalls.some(call=>call.action==='expand'),false);
 });
 test('LOCAL source accounting preserves backend losses and malformed counts fail closed',async()=>{
  const h=harness({database:(i,p)=>({...snapshot(p,['andromeda','anex']),
