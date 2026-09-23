@@ -89,7 +89,7 @@ function restoreURL(){
  state.filters.stars=(p.get('stars')||'').split('|').map(Number).filter(n=>[3,4,5].includes(n));
  for(const k of ['min','max'])if(p.has(k)&&p.get(k).trim()!==''&&Number.isFinite(Number(p.get(k))))state.filters[k]=Math.max(0,Number(p.get(k)));
  if(state.filters.max!==null&&state.filters.min>state.filters.max)state.filters.min=state.filters.max;
- state.filters.meals=[...new Set((p.get('meals')||'').split('|').filter(Boolean).map(data.meal).filter(Boolean))];
+ state.filters.meals=[...new Set((p.get('meals')||'').split('|').map(value=>value.trim()).filter(Boolean))];
  for(const k of ['resorts','operators'])state.filters[k]=[...new Set((p.get(k)||'').split('|').filter(Boolean))];
  state.filters.amenities=[...new Set((p.get('amenities')||'').split('|').filter(x=>/^(1|2|3|5|8):[1-9]\d*$/.test(x)))];
  state.filters.q=p.get('q')||'';state.filters.rating=p.get('rating')==='1';
@@ -117,7 +117,9 @@ function hotelOffers(h,options={}){
  const s=options.search||state.search,f=options.filters||state.filters,selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
  const from=options.day||(selected&&!options.ignoreDate?selected:s.from),to=options.day||(selected&&!options.ignoreDate?selected:s.to);
  if(!hotelMatch(h,f,s,options.onlyFavorites??state.onlyFavorites))return[];
- return (h.offers||[]).filter(o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&JSON.stringify([...o.ages].sort())===JSON.stringify([...s.ages].sort())&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&(!f.meals.length||f.meals.includes(o.meal))&&o.total>=f.min&&(f.max===null||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight))).sort((a,b)=>a.total-b.total||a.day.localeCompare(b.day));
+ const selectedMealPlanIds=(f.meals||[]).map(label=>mealNames[label]).filter(id=>Number.isSafeInteger(id)&&id>0);
+ if((f.meals||[]).length!==selectedMealPlanIds.length)return[];
+ return (h.offers||[]).filter(o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&JSON.stringify([...o.ages].sort())===JSON.stringify([...s.ages].sort())&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&(!selectedMealPlanIds.length||selectedMealPlanIds.includes(o.mealPlanId))&&o.total>=f.min&&(f.max===null||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight))).sort((a,b)=>a.total-b.total||a.day.localeCompare(b.day));
 }
 function recommendedHotelScore(h){return h.rating+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);}
 function recommendedHotelRank(h){const rank=popularity?.rank(h);return Number.isInteger(rank)?rank:Number.MAX_SAFE_INTEGER;}
@@ -744,7 +746,11 @@ function mergeSearchResults(event){
  hotels=hotels.filter(h=>state.favorites.includes(h.id)||state.compare.includes(h.id)).map(h=>({...h,offers:[]}));
  hotels=[...new Map([...hotels,...incoming.values()].map(h=>[h.id,h])).values()];
  operators.splice(0,operators.length,...new Set(hotels.flatMap(h=>h.offers.map(o=>o.operator))));
- hotels.forEach(h=>h.offers.forEach(o=>{mealNames[o.meal]=o.meal;}));
+ hotels.forEach(h=>h.offers.forEach(o=>{
+  if(Number.isSafeInteger(o.mealPlanId)&&o.mealPlanId>0&&typeof o.mealFacet==='string'&&o.mealFacet){
+   const current=mealNames[o.mealFacet];if(current===undefined||current===o.mealPlanId)mealNames[o.mealFacet]=o.mealPlanId;
+  }
+ }));
 }
 function commitSearchDraft(){
  const selectedDay=draftSelectedDate();
@@ -906,7 +912,9 @@ function loadCalendarPrices(){
 function applyCatalog(c){
  if(!c)return;Object.keys(countryNames).forEach(k=>delete countryNames[k]);c.countries.forEach(x=>countryNames[String(x.id)]=data.text(x));
  $('#origin').innerHTML=c.departures.map(x=>`<option value="${esc(data.text(x))}">${esc(data.text(x))}</option>`).join('');
- data.catalog.meals.forEach(x=>{const label=data.meal(x);if(label)mealNames[label]=label;});
+ Object.keys(mealNames).forEach(key=>delete mealNames[key]);
+ data.catalog.mealPlans.filter(plan=>Array.isArray(plan.nativeIds)&&plan.nativeIds.length).forEach(plan=>{mealNames[plan.nameRu]=plan.id;});
+ state.filters.meals=state.filters.meals.filter(label=>Number.isSafeInteger(mealNames[label])&&mealNames[label]>0);
  draft.origin=c.origin;if(!countryNames[draft.country])draft.country=String(c.countries.find(x=>data.text(x)==='Турция')?.id||c.countries[0].id);
  draftDestination=null;updateSearchUI();
 }
