@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/andromeda-surcharge-evidence.php';
 require_once __DIR__ . '/andromeda-surcharge-evidence-store.php';
 require_once __DIR__ . '/operator-program-fuel-registry.php';
+require_once __DIR__ . '/operator-program-fuel-fx-evidence.php';
 require_once __DIR__ . '/operator-fuel-rule-store.php';
 
 /**
@@ -79,24 +80,37 @@ final class AnyTourAndromedaSurchargeCacheAutosaveV1
                 return ['state'=>'program_fuel','program_fuel'=>$program];
             }
 
-            // Broad operator+direction evidence remains the final fallback. Current
-            // RUB observations need no FX; non-RUB evidence fails closed unless a
-            // separately typed current exchange is supplied by a future caller.
-            $offerRef=$offer['offer_ref']??null;
-            if(is_string($offerRef) && preg_match('/^offer_[a-f0-9]{64}$/D',$offerRef)===1){
+            // Broad operator+direction evidence is the final listing fallback. Reuse
+            // only a fresh, already-retained supplier FX receipt; this does not infer
+            // a fuel rate or create direction evidence. Missing/stale/ambiguous FX
+            // still fails closed for non-RUB rules and the owner-policy fallback.
+            $offerRef = $offer['offer_ref'] ?? null;
+            $operator = $offer['operator'] ?? null;
+            if (is_string($offerRef) && preg_match('/^offer_[a-f0-9]{64}$/D', $offerRef) === 1
+                && is_string($operator)) {
+                $targetDirection = AnyTourOperatorFuelRuleEvidenceV1::directionFromSearch(
+                    $operator,
+                    $request
+                );
+                $exchange = AnyTourOperatorProgramFuelFxEvidenceV1::latestForDirection(
+                    $directory,
+                    $operator,
+                    $targetDirection,
+                    $now
+                );
                 $direction = AnyTourOperatorFuelRuleStoreV1::pricingEnvelopeForTarget(
                     $directory,
                     [
                         'provider'=>'andromeda',
-                        'operator'=>$offer['operator']??null,
+                        'operator'=>$operator,
                         'search_params'=>$request,
                         'party'=>$party,
-                        'offer_ref_digest'=>hash('sha256',$offerRef),
+                        'offer_ref_digest'=>hash('sha256', $offerRef),
                     ],
                     $now,
-                    null
+                    $exchange
                 );
-                if($direction!==null)return $direction;
+                if ($direction !== null) return $direction;
             }
             return null;
         } catch (Throwable $ignored) {
