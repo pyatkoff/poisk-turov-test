@@ -8,7 +8,7 @@
   const quoteReceipts = new WeakMap();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
-  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, currentSupplierScope = null;
+  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
   function nativeEndpoint(value,expectedPath){
     if(typeof value!=='string'||typeof expectedPath!=='string'||!root.location)return null;
@@ -239,6 +239,7 @@
   function stop(){
     clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
+    activeVerification?.abort();activeVerification=null;
     return generation;
   }
   async function searchError(run,error){
@@ -805,9 +806,10 @@
     }
     const exact={...structuredClone(o.search),from:o.day,to:o.day,minNights:o.nights,maxNights:o.nights,adults:o.adults,ages:[...o.ages]};
     const filters={};if(o.meal&&!/уточняется/i.test(o.meal))filters.meals=[o.meal];
-    const p=params(exact,[String(localHotelId)],filters),epoch=stop(),controller=new AbortController();
+    const p=params(exact,[String(localHotelId)],filters),epoch=stop();
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url)throw new Error('ANEX сейчас недоступен.');
+    const controller=new AbortController();activeVerification=controller;
     const request=async body=>{
       const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
         headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
@@ -816,34 +818,36 @@
       if(!response.ok||payload?.ok!==true||!payload.data)throw new Error('ANEX не смог проверить выбранное предложение.');
       return payload.data;
     };
-    const searched=await request({action:'search',generation:epoch,params:p});
-    if(searched.provider!=='anex'||searched.generation!==epoch||searched.date_range?.from!==o.day||searched.date_range?.to!==o.day
-      ||typeof searched.search_ref!=='string'||!(/^[a-f0-9]{32}$/).test(searched.search_ref)||!Array.isArray(searched.hotels)) {
-      throw new Error('ANEX вернул ответ для других условий.');
-    }
-    const targetHotel=searched.hotels.find(h=>Number(h?.local_id)===localHotelId);
-    const targetTour=targetHotel?.tours?.find(t=>t?.offer_ref===targetRef);
-    if(!targetTour||targetTour.kind!=='group_minimum'||targetTour.search_ref!==searched.search_ref) {
-      throw new Error('Выбранное предложение ANEX изменилось. Откройте актуальные варианты.');
-    }
-    const expanded=await request({action:'expand',generation:epoch,search_ref:searched.search_ref,offer_ref:targetRef,local_hotel_id:localHotelId});
-    if(expanded.provider!=='anex'||expanded.generation!==epoch||expanded.search_ref!==searched.search_ref||expanded.offer_ref!==targetRef
-      ||expanded.status!=='expanded'||!Array.isArray(expanded.hotels)||expanded.hotels.length!==1
-      ||Number(expanded.hotels[0]?.local_id)!==localHotelId||!Array.isArray(expanded.hotels[0]?.tours)||!expanded.hotels[0].tours.length) {
-      throw new Error('ANEX не вернул конкретные варианты выбранного тура.');
-    }
-    const seen=new Set(),normalized=[];
-    for(const tour of expanded.hotels[0].tours){
-      if(tour?.kind!=='concrete'||tour?.search_ref!==searched.search_ref)throw new Error('ANEX вернул некорректный конкретный вариант.');
-      const item=await directAnexOffer(expanded.hotels[0],tour,{filters},p,seen);
-      if(item)normalized.push(item);
-    }
-    if(!normalized.length)throw new Error('Конкретные варианты ANEX больше недоступны.');
-    const projected=project([{anytourHotelId:o.hotelId,canonicalLegacyIds:[String(localHotelId)],name:'ANEX',tours:normalized}],exact)[0]?.offers||[];
-    if(projected.length!==normalized.length||projected.some(item=>item.provider!=='anex'||item.raw?.anexKind!=='concrete'||Number(item.raw?.anexLocalHotelId)!==localHotelId)) {
-      throw new Error('Не удалось подготовить конкретные варианты ANEX.');
-    }
-    return Object.freeze({hotelId:o.hotelId,offers:projected.map(item=>structuredClone(item))});
+    try{
+      const searched=await request({action:'search',generation:epoch,params:p});
+      if(searched.provider!=='anex'||searched.generation!==epoch||searched.date_range?.from!==o.day||searched.date_range?.to!==o.day
+        ||typeof searched.search_ref!=='string'||!(/^[a-f0-9]{32}$/).test(searched.search_ref)||!Array.isArray(searched.hotels)) {
+        throw new Error('ANEX вернул ответ для других условий.');
+      }
+      const targetHotel=searched.hotels.find(h=>Number(h?.local_id)===localHotelId);
+      const targetTour=targetHotel?.tours?.find(t=>t?.offer_ref===targetRef);
+      if(!targetTour||targetTour.kind!=='group_minimum'||targetTour.search_ref!==searched.search_ref) {
+        throw new Error('Выбранное предложение ANEX изменилось. Откройте актуальные варианты.');
+      }
+      const expanded=await request({action:'expand',generation:epoch,search_ref:searched.search_ref,offer_ref:targetRef,local_hotel_id:localHotelId});
+      if(expanded.provider!=='anex'||expanded.generation!==epoch||expanded.search_ref!==searched.search_ref||expanded.offer_ref!==targetRef
+        ||expanded.status!=='expanded'||!Array.isArray(expanded.hotels)||expanded.hotels.length!==1
+        ||Number(expanded.hotels[0]?.local_id)!==localHotelId||!Array.isArray(expanded.hotels[0]?.tours)||!expanded.hotels[0].tours.length) {
+        throw new Error('ANEX не вернул конкретные варианты выбранного тура.');
+      }
+      const seen=new Set(),normalized=[];
+      for(const tour of expanded.hotels[0].tours){
+        if(tour?.kind!=='concrete'||tour?.search_ref!==searched.search_ref)throw new Error('ANEX вернул некорректный конкретный вариант.');
+        const item=await directAnexOffer(expanded.hotels[0],tour,{filters},p,seen);
+        if(item)normalized.push(item);
+      }
+      if(!normalized.length)throw new Error('Конкретные варианты ANEX больше недоступны.');
+      const projected=project([{anytourHotelId:o.hotelId,canonicalLegacyIds:[String(localHotelId)],name:'ANEX',tours:normalized}],exact)[0]?.offers||[];
+      if(projected.length!==normalized.length||projected.some(item=>item.provider!=='anex'||item.raw?.anexKind!=='concrete'||Number(item.raw?.anexLocalHotelId)!==localHotelId)) {
+        throw new Error('Не удалось подготовить конкретные варианты ANEX.');
+      }
+      return Object.freeze({hotelId:o.hotelId,offers:projected.map(item=>structuredClone(item))});
+    }finally{if(activeVerification===controller)activeVerification=null;}
   }
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
