@@ -7,11 +7,11 @@ name: MATCH COMMON4 continuation plan v8
       - tests/hotel_match_live30_common4_continuation_plan_v8_test.php
       - .github/workflows/hotel-match-live30-common4-continuation-plan-v8.yml
 permissions: {contents: read, actions: read, issues: read}
-concurrency: {group: hotel-match-live30-common4-continuation-plan-1971-20260923-v8, cancel-in-progress: false}
+concurrency: {group: hotel-match-live30-common4-continuation-plan-1971-20260923-v9, cancel-in-progress: false}
 env:
-  OP: hotel-match-live30-common4-continuation-plan-1971-20260923-v8
+  OP: hotel-match-live30-common4-continuation-plan-1971-20260923-v9
   BASE: a295cd06309025906d7d62229a32f4709632f157
-  CLAIM: '5802000911'
+  CLAIM: '5802082676'
 jobs:
   unit:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-continuation-plan-v8-20260923'
