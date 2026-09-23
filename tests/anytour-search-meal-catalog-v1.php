@@ -64,7 +64,14 @@ sm_sql($db,'20260916-anytour-stay-catalog.sql');
 $live=new AnyTourSearchMealCatalogV1($db);
 sm_check($live->catalogue('tourvisor','global')['available']===true,'existing stay mapping table is a read-only CURRENT Tourvisor authority');
 sm_error(fn()=>$live->nativeIds('tourvisor','global',[7]),'SEARCH_MEAL_UNMAPPED');
-sm_sql($db,'20260921-anytour-search-meal-mappings.sql');
+$providerMigration=file_get_contents(__DIR__.'/../v2/data/migrations/20260923-anytour-search-meal-provider-mappings-v1.sql');
+sm_check(is_string($providerMigration) && str_contains($providerMigration,'CREATE TABLE anytour_search_meal_provider_mappings_v1'),'provider migration present');
+sm_check(!str_contains($providerMigration,'anytour_hotel_'),'provider mapping schema is independent from hotel V2');
+sm_sql($db,'20260923-anytour-search-meal-provider-mappings-v1.sql');
+$hasProvider=(int)$db->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anytour_search_meal_provider_mappings_v1'")->fetchColumn();
+$hasMembership=(int)$db->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anytour_search_meal_memberships_v1'")->fetchColumn();
+sm_check($hasProvider===1 && $hasMembership===0,'provider mapping installs without membership schema');
+sm_sql($db,'20260923-anytour-search-meal-memberships-v1.sql');
 $db->beginTransaction();
 try{
     $db->exec("INSERT INTO anytour_meal_plans(id,code,name_ru,family_code,qualifiers_json) VALUES(501,'test-ai','Same label','test','{}'),(502,'test-uai','Same label','test','{}')");
