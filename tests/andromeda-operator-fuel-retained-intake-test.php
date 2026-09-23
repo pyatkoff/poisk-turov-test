@@ -32,6 +32,10 @@ function afi_claim(bool $explicit=true):array{
     return [
         'claimDocument'=>[0=>[
             'services'=>[['service'=>[$fuel0,$fuel1]]],
+            'moneys'=>[['money'=>[
+                ['currency'=>'EUR','rate'=>'1','isClaimCurrency'=>'true'],
+                ['currency'=>'RUB','rate'=>'99.49','isClaimCurrency'=>'false'],
+            ]]],
         ]],
         'groups'=>[['group'=>[
             ['id'=>'g0','required'=>'true','oneItem'=>'true'],
@@ -51,6 +55,7 @@ function afi_retained(string $offerRef,string $response,bool $explicit=true):arr
         ],
         'party'=>['adults'=>2,'children'=>0,'child_ages'=>[]],
         'market'=>'RU-MOW',
+        'direction'=>['market'=>'departure:1','destination'=>'country:4'],
         'claim'=>afi_claim($explicit),
         'source_response_sha256'=>afi_hash($response),
         'observed_at'=>1000,'expires_at'=>5000,
@@ -66,6 +71,11 @@ afi_ok($o1['unit']==='party_roundtrip'&&$o1['base_relation']==='excluded','expli
 afi_ok($o1['base_includes_other_required_charges']===true,'other required clear');
 afi_ok($o1['scope']['outbound']===['origin'=>'VKO','destination'=>'AYT','carrier'=>'ZF','flight'=>'ZF1001'],'outbound exact');
 afi_ok($o1['scope']['return']===['origin'=>'AYT','destination'=>'VKO','carrier'=>'ZF','flight'=>'ZF1002'],'return exact');
+afi_ok($o1['direction']===['operator_family'=>'intourist','market'=>'departure:1','destination'=>'country:4'],'canonical mass direction retained');
+afi_ok(($o1['exchange']['rate']??null)==='99.49'&&($o1['exchange']['from']??null)==='EUR','supplier claim FX retained');
+$legacy=$r1;unset($legacy['direction']);
+$legacyObs=AnyTourAndromedaOperatorFuelRetainedIntakeV1::observation($legacy);
+afi_ok($legacyObs['direction']['destination']==='AYT','legacy no-direction observation remains airport-derived');
 
 $r2=afi_retained('offer_'.str_repeat('b',64),'claim-2',true);
 $r2['offer']['hotel']='Different hotel';
@@ -76,16 +86,13 @@ afi_ok($o2['offer_ref_digest']!==$o1['offer_ref_digest']&&$o2['evidence_sha256']
 
 $target=[
     'provider'=>'andromeda','operator'=>'Интурист',
-    'scope'=>[
-        'market'=>'RU-MOW',
-        'outbound'=>$o1['scope']['outbound'],
-        'return'=>$o1['scope']['return'],
-        'party'=>$o1['scope']['party'],
-    ],
+    'search_params'=>['departureId'=>1,'countryId'=>4],
+    'party'=>$o1['scope']['party'],
     'offer_ref_digest'=>afi_hash('target'),
-    'flight_dates'=>['2026-10-11','2026-10-18'],
 ];
-afi_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target,[$o1,$o2],2000)!==null,'two independent SAMO observations confirm');
+$confirmed=AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target,[$o1,$o2],2000);
+afi_ok($confirmed!==null,'two independent SAMO observations confirm');
+afi_ok(($confirmed['exchange']['rate']??null)==='99.49','confirmed direction carries current supplier FX');
 
 $perPerson=afi_retained('offer_'.str_repeat('9',64),'claim-person',true);
 foreach($perPerson['claim']['claimDocument'][0]['services'][0]['service'] as &$fuelRow){
@@ -96,6 +103,12 @@ $perPersonObs=AnyTourAndromedaOperatorFuelRetainedIntakeV1::observation($perPers
 afi_ok($perPersonObs['unit']==='per_person_one_way','per-person unit retained');
 afi_ok($perPersonObs['amount']==='85'&&$perPersonObs['currency']==='EUR','per-person stores one-leg rate, not two-leg sum');
 afi_ok($perPersonObs['base_relation']==='excluded','per-person relation retained');
+afi_ok(($perPersonObs['exchange']['rate']??null)==='99.49','per-person observation carries typed FX');
+
+$noFx=afi_retained('offer_'.str_repeat('8',64),'claim-no-fx',true);
+unset($noFx['claim']['claimDocument'][0]['moneys']);
+$noFxObs=AnyTourAndromedaOperatorFuelRetainedIntakeV1::observation($noFx);
+afi_ok(!array_key_exists('exchange',$noFxObs),'missing supplier FX stays absent and does not invent rate');
 
 $unknown=AnyTourAndromedaOperatorFuelRetainedIntakeV1::observation(
     afi_retained('offer_'.str_repeat('c',64),'claim-3',false)
