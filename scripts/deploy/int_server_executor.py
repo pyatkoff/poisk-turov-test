@@ -50,7 +50,7 @@ FIXED = [
     'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py',
     'scripts/diagnostics/hotel_match_live30_common4_remainder_v1.py',
     'scripts/diagnostics/hotel_match_common4_resume_salvage_v1.py',
-    'scripts/diagnostics/hotel_match_common4_mass_current_v13.php',
+    'scripts/diagnostics/hotel_match_common4_mass_current_v14.php',
     'scripts/diagnostics/hotel_match_live30_common4_current_v2.php',
     'scripts/diagnostics/int_funsun_direction_fx_seed_v1.php',
     'scripts/diagnostics/int_operator_direction_fuel_mass_readback_v1.php',
@@ -2959,7 +2959,7 @@ def execute(command: dict, source_root: Path) -> dict:
     if command['mode'] == 'match-common4-mass-current':
         stage='/tmp/' + command['operation_id'] + '-source'
         q=shlex.quote
-        audit='hotel-match-common4-mass-current-1971-20260924-v13'
+        audit='hotel-match-common4-mass-current-1971-20260924-v14'
         children=[
           'hotel-match-live30-common4-continuation-acquire-1971-20260923-c35-n100-v1',
           'hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1',
@@ -2986,7 +2986,7 @@ def execute(command: dict, source_root: Path) -> dict:
             'python3 -c '+q(manifest_code)+' '+q(names_json)+' >"$audit/manifest.json"; chmod 600 "$audit/manifest.json"; '
             'before="$(sha256sum "$root/index.php" | awk \'{print $1}\')"; '
             'ANYTOUR_ROOT="$root" MATCH_OPERATION_DIR="$audit" MATCH_OPERATIONS_ROOT="$ops" MATCH_CHILD_MANIFEST="$audit/manifest.json" MATCH_SOURCE_SHA='+q(command['source_sha'])+' '
-            'php "$stage/scripts/diagnostics/hotel_match_common4_mass_current_v13.php" --execute >"$audit/stdout.txt"; '
+            'php "$stage/scripts/diagnostics/hotel_match_common4_mass_current_v14.php" --execute >"$audit/stdout.txt"; '
             'after="$(sha256sum "$root/index.php" | awk \'{print $1}\')"; test "$before" = "$after"; '
             'python3 -c '+q(
               "import json,pathlib;d=pathlib.Path.home()/'.anytoour-match/operations'/"+repr(audit)+
