@@ -50,11 +50,15 @@ function irpg_aggregate(array $offers): array {
         $key=($pk??'-').'|'.($tk??'-');
         if(!isset($groups[$key]))$groups[$key]=[
             'program_key'=>$pk,'program_labels'=>[],'tour_key'=>$tk,'tour_labels'=>[],
-            'offer_count'=>0,'mapped_count'=>0,'spo_keys'=>[],'spo_labels'=>[],
+            'offer_count'=>0,'mapped_count'=>0,'mapped_hotel_ids'=>[],
+            'spo_keys'=>[],'spo_labels'=>[],
             'freight_external'=>['true'=>0,'false'=>0,'null'=>0],
         ];
         ++$groups[$key]['offer_count'];
-        if($isMapped)++$groups[$key]['mapped_count'];
+        if($isMapped){
+            ++$groups[$key]['mapped_count'];
+            $groups[$key]['mapped_hotel_ids'][(string)$offer['local_hotel_id']]=true;
+        }
         if($pl!==null)$groups[$key]['program_labels'][$pl]=true;
         if($tl!==null)$groups[$key]['tour_labels'][$tl]=true;
         if($spo!==null)$groups[$key]['spo_keys'][$spo]=true;
@@ -67,10 +71,15 @@ function irpg_aggregate(array $offers): array {
             $g[$key]=array_keys($g[$key]);sort($g[$key],SORT_STRING);
         }
         $g['distinct_spo_count']=count($g['spo_keys']);
-        unset($g['spo_keys']);
-        $g['probe_ready']=$g['program_key']!==null && $g['tour_key']!==null
-            && $g['distinct_spo_count']>=2 && $g['mapped_count']>=2
+        $g['distinct_mapped_hotel_count']=count($g['mapped_hotel_ids']);
+        unset($g['spo_keys'],$g['mapped_hotel_ids']);
+        $eligible=$g['program_key']!==null && $g['tour_key']!==null
             && !($g['program_key']==='30' && $g['tour_key']==='34');
+        $g['probe_ready']=$eligible && $g['distinct_spo_count']>=2 && $g['mapped_count']>=2;
+        $g['charter_probe_ready']=$eligible && $g['distinct_spo_count']===0
+            && $g['distinct_mapped_hotel_count']>=2
+            && $g['freight_external']['false']===$g['offer_count']
+            && $g['freight_external']['true']===0 && $g['freight_external']['null']===0;
         $list[]=$g;
     }
     usort($list,static function(array $a,array $b):int{
@@ -80,10 +89,12 @@ function irpg_aggregate(array $offers): array {
         return $c!==0?$c:(($a['tour_key']??'~')<=>($b['tour_key']??'~'));
     });
     $ready=array_values(array_filter($list,static fn(array $g):bool=>$g['probe_ready']===true));
+    $charterReady=array_values(array_filter($list,static fn(array $g):bool=>$g['charter_probe_ready']===true));
     $names=array_keys($operators);sort($names,SORT_STRING);
     return [
         'operator_names'=>$names,'offer_count'=>$total,'mapped_count'=>$mapped,
         'group_count'=>count($list),'groups'=>$list,'probe_ready_groups'=>$ready,
+        'charter_probe_ready_groups'=>$charterReady,
     ];
 }
 function irpg_run(): array {
