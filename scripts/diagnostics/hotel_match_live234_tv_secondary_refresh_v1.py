@@ -158,11 +158,14 @@ def run_batch(p,opdir,index,g):
     _,st=p.call('search_start','/tours/search',params);st=unwrap(st)
     sid=num((st or {}).get('searchId') if isinstance(st,dict) else None) or num((st or {}).get('id') if isinstance(st,dict) else None)
     if not sid:raise RuntimeError('search_id_missing')
-    ok=False
+    search_complete=False
     for delay in (2,4,7):
         time.sleep(delay);_,s=p.call('search_status',f'/tours/search/{sid}/status',{'operatorStatus':False})
-        if ready(s):ok=True;break
-    if not ok:raise RuntimeError('search_timeout')
+        if ready(s):search_complete=True;break
+    # A bounded status timeout is not proof of an empty search. Tourvisor can
+    # already expose useful results while status is still incomplete. Read the
+    # current result set once and trust only actually returned target/operator
+    # pairs; never infer absence and never request continuation pagination.
     _,res=p.call('search_results',f'/tours/search/{sid}',{'limit':10000})
     wanted=set(g['hotel_ids']);edges=[];returned=set()
     for h in hotel_rows(res):
@@ -185,7 +188,7 @@ def run_batch(p,opdir,index,g):
                 edge['state']='detail_identity_verified'
                 edge.update(native_projection(op,d.get('operatorLink')))
             save(opdir/f'tv-edge-{hid}-{op}.json',edge);edges.append(edge)
-    return sid,returned,edges
+    return sid,returned,edges,search_complete
 
 def execute(root,opdir,plan_path):
     plan=readj(plan_path);reservation=readj(opdir/'reservation.json')
@@ -202,8 +205,9 @@ def execute(root,opdir,plan_path):
         p=Provider(root,opdir)
         for i,g in enumerate(groups,1):
             save(opdir/f'tv-batch-{i:04d}-reservation.json',{'operation':OP,'batch':i,'state':'reserved_before_batch_http','hotel_count':len(g['hotel_ids'])})
-            before=p.used;sid,returned,edges=run_batch(p,opdir,i,g)
-            b={'batch':i,'search_id':sid,'sent':len(g['hotel_ids']),'returned_targets':len(returned),'returned_operator_pairs':len(edges),'calls':p.used-before}
+            before=p.used;sid,returned,edges,search_complete=run_batch(p,opdir,i,g)
+            b={'batch':i,'search_id':sid,'sent':len(g['hotel_ids']),'returned_targets':len(returned),'returned_operator_pairs':len(edges),
+               'search_complete':search_complete,'calls':p.used-before}
             save(opdir/f'tv-batch-{i:04d}-result.json',b);batches.append(b)
         state='completed_read_only'
     except Exception as e:
@@ -222,6 +226,7 @@ def execute(root,opdir,plan_path):
     chunk_unique=sum(1 for targets in native.values() if len(targets)==1)
     out={'operation':OP,'state':state,'reason':reason,'frontier_count':234,'scope_offset':offset,'scope_count':len(scope),
          'planned_groups':len(groups),'completed_batches':len(batches),'searched_hotels':sum(b['sent'] for b in batches),
+         'incomplete_status_batches':sum(1 for b in batches if not b.get('search_complete',False)),
          'returned_targets':sum(b['returned_targets'] for b in batches),'returned_operator_pairs':len(edges),
          'provider_calls':p.used if p else 0,'daily_accounted_after_local_ledger':p.last if p else None,
          'call_counts':dict(p.counts) if p else {},'edge_state_counts':dict(state_counts),'link_state_counts':dict(link_counts),
@@ -231,7 +236,7 @@ def execute(root,opdir,plan_path):
     save(opdir/'receipt.json',{'operation':OP,'state':state,'result_sha256':digest,'provider_calls':out['provider_calls'],
          'searched_hotels':out['searched_hotels'],'no_replay':bool(p and p.used),'database_writes':0,'mapping_writes':0})
     if p:p.finish(state,digest)
-    print(json.dumps({k:out[k] for k in ['state','reason','planned_groups','completed_batches','searched_hotels','returned_targets',
+    print(json.dumps({k:out[k] for k in ['state','reason','planned_groups','completed_batches','searched_hotels','incomplete_status_batches','returned_targets',
         'returned_operator_pairs','provider_calls','daily_accounted_after_local_ledger','edge_state_counts','link_state_counts',
         'single_native_chunk_unique_count']},ensure_ascii=False))
     return 0 if state in ('completed_read_only','terminal_day_changed_no_replay','terminal_quota_stop_no_replay') else 2
