@@ -22,12 +22,27 @@ function listingOf(row){
  const listing=row.listing;if(!listing||listing.schema_version!==1||listing.provider!==row.provider||listing.currency!=='RUB'||listing.selection_state!=='refresh_required'||listing.booking_enabled!==false)return null;
  return priceState(listing)&&amount(listing.listingPrice)===amount(row.price)?listing:null;
 }
-function offerTour(row){
+// Only an accepted exact LOCAL mapping gives a canonical stay identity. Names
+// and numeric coincidences never promote an unmapped supplier fact.
+function canonicalStay(row,hotelId,kind){
+ const match=row.stayMatch,part=match&&match[kind],c=part&&part.canonical;
+ if(!match||match.source!=='anytour-hotel-stay-v2'||match.exactScope!==true||!part||part.status!=='accepted'||!c||c.kind!==kind||positiveId(c.hotelId)!==hotelId||!positiveId(c.id)||!positiveId(c.revision))return null;
+ const nameRu=safeText(c.nameRu,255),localKey=safeText(c.localKey,128);
+ if(!nameRu||!localKey)return null;
+ return{kind,id:Number(c.id),hotelId:Number(hotelId),nameRu,localKey,revision:Number(c.revision)};
+}
+function searchMealPlan(row,hotelId,concept){
+ const m=row.searchMeal,p=m&&m.plan;
+ if(!concept||!m||m.source!=='anytour-search-meal-v1'||positiveId(m.hotelId)!==hotelId||m.conceptId!==concept.id||m.conceptRevision!==concept.revision||!p||!positiveId(p.id)||!safeText(p.nameRu,255)||!safeText(p.code,64))return null;
+ return{id:Number(p.id),code:p.code,nameRu:p.nameRu};
+}
+function offerTour(row,hotelId){
  const listing=listingOf(row);if(!listing)return null;
  const listingPriceState=priceState(listing),identity=listing.identity,tour=listing.tour,operator=listing.operator;if(!identity||!digest(identity.offer_ref_digest)||!digest(identity.search_ref_digest)||!digest(identity.provider_hotel_ref_digest)||!tour||!operator)return null;
  const price=amount(listing.listingPrice);if(!/^\d{4}-\d{2}-\d{2}$/.test(String(tour.checkin||''))||!Number.isInteger(tour.nights)||tour.nights<1||tour.nights>60)return null;
+ const localMeal=canonicalStay(row,hotelId,'meal'),localRoom=canonicalStay(row,hotelId,'room');
  const meal=safeText(tour.meal&&tour.meal.raw,160),room=safeText(tour.room&&tour.room.raw,300),placement=safeText(tour.placement&&tour.placement.raw,160),operatorName=safeText(operator.canonical_name||operator.raw,180),party=tour.party||{};
- return{id:'cached:'+row.provider+':'+identity.offer_ref_digest,provider:row.provider,cachedListing:true,offerIdentityDigest:identity.offer_ref_digest,searchIdentityDigest:identity.search_ref_digest,selectionEnabled:false,quoteRequired:true,listingPriceState,finalPriceReady:listing.listingPriceReady,priceNeedsConfirmation:listingPriceState==='search_price_confirmation_required',price,currency:'RUB',date:String(tour.checkin),nights:tour.nights,meal:{name:meal},roomType:room,placement,operator:{name:operatorName},adults:Number.isInteger(party.adults)?party.adults:undefined,childs:Number.isInteger(party.children)?party.children:undefined};
+ return{...(searchMealPlan(row,hotelId,localMeal)?{searchMealPlan:searchMealPlan(row,hotelId,localMeal)}:{}),...(localMeal||localRoom?{localStay:{source:'anytour-hotel-stay-v2',meal:localMeal,room:localRoom}}:{}),id:'cached:'+row.provider+':'+identity.offer_ref_digest,provider:row.provider,cachedListing:true,offerIdentityDigest:identity.offer_ref_digest,searchIdentityDigest:identity.search_ref_digest,selectionEnabled:false,quoteRequired:true,listingPriceState,finalPriceReady:listing.listingPriceReady,priceNeedsConfirmation:listingPriceState==='search_price_confirmation_required',price,currency:'RUB',date:String(tour.checkin),nights:tour.nights,meal:{name:meal},roomType:room,placement,operator:{name:operatorName},adults:Number.isInteger(party.adults)?party.adults:undefined,childs:Number.isInteger(party.children)?party.children:undefined};
 }
 function parse(data){
  if(!data||data.source!=='anytour-db-first-results-v1'||data.scopeVersion!==1||!digest(data.scopeDigest)||data.selectionAuthority!==false||!Array.isArray(data.hotels)||data.hotels.length>MAX_HOTELS)return null;
@@ -40,7 +55,7 @@ function parse(data){
    // The DB reader can retain legacy display rows without identity. Withhold that
    // row, never invent an ID or discard independently identified sibling offers.
    if(listing&&!Object.prototype.hasOwnProperty.call(listing,'identity')){withheldOfferCount++;continue;}
-   const tour=offerTour(stored),legacyHotelId=positiveId(stored&&stored.legacyHotelId);if(!tour||!legacyHotelId)return null;
+   const tour=offerTour(stored,own),legacyHotelId=positiveId(stored&&stored.legacyHotelId);if(!tour||!legacyHotelId)return null;
    offers.push({tour,legacyHotelId});offerCount++;
   }
   if(offers.length)hotels.push({anytourHotelId:own,hotel,offers});

@@ -6,6 +6,9 @@ on:
       - 'v2/data/migrations/20260918-anytour-hotel-stay-v2.sql'
       - 'v2/data/anytour-hotel-stay-catalog-v2.php'
       - 'tests/anytour_hotel_stay_catalog_v2_test.php'
+      - 'v2/data/migrations/20260921-anytour-search-meal-mappings.sql'
+      - 'v2/data/anytour-search-meal-catalog-v1.php'
+      - 'tests/anytour-search-meal-catalog-v1.php'
       - '.github/workflows/search3-anytour-hotel-stay-v2.yml'
 
 permissions:
@@ -43,6 +46,9 @@ jobs:
           php -l v2/data/anytour-hotel-stay-catalog-v2.php
           php -l tests/anytour_hotel_stay_catalog_v2_test.php
           php tests/anytour_hotel_stay_catalog_v2_test.php
+          php -l v2/data/anytour-search-meal-catalog-v1.php
+          php -l tests/anytour-search-meal-catalog-v1.php
+          php tests/anytour-search-meal-catalog-v1.php
           ! grep -Eq 'anytour_meal_plans|anytour_room_categories|anytour_stay_mappings([^_]|$)' v2/data/anytour-hotel-stay-catalog-v2.php
           grep -Fq 'FOREIGN KEY (anytour_hotel_id, room_concept_id)' v2/data/migrations/20260918-anytour-hotel-stay-v2.sql
           grep -Fq 'FOREIGN KEY (anytour_hotel_id, meal_concept_id)' v2/data/migrations/20260918-anytour-hotel-stay-v2.sql
@@ -51,4 +57,6 @@ jobs:
           ANYTOUR_HOTEL_STAY_V2_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_hotel_stay_v2_fixture;charset=utf8mb4'
           ANYTOUR_HOTEL_STAY_V2_TEST_USER: root
           ANYTOUR_HOTEL_STAY_V2_TEST_PASSWORD: fixture-only-password
-        run: php tests/anytour_hotel_stay_catalog_v2_test.php
+        run: |
+          php tests/anytour_hotel_stay_catalog_v2_test.php
+          php tests/anytour-search-meal-catalog-v1.php

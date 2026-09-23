@@ -8,6 +8,7 @@ require_once __DIR__.'/anytour-canonical-catalog-v1.php';
 require_once __DIR__.'/anytour-stay-catalog-v1.php';
 require_once __DIR__.'/anytour-hotel-stay-catalog-v2.php';
 require_once __DIR__.'/anytour-search-scope-v1.php';
+require_once __DIR__.'/anytour-search-meal-catalog-v1.php';
 
 const SEARCH3_LOCAL_RESULTS_MAX_OFFERS=15000;
 const SEARCH3_LOCAL_RESULTS_MAX_HOTELS=5000;
@@ -206,6 +207,7 @@ function search3_local_results_build(PDO $pdo,array $params,DateTimeImmutable $n
                 'mealPlans'=>$mealPlans,
             ];
         }
+        $hotels=(new AnyTourSearchMealCatalogV1($pdo))->attachSearchPlans($hotels);
         $providerCounts=[];
         foreach($hotels as $hotel)foreach($hotel['offers'] as $offer)$providerCounts[$offer['provider']]=($providerCounts[$offer['provider']]??0)+1;
         ksort($providerCounts);$pdo->commit();
@@ -236,6 +238,12 @@ if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     $length=(int)($_SERVER['CONTENT_LENGTH']??0);if($length<2||$length>32768)search3_local_results_out(['ok'=>false,'error'=>'Invalid request size'],400);
     try{
         $raw=file_get_contents('php://input');$input=json_decode((string)$raw,true,64,JSON_THROW_ON_ERROR);
+        if(is_array($input)&&($input['action']??null)==='meal_catalog'){
+            if(count($input)!==3||!isset($input['provider'],$input['scopeKey'])||!is_string($input['provider'])||!is_string($input['scopeKey']))throw new InvalidArgumentException('Invalid meal catalogue envelope');
+            AnyTourSearchMealCatalogV1::scope($input['provider'],$input['scopeKey']);
+            $result=(new AnyTourSearchMealCatalogV1(v2_data_db()))->catalogue($input['provider'],$input['scopeKey']);
+            search3_local_results_out(['ok'=>true,'data'=>$result]);
+        }
         if(!is_array($input)||array_keys($input)!==['params']||!is_array($input['params']))throw new InvalidArgumentException('Invalid request envelope');
         $result=search3_local_results_build(v2_data_db(),$input['params'],new DateTimeImmutable('now',new DateTimeZone('UTC')));
         search3_local_results_out(['ok'=>true,'data'=>$result]);
