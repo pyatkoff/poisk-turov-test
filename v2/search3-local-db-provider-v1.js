@@ -55,7 +55,14 @@ function parse(data){
    // The DB reader can retain legacy display rows without identity. Withhold that
    // row, never invent an ID or discard independently identified sibling offers.
    if(listing&&!Object.prototype.hasOwnProperty.call(listing,'identity')){withheldOfferCount++;continue;}
-   const tour=offerTour(stored,own),legacyHotelId=positiveId(stored&&stored.legacyHotelId);if(!tour||!legacyHotelId)return null;
+   // Listing safety and exact identity remain snapshot authority. Only after both
+   // are valid may a display-only projection failure be isolated to this row.
+   if(!listing)return null;
+   const identity=listing.identity;
+   if(!identity||!digest(identity.offer_ref_digest)||!digest(identity.search_ref_digest)||!digest(identity.provider_hotel_ref_digest))return null;
+   const legacyHotelId=positiveId(stored&&stored.legacyHotelId);if(!legacyHotelId)return null;
+   const tour=offerTour(stored,own);
+   if(!tour){withheldOfferCount++;continue;}
    offers.push({tour,legacyHotelId});offerCount++;
   }
   if(offers.length)hotels.push({anytourHotelId:own,hotel,offers});
