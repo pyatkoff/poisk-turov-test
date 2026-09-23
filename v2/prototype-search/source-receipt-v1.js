@@ -5,7 +5,8 @@
 
   const countFields = new Set([
     'hotels','offers','receivedHotels','receivedOffers','mappedHotels','mappedOffers',
-    'visibleHotels','visibleOffers','scopeFilteredOffers','storedOffers','projectedOffers'
+    'visibleHotels','visibleOffers','scopeFilteredOffers','storedOffers','projectedOffers',
+    'withheldOffers','eligibleHotels','omittedHotels','omittedOffers'
   ]);
   const statuses = new Set(['loading','complete','partial','error','skipped']);
   const safeKey = value => typeof value === 'string' && /^[A-Za-z0-9_.:+-]{1,80}$/.test(value);
@@ -15,7 +16,7 @@
     for (const [key, raw] of Object.entries(value)) {
       if (!safeKey(key)) continue;
       const n = raw;
-      if (typeof n === 'number' && Number.isFinite(n) && n >= 0) out[key] = n;
+      if (Number.isSafeInteger(n) && n >= 0) out[key] = n;
     }
     return out;
   };
@@ -25,7 +26,7 @@
     if (statuses.has(value.status)) out.status = value.status;
     for (const field of countFields) {
       const n = value[field];
-      if (typeof n === 'number' && Number.isFinite(n) && n >= 0) out[field] = n;
+      if (Number.isSafeInteger(n) && n >= 0) out[field] = n;
     }
     if (value.providerOfferCounts && typeof value.providerOfferCounts === 'object') {
       out.providerOfferCounts = cleanCounts(value.providerOfferCounts);
