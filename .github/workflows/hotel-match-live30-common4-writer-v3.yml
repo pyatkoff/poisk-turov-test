@@ -13,7 +13,7 @@ env:
   AUDIT_OP: hotel-match-live30-common4-current-1971-20260923-v2
   AUDIT_SHA: 69bbd1ab7673f0d5ecd2759604c6a6f7e1182a167ba21f78c3f7aeefe05a069f
   BASE: 538d8fe686c2bbe4edc18a6d8d44450993d574ac
-  CLAIM: '5800532992'
+  CLAIM: '5800595183'
 jobs:
   unit:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live30-common4-writer-v3-20260923'
