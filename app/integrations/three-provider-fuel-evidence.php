@@ -35,59 +35,67 @@ final class AnyTourThreeProviderFuelEvidenceV1
             if ($party !== self::party($dto['tour']['party'] ?? null)) return $hold('fuel_party_binding');
             if (self::hasInfant($party)) return $hold('fuel_infant_separate');
 
+            $ownerPolicy = self::ownerPolicy($input['owner_policy'] ?? null, $family, $direction);
             $observations = $input['observations'] ?? null;
             if (!is_array($observations) || !array_is_list($observations) || count($observations) > 256) {
                 return $hold('fuel_observations_shape');
             }
             $amounts = []; $offers = []; $digests = []; $matched = 0;
             $freshUntil = PHP_INT_MAX; $evidenceFrom = null; $evidenceTo = null;
-            foreach ($observations as $sample) {
-                if (!is_array($sample)) continue;
-                try {
-                    $sampleDirection = self::direction($sample['direction'] ?? null);
-                    $sampleParty = self::party($sample['party'] ?? null);
-                } catch (InvalidArgumentException $ignored) { continue; }
-                if ($sampleDirection !== $direction) continue;
-                $unit = $sample['unit'] ?? null;
-                if (!in_array($unit, ['party_roundtrip','per_person_one_way'], true)
-                    || !in_array($sample['provider'] ?? null, ['tourvisor','andromeda'], true)
-                    || ($sample['kind'] ?? null) !== 'fuel'
-                    || ($sample['base_includes_other_required_charges'] ?? null) !== true
-                    || !in_array($sample['base_relation'] ?? null, ['included','excluded'], true)
-                    || !self::digest($sample['offer_ref_digest'] ?? null)
-                    || !self::digest($sample['evidence_sha256'] ?? null)
-                    || !is_int($sample['observed_at'] ?? null) || !is_int($sample['expires_at'] ?? null)
-                    || $sample['observed_at'] < 1 || $sample['expires_at'] <= $sample['observed_at']) {
-                    return $hold('fuel_evidence_invalid');
-                }
-                if (self::hasInfant($sampleParty)) continue;
-                if ($unit === 'party_roundtrip' && $sampleParty !== $party) continue;
-                if ($sample['observed_at'] > $now || $sample['expires_at'] <= $now) continue;
-                self::date($sample['evidence_valid_from'] ?? null);
-                self::date($sample['evidence_valid_to'] ?? null);
-                if ($sample['evidence_valid_from'] > $sample['evidence_valid_to']) return $hold('fuel_evidence_invalid');
-                $native = self::units($sample['amount'] ?? null);
-                $currency = self::currency($sample['currency'] ?? null);
-                $factKey = $currency . '|' . $native . '|' . $sample['base_relation'] . '|' . $unit;
-                $amounts[$factKey] = [$native, $currency, $sample['base_relation'], $unit];
-                if (count($amounts) > 1) return $hold('fuel_rule_conflict');
-                $offers[$sample['offer_ref_digest']] = true;
-                $digests[$sample['evidence_sha256']] = true;
-                ++$matched;
-                $freshUntil = min($freshUntil, $sample['expires_at']);
-                $evidenceFrom = $evidenceFrom === null ? $sample['evidence_valid_from'] : min($evidenceFrom, $sample['evidence_valid_from']);
-                $evidenceTo = $evidenceTo === null ? $sample['evidence_valid_to'] : max($evidenceTo, $sample['evidence_valid_to']);
-            }
-            if (count($offers) < 2 || count($digests) < 2 || $amounts === []) {
-                return $hold('fuel_independent_evidence_missing');
-            }
-            [$nativeRateOrTotal, $currency, $relation, $unit] = array_values($amounts)[0];
-            $ownerPolicy = self::ownerPolicy($input['owner_policy'] ?? null, $family, $direction);
             if ($ownerPolicy !== null) {
+                // Owner policy is the rate authority for this listing fallback.
+                // Supplier observations may provide FX elsewhere, but their fuel
+                // amounts must not be smuggled back into the policy input.
+                if ($observations !== []) return $hold('fuel_owner_policy_observations');
                 $nativeRateOrTotal = self::units($ownerPolicy['amount']);
                 $currency = $ownerPolicy['currency'];
                 $relation = $ownerPolicy['base_relation'];
                 $unit = $ownerPolicy['unit'];
+                $digests[self::hash($ownerPolicy)] = true;
+                $evidenceFrom = $ownerPolicy['policy_date'];
+                $evidenceTo = $ownerPolicy['policy_date'];
+            } else {
+                foreach ($observations as $sample) {
+                    if (!is_array($sample)) continue;
+                    try {
+                        $sampleDirection = self::direction($sample['direction'] ?? null);
+                        $sampleParty = self::party($sample['party'] ?? null);
+                    } catch (InvalidArgumentException $ignored) { continue; }
+                    if ($sampleDirection !== $direction) continue;
+                    $unit = $sample['unit'] ?? null;
+                    if (!in_array($unit, ['party_roundtrip','per_person_one_way'], true)
+                        || !in_array($sample['provider'] ?? null, ['tourvisor','andromeda'], true)
+                        || ($sample['kind'] ?? null) !== 'fuel'
+                        || ($sample['base_includes_other_required_charges'] ?? null) !== true
+                        || !in_array($sample['base_relation'] ?? null, ['included','excluded'], true)
+                        || !self::digest($sample['offer_ref_digest'] ?? null)
+                        || !self::digest($sample['evidence_sha256'] ?? null)
+                        || !is_int($sample['observed_at'] ?? null) || !is_int($sample['expires_at'] ?? null)
+                        || $sample['observed_at'] < 1 || $sample['expires_at'] <= $sample['observed_at']) {
+                        return $hold('fuel_evidence_invalid');
+                    }
+                    if (self::hasInfant($sampleParty)) continue;
+                    if ($unit === 'party_roundtrip' && $sampleParty !== $party) continue;
+                    if ($sample['observed_at'] > $now || $sample['expires_at'] <= $now) continue;
+                    self::date($sample['evidence_valid_from'] ?? null);
+                    self::date($sample['evidence_valid_to'] ?? null);
+                    if ($sample['evidence_valid_from'] > $sample['evidence_valid_to']) return $hold('fuel_evidence_invalid');
+                    $native = self::units($sample['amount'] ?? null);
+                    $currency = self::currency($sample['currency'] ?? null);
+                    $factKey = $currency . '|' . $native . '|' . $sample['base_relation'] . '|' . $unit;
+                    $amounts[$factKey] = [$native, $currency, $sample['base_relation'], $unit];
+                    if (count($amounts) > 1) return $hold('fuel_rule_conflict');
+                    $offers[$sample['offer_ref_digest']] = true;
+                    $digests[$sample['evidence_sha256']] = true;
+                    ++$matched;
+                    $freshUntil = min($freshUntil, $sample['expires_at']);
+                    $evidenceFrom = $evidenceFrom === null ? $sample['evidence_valid_from'] : min($evidenceFrom, $sample['evidence_valid_from']);
+                    $evidenceTo = $evidenceTo === null ? $sample['evidence_valid_to'] : max($evidenceTo, $sample['evidence_valid_to']);
+                }
+                if (count($offers) < 2 || count($digests) < 2 || $amounts === []) {
+                    return $hold('fuel_independent_evidence_missing');
+                }
+                [$nativeRateOrTotal, $currency, $relation, $unit] = array_values($amounts)[0];
             }
             $nativeTotal = $nativeRateOrTotal;
             $passengers = $party['adults'] + $party['children'];
@@ -113,6 +121,7 @@ final class AnyTourThreeProviderFuelEvidenceV1
                 $fxEvidence = array_intersect_key($fx, array_flip([
                     'from','to','rate','observed_at','expires_at','evidence_sha256'
                 ]));
+                if ($ownerPolicy !== null) $freshUntil = $fxEvidence['expires_at'];
             } elseif ($fx !== null) {
                 return $hold('fuel_unexpected_exchange');
             }
@@ -194,6 +203,7 @@ final class AnyTourThreeProviderFuelEvidenceV1
             'source'=>'owner_policy',
             'policy_date'=>'2026-09-23',
             'operator_family'=>'fun_and_sun',
+            'market'=>'departure:1',
             'destination'=>'country:4',
             'amount'=>'70.00',
             'currency'=>'EUR',
@@ -203,6 +213,7 @@ final class AnyTourThreeProviderFuelEvidenceV1
         if (!is_array($value) || array_is_list($value) || $value !== $expected
             || $family !== 'fun_and_sun'
             || ($direction['operator_family'] ?? null) !== 'fun_and_sun'
+            || ($direction['market'] ?? null) !== 'departure:1'
             || ($direction['destination'] ?? null) !== 'country:4') {
             throw new InvalidArgumentException('fuel_owner_policy');
         }
