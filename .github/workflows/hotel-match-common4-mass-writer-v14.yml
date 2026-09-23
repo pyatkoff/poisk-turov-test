@@ -1,0 +1,28 @@
+name: MATCH COMMON4 mass writer v14
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_common4_mass_writer_v14.php'
+      - 'tests/hotel_match_common4_mass_writer_v14_test.php'
+      - '.github/workflows/hotel-match-common4-mass-writer-v14.yml'
+permissions: {contents: read}
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env: {MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: match_c14}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - run: php -l scripts/diagnostics/hotel_match_common4_mass_writer_v14.php
+      - run: php scripts/diagnostics/hotel_match_common4_mass_writer_v14.php --self-test
+      - env: {MATCH_C14_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=match_c14;charset=utf8mb4'}
+        run: php tests/hotel_match_common4_mass_writer_v14_test.php
