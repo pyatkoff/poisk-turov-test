@@ -138,9 +138,12 @@ def check_width(browser, origin, width):
         elif url.path == "/data/price-calendar-read-v1.php":
             observation_calls.append(query)
             first, last = query['dateFrom'][0], query['dateTo'][0]
+            child_ages = sorted(int(age) for age in query.get("childs", [""])[0].split(",") if age != "")
+            child_signature = ",".join(str(age) for age in child_ages)
             series = [{"date": DATE, "observed": True, "minPrice": 97500}] if first <= DATE <= last else []
             reply({"ok": True, "source": "latest-known-exact-segments-from-anytour-first-party-observations",
-                   "cachedPriceIsFinal": False, "currency": "RUB", "adults": 2, "childrenCount": 0,
+                   "cachedPriceIsFinal": False, "currency": "RUB", "adults": int(query["adults"][0]),
+                   "childrenCount": len(child_ages), "childAges": child_ages, "childAgesSignature": child_signature,
                    "departureId": int(query["departureId"][0]), "countryId": int(query["countryId"][0]),
                    "regionId": int(query["regionId"][0]) if query.get("regionId") else None,
                    "dateFrom": first, "dateTo": last, "nightsFrom": int(query["nightsFrom"][0]),

@@ -540,9 +540,9 @@
     return result;
   }
   function observationScopeSupported(s,filters={}) {
-    // Existing observation reader describes two adults, no children, with an
-    // optional single region. Never use its aggregate for unsupported filters.
-    if(s.adults!==2||s.ages.length||filters.hotelId||filters.q||filters.min>0
+    // Party is now an exact first-class observation scope. Keep all unrelated
+    // filters conservative so an aggregate can never stand in for unsupported detail.
+    if(filters.hotelId||filters.q||filters.min>0
       ||filters.max!==undefined&&filters.max!==null&&filters.max!==''
       ||['stars','meals','operators','flight','amenities'].some(key=>filters[key]?.length)
       ||['rating','beach','family','spa'].some(key=>filters[key])||(filters.resorts||[]).length>1)return false;
@@ -552,13 +552,15 @@
     if(!observationScopeSupported(s,filters))return [];
     const departure=catalog.departures.find(x=>text(x)===s.origin||String(x.id)===s.origin);
     if(!departure||!catalog.countries.some(x=>String(x.id)===String(s.country)))return [];
-    const selected=regionIds(s,filters),query={departureId:String(departure.id),countryId:String(s.country),dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights)};
+    const childAges=[...s.ages].sort((a,b)=>a-b),childSignature=childAges.join(',');
+    const selected=regionIds(s,filters),query={departureId:String(departure.id),countryId:String(s.country),dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights),adults:String(s.adults),childs:childSignature};
     if(selected.length)query.regionId=selected[0];
     const response=await fetch('/data/price-calendar-read-v1.php?'+new URLSearchParams(query),{credentials:'same-origin',signal});
     if(!response.ok)throw new Error('Сохранённые цены календаря временно недоступны.');
     const result=await response.json();
     if(result?.ok!==true||result.source!=='latest-known-exact-segments-from-anytour-first-party-observations'
-      ||result.cachedPriceIsFinal!==false||result.currency!=='RUB'||result.adults!==2||result.childrenCount!==0
+      ||result.cachedPriceIsFinal!==false||result.currency!=='RUB'||result.adults!==s.adults||result.childrenCount!==childAges.length
+      ||!Array.isArray(result.childAges)||result.childAges.length!==childAges.length||result.childAges.some((age,index)=>age!==childAges[index])||result.childAgesSignature!==childSignature
       ||String(result.departureId)!==query.departureId||String(result.countryId)!==query.countryId
       ||String(result.regionId||'')!==String(query.regionId||'')||result.dateFrom!==from||result.dateTo!==to
       ||String(result.nightsFrom)!==query.nightsFrom||String(result.nightsTo)!==query.nightsTo||!Array.isArray(result.series))throw new Error('Сохранённые цены не соответствуют параметрам поездки.');
