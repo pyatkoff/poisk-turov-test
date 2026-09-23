@@ -193,6 +193,10 @@ class ParseTest(unittest.TestCase):
                 m.parse_command(bad)
 
 
+    def test_match_common4_continuation_resume_readback_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-continuation-resume-readback int-andromeda-match-common4-continuation-resume-readback-20260924-v1')
+        self.assertEqual('match-common4-continuation-resume-readback',v['mode'])
+
     def test_match_common4_current_v2_mode(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-current-v2 int-andromeda-match-common4-current-20260923-v1')
         self.assertEqual('match-common4-current-v2',v['mode'])
