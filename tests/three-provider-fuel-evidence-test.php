@@ -46,6 +46,34 @@ function fuel_input(array $dto, int $now, string $amount = '280', string $relati
             'scope_sha256'=>AnyTourThreeProviderFuelEvidenceV1::hash($direction),
             'evidence_sha256'=>hash('sha256','fx'),'observed_at'=>$now-10,'expires_at'=>$now+300]];
 }
+function fuel_per_person_input(array $dto, int $now, string $rate = '85'): array {
+    $family=AnyTourOperatorFuelRuleEvidenceV1::operatorFamily($dto['operator']['raw']);
+    if ($family===null) throw new RuntimeException('fixture operator');
+    $direction=['operator_family'=>$family,'market'=>'departure:1','destination'=>'country:4'];
+    $targetParty=$dto['tour']['party'];
+    $sourceParties=[
+        ['adults'=>1,'children'=>0,'child_ages'=>[]],
+        ['adults'=>2,'children'=>0,'child_ages'=>[]],
+    ];
+    $rows=[];
+    foreach ([['a','andromeda'],['b','andromeda']] as $idx=>[$id,$provider]) {
+        $rows[]=[
+            'direction'=>$direction,'party'=>$sourceParties[$idx],'kind'=>'fuel','unit'=>'per_person_one_way',
+            'amount'=>$rate,'currency'=>'EUR','base_relation'=>'excluded',
+            'base_includes_other_required_charges'=>true,
+            'observed_at'=>$now-60,'expires_at'=>$now+3600,
+            'evidence_valid_from'=>'2026-09-01','evidence_valid_to'=>'2026-10-31',
+            'provider'=>$provider,'offer_ref_digest'=>hash('sha256','pp-sample-'.$family.'-'.$id),
+            'evidence_sha256'=>hash('sha256','pp-evidence-'.$family.'-'.$id),
+            'provenance_scope'=>['source_party'=>$sourceParties[$idx]],
+        ];
+    }
+    return ['offer_ref_digest'=>$dto['identity']['offer_ref_digest'],'direction'=>$direction,'party'=>$targetParty,
+        'observations'=>$rows,
+        'exchange'=>['from'=>'EUR','to'=>'RUB','rate'=>'100',
+            'scope_sha256'=>AnyTourThreeProviderFuelEvidenceV1::hash($direction),
+            'evidence_sha256'=>hash('sha256','pp-fx'),'observed_at'=>$now-10,'expires_at'=>$now+300]];
+}
 function fuel_hold(array $dto, array $input, int $now, string $reason): void {
     $r=AnyTourThreeProviderFuelEvidenceV1::apply($dto,$input,$now);
     fuel_check(!$r['applied'] && $r['reason']===$reason,'hold-'.$reason);
@@ -93,6 +121,25 @@ foreach (['FUN&SUN','Интурист'] as $op) {
     }
 }
 fuel_check(count($groups)===2 && $covered===6,'two-operators-two-direction-rules-six-cross-night-offers');
+
+// One confirmed per-person one-way rate scales to the target party, including children 2+.
+$ppDto=fuel_dto('FUN&SUN','100000','pp-target');
+$ppDto['tour']['party']=['adults'=>2,'children'=>1,'child_ages'=>[5]];
+$ppInput=fuel_per_person_input($ppDto,$now,'85');
+$ppResult=AnyTourThreeProviderFuelEvidenceV1::apply($ppDto,$ppInput,$now);
+fuel_check($ppResult['applied']&&$ppResult['dto']['price']==='151000.00','per-person-85-x-3-x-2');
+fuel_check(($ppResult['dto']['money']['fuel_charge_reported']['amount']??null)==='51000.00','per-person-party-rub-total');
+fuel_check(($ppResult['dto']['money']['operator_fuel_rule']['unit']??null)==='per_person_one_way','per-person-rule-unit');
+fuel_check(($ppResult['dto']['money']['operator_fuel_rule']['amount']??null)==='85.00','per-person-native-rate-retained');
+fuel_check(($ppResult['dto']['money']['operator_fuel_rule']['passenger_count']??null)===3
+    &&($ppResult['dto']['money']['operator_fuel_rule']['direction_count']??null)===2
+    &&($ppResult['dto']['money']['operator_fuel_rule']['applied_native_total']??null)==='510.00','per-person-native-total-metadata');
+fuel_check($ppResult['dto']['finalPriceReady']===true&&$ppResult['dto']['final_price_verified']===false,'per-person-estimate-not-verified');
+$ppInfant=fuel_dto('FUN&SUN','100000','pp-infant');
+$ppInfant['tour']['party']=['adults'=>2,'children'=>1,'child_ages'=>[1]];
+fuel_hold($ppInfant,fuel_per_person_input($ppInfant,$now,'85'),$now,'fuel_infant_separate');
+$ppConflict=$ppInput;$ppConflict['observations'][1]['amount']='90';
+fuel_hold($ppDto,$ppConflict,$now,'fuel_rule_conflict');
 
 $included=fuel_input($d,$now,'280','included');
 $got=AnyTourThreeProviderFuelEvidenceV1::apply($d,$included,$now);

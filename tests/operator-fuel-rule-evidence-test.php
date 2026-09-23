@@ -93,6 +93,33 @@ fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target, [$a,$unknownU
 $unknownRelation = $b; $unknownRelation['base_relation'] = 'unknown';
 fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target, [$a,$unknownRelation], 2000) === null, 'unknown inclusion never promoted');
 
+// Per-person one-way rates are reusable across non-infant party composition.
+$ppPartyA=['adults'=>1,'children'=>0,'child_ages'=>[]];
+$ppPartyB=['adults'=>2,'children'=>0,'child_ages'=>[]];
+$ppTarget=$target;
+$ppTarget['party']=['adults'=>2,'children'=>1,'child_ages'=>[5]];
+$ppA=$a;
+$ppA['provider']='andromeda';$ppA['source']='andromeda_claim_service';
+$ppA['unit']='per_person_one_way';$ppA['amount']='85.00';
+$ppA['scope']['party']=$ppPartyA;
+$ppA['offer_ref_digest']=fuel_h('pp-offer-a');$ppA['evidence_sha256']=fuel_h('pp-ev-a');
+$ppA['source_response_sha256']=fuel_h('pp-resp-a');
+$ppB=$b;
+$ppB['provider']='andromeda';$ppB['source']='andromeda_claim_service';
+$ppB['unit']='per_person_one_way';$ppB['amount']='85.00';
+$ppB['scope']['party']=$ppPartyB;
+$ppB['offer_ref_digest']=fuel_h('pp-offer-b');$ppB['evidence_sha256']=fuel_h('pp-ev-b');
+$ppB['source_response_sha256']=fuel_h('pp-resp-b');
+$ppInput=AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($ppTarget,[$ppA,$ppB],2000);
+fuel_ok(is_array($ppInput),'per-person independent observations confirm');
+fuel_ok(($ppInput['observations'][0]['unit']??null)==='per_person_one_way','per-person unit retained');
+fuel_ok(($ppInput['party']??null)===$ppTarget['party'],'target party retained for later arithmetic');
+fuel_ok(($ppInput['observations'][0]['party']??null)!==$ppTarget['party'],'source party remains provenance, not applicability key');
+$ppConflict=$ppB;$ppConflict['amount']='90.00';
+fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($ppTarget,[$ppA,$ppConflict],2000)===null,'per-person rate conflict blocks rule');
+$ppInfant=$ppTarget;$ppInfant['party']=['adults'=>2,'children'=>1,'child_ages'=>[1]];
+fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($ppInfant,[$ppA,$ppB],2000)===null,'per-person infant target stays separate');
+
 $root = sys_get_temp_dir() . '/operator-fuel-v2-' . bin2hex(random_bytes(5));
 $dir = $root . '/searches';
 mkdir($dir, 0700, true);

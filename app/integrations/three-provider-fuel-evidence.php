@@ -47,10 +47,11 @@ final class AnyTourThreeProviderFuelEvidenceV1
                     $sampleDirection = self::direction($sample['direction'] ?? null);
                     $sampleParty = self::party($sample['party'] ?? null);
                 } catch (InvalidArgumentException $ignored) { continue; }
-                if ($sampleDirection !== $direction || $sampleParty !== $party) continue;
-                if (!in_array($sample['provider'] ?? null, ['tourvisor','andromeda'], true)
+                if ($sampleDirection !== $direction) continue;
+                $unit = $sample['unit'] ?? null;
+                if (!in_array($unit, ['party_roundtrip','per_person_one_way'], true)
+                    || !in_array($sample['provider'] ?? null, ['tourvisor','andromeda'], true)
                     || ($sample['kind'] ?? null) !== 'fuel'
-                    || ($sample['unit'] ?? null) !== 'party_roundtrip'
                     || ($sample['base_includes_other_required_charges'] ?? null) !== true
                     || !in_array($sample['base_relation'] ?? null, ['included','excluded'], true)
                     || !self::digest($sample['offer_ref_digest'] ?? null)
@@ -59,14 +60,16 @@ final class AnyTourThreeProviderFuelEvidenceV1
                     || $sample['observed_at'] < 1 || $sample['expires_at'] <= $sample['observed_at']) {
                     return $hold('fuel_evidence_invalid');
                 }
+                if (self::hasInfant($sampleParty)) continue;
+                if ($unit === 'party_roundtrip' && $sampleParty !== $party) continue;
                 if ($sample['observed_at'] > $now || $sample['expires_at'] <= $now) continue;
                 self::date($sample['evidence_valid_from'] ?? null);
                 self::date($sample['evidence_valid_to'] ?? null);
                 if ($sample['evidence_valid_from'] > $sample['evidence_valid_to']) return $hold('fuel_evidence_invalid');
                 $native = self::units($sample['amount'] ?? null);
                 $currency = self::currency($sample['currency'] ?? null);
-                $factKey = $currency . '|' . $native . '|' . $sample['base_relation'] . '|party_roundtrip';
-                $amounts[$factKey] = [$native, $currency, $sample['base_relation']];
+                $factKey = $currency . '|' . $native . '|' . $sample['base_relation'] . '|' . $unit;
+                $amounts[$factKey] = [$native, $currency, $sample['base_relation'], $unit];
                 if (count($amounts) > 1) return $hold('fuel_rule_conflict');
                 $offers[$sample['offer_ref_digest']] = true;
                 $digests[$sample['evidence_sha256']] = true;
@@ -78,9 +81,18 @@ final class AnyTourThreeProviderFuelEvidenceV1
             if (count($offers) < 2 || count($digests) < 2 || $amounts === []) {
                 return $hold('fuel_independent_evidence_missing');
             }
-            [$native, $currency, $relation] = array_values($amounts)[0];
+            [$nativeRateOrTotal, $currency, $relation, $unit] = array_values($amounts)[0];
+            $nativeTotal = $nativeRateOrTotal;
+            $passengers = $party['adults'] + $party['children'];
+            if ($unit === 'per_person_one_way') {
+                if ($passengers < 1 || $nativeRateOrTotal > intdiv(PHP_INT_MAX, $passengers * 2)) {
+                    return $hold('fuel_total_overflow');
+                }
+                $nativeTotal = $nativeRateOrTotal * $passengers * 2;
+            }
+
             $fx = $input['exchange'] ?? null;
-            $converted = $native;
+            $converted = $nativeTotal;
             $fxEvidence = null;
             if ($currency !== 'RUB') {
                 if (!is_array($fx) || ($fx['from'] ?? null) !== $currency || ($fx['to'] ?? null) !== 'RUB'
@@ -90,7 +102,7 @@ final class AnyTourThreeProviderFuelEvidenceV1
                     || $fx['observed_at'] < 1 || $fx['observed_at'] > $now || $fx['expires_at'] <= $now) {
                     return $hold('fuel_exchange_unavailable');
                 }
-                $converted = self::convert($native, $fx['rate'] ?? null);
+                $converted = self::convert($nativeTotal, $fx['rate'] ?? null);
                 $fxEvidence = array_intersect_key($fx, array_flip([
                     'from','to','rate','observed_at','expires_at','evidence_sha256'
                 ]));
@@ -111,10 +123,10 @@ final class AnyTourThreeProviderFuelEvidenceV1
             $rule = [
                 'schema_version'=>2,
                 'kind'=>'fuel',
-                'unit'=>'party_roundtrip',
+                'unit'=>$unit,
                 'direction'=>$direction,
                 'applicable_party'=>$party,
-                'amount'=>self::format($native),
+                'amount'=>self::format($nativeRateOrTotal),
                 'currency'=>$currency,
                 'base_relation'=>$relation,
                 'evidence_period_from'=>$evidenceFrom,
@@ -124,6 +136,11 @@ final class AnyTourThreeProviderFuelEvidenceV1
                 'evidence_count'=>count($digests),
                 'evidence_sha256'=>self::hash($evidenceKeys),
             ];
+            if ($unit === 'per_person_one_way') {
+                $rule['direction_count'] = 2;
+                $rule['passenger_count'] = $passengers;
+                $rule['applied_native_total'] = self::format($nativeTotal);
+            }
             $out = $dto;
             $out['money']['fuel_charge_reported'] = [
                 'amount'=>self::format($converted), 'currency'=>'RUB', 'source'=>'operator_fuel_direction_rule'

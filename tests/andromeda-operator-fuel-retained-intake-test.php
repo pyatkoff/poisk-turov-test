@@ -87,6 +87,16 @@ $target=[
 ];
 afi_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target,[$o1,$o2],2000)!==null,'two independent SAMO observations confirm');
 
+$perPerson=afi_retained('offer_'.str_repeat('9',64),'claim-person',true);
+foreach($perPerson['claim']['claimDocument'][0]['services'][0]['service'] as &$fuelRow){
+    $fuelRow['price']='85';$fuelRow['unit']='person';
+}
+unset($fuelRow);
+$perPersonObs=AnyTourAndromedaOperatorFuelRetainedIntakeV1::observation($perPerson);
+afi_ok($perPersonObs['unit']==='per_person_one_way','per-person unit retained');
+afi_ok($perPersonObs['amount']==='85'&&$perPersonObs['currency']==='EUR','per-person stores one-leg rate, not two-leg sum');
+afi_ok($perPersonObs['base_relation']==='excluded','per-person relation retained');
+
 $unknown=AnyTourAndromedaOperatorFuelRetainedIntakeV1::observation(
     afi_retained('offer_'.str_repeat('c',64),'claim-3',false)
 );
