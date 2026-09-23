@@ -381,7 +381,7 @@ class ContractTest(unittest.TestCase):
                   "match-tv942-write","run_match_tv942_write",
                   "hotel_match_live942_tv_writer_v1.php",
                   "match_tv_writer_manifest_hash","match_tv_writer_terminal_guard",
-                  "install-runtime','match-coverage','match-coverage-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
+                  "install-runtime','match-coverage','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
