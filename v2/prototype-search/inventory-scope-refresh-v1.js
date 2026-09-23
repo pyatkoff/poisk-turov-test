@@ -62,7 +62,10 @@
     form.requestSubmit();
   };
   const scheduleInspect = () => {
-    if (scheduled) return;
+    // Result-side filters are edited while the main search form is collapsed.
+    // Ignore events that originate during explicit form editing so the click on
+    // "Найти туры" cannot queue a second search after the form collapses.
+    if (form.hidden !== true || scheduled) return;
     scheduled = true;
     queueMicrotask(inspect);
   };
