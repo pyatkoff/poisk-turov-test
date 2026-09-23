@@ -164,6 +164,23 @@ const applyCatalogSource = source.slice(source.indexOf('function applyCatalog(c)
 assert.match(applyCatalogSource,/data\.catalog\.mealPlans/,'initial meal choices come from reviewed canonical catalogue');
 assert.doesNotMatch(applyCatalogSource,/data\.catalog\.meals\.forEach/,'supplier raw meal catalogue cannot seed top-level choices');
 
+const refreshStart=source.indexOf('async function refreshHotel(id)');
+const refreshEnd=source.indexOf('\nfunction openLeadPreview',refreshStart);
+assert.ok(refreshStart>=0&&refreshEnd>refreshStart,'refresh owner exists');
+const refreshSource=source.slice(refreshStart,refreshEnd);
+assert.match(refreshSource,/o\.provider==='anex'.*o\.raw\?\.anexKind==='group_minimum'/s,'ANEX group minimum owns a same-provider refresh branch');
+assert.match(refreshSource,/await data\.expandAnexGroup\(o\)/,'ANEX group refresh calls the dedicated direct-provider expansion');
+assert.match(refreshSource,/terminalizeSearchForVerification\(\);renderResults\(\{keepFilters:true\}\)/,'ANEX verification terminalizes the old provider UI before awaiting the exact provider');
+assert.ok(refreshSource.indexOf('expandAnexGroup(o)')<refreshSource.indexOf('runSearch({hotelIds:'),'ANEX same-provider expansion runs before the generic Tourvisor refresh fallback');
+assert.match(refreshSource,/h\.offers=\[\.\.\.h\.offers\.filter.*\.\.\.expanded\.offers\]/s,'expanded concrete ANEX variants replace the selected group minimum in the existing hotel offer list');
+const terminalizeStart=source.indexOf('function terminalizeSearchForVerification()');
+const terminalizeEnd=source.indexOf('\nfunction stopSearch()',terminalizeStart);
+assert.ok(terminalizeStart>=0&&terminalizeEnd>terminalizeStart,'provider-status terminalizer exists');
+const terminalizeSource=source.slice(terminalizeStart,terminalizeEnd);
+assert.match(terminalizeSource,/==='loading'.*='cancelled'/s,'old loading provider states become terminal');
+assert.match(terminalizeSource,/searchResponse\.pending=false/,'verification clears old pending state');
+assert.match(terminalizeSource,/searchResponse\.phase='cancelled'/,'verification marks the old search lifecycle cancelled');
+
 const prepareSearch = source.slice(source.indexOf('function prepareSearchRun(options={})'), source.indexOf('\nfunction mergeSearchResults'));
 assert.match(prepareSearch, /demoteSavedTour\(\)/, 'new search retains a demoted observation before lifecycle orchestration');
 assert.doesNotMatch(prepareSearch, /savedSelection=null/, 'new search no longer deletes the saved tour');
