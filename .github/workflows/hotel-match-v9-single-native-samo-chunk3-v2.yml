@@ -1,0 +1,117 @@
+name: MATCH v9 single-native SAMO chunk3 v2
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_v9_single_native_samo_chunk3_v2.php
+      - .github/workflows/hotel-match-v9-single-native-samo-chunk3-v2.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-v9-single-native-samo-chunk3-1971-20260921-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-v9-single-native-samo-chunk3-1971-20260921-v2
+  BASE_SHA: 316e5cf1e09c158f35772c8e66e3bd0c5be8561f
+  CLAIM: '5760013091'
+  V9_ARTIFACT: '10634643226'
+  CH1_ARTIFACT: '10634204615'
+  CH2_ARTIFACT: '10634724683'
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and claim
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import subprocess,os
+          want={'.github/workflows/hotel-match-v9-single-native-samo-chunk3-v2.yml','scripts/diagnostics/hotel_match_v9_single_native_samo_chunk3_v2.php'}
+          got=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert got==want,(got,want)
+          PY
+          php -l scripts/diagnostics/hotel_match_v9_single_native_samo_chunk3_v2.php
+          php scripts/diagnostics/hotel_match_v9_single_native_samo_chunk3_v2.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json')); b=c['body'].lower()
+          assert c['id']==5760013091 and c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for s in [os.environ['OPERATION_ID'],'country4=49','current db read only','no supplier/tourvisor/anex/andromeda http','no writes']:
+            assert s.lower() in b,s
+          PY
+      - name: Download immutable inputs
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$V9_ARTIFACT/zip" > input/v9.zip
+          test "$(sha256sum input/v9.zip|cut -d' ' -f1)" = 0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0
+          unzip -q input/v9.zip -d input/v9
+          test "$(sha256sum input/v9/reconciliation.json|cut -d' ' -f1)" = 0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$CH1_ARTIFACT/zip" > input/ch1.zip
+          test "$(sha256sum input/ch1.zip|cut -d' ' -f1)" = 0a115458ac2fb4608bc62b835fefada979a246a9d891ce96ed4ef725c6dd3d2a
+          unzip -q input/ch1.zip -d input/ch1
+          test "$(sha256sum input/ch1/result.json|cut -d' ' -f1)" = 488b3b9c28cb6f6fd429a6a1925e86217b90022d9372b142ba6e3981c77bc351
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$CH2_ARTIFACT/zip" > input/ch2.zip
+          test "$(sha256sum input/ch2.zip|cut -d' ' -f1)" = 5a19a8c11ddc05f6cbb1af6b17c4ac8b4b09d378100d0b31528ab96e9d9ccef9
+          unzip -q input/ch2.zip -d input/ch2
+          test "$(sha256sum input/ch2/result.json|cut -d' ' -f1)" = 3e5893d0e8580f3060cd1e8d947b1fa10e99d1e1f6a2398a6dc8617121ac1ba2
+          cp input/v9/reconciliation.json input/v9-reconciliation.json
+          cp input/ch1/result.json input/chunk1-result.json
+          cp input/ch2/result.json input/chunk2-result.json
+      - name: Reserve before CURRENT DB read
+        env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,datetime,pathlib
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps({'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db','source_sha':os.environ['HEAD_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'v9-samo-chunk3-v2-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(q) as f: xs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD_SHA']]
+            if xs and max(xs,key=lambda x:x['id'])['status']=='completed':
+              x=max(xs,key=lambda x:x['id']); assert x['conclusion']=='success',x; break
+            time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Execute CURRENT SAMO bridge chunk3 read-only
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail; umask 077; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_v9_single_native_samo_chunk3_v2.php input/v9-reconciliation.json input/chunk1-result.json input/chunk2-result.json reservation/reservation.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_V9_PATH=\"\$HOME/$op/payload/v9-reconciliation.json\" MATCH_CHUNK1_PATH=\"\$HOME/$op/payload/chunk1-result.json\" MATCH_CHUNK2_PATH=\"\$HOME/$op/payload/chunk2-result.json\" php \"\$HOME/$op/payload/hotel_match_v9_single_native_samo_chunk3_v2.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' >terminal/server.tgz
+      - name: Verify result
+        run: |
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+            for n in ['result.json','receipt.json']: pathlib.Path('terminal',n).write_bytes(t.extractfile(n).read())
+          r=json.load(open('terminal/result.json')); q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']=='hotel-match-v9-single-native-samo-chunk3-1971-20260921-v2'
+          assert r['state']==q['state']=='completed_read_only' and r['selected_country_id']==4 and r['selected_unique_hotels']==49
+          assert r['provider_calls']==r['tourvisor_calls']==r['samo_calls']==r['andromeda_calls']==r['database_writes']==r['mapping_writes']==0
+          assert all(x['safe_to_write_now'] is False for x in r['rows'])
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          print(json.dumps({'hotels':r['selected_unique_hotels'],'edges':r['selected_edges'],'provider':r['provider_classification_counts'],'bridge':r['bridge_classification_counts'],'result_sha256':q['result_sha256']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-v9-samo-chunk3-v2-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
