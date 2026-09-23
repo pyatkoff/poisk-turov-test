@@ -212,6 +212,8 @@ def check_width(browser, origin, width):
             body = request.post_data_json
             native_calls.append(body)
             assert body["generation"] >= 1
+            assert body["page"] == 1
+            assert sorted(body.keys()) == ["generation", "page", "params"]
             assert body["params"]["countryId"] == "4"
             if state['native_failure']:
                 reply({'ok': False}, 503)

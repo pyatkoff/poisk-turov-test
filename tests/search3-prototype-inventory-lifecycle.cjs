@@ -339,7 +339,8 @@ test('one user search invokes Andromeda autosave once and rereads LOCAL after it
   native:async body=>{await gate.promise;saved=true;return {response:{ok:true,json:async()=>directAndromeda(body)}};},
   database:(i,p)=>snapshot(p,saved?['tourvisor','andromeda']:['tourvisor'])
  });
- await h.start();assert.equal(h.nativeCalls.length,1);assert.equal(h.nativeCalls[0].generation,1);
+ await h.start();assert.equal(h.nativeCalls.length,1);assert.equal(h.nativeCalls[0].generation,1);assert.equal(h.nativeCalls[0].page,1);
+ assert.deepEqual(Object.keys(h.nativeCalls[0]).sort(),['generation','page','params']);
  assert.equal(JSON.stringify(h.nativeCalls[0].params),JSON.stringify(h.data.params(trip)));
  const completing=h.poll();await flush();assert.deepEqual(h.providers(),['tourvisor']);assert.equal(h.events.some(e=>e.type==='complete'),false);
  gate.resolve();await completing;await flush();assert.equal(h.nativeCalls.length,1);assert.deepEqual(h.providers(),['andromeda','tourvisor']);

@@ -418,7 +418,7 @@
     if(!url||!current(run)){run.sourceCounts.andromeda={status:'skipped',hotels:0,offers:0};return;}
     notify({type:'provider',provider:'andromeda',status:'loading'});if(!current(run))return;
     try{
-      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({generation:run.generation,params:p})});
+      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({generation:run.generation,page:1,params:p})});
       const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!current(run))return;
       if(!response.ok||payload?.ok!==true)throw new Error('Andromeda search unavailable');
       const result=await applyDirectAndromeda(run,data,p);if(!current(run))return;
