@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const HMC4R6_OP='hotel-match-common4-missing-anchor-recovery-1971-20260923-v6';
+const HMC4R6_OP='hotel-match-common4-missing-anchor-recovery-1971-20260923-v7';
 const HMC4R6_AUDIT_OP='hotel-match-live30-common4-current-1971-20260923-v2';
 const HMC4R6_AUDIT_SHA='69bbd1ab7673f0d5ecd2759604c6a6f7e1182a167ba21f78c3f7aeefe05a069f';
 const HMC4R6_EXPECTED_ROWS=110;
