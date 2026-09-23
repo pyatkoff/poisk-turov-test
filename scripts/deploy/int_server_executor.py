@@ -1872,7 +1872,7 @@ def run_match_common4_continuation_acquire(stage, offset, limit):
             or plan_result.get('mapping_writes')!=0
             or plan_result.get('safe_to_write_now') is not False):
         fail('match_common4_continuation_plan_guard')
-    if offset<0 or limit<1 or limit>100 or offset+limit>expected_frontier:
+    if offset<0 or limit<1 or limit>1349 or offset+limit>expected_frontier:
         fail('match_common4_continuation_scope_guard')
     scope_rows=plan_result['rows'][offset:offset+limit]
     scope_ids=[]
@@ -1894,7 +1894,7 @@ def run_match_common4_continuation_acquire(stage, offset, limit):
                  'parent_operation':operation,'continuation_plan_operation':plan_operation,
                  'continuation_plan_sha256':plan_digest,'frontier_expected':expected_frontier,
                  'frontier_id_sha256':expected_frontier_hash,'offset':offset,'limit':limit,
-                 'call_cap':900,'database_writes':0,'mapping_writes':0,'reserved_at':int(time.time())}
+                 'call_cap':5000,'database_writes':0,'mapping_writes':0,'reserved_at':int(time.time())}
     (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
     os.chmod(child_dir/'reservation.json',0o600)
 
@@ -1905,7 +1905,7 @@ def run_match_common4_continuation_acquire(stage, offset, limit):
 
     run_env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
              'MATCH_PLAN_PATH':str(plan_path),'MATCH_CHILD_OPERATION':child,
-             'MATCH_OFFSET':str(offset),'MATCH_LIMIT':str(limit),'MATCH_CALL_CAP':'900',
+             'MATCH_OFFSET':str(offset),'MATCH_LIMIT':str(limit),'MATCH_CALL_CAP':'5000',
              'MATCH_SOURCE_SHA':source}
     call=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=run_env,
                         capture_output=True,text=True,timeout=1200)
@@ -1929,7 +1929,7 @@ def run_match_common4_continuation_acquire(stage, offset, limit):
             or child_result.get('dates_calls')!=0):
         fail('match_common4_continuation_terminal_guard')
     calls=child_result.get('provider_calls')
-    if not isinstance(calls,int) or calls<0 or calls>900: fail('match_common4_continuation_call_cap_guard')
+    if not isinstance(calls,int) or calls<0 or calls>5000: fail('match_common4_continuation_call_cap_guard')
     allowed={'completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'}
     if call.returncode!=0 or child_result.get('state') not in allowed:
         fail('match_common4_continuation_terminal_nonzero_no_replay')
