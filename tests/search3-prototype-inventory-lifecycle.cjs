@@ -88,54 +88,47 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
 const observed=(q,price=97500)=>({ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:2,childrenCount:0,departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:q.regionId?Number(q.regionId):null,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]});
-test('meal labels collapse supplier codes and Russian aliases into one taxonomy',async()=>{
- const h=harness();h.data.catalog.meals.push(
-  {id:5,name:'AI',fullName:'AI — Всё включено'},
-  {id:3,name:'HB',fullName:'HB — Полупансион'},
-  {id:6,name:'Все Включено'},
-  {id:7,name:'Завтрак'},
-  {id:8,name:'BB',fullName:'BB - Только завтрак'},
-  {id:9,name:'Ультра Все Вкл'}
- );
- assert.equal(h.data.meal('AI'),'Всё включено');assert.equal(h.data.meal({name:'AI',fullName:'AI — Всё включено'}),'Всё включено');
- assert.equal(h.data.meal('ALL INCLUSIVE'),'Всё включено');assert.equal(h.data.meal('Все Включено'),'Всё включено');
- assert.equal(h.data.meal('ВСЁ ВКЛЮЧЕНО'),'Всё включено');assert.equal(h.data.meal('Завтрак'),'Завтраки');
- assert.equal(h.data.meal('Только завтрак'),'Завтраки');assert.equal(h.data.meal('BB - Только завтрак'),'Завтраки');
- assert.equal(h.data.meal('Ультра Все Вкл'),'Ультра всё включено');assert.equal(h.data.meal('HB'),'Полупансион');
- assert.equal(h.data.params(trip,[],{meals:['Все Включено']}).meal,'');
- assert.equal(h.data.params(trip,[],{meals:['Завтраки']}).meal,'');
- assert.equal(h.data.params(trip,[],{meals:['Полупансион']}).meal,'3');
- assert.equal(h.data.params(trip,[],{meals:['Всё включено','Полупансион']}).meal,'');
+function canonicalMeals(h){
+ h.data.catalog.meals.splice(0,h.data.catalog.meals.length,
+  {id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'});
+ h.data.catalog.mealPlans.splice(0,h.data.catalog.mealPlans.length,
+  {id:2,code:'breakfast',nameRu:'Завтраки',nativeIds:['3']},
+  {id:3,code:'half-board',nameRu:'Полупансион',nativeIds:['4']},
+  {id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:['7']},
+  {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']});
+ h.data.catalog.mealPlanAvailable=true;
+}
+test('canonical mealPlanId owns top-level taxonomy while raw meal stays detail',async()=>{
+ const h=harness();canonicalMeals(h);
+ const rows=h.data.project([{id:101,anytourHotelId:501,name:'FICTIONAL HOTEL 101',category:5,rating:4.7,images:[],tours:[
+  {id:'mapped',provider:'tourvisor',price:150000,date:trip.from,nights:7,meal:{id:7,name:'Premium All Inclusive'},roomType:'STANDARD',operator:{name:'ANEX'}},
+  {id:'unknown',provider:'tourvisor',price:160000,date:trip.from,nights:7,meal:{name:'On Request'},roomType:'STANDARD',operator:{name:'ANEX'}},
+  {id:'local-plan',provider:'andromeda',price:170000,date:trip.from,nights:7,meal:{name:'Local&Healthy Ultra All Inclusive'},
+   searchMealPlan:{id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено'},roomType:'STANDARD',operator:{name:'FUN&SUN'}}
+ ]}],trip);
+ assert.equal(rows.length,1);
+ const [mapped,unknown,localPlan]=rows[0].offers;
+ assert.equal(mapped.mealPlanId,7);assert.equal(mapped.mealFacet,'Всё включено');assert.equal(mapped.meal,'Всё включено');
+ assert.equal(mapped.mealRaw,'Premium All Inclusive','raw wording is retained separately from facet identity');
+ assert.equal(unknown.mealPlanId,null);assert.equal(unknown.mealFacet,'');assert.equal(unknown.meal,'On Request','unknown raw fact remains detail only');
+ assert.equal(localPlan.mealPlanId,8);assert.equal(localPlan.mealFacet,'Ультра всё включено');
+ assert.equal(localPlan.mealRaw,'Local&Healthy Ultra All Inclusive');
+ assert.equal(h.data.mealPlan({provider:'tourvisor',meal:{id:7,name:'anything'}},'tourvisor').id,7,'reviewed native ID is authoritative');
+ assert.equal(h.data.mealPlan({provider:'tourvisor',meal:{name:'On Request'}},'tourvisor'),null,'raw label never invents a plan');
 });
-test('supplier scope policy owns both request narrowing and local-vs-real-search coverage',async()=>{
- const h=harness();h.data.catalog.meals.push(
-  {id:5,name:'AI',fullName:'AI — Всё включено'},
-  {id:6,name:'Все Включено'},
-  {id:3,name:'HB',fullName:'HB — Полупансион'}
- );
+test('supplier meal scope uses reviewed canonical native IDs, not aliases',async()=>{
+ const h=harness();canonicalMeals(h);
  const scope=filters=>h.data.supplierScope(filters);
  const covered=(previous,next)=>h.data.supplierScopeCovered(previous,next);
- const broad=scope({stars:[4,5],meals:['Все Включено']});
- assert.equal(broad.hotelCategory,'');assert.equal(broad.meal,'','alias-backed canonical meal is broad upstream');
- assert.equal(h.data.params(trip,[],{stars:[4,5],meals:['Все Включено']}).hotelCategory,broad.hotelCategory);
- assert.equal(h.data.params(trip,[],{stars:[4,5],meals:['Все Включено']}).meal,broad.meal);
  const exact=scope({stars:[4],meals:['Полупансион']});
- assert.equal(exact.hotelCategory,'4');assert.equal(exact.meal,'3');
- assert.equal(covered(broad,exact),true,'broad upstream inventory covers a later exact local narrowing');
- assert.equal(covered(scope({stars:[5]}),scope({stars:[4]})),false,'switching one upstream star requires a real search');
- assert.equal(covered(scope({stars:[5]}),scope({})),false,'removing one upstream star requires a broad search');
- assert.equal(covered(scope({meals:['Полупансион']}),scope({})),false,'removing one unambiguous upstream meal requires a broad search');
- assert.equal(covered(scope({meals:['Все Включено']}),scope({})),true,'removing an alias-backed meal stays local because its actual request was broad');
- assert.equal(covered(scope({resorts:['Сиде','Кемер']}),scope({resorts:['Сиде']})),true,'resort subset stays inside fetched OR-scope');
- assert.equal(covered(scope({resorts:['Сиде']}),scope({resorts:['Сиде','Белек']})),false,'adding an unfetched resort requires a real search');
- assert.equal(covered(scope({hotelId:4234}),scope({})),false,'leaving an exact hotel scope requires broader inventory');
- assert.equal(covered(scope({max:600000}),scope({max:500000})),true,'lower budget ceiling stays local');
- assert.equal(covered(scope({max:600000}),scope({max:700000})),false,'higher budget ceiling requires new inventory');
- assert.equal(covered(scope({min:200000}),scope({min:300000})),true,'higher budget floor stays local');
- assert.equal(covered(scope({min:200000}),scope({min:100000})),false,'lower budget floor requires new inventory');
- await h.start({stars:[4,5],meals:['Все Включено']});
- assert.equal(h.data.currentSupplierScope.hotelCategory,'');
- assert.equal(h.data.currentSupplierScope.meal,'','actual data.search exposes the exact canonical scope it used');
+ assert.equal(exact.hotelCategory,'4');assert.equal(exact.meal,'4');
+ assert.equal(h.data.params(trip,[],{meals:['Всё включено']}).meal,'7');
+ assert.equal(h.data.params(trip,[],{meals:['Всё включено','Полупансион']}).meal,'','multi-plan OR stays broad upstream');
+ h.data.catalog.mealPlans.find(p=>p.id===7).nativeIds=['7','70'];
+ assert.equal(scope({meals:['Всё включено']}).meal,'','several reviewed native IDs stay broad upstream');
+ assert.equal(covered(scope({stars:[4,5]}),scope({stars:[4]})),true);
+ assert.equal(covered(scope({meals:['Полупансион']}),scope({})),false,'removing an exact upstream meal requires a broader search');
+ assert.throws(()=>scope({meals:['Room Only']}),/канонического справочника/,'raw labels cannot enter supplier meal scope');
 });
 test('operator labels collapse known cross-provider aliases without touching source identity',async()=>{
  const h=harness();
