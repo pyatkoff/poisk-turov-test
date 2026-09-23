@@ -197,5 +197,16 @@ assert.match(prepareResumeSource,/if\(!resumeOnly\)\{[^}]*demoteSavedTour\(\)/s,
 assert.match(source,/Сохранённых предложений пока нет/,'empty cached resume explains that no saved rows were available');
 assert.match(source,/Условия восстановлены из ссылки без нового запроса к туроператорам/,'cached empty state is honest about supplier-free restoration');
 
+const editSearchSource=source.slice(source.indexOf('const providerSearchPending='),source.indexOf('\nconst hotelPlaces',source.indexOf('const providerSearchPending=')));
+assert.match(editSearchSource,/Object\.values\(searchResponse\.providers\|\|\{\}\)\.includes\('loading'\)/,'provider background state is explicitly detectable');
+assert.match(editSearchSource,/searchResponse\.pending\|\|providerSearchPending\(\).*stopSearch\(\)/s,'editing aborts both main and background provider work');
+const stopSearchSource=source.slice(source.indexOf('function clearSearchTimers()'),source.indexOf('\nfunction renderSearchStatus'));
+assert.match(stopSearchSource,/data\.stop\(\)/,'stop keeps the canonical data abort path');
+assert.match(stopSearchSource,/searchResponse\.providers\[provider\]==='loading'.*='cancelled'/s,'stop marks active provider continuations cancelled');
+assert.match(stopSearchSource,/searchResponse\.canContinue=false/,'stopped background work cannot expose a dead Continue action');
+const searchStatusSource=source.slice(source.indexOf('function renderSearchStatus'),source.indexOf('\nfunction prepareSearchRun'));
+assert.match(searchStatusSource,/more\.hidden=.*providerPending/s,'Tourvisor Continue stays hidden while direct providers are still loading');
+assert.match(searchStatusSource,/r\.pending\|\|providerPending\?'<button class="secondary" data-action="stop-search">Остановить поиск<\/button>'/,'background provider loading exposes Stop');
+
 execFileSync(process.execPath,['tests/search3-prototype-search-lifecycle-v1.cjs'],{stdio:'inherit'});
 console.log('search3 prototype selected-tour retention: ok');
