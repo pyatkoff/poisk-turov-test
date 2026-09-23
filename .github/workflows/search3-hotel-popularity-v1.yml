@@ -1,0 +1,37 @@
+name: Search3 hotel popularity contract
+
+on:
+  pull_request:
+    paths:
+      - 'v2/data/hotel-popularity-v1.php'
+      - 'v2/data/top-hotels-v1.php'
+      - 'v2/sales-leaders-v1.php'
+      - 'diagnostics/sales_leaders_v1_test.php'
+      - 'v2/prototype-search/hotel-popularity-v1.js'
+      - 'v2/prototype-search/index.php'
+      - 'v2/prototype-search/index.html'
+      - 'v2/prototype-search/app.js'
+      - 'v2/prototype-search/styles.css'
+      - 'tests/search3-prototype-hotel-popularity-v1.cjs'
+      - '.github/workflows/search3-hotel-popularity-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate unified popularity cohort
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/hotel-popularity-v1.php >/dev/null
+          php -l v2/data/top-hotels-v1.php >/dev/null
+          php -l v2/sales-leaders-v1.php >/dev/null
+          php diagnostics/sales_leaders_v1_test.php
+          php tests/top500-daily-plan-smoke.php
+          php -r "require 'v2/data/hotel-popularity-v1.php'; require 'v2/data/top-hotels-v1.php'; \$ids=v2_hotel_popularity_legacy_ids(); if(count(\$ids)!==492||count(array_unique(\$ids))!==492||v2_priority_hotel_ids()!==\$ids) exit(1); echo 'HOTEL_POPULARITY_COHORT_OK count=492 wrapper=exact'.PHP_EOL;"
+          node tests/search3-prototype-hotel-popularity-v1.cjs
