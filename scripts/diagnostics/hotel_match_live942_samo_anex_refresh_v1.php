@@ -24,6 +24,13 @@ function s942_ids(array $rows,array $aliases):array{
 function s942_one(array $rows,array $aliases):int{
     $ids=s942_ids($rows,$aliases);s942_need(count($ids)===1,'dictionary_binding');return $ids[0];
 }
+function s942_departure_binding(array $rows,string $departureName):array{
+    $departureName=trim($departureName);
+    if($departureName==='')return ['state'=>'departure_name_missing','ids'=>[],'id'=>null];
+    $ids=s942_ids($rows,[$departureName]);
+    if(count($ids)===1)return ['state'=>'ready','ids'=>$ids,'id'=>$ids[0]];
+    return ['state'=>count($ids)===0?'departure_binding_missing':'departure_binding_ambiguous','ids'=>$ids,'id'=>null];
+}
 function s942_date_ymd(mixed $v):?string{
     $s=trim((string)$v);if(preg_match('/^\\d{4}-\\d{2}-\\d{2}$/D',$s)!==1)return null;
     $d=DateTimeImmutable::createFromFormat('!Y-m-d',$s,new DateTimeZone('UTC'));
@@ -79,7 +86,7 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
             $tv=(int)($target['tv_hotel_id']??0);$country=(int)($target['country_id']??0);
             $anchors=array_values(array_unique(array_map('intval',$target['samo_hotel_ids']??[])));sort($anchors);
             $departureName=trim((string)($target['departure_name']??''));
-            s942_need($tv>0&&$country>0&&$anchors!==[]&&$departureName!=='','target_shape');
+            s942_need($tv>0&&$country>0&&$anchors!==[],'target_shape');
             if(!isset($dicts[$country])){
                 $saved=s942_catalog($cfg['catalog_path'],$country);$stateInc=(int)($saved['all']['params']['STATEINC']??0);s942_need($stateInc>0,'state_missing_'.$country);
                 $anex=s942_one($saved['all']['payload']['OPERATORS']??[],['Anex','Anex Tour','AnexTour','Анекс','Анекс Тур']);
@@ -87,13 +94,12 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
                 $hotelSet=[];foreach($saved['all']['payload']['HOTELS']??[] as $h)if(is_array($h)&&isset($h['id']))$hotelSet[(string)$h['id']]=true;
                 $dicts[$country]=['state'=>$stateInc,'operator'=>$anex,'hotels'=>$hotelSet,'townfrom'=>$saved['townfrom']['payload']['TOWNFROM']??[]];
             }
-            $depIds=s942_ids($dicts[$country]['townfrom'],[$departureName]);
-            $bindingState=count($depIds)===1?'ready':(count($depIds)===0?'departure_binding_missing':'departure_binding_ambiguous');
+            $dep=s942_departure_binding($dicts[$country]['townfrom'],$departureName);$bindingState=$dep['state'];
             $date=s942_date_ymd($target['departure_date']??null);
             $children=max(0,min(3,(int)($target['children_count']??0)));$ages=s942_child_ages($children,(string)($target['child_ages_signature']??''));
             if($bindingState==='ready'&&$date===null)$bindingState='date_context_invalid';
             if($bindingState==='ready'&&$ages===null)$bindingState='child_age_context_invalid';
-            $bindings[$tv]=['state'=>$bindingState,'departure_id'=>count($depIds)===1?$depIds[0]:null,'departure_name'=>$departureName,'date'=>$date,'ages'=>$ages];
+            $bindings[$tv]=['state'=>$bindingState,'departure_id'=>$dep['id'],'departure_name'=>$departureName,'date'=>$date,'ages'=>$ages];
             $contextCounts[$bindingState]=($contextCounts[$bindingState]??0)+1;
         }
         ksort($contextCounts);
