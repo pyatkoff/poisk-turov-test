@@ -72,10 +72,19 @@ async function auditWidth(browser, width) {
   assert(response && response.status() === 200, 'live preview must return HTTP 200');
   await page.locator('.search-submit:not([disabled])').waitFor({ timeout: 45000 });
 
-  const catalogueEndpoint = new URL('/_preview/search3-local-candidate/data/search3-meal-catalog-read-v1.php', TARGET);
-  const directCatalogueResponse = await context.request.get(catalogueEndpoint.toString(), { headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' } });
+  const catalogueEndpoint = new URL('/_preview/search3-local-candidate/data/search3-local-results-read-v1.php', TARGET);
+  const directCatalogueResponse = await context.request.post(catalogueEndpoint.toString(), {
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'AnyTourSearch3',
+      'Cache-Control': 'no-cache'
+    },
+    data: { action: 'meal_catalog', provider: 'tourvisor', scopeKey: 'global' }
+  });
   let directCatalogueBody = null;
   try { directCatalogueBody = await directCatalogueResponse.json(); } catch { directCatalogueBody = { raw: await directCatalogueResponse.text() }; }
+  const directCatalogue = directCatalogueBody?.data || null;
   const catalogue = await page.evaluate(() => ({
     available: window.AnyTourPrototypeData?.catalog?.mealPlanAvailable,
     revision: window.AnyTourPrototypeData?.catalog?.mealPlanRevision,
@@ -89,9 +98,9 @@ async function auditWidth(browser, width) {
     browserCatalogue: catalogue,
     pageErrors
   }, null, 2));
-  assert.equal(directCatalogueResponse.status(), 200, 'live meal catalogue endpoint HTTP status');
-  assert.equal(directCatalogueBody?.ok, true, 'live meal catalogue endpoint must return ok=true');
-  assert.equal(directCatalogueBody?.available, true, 'live meal catalogue endpoint must expose an installed read authority');
+  assert.equal(directCatalogueResponse.status(), 200, 'live meal catalogue action HTTP status');
+  assert.equal(directCatalogueBody?.ok, true, 'live meal catalogue action must return ok=true');
+  assert.equal(directCatalogue?.available, true, 'live meal catalogue action must expose an installed read authority');
   assert.equal(catalogue.available, true, 'browser canonical meal catalogue must be available');
   const nativeBacked = catalogue.plans.filter(p => p.nativeIds.length).map(p => ({
     id: p.id, code: p.code, nameRu: p.nameRu, nativeIds: p.nativeIds
