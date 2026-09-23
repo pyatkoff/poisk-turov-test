@@ -40,13 +40,14 @@
   };
 
   function create(options = {}) {
-    const form = options.form, data = options.data;
+    const form = options.form, data = options.data, events = options.events;
     if (!form || typeof form.addEventListener !== 'function'
       || !data || typeof data.search !== 'function'
       || typeof options.prepare !== 'function'
       || typeof options.currentKey !== 'function') throw new Error('Prototype search lifecycle dependencies are unavailable.');
 
-    let generation = 0, bound = false;
+    let generation = 0, bound = false, submitScheduled = false, scopeScheduled = false;
+    const canSubmit = () => typeof options.canSubmit !== 'function' || options.canSubmit() !== false;
 
     const run = (runOptions = {}) => {
       const prepared = options.prepare(runOptions);
@@ -90,16 +91,54 @@
       return started;
     };
 
+    const requestSubmit = () => {
+      if (submitScheduled) return true;
+      submitScheduled = true;
+      queueMicrotask(() => {
+        submitScheduled = false;
+        if (!canSubmit() || typeof form.requestSubmit !== 'function') return;
+        form.requestSubmit();
+      });
+      return true;
+    };
+
+    const inspectSupplierScope = () => {
+      scopeScheduled = false;
+      if (form.hidden !== true
+        || typeof options.supplierFilters !== 'function'
+        || typeof data.supplierScope !== 'function'
+        || typeof data.supplierScopeCovered !== 'function') return;
+      const previous = data.currentSupplierScope;
+      if (!previous) return;
+      let next;
+      try { next = data.supplierScope(options.supplierFilters()); } catch { return; }
+      if (!next || data.supplierScopeCovered(previous, next)) return;
+      requestSubmit();
+    };
+
+    const scheduleSupplierScope = () => {
+      if (form.hidden !== true || scopeScheduled) return;
+      scopeScheduled = true;
+      queueMicrotask(inspectSupplierScope);
+    };
+
     const bind = () => {
       if (bound) return false;
       bound = true;
       form.addEventListener('submit', submit);
+      if (events && typeof events.addEventListener === 'function'
+        && typeof options.supplierFilters === 'function'
+        && typeof data.supplierScope === 'function'
+        && typeof data.supplierScopeCovered === 'function') {
+        events.addEventListener('click', scheduleSupplierScope);
+        events.addEventListener('change', scheduleSupplierScope);
+      }
       return true;
     };
 
     const invalidate = () => { generation++; };
 
-    return Object.freeze({run, bind, invalidate});
+    return Object.freeze({run, bind, invalidate, requestSubmit});
   }
 
   window.AnyTourPrototypeSearchLifecycleV1 = Object.freeze({create});
