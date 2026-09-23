@@ -127,13 +127,31 @@ try{
 }catch(RuntimeException $e){$failed=$e->getMessage()==='andromeda_pages_invalid';}
 pagination_need($failed&&$calls===1,'page_budget_fails_before_replay');
 
+$calls=[];
+$partial=anytour_andromeda_search3_run_pages(['generation'=>7,'params'=>[]],static function(array $request)use(&$calls):array{
+    $calls[]=$request;
+    if($request['page']===2)throw new RuntimeException('supplier_unavailable');
+    return pagination_page(1,2,[['local_id'=>30,'name'=>'Retained','tours'=>[pagination_offer('9',190)]]],'partial-ref',7,'partial');
+});
+pagination_need(array_column($calls,'page')===[1,2],'late_supplier_outage_attempts_next_page_once');
+pagination_need($partial['status']==='partial'&&$partial['page']===1&&$partial['pages_count']===2,'late_supplier_outage_reports_partial_range');
+pagination_need($partial['external_search_pending']===true&&count($partial['hotels'])===1&&count($partial['hotels'][0]['tours'])===1,'late_supplier_outage_keeps_validated_rows');
+
 $failed=false;
 try{
     anytour_andromeda_search3_run_pages(['generation'=>7,'params'=>[]],static function(array $request):array{
-        if($request['page']===2)throw new RuntimeException('supplier_unavailable');
-        return pagination_page(1,2,[]);
+        throw new RuntimeException('supplier_unavailable');
     });
 }catch(RuntimeException $e){$failed=$e->getMessage()==='supplier_unavailable';}
-pagination_need($failed,'later_page_error_propagates_fail_closed');
+pagination_need($failed,'first_page_supplier_outage_still_fails');
+
+$failed=false;
+try{
+    anytour_andromeda_search3_run_pages(['generation'=>7,'params'=>[]],static function(array $request):array{
+        if($request['page']===2)throw new RuntimeException('projection_bug');
+        return pagination_page(1,2,[]);
+    });
+}catch(RuntimeException $e){$failed=$e->getMessage()==='projection_bug';}
+pagination_need($failed,'non_supplier_late_error_still_fails_closed');
 
 fwrite(STDOUT,"Andromeda Search3 page drain: {$checks} checks passed; supplier/DB/money/booking=0\n");
