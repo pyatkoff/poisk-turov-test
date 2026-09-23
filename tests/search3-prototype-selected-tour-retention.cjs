@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const {execFileSync} = require('node:child_process');
 
 const source = fs.readFileSync('v2/prototype-search/app.js', 'utf8');
 const start = source.indexOf("const selectedTourKey='anytour.real.selected-tour.v1'");
@@ -100,10 +101,12 @@ for (const [field, value] of [['hotelId', 78], ['day', '2026-10-06'], ['nights',
 assert.equal(api.same({...candidate, adults: 3}, target), false, 'party size cannot be silently substituted');
 assert.equal(api.same({...candidate, ages: [7]}, target), false, 'child composition cannot be silently substituted');
 
-const runSearch = source.slice(source.indexOf('function runSearch(options={})'), source.indexOf('\nfunction search(){'));
-assert.match(runSearch, /demoteSavedTour\(\)/, 'new search retains a demoted observation');
-assert.doesNotMatch(runSearch, /savedSelection=null/, 'new search no longer deletes the saved tour');
+const prepareSearch = source.slice(source.indexOf('function prepareSearchRun(options={})'), source.indexOf('\nfunction mergeSearchResults'));
+assert.match(prepareSearch, /demoteSavedTour\(\)/, 'new search retains a demoted observation before lifecycle orchestration');
+assert.doesNotMatch(prepareSearch, /savedSelection=null/, 'new search no longer deletes the saved tour');
+assert.match(source, /function runSearch\(options=\{\}\)\{return searchLifecycle\.run\(options\);\}/, 'legacy internal runSearch entrypoint delegates to the canonical lifecycle owner');
 assert.match(source, /exactRefreshTarget:selectedTourOfferSnapshot\(o\)/, 'refresh carries the immutable canonical target');
 assert.match(source, /sameSelectedTourConditions\(o,r\.exactRefreshTarget\)/, 'completion requires the same tour conditions');
 
+execFileSync(process.execPath,['tests/search3-prototype-search-lifecycle-v1.cjs'],{stdio:'inherit'});
 console.log('search3 prototype selected-tour retention: ok');
