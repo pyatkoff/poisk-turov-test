@@ -215,7 +215,15 @@
       if(!current(run)||!owner)return;
       clearCalendarWindows();root.AnyTourLocalDbProviderV1.apply(owner,data);
       const providerOfferCounts=data.providerOfferCounts&&typeof data.providerOfferCounts==='object'?structuredClone(data.providerOfferCounts):{};
-      run.sourceCounts.database={status:'complete',hotels:Number(data.hotelCount)||0,offers:Number(data.offerCount)||0,storedOffers:Number(data.storedOfferCount)||0,providerOfferCounts};
+      const count=name=>{const value=data[name];if(!Number.isSafeInteger(value)||value<0)throw new Error('Invalid LOCAL accounting');return value;};
+      const hotels=count('hotelCount'),visibleOffers=count('offerCount'),storedOffers=count('storedOfferCount'),
+        withheldOffers=count('withheldOfferCount'),scopeFilteredOffers=count('categoryFilteredOfferCount'),
+        eligibleHotels=count('eligibleHotelCount'),omittedHotels=count('omittedHotelCount'),omittedOffers=count('omittedOfferCount');
+      const mappedOffers=storedOffers-withheldOffers;
+      if(mappedOffers<0||visibleOffers>mappedOffers||eligibleHotels<hotels||hotels+omittedHotels!==eligibleHotels
+        ||scopeFilteredOffers+omittedOffers+visibleOffers>mappedOffers)throw new Error('Invalid LOCAL accounting');
+      run.sourceCounts.database={status:'complete',hotels,offers:visibleOffers,storedOffers,receivedOffers:storedOffers,mappedOffers,
+        visibleOffers,withheldOffers,scopeFilteredOffers,eligibleHotels,omittedHotels,omittedOffers,providerOfferCounts};
       if(current(run))notify({type:'database',...run.sourceCounts.database});
     }).catch(error=>{
       if(!current(run))return;
