@@ -5,15 +5,17 @@ require_once __DIR__ . '/operator-program-fuel-registry.php';
 require_once __DIR__ . '/operator-fuel-rule-evidence.php';
 
 /**
- * Read-only FX evidence selector for the canonical exact program/tour fuel registry.
+ * Read-only FX evidence selector for validated INT supplier evidence.
  *
- * This helper deliberately does not expose or infer any fuel rate. It only reuses
+ * This helper deliberately does not expose or infer any fuel rate. It reuses either
  * fresh EUR->RUB exchange evidence already retained on validated Andromeda program
- * observations, then binds that FX evidence to the requested reusable direction.
+ * observations or a direction-scoped FX-only receipt derived from terminal probes.
+ * Neither source can create a fuel amount, relation or final verification.
  */
 final class AnyTourOperatorProgramFuelFxEvidenceV1
 {
     private const PREFIX = 'operator-program-fuel-v1-';
+    private const DIRECTION_PREFIX = 'operator-direction-fx-v1-';
     private const MAX_BYTES = 131072;
     private const MAX_FILES = 2048;
     private const MAX_OBSERVATIONS = 32;
@@ -69,6 +71,17 @@ final class AnyTourOperatorProgramFuelFxEvidenceV1
                     }
                 }
             }
+
+            $directionFx = self::readDirectionFx($directory, $canonicalDirection, $now);
+            if ($directionFx !== null) {
+                $seenAt = $directionFx['observed_at'];
+                if ($seenAt > $latestObserved) {
+                    $latestObserved = $seenAt;
+                    $fresh = [$directionFx];
+                } elseif ($seenAt === $latestObserved) {
+                    $fresh[] = $directionFx;
+                }
+            }
             if ($fresh === []) return null;
 
             $rates = [];
@@ -115,6 +128,55 @@ final class AnyTourOperatorProgramFuelFxEvidenceV1
             throw new DomainException('PROGRAM_FUEL_FX_STORE_INVALID');
         }
         return $value;
+    }
+
+    private static function readDirectionFx(string $directory, array $direction, int $now): ?array
+    {
+        $digest = AnyTourOperatorFuelRuleEvidenceV1::directionDigest($direction);
+        $path = rtrim($directory, '/') . '/' . self::DIRECTION_PREFIX . $digest . '.json';
+        if (!file_exists($path)) return null;
+        if (is_link($path) || !is_file($path)) throw new DomainException('PROGRAM_FUEL_FX_DIRECTION_INVALID');
+        $size = filesize($path);
+        if (!is_int($size) || $size < 2 || $size > self::MAX_BYTES) {
+            throw new DomainException('PROGRAM_FUEL_FX_DIRECTION_INVALID');
+        }
+        $value = json_decode((string)file_get_contents($path), true, 24, JSON_THROW_ON_ERROR);
+        if (!is_array($value) || array_is_list($value)) throw new DomainException('PROGRAM_FUEL_FX_DIRECTION_INVALID');
+        $keys = array_keys($value); sort($keys, SORT_STRING);
+        if ($keys !== [
+                'direction','direction_sha256','evidence_sha256','expires_at','from',
+                'independent_probe_count','observed_at','probe_result_sha256','rate',
+                'source','to','version'
+            ]
+            || ($value['version'] ?? null) !== 1
+            || ($value['source'] ?? null) !== 'terminal_program_fuel_probes'
+            || ($value['from'] ?? null) !== 'EUR' || ($value['to'] ?? null) !== 'RUB'
+            || ($value['direction'] ?? null) !== $direction
+            || ($value['direction_sha256'] ?? null) !== $digest
+            || !is_string($value['rate'] ?? null)
+            || preg_match('/\A(?:0|[1-9][0-9]{0,5})(?:\.[0-9]{1,8})?\z/D', $value['rate']) !== 1
+            || (float)$value['rate'] <= 0
+            || !is_int($value['observed_at'] ?? null) || $value['observed_at'] < 1
+            || !is_int($value['expires_at'] ?? null) || $value['expires_at'] <= $value['observed_at']
+            || ($value['independent_probe_count'] ?? null) !== 2
+            || !is_string($value['evidence_sha256'] ?? null)
+            || preg_match('/\A[a-f0-9]{64}\z/D', $value['evidence_sha256']) !== 1
+            || !is_array($value['probe_result_sha256'] ?? null) || !array_is_list($value['probe_result_sha256'])
+            || count($value['probe_result_sha256']) !== 2
+            || count(array_unique($value['probe_result_sha256'])) !== 2) {
+            throw new DomainException('PROGRAM_FUEL_FX_DIRECTION_INVALID');
+        }
+        foreach ($value['probe_result_sha256'] as $sha) {
+            if (!is_string($sha) || preg_match('/\A[a-f0-9]{64}\z/D', $sha) !== 1) {
+                throw new DomainException('PROGRAM_FUEL_FX_DIRECTION_INVALID');
+            }
+        }
+        if ($value['observed_at'] > $now || $value['expires_at'] <= $now) return null;
+        return [
+            'from'=>'EUR','to'=>'RUB','rate'=>$value['rate'],
+            'observed_at'=>$value['observed_at'],'expires_at'=>$value['expires_at'],
+            'evidence_sha256'=>$value['evidence_sha256'],
+        ];
     }
 
     private static function assertDirectory(string $directory): void

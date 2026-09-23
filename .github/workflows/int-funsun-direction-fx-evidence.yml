@@ -1,0 +1,57 @@
+name: INT FUN&SUN direction FX evidence
+
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'app/integrations/operator-program-fuel-fx-evidence.php'
+      - 'scripts/diagnostics/int_funsun_direction_fx_seed_v1.php'
+      - 'tests/int-program-fuel-fx-reference-test.php'
+      - 'tests/int_funsun_direction_fx_seed_v1_test.php'
+      - '.github/workflows/int-funsun-direction-fx-evidence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  supplier-free:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Lint bounded INT source
+        run: |
+          set -euo pipefail
+          php -l app/integrations/operator-program-fuel-fx-evidence.php
+          php -l scripts/diagnostics/int_funsun_direction_fx_seed_v1.php
+          php -l tests/int-program-fuel-fx-reference-test.php
+          php -l tests/int_funsun_direction_fx_seed_v1_test.php
+      - name: Enforce FX-only authority
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          selector=Path('app/integrations/operator-program-fuel-fx-evidence.php').read_text()
+          seed=Path('scripts/diagnostics/int_funsun_direction_fx_seed_v1.php').read_text()
+          for token in ['curl_', 'PDO', 'mysqli', 'getFlights(', 'changeService(', '->calc(', 'booking(']:
+              assert token not in selector, token
+              assert token not in seed, token
+          for token in ["'supplier_calls'=>0", "'database_writes'=>0", "'fuel_rule_writes'=>0", "'final_price_verified'=>false"]:
+              assert token in seed, token
+          for token in ['operator-direction-fx-v1-', 'terminal_program_fuel_probes']:
+              assert token in selector and token in seed, token
+          assert "'amount'=>" not in seed
+          assert "'base_relation'=>" not in seed
+          print('INT_FUNSUN_DIRECTION_FX_AUTHORITY_OK supplier=0 db=0 fuel_rule_writes=0')
+          PY
+      - name: Run focused FX contracts
+        run: |
+          set -euo pipefail
+          php -d allow_url_fopen=0 tests/int-program-fuel-fx-reference-test.php
+          php -d allow_url_fopen=0 tests/int_funsun_direction_fx_seed_v1_test.php
