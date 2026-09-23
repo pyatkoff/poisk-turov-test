@@ -12,6 +12,9 @@ assert spec and spec.loader
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
+TARGET_DIGEST = "d4569fff8f4a74d2098dd2d1f31374863070ccea7ed9efd25eb3477c50758111"
+TARGET_BASENAME = "operator-fuel-rule-v2-" + TARGET_DIGEST + ".json"
+
 
 def preflight(status: str = "ready", reason=None) -> dict:
     ready = status == "ready"
@@ -30,6 +33,39 @@ def preflight(status: str = "ready", reason=None) -> dict:
     }
 
 
+def target_path(status: str = "absent") -> dict:
+    absent = status == "absent"
+    valid = status == "valid"
+    return {
+        "basename": TARGET_BASENAME,
+        "direction_sha256": TARGET_DIGEST,
+        "lstat_exists": not absent,
+        "exists": valid,
+        "is_file": valid,
+        "is_link": status == "symlink",
+        "size_bytes": 512 if valid else None,
+        "readable": valid,
+        "envelope_status": status,
+        "observation_count": 2 if valid else None,
+        "store_sha256": "9" * 64 if valid else None,
+    }
+
+
+def writer_prerequisites(absent: bool = True) -> dict:
+    return {
+        "directory_exists": True,
+        "directory_is_link": False,
+        "directory_writable": True,
+        "directory_realpath_ok": True,
+        "target_absent": absent,
+        "target_replaceable": True,
+        "stale_temp_count": 0,
+        "stale_temp_file_count": 0,
+        "stale_temp_link_count": 0,
+        "stale_temp_other_count": 0,
+    }
+
+
 def base_remote(status: str = "absent") -> dict:
     return {
         "schema_version": 1,
@@ -42,6 +78,8 @@ def base_remote(status: str = "absent") -> dict:
         },
         "target_store_count": 0,
         "target_stores": [],
+        "target_path_state": target_path(),
+        "writer_prerequisites": writer_prerequisites(),
         "seed_preflight": preflight(),
         "supplier_calls": 0,
         "database_reads": 0,
@@ -81,6 +119,8 @@ class DirectionStoreReadbackTest(unittest.TestCase):
     def test_remote_contract_accepts_only_sanitized_confirmed_rule(self):
         digest = "a" * 64
         remote = base_remote("confirmed")
+        remote["target_path_state"] = target_path("valid")
+        remote["writer_prerequisites"] = writer_prerequisites(False)
         remote["target_store_count"] = 1
         remote["target_stores"] = [{
             "direction_sha256": digest,
@@ -115,6 +155,35 @@ class DirectionStoreReadbackTest(unittest.TestCase):
         failed["seed_preflight"] = preflight("failed", "target_contract")
         self.assertEqual(m.validate_remote(failed)["seed_preflight"]["reason"], "target_contract")
 
+    def test_exact_target_path_and_writer_prerequisites_are_strict(self):
+        remote = base_remote()
+        validated = m.validate_remote(remote)
+        self.assertEqual(validated["target_path_state"]["basename"], TARGET_BASENAME)
+        self.assertTrue(validated["writer_prerequisites"]["target_absent"])
+
+        dangling = base_remote()
+        dangling["target_path_state"] = target_path("symlink")
+        dangling["target_path_state"].update({
+            "lstat_exists": True,
+            "exists": False,
+            "is_file": False,
+            "is_link": True,
+            "readable": False,
+        })
+        dangling["writer_prerequisites"] = writer_prerequisites(False)
+        dangling["writer_prerequisites"]["target_replaceable"] = False
+        self.assertEqual(m.validate_remote(dangling)["target_path_state"]["envelope_status"], "symlink")
+
+        wrong = base_remote()
+        wrong["target_path_state"]["direction_sha256"] = "a" * 64
+        with self.assertRaises(RuntimeError):
+            m.validate_remote(wrong)
+
+        temp_mismatch = base_remote()
+        temp_mismatch["writer_prerequisites"]["stale_temp_count"] = 1
+        with self.assertRaises(RuntimeError):
+            m.validate_remote(temp_mismatch)
+
     def test_remote_script_is_strictly_read_only_and_private_ids_are_not_emitted(self):
         source = m.REMOTE_PHP
         lower = source.lower()
@@ -123,6 +192,7 @@ class DirectionStoreReadbackTest(unittest.TestCase):
             "rename(",
             "unlink(",
             "mkdir(",
+            "tempnam(",
             "curl_",
             "http://",
             "https://",
@@ -133,6 +203,11 @@ class DirectionStoreReadbackTest(unittest.TestCase):
         ]:
             self.assertNotIn(forbidden, lower)
         self.assertIn("idsr_seed_preflight", source)
+        self.assertIn("idsr_target_path_state", source)
+        self.assertIn("idsr_writer_prerequisites", source)
+        self.assertIn("@lstat($path)", source)
+        self.assertIn(".direction-fuel-seed.*", source)
+        self.assertIn(TARGET_DIGEST, source)
         self.assertIn("'valid_probe_count'", source)
         self.assertIn("'normalized_probe_count'", source)
         self.assertIn("'evidence_pair_sha256'", source)
@@ -157,6 +232,8 @@ class DirectionStoreReadbackTest(unittest.TestCase):
         failed.pop("direction")
         failed.pop("target_store_count")
         failed.pop("target_stores")
+        failed.pop("target_path_state")
+        failed.pop("writer_prerequisites")
         failed.pop("seed_preflight")
         self.assertEqual(m.validate_remote(failed)["status"], "failed")
 
