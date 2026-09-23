@@ -420,6 +420,10 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'match-common4-continuation-resume-readback':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'match-common4-resume-readback':
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
@@ -1994,6 +1998,114 @@ def read_match_common4_resume_day():
     return out
 
 
+def read_match_common4_continuation_resume():
+    match_root=home/'.anytoour-match/operations'
+    candidates=sorted([
+        p for p in match_root.glob('hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n*-v1')
+        if p.is_dir() and not p.is_symlink()
+    ])
+    if len(candidates)!=1: fail('match_common4_resume_readback_child_count')
+    child_dir=candidates[0];child=child_dir.name
+    reservation_path=child_dir/'reservation.json';plan_path=child_dir/'plan.json'
+    if not safe_file(reservation_path,1024*1024) or not safe_file(plan_path,32*1024*1024):
+        fail('match_common4_resume_readback_inputs')
+    reservation=safe_json(reservation_path,1024*1024);plan=safe_json(plan_path,32*1024*1024)
+    remaining_expected=int(reservation.get('remaining_count',0) or 0)
+    rows=plan.get('rows')
+    if (reservation.get('operation')!=child or remaining_expected<1
+            or not isinstance(rows,list) or len(rows)!=remaining_expected):
+        fail('match_common4_resume_readback_reservation')
+    plan_ids=[]
+    for row in rows:
+        if not isinstance(row,dict): fail('match_common4_resume_readback_plan_row')
+        try: tv=int(row.get('tv_hotel_id'))
+        except Exception: fail('match_common4_resume_readback_plan_id')
+        if tv<1: fail('match_common4_resume_readback_plan_id')
+        plan_ids.append(tv)
+    if len(set(plan_ids))!=len(plan_ids): fail('match_common4_resume_readback_plan_duplicate')
+    plan_set=set(plan_ids)
+
+    search_files=sorted(child_dir.glob('tv-request-*.json'))
+    starts=[];started=set();physical=0;actions={}
+    for path in search_files:
+        if not safe_file(path,2*1024*1024): fail('match_common4_resume_readback_request_file')
+        q=safe_json(path,2*1024*1024);physical+=1
+        action=str(q.get('action',''));actions[action]=actions.get(action,0)+1
+        if action!='search_start': continue
+        params=q.get('params')
+        hotel_ids=params.get('hotelIds') if isinstance(params,dict) else None
+        if not isinstance(hotel_ids,list) or not hotel_ids: fail('match_common4_resume_readback_start_shape')
+        one=[]
+        for raw in hotel_ids:
+            try: tv=int(raw)
+            except Exception: fail('match_common4_resume_readback_start_id')
+            if tv<1 or tv not in plan_set: fail('match_common4_resume_readback_start_membership')
+            one.append(tv)
+        if len(one)!=len(set(one)): fail('match_common4_resume_readback_start_duplicate')
+        overlap=started.intersection(one)
+        if overlap: fail('match_common4_resume_readback_cross_start_duplicate')
+        started.update(one)
+        starts.append(one)
+    started_ids=sorted(started)
+    remaining_ids=sorted(plan_set-started)
+    completed_batches=len(list(child_dir.glob('tv-batch-*-result.json')))
+    reserved_batches=len(list(child_dir.glob('tv-batch-*-reservation.json')))
+
+    terminal=None;result_sha=None;receipt_state=None
+    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
+    if result_path.exists() or receipt_path.exists():
+        if not safe_file(result_path,32*1024*1024) or not safe_file(receipt_path,1024*1024):
+            fail('match_common4_resume_readback_terminal_pair')
+        raw=result_path.read_bytes();result_sha=hashlib.sha256(raw).hexdigest()
+        terminal=safe_json(result_path,32*1024*1024);receipt=safe_json(receipt_path,1024*1024)
+        if receipt.get('result_sha256')!=result_sha: fail('match_common4_resume_readback_terminal_hash')
+        receipt_state=receipt.get('state')
+
+    running_pids=0
+    marker=('MATCH_CHILD_OPERATION='+child).encode()
+    for proc in pathlib.Path('/proc').iterdir():
+        if not proc.name.isdigit() or int(proc.name)==os.getpid(): continue
+        try:
+            env=(proc/'environ').read_bytes()
+        except Exception:
+            continue
+        if marker in env: running_pids+=1
+
+    return {
+        'child_operation':child,
+        'reservation':{
+            'resume_from_operation':reservation.get('resume_from_operation'),
+            'attempted_search_groups_before_resume':reservation.get('attempted_search_groups'),
+            'attempted_hotel_count_before_resume':reservation.get('attempted_hotel_count'),
+            'remaining_count_at_resume_start':remaining_expected,
+        },
+        'server_process_running':running_pids>0,
+        'server_process_count':running_pids,
+        'physical_request_files':physical,
+        'request_action_counts':actions,
+        'search_start_count':len(starts),
+        'started_hotel_count':len(started_ids),
+        'started_hotel_ids_sha256':hashlib.sha256(json.dumps(started_ids,separators=(',',':')).encode()).hexdigest(),
+        'remaining_unstarted_hotel_count':len(remaining_ids),
+        'remaining_unstarted_hotel_ids_sha256':hashlib.sha256(json.dumps(remaining_ids,separators=(',',':')).encode()).hexdigest(),
+        'completed_batch_results':completed_batches,
+        'reserved_batches':reserved_batches,
+        'terminal_result_present':terminal is not None,
+        'terminal_state':terminal.get('state') if isinstance(terminal,dict) else None,
+        'terminal_result_sha256':result_sha,
+        'receipt_state':receipt_state,
+        'terminal_summary':(
+            {k:terminal.get(k) for k in (
+                'state','reason','searched_hotels','provider_calls','physical_http_attempts',
+                'operation_tariff_units','daily_tariff_units_after_local_ledger',
+                'returned_targets','returned_operator_pairs','single_native_chunk_unique_count',
+                'single_native_by_operator','tourvisor_account','provider_day'
+            )} if isinstance(terminal,dict) else None
+        ),
+        'supplier_calls':0,'database_writes':0,'mapping_writes':0,
+    }
+
+
 def run_match_common4_continuation_resume_day(stage):
     previous='hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1'
     match_root=home/'.anytoour-match/operations'
@@ -2558,6 +2670,14 @@ try:
         if result['production_after']!=before: fail('production_drift')
         result['status']='complete'
         result['supplier_calls']=result['match_common4_continuation_resume_day']['summary'].get('provider_calls','bounded')
+        result['database_writes']=0
+        result['production_unchanged']=True
+    if mode=='match-common4-continuation-resume-readback':
+        result['match_common4_continuation_resume_readback']=read_match_common4_continuation_resume()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='reconciled_read_only'
+        result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
     if mode=='match-common4-resume-readback':

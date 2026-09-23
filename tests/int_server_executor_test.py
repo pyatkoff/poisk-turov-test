@@ -193,6 +193,10 @@ class ParseTest(unittest.TestCase):
                 m.parse_command(bad)
 
 
+    def test_match_common4_continuation_resume_readback_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-continuation-resume-readback int-andromeda-match-common4-continuation-resume-readback-20260924-v1')
+        self.assertEqual('match-common4-continuation-resume-readback',v['mode'])
+
     def test_match_common4_current_v2_mode(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-current-v2 int-andromeda-match-common4-current-20260923-v1')
         self.assertEqual('match-common4-current-v2',v['mode'])
@@ -437,7 +441,8 @@ class InstallRuntimeTest(unittest.TestCase):
                  ).hexdigest()}
         env=dict(os.environ,HOME=str(home),PATH=str(bindir)+os.pathsep+os.environ.get('PATH',''))
         if fail_target_lint:env['FAKE_PHP_FAIL_TARGET']='1'
-        run=subprocess.run(['python3','-c',m.REMOTE],input=json.dumps(payload),
+        remote_py=root/'remote.py';remote_py.write_text(m.REMOTE)
+        run=subprocess.run(['python3',str(remote_py)],input=json.dumps(payload),
                            text=True,capture_output=True,env=env,timeout=30)
         self.assertEqual('',run.stderr)
         self.assertEqual(0,run.returncode)
