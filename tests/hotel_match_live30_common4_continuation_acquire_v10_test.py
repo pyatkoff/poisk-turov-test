@@ -39,3 +39,13 @@ assert 'tourvisor_anex_account_guard' in src
 assert "action in ('search_start','search_continue','flights_actualization')" in src
 assert "self.day=q/f'{ACCOUNT_LEDGER}-{day}.json'" in src
 assert "defined(\"TOURVISOR_JWT\")?TOURVISOR_JWT" in src  # only as distinct-account guard
+
+# Compatible retained contexts should fill 30-hotel searches even when exact dates/nights differ.
+mixed=[]
+for i in range(1,61):
+    mixed.append({'tv_hotel_id':2000+i,'missing_operator_ids':[13,18,25,43],
+                  'departure_id':1,'country_id':4,'departure_date':f'2026-10-{1+((i-1)%20):02d}',
+                  'nights':7+((i-1)%4),'adults':2,'children_count':0,'child_ages_signature':''})
+groups=m.chunks(mixed)
+assert [len(g['hotel_ids']) for g in groups]==[30,30]
+assert all((__import__('datetime').date.fromisoformat(g['date_to'])-__import__('datetime').date.fromisoformat(g['date_from'])).days<=20 for g in groups)
