@@ -48,6 +48,7 @@ FIXED = [
     'scripts/diagnostics/hotel_match_live30_common4_plan_v1.php',
     'scripts/diagnostics/hotel_match_live30_common4_acquire_v1.py',
     'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py',
+    'scripts/diagnostics/hotel_match_live30_common4_remainder_v1.py',
     'scripts/diagnostics/hotel_match_live30_common4_current_v2.php',
     'scripts/diagnostics/int_funsun_direction_fx_seed_v1.php',
     'scripts/diagnostics/int_operator_direction_fuel_mass_readback_v1.php',
@@ -423,6 +424,11 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'match-common4-continuation-remainder':
+        need(len(parts) == 4, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'limit': integer(parts[3], 1, 300, 'match_limit')}
     if mode == 'match-common4-readback':
         need(len(parts) == 5, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
@@ -2737,6 +2743,59 @@ def execute(command: dict, source_root: Path) -> dict:
         need(0 < len(probe_bytes) <= 1024 * 1024, 'program_fuel_probe_source_size')
         payload['program_fuel_probe_php_b64'] = base64.b64encode(probe_bytes).decode()
         payload['program_fuel_probe_php_sha256'] = hashlib.sha256(probe_bytes).hexdigest()
+    if command['mode'] == 'match-common4-continuation-remainder':
+        stage='/tmp/' + command['operation_id'] + '-source'
+        q=shlex.quote
+        remote_script=(
+            'set -eu; umask 077; '
+            'stage='+q(stage)+'; rm -rf "$stage"; mkdir -p "$stage"; '
+            'tar -xzf '+q(remote_archive)+' -C "$stage"; '
+            'root="$HOME/www/anytoour.ru"; '
+            'before="$(sha256sum "$root/index.php" | awk \'{print $1}\')"; '
+            'cd "$root"; '
+            'ANYTOUR_ROOT="$root" MATCH_OPERATIONS_ROOT="$HOME/.anytoour-match/operations" '
+            'MATCH_PARENT_OPERATION='+q(command['operation_id'])+' '
+            'MATCH_SOURCE_SHA='+q(command['source_sha'])+' '
+            'MATCH_LIMIT='+q(str(command['limit']))+' '
+            'python3 "$stage/scripts/diagnostics/hotel_match_live30_common4_remainder_v1.py" --execute >"$stage/result.out"; '
+            'after="$(sha256sum "$root/index.php" | awk \'{print $1}\')"; test "$before" = "$after"; '
+            'cat "$stage/result.out"'
+        )
+        try:
+            run=subprocess.run(['ssh',*options,'-l',user,host,remote_script],
+                               capture_output=True,text=True,timeout=1350)
+            need(run.returncode==0,'match_common4_remainder_remote_exit')
+            out=json.loads(run.stdout.strip())
+            need(isinstance(out,dict),'match_common4_remainder_output_shape')
+            state=out.get('state')
+            if state=='nothing_remaining':
+                need(out.get('provider_calls')==0 and out.get('database_writes')==0
+                     and out.get('mapping_writes')==0 and out.get('remaining_before')==0,
+                     'match_common4_remainder_empty_guard')
+                supplier_calls=0
+            else:
+                need(state in ('completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'),
+                     'match_common4_remainder_state')
+                need(isinstance(out.get('selected_count'),int) and 1<=out['selected_count']<=command['limit'],
+                     'match_common4_remainder_selected_count')
+                summary=out.get('summary')
+                need(isinstance(summary,dict) and summary.get('tourvisor_account')=='TOURVISOR_ANEX_JWT'
+                     and summary.get('database_writes')==0 and summary.get('mapping_writes')==0
+                     and summary.get('operator_ids')==[13,18,25,43]
+                     and summary.get('continue_calls')==0 and summary.get('dates_calls')==0,
+                     'match_common4_remainder_summary_guard')
+                supplier_calls=summary.get('provider_calls',0)
+            result={'schema_version':1,'operation_id':command['operation_id'],'source_sha':command['source_sha'],
+                    'mode':command['mode'],'status':'complete','match_common4_continuation_remainder':out,
+                    'supplier_calls':supplier_calls,'database_writes':0,'booking_calls':0,'lead_calls':0,
+                    'production_unchanged':True}
+            (output/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+            return result
+        finally:
+            subprocess.run(['ssh',*options,'-l',user,host,'rm -rf -- '+q(stage)+'; rm -f -- '+q(remote_archive)],
+                           stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
+            key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+
     compressed = zlib.compress(REMOTE.encode(), 9)
     encoded = base64.b64encode(compressed).decode()
     remote_command = (
@@ -2779,7 +2838,7 @@ def main() -> None:
         for key,value in command.items():
             print(f'{key}={value}')
         return
-    if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','program-fuel-probe'):
+    if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-continuation-remainder','program-fuel-probe'):
         ensure_supplier_slot(token)
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
