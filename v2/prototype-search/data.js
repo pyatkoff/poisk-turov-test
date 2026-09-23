@@ -311,12 +311,48 @@
       cachedListing:false,selectionEnabled:false,finalPriceVerified:false,anexKind:String(tour.kind||''),
       anexLocalHotelId:hotel.local_id};
   }
-  async function applyDirectAnex(run,data,p){
+  function directAnexWindows(p){
+    const windows=[];let from=p.dateFrom;
+    while(from<=p.dateTo){
+      const end=plus(from,6)<p.dateTo?plus(from,6):p.dateTo;
+      windows.push({...p,dateFrom:from,dateTo:end});
+      from=plus(end,1);
+    }
+    if(!windows.length||windows.length>4)throw new Error('Invalid ANEX date windows');
+    return windows;
+  }
+  function rebuildDirectAnex(run){
+    const windows=run.anexWindows;
+    if(!(windows instanceof Map)||!windows.size)throw new Error('Invalid ANEX window state');
+    const order=[...windows.keys()].sort((a,b)=>a-b),seenOffers=new Set(),visibleHotels=new Set(),receivedHotels=new Set();
+    let receivedOffers=0,mappedOffers=0,scopeFilteredOffers=0,deduplicatedOffers=0;
+    owner.clearOffers('direct-anex');
+    for(const index of order){
+      const window=windows.get(index);
+      receivedOffers+=window.receivedOffers;mappedOffers+=window.mappedOffers;scopeFilteredOffers+=window.scopeFilteredOffers;
+      for(const id of window.hotelIds)receivedHotels.add(id);
+      for(const entry of window.prepared){
+        if(seenOffers.has(entry.tour.offerRef)){deduplicatedOffers++;continue;}
+        seenOffers.add(entry.tour.offerRef);visibleHotels.add(entry.legacyHotelId);
+        owner.upsertLegacyOffer(entry.legacyHotelId,entry.tour,{source:'direct-anex'});
+      }
+    }
+    owner.refresh();
+    const total=run.anexWindowsTotal||order.length,contiguous=order.every((value,index)=>value===index);
+    const status=contiguous&&order.length===total?'complete':'partial',first=windows.get(0),last=windows.get(order[order.length-1]);
+    run.sourceCounts.anex={status,hotels:visibleHotels.size,offers:seenOffers.size,receivedHotels:receivedHotels.size,receivedOffers,
+      mappedHotels:receivedHotels.size,mappedOffers,visibleHotels:visibleHotels.size,visibleOffers:seenOffers.size,
+      scopeFilteredOffers,deduplicatedOffers,windowsLoaded:order.length,windowsTotal:total,dateFrom:first.dateFrom,dateTo:last.dateTo};
+    return run.sourceCounts.anex;
+  }
+  async function applyDirectAnex(run,data,p,index,total){
+    const emptyExcluded=Array.isArray(data?.hotels)&&data.hotels.length===0&&Number(data.pages_read)===0&&data.search_ref===undefined;
     if(!data||data.provider!=='anex'||data.generation!==run.generation||!Array.isArray(data.hotels)||data.hotels.length>300
-      ||!data.date_range||data.date_range.from!==p.dateFrom||!date(data.date_range.to)||data.date_range.to<p.dateFrom||data.date_range.to>p.dateTo
-      ||typeof data.search_ref!=='string'||!(/^[a-f0-9]{32}$/).test(data.search_ref))throw new Error('Invalid ANEX search response');
-    const expectedEnd=plus(p.dateFrom,6)<p.dateTo?plus(p.dateFrom,6):p.dateTo;
-    if(data.date_range.to!==expectedEnd)throw new Error('Invalid ANEX date range');
+      ||!data.date_range||data.date_range.from!==p.dateFrom||data.date_range.to!==p.dateTo
+      ||!Number.isInteger(index)||index<0||!Number.isInteger(total)||total<1||index>=total
+      ||(!emptyExcluded&&(typeof data.search_ref!=='string'||!(/^[a-f0-9]{32}$/).test(data.search_ref))))throw new Error('Invalid ANEX search response');
+    const windows=run.anexWindows||(run.anexWindows=new Map());
+    if(windows.has(index)||index>0&&!windows.has(index-1))throw new Error('Invalid ANEX window sequence');
     const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let receivedOffers=0;
     for(const hotel of data.hotels){
       if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||seenHotels.has(hotel.local_id)
@@ -330,27 +366,57 @@
       }
     }
     if(receivedOffers>300)throw new Error('Invalid ANEX result size');
-    owner.clearOffers('direct-anex');
-    for(const entry of prepared)owner.upsertLegacyOffer(entry.legacyHotelId,entry.tour,{source:'direct-anex'});
-    owner.refresh();
-    const visibleHotels=new Set(prepared.map(entry=>entry.legacyHotelId)).size,visibleOffers=prepared.length,partialRange=data.date_range.to!==p.dateTo;
-    run.sourceCounts.anex={status:partialRange?'partial':'complete',hotels:visibleHotels,offers:visibleOffers,
-      receivedHotels:data.hotels.length,receivedOffers,mappedHotels:data.hotels.length,mappedOffers:receivedOffers,
-      visibleHotels,visibleOffers,scopeFilteredOffers:Math.max(0,receivedOffers-visibleOffers),dateFrom:data.date_range.from,dateTo:data.date_range.to};
-    return run.sourceCounts.anex;
+    const priorOffers=[...windows.values()].reduce((sum,window)=>sum+window.receivedOffers,0);
+    if(priorOffers+receivedOffers>1200)throw new Error('Invalid ANEX result size');
+    windows.set(index,{prepared,hotelIds:[...seenHotels],receivedOffers,mappedOffers:receivedOffers,
+      scopeFilteredOffers:Math.max(0,receivedOffers-prepared.length),dateFrom:data.date_range.from,dateTo:data.date_range.to});
+    run.anexWindowsTotal=total;
+    return rebuildDirectAnex(run);
+  }
+  async function requestDirectAnex(run,p,url){
+    const response=await fetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,
+      headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
+      body:JSON.stringify({action:'search',generation:run.generation,params:p})});
+    const payload=await response.json().catch(()=>null),data=payload&&payload.data;
+    if(!current(run))return null;
+    if(!response.ok||payload?.ok!==true)throw new Error('ANEX search unavailable');
+    return data;
+  }
+  async function continueDirectAnex(run,url,windows,startIndex){
+    let index=startIndex;
+    try{
+      while(current(run)&&index<windows.length){
+        const data=await requestDirectAnex(run,windows[index],url);if(!data||!current(run))return;
+        const result=await applyDirectAnex(run,data,windows[index],index,windows.length);if(!current(run))return;
+        notify({type:'provider',provider:'anex',...result});index++;
+      }
+      if(current(run))await refreshDatabase(run);
+    }catch(error){
+      if(!current(run)||error?.name==='AbortError')return;
+      const previous=run.sourceCounts.anex;
+      if(previous&&Number.isInteger(previous.windowsLoaded)&&previous.windowsLoaded>0){
+        run.sourceCounts.anex={...previous,status:'partial',continuationFailed:true};
+        notify({type:'provider',provider:'anex',...run.sourceCounts.anex});
+        await refreshDatabase(run);
+      }
+    }
+  }
+  function startAnexContinuation(run){
+    const plan=run.anexContinuationPlan;
+    if(!plan||run.anexContinuation||!current(run))return;
+    run.anexContinuationPlan=null;
+    run.anexContinuation=continueDirectAnex(run,plan.url,plan.windows,plan.startIndex);
   }
   async function enrichAnex(run,p){
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url||!current(run)){run.sourceCounts.anex={status:'skipped',hotels:0,offers:0};return;}
     notify({type:'provider',provider:'anex',status:'loading'});if(!current(run))return;
+    const windows=directAnexWindows(p);
     try{
-      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,
-        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
-        body:JSON.stringify({action:'search',generation:run.generation,params:p})});
-      const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!current(run))return;
-      if(!response.ok||payload?.ok!==true)throw new Error('ANEX search unavailable');
-      const result=await applyDirectAnex(run,data,p);if(!current(run))return;
+      const first=await requestDirectAnex(run,windows[0],url.href);if(!first||!current(run))return;
+      const result=await applyDirectAnex(run,first,windows[0],0,windows.length);if(!current(run))return;
       notify({type:'provider',provider:'anex',...result});
+      if(windows.length>1)run.anexContinuationPlan={url:url.href,windows,startIndex:1};
     }catch(error){
       if(!current(run)||error?.name==='AbortError')return;
       run.sourceCounts.anex={status:'error',hotels:0,offers:0};
@@ -523,7 +589,7 @@
         notify({type:'provider',provider:'tourvisor',...run.sourceCounts.tourvisor});
         await refreshDatabase(run);if(!current(run))return;
         if(!run.continued&&!(await settleInitialSources(run)))return;
-        if(!run.continued)startAndromedaContinuation(run);
+        if(!run.continued){startAnexContinuation(run);startAndromedaContinuation(run);}
         const resultLimitReached=inventory.hotels>=5000,baseline=run.continueBaseline;
         const grew=!run.continued||!baseline||inventory.hotels>baseline.hotels||inventory.offers>baseline.offers;
         run.pending=false;run.resumeOnly=false;run.canContinue=!resultLimitReached&&(!run.continued||grew);
