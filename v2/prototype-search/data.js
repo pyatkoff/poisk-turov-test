@@ -273,10 +273,10 @@
       ||!Number.isInteger(context.page)||context.page<1||context.page>1000
       ||context.offer_ref!==tour.offer_ref||tour.selection_enabled!==false)throw new Error('Invalid Andromeda offer');
     const day=date(tour.checkin),nights=Number(tour.nights),offerRef=String(tour.offer_ref||'');
-    if(!day||day<p.dateFrom||day>p.dateTo||!Number.isInteger(nights)||nights<Number(p.nightsFrom)||nights>Number(p.nightsTo)
-      ||!(/^offer_[a-f0-9]{64}$/).test(offerRef)||seen.has(offerRef))throw new Error('Invalid Andromeda offer');
+    if(!day||!Number.isInteger(nights)||nights<1||!(/^offer_[a-f0-9]{64}$/).test(offerRef)||seen.has(offerRef))throw new Error('Invalid Andromeda offer');
     if(tour.listing_price_ref!==undefined&&(!(/^listing_[a-f0-9]{64}$/).test(String(tour.listing_price_ref))))throw new Error('Invalid Andromeda listing price reference');
     seen.add(offerRef);
+    if(day<p.dateFrom||day>p.dateTo||nights<Number(p.nightsFrom)||nights>Number(p.nightsTo))return null;
     const total=Number(price.amount),mealName=meal(tour.meal)||'Питание уточняется';
     if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo))return null;
     const selectedMeals=(run.filters.meals||[]).map(meal).filter(Boolean);
@@ -313,9 +313,11 @@
     owner.refresh();
     const receivedOffers=Number.isInteger(data.received_offers)&&data.received_offers>=projectedOffers?data.received_offers:projectedOffers;
     const mappedOffers=Number.isInteger(data.mapped_offers)&&data.mapped_offers>=projectedOffers?data.mapped_offers:projectedOffers;
+    const visibleHotels=new Set(prepared.map(entry=>entry.legacyHotelId)).size,visibleOffers=prepared.length;
     run.sourceCounts.andromeda={status:data.status==='partial'?'partial':'complete',
-      hotels:new Set(prepared.map(entry=>entry.legacyHotelId)).size,offers:prepared.length,
-      receivedHotels:data.hotels.length,projectedOffers,receivedOffers,mappedOffers,dateFrom:data.date_range.from,dateTo:data.date_range.to};
+      hotels:visibleHotels,offers:visibleOffers,receivedHotels:data.hotels.length,mappedHotels:data.hotels.length,
+      projectedOffers,receivedOffers,mappedOffers,visibleHotels,visibleOffers,
+      scopeFilteredOffers:Math.max(0,projectedOffers-visibleOffers),dateFrom:data.date_range.from,dateTo:data.date_range.to};
     return run.sourceCounts.andromeda;
   }
   async function enrichAndromeda(run,p){
