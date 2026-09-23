@@ -1,0 +1,30 @@
+name: MATCH SAMO live30 coverage v1
+
+'on':
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php
+      - scripts/diagnostics/hotel_match_current_coverage_wrapper_v1.php
+      - tests/hotel_match_samo_live30_coverage_v1_test.php
+      - .github/workflows/hotel-match-samo-live30-coverage-v1.yml
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate mirrored SAMO coverage contract
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php
+          php -l scripts/diagnostics/hotel_match_current_coverage_wrapper_v1.php
+          php -l tests/hotel_match_samo_live30_coverage_v1_test.php
+          php tests/hotel_match_samo_live30_coverage_v1_test.php
