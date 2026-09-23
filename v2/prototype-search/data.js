@@ -87,7 +87,11 @@
     const chosenMeal=selectedMeal?catalog.meals.find(x=>meal(x)===selectedMeal):null;
     if(selectedMeal&&!chosenMeal)throw new Error('Выберите питание из загруженного справочника.');
     const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
-    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:chosenMeal?String(chosenMeal.id):'',hotelCategory:stars.length?String(Math.min(...stars)):'',hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:regionIds(s,filters),subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max!==null&&filters.max!==undefined&&filters.max!==''?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
+    // The upstream search field can express one category, not an exact OR-set.
+    // For multiple selected categories fetch the broad scope; Search3 applies
+    // the exact selected-star OR predicate after all sources join canonically.
+    const hotelCategory=stars.length===1?String(stars[0]):'';
+    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:chosenMeal?String(chosenMeal.id):'',hotelCategory,hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:regionIds(s,filters),subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max!==null&&filters.max!==undefined&&filters.max!==''?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
   }
   function sameScope(request, response) {
     if (!response || response.scopeVersion !== 1 || Object.keys(response).length !== Object.keys(request).length + 1) return false;
