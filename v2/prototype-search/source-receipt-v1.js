@@ -8,11 +8,12 @@
     'visibleHotels','visibleOffers','scopeFilteredOffers','storedOffers','projectedOffers'
   ]);
   const statuses = new Set(['loading','complete','partial','error','skipped']);
+  const safeKey = value => typeof value === 'string' && /^[A-Za-z0-9_.:+-]{1,80}$/.test(value);
   const cleanCounts = value => {
     const out = {};
     if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
     for (const [key, raw] of Object.entries(value)) {
-      if (!/^[A-Za-z0-9_.:+-]{1,80}$/.test(key)) continue;
+      if (!safeKey(key)) continue;
       const n = raw;
       if (typeof n === 'number' && Number.isFinite(n) && n >= 0) out[key] = n;
     }
@@ -38,7 +39,7 @@
     const out = {};
     if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
     for (const [provider, row] of Object.entries(value)) {
-      if (!/^[A-Za-z0-9_.:+-]{1,80}$/.test(provider)) continue;
+      if (!safeKey(provider)) continue;
       out[provider] = cleanSource(row);
     }
     return out;
@@ -56,11 +57,27 @@
       providerSets: cleanCounts(value.providerSets)
     };
   };
-  const resultCounts = event => {
+  const resultSnapshot = event => {
     const rows = Array.isArray(event?.hotels) ? event.hotels : [];
+    const hotelsByProvider = {}, offersByProvider = {}, providerSets = {};
     let offers = 0;
-    for (const row of rows) if (Array.isArray(row?.offers)) offers += row.offers.length;
-    return {hotels: rows.length, offers};
+    for (const row of rows) {
+      const rowOffers = Array.isArray(row?.offers) ? row.offers : [];
+      offers += rowOffers.length;
+      const providers = [...new Set(rowOffers.map(offer => offer?.provider).filter(safeKey))].sort();
+      for (const provider of providers) hotelsByProvider[provider] = (hotelsByProvider[provider] || 0) + 1;
+      for (const offer of rowOffers) if (safeKey(offer?.provider)) {
+        offersByProvider[offer.provider] = (offersByProvider[offer.provider] || 0) + 1;
+      }
+      if (providers.length) {
+        const set = providers.join('+');
+        providerSets[set] = (providerSets[set] || 0) + 1;
+      }
+    }
+    return {
+      projection: {hotels: rows.length, offers},
+      union: {hotels: rows.length, offers, hotelsByProvider, offersByProvider, providerSets}
+    };
   };
   const write = receipt => {
     const host = document.getElementById('results');
@@ -76,19 +93,25 @@
       union: null,
       projection: {hotels: 0, offers: 0}
     };
+    let projectedUnion = null;
     write(receipt);
     return originalSearch.call(this, search, event => {
       if (event && typeof event === 'object') {
         if (event.type === 'loading') receipt.phase = 'loading';
-        if (event.type === 'results') receipt.projection = resultCounts(event);
-        if (event.type === 'provider' && typeof event.provider === 'string' && /^[A-Za-z0-9_.:+-]{1,80}$/.test(event.provider)) {
+        if (event.type === 'results') {
+          const snapshot = resultSnapshot(event);
+          receipt.projection = snapshot.projection;
+          projectedUnion = snapshot.union;
+          receipt.union = snapshot.union;
+        }
+        if (event.type === 'provider' && safeKey(event.provider)) {
           const provider = cleanSource(event);
           receipt.providers[event.provider] = provider.status || 'loading';
         }
         if (event.type === 'complete') {
           receipt.phase = event.partial === true ? 'partial' : 'complete';
           receipt.sources = cleanSources(event.sources);
-          receipt.union = cleanUnion(event.union);
+          receipt.union = projectedUnion || cleanUnion(event.union);
         }
         if (event.type === 'error') receipt.phase = 'error';
       }
