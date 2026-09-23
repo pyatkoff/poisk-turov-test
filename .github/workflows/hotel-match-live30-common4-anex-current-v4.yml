@@ -45,7 +45,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          for x in [os.environ['OP'].replace('-1971-20260923-v4',''),'28','owner_exact_operator_key_20260912_v2','exact_operator_key']: assert x in b,x
+          for x in ['hotel_match_live30_common4_anex_current_v4.php','28','owner_exact_operator_key_20260912_v2','exact_operator_key']: assert x in b,x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(90):
               q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
