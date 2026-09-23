@@ -66,11 +66,12 @@ assert.deepEqual(receiptAtComplete.union, {
 assert.deepEqual(receiptAtComplete.dedupe, {
   sourceVisibleHotels:3,sourceVisibleOffers:6,unionHotels:2,unionOffers:3,dedupedHotels:1,dedupedOffers:3
 }, 'complete exposes the exact loss from source-visible rows to the canonical union');
+assert.deepEqual(receiptAtComplete.providers, {anex:'partial',andromeda:'partial',database:'complete'}, 'terminal provider statuses must match sanitized source statuses');
 const receipt = JSON.parse(host.dataset.searchReceipt);
 assert.equal(receipt.schemaVersion, 1);
 assert.equal(receipt.phase, 'complete');
 assert.deepEqual(receipt.projection, {hotels:3,offers:5});
-assert.equal(receipt.providers.anex, 'loading');
+assert.deepEqual(receipt.providers, {anex:'partial',andromeda:'partial',database:'complete'});
 assert.deepEqual(receipt.sources.anex, {status:'partial',hotels:1,offers:2,receivedHotels:3,receivedOffers:5,mappedHotels:3,mappedOffers:5,visibleHotels:1,visibleOffers:2,scopeFilteredOffers:2,deduplicatedOffers:1,windowsLoaded:1,windowsTotal:2,dateFrom:'2026-09-25',dateTo:'2026-09-30'});
 assert.equal('secret' in receipt.sources.anex, false);
 assert.deepEqual(receipt.sources.andromeda, {status:'partial',hotels:0,offers:0,receivedHotels:2,receivedOffers:7,mappedHotels:2,mappedOffers:6,projectedOffers:5,visibleHotels:0,visibleOffers:0,scopeFilteredOffers:4,deduplicatedOffers:1,pagesLoaded:1,pagesTotal:3,dateFrom:'2026-09-25',dateTo:'2026-09-30'});
