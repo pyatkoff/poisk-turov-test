@@ -397,6 +397,10 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'match-coverage-v2-readback':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'match-coverage-readback':
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
@@ -1347,6 +1351,60 @@ def run_match_coverage_v2(stage):
         'provider_http_calls':0,'database_writes':0,'mapping_writes':0,
     }
 
+
+def read_match_coverage_v2():
+    parent_name='int-andromeda-match-coverage-v2-20260923-v2'
+    coverage_child='hotel-match-current-coverage-1971-20260923-v2'
+    matrix_child='hotel-match-live30-common4-gap-matrix-1971-20260923-v1'
+    parent_dir=private/parent_name
+    parent={'operation_id':parent_name,'present':parent_dir.is_dir() and not parent_dir.is_symlink()}
+    if parent['present']:
+        reservation_path=parent_dir/'reservation.json';result_path=parent_dir/'result.json'
+        if safe_file(reservation_path,1024*1024):
+            reservation=safe_json(reservation_path,1024*1024)
+            parent['reservation']={k:reservation.get(k) for k in ('operation_id','source_sha','mode','reserved_at')}
+        if safe_file(result_path,8*1024*1024):
+            value=safe_json(result_path,8*1024*1024)
+            parent['result']={k:value.get(k) for k in ('status','reason','source_sha','mode','supplier_calls','database_writes','production_unchanged')}
+            parent['result_sha256']=hashlib.sha256(result_path.read_bytes()).hexdigest()
+
+    def read_child(name,kind):
+        directory=home/'.anytoour-match/operations'/name
+        out={'child_operation':name,'present':directory.is_dir() and not directory.is_symlink()}
+        if not out['present']: return out
+        result_path=directory/'result.json';receipt_path=directory/'receipt.json'
+        limit=128*1024*1024 if kind=='coverage' else 64*1024*1024
+        if not safe_file(result_path,limit) or not safe_file(receipt_path,1024*1024):
+            out['terminal']='missing_or_oversized';return out
+        value=safe_json(result_path,limit);receipt=safe_json(receipt_path,1024*1024)
+        digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+        if receipt.get('result_sha256')!=digest: fail('match_coverage_v2_readback_hash_'+kind)
+        common=('provider_http_calls','tourvisor_calls','samo_calls','anex_calls','database_writes','mapping_writes')
+        for key in common:
+            if value.get(key)!=0: fail('match_coverage_v2_readback_nonzero_'+kind+'_'+key)
+        out.update({'terminal':'verified','state':value.get('state'),'result_sha256':digest,
+                    'result_bytes':result_path.stat().st_size,'receipt_state':receipt.get('state'),
+                    'receipt_no_replay':receipt.get('no_replay')})
+        if kind=='coverage':
+            if value.get('state')!='completed_read_only_coverage': fail('match_coverage_v2_readback_state_coverage')
+            live30=value.get('live_30d') if isinstance(value.get('live_30d'),dict) else {}
+            active=value.get('active_tv') if isinstance(value.get('active_tv'),dict) else {}
+            samo=value.get('samo_live_30d') if isinstance(value.get('samo_live_30d'),dict) else {}
+            out['summary']={'generated_at_utc':value.get('generated_at_utc'),'edge_counts':value.get('edge_counts'),
+                            'active_counts':active.get('counts'),'live30_counts':live30.get('counts'),
+                            'live30_top_missing_geographies':live30.get('top_missing_geographies'),
+                            'samo_live30':samo}
+        else:
+            if value.get('andromeda_calls')!=0: fail('match_coverage_v2_readback_nonzero_matrix_andromeda_calls')
+            if value.get('state')!='completed_read_only_common4_gap_matrix': fail('match_coverage_v2_readback_state_matrix')
+            out['summary']={k:v for k,v in value.items() if k not in ('rows','definitions','source_sha')}
+        return out
+
+    coverage=read_child(coverage_child,'coverage')
+    matrix=read_child(matrix_child,'matrix')
+    return {'target_parent':parent,'coverage':coverage,'common4_gap_matrix':matrix,
+            'provider_http_calls':0,'database_writes':0,'mapping_writes':0}
+
 def run_match_secondary_audit(stage):
     child='hotel-match-live-anex-samo-missing-secondary-audit-1971-20260923-v1'
     match_root=home/'.anytoour-match/operations'
@@ -1751,6 +1809,14 @@ try:
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
+    if mode=='match-coverage-v2-readback':
+        result['match_coverage_v2_readback']=read_match_coverage_v2()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='reconciled_read_only'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='match-coverage-readback':
         result['match_coverage_readback']=read_match_coverage()
         result['production_after']=fingerprints()
@@ -1808,7 +1874,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -1831,7 +1897,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
