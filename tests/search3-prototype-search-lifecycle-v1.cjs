@@ -145,5 +145,20 @@ function harness({reject=false,hidden=false,covered=true,previous={kind:'previou
   const h=harness({submitEnabled:false});h.lifecycle.bind();h.lifecycle.requestSubmit();await flush();
   assert.equal(h.requests,0,'results-date refresh respects disabled canonical submit');
  }
+ {
+  const h=harness({submitEnabled:false});h.lifecycle.bind();let prevented=0;
+  const started=h.submitListeners[0]({preventDefault(){prevented++;}});
+  assert.equal(started,false,'disabled direct submit must fail closed');
+  assert.equal(prevented,1,'disabled direct submit must still suppress native navigation');
+  assert.equal(h.commitCount,0,'disabled direct submit must not commit form state');
+  assert.equal(h.prepareCount,0,'disabled direct submit must not prepare a search');
+  assert.equal(h.calls.length,0,'disabled direct submit must not call the data search owner');
+  assert.equal(h.submits.length,0,'disabled direct submit must not run afterSubmit side effects');
+  h.enabled=true;h.submitListeners[0]({preventDefault(){}});
+  assert.equal(h.commitCount,1,'re-enabled direct submit resumes canonical commit');
+  assert.equal(h.prepareCount,1,'re-enabled direct submit prepares exactly once');
+  assert.equal(h.calls.length,1,'re-enabled direct submit starts exactly one search');
+  assert.deepEqual(h.submits,[true]);
+ }
  console.log('search3 prototype search lifecycle v1: PASS');
 })().catch(error=>{console.error(error);process.exitCode=1;});
