@@ -587,9 +587,26 @@ function updateFlightPreview(){if(!flightDraft||modalType!=='flights')return;con
 function applyFlightPair(){if(!flightDraft)return;const applied=withFlightPair(flightDraft.base,flightDraft.id);if(applied.pricePending){updateFlightPreview();return;}flightDraft=null;modalBack();selectedOffer=applied;renderRealOffer();toast('Перелёт выбран');}
 function savedFlightTextPlain(o){if(o?.savedFlightText)return String(o.savedFlightText);const v=flightPairFor(o);return v?[...(v.forward||[]),...(v.backward||[])].map(f=>[data.text(f.company),f.number,f.departure?.time].filter(Boolean).join(' ')).join(' · '):'Рейс пока не выбран';}
 function savedFlightText(o){return esc(savedFlightTextPlain(o));}
-function refreshHotel(id){
+async function refreshHotel(id){
  const o=selectedOffer,h=selectedTourHotel(o);
  if(!o||o.hotelId!==id||!needsRefresh(o)||!h?.legacyIds.length){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}
+ if(o.provider==='anex'&&o.raw?.anexKind==='group_minimum'){
+  const run=++selectionGeneration;selectedOffer={...o,loading:true,quoteError:''};renderRealOffer();
+  try{
+   const expanded=await data.expandAnexGroup(o);
+   if(run!==selectionGeneration||!$('#modal').open||modalType!=='offer'||selectedOffer?.key!==o.key)return;
+   const keys=new Set(expanded.offers.map(item=>item.key));
+   h.offers=[...h.offers.filter(item=>item.key!==o.key&&!keys.has(item.key)),...expanded.offers];
+   selectedOffer={...o,loading:false};renderResults({keepFilters:true});
+   openAllOffers(id,{day:o.day,nights:o.nights,flight:'',room:'',meal:'',sort:'price',mode:'list',pair:[],activeVariant:null,differencesOnly:false});
+   toast('ANEX вернул конкретные варианты тура');
+  }catch(error){
+   if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===o.key){
+    selectedOffer={...o,loading:false,quoteError:error.message};renderRealOffer();
+   }
+  }
+  return;
+ }
  const next={...structuredClone(o.search),from:o.day,to:o.day,minNights:o.nights,maxNights:o.nights,adults:o.adults,ages:[...o.ages]};
  const exactFilters=defaultFilters();exactFilters.hotelId=id;if(o.meal&&!/уточняется/i.test(o.meal))exactFilters.meals=[o.meal];if(o.operator&&!/уточняется/i.test(o.operator))exactFilters.operators=[o.operator];if(['regular','charter'].includes(o.flight))exactFilters.flight=[o.flight];
  try{data.params(next,h.legacyIds,exactFilters);}catch(error){toast(error.message);return;}
