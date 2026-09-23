@@ -74,7 +74,9 @@ function row(string $seed, array $payload, int $ready=1, int $verified=0, ?strin
     ];
 }
 
-$owner=readyPayload(ruleOwner(),'28756.00','128756.00','operator_fuel_owner_policy');
+$ownerRule=ruleOwner();
+$ownerRule['direction']=['destination'=>'country:4','market'=>'departure:1','operator_family'=>'fun_and_sun'];
+$owner=readyPayload($ownerRule,'28756.00','128756.00','operator_fuel_owner_policy');
 $supplier=readyPayload(ruleSupplier(),'57512.00','157512.00','operator_fuel_direction_rule');
 $badOwner=readyPayload(ruleOwner('7'),'28756.00','128756.00','operator_fuel_owner_policy',true);
 $rows=[
@@ -108,7 +110,25 @@ tassert($r['fuel_charges_rub']===['28756.00','57512.00'],'owner/supplier fuel ar
 tassert($r['rule_native_totals']===['280.00','560.00'],'native totals');
 tassert($r['fx_rates']===['102.7'],'typed fx retained');
 tassert($r['payload_listing_vs_total_mismatch_count']===0,'listing total persisted');
+tassert($r['payload_listing_equals_total_count']===3,'ready listings equal totals');
+tassert($r['payload_listing_equals_base_count']===0,'no base listing mismatch');
+tassert(count($r['actual_rule_direction_summaries'])===2,'direction summaries sanitized');
+tassert(count($r['actual_rule_direction_summary_sha256'])===2,'direction summary digests surfaced');
 tassert(($r['validation_failure_counts']['display_total']??0)===0,'base+fuel stored once');
+
+$liveLike=readyPayload(ruleOwner(),'28756.00','128756.00','operator_fuel_owner_policy');
+$liveLike['listingPrice']='100000.00';
+$rLive=odfr_evaluate_rows(
+    [row('live-like',$liveLike,1,0,'128756.00')],
+    [hash('sha256','live-like')=>'fun_and_sun'],
+    'fun_and_sun','1','4'
+);
+tassert($rLive['direction_rule_valid_rows']===1,'semantic direction valid');
+tassert($rLive['payload_listing_vs_total_mismatch_count']===1,'listing mismatch surfaced');
+tassert($rLive['payload_listing_equals_base_count']===1,'base listing mismatch classified');
+tassert($rLive['payload_listing_equals_total_count']===0,'mismatch not total');
+tassert($rLive['payload_listing_invalid_count']===0,'listing remains valid money');
+tassert($rLive['payload_listing_other_count']===0,'mismatch class exact');
 
 $invalidPolicy=ruleOwner();
 $invalidPolicy['owner_policy']['amount']='80.00';
