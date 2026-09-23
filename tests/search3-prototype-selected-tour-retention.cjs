@@ -146,6 +146,5 @@ assert.match(source, /function runSearch\(options=\{\}\)\{return searchLifecycle
 assert.match(source, /exactRefreshTarget:selectedTourOfferSnapshot\(o\)/, 'refresh carries the immutable canonical target');
 assert.match(source, /sameSelectedTourConditions\(o,r\.exactRefreshTarget\)/, 'completion requires the same tour conditions');
 
-execFileSync(process.execPath,['tests/search3-prototype-hotel-popularity-v1.cjs'],{stdio:'inherit'});
 execFileSync(process.execPath,['tests/search3-prototype-search-lifecycle-v1.cjs'],{stdio:'inherit'});
 console.log('search3 prototype selected-tour retention: ok');
