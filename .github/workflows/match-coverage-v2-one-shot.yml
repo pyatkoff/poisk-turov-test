@@ -3,10 +3,7 @@ name: MATCH coverage v2 one-shot
 'on':
   pull_request:
     branches: [main]
-    paths:
-      - '.github/workflows/match-coverage-v2-one-shot.yml'
-  push:
-    branches: [main]
+    types: [opened, synchronize, reopened, closed]
     paths:
       - '.github/workflows/match-coverage-v2-one-shot.yml'
 
@@ -22,7 +19,7 @@ concurrency:
 
 jobs:
   contract:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -41,9 +38,12 @@ jobs:
 
   execute:
     if: >-
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
       github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.merged_by.id == 226193297 &&
       github.actor == 'pyatkoff' &&
       github.triggering_actor == 'pyatkoff'
     runs-on: ubuntu-24.04
