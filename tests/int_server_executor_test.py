@@ -108,6 +108,11 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(1,v['max_captures'])
         self.assertEqual(0,v['region'])
 
+    def test_match_live234_secondary_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-tv234-secondary int-andromeda-match-tv234-secondary-20260923-v1 0 78')
+        self.assertEqual('match-tv234-secondary',v['mode'])
+        self.assertEqual(0,v['offset']);self.assertEqual(78,v['limit'])
+
     def test_match_live942_modes(self):
         tv=m.parse_command(f'/run-int-server-v1 {SHA} match-tv942 int-anex-match-tv942-20260923-v1 0 350')
         self.assertEqual('match-tv942',tv['mode']);self.assertEqual(0,tv['offset']);self.assertEqual(350,tv['limit'])
