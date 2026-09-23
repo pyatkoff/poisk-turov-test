@@ -61,6 +61,13 @@ function s942_catalog(string $path,int $localCountry):array{
     $p=$localCountry===1?$path:dirname($path).'/countries/'.$localCountry.'.json';
     s942_need(is_file($p)&&!is_link($p),'catalog_missing_'.$localCountry);return s942_read($p);
 }
+function s942_catalog_or_hold(string $path,int $localCountry):array{
+    try{return ['state'=>'ready','saved'=>s942_catalog($path,$localCountry)];}
+    catch(RuntimeException $e){
+        if($e->getMessage()==='catalog_missing_'.$localCountry)return ['state'=>'catalog_missing','saved'=>null];
+        throw $e;
+    }
+}
 function s942_private_config(string $root):array{
     foreach([$root.'/_preview/search3-anex-candidate/.andromeda-private.php',$root.'/v2/.andromeda-private.php'] as $path){
         if(!is_file($path)||is_link($path))continue;
@@ -95,13 +102,21 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
             $departureName=trim((string)($target['departure_name']??''));
             s942_need($tv>0&&$country>0&&$anchors!==[],'target_shape');
             if(!isset($dicts[$country])){
-                $saved=s942_catalog($cfg['catalog_path'],$country);$stateInc=(int)($saved['all']['params']['STATEINC']??0);s942_need($stateInc>0,'state_missing_'.$country);
-                $anex=s942_one($saved['all']['payload']['OPERATORS']??[],['Anex','Anex Tour','AnexTour','Анекс','Анекс Тур']);
-                s942_need($anex===5,'anex_operator_binding_changed_'.$anex);
-                $hotelSet=[];foreach($saved['all']['payload']['HOTELS']??[] as $h)if(is_array($h)&&isset($h['id']))$hotelSet[(string)$h['id']]=true;
-                $dicts[$country]=['state'=>$stateInc,'operator'=>$anex,'hotels'=>$hotelSet,'townfrom'=>$saved['townfrom']['payload']['TOWNFROM']??[]];
+                $catalog=s942_catalog_or_hold($cfg['catalog_path'],$country);
+                if($catalog['state']!=='ready'){
+                    $dicts[$country]=['catalog_state'=>$catalog['state'],'state'=>null,'operator'=>null,'hotels'=>[],'townfrom'=>[]];
+                }else{
+                    $saved=$catalog['saved'];$stateInc=(int)($saved['all']['params']['STATEINC']??0);s942_need($stateInc>0,'state_missing_'.$country);
+                    $anex=s942_one($saved['all']['payload']['OPERATORS']??[],['Anex','Anex Tour','AnexTour','Анекс','Анекс Тур']);
+                    s942_need($anex===5,'anex_operator_binding_changed_'.$anex);
+                    $hotelSet=[];foreach($saved['all']['payload']['HOTELS']??[] as $h)if(is_array($h)&&isset($h['id']))$hotelSet[(string)$h['id']]=true;
+                    $dicts[$country]=['catalog_state'=>'ready','state'=>$stateInc,'operator'=>$anex,'hotels'=>$hotelSet,'townfrom'=>$saved['townfrom']['payload']['TOWNFROM']??[]];
+                }
             }
-            $dep=s942_departure_binding($dicts[$country]['townfrom'],$departureName);$bindingState=$dep['state'];
+            $dep=($dicts[$country]['catalog_state']??'ready')==='ready'
+                ? s942_departure_binding($dicts[$country]['townfrom'],$departureName)
+                : ['state'=>$dicts[$country]['catalog_state'],'ids'=>[],'id'=>null];
+            $bindingState=$dep['state'];
             $date=s942_date_ymd($target['departure_date']??null);
             $children=max(0,min(3,(int)($target['children_count']??0)));$ages=s942_child_ages($children,(string)($target['child_ages_signature']??''));
             if($bindingState==='ready'&&$date===null)$bindingState='date_context_invalid';
