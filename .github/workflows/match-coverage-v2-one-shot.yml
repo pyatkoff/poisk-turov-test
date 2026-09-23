@@ -1,0 +1,85 @@
+name: MATCH coverage v2 one-shot
+
+'on':
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/match-coverage-v2-one-shot.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/match-coverage-v2-one-shot.yml'
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: read
+
+concurrency:
+  group: anytoour-match-coverage-v2-one-shot
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate one-shot contract
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only '${{ github.event.pull_request.base.sha }}' '${{ github.event.pull_request.head.sha }}' | wc -l)" -eq 1
+          test "$(git diff --name-only '${{ github.event.pull_request.base.sha }}' '${{ github.event.pull_request.head.sha }}')" = '.github/workflows/match-coverage-v2-one-shot.yml'
+          grep -Fq 'match-coverage-v2 int-andromeda-match-coverage-v2-20260923-v2' .github/workflows/match-coverage-v2-one-shot.yml
+          grep -Fq 'e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd' .github/workflows/match-coverage-v2-one-shot.yml
+
+  execute:
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Trusted main control code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Recheck trusted executor
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/deploy/int_server_executor.py
+          python3 tests/int_server_executor_test.py -v
+      - name: Checkout exact MATCH feature source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd
+          path: source
+          persist-credentials: false
+      - name: Execute exact supplier-free CURRENT coverage v2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INT_OWNER_COMMAND: /run-int-server-v1 e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd match-coverage-v2 int-andromeda-match-coverage-v2-20260923-v2
+          INT_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          INT_SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          INT_SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 scripts/deploy/int_server_executor.py --source-root source
+      - name: Preserve sanitized terminal receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-coverage-v2-one-shot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/int-server-executor/result.json
+          if-no-files-found: error
+          retention-days: 30
