@@ -383,6 +383,9 @@ test('direct ANEX covers a 21-day search in three explicit background windows',a
  assert.deepEqual(h.anexCalls.map(call=>[call.params.dateFrom,call.params.dateTo]),[
   ['2026-09-29','2026-10-05'],['2026-10-06','2026-10-12']
  ],'second ANEX window starts only after initial source settlement');
+ const anexLoading=h.events.filter(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='loading'&&e.background===true).at(-1);
+ assert.ok(anexLoading,'background ANEX continuation must be surfaced as loading');
+ assert.equal(anexLoading.windowsLoaded,1);assert.equal(anexLoading.windowsTotal,3);assert.equal(anexLoading.offers,1);
  const first=h.events.filter(e=>e.type==='complete').at(-1);
  assert.ok(first,'first search completion must not wait for ANEX window 2');
  assert.equal(first.sources.anex.status,'partial');assert.equal(first.sources.anex.windowsLoaded,1);assert.equal(first.sources.anex.windowsTotal,3);
@@ -461,6 +464,9 @@ test('remaining Andromeda pages load in background without delaying first comple
  await h.start();await flush();
  const completing=h.poll();await flush();await completing;
  assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2],'page 2 starts only after the bounded initial source settles');
+ const andromedaLoading=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='loading'&&e.background===true).at(-1);
+ assert.ok(andromedaLoading,'background Andromeda continuation must be surfaced as loading');
+ assert.equal(andromedaLoading.pagesLoaded,1);assert.equal(andromedaLoading.pagesTotal,3);assert.equal(andromedaLoading.offers,1);
  const first=h.events.filter(e=>e.type==='complete').at(-1);
  assert.ok(first,'Tourvisor/LOCAL completion must not wait for Andromeda page 2');
  assert.equal(first.sources.andromeda.status,'partial');assert.equal(first.sources.andromeda.pagesLoaded,1);assert.equal(first.sources.andromeda.pagesTotal,3);
