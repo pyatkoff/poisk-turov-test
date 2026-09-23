@@ -20,8 +20,8 @@ function stored(rawMeal='Premium Ultra All Inclusive'){
 function reply(row){return{source:'anytour-db-first-results-v1',scopeVersion:1,scopeDigest:digest('d'),selectionAuthority:false,hotels:[{anytourHotelId:hotelId,hotel:{id:hotelId,catalog:'anytour',name:'Fixture'},offers:[row]}]};}
 let parsed=api.parse(reply(stored()));assert.ok(parsed);let tour=parsed.hotels[0].offers[0].tour;
 assert.equal(tour.meal.name,'Premium Ultra All Inclusive','raw branded wording remains offer detail');
-assert.deepEqual(tour.localStay.meal,{kind:'meal',id:901,hotelId,nameRu:'Премиальное питание',localKey:'meal-901',revision:3});
-assert.deepEqual(tour.searchMealPlan,{id:7,code:'all-inclusive',nameRu:'Всё включено'},'accepted membership carries canonical top-level plan');
+assert.deepEqual({...tour.localStay.meal},{kind:'meal',id:901,hotelId,nameRu:'Премиальное питание',localKey:'meal-901',revision:3});
+assert.deepEqual({...tour.searchMealPlan},{id:7,code:'all-inclusive',nameRu:'Всё включено'},'accepted membership carries canonical top-level plan');
 for(const mutate of [
  r=>r.searchMeal.source='bad',
  r=>r.searchMeal.hotelId=999,
