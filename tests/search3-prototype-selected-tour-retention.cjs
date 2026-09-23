@@ -104,11 +104,11 @@ assert.equal(api.same({...candidate, ages: [7]}, target), false, 'child composit
 const priceCopyStart = source.indexOf('const needsRefresh=');
 const priceCopyEnd = source.indexOf('const mealLabel=', priceCopyStart);
 assert.ok(priceCopyStart >= 0 && priceCopyEnd > priceCopyStart, 'price provenance helpers are present');
-const priceCopyContext = {};
+const priceCopyContext = {nightsText:n=>n+' ночей'};
 vm.createContext(priceCopyContext);
-vm.runInContext(source.slice(priceCopyStart, priceCopyEnd) + '\nthis.priceCopyTest={needsRefresh,offerActionLabel,cachedPriceNote,priceNote,offerMetaNote};', priceCopyContext);
+vm.runInContext(source.slice(priceCopyStart, priceCopyEnd) + '\nthis.priceCopyTest={needsRefresh,offerActionLabel,refreshOfferActionLabel,refreshOfferNotice,cachedPriceNote,priceNote,offerMetaNote};', priceCopyContext);
 const priceCopy = priceCopyContext.priceCopyTest;
-const cachedLocal = {cached:true,provider:'local',raw:{selectionEnabled:false,listingPriceState:'search_price_confirmation_required'}};
+const cachedLocal = {cached:true,provider:'local',nights:7,raw:{selectionEnabled:false,listingPriceState:'search_price_confirmation_required'}};
 const cachedEstimate = {cached:true,provider:'local',raw:{selectionEnabled:false,listingPriceState:'final_ready_estimate'}};
 const cachedVerified = {cached:true,provider:'local',raw:{selectionEnabled:false,listingPriceState:'final_verified'}};
 const directAnex = {cached:false,provider:'anex',raw:{selectionEnabled:false}};
@@ -126,6 +126,11 @@ assert.equal(priceCopy.offerMetaNote(directAnex),'Цена из текущего
 assert.equal(priceCopy.offerMetaNote(freshTourvisor),'Рейсы и багаж — при выборе','fresh Tourvisor compact row keeps selection detail hint');
 assert.equal(priceCopy.offerActionLabel(directAndromeda),'Смотреть условия','direct-provider selection authority remains unchanged');
 assert.equal(priceCopy.offerActionLabel(freshTourvisor),'Выбрать тур','Tourvisor selection CTA remains unchanged');
+assert.equal(priceCopy.refreshOfferActionLabel(cachedLocal),'Найти актуальные туры','cached offer keeps saved-offer refresh CTA');
+assert.equal(priceCopy.refreshOfferActionLabel(directAnex),'Проверить этот тур','fresh direct offer asks to verify this tour');
+assert.match(priceCopy.refreshOfferNotice(cachedLocal),/^Сохранённое предложение доступно 24 часа/,'cached offer keeps 24h saved notice');
+assert.doesNotMatch(priceCopy.refreshOfferNotice(directAndromeda),/Сохранённое предложение/,'fresh direct offer is not described as saved in details');
+assert.match(priceCopy.refreshOfferNotice(directAndromeda),/найдено в текущем поиске/,'fresh direct offer describes current-search provenance');
 
 const prepareSearch = source.slice(source.indexOf('function prepareSearchRun(options={})'), source.indexOf('\nfunction mergeSearchResults'));
 assert.match(prepareSearch, /demoteSavedTour\(\)/, 'new search retains a demoted observation before lifecycle orchestration');
