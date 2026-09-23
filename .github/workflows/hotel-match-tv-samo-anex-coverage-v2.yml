@@ -1,0 +1,86 @@
+name: MATCH SAMO live30 coverage v2
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php'
+      - 'tests/hotel_match_tv_samo_anex_coverage_v2_test.php'
+      - '.github/workflows/hotel-match-tv-samo-anex-coverage-v2.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-tv-samo-anex-coverage-1971-20260924-v3, cancel-in-progress: false}
+env:
+  OP: hotel-match-tv-samo-anex-coverage-1971-20260924-v3
+  BASE: 41b383312adc1971e1efecdab47910cb9ccd90c7
+  CLAIM: '5803544193'
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php
+      - run: php scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php --self-test
+      - run: php tests/hotel_match_tv_samo_anex_coverage_v2_test.php
+  live:
+    needs: focused
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim and exact paths
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p terminal input
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-tv-samo-anex-coverage-v2.yml scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php tests/hotel_match_tv_samo_anex_coverage_v2_test.php "
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],'HTTP0','database_writes0','mapping_writes0','andromeda_search_hotel_observations']:assert x in b,x
+          PY
+      - name: Execute CURRENT read-only census
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read'},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
+          scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/app/integrations/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
+          set -e
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile():pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state']=='completed_read_only_coverage' and r['provider_http_calls']==0 and r['database_writes']==0 and r['mapping_writes']==0
+          print(json.dumps({'state':r['state'],'live30':r['live_30d']['counts'],'samo_live_30d':r['samo_live_30d']},sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-live30-coverage-v2-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
