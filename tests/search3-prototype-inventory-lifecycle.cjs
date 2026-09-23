@@ -97,10 +97,11 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
  for(const name of ['search3-canonical-profiles-v1.js','search3-local-db-provider-v1.js','prototype-search/data.js'])vm.runInContext(fs.readFileSync(path.join(rootDir,'v2',name),'utf8'),sandbox,{filename:name});
  const data=win.AnyTourPrototypeData;data.catalog.departures.push({id:1,name:'Москва'});data.catalog.countries.push({id:4,name:'Турция'});
  const start=async(filters={min:0,max:null})=>{await data.search(structuredClone(trip),event=>{events.push(event);onEvent?.(event,data);},[],filters);await flush();};
+ const resume=async(filters={min:0,max:null})=>{await data.resumeCached(structuredClone(trip),event=>{events.push(event);onEvent?.(event,data);},[],filters);await flush();};
  const poll=async()=>{const entry=[...timers].find(([,value])=>value.delay<=2500);assert.ok(entry,'pending poll required');timers.delete(entry[0]);await entry[1].fn();await flush();};
  const latest=()=>events.filter(e=>e.type==='results').at(-1)?.hotels||[];
  const providers=()=>[...new Set(latest().flatMap(h=>h.offers.map(o=>o.provider)))].sort();
- return {data,start,poll,events,calls,dbBodies,nativeCalls,anexCalls,observationCalls,mealCatalogCalls,latest,providers,timers,get searchId(){return currentId;}};
+ return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,observationCalls,mealCatalogCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
 const observed=(q,price=97500)=>{const childAges=String(q.childs||'').trim()?String(q.childs).split(',').map(Number).sort((a,b)=>a-b):[];return {ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:Number(q.adults),childrenCount:childAges.length,childAges,childAgesSignature:childAges.join(','),departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:q.regionId?Number(q.regionId):null,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]};};
@@ -327,6 +328,42 @@ test('initial three-provider DB inventory survives TV and completion reread',asy
  assert.ok(h.latest()[0].offers.every(o=>o.total>=1500000));
  assert.equal(h.events.at(-1).type,'complete');
  assert.ok(h.events.some(e=>e.type==='complete'&&e.canContinue));
+});
+test('cached URL resume reads LOCAL only and never starts supplier searches',async()=>{
+ const h=harness({
+  database:(i,p)=>snapshot(p,['tourvisor','anex','andromeda']),
+  native:async()=>assert.fail('cached resume must not call Andromeda'),
+  anex:async()=>assert.fail('cached resume must not call ANEX')
+ });
+ await h.resume();
+ assert.equal(h.dbBodies.length,1,'cached resume performs one LOCAL read');
+ assert.equal(h.calls.length,0,'cached resume must not call Tourvisor runtime APIs');
+ assert.equal(h.nativeCalls.length,0,'cached resume must not call Andromeda');
+ assert.equal(h.anexCalls.length,0,'cached resume must not call ANEX');
+ assert.equal(h.searchId,0,'cached resume never creates a supplier search id');
+ assert.deepEqual(h.providers(),['andromeda','anex','tourvisor'],'cached LOCAL inventory keeps its provider provenance');
+ assert.ok(h.events.some(e=>e.type==='loading'&&e.cachedResume===true),'cached resume is explicitly labelled');
+ const complete=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.ok(complete,'cached resume reaches a terminal state');
+ assert.equal(complete.cachedResume,true);assert.equal(complete.canContinue,false);
+ for(const provider of ['tourvisor','anex','andromeda']){
+  assert.equal(complete.sources[provider].status,'skipped',provider+' is explicitly skipped during cached resume');
+  assert.equal(complete.sources[provider].offers,0);
+ }
+ assert.equal(complete.sources.database.status,'complete');
+});
+test('cached URL resume fails closed to LOCAL without supplier fallback',async()=>{
+ const h=harness({
+  database:()=>{throw new Error('synthetic LOCAL failure');},
+  native:async()=>assert.fail('LOCAL failure must not fall back to Andromeda'),
+  anex:async()=>assert.fail('LOCAL failure must not fall back to ANEX')
+ });
+ await h.resume();
+ assert.equal(h.calls.length,0);assert.equal(h.nativeCalls.length,0);assert.equal(h.anexCalls.length,0);
+ assert.ok(h.events.some(e=>e.type==='database-error'),'LOCAL failure is surfaced');
+ const complete=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.equal(complete.cachedResume,true);assert.equal(complete.sources.database.status,'error');
+ assert.equal(complete.canContinue,false,'cached failure requires an explicit fresh retry');
 });
 test('offers stored during a search are loaded without another search start',async()=>{
  const h=harness({database:(i,p)=>snapshot(p,i===1?['tourvisor']:['tourvisor','anex','andromeda'])});
