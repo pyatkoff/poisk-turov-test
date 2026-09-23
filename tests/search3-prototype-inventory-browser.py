@@ -166,19 +166,21 @@ def check_width(browser, origin, width):
                 assert request.headers.get("x-requested-with") == "AnyTourSearch3"
                 child_ages = sorted(int(age) for age in body.get("childs", []))
                 child_signature = ",".join(str(age) for age in child_ages)
+                region_ids = sorted(set(int(region_id) for region_id in body.get("regionIds", [])))
                 first, last = body["dateFrom"], body["dateTo"]
                 observation_calls.append({
                     "departureId": str(body["departureId"]), "countryId": str(body["countryId"]),
                     "dateFrom": first, "dateTo": last, "nightsFrom": str(body["nightsFrom"]),
                     "nightsTo": str(body["nightsTo"]), "adults": str(body["adults"]), "childs": child_signature,
-                    **({"regionId": str(body["regionId"])} if int(body.get("regionId", 0)) > 0 else {})
+                    "regionIds": [str(region_id) for region_id in region_ids],
+                    **({"regionId": str(region_ids[0])} if len(region_ids) == 1 else {})
                 })
                 series = [{"date": DATE, "observed": True, "minPrice": 97500}] if first <= DATE <= last else []
                 reply({"ok": True, "data": {"ok": True, "source": "latest-known-exact-segments-from-anytour-first-party-observations",
                        "cachedPriceIsFinal": False, "currency": "RUB", "adults": int(body["adults"]),
                        "childrenCount": len(child_ages), "childAges": child_ages, "childAgesSignature": child_signature,
                        "departureId": int(body["departureId"]), "countryId": int(body["countryId"]),
-                       "regionId": int(body["regionId"]) if int(body.get("regionId", 0)) > 0 else None,
+                       "regionId": region_ids[0] if len(region_ids) == 1 else None, "regionIds": region_ids,
                        "dateFrom": first, "dateTo": last, "nightsFrom": int(body["nightsFrom"]),
                        "nightsTo": int(body["nightsTo"]), "series": series}})
                 return

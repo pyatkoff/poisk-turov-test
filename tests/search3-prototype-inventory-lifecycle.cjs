@@ -76,9 +76,10 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
    }
    if(body.action==='price_calendar'){
     const childAges=[...(body.childs||[])].map(Number).sort((a,b)=>a-b);
+    const regionIds=[...new Set((Array.isArray(body.regionIds)?body.regionIds:Number(body.regionId)>0?[body.regionId]:[]).map(Number))].sort((a,b)=>a-b);
     const query={departureId:String(body.departureId),countryId:String(body.countryId),dateFrom:body.dateFrom,dateTo:body.dateTo,
-      nightsFrom:String(body.nightsFrom),nightsTo:String(body.nightsTo),adults:String(body.adults),childs:childAges.join(',')};
-    if(Number(body.regionId)>0)query.regionId=String(body.regionId);
+      nightsFrom:String(body.nightsFrom),nightsTo:String(body.nightsTo),adults:String(body.adults),childs:childAges.join(','),regionIds:regionIds.map(String)};
+    if(regionIds.length===1)query.regionId=String(regionIds[0]);
     observationCalls.push(query);assert.ok(observations,'unexpected observation request');
     return {ok:true,json:async()=>({ok:true,data:await observations(query,options.signal)})};
    }
@@ -114,7 +115,7 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
  return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,observationCalls,mealCatalogCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
-const observed=(q,price=97500)=>{const childAges=String(q.childs||'').trim()?String(q.childs).split(',').map(Number).sort((a,b)=>a-b):[];return {ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:Number(q.adults),childrenCount:childAges.length,childAges,childAgesSignature:childAges.join(','),departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:q.regionId?Number(q.regionId):null,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]};};
+const observed=(q,price=97500)=>{const childAges=String(q.childs||'').trim()?String(q.childs).split(',').map(Number).sort((a,b)=>a-b):[],regionIds=[...new Set((q.regionIds||[]).map(Number))].sort((a,b)=>a-b);return {ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:Number(q.adults),childrenCount:childAges.length,childAges,childAgesSignature:childAges.join(','),departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:regionIds.length===1?regionIds[0]:null,regionIds,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]};};
 function canonicalMeals(h){
  h.data.catalog.meals.splice(0,h.data.catalog.meals.length,
   {id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'});
@@ -334,24 +335,32 @@ test('observation prices survive failed LOCAL read and LOCAL prices survive fail
  const localOnly=await other.data.calendarPrices(trip,trip.from,trip.to,new AbortController().signal,{},x=>kept.push(x));
  assert.equal(localOnly.hotels.length,1);assert.equal(localOnly.observations.length,0);assert.equal(localOnly.partial,true);assert.ok(kept.some(x=>x.hotels.length===1));
 });
-test('observation aggregates never substitute for unsupported hotel filters and preserve exact party scope',async()=>{
+test('observation aggregates preserve exact party and canonical multi-resort OR scope',async()=>{
  const h=harness({observations:q=>observed(q)}),signal=new AbortController().signal;
- for(const f of [{stars:[5]},{meals:['AI']},{amenities:['3:15']},{min:1},{max:1500000},{resorts:['Сиде','Кемер']},{hotelId:501},{q:'hotel'},{flight:['regular']},{operators:['ANEX']},{rating:true}]){
+ for(const f of [{stars:[5]},{meals:['AI']},{amenities:['3:15']},{min:1},{max:1500000},{hotelId:501},{q:'hotel'},{flight:['regular']},{operators:['ANEX']},{rating:true}]){
   assert.equal((await h.data.observedCalendar(trip,trip.from,trip.to,signal,f)).length,0);
  }
  assert.equal(h.observationCalls.length,0);
  const family={...trip,adults:1,ages:[7,3]};
  assert.equal((await h.data.observedCalendar(family,trip.from,trip.to,signal,{})).length,1);
- assert.equal(h.observationCalls[0].adults,'1');assert.equal(h.observationCalls[0].childs,'3,7');
- h.data.catalog.regions['4']=[{id:'23',name:'Сиде'}];
- await h.data.observedCalendar(trip,trip.from,trip.to,signal,{resorts:['Сиде']});assert.equal(h.observationCalls[1].regionId,'23');
+ assert.equal(h.observationCalls[0].adults,'1');assert.equal(h.observationCalls[0].childs,'3,7');assert.deepEqual(h.observationCalls[0].regionIds,[]);
+ h.data.catalog.regions['4']=[{id:'23',name:'Сиде'},{id:'22',name:'Кемер'}];
+ await h.data.observedCalendar(trip,trip.from,trip.to,signal,{resorts:['Сиде']});
+ assert.equal(h.observationCalls[1].regionId,'23');assert.deepEqual(h.observationCalls[1].regionIds,['23']);
  assert.equal(h.observationCalls[1].adults,'2');assert.equal(h.observationCalls[1].childs,'');
+ await h.data.observedCalendar(trip,trip.from,trip.to,signal,{resorts:['Сиде','Кемер']});
+ assert.deepEqual(h.observationCalls[2].regionIds,['22','23'],'multi-resort calendar sends canonical normalized OR scope');
+ assert.equal(Object.hasOwn(h.observationCalls[2],'regionId'),false,'multi-resort request cannot collapse to one region');
 });
 test('observation response must match exact date night party and region scope',async()=>{
- for(const patch of [{countryId:99},{adults:1},{childrenCount:1},{childAges:[3]},{childAgesSignature:'3'},{nightsTo:9},{regionId:1},{dateFrom:'2026-01-01'},{cachedPriceIsFinal:true},{series:[{date:trip.from,observed:true,minPrice:0}]}]){
+ for(const patch of [{countryId:99},{adults:1},{childrenCount:1},{childAges:[3]},{childAgesSignature:'3'},{nightsTo:9},{regionId:1},{regionIds:[1]},{dateFrom:'2026-01-01'},{cachedPriceIsFinal:true},{series:[{date:trip.from,observed:true,minPrice:0}]}]){
   const h=harness({observations:q=>({...observed(q),...patch})});
   await assert.rejects(h.data.observedCalendar(trip,trip.from,trip.to,new AbortController().signal,{}));
  }
+ const scoped=harness({observations:q=>({...observed(q),regionIds:[22],regionId:22})});
+ scoped.data.catalog.regions['4']=[{id:'23',name:'Сиде'},{id:'22',name:'Кемер'}];
+ await assert.rejects(scoped.data.observedCalendar(trip,trip.from,trip.to,new AbortController().signal,{resorts:['Сиде','Кемер']}),
+  /не соответствуют/,'a partial region echo cannot stand in for the selected OR scope');
 });
 test('aborted calendar cannot publish a late observation response into a new trip',async()=>{
  const gate=defer(),h=harness({database:(i,p)=>snapshot(p,[]),observations:async q=>{await gate.promise;return observed(q);}}),updates=[],controller=new AbortController();

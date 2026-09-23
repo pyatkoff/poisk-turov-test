@@ -683,12 +683,12 @@
     return result;
   }
   function observationScopeSupported(s,filters={}) {
-    // Party is now an exact first-class observation scope. Keep all unrelated
-    // filters conservative so an aggregate can never stand in for unsupported detail.
+    // Party and canonical region OR are exact first-class observation scopes.
+    // Keep unrelated filters conservative so an aggregate can never stand in for unsupported detail.
     if(filters.hotelId||filters.q||filters.min>0
       ||filters.max!==undefined&&filters.max!==null&&filters.max!==''
       ||['stars','meals','operators','flight','amenities'].some(key=>filters[key]?.length)
-      ||['rating','beach','family','spa'].some(key=>filters[key])||(filters.resorts||[]).length>1)return false;
+      ||['rating','beach','family','spa'].some(key=>filters[key]))return false;
     return true;
   }
   async function observedCalendar(s,from,to,signal,filters={}) {
@@ -696,12 +696,12 @@
     const departure=catalog.departures.find(x=>text(x)===s.origin||String(x.id)===s.origin);
     if(!departure||!catalog.countries.some(x=>String(x.id)===String(s.country)))return [];
     const childAges=[...s.ages].sort((a,b)=>a-b),childSignature=childAges.join(',');
-    const selected=regionIds(s,filters),query={departureId:String(departure.id),countryId:String(s.country),dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights),adults:String(s.adults),childs:childSignature};
-    if(selected.length)query.regionId=selected[0];
+    const selected=[...new Set(regionIds(s,filters).map(Number))].sort((a,b)=>a-b);
+    const query={departureId:String(departure.id),countryId:String(s.country),dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights),adults:String(s.adults),childs:childSignature,regionIds:selected.map(String)};
     const response=await fetch(local+'data/search3-local-results-read-v1.php',{
       method:'POST',credentials:'same-origin',cache:'no-store',signal,
       headers:{Accept:'application/json','Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
-      body:JSON.stringify({action:'price_calendar',departureId:Number(query.departureId),countryId:Number(query.countryId),regionId:selected.length?Number(selected[0]):0,
+      body:JSON.stringify({action:'price_calendar',departureId:Number(query.departureId),countryId:Number(query.countryId),regionIds:selected,
         dateFrom:from,dateTo:to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:childAges})
     });
     if(!response.ok)throw new Error('Сохранённые цены календаря временно недоступны.');
@@ -711,7 +711,8 @@
       ||result.cachedPriceIsFinal!==false||result.currency!=='RUB'||result.adults!==s.adults||result.childrenCount!==childAges.length
       ||!Array.isArray(result.childAges)||result.childAges.length!==childAges.length||result.childAges.some((age,index)=>age!==childAges[index])||result.childAgesSignature!==childSignature
       ||String(result.departureId)!==query.departureId||String(result.countryId)!==query.countryId
-      ||String(result.regionId||'')!==String(query.regionId||'')||result.dateFrom!==from||result.dateTo!==to
+      ||!Array.isArray(result.regionIds)||result.regionIds.map(String).join(',')!==query.regionIds.join(',')
+      ||String(result.regionId||'')!==(query.regionIds.length===1?query.regionIds[0]:'')||result.dateFrom!==from||result.dateTo!==to
       ||String(result.nightsFrom)!==query.nightsFrom||String(result.nightsTo)!==query.nightsTo||!Array.isArray(result.series))throw new Error('Сохранённые цены не соответствуют параметрам поездки.');
     const points=[],seen=new Set();
     for(const row of result.series){
