@@ -135,19 +135,6 @@ def check_width(browser, origin, width):
             route.fulfill(content_type="image/svg+xml", body=FIXTURE.PHOTO)
         elif url.path == "/data/departures-v1.php":
             reply({"ok": True, "items": [{"id": 1, "name": "Москва"}]})
-        elif url.path == "/_preview/search3-local-candidate/data/price-calendar-read-v1.php":
-            observation_calls.append(query)
-            first, last = query['dateFrom'][0], query['dateTo'][0]
-            child_ages = sorted(int(age) for age in query.get("childs", [""])[0].split(",") if age != "")
-            child_signature = ",".join(str(age) for age in child_ages)
-            series = [{"date": DATE, "observed": True, "minPrice": 97500}] if first <= DATE <= last else []
-            reply({"ok": True, "source": "latest-known-exact-segments-from-anytour-first-party-observations",
-                   "cachedPriceIsFinal": False, "currency": "RUB", "adults": int(query["adults"][0]),
-                   "childrenCount": len(child_ages), "childAges": child_ages, "childAgesSignature": child_signature,
-                   "departureId": int(query["departureId"][0]), "countryId": int(query["countryId"][0]),
-                   "regionId": int(query["regionId"][0]) if query.get("regionId") else None,
-                   "dateFrom": first, "dateTo": last, "nightsFrom": int(query["nightsFrom"][0]),
-                   "nightsTo": int(query["nightsTo"][0]), "series": series})
         elif url.path.endswith("/search3-meal-catalog-read-v1.php"):
             reply({"ok": True, "source": "anytour-search-meal-v1", "provider": "tourvisor", "scopeKey": "global",
                    "available": True, "revision": "a" * 64, "plans": [
@@ -174,6 +161,26 @@ def check_width(browser, origin, width):
                            {"id": 7, "code": "all-inclusive", "nameRu": "Всё включено", "nativeIds": ["7"]},
                            {"id": 8, "code": "ultra-all-inclusive", "nameRu": "Ультра всё включено", "nativeIds": ["9"]},
                        ]}})
+                return
+            if body.get("action") == "price_calendar":
+                assert request.headers.get("x-requested-with") == "AnyTourSearch3"
+                child_ages = sorted(int(age) for age in body.get("childs", []))
+                child_signature = ",".join(str(age) for age in child_ages)
+                first, last = body["dateFrom"], body["dateTo"]
+                observation_calls.append({
+                    "departureId": str(body["departureId"]), "countryId": str(body["countryId"]),
+                    "dateFrom": first, "dateTo": last, "nightsFrom": str(body["nightsFrom"]),
+                    "nightsTo": str(body["nightsTo"]), "adults": str(body["adults"]), "childs": child_signature,
+                    **({"regionId": str(body["regionId"])} if int(body.get("regionId", 0)) > 0 else {})
+                })
+                series = [{"date": DATE, "observed": True, "minPrice": 97500}] if first <= DATE <= last else []
+                reply({"ok": True, "data": {"ok": True, "source": "latest-known-exact-segments-from-anytour-first-party-observations",
+                       "cachedPriceIsFinal": False, "currency": "RUB", "adults": int(body["adults"]),
+                       "childrenCount": len(child_ages), "childAges": child_ages, "childAgesSignature": child_signature,
+                       "departureId": int(body["departureId"]), "countryId": int(body["countryId"]),
+                       "regionId": int(body["regionId"]) if int(body.get("regionId", 0)) > 0 else None,
+                       "dateFrom": first, "dateTo": last, "nightsFrom": int(body["nightsFrom"]),
+                       "nightsTo": int(body["nightsTo"]), "series": series}})
                 return
             params = body["params"]
             if state['database_failure']:
