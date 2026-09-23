@@ -8,11 +8,11 @@ on:
       - 'tests/hotel_match_tv_samo_anex_coverage_v2_test.php'
       - '.github/workflows/hotel-match-tv-samo-anex-coverage-v2.yml'
 permissions: {contents: read, actions: read, issues: read}
-concurrency: {group: hotel-match-tv-samo-anex-coverage-1971-20260924-v2, cancel-in-progress: false}
+concurrency: {group: hotel-match-tv-samo-anex-coverage-1971-20260924-v3, cancel-in-progress: false}
 env:
-  OP: hotel-match-tv-samo-anex-coverage-1971-20260924-v2
+  OP: hotel-match-tv-samo-anex-coverage-1971-20260924-v3
   BASE: 41b383312adc1971e1efecdab47910cb9ccd90c7
-  CLAIM: '5803471726'
+  CLAIM: '5803544193'
 jobs:
   focused:
     runs-on: ubuntu-latest
@@ -60,11 +60,13 @@ jobs:
           import json,os,pathlib
           pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read'},sort_keys=True)+'\n')
           PY
-          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
           scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
-          scp "${opts[@]}" scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$op/payload/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/app/integrations/"
           set +e
-          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/hotel_match_tv_samo_anex_coverage_v2.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
           status=$?
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
           set -e
