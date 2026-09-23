@@ -90,9 +90,9 @@ jobs:
                   if m.isfile():pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
           r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
           assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
-          assert r['state']=='completed_read_only_anchor_recovery_census' and r['input_rows']==110
+          assert r['state']=='completed_read_only_anchor_recovery_census' and r['source_missing_anchor_total']==110 and 0<r['input_rows']<=110
           assert r['supplier_calls']==r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False
-          print(json.dumps({k:r[k] for k in ['input_rows','unique_targets','observation_table_present','observation_rows_scanned','verdict_counts','candidate_identity_state_counts','candidate_geo_counts','target_candidate_count_distribution']},sort_keys=True))
+          print(json.dumps({k:r[k] for k in ['source_missing_anchor_total','source_missing_anchor_status_counts','input_rows','unique_targets','observation_table_present','observation_rows_scanned','verdict_counts','candidate_identity_state_counts','candidate_geo_counts','target_candidate_count_distribution']},sort_keys=True))
           PY
           test "$status" -eq 0
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
