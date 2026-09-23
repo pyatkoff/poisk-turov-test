@@ -14,6 +14,7 @@ import subprocess
 import tarfile
 import time
 import urllib.request
+import zlib
 
 REPO = 'pyatkoff/poisk-turov-test'
 FEATURE = 'feature/anex-search-adapter-20260907'
@@ -2269,10 +2270,12 @@ def execute(command: dict, source_root: Path) -> dict:
         need(0 < len(probe_bytes) <= 1024 * 1024, 'program_fuel_probe_source_size')
         payload['program_fuel_probe_php_b64'] = base64.b64encode(probe_bytes).decode()
         payload['program_fuel_probe_php_sha256'] = hashlib.sha256(probe_bytes).hexdigest()
-    encoded = base64.b64encode(REMOTE.encode()).decode()
+    compressed = zlib.compress(REMOTE.encode(), 9)
+    encoded = base64.b64encode(compressed).decode()
     remote_command = (
-        "python3 -c 'import base64;exec(base64.b64decode(\"" + encoded + "\"))'"
+        "python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\"" + encoded + "\")))'"
     )
+    need(len(remote_command.encode()) <= 65536, 'remote_command_size')
     try:
         run = subprocess.run(
             ['ssh',*options,'-l',user,host,remote_command],
