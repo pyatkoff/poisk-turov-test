@@ -259,6 +259,87 @@ function idsr_seed_preflight(string $root, string $directory, string $home, int 
         'store_dir_writable'=>is_writable($directory),'fresh_exchange_count'=>$freshExchange,
     ];
 }
+function idsr_target_path_state(string $directory, array $expectedDirection): array {
+    $digest = 'd4569fff8f4a74d2098dd2d1f31374863070ccea7ed9efd25eb3477c50758111';
+    if (class_exists('AnyTourOperatorFuelRuleEvidenceV1')) {
+        try {
+            if (AnyTourOperatorFuelRuleEvidenceV1::directionDigest($expectedDirection) !== $digest) idsr_fail('target_digest_contract');
+        } catch (Throwable $error) {
+            idsr_fail('target_digest_contract');
+        }
+    }
+    $basename = 'operator-fuel-rule-v2-' . $digest . '.json';
+    $path = rtrim($directory,'/') . '/' . $basename;
+    $stat = @lstat($path);
+    $lstatExists = is_array($stat);
+    $isLink = is_link($path);
+    $isFile = is_file($path);
+    $exists = file_exists($path);
+    $size = $lstatExists && isset($stat['size']) && is_int($stat['size']) ? $stat['size'] : null;
+    $readable = $isFile && is_readable($path);
+    $envelopeStatus = 'absent';
+    $observationCount = null;
+    $storeSha = null;
+    if ($isLink) {
+        $envelopeStatus = 'symlink';
+    } elseif ($lstatExists && !$isFile) {
+        $envelopeStatus = 'not_file';
+    } elseif (!$lstatExists) {
+        $envelopeStatus = 'absent';
+    } elseif (!is_int($size) || $size < 2 || $size > 262144) {
+        $envelopeStatus = 'size_invalid';
+    } elseif (!$readable) {
+        $envelopeStatus = 'unreadable';
+    } else {
+        try {
+            $value = json_decode((string)file_get_contents($path), true, 32, JSON_THROW_ON_ERROR);
+            if (!is_array($value)) {
+                $envelopeStatus = 'envelope_invalid';
+            } else {
+                $keys = array_keys($value); sort($keys);
+                if ($keys !== ['direction','direction_sha256','observations','version'] || ($value['version']??null)!==2
+                    || ($value['direction_sha256']??null)!==$digest || ($value['direction']??null)!==$expectedDirection
+                    || !is_array($value['observations']??null) || !array_is_list($value['observations'])
+                    || count($value['observations'])>128) {
+                    $envelopeStatus = 'envelope_invalid';
+                } else {
+                    $envelopeStatus = 'valid';
+                    $observationCount = count($value['observations']);
+                    $storeSha = hash_file('sha256',$path);
+                }
+            }
+        } catch (Throwable $error) {
+            $envelopeStatus = 'json_invalid';
+        }
+    }
+    return [
+        'basename'=>$basename,'direction_sha256'=>$digest,'lstat_exists'=>$lstatExists,'exists'=>$exists,
+        'is_file'=>$isFile,'is_link'=>$isLink,'size_bytes'=>$size,'readable'=>$readable,
+        'envelope_status'=>$envelopeStatus,'observation_count'=>$observationCount,'store_sha256'=>$storeSha,
+    ];
+}
+function idsr_writer_prerequisites(string $directory, array $target): array {
+    $real = realpath($directory);
+    $temps = glob(rtrim($directory,'/') . '/.direction-fuel-seed.*', GLOB_NOSORT);
+    if ($temps === false || count($temps) > 128) idsr_fail('temp_inventory_invalid');
+    $tempFiles = 0; $tempLinks = 0; $tempOther = 0;
+    foreach ($temps as $path) {
+        if (is_link($path)) { ++$tempLinks; continue; }
+        if (is_file($path)) { ++$tempFiles; continue; }
+        ++$tempOther;
+    }
+    $targetReplaceable = ($target['is_link']??true)===false
+        && ((($target['lstat_exists']??true)===false) || (($target['is_file']??false)===true));
+    return [
+        'directory_exists'=>is_dir($directory),'directory_is_link'=>is_link($directory),
+        'directory_writable'=>is_writable($directory),
+        'directory_realpath_ok'=>is_string($real) && basename($real)==='searches',
+        'target_absent'=>($target['lstat_exists']??true)===false,
+        'target_replaceable'=>$targetReplaceable,
+        'stale_temp_count'=>count($temps),'stale_temp_file_count'=>$tempFiles,
+        'stale_temp_link_count'=>$tempLinks,'stale_temp_other_count'=>$tempOther,
+    ];
+}
 try {
     $home = getenv('HOME');
     if (!is_string($home) || $home === '') idsr_fail('home_missing');
@@ -274,6 +355,8 @@ try {
     $seedPreflight = idsr_seed_preflight($root,$directory,$home,$now);
 
     $expectedDirection = ['operator_family'=>'fun_and_sun','market'=>'departure:1','destination'=>'country:4'];
+    $targetPathState = idsr_target_path_state($directory,$expectedDirection);
+    $writerPrerequisites = idsr_writer_prerequisites($directory,$targetPathState);
     $files = glob($directory . '/operator-fuel-rule-v2-*.json', GLOB_NOSORT);
     if ($files === false || count($files) > 512) idsr_fail('store_inventory_invalid');
     sort($files, SORT_STRING);
@@ -342,6 +425,7 @@ try {
     echo json_encode([
         'schema_version'=>1,'source'=>'int-funsun-direction-store-server-readback-v1','status'=>$status,
         'direction'=>$expectedDirection,'target_store_count'=>count($targetFiles),'target_stores'=>$targetFiles,
+        'target_path_state'=>$targetPathState,'writer_prerequisites'=>$writerPrerequisites,
         'seed_preflight'=>$seedPreflight,'supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,
         'store_writes'=>0,'runtime_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'final_price_verified'=>false,'server_time'=>$now,
     ], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR), "\n";
@@ -421,6 +505,8 @@ def validate_remote(data: dict) -> dict:
         need(isinstance(data.get("reason"), str) and len(data["reason"]) <= 96, "remote_reason")
         return data
     expected_direction = {"operator_family": "fun_and_sun", "market": "departure:1", "destination": "country:4"}
+    expected_digest = "d4569fff8f4a74d2098dd2d1f31374863070ccea7ed9efd25eb3477c50758111"
+    expected_basename = "operator-fuel-rule-v2-" + expected_digest + ".json"
     need(data.get("direction") == expected_direction, "remote_direction")
     preflight = data.get("seed_preflight")
     need(isinstance(preflight, dict), "remote_seed_preflight")
@@ -443,6 +529,31 @@ def validate_remote(data: dict) -> dict:
         need(len(receipts) == 2, "remote_seed_preflight_ready_receipts")
     else:
         need(isinstance(reason, str), "remote_seed_preflight_failed_reason")
+    target = data.get("target_path_state")
+    need(isinstance(target, dict), "remote_target_path")
+    need(target.get("basename") == expected_basename and target.get("direction_sha256") == expected_digest, "remote_target_identity")
+    for key in ("lstat_exists", "exists", "is_file", "is_link", "readable"):
+        need(isinstance(target.get(key), bool), "remote_target_bool_" + key)
+    size = target.get("size_bytes")
+    need(size is None or (isinstance(size, int) and 0 <= size <= 1048576), "remote_target_size")
+    need(target.get("envelope_status") in {"absent", "symlink", "not_file", "size_invalid", "unreadable", "json_invalid", "envelope_invalid", "valid"}, "remote_target_envelope")
+    observation_count = target.get("observation_count")
+    need(observation_count is None or (isinstance(observation_count, int) and 0 <= observation_count <= 128), "remote_target_observations")
+    store_sha = target.get("store_sha256")
+    need(store_sha is None or (isinstance(store_sha, str) and re.fullmatch(r"[a-f0-9]{64}", store_sha)), "remote_target_store_sha")
+    if target["envelope_status"] == "absent":
+        need(not target["lstat_exists"] and not target["exists"] and not target["is_file"] and not target["is_link"], "remote_target_absent_shape")
+    if target["envelope_status"] == "valid":
+        need(target["lstat_exists"] and target["exists"] and target["is_file"] and not target["is_link"] and target["readable"], "remote_target_valid_shape")
+        need(isinstance(observation_count, int) and isinstance(store_sha, str), "remote_target_valid_details")
+    writer = data.get("writer_prerequisites")
+    need(isinstance(writer, dict), "remote_writer_prerequisites")
+    for key in ("directory_exists", "directory_is_link", "directory_writable", "directory_realpath_ok", "target_absent", "target_replaceable"):
+        need(isinstance(writer.get(key), bool), "remote_writer_bool_" + key)
+    for key in ("stale_temp_count", "stale_temp_file_count", "stale_temp_link_count", "stale_temp_other_count"):
+        need(isinstance(writer.get(key), int) and 0 <= writer[key] <= 128, "remote_writer_count_" + key)
+    need(writer["stale_temp_count"] == writer["stale_temp_file_count"] + writer["stale_temp_link_count"] + writer["stale_temp_other_count"], "remote_writer_temp_sum")
+    need(writer["target_absent"] == (not target["lstat_exists"]), "remote_writer_target_absent")
     stores = data.get("target_stores")
     need(isinstance(stores, list) and len(stores) <= 1, "remote_store_count")
     need(data.get("target_store_count") == len(stores), "remote_store_count")
