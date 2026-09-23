@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'tests/search3-local-preview-live-first-search.cjs'
+      - 'tests/search3-local-preview-live-direct-provider-probe.cjs'
       - '.github/workflows/search3-local-preview-live-first-search.yml'
 
 permissions:
@@ -32,12 +33,11 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/search3-live-tools" --no-audit --no-fund --no-save playwright@1.55.0
           "$RUNNER_TEMP/search3-live-tools/node_modules/.bin/playwright" install --with-deps chromium
-      - name: Capture one real first-search source receipt
+      - name: Probe direct provider error bodies only
         env:
           NODE_PATH: ${{ runner.temp }}/search3-live-tools/node_modules
-          SEARCH3_LOCAL_LIVE_URL: https://anytoour.ru/_preview/search3-local-candidate/prototype-search/
           SEARCH3_LOCAL_LIVE_OUTPUT: ${{ runner.temp }}/search3-local-live-first-search
-        run: node tests/search3-local-preview-live-first-search.cjs
+        run: node tests/search3-local-preview-live-direct-provider-probe.cjs
       - name: Retain source receipt evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
