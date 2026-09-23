@@ -584,3 +584,13 @@ class ContractTest(unittest.TestCase):
             self.assertNotIn(x,text)
 
 if __name__=='__main__':unittest.main(verbosity=2)
+
+
+def test_match_common4_continuation_bulk_limit():
+    cmd=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-continuation-acquire int-andromeda-match-common4-continuation-bulk-20260923-v1 135 1214')
+    assert cmd['offset']==135 and cmd['limit']==1214
+    try:
+        m.parse_command(f'/run-int-server-v1 {SHA} match-common4-continuation-acquire int-andromeda-match-common4-continuation-overflow-20260923-v1 135 1215')
+        raise AssertionError('overflow accepted')
+    except ValueError as exc:
+        assert str(exc) in ('match_scope','match_limit')
