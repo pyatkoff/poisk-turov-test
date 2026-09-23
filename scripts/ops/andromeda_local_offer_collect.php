@@ -188,9 +188,26 @@ $hasReusableSurcharge=static function(array $selection,array $offer,array $req)u
     )!==null;
 };
 
-$result=AnyTourAndromedaLocalOfferCollectorV1::collect(
-    $request,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
-    $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
-);
+$windows=AnyTourAndromedaLocalOfferCollectorV1::dateWindows($from,$to);
+if(count($windows)>1 && $maxCaptures>0)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_RANGE_CAPTURE_UNSUPPORTED');
+if(count($windows)===1){
+    $result=AnyTourAndromedaLocalOfferCollectorV1::collect(
+        $request,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
+        $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
+    );
+}else{
+    $result=AnyTourAndromedaLocalOfferCollectorV1::collectRange(
+        $request,$from,$to,
+        static function(array $windowRequest,int $index,array $window)use(
+            $searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
+            $maxCaptures,$captureMode,$maxCaptureSeconds,$hasReusableSurcharge
+        ):array{
+            return AnyTourAndromedaLocalOfferCollectorV1::collect(
+                $windowRequest,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
+                $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
+            );
+        }
+    );
+}
 echo json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
 if (($result['status'] ?? null) !== 'complete') exit(1);
