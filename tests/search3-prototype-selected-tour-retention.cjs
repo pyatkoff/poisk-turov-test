@@ -126,6 +126,13 @@ assert.equal(priceCopy.offerMetaNote(directAnex),'Цена из текущего
 assert.equal(priceCopy.offerMetaNote(freshTourvisor),'Рейсы и багаж — при выборе','fresh Tourvisor compact row keeps selection detail hint');
 assert.equal(priceCopy.offerActionLabel(directAndromeda),'Смотреть условия','direct-provider selection authority remains unchanged');
 assert.equal(priceCopy.offerActionLabel(freshTourvisor),'Выбрать тур','Tourvisor selection CTA remains unchanged');
+const favoritesStart = source.indexOf('function renderFavorites()');
+const favoritesEnd = source.indexOf('\nfunction openFilters()', favoritesStart);
+assert.ok(favoritesStart >= 0 && favoritesEnd > favoritesStart, 'favorites renderer is present');
+const favoritesSource = source.slice(favoritesStart, favoritesEnd);
+assert.match(favoritesSource,/priceNote\(o\)/,'Favorites must preserve the representative offer price provenance/readiness');
+assert.ok(!favoritesSource.includes('За ${guestsText()} · сборы уточняются'),'Favorites must not replace offer price state with generic surcharge copy');
+
 assert.equal(priceCopy.refreshOfferActionLabel(cachedLocal),'Найти актуальные туры','cached offer keeps saved-offer refresh CTA');
 assert.equal(priceCopy.refreshOfferActionLabel(directAnex),'Проверить этот тур','fresh direct offer asks to verify this tour');
 assert.match(priceCopy.refreshOfferNotice(cachedLocal),/^Сохранённое предложение доступно 24 часа/,'cached offer keeps 24h saved notice');
