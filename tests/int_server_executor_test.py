@@ -108,6 +108,18 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(1,v['max_captures'])
         self.assertEqual(0,v['region'])
 
+    def test_match_common4_acquire_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-acquire int-andromeda-match-common4-acquire-20260923-v1 0 100')
+        self.assertEqual('match-common4-acquire',v['mode'])
+        self.assertEqual(0,v['offset']);self.assertEqual(100,v['limit'])
+        for bad in [
+            f'/run-int-server-v1 {SHA} match-common4-acquire int-anex-match-common4-acquire-20260923-v1 0 100',
+            f'/run-int-server-v1 {SHA} match-common4-acquire int-andromeda-match-common4-acquire-20260923-v1 0 101',
+            f'/run-int-server-v1 {SHA} match-common4-acquire int-andromeda-match-common4-acquire-20260923-v1 1750 50',
+        ]:
+            with self.subTest(bad=bad),self.assertRaises(ValueError):
+                m.parse_command(bad)
+
     def test_match_live234_secondary_mode(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-tv234-secondary int-andromeda-match-tv234-secondary-20260923-v1 0 78')
         self.assertEqual('match-tv234-secondary',v['mode'])
@@ -193,6 +205,9 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} andromeda-operator-scope int-andromeda-intourist-scope-20260922-v1 1 4 2026-10-11 2026-10-11 7 2 - 0 43 extra',
           f'/run-int-server-v1 {SHA} andromeda-operator-preflight int-andromeda-intourist-preflight-20260923-v1 1 4 2026-10-18 2026-10-18 7 2 - 0 0',
           f'/run-int-server-v1 {SHA} andromeda-operator-preflight int-andromeda-intourist-preflight-20260923-v1 1 4 2026-10-18 2026-10-18 7 2 - 0 43 extra',
+          f'/run-int-server-v1 {SHA} match-common4-acquire int-anex-match-common4-acquire-20260923-v1 0 100',
+          f'/run-int-server-v1 {SHA} match-common4-acquire int-andromeda-match-common4-acquire-20260923-v1 0 101',
+          f'/run-int-server-v1 {SHA} match-common4-acquire int-andromeda-match-common4-acquire-20260923-v1 1750 50',
           f'/run-int-server-v1 {SHA} match-tv234-secondary int-anex-match-tv234-secondary-20260923-v1 0 78',
           f'/run-int-server-v1 {SHA} match-tv234-secondary int-andromeda-match-tv234-secondary-20260923-v1 200 35',
           f'/run-int-server-v1 {SHA} match-tv234-secondary int-andromeda-match-tv234-secondary-20260923-v1 0 79',
@@ -371,6 +386,10 @@ class ContractTest(unittest.TestCase):
                   "diagnostic_code","actualization","failure_class","actions_used",
                   "supplier_error_facts","reason_category","code_field","error_sha256",
                   "rejection_summary","ownership_class","missing_field","classified",
+                  "match-common4-acquire","run_match_common4_acquire",
+                  "hotel_match_live30_common4_plan_v1.php",
+                  "hotel_match_live30_common4_acquire_v1.py",
+                  "match_common4_terminal_hash","match_common4_call_cap_guard",
                   "match-tv234-secondary","run_match_tv234_secondary",
                   "hotel_match_live234_frontier_plan_v1.php",
                   "hotel_match_live234_tv_secondary_refresh_v1.py",
@@ -395,7 +414,7 @@ class ContractTest(unittest.TestCase):
                   "match-tv942-write","run_match_tv942_write",
                   "hotel_match_live942_tv_writer_v1.php",
                   "match_tv_writer_manifest_hash","match_tv_writer_terminal_guard",
-                  "install-runtime','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
+                  "install-runtime','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
