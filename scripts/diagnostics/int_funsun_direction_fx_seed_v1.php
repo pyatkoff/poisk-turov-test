@@ -27,11 +27,13 @@ function ifx_rate(array $rows): string {
             || ($row['source'] ?? null) !== 'andromeda_claim_money'
             || !is_string($row['currency'] ?? null)
             || !is_string($row['rate'] ?? null)) continue;
-        if ($row['currency'] === 'EUR') $eur[$row['rate']] = true;
-        if ($row['currency'] === 'RUB') $rub[$row['rate']] = true;
+        if ($row['currency'] === 'EUR') $eur[] = $row['rate'];
+        if ($row['currency'] === 'RUB') $rub[] = $row['rate'];
     }
-    if (array_keys($eur) !== ['1'] || count($rub) !== 1) ifx_fail('probe_fx_invalid');
-    $rate = array_key_first($rub);
+    $eur = array_values(array_unique($eur, SORT_STRING));
+    $rub = array_values(array_unique($rub, SORT_STRING));
+    if ($eur !== ['1'] || count($rub) !== 1) ifx_fail('probe_fx_invalid');
+    $rate = $rub[0];
     if (!is_string($rate)
         || preg_match('/\A(?:0|[1-9][0-9]{0,5})(?:\.[0-9]{1,8})?\z/D', $rate) !== 1
         || (float)$rate <= 0) ifx_fail('probe_fx_invalid');
