@@ -37,6 +37,7 @@ FIXED = [
     'scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php',
     'scripts/diagnostics/hotel_match_live_anex_samo_missing_secondary_audit_v1.php',
     'scripts/diagnostics/hotel_match_live942_tv_candidate_reconcile_v1.php',
+    'scripts/diagnostics/hotel_match_live942_tv_writer_v1.php',
 ]
 
 # Persistent installation is intentionally narrower than the source bundle:
@@ -368,6 +369,10 @@ def parse_command(body: str) -> dict:
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'match-tv942-reconcile':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-anex-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'match-tv942-write':
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-anex-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
@@ -1222,6 +1227,54 @@ def run_match_tv942_reconcile(stage):
             'stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
             'stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
 
+def run_match_tv942_write(stage):
+    child='hotel-match-live942-tv-writer-1971-20260923-v1'
+    reconcile_child='hotel-match-live942-tv-candidate-reconcile-1971-20260923-v1'
+    reconcile_sha='57245b9020beefb3760c3bf65696f3fc4a33485c8b4ec74f2058f40b363e1700'
+    match_root=home/'.anytoour-match/operations'
+    match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
+    child_dir=match_root/child
+    if child_dir.exists() or child_dir.is_symlink(): fail('match_tv_writer_child_exists_no_replay')
+    manifest_path=match_root/reconcile_child/'result.json'
+    if not safe_file(manifest_path,16*1024*1024): fail('match_tv_writer_manifest_missing')
+    if hashlib.sha256(manifest_path.read_bytes()).hexdigest()!=reconcile_sha:
+        fail('match_tv_writer_manifest_hash')
+    child_dir.mkdir(mode=0o700)
+    reservation={'operation':child,'state':'reserved_before_write','source_sha':source,
+                 'parent_operation':operation,'reconcile_result_sha256':reconcile_sha,
+                 'supplier_calls':0,'database_writes_reserved':88,'mapping_writes_reserved':88}
+    (child_dir/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
+    os.chmod(child_dir/'reservation.json',0o600)
+    runner=stage/'scripts/diagnostics/hotel_match_live942_tv_writer_v1.php'
+    helper=stage/'scripts/diagnostics/hotel_match_anex_effective_coverage.php'
+    if not safe_file(runner) or not safe_file(helper): fail('match_tv_writer_source_missing')
+    env={**os.environ,'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child_dir),
+         'MATCH_SOURCE_SHA':source,'MATCH_MANIFEST_PATH':str(manifest_path)}
+    call=subprocess.run(['php',str(runner),'--execute'],cwd=project,env=env,
+                        capture_output=True,text=True,timeout=240)
+    result_path=child_dir/'result.json';receipt_path=child_dir/'receipt.json'
+    if not safe_file(result_path,16*1024*1024) or not safe_file(receipt_path,1024*1024):
+        fail('match_tv_writer_terminal_missing')
+    child_result=safe_json(result_path,16*1024*1024);receipt=safe_json(receipt_path,1024*1024)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    if receipt.get('result_sha256')!=digest: fail('match_tv_writer_terminal_hash')
+    inserted=child_result.get('inserted');held=child_result.get('held_count')
+    if (call.returncode!=0 or child_result.get('state')!='committed_verified'
+            or not isinstance(inserted,int) or not isinstance(held,int) or inserted<0 or held<0
+            or inserted+held!=88 or child_result.get('planned')!=88
+            or child_result.get('readback_verified') is not True
+            or child_result.get('database_writes')!=inserted
+            or child_result.get('mapping_writes')!=inserted
+            or child_result.get('provider_http_calls')!=0 or child_result.get('supplier_calls')!=0
+            or receipt.get('database_writes')!=inserted or receipt.get('mapping_writes')!=inserted
+            or receipt.get('readback_verified') is not True or receipt.get('no_replay') is not True):
+        fail('match_tv_writer_terminal_guard')
+    summary={k:v for k,v in child_result.items() if k not in ('rows',)}
+    return {'child_operation':child,'state':'committed_verified','result_sha256':digest,
+            'inserted':inserted,'held_count':held,'summary':summary,
+            'stdout_sha256':hashlib.sha256(call.stdout.encode()).hexdigest(),
+            'stderr_sha256':hashlib.sha256(call.stderr.encode()).hexdigest() if call.stderr else None}
+
 def run_match942(stage, mode, offset, limit):
     match_root=home/'.anytoour-match/operations'
     match_root.mkdir(mode=0o700,parents=True,exist_ok=True)
@@ -1425,6 +1478,14 @@ try:
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
+    if mode=='match-tv942-write':
+        result['match_tv942_write']=run_match_tv942_write(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=0
+        result['database_writes']=result['match_tv942_write']['inserted']
+        result['production_unchanged']=True
     if mode=='match-readback':
         result['match_readback']=read_match942(payload['lane'],int(payload['offset']),int(payload['limit']))
         result['production_after']=fingerprints()
@@ -1442,7 +1503,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-readback','match-tv942-reconcile','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -1465,7 +1526,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-readback','match-tv942-reconcile','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','install-runtime','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
