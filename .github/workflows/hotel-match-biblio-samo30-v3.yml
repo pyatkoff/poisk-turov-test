@@ -1,0 +1,91 @@
+name: MATCH Biblio SAMO30 identity acquisition
+'on':
+  pull_request: {types: [opened, synchronize], branches: [feature/anex-search-adapter-20260907]}
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: match-biblio-samo30-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-biblio-samo30-1971-20260921-v3
+  BASE: 2321db22b5dede7f1cb9b6d5dc9a098521ed86f6
+  SCRIPT: scripts/diagnostics/hotel_match_biblio_samo30_v3.php
+  CLAIM: '5765279218'
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source, claim and exact immutable cohort
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"; test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE"..HEAD | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-biblio-samo30-v3.yml scripts/diagnostics/hotel_match_biblio_samo30_v3.php "
+          SCRIPT_SHA=$(sha256sum "$SCRIPT"|cut -d' ' -f1); DEP_CLIENT_SHA=$(sha256sum app/integrations/andromeda-client.php|cut -d' ' -f1); DEP_TRANSPORT_SHA=$(sha256sum app/integrations/andromeda-transport.php|cut -d' ' -f1); DEP_FAILURE_SHA=$(sha256sum app/integrations/andromeda-network-transport-failure.php|cut -d' ' -f1); echo "SCRIPT_SHA=$SCRIPT_SHA" >> "$GITHUB_ENV"; echo "DEP_CLIENT_SHA=$DEP_CLIENT_SHA" >> "$GITHUB_ENV"; echo "DEP_TRANSPORT_SHA=$DEP_TRANSPORT_SHA" >> "$GITHUB_ENV"; echo "DEP_FAILURE_SHA=$DEP_FAILURE_SHA" >> "$GITHUB_ENV"; php -l "$SCRIPT"; php "$SCRIPT" --self-test
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in ['Fresh v3','exact30 cohort','one-login+max30 price','writes0']:assert x in c['body'],x
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10634643226/zip" > input/v9.zip
+          echo '0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0  input/v9.zip'|sha256sum -c -
+          python3 - <<'PY'
+          import zipfile,json,urllib.parse,hashlib
+          ids=[1096,1098,1102,1105,1108,1111,1113,1114,1118,1134,1137,1139,1140,1141,1143,1146,1161,1162,1177,1245,1246,1249,1250,1252,1257,1262,1279,1282,1284,1292]
+          with zipfile.ZipFile('input/v9.zip') as z:b=z.read('reconciliation.json')
+          assert hashlib.sha256(b).hexdigest()=='0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814';v=json.loads(b);seen={}
+          for e in v['source_result']['edges']:
+            if e.get('operator_id')!=18 or e.get('tv_hotel_id') not in ids:continue
+            q=urllib.parse.parse_qs(urllib.parse.urlsplit(e['operator_link']).query)
+            if len(q.get('F4',[]))==1 and q.get('data')==['07.10.2026'] and q.get('f7')==['7']:seen[e['tv_hotel_id']]=q['F4'][0]
+          assert sorted(seen)==ids and len(set(seen.values()))==30
+          PY
+          python3 - <<'PY'
+          import json,os,datetime,hashlib
+          r={'operation':os.environ['OP'],'state':'reserved_before_db_and_supplier','source_sha':os.environ['HEAD'],'script_sha256':hashlib.sha256(open(os.environ['SCRIPT'],'rb').read()).hexdigest(),'tv_count':30,'max_supplier_calls':31,'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'database_writes':0,'mapping_writes':0,'no_replay':True}
+          open('reservation/reservation.json','x').write(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-biblio-samo30-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90}
+      - name: Require Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+            with urllib.request.urlopen(urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']}),timeout=30) as f:r=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard']
+            if r and max(r,key=lambda x:x['id'])['status']=='completed':assert max(r,key=lambda x:x['id'])['conclusion']=='success';break
+            time.sleep(5)
+          else:raise SystemExit('security')
+          PY
+      - name: Execute bounded supplier acquisition
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/k";known="$RUNNER_TEMP/h";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null;r="$USER@$HOST";o=".anytoour-match/operations/$OP";s="${SCRIPT##*/}";a=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          ssh "${a[@]}" "$r" "set -eu; test -f \"\$HOME/www/anytoour.ru/_preview/search3-anex-candidate/.andromeda-private.php\"; test ! -e \"\$HOME/$o\";mkdir -p \"\$HOME/.anytoour-match/operations\";mkdir \"\$HOME/$o\";mkdir \"\$HOME/$o/payload\""
+          scp "${a[@]}" "$SCRIPT" app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php reservation/reservation.json "$r:$o/payload/";ssh "${a[@]}" "$r" "cd \"\$HOME/$o/payload\"&&echo '$SCRIPT_SHA  $s'|sha256sum -c -&&echo '$DEP_CLIENT_SHA  andromeda-client.php'|sha256sum -c -&&echo '$DEP_TRANSPORT_SHA  andromeda-transport.php'|sha256sum -c -&&echo '$DEP_FAILURE_SHA  andromeda-network-transport-failure.php'|sha256sum -c -&&php -l '$s'&&php '$s' --self-test">terminal/preflight
+          ssh "${a[@]}" "$r" "cd \"\$HOME/www/anytoour.ru\"&&ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$o\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$o/payload/$s\" --execute">terminal/stdout 2>terminal/stderr
+          ssh "${a[@]}" "$r" "cd \"\$HOME/$o\"&&tar -czf - started.json login-reserved.json login-result.json call-*-reserved.json call-*-result.json result.json receipt.json">terminal/server.tgz
+      - name: Verify terminal evidence
+        env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib,os
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+            for m in t.getmembers():
+              if m.isfile():pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only' and r['source_sha']==os.environ['HEAD'] and len(r['rows'])==30
+          assert 1<=r['andromeda_calls']<=31 and r['database_writes']==r['mapping_writes']==0 and sum(r['counts'].values())==30
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert len(list(pathlib.Path('terminal').glob('call-*-reserved.json')))==30 and len(list(pathlib.Path('terminal').glob('call-*-result.json')))==30
+          pathlib.Path('terminal/summary.json').write_text(json.dumps({k:v for k,v in r.items() if k!='rows'},ensure_ascii=False,indent=2)+'\n');print(r['counts'])
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-biblio-samo30-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90}
