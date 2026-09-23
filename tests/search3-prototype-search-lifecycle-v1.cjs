@@ -60,7 +60,7 @@ function harness({reject=false,hidden=false,covered=true,previous={kind:'previou
    commit(){commitCount++;return {exactRefresh:false};},
    afterSubmit(started){submits.push(started);}
  });
- const fire=async type=>{for(const listener of eventListeners[type]||[])listener({});await flush();};
+ const fire=async (type,event={})=>{for(const listener of eventListeners[type]||[])listener(event);await flush();};
  return {
    lifecycle,form,data,calls,results,events,failures,starts,submits,submitListeners,eventListeners,scopeCalls,fire,
    get prepareCount(){return prepareCount;},get commitCount(){return commitCount;},get requests(){return requests;},
@@ -99,6 +99,22 @@ function harness({reject=false,hidden=false,covered=true,previous={kind:'previou
   const before=h.events.length;stale({type:'progress',progress:10});assert.equal(h.events.length,before,'old callback must be ignored after key/generation changes');
   fresh({type:'loading',retryRead:true});assert.equal(h.events.at(-1).response.message,'Проверяем результат предыдущего запроса без повторного запуска.');
   assert.equal(h.events.at(-1).response.exactRefresh,true);
+ }
+ {
+  const h=harness({hidden:true,covered:true});h.lifecycle.bind();h.lifecycle.run({});const late=h.calls[0].callback;
+  await h.fire('click',{target:{closest(){return {dataset:{action:'stop-search'}};}}});
+  const beforeEvents=h.events.length,beforeResults=h.results.length;
+  late({type:'progress',progress:77});late({type:'results',hotels:[{id:77}]});
+  assert.equal(h.events.length,beforeEvents,'stop-search invalidates late lifecycle events');
+  assert.equal(h.results.length,beforeResults,'stop-search invalidates late result projection');
+  assert.equal(h.requests,0,'stop-search never schedules a supplier scope refresh');
+ }
+ {
+  const h=harness({hidden:true,covered:true});h.lifecycle.bind();h.lifecycle.run({});const late=h.calls[0].callback;
+  await h.fire('click',{target:{closest(){return {dataset:{action:'edit-search'}};}}});
+  const before=h.events.length;late({type:'progress',progress:55});
+  assert.equal(h.events.length,before,'editing a pending search invalidates late callbacks');
+  assert.equal(h.requests,0,'edit-search does not schedule an automatic supplier refresh');
  }
  {
   const h=harness({reject:true});h.lifecycle.run({});await flush();

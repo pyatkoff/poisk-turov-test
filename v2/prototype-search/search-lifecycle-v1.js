@@ -123,6 +123,15 @@
       queueMicrotask(inspectSupplierScope);
     };
 
+    const click = event => {
+      const action = event?.target?.closest?.('[data-action]')?.dataset?.action;
+      if (action === 'stop-search' || action === 'edit-search') {
+        generation++;
+        return;
+      }
+      scheduleSupplierScope();
+    };
+
     const bind = () => {
       if (bound) return false;
       bound = true;
@@ -131,7 +140,7 @@
         && typeof options.supplierFilters === 'function'
         && typeof data.supplierScope === 'function'
         && typeof data.supplierScopeCovered === 'function') {
-        events.addEventListener('click', scheduleSupplierScope);
+        events.addEventListener('click', click);
         events.addEventListener('change', scheduleSupplierScope);
       }
       return true;
