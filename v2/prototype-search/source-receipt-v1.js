@@ -6,7 +6,8 @@
   const countFields = new Set([
     'hotels','offers','receivedHotels','receivedOffers','mappedHotels','mappedOffers',
     'visibleHotels','visibleOffers','scopeFilteredOffers','storedOffers','projectedOffers',
-    'withheldOffers','eligibleHotels','omittedHotels','omittedOffers'
+    'withheldOffers','eligibleHotels','omittedHotels','omittedOffers','deduplicatedOffers',
+    'windowsLoaded','windowsTotal','pagesLoaded','pagesTotal'
   ]);
   const statuses = new Set(['loading','complete','partial','error','skipped']);
   const safeKey = value => typeof value === 'string' && /^[A-Za-z0-9_.:+-]{1,80}$/.test(value);
