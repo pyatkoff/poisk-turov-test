@@ -164,8 +164,19 @@ def check_width(browser, origin, width):
                 rows = [stored(120, "anex", 275000, CALENDAR_DAY)] if params["dateFrom"] == CALENDAR_FIRST else []
             else:
                 rows = [stored(104, "anex", 250000), stored(105, "andromeda", 300000, offer_ref=ANDROMEDA_OFFER_REF)] if state["native"] else []
+            offer_count = sum(len(row.get("offers", [])) for row in rows)
+            provider_counts = {}
+            for row in rows:
+                for offer in row.get("offers", []):
+                    provider = offer.get("provider")
+                    if isinstance(provider, str):
+                        provider_counts[provider] = provider_counts.get(provider, 0) + 1
             reply({"ok": True, "data": {"source": "anytour-db-first-results-v1", "scopeVersion": 1,
                    "scope": {"scopeVersion": 1, **params}, "scopeDigest": "c" * 64,
+                   "hotelCount": len(rows), "eligibleHotelCount": len(rows),
+                   "offerCount": offer_count, "storedOfferCount": offer_count,
+                   "withheldOfferCount": 0, "categoryFilteredOfferCount": 0,
+                   "omittedHotelCount": 0, "omittedOfferCount": 0, "providerOfferCounts": provider_counts,
                    "selectionAuthority": False, "hotels": rows}})
         elif url.path == "/_preview/search3-anex-candidate/api-andromeda-search3-preview.php" and request.method == "POST":
             body = request.post_data_json

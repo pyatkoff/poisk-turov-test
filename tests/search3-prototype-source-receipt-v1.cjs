@@ -10,7 +10,7 @@ let callbackEvents = [];
 let scenario = 'late-projection';
 const completeEvent = {type:'complete', sources:{
   anex:{status:'partial',hotels:1,offers:2,receivedHotels:3,receivedOffers:5,mappedHotels:3,mappedOffers:5,visibleHotels:1,visibleOffers:2,scopeFilteredOffers:3,dateFrom:'2026-09-25',dateTo:'2026-09-30',secret:'x'},
-  database:{status:'complete',hotels:2,offers:4,storedOffers:4,providerOfferCounts:{andromeda:4,bad:null,stringy:'7'},sql:'x'}
+  database:{status:'complete',hotels:2,offers:4,storedOffers:9,receivedOffers:9,mappedOffers:8,visibleOffers:4,withheldOffers:1,scopeFilteredOffers:2,eligibleHotels:3,omittedHotels:1,omittedOffers:2,providerOfferCounts:{andromeda:4,bad:null,stringy:'7',fractional:1.5},sql:'x'}
 }, union:{hotels:2,offers:5,hotelsByProvider:{anex:1,andromeda:2,bad:null},offersByProvider:{anex:2,andromeda:3,stringy:'7'},providerSets:{'anex+andromeda':1,andromeda:1},secret:'x'}};
 const data = Object.freeze({
   search(search, callback, ...args) {
@@ -66,7 +66,9 @@ assert.deepEqual(receipt.projection, {hotels:3,offers:5});
 assert.equal(receipt.providers.anex, 'loading');
 assert.deepEqual(receipt.sources.anex, {status:'partial',hotels:1,offers:2,receivedHotels:3,receivedOffers:5,mappedHotels:3,mappedOffers:5,visibleHotels:1,visibleOffers:2,scopeFilteredOffers:3,dateFrom:'2026-09-25',dateTo:'2026-09-30'});
 assert.equal('secret' in receipt.sources.anex, false);
-assert.deepEqual(receipt.sources.database.providerOfferCounts, {andromeda:4});
+assert.deepEqual(receipt.sources.database, {status:'complete',hotels:2,offers:4,storedOffers:9,receivedOffers:9,mappedOffers:8,visibleOffers:4,
+  withheldOffers:1,scopeFilteredOffers:2,eligibleHotels:3,omittedHotels:1,omittedOffers:2,providerOfferCounts:{andromeda:4}});
+assert.equal('fractional' in receipt.sources.database.providerOfferCounts, false, 'non-integer counters are rejected');
 assert.equal('sql' in receipt.sources.database, false);
 assert.deepEqual(receipt.union, {
   hotels:3,offers:5,
