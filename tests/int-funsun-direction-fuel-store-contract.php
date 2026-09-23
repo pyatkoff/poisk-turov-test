@@ -121,19 +121,50 @@ try {
         'source'=>'owner_policy',
         'policy_date'=>'2026-09-23',
         'operator_family'=>'fun_and_sun',
+        'market'=>'departure:1',
         'destination'=>'country:4',
         'amount'=>'70.00',
         'currency'=>'EUR',
         'unit'=>'per_person_one_way',
         'base_relation'=>'excluded',
     ], $pricedInput['owner_policy'] ?? null, 'pricing envelope carries owner 70 EUR Turkey fallback');
-    unset($pricedInput['owner_policy']);
-    assert_same($input, $pricedInput, 'owner policy does not rewrite retained 140 EUR supplier evidence');
+    assert_same([], $pricedInput['observations'] ?? null, 'owner fallback does not reuse 140 EUR observations as rate');
+    assert_same($input['exchange'], $pricedInput['exchange'] ?? null, 'existing supplier evidence may contribute FX only');
+    assert_same($party, $pricedInput['party'] ?? null, 'owner fallback retains target party');
 
     $files = glob($searches . '/operator-fuel-rule-v2-*.json') ?: [];
     assert_same(1, count($files), 'both samples collapse into one reusable direction store');
 
-    fwrite(STDOUT, "PASS FUN&SUN direction fuel store contract: 2 independent observations -> 140 EUR per-person one-way reusable direction rule\n");
+    // The broad 140-EUR rate is now stopped. Remove its direction store and prove
+    // the 70-EUR owner fallback still resolves from independent fresh FX evidence.
+    foreach ($files as $path) @unlink($path);
+    assert_same(null, AnyTourOperatorFuelRuleStoreV1::inputForTarget($searches, $target, $now),
+        'stopped direction rate is absent');
+
+    $fxOnly = [
+        'key'=>['operator_family'=>'intourist','program_key'=>'30','tour_key'=>'34'],
+        'unit'=>'per_person_one_way','amount'=>'85.00','currency'=>'EUR',
+        'direction_count'=>2,'base_relation'=>'excluded',
+        'offer_ref_digest'=>hash('sha256','fx-only-program-offer'),
+        'evidence_sha256'=>hash('sha256','fx-only-program-evidence'),
+        'source'=>'andromeda_get_flights','observed_at'=>$now-30,'expires_at'=>$expires,
+        'exchange'=>[
+            'from'=>'EUR','to'=>'RUB','rate'=>'102.7','observed_at'=>$now-30,'expires_at'=>$expires,
+            'evidence_sha256'=>hash('sha256','fx-only-program-rate'),
+        ],
+    ];
+    $fxReceipt=AnyTourOperatorProgramFuelRegistryV1::append($searches,$fxOnly,$write);
+    assert_same('created',$fxReceipt['status']??null,'fresh FX registry specimen created');
+    $latestFx=AnyTourOperatorProgramFuelRegistryV1::latestFreshExchange($searches,$now);
+    assert_same('102.7',$latestFx['rate']??null,'fresh provider FX recovered without fuel-rate inference');
+
+    $policyOnly=AnyTourOperatorFuelRuleStoreV1::pricingEnvelopeForTarget($searches,$target,$now);
+    assert_same('operator_fuel',$policyOnly['state']??null,'policy resolves with no direction store');
+    assert_same([], $policyOnly['operator_fuel']['observations']??null,'policy-only fallback has no supplier fuel observations');
+    assert_same('70.00',$policyOnly['operator_fuel']['owner_policy']['amount']??null,'policy-only rate is 70 EUR');
+    assert_same('102.7',$policyOnly['operator_fuel']['exchange']['rate']??null,'policy-only fallback uses fresh retained FX');
+
+    fwrite(STDOUT, "PASS FUN&SUN owner fallback: stopped 140 direction rate stays absent; 70 EUR policy uses fresh FX only\n");
 } finally {
     foreach (glob($searches . '/*') ?: [] as $path) @unlink($path);
     @rmdir($searches);
