@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/operator-fuel-rule-evidence.php';
+require_once __DIR__ . '/operator-program-fuel-registry.php';
 
 /** Private V2 direction-keyed fuel evidence in the existing INT searches directory. */
 final class AnyTourOperatorFuelRuleStoreV1
@@ -70,22 +71,57 @@ final class AnyTourOperatorFuelRuleStoreV1
     public static function pricingEnvelopeForTarget(string $directory, array $target, int $now, ?array $exchange = null): ?array
     {
         $input = self::inputForTarget($directory, $target, $now, $exchange);
-        if ($input === null) return null;
-        if (($input['direction']['operator_family'] ?? null) === 'fun_and_sun'
-            && ($input['direction']['destination'] ?? null) === 'country:4') {
-            $input['owner_policy'] = [
-                'schema_version'=>1,
-                'source'=>'owner_policy',
-                'policy_date'=>'2026-09-23',
-                'operator_family'=>'fun_and_sun',
-                'destination'=>'country:4',
-                'amount'=>'70.00',
-                'currency'=>'EUR',
-                'unit'=>'per_person_one_way',
-                'base_relation'=>'excluded',
-            ];
+        try {
+            $operator = $target['operator'] ?? null;
+            if (is_string($operator)) {
+                $direction = is_array($target['search_params'] ?? null)
+                    ? AnyTourOperatorFuelRuleEvidenceV1::directionFromSearch($operator, $target['search_params'])
+                    : (is_array($target['direction'] ?? null)
+                        ? AnyTourOperatorFuelRuleEvidenceV1::canonicalDirection($operator, $target['direction'])
+                        : null);
+                if (is_array($direction)
+                    && ($direction['operator_family'] ?? null) === 'fun_and_sun'
+                    && ($direction['market'] ?? null) === 'departure:1'
+                    && ($direction['destination'] ?? null) === 'country:4') {
+                    $fx = $exchange;
+                    if ($fx === null && is_array($input['exchange'] ?? null)) $fx = $input['exchange'];
+                    if ($fx === null) $fx = AnyTourOperatorProgramFuelRegistryV1::latestFreshExchange($directory, $now);
+                    if (is_array($fx)) {
+                        $party = $target['party'] ?? null;
+                        $offerDigest = $target['offer_ref_digest'] ?? null;
+                        if (is_array($party) && is_string($offerDigest)) {
+                            $fx['scope_sha256'] = AnyTourOperatorFuelRuleEvidenceV1::directionDigest($direction);
+                            $policyInput = [
+                                'offer_ref_digest'=>$offerDigest,
+                                'direction'=>$direction,
+                                'party'=>$party,
+                                // Owner policy is authoritative for the listing fallback;
+                                // retained supplier fuel amounts are not reused as the rate.
+                                'observations'=>[],
+                                'exchange'=>$fx,
+                                'owner_policy'=>[
+                                    'schema_version'=>1,
+                                    'source'=>'owner_policy',
+                                    'policy_date'=>'2026-09-23',
+                                    'operator_family'=>'fun_and_sun',
+                                    'market'=>'departure:1',
+                                    'destination'=>'country:4',
+                                    'amount'=>'70.00',
+                                    'currency'=>'EUR',
+                                    'unit'=>'per_person_one_way',
+                                    'base_relation'=>'excluded',
+                                ],
+                            ];
+                            return ['state'=>'operator_fuel','operator_fuel'=>$policyInput];
+                        }
+                    }
+                    return null;
+                }
+            }
+        } catch (Throwable $ignored) {
+            return null;
         }
-        return ['state'=>'operator_fuel','operator_fuel'=>$input];
+        return $input === null ? null : ['state'=>'operator_fuel','operator_fuel'=>$input];
     }
 
     private static function path(string $directory, string $digest): string
