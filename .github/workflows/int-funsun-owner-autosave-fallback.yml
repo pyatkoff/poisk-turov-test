@@ -1,0 +1,48 @@
+name: INT FUN&SUN owner autosave fallback
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-surcharge-cache-autosave.php'
+      - 'app/integrations/operator-program-fuel-fx-evidence.php'
+      - 'tests/int-funsun-owner-autosave-fallback-test.php'
+      - '.github/workflows/int-funsun-owner-autosave-fallback.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owner-autosave-fallback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint bounded INT source
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/integrations/andromeda-surcharge-cache-autosave.php
+          php -l app/integrations/operator-program-fuel-fx-evidence.php
+          php -l tests/int-funsun-owner-autosave-fallback-test.php
+      - name: Reject authority creep
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/integrations/andromeda-surcharge-cache-autosave.php').read_text()
+          for token in ['curl_', 'mysqli', 'new PDO', 'getFlights(', 'changeService(', '->calc(', 'booking']:
+              if token in p:
+                  raise SystemExit('forbidden authority primitive: '+token)
+          for token in ['AnyTourOperatorProgramFuelFxEvidenceV1::latestForDirection',
+                        'AnyTourOperatorProgramFuelRegistryV1::priceForOffer',
+                        'AnyTourOperatorFuelRuleStoreV1::pricingEnvelopeForTarget']:
+              if token not in p:
+                  raise SystemExit('missing precedence/wiring token: '+token)
+          print('FUNSUN_OWNER_AUTOSAVE_AUTHORITY_OK supplier=0 db=0 booking=0')
+          PY
+      - name: Run focused owner autosave fallback contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -d allow_url_fopen=0 tests/int-funsun-owner-autosave-fallback-test.php
