@@ -311,7 +311,8 @@
       meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:'',
       operator:{name:'ANEX'},isCharter:flight==='charter'?true:flight==='regular'?false:undefined,
       cachedListing:false,selectionEnabled:false,finalPriceVerified:false,anexKind:String(tour.kind||''),
-      anexLocalHotelId:hotel.local_id,anexGeneration:Number.isInteger(run?.generation)?run.generation:generation};
+      anexLocalHotelId:hotel.local_id,anexGeneration:Number.isInteger(run?.generation)?run.generation:generation,
+      anexSessionCurrent:run?.anexSessionCurrent===true};
   }
   function directAnexWindows(p){
     const windows=[];let from=p.dateFrom;
@@ -827,7 +828,7 @@
       const seen=new Set(),normalized=[];
       for(const tour of expanded.hotels[0].tours){
         if(tour?.kind!=='concrete'||tour?.search_ref!==searched.search_ref)throw new Error('ANEX вернул некорректный конкретный вариант.');
-        const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch},p,seen);
+        const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch,anexSessionCurrent:true},p,seen);
         if(item)normalized.push(item);
       }
       if(!normalized.length)throw new Error('Конкретные варианты ANEX больше недоступны.');
@@ -855,7 +856,7 @@
   }
   async function verifyAnexConcrete(o){
     const raw=o&&o.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');
-    if(!o||o.cached||o.provider!=='anex'||raw?.selectionEnabled!==false||raw?.anexKind!=='concrete'
+    if(!o||o.cached||o.provider!=='anex'||raw?.selectionEnabled!==false||raw?.anexKind!=='concrete'||raw?.anexSessionCurrent!==true
       ||!Number.isSafeInteger(localId)||localId<1||!Number.isInteger(epoch)||epoch!==generation
       ||!(/^anex_online:[a-f0-9]{64}$/).test(offerRef)||!(/^[a-f0-9]{32}$/).test(searchRef)){
       throw new Error('Конкретное предложение ANEX устарело. Откройте актуальные варианты.');
