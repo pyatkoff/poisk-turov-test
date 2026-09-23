@@ -464,7 +464,7 @@ ok($stopped['status']==='incomplete'&&$stopped['window_count']===3
 
 $cliSource=file_get_contents(__DIR__.'/../scripts/ops/andromeda_local_offer_collect.php');
 ok(is_string($cliSource)&&str_contains($cliSource,'if (($result[\'status\'] ?? null) !== \'complete\') exit(1);'),'CLI must propagate incomplete collector status after printing receipt');
-ok(str_contains($cliSource,'dateWindows($from,$to)')&&str_contains($cliSource,'collectRange('),'CLI must window wide date ranges');
+ok(str_contains($cliSource,'$inclusiveDays>7')&&str_contains($cliSource,'collectRange('),'CLI must window wide date ranges');
 ok(str_contains($cliSource,'ANDROMEDA_COLLECTOR_RANGE_CAPTURE_UNSUPPORTED'),'wide capture mode must fail before supplier capture');
 
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('ANEX')===false,'ANEX excluded');
