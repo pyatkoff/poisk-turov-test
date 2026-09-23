@@ -8,7 +8,7 @@
   const quoteReceipts = new WeakMap();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
-  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null;
+  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, currentSupplierScope = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
   function nativeEndpoint(value,expectedPath){
     if(typeof value!=='string'||typeof expectedPath!=='string'||!root.location)return null;
@@ -77,25 +77,54 @@
       return found[0].id;
     });
   }
-  function params(s, hotelIds = [], filters = {}) {
+  function supplierScope(filters = {}, hotelIds = []) {
+    const selectedMeal=filters.meals?.length===1?meal(filters.meals[0]):'';
+    const chosenMealIds=selectedMeal?[...new Set(catalog.meals.filter(x=>meal(x)===selectedMeal).map(x=>String(x.id)))]:[];
+    if(selectedMeal&&!chosenMealIds.length)throw new Error('Выберите питание из загруженного справочника.');
+    const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
+    const resorts=[...new Set((filters.resorts||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
+    const exactHotel=Number(filters.hotelId),supplierHotels=[...new Set((hotelIds||[]).map(String).filter(Boolean))].sort();
+    const hotel=Number.isSafeInteger(exactHotel)&&exactHotel>0?'local:'+exactHotel:supplierHotels.length?'supplier:'+supplierHotels.join(','):'';
+    const priceFrom=filters.min>0?String(filters.min):'',hasMax=filters.max!==null&&filters.max!==undefined&&filters.max!=='',priceTo=hasMax?String(filters.max):'';
+    return Object.freeze({
+      hotel,
+      resorts:Object.freeze(resorts),
+      // Canonical aliases can map to several supplier meal IDs. Narrow only an
+      // unambiguous single ID; Search3 applies the exact canonical predicate
+      // after all sources join.
+      meal:chosenMealIds.length===1?chosenMealIds[0]:'',
+      // The upstream category field cannot express an exact OR-set.
+      hotelCategory:stars.length===1?String(stars[0]):'',
+      priceFrom,
+      priceTo,
+      min:priceFrom?Number(priceFrom):0,
+      max:priceTo===''?null:Number(priceTo)
+    });
+  }
+  function supplierScopeCovered(previous,next) {
+    if(!previous||!next||!Array.isArray(previous.resorts)||!Array.isArray(next.resorts)
+      ||!Number.isFinite(previous.min)||!Number.isFinite(next.min)
+      ||previous.max!==null&&!Number.isFinite(previous.max)||next.max!==null&&!Number.isFinite(next.max))return false;
+    if(previous.hotel&&previous.hotel!==next.hotel)return false;
+    if(previous.resorts.length&&(!next.resorts.length||!next.resorts.every(value=>previous.resorts.includes(value))))return false;
+    if(previous.hotelCategory&&previous.hotelCategory!==next.hotelCategory)return false;
+    if(previous.meal&&previous.meal!==next.meal)return false;
+    if(next.min<previous.min)return false;
+    if(previous.max!==null&&(next.max===null||next.max>previous.max))return false;
+    return true;
+  }
+  function requestPlan(s, hotelIds = [], filters = {}) {
     const departure = catalog.departures.find(x => text(x) === s.origin || String(x.id) === s.origin);
     if (!departure || !catalog.countries.some(x => String(x.id) === String(s.country))) throw new Error('Выберите город вылета и страну из загруженного списка.');
     if (!date(s.from) || !date(s.to) || s.from > s.to || (new Date(s.to) - new Date(s.from)) / 86400000 > 21) throw new Error('Выберите диапазон вылета не больше 21 дня.');
     if (!Number.isInteger(s.adults) || s.adults < 1 || s.adults > 6 || !Array.isArray(s.ages) || s.ages.length > 3 || s.ages.some(x => !Number.isInteger(x) || x < 0 || x > 17)) throw new Error('Укажите возраст каждого ребёнка.');
     if (!Number.isInteger(s.minNights) || !Number.isInteger(s.maxNights) || s.minNights < 1 || s.maxNights > 28 || s.maxNights < s.minNights || s.maxNights - s.minNights > 10) throw new Error('Проверьте диапазон ночей.');
-    const selectedMeal=filters.meals?.length===1?meal(filters.meals[0]):'';
-    const chosenMealIds=selectedMeal?[...new Set(catalog.meals.filter(x=>meal(x)===selectedMeal).map(x=>String(x.id)))]:[];
-    if(selectedMeal&&!chosenMealIds.length)throw new Error('Выберите питание из загруженного справочника.');
-    const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
-    // Canonical aliases can map to several supplier meal IDs. Narrow only an
-    // unambiguous single ID; Search3 applies the exact canonical meal predicate
-    // to each offer after all sources join canonically.
-    const upstreamMeal=chosenMealIds.length===1?chosenMealIds[0]:'';
-    // The upstream search field can express one category, not an exact OR-set.
-    // For multiple selected categories fetch the broad scope; Search3 applies
-    // the exact selected-star OR predicate after all sources join canonically.
-    const hotelCategory=stars.length===1?String(stars[0]):'';
-    return {departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:upstreamMeal,hotelCategory,hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:regionIds(s,filters),subregionIds:[],operatorIds:[],priceFrom:filters.min>0?String(filters.min):'',priceTo:filters.max!==null&&filters.max!==undefined&&filters.max!==''?String(filters.max):'',currency:'RUB',onlyCharter:false,onlyDirect:false};
+    const scope=supplierScope(filters,hotelIds);
+    const request={departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:scope.meal,hotelCategory:scope.hotelCategory,hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:regionIds(s,filters),subregionIds:[],operatorIds:[],priceFrom:scope.priceFrom,priceTo:scope.priceTo,currency:'RUB',onlyCharter:false,onlyDirect:false};
+    return {request,scope};
+  }
+  function params(s, hotelIds = [], filters = {}) {
+    return requestPlan(s,hotelIds,filters).request;
   }
   function sameScope(request, response) {
     if (!response || response.scopeVersion !== 1 || Object.keys(response).length !== Object.keys(request).length + 1) return false;
@@ -384,7 +413,7 @@
     }catch(error){await searchError(run,error);}
   }
   async function search(s, callback, hotelIds=[], filters={}) {
-    const p=params(s,hotelIds,filters),epoch=stop();notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
+    const plan=requestPlan(s,hotelIds,filters),p=plan.request,epoch=stop();currentSupplierScope=plan.scope;notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
     const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:true,continueBaseline:null,lastProgress:-10,lastRead:0,deadline:0,sourceCounts:{}};
     activeSearch=run;callback({type:'loading'});if(!current(run))return;
     run.database=readDatabase(run);
@@ -574,5 +603,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,quote,flights,leadSession,params,sameScope,project,amount,date,text,meal,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);
