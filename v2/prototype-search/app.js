@@ -91,8 +91,11 @@ function restoreURL(){
  if(state.filters.max!==null&&state.filters.min>state.filters.max)state.filters.min=state.filters.max;
  state.filters.meals=[...new Set((p.get('meals')||'').split('|').map(value=>value.trim()).filter(Boolean))];
  for(const k of ['resorts','operators'])state.filters[k]=[...new Set((p.get(k)||'').split('|').filter(Boolean))];
+ state.filters.flight=[...new Set((p.get('flight')||'').split('|').filter(value=>['regular','charter','unknown'].includes(value)))];
  state.filters.amenities=[...new Set((p.get('amenities')||'').split('|').filter(x=>/^(1|2|3|5|8):[1-9]\d*$/.test(x)))];
- state.filters.q=p.get('q')||'';state.filters.rating=p.get('rating')==='1';
+ state.filters.q=p.get('q')||'';
+ for(const k of ['beach','rating','family','spa'])state.filters[k]=p.get(k)==='1';
+ state.onlyFavorites=p.get('favorites')==='1';
  if(['recommended','price','rating'].includes(p.get('sort')))state.sort=p.get('sort');
  $('#sort').value=state.sort;
  const searched=p.get('searched')==='1';state.hasSearched=searched;draft=structuredClone(s);return searched;
