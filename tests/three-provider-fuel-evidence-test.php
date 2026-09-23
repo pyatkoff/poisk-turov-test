@@ -136,36 +136,43 @@ fuel_check(($ppResult['dto']['money']['operator_fuel_rule']['passenger_count']??
     &&($ppResult['dto']['money']['operator_fuel_rule']['applied_native_total']??null)==='510.00','per-person-native-total-metadata');
 fuel_check($ppResult['dto']['finalPriceReady']===true&&$ppResult['dto']['final_price_verified']===false,'per-person-estimate-not-verified');
 
-// Owner policy can replace the broad FUN&SUN Turkey listing rate without rewriting
-// the retained supplier observations that provide fresh FX/provenance.
+// Owner policy is a standalone listing fallback: the stopped 140-EUR supplier
+// direction observations are NOT required and are not smuggled into the rate.
 $policyDto=fuel_dto('FUN&SUN','100000','policy-target');
 $policyDto['tour']['party']=['adults'=>2,'children'=>1,'child_ages'=>[5]];
-$policyInput=fuel_per_person_input($policyDto,$now,'140');
+$supplier140=fuel_per_person_input($policyDto,$now,'140');
+$policyInput=$supplier140;
+$policyInput['observations']=[];
 $policyInput['owner_policy']=[
     'schema_version'=>1,'source'=>'owner_policy','policy_date'=>'2026-09-23',
-    'operator_family'=>'fun_and_sun','destination'=>'country:4',
+    'operator_family'=>'fun_and_sun','market'=>'departure:1','destination'=>'country:4',
     'amount'=>'70.00','currency'=>'EUR','unit'=>'per_person_one_way','base_relation'=>'excluded',
 ];
 $policyResult=AnyTourThreeProviderFuelEvidenceV1::apply($policyDto,$policyInput,$now);
 fuel_check($policyResult['applied']&&$policyResult['dto']['price']==='142000.00','funsun-turkey-policy-70-x-3-x-2');
+fuel_check(($policyResult['matched_observations']??null)===0,'funsun-owner-policy-no-fuel-observation-dependency');
 fuel_check(($policyResult['dto']['money']['fuel_charge_reported']??null)=== [
     'amount'=>'42000.00','currency'=>'RUB','source'=>'operator_fuel_owner_policy'
 ],'funsun-owner-policy-rub-surcharge');
 fuel_check(($policyResult['dto']['money']['operator_fuel_rule']['amount']??null)==='70.00'
     &&($policyResult['dto']['money']['operator_fuel_rule']['unit']??null)==='per_person_one_way'
     &&($policyResult['dto']['money']['operator_fuel_rule']['applied_native_total']??null)==='420.00'
+    &&($policyResult['dto']['money']['operator_fuel_rule']['independent_offer_count']??null)===0
     &&($policyResult['dto']['money']['operator_fuel_rule']['owner_policy']??null)===$policyInput['owner_policy'],
     'funsun-owner-policy-rule-metadata');
-fuel_check(($policyInput['observations'][0]['amount']??null)==='140'
-    &&($policyInput['observations'][1]['amount']??null)==='140','supplier-observations-not-rewritten');
+fuel_check(($supplier140['observations'][0]['amount']??null)==='140'
+    &&($supplier140['observations'][1]['amount']??null)==='140','supplier-140-remains-separate-provenance');
 fuel_check($policyResult['dto']['finalPriceReady']===true&&$policyResult['dto']['final_price_verified']===false,
     'funsun-owner-policy-estimate-not-verified');
 $badPolicy=$policyInput;$badPolicy['owner_policy']['amount']='80.00';
 fuel_hold($policyDto,$badPolicy,$now,'fuel_evidence_invalid');
+$wrongMarket=$policyInput;$wrongMarket['direction']['market']='departure:2';
+fuel_hold($policyDto,$wrongMarket,$now,'fuel_evidence_invalid');
 
 $ppInfant=fuel_dto('FUN&SUN','100000','pp-infant');
 $ppInfant['tour']['party']=['adults'=>2,'children'=>1,'child_ages'=>[1]];
 $ppInfantInput=fuel_per_person_input($ppInfant,$now,'85');
+$ppInfantInput['observations']=[];
 $ppInfantInput['owner_policy']=$policyInput['owner_policy'];
 fuel_hold($ppInfant,$ppInfantInput,$now,'fuel_infant_separate');
 $ppConflict=$ppInput;$ppConflict['observations'][1]['amount']='90';
