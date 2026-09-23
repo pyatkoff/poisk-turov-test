@@ -48,6 +48,7 @@ FIXED = [
     'scripts/diagnostics/hotel_match_live30_common4_plan_v1.php',
     'scripts/diagnostics/hotel_match_live30_common4_acquire_v1.py',
     'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py',
+    'scripts/diagnostics/hotel_match_live30_common4_remainder_v1.py',
     'scripts/diagnostics/hotel_match_live30_common4_current_v2.php',
     'scripts/diagnostics/int_funsun_direction_fx_seed_v1.php',
     'scripts/diagnostics/int_operator_direction_fuel_mass_readback_v1.php',
@@ -423,6 +424,11 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'match-common4-continuation-remainder':
+        need(len(parts) == 4, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                'limit': integer(parts[3], 1, 300, 'match_limit')}
     if mode == 'match-common4-readback':
         need(len(parts) == 5, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
@@ -1988,6 +1994,40 @@ def read_match_common4_resume_day():
     return out
 
 
+def run_match_common4_continuation_remainder(stage,limit):
+    runner=stage/'scripts/diagnostics/hotel_match_live30_common4_remainder_v1.py'
+    if not safe_file(runner): fail('match_common4_remainder_source_missing')
+    env={**os.environ,'ANYTOUR_ROOT':str(project),
+         'MATCH_OPERATIONS_ROOT':str(home/'.anytoour-match/operations'),
+         'MATCH_PARENT_OPERATION':operation,'MATCH_SOURCE_SHA':source,'MATCH_LIMIT':str(limit)}
+    call=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,
+                        capture_output=True,text=True,timeout=1250)
+    if call.returncode!=0: fail('match_common4_remainder_runner_nonzero')
+    try: out=json.loads(call.stdout.strip())
+    except Exception: fail('match_common4_remainder_output_unparseable')
+    if not isinstance(out,dict): fail('match_common4_remainder_output_shape')
+    state=out.get('state')
+    if state=='nothing_remaining':
+        if (out.get('provider_calls')!=0 or out.get('database_writes')!=0
+                or out.get('mapping_writes')!=0 or out.get('remaining_before')!=0):
+            fail('match_common4_remainder_empty_guard')
+        return out
+    if state not in ('completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay'):
+        fail('match_common4_remainder_state')
+    if not isinstance(out.get('selected_count'),int) or not 1<=out['selected_count']<=limit:
+        fail('match_common4_remainder_selected_count')
+    summary=out.get('summary')
+    if (not isinstance(summary,dict) or summary.get('tourvisor_account')!='TOURVISOR_ANEX_JWT'
+            or summary.get('database_writes')!=0 or summary.get('mapping_writes')!=0
+            or summary.get('operator_ids')!=[13,18,25,43] or summary.get('continue_calls')!=0
+            or summary.get('dates_calls')!=0):
+        fail('match_common4_remainder_summary_guard')
+    if not re.fullmatch(r'hotel-match-live30-common4-continuation-resume-1971-20260924-r[0-9]+-n[0-9]+-v1',
+                        str(out.get('child_operation',''))):
+        fail('match_common4_remainder_child_name')
+    return out
+
+
 def run_match_common4_continuation_resume_day(stage):
     previous='hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1'
     match_root=home/'.anytoour-match/operations'
@@ -2562,6 +2602,14 @@ try:
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
+    if mode=='match-common4-continuation-remainder':
+        result['match_common4_continuation_remainder']=run_match_common4_continuation_remainder(stage,int(payload['limit']))
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete'
+        result['supplier_calls']=result['match_common4_continuation_remainder'].get('summary',{}).get('provider_calls',0)
+        result['database_writes']=0
+        result['production_unchanged']=True
     if mode=='match-tv234-secondary':
         result['match_tv234_secondary']=run_match_tv234_secondary(stage,int(payload['offset']),int(payload['limit']))
         result['production_after']=fingerprints()
@@ -2587,7 +2635,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-continuation-remainder','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode=='anex-demand' else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -2610,7 +2658,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-continuation-remainder','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
@@ -2747,7 +2795,7 @@ def execute(command: dict, source_root: Path) -> dict:
         run = subprocess.run(
             ['ssh',*options,'-l',user,host,remote_command],
             input=json.dumps(payload,separators=(',',':')), text=True,
-            capture_output=True, timeout=1000
+            capture_output=True, timeout=(1350 if command['mode']=='match-common4-continuation-remainder' else 1000)
         )
         need(run.returncode == 0, 'ssh_remote_exit')
         result = json.loads(run.stdout.strip())
@@ -2779,7 +2827,7 @@ def main() -> None:
         for key,value in command.items():
             print(f'{key}={value}')
         return
-    if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','program-fuel-probe'):
+    if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-continuation-remainder','program-fuel-probe'):
         ensure_supplier_slot(token)
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
