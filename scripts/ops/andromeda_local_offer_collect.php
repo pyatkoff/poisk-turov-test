@@ -188,9 +188,29 @@ $hasReusableSurcharge=static function(array $selection,array $offer,array $req)u
     )!==null;
 };
 
-$result=AnyTourAndromedaLocalOfferCollectorV1::collect(
-    $request,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
-    $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
-);
+$rangeStart=new DateTimeImmutable($from,new DateTimeZone('UTC'));
+$rangeEnd=new DateTimeImmutable($to,new DateTimeZone('UTC'));
+$inclusiveDays=(int)$rangeStart->diff($rangeEnd)->days+1;
+if($rangeEnd<$rangeStart||$inclusiveDays<1||$inclusiveDays>21)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_DATE_RANGE');
+if($inclusiveDays>7 && $maxCaptures>0)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_RANGE_CAPTURE_UNSUPPORTED');
+if($inclusiveDays<=7){
+    $result=AnyTourAndromedaLocalOfferCollectorV1::collect(
+        $request,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
+        $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
+    );
+}else{
+    $result=AnyTourAndromedaLocalOfferCollectorV1::collectRange(
+        $request,$from,$to,
+        static function(array $windowRequest,int $index,array $window)use(
+            $searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
+            $maxCaptures,$captureMode,$maxCaptureSeconds,$hasReusableSurcharge
+        ):array{
+            return AnyTourAndromedaLocalOfferCollectorV1::collect(
+                $windowRequest,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
+                $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
+            );
+        }
+    );
+}
 echo json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
 if (($result['status'] ?? null) !== 'complete') exit(1);

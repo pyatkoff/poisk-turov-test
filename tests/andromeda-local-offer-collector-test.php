@@ -415,8 +415,57 @@ try{
 ok($invariantThrown,'unexpected capture invariant must fail closed');
 ok($invariantAutosaveCalls===0,'unexpected capture invariant must not autosave');
 
+
+// Wide date intents are supplier-safe windows, not one large Andromeda search.
+$windows=AnyTourAndromedaLocalOfferCollectorV1::dateWindows('2026-10-06','2026-10-19');
+ok($windows===[
+    ['from'=>'2026-10-06','to'=>'2026-10-12'],
+    ['from'=>'2026-10-13','to'=>'2026-10-19'],
+],'14-day range splits into two 7-day windows');
+ok(AnyTourAndromedaLocalOfferCollectorV1::dateWindows('2026-10-06','2026-10-06')===[
+    ['from'=>'2026-10-06','to'=>'2026-10-06'],
+],'single day preserved');
+ok(count(AnyTourAndromedaLocalOfferCollectorV1::dateWindows('2026-10-01','2026-10-21'))===3,'21-day range allowed');
+foreach([
+    ['2026-10-19','2026-10-06'],
+    ['2026-10-01','2026-10-22'],
+    ['2026-02-30','2026-03-01'],
+] as [$badFrom,$badTo]){
+    $thrown=false;
+    try{AnyTourAndromedaLocalOfferCollectorV1::dateWindows($badFrom,$badTo);}
+    catch(InvalidArgumentException $e){$thrown=$e->getMessage()==='ANDROMEDA_LOCAL_COLLECTOR_DATE_RANGE';}
+    ok($thrown,'invalid/wide range fails before window callback');
+}
+
+$rangeRequests=[];
+$range=AnyTourAndromedaLocalOfferCollectorV1::collectRange(
+    ['generation'=>700,'params'=>['dateFrom'=>'2026-10-06','dateTo'=>'2026-10-19']],
+    '2026-10-06','2026-10-19',
+    static function(array $windowRequest,int $index,array $window)use(&$rangeRequests):array{
+        $rangeRequests[]=['request'=>$windowRequest,'index'=>$index,'window'=>$window];
+        return ['status'=>'complete','window'=>$index];
+    }
+);
+ok($range['status']==='complete'&&$range['window_count']===2&&$range['windows_completed']===2,'range completes every bounded window');
+ok($rangeRequests[0]['request']['params']['dateFrom']==='2026-10-06'
+    &&$rangeRequests[0]['request']['params']['dateTo']==='2026-10-12'
+    &&$rangeRequests[1]['request']['params']['dateFrom']==='2026-10-13'
+    &&$rangeRequests[1]['request']['params']['dateTo']==='2026-10-19','range callback receives exact windows');
+$rangeCalls=0;
+$stopped=AnyTourAndromedaLocalOfferCollectorV1::collectRange(
+    ['generation'=>701,'params'=>[]],'2026-10-01','2026-10-21',
+    static function(array $windowRequest,int $index,array $window)use(&$rangeCalls):array{
+        ++$rangeCalls;
+        return ['status'=>$index===1?'incomplete':'complete'];
+    }
+);
+ok($stopped['status']==='incomplete'&&$stopped['window_count']===3
+    &&$stopped['windows_completed']===1&&$rangeCalls===2,'range fail-stops before later windows');
+
 $cliSource=file_get_contents(__DIR__.'/../scripts/ops/andromeda_local_offer_collect.php');
 ok(is_string($cliSource)&&str_contains($cliSource,'if (($result[\'status\'] ?? null) !== \'complete\') exit(1);'),'CLI must propagate incomplete collector status after printing receipt');
+ok(str_contains($cliSource,'$inclusiveDays>7')&&str_contains($cliSource,'collectRange('),'CLI must window wide date ranges');
+ok(str_contains($cliSource,'ANDROMEDA_COLLECTOR_RANGE_CAPTURE_UNSUPPORTED'),'wide capture mode must fail before supplier capture');
 
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('ANEX')===false,'ANEX excluded');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('PEGAS Touristik')===false,'PEGAS excluded');

@@ -11,6 +11,88 @@ require_once __DIR__ . '/andromeda-surcharge-group-key.php';
  */
 final class AnyTourAndromedaLocalOfferCollectorV1
 {
+    /**
+     * Split one user-visible Andromeda date intent into bounded sequential windows.
+     * Wide supplier searches can advertise very large page sets; keep each request
+     * to at most seven inclusive departure days and reject intents wider than the
+     * product's current 21-day boundary before supplier access.
+     *
+     * @return list<array{from:string,to:string}>
+     */
+    public static function dateWindows(string $from, string $to): array
+    {
+        $parse = static function (string $value): DateTimeImmutable {
+            if (!preg_match('/\\A(\\d{4})-(\\d{2})-(\\d{2})\\z/D', $value, $m)
+                || !checkdate((int)$m[2], (int)$m[3], (int)$m[1])) {
+                throw new InvalidArgumentException('ANDROMEDA_LOCAL_COLLECTOR_DATE_RANGE');
+            }
+            return new DateTimeImmutable($value, new DateTimeZone('UTC'));
+        };
+        $start = $parse($from);
+        $end = $parse($to);
+        if ($end < $start) throw new InvalidArgumentException('ANDROMEDA_LOCAL_COLLECTOR_DATE_RANGE');
+        $inclusiveDays = (int)$start->diff($end)->days + 1;
+        if ($inclusiveDays < 1 || $inclusiveDays > 21) {
+            throw new InvalidArgumentException('ANDROMEDA_LOCAL_COLLECTOR_DATE_RANGE');
+        }
+
+        $windows = [];
+        for ($cursor = $start; $cursor <= $end;) {
+            $windowEnd = $cursor->modify('+6 days');
+            if ($windowEnd > $end) $windowEnd = $end;
+            $windows[] = ['from'=>$cursor->format('Y-m-d'), 'to'=>$windowEnd->format('Y-m-d')];
+            $cursor = $windowEnd->modify('+1 day');
+        }
+        return $windows;
+    }
+
+    /**
+     * Run bounded windows sequentially. Once a window is not complete, later dates
+     * are not touched; completed earlier autosaves remain authoritative for their
+     * own exact scopes and are never replay authority for the failed window.
+     *
+     * @param callable(array,int,array):array $collectWindow
+     */
+    public static function collectRange(
+        array $request,
+        string $from,
+        string $to,
+        callable $collectWindow
+    ): array {
+        if (!is_int($request['generation'] ?? null) || $request['generation'] < 1
+            || !is_array($request['params'] ?? null)) {
+            throw new InvalidArgumentException('ANDROMEDA_LOCAL_COLLECTOR_INPUT');
+        }
+        $windows = self::dateWindows($from, $to);
+        $receipts = [];
+        $completed = 0;
+        $status = 'complete';
+        foreach ($windows as $index => $window) {
+            $next = $request;
+            $next['params']['dateFrom'] = $window['from'];
+            $next['params']['dateTo'] = $window['to'];
+            $result = $collectWindow($next, $index, $window);
+            if (!is_array($result) || !is_string($result['status'] ?? null)) {
+                throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_RANGE_RESULT');
+            }
+            $receipts[] = ['date_range'=>$window, 'result'=>$result];
+            if ($result['status'] !== 'complete') {
+                $status = 'incomplete';
+                break;
+            }
+            ++$completed;
+        }
+        return [
+            'source'=>'andromeda-local-offer-collector-range-v1',
+            'status'=>$status,
+            'requested_date_range'=>['from'=>$from,'to'=>$to],
+            'window_count'=>count($windows),
+            'windows_completed'=>$completed,
+            'windows'=>$receipts,
+            'selection_authority'=>false,
+            'booking_calls'=>0,
+        ];
+    }
     public static function collect(
         array $request,
         callable $searchComplete,
