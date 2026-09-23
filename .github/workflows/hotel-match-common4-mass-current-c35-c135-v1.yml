@@ -1,0 +1,96 @@
+name: MATCH COMMON4 mass CURRENT c35 c135
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - '.github/workflows/hotel-match-common4-mass-current-c35-c135-v1.yml'
+
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-common4-mass-current-1971-20260924-c35-c135-v1, cancel-in-progress: false}
+
+env:
+  OP: hotel-match-common4-mass-current-1971-20260924-c35-c135-v1
+  BASE: 1ae5390ff969c860441427e0ef476ad7443f54e7
+  CLAIM: '5803223327'
+  C35_SHA: b68accef8caadc3e49acb87a542ef41700ade8c924d936c036597cab1bcc7538
+  C135_SHA: 9abce890e0bbf83a36c20bd745822e2a3740970df75f07176cb3d882b11c25fd
+
+jobs:
+  live:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-common4-mass-current-c35-c135-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source claim and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p terminal input
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-common4-mass-current-c35-c135-v1.yml "
+          php -l scripts/diagnostics/hotel_match_common4_mass_current_v13.php
+          php scripts/diagnostics/hotel_match_common4_mass_current_v13.php --self-test
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],os.environ['C35_SHA'],os.environ['C135_SHA'],'HTTP0','database_writes0','mapping_writes0']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion']; break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+          cat >input/children.json <<JSON
+          {"children":[{"operation":"hotel-match-live30-common4-continuation-acquire-1971-20260923-c35-n100-v1","result_sha256":"$C35_SHA"},{"operation":"hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1","result_sha256":"$C135_SHA"}]}
+          JSON
+      - name: Execute supplier-free mass CURRENT audit
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e "\$HOME/$op";mkdir -p "\$HOME/$op/payload/scripts/diagnostics" "\$HOME/$op/payload/app/integrations";printf '%s\n' '{"operation":"$OP","state":"reserved_before_db_read"}' > "\$HOME/$op/reservation.json""
+          scp "${opts[@]}" input/children.json "$remote:$op/payload/children.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_common4_mass_current_v13.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$op/payload/app/integrations/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd "\$HOME/www/anytoour.ru";ANYTOUR_ROOT="\$HOME/www/anytoour.ru" MATCH_OPERATION_DIR="\$HOME/$op" MATCH_OPERATIONS_ROOT="\$HOME/.anytoour-match/operations" MATCH_CHILD_MANIFEST="\$HOME/$op/payload/children.json" MATCH_SOURCE_SHA='$HEAD' php "\$HOME/$op/payload/scripts/diagnostics/hotel_match_common4_mass_current_v13.php" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          ssh "${opts[@]}" "$remote" "cd "\$HOME/$op";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
+          set -e
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile(): pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json')); q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          if r['state']!='completed_read_only_mass_current':
+              print(json.dumps({'state':r['state'],'reason':r.get('reason')},sort_keys=True)); raise SystemExit(2)
+          assert len(r['children'])==2
+          assert r['supplier_calls']==r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False
+          print(json.dumps({'state':r['state'],'searched_hotels':r['searched_hotels'],'input_single_native_edges':r['input_single_native_edges'],'status_counts':r['status_counts'],'anchor_state_counts':r['anchor_state_counts'],'writer_ready_counts':r['writer_ready_counts']},sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-common4-mass-current-c35-c135-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
