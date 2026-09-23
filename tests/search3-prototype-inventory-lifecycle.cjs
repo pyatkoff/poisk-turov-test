@@ -106,6 +106,36 @@ test('meal labels collapse supplier codes and Russian aliases into one taxonomy'
  assert.equal(h.data.params(trip,[],{meals:['Полупансион']}).meal,'3');
  assert.equal(h.data.params(trip,[],{meals:['Всё включено','Полупансион']}).meal,'');
 });
+test('supplier scope policy owns both request narrowing and local-vs-real-search coverage',async()=>{
+ const h=harness();h.data.catalog.meals.push(
+  {id:5,name:'AI',fullName:'AI — Всё включено'},
+  {id:6,name:'Все Включено'},
+  {id:3,name:'HB',fullName:'HB — Полупансион'}
+ );
+ const scope=filters=>h.data.supplierScope(filters);
+ const covered=(previous,next)=>h.data.supplierScopeCovered(previous,next);
+ const broad=scope({stars:[4,5],meals:['Все Включено']});
+ assert.equal(broad.hotelCategory,'');assert.equal(broad.meal,'','alias-backed canonical meal is broad upstream');
+ assert.equal(h.data.params(trip,[],{stars:[4,5],meals:['Все Включено']}).hotelCategory,broad.hotelCategory);
+ assert.equal(h.data.params(trip,[],{stars:[4,5],meals:['Все Включено']}).meal,broad.meal);
+ const exact=scope({stars:[4],meals:['Полупансион']});
+ assert.equal(exact.hotelCategory,'4');assert.equal(exact.meal,'3');
+ assert.equal(covered(broad,exact),true,'broad upstream inventory covers a later exact local narrowing');
+ assert.equal(covered(scope({stars:[5]}),scope({stars:[4]})),false,'switching one upstream star requires a real search');
+ assert.equal(covered(scope({stars:[5]}),scope({})),false,'removing one upstream star requires a broad search');
+ assert.equal(covered(scope({meals:['Полупансион']}),scope({})),false,'removing one unambiguous upstream meal requires a broad search');
+ assert.equal(covered(scope({meals:['Все Включено']}),scope({})),true,'removing an alias-backed meal stays local because its actual request was broad');
+ assert.equal(covered(scope({resorts:['Сиде','Кемер']}),scope({resorts:['Сиде']})),true,'resort subset stays inside fetched OR-scope');
+ assert.equal(covered(scope({resorts:['Сиде']}),scope({resorts:['Сиде','Белек']})),false,'adding an unfetched resort requires a real search');
+ assert.equal(covered(scope({hotelId:4234}),scope({})),false,'leaving an exact hotel scope requires broader inventory');
+ assert.equal(covered(scope({max:600000}),scope({max:500000})),true,'lower budget ceiling stays local');
+ assert.equal(covered(scope({max:600000}),scope({max:700000})),false,'higher budget ceiling requires new inventory');
+ assert.equal(covered(scope({min:200000}),scope({min:300000})),true,'higher budget floor stays local');
+ assert.equal(covered(scope({min:200000}),scope({min:100000})),false,'lower budget floor requires new inventory');
+ await h.start({stars:[4,5],meals:['Все Включено']});
+ assert.equal(h.data.currentSupplierScope.hotelCategory,'');
+ assert.equal(h.data.currentSupplierScope.meal,'','actual data.search exposes the exact canonical scope it used');
+});
 test('operator labels collapse known cross-provider aliases without touching source identity',async()=>{
  const h=harness();
  assert.equal(h.data.operator('Biblio Globus'),'Библио-Глобус');
