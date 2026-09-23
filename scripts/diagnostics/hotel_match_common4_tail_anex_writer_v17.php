@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__,2).'/app/integrations/anex-search-mapping-registry.php';
 
 const HMCMAW_OP='hotel-match-common4-tail-anex-writer-1971-20260924-v17';
-const HMCMAW_AUDIT_OP='hotel-match-common4-tail-current-1971-20260924-v15';
+const HMCMAW_AUDIT_OP='hotel-match-common4-mass-current-1971-20260924-v14';
 const HMCMAW_EXPECTED=41;
 const HMCMAW_POLICY='owner_exact_operator_key_20260912_v2';
 const HMCMAW_CLASS='exact_operator_key';
