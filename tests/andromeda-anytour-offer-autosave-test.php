@@ -543,6 +543,60 @@ try {
     echo "ANDROMEDA_ESTIMATE_UPGRADE_OK stored=2 initial_ready=0 initial_confirmation=2 upgraded_ready=1 upgraded_confirmation=1 repeated_intakes=0\n";
 } finally { cleanup_dir($dir); }
 
+// FUN&SUN Turkey owner fallback is usable by normal autosave with NO 140-EUR
+// direction store. A fresh Andromeda claim FX specimen is sufficient currency
+// evidence; exact program/tour pricing still runs first and does not match this offer.
+$dir = temp_searches();
+try {
+    $at = new DateTimeImmutable('2026-09-23T16:00:00Z');
+    $nowTs = $at->getTimestamp();
+    $ref = hash('sha256', 'funsun-owner-70-runtime');
+    $created = $nowTs - 30;
+    $ingests = [];
+    $request = search_request();
+    $request['params']['countryId'] = 4;
+    $offer = normalized_offer('funsun-owner-70');
+    write_state($dir, $ref, $created, 1, state($ref, 1, 1, 1, $created, [$offer]));
+
+    $writeEvidence = static function(string $path,array $value): bool {
+        $bytes=json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+        if(file_put_contents($path,$bytes,LOCK_EX)===false)return false;
+        chmod($path,0600);return true;
+    };
+    AnyTourOperatorProgramFuelRegistryV1::append($dir,[
+        'key'=>['operator_family'=>'intourist','program_key'=>'30','tour_key'=>'34'],
+        'unit'=>'per_person_one_way','amount'=>'85.00','currency'=>'EUR',
+        'direction_count'=>2,'base_relation'=>'excluded',
+        'offer_ref_digest'=>hash('sha256','autosave-fx-program-offer'),
+        'evidence_sha256'=>hash('sha256','autosave-fx-program-evidence'),
+        'source'=>'andromeda_get_flights','observed_at'=>$nowTs-60,'expires_at'=>$nowTs+3600,
+        'exchange'=>[
+            'from'=>'EUR','to'=>'RUB','rate'=>'100','observed_at'=>$nowTs-60,'expires_at'=>$nowTs+3600,
+            'evidence_sha256'=>hash('sha256','autosave-fx-evidence'),
+        ],
+    ],$writeEvidence);
+    aassert((glob($dir.'/operator-fuel-rule-v2-*.json')?:[])===[],'stopped 140 direction store unexpectedly present');
+
+    [$mapping,$canonical,$unused,$save,$ingest]=callbacks($ingests,null);
+    $pricing=static function(array $state,int $created,array $offer,array $current)use($dir,$request,$nowTs):?array{
+        return anytour_andromeda_anytour_offer_pricing($dir,$offer,$request,$nowTs,null);
+    };
+    $result=AnyTourAndromedaOfferAutosaveV1::consume(
+        $request,$dir,$ref,1,$at,$mapping,$canonical,$pricing,$save,$ingest
+    );
+    aassert($result['published']===true&&$result['readyOfferCount']===1
+        &&$result['confirmationRequiredOfferCount']===0,'owner 70 fallback not published ready');
+    $dto=$ingests[0]['rows'][0]['dto']??null;
+    aassert(is_array($dto)&&$dto['money']['search_price']['amount']==='185125'
+        &&$dto['money']['fuel_charge_reported']===['amount'=>'42000.00','currency'=>'RUB','source'=>'operator_fuel_owner_policy']
+        &&$dto['price']==='227125.00'&&$dto['finalPrice']==='227125.00','owner 70 arithmetic/base mismatch');
+    aassert($dto['finalPriceReady']===true&&$dto['final_price_verified']===false
+        &&($dto['money']['operator_fuel_rule']['amount']??null)==='70.00'
+        &&($dto['money']['operator_fuel_rule']['independent_offer_count']??null)===0,
+        'owner 70 fallback gained verification or supplier-rate dependency');
+    echo "ANDROMEDA_FUNSUN_OWNER70_AUTOSAVE_OK base=185125 surcharge=42000 total=227125 ready=1 verified=0 supplier=0\n";
+} finally { cleanup_dir($dir); }
+
 // Malformed or contradictory retained evidence still refuses BEFORE persistence.
 $invalid = [];
 $bad = party_surcharge(); $bad['surcharge_scope'] = 'person'; $invalid['scope'] = $bad;
