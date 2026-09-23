@@ -411,7 +411,7 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 5, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         offset = integer(parts[3], 0, 1348, 'match_offset')
-        limit = integer(parts[4], 1, 100, 'match_limit')
+        limit = integer(parts[4], 1, 1349, 'match_limit')
         need(offset + limit <= 1349, 'match_scope')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'offset': offset, 'limit': limit}
