@@ -113,6 +113,11 @@ class ParseTest(unittest.TestCase):
         self.assertEqual('match-tv234-secondary',v['mode'])
         self.assertEqual(0,v['offset']);self.assertEqual(78,v['limit'])
 
+    def test_match_live234_readback_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-tv234-readback int-andromeda-match-tv234-readback-20260923-v1 0 78')
+        self.assertEqual('match-tv234-readback',v['mode'])
+        self.assertEqual(0,v['offset']);self.assertEqual(78,v['limit'])
+
     def test_match_live942_modes(self):
         tv=m.parse_command(f'/run-int-server-v1 {SHA} match-tv942 int-anex-match-tv942-20260923-v1 0 350')
         self.assertEqual('match-tv942',tv['mode']);self.assertEqual(0,tv['offset']);self.assertEqual(350,tv['limit'])
