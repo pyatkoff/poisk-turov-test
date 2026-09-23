@@ -1,0 +1,18 @@
+name: MATCH COMMON4 mass ANEX writer v15
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_common4_mass_anex_writer_v15.php'
+      - 'tests/hotel_match_common4_mass_anex_writer_v15_test.php'
+      - '.github/workflows/hotel-match-common4-mass-anex-writer-v15.yml'
+permissions: {contents: read}
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: php -l scripts/diagnostics/hotel_match_common4_mass_anex_writer_v15.php
+      - run: php scripts/diagnostics/hotel_match_common4_mass_anex_writer_v15.php --self-test
+      - run: php tests/hotel_match_common4_mass_anex_writer_v15_test.php
+      - run: "! grep -E 'UPDATE .* SET|DELETE FROM' scripts/diagnostics/hotel_match_common4_mass_anex_writer_v15.php"
