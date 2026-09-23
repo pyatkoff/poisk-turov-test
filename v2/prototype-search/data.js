@@ -405,6 +405,9 @@
     const plan=run.anexContinuationPlan;
     if(!plan||run.anexContinuation||!current(run))return;
     run.anexContinuationPlan=null;
+    const previous=run.sourceCounts.anex;
+    notify({type:'provider',provider:'anex',...(previous||{}),status:'loading',background:true});
+    if(!current(run))return;
     run.anexContinuation=continueDirectAnex(run,plan.url,plan.windows,plan.startIndex);
   }
   async function enrichAnex(run,p){
@@ -544,6 +547,9 @@
     const plan=run.andromedaContinuationPlan;
     if(!plan||run.andromedaContinuation||!current(run))return;
     run.andromedaContinuationPlan=null;
+    const previous=run.sourceCounts.andromeda;
+    notify({type:'provider',provider:'andromeda',...(previous||{}),status:'loading',background:true});
+    if(!current(run))return;
     run.andromedaContinuation=continueDirectAndromeda(run,plan.params,plan.url,plan.startPage,plan.pagesTotal);
   }
   async function enrichAndromeda(run,p){
