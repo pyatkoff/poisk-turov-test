@@ -30,6 +30,9 @@ const data = Object.freeze({
         {offers:[{provider:'andromeda'}]},
         {offers:[{provider:'tourvisor'},{provider:'tourvisor'}]}
       ]}
+    ] : scenario === 'invalid-dedupe' ? [
+      {type:'loading'},
+      {...completeEvent, union:{hotels:4,offers:7,hotelsByProvider:{anex:2,andromeda:2},offersByProvider:{anex:3,andromeda:4},providerSets:{anex:2,andromeda:2}}}
     ] : [{type:'loading'}, completeEvent];
     for (const event of events) callback(event);
     return Promise.resolve('same-return');
@@ -59,6 +62,9 @@ assert.deepEqual(receiptAtComplete.union, {
   offersByProvider:{anex:1,andromeda:2},
   providerSets:{'andromeda+anex':1,andromeda:1}
 }, 'complete must not replace a newer projected canonical union with a stale completion snapshot');
+assert.deepEqual(receiptAtComplete.dedupe, {
+  sourceVisibleHotels:3,sourceVisibleOffers:6,unionHotels:2,unionOffers:3,dedupedHotels:1,dedupedOffers:3
+}, 'complete exposes the exact loss from source-visible rows to the canonical union');
 const receipt = JSON.parse(host.dataset.searchReceipt);
 assert.equal(receipt.schemaVersion, 1);
 assert.equal(receipt.phase, 'complete');
@@ -76,6 +82,9 @@ assert.deepEqual(receipt.union, {
   offersByProvider:{anex:1,andromeda:2,tourvisor:2},
   providerSets:{'andromeda+anex':1,andromeda:1,tourvisor:1}
 }, 'late canonical results must advance the union receipt with the visible projection');
+assert.deepEqual(receipt.dedupe, {
+  sourceVisibleHotels:3,sourceVisibleOffers:6,unionHotels:3,unionOffers:5,dedupedHotels:0,dedupedOffers:1
+}, 'late projection recomputes canonical dedupe instead of retaining a stale loss count');
 returned.then(value=>assert.equal(value,'same-return'));
 
 host.dataset.searchReceipt = JSON.stringify({stale:true});
@@ -84,10 +93,18 @@ scenario = 'fallback-complete';
 let snapshotAtCallback = null;
 wrapped.search({country:'4'}, event=>{if(!snapshotAtCallback) snapshotAtCallback=JSON.parse(host.dataset.searchReceipt);}, ['hotel-1'], {max:200000});
 assert.equal(snapshotAtCallback.schemaVersion,1);
+assert.equal(snapshotAtCallback.dedupe,null);
 assert.equal('stale' in snapshotAtCallback,false);
 assert.equal(calls,2);
 const fallback = JSON.parse(host.dataset.searchReceipt);
 assert.deepEqual(fallback.projection,{hotels:0,offers:0});
 assert.deepEqual(fallback.union,{hotels:2,offers:5,hotelsByProvider:{anex:1,andromeda:2},offersByProvider:{anex:2,andromeda:3},providerSets:{'anex+andromeda':1,andromeda:1}});
+assert.deepEqual(fallback.dedupe,{sourceVisibleHotels:3,sourceVisibleOffers:6,unionHotels:2,unionOffers:5,dedupedHotels:1,dedupedOffers:1});
 assert.equal('secret' in fallback.union,false);
+
+scenario = 'invalid-dedupe';
+wrapped.search({country:'4'}, ()=>{}, ['hotel-1'], {max:200000});
+assert.equal(calls,3);
+const invalid = JSON.parse(host.dataset.searchReceipt);
+assert.equal(invalid.dedupe,null,'inconsistent source-visible totals must fail closed instead of inventing negative dedupe');
 console.log('search3 prototype source receipt v1: PASS');
