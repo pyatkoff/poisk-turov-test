@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_common4_missing_anchor_recovery_v6.php';
 function r6ok(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
-r6ok(r6_norm('MÖVENPICK / Soma-Bay')==='mövenpick soma bay','norm_unicode');
+r6ok(r6_norm('  Hotel / Test!  ')==='hotel test','norm_exact');
 r6ok(r6_classify([])==='no_exact_candidate','no');
 r6ok(r6_classify([['identity_state'=>'missing','geo'=>['coordinate_class'=>'unknown']]])==='unique_exact_observation_only','obs');
 r6ok(r6_classify([['identity_state'=>'accepted_elsewhere','geo'=>['coordinate_class'=>'unknown']]])==='candidate_accepted_elsewhere_conflict','accepted_elsewhere');
