@@ -1,6 +1,9 @@
 'use strict';
 ((root) => {
-  const supplied=Array.isArray(root.AnyTourTopHotelLegacyIds)?root.AnyTourTopHotelLegacyIds:[];
+  const attr=root.document?.body?.getAttribute?.('data-popular-hotel-legacy-ids')||'';
+  const supplied=Array.isArray(root.AnyTourTopHotelLegacyIds)
+    ? root.AnyTourTopHotelLegacyIds
+    : attr.split(',').map(value=>value.trim()).filter(Boolean);
   const rankByLegacyId=new Map();
   for(const rawId of supplied){
     const id=Number(rawId);
@@ -23,14 +26,12 @@
   function badge(hotel){
     const value=rank(hotel);
     if(value===null)return '';
-    return value<=100?'Хит продаж':'Популярный отель';
+    return 'Популярный отель';
   }
   function boost(hotel){
     const value=rank(hotel);
     if(value===null)return 0;
-    if(value<=100)return .75;
-    if(value<=250)return .5;
-    return .3;
+    return .5;
   }
 
   root.AnyTourHotelPopularityV1=Object.freeze({
