@@ -101,7 +101,9 @@ test('meal labels collapse supplier codes and Russian aliases into one taxonomy'
  assert.equal(h.data.meal('ВСЁ ВКЛЮЧЕНО'),'Всё включено');assert.equal(h.data.meal('Завтрак'),'Завтраки');
  assert.equal(h.data.meal('Только завтрак'),'Завтраки');assert.equal(h.data.meal('BB - Только завтрак'),'Завтраки');
  assert.equal(h.data.meal('Ультра Все Вкл'),'Ультра всё включено');assert.equal(h.data.meal('HB'),'Полупансион');
- assert.equal(h.data.params(trip,[],{meals:['Все Включено']}).meal,'5');
+ assert.equal(h.data.params(trip,[],{meals:['Все Включено']}).meal,'');
+ assert.equal(h.data.params(trip,[],{meals:['Завтраки']}).meal,'');
+ assert.equal(h.data.params(trip,[],{meals:['Полупансион']}).meal,'3');
  assert.equal(h.data.params(trip,[],{meals:['Всё включено','Полупансион']}).meal,'');
 });
 test('operator labels collapse known cross-provider aliases without touching source identity',async()=>{
