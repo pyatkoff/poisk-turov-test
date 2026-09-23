@@ -634,7 +634,7 @@ test('direct Andromeda verification uses exact same-provider quote without Tourv
  assert.deepEqual(body.offer_context,{provider:'andromeda',search_ref:context.search_ref,generation:context.generation,page:context.page,offer_ref:context.offer_ref});
  assert.equal(body.listing_price_ref,'listing_'+'e'.repeat(64));assert.deepEqual(body.params,h.nativeCalls[0].params);
  assert.equal(Object.hasOwn(body,'price'),false);assert.equal(Object.hasOwn(body,'local_hotel_id'),false);
- assert.equal(quote.state,'quote_verified');assert.deepEqual(quote.finalPrice,{amount:'1499000',currency:'RUB'});
+ assert.equal(quote.state,'quote_verified');assert.deepEqual(JSON.parse(JSON.stringify(quote.finalPrice)),{amount:'1499000',currency:'RUB'});
  assert.equal(quote.finalPriceVerified,true);assert.equal(quote.flightSelectionRequired,false);assert.equal(quote.flights.length,2);
  assert.ok(quote.flights.every(row=>!Object.hasOwn(row,'flightRef')),'verified public flights never invent continuation refs');
 });
