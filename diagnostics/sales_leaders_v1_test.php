@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__.'/../v2/sales-leaders-v1.php';
 function check(bool $ok,string $message):void{if(!$ok){fwrite(STDERR,"FAIL: $message\n");exit(1);}}
+$byId=sales_leader_match(['id'=>22879,'name'=>'Unrelated display name','country'=>['name'=>'Турция']]);
+check(is_array($byId),'TOP500 Tourvisor ID must match the canonical popularity cohort');
+check(($byId['rank']??0)===1,'TOP500 exact ID keeps canonical ordered rank');
 $kremlin=sales_leader_match(['name'=>'Kremlin Palace','country'=>['name'=>'Турция']]);
 check(is_array($kremlin),'Kremlin Palace must match');
 check(($kremlin['rank']??0)===1,'Kremlin Palace must keep first country rank');
