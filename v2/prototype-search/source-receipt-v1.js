@@ -144,6 +144,9 @@
         if (event.type === 'complete') {
           receipt.phase = event.partial === true ? 'partial' : 'complete';
           receipt.sources = cleanSources(event.sources);
+          for (const [provider, row] of Object.entries(receipt.sources)) {
+            if (row.status) receipt.providers[provider] = row.status;
+          }
           receipt.union = projectedUnion || cleanUnion(event.union);
           receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
         }
