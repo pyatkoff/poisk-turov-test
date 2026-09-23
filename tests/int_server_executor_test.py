@@ -139,6 +139,11 @@ class ParseTest(unittest.TestCase):
         self.assertEqual('match-coverage-v2',v['mode'])
         self.assertEqual(SHA,v['source_sha'])
 
+    def test_match_coverage_v2_readback_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-coverage-v2-readback int-andromeda-match-coverage-v2-readback-20260923-v1')
+        self.assertEqual('match-coverage-v2-readback',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
+
     def test_match_coverage_readback_mode(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-coverage-readback int-andromeda-match-coverage-readback-20260923-v1')
         self.assertEqual('match-coverage-readback',v['mode'])
@@ -204,6 +209,8 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} match-coverage int-andromeda-match-coverage-20260923-v1 extra',
           f'/run-int-server-v1 {SHA} match-coverage-v2 int-anex-match-coverage-v2-20260923-v1',
           f'/run-int-server-v1 {SHA} match-coverage-v2 int-andromeda-match-coverage-v2-20260923-v1 extra',
+          f'/run-int-server-v1 {SHA} match-coverage-v2-readback int-anex-match-coverage-v2-readback-20260923-v1',
+          f'/run-int-server-v1 {SHA} match-coverage-v2-readback int-andromeda-match-coverage-v2-readback-20260923-v1 extra',
           f'/run-int-server-v1 {SHA} match-coverage-readback int-anex-match-coverage-readback-20260923-v1',
           f'/run-int-server-v1 {SHA} match-coverage-readback int-andromeda-match-coverage-readback-20260923-v1 extra',
           f'/run-int-server-v1 {SHA} match-tv942-reconcile int-andromeda-match-tv942-reconcile-20260923-v1',
@@ -388,7 +395,7 @@ class ContractTest(unittest.TestCase):
                   "match-tv942-write","run_match_tv942_write",
                   "hotel_match_live942_tv_writer_v1.php",
                   "match_tv_writer_manifest_hash","match_tv_writer_terminal_guard",
-                  "install-runtime','match-coverage','match-coverage-v2','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
+                  "install-runtime','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
