@@ -226,6 +226,25 @@ test('direct ANEX group verification re-searches exact scope and expands without
  assert.equal(result.hotelId,offer.hotelId);assert.equal(result.offers.length,2);
  assert.ok(result.offers.every(item=>item.provider==='anex'&&item.raw.anexKind==='concrete'&&item.raw.anexLocalHotelId===101));
 });
+test('Stop invalidates and aborts a pending direct ANEX group verification',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32),gate=defer();let verification=false,expandSignal=null;
+ const h=harness({anex:async(body,signal)=>{
+  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  if(body.action==='expand'){expandSignal=signal;await gate.promise;return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};}
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');assert.ok(offer);
+ const before=JSON.stringify(h.latest());
+ verification=true;const pending=h.data.expandAnexGroup(offer);
+ await waitFor(()=>h.anexCalls.at(-1)?.action==='expand','pending ANEX expand request required');
+ assert.ok(expandSignal);assert.equal(expandSignal.aborted,false);
+ h.data.stop();assert.equal(expandSignal.aborted,true,'Stop aborts exact-provider verification immediately');
+ gate.resolve();
+ await assert.rejects(pending,/Условия поиска изменились/);
+ assert.equal(JSON.stringify(h.latest()),before,'stale verification cannot mutate canonical result inventory');
+ assert.equal(h.anexCalls.filter(call=>call.action==='expand').length,1,'stale verification is never replayed');
+});
 test('direct ANEX group verification fails closed when exact group identity is no longer returned',async()=>{
  const groupRef='anex_online:'+'b'.repeat(64),otherRef='anex_online:'+'d'.repeat(64);let verification=false;
  const h=harness({anex:async body=>{
