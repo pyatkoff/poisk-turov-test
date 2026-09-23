@@ -135,7 +135,7 @@ def check_width(browser, origin, width):
             route.fulfill(content_type="image/svg+xml", body=FIXTURE.PHOTO)
         elif url.path == "/data/departures-v1.php":
             reply({"ok": True, "items": [{"id": 1, "name": "Москва"}]})
-        elif url.path == "/data/price-calendar-read-v1.php":
+        elif url.path == "/_preview/search3-local-candidate/data/price-calendar-read-v1.php":
             observation_calls.append(query)
             first, last = query['dateFrom'][0], query['dateTo'][0]
             child_ages = sorted(int(age) for age in query.get("childs", [""])[0].split(",") if age != "")
