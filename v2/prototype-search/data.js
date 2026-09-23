@@ -402,15 +402,6 @@
       }
     }
   }
-  function startAnexContinuation(run){
-    const plan=run.anexContinuationPlan;
-    if(!plan||run.anexContinuation||!current(run))return;
-    run.anexContinuationPlan=null;
-    const previous=run.sourceCounts.anex;
-    notify({type:'provider',provider:'anex',...(previous||{}),status:'loading',background:true});
-    if(!current(run))return;
-    run.anexContinuation=continueDirectAnex(run,plan.url,plan.windows,plan.startIndex);
-  }
   async function enrichAnex(run,p){
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url||!current(run)){run.sourceCounts.anex={status:'skipped',hotels:0,offers:0};return;}
@@ -420,7 +411,10 @@
       const first=await requestDirectAnex(run,windows[0],url.href);if(!first||!current(run))return;
       const result=await applyDirectAnex(run,first,windows[0],0,windows.length);if(!current(run))return;
       notify({type:'provider',provider:'anex',...result});
-      if(windows.length>1)run.anexContinuationPlan={url:url.href,windows,startIndex:1};
+      if(windows.length>1){
+        notify({type:'provider',provider:'anex',...result,status:'loading',background:true});
+        await continueDirectAnex(run,url.href,windows,1);
+      }
     }catch(error){
       if(!current(run)||error?.name==='AbortError')return;
       run.sourceCounts.anex={status:'error',hotels:0,offers:0};
@@ -544,15 +538,6 @@
       }
     }
   }
-  function startAndromedaContinuation(run){
-    const plan=run.andromedaContinuationPlan;
-    if(!plan||run.andromedaContinuation||!current(run))return;
-    run.andromedaContinuationPlan=null;
-    const previous=run.sourceCounts.andromeda;
-    notify({type:'provider',provider:'andromeda',...(previous||{}),status:'loading',background:true});
-    if(!current(run))return;
-    run.andromedaContinuation=continueDirectAndromeda(run,plan.params,plan.url,plan.startPage,plan.pagesTotal);
-  }
   async function enrichAndromeda(run,p){
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');
     if(!url||!current(run)){run.sourceCounts.andromeda={status:'skipped',hotels:0,offers:0};return;}
@@ -564,7 +549,10 @@
       // Keep durable/cache visibility independent: autosave may land the same
       // offer later, and the canonical SHA-256 identity collapses that duplicate.
       await refreshDatabase(run);if(!current(run))return;
-      if(data.pages_count>1)run.andromedaContinuationPlan={url:url.href,params:structuredClone(p),startPage:2,pagesTotal:data.pages_count};
+      if(data.pages_count>1){
+        notify({type:'provider',provider:'andromeda',...result,status:'loading',background:true});
+        await continueDirectAndromeda(run,p,url.href,2,data.pages_count);
+      }
     }catch(error){
       if(!current(run)||error?.name==='AbortError')return;
       owner.clearOffers('direct-andromeda');owner.refresh();
@@ -596,7 +584,6 @@
         notify({type:'provider',provider:'tourvisor',...run.sourceCounts.tourvisor});
         await refreshDatabase(run);if(!current(run))return;
         if(!run.continued&&!(await settleInitialSources(run)))return;
-        if(!run.continued){startAnexContinuation(run);startAndromedaContinuation(run);}
         const resultLimitReached=inventory.hotels>=5000,baseline=run.continueBaseline;
         const grew=!run.continued||!baseline||inventory.hotels>baseline.hotels||inventory.offers>baseline.offers;
         run.pending=false;run.resumeOnly=false;run.canContinue=!resultLimitReached&&(!run.continued||grew);
