@@ -33,7 +33,7 @@ const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
 function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.now()}={}){
- const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],observationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
+ const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],observationCalls=[],mealCatalogCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
   if(target.pathname==='/data/price-calendar-read-v1.php'){
@@ -56,7 +56,20 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
    return {ok:true,json:async()=>directAnex(body)};
   }
   if(String(url).includes('search3-local-results-read')){
-   const params=JSON.parse(options.body).params;dbBodies.push(structuredClone(params));
+   const body=JSON.parse(options.body);
+   if(body.action==='meal_catalog'){
+    mealCatalogCalls.push({body:structuredClone(body),headers:structuredClone(options.headers||{})});
+    return {ok:true,json:async()=>({ok:true,data:{
+     source:'anytour-search-meal-v1',provider:'tourvisor',scopeKey:'global',available:true,revision:hash('meal-catalog-fixture'),
+     plans:[
+      {id:2,code:'breakfast',nameRu:'Завтраки',nativeIds:['3']},
+      {id:3,code:'half-board',nameRu:'Полупансион',nativeIds:['4']},
+      {id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:['7']},
+      {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']}
+     ]
+    }})};
+   }
+   const params=body.params;dbBodies.push(structuredClone(params));
    const data=database?await database(++readIndex,params,options.signal):snapshot(params);
    return {ok:true,json:async()=>({ok:true,data})};
   }
@@ -84,7 +97,7 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
  const poll=async()=>{const entry=[...timers].find(([,value])=>value.delay<=2500);assert.ok(entry,'pending poll required');timers.delete(entry[0]);await entry[1].fn();await flush();};
  const latest=()=>events.filter(e=>e.type==='results').at(-1)?.hotels||[];
  const providers=()=>[...new Set(latest().flatMap(h=>h.offers.map(o=>o.provider)))].sort();
- return {data,start,poll,events,calls,dbBodies,nativeCalls,anexCalls,observationCalls,latest,providers,timers,get searchId(){return currentId;}};
+ return {data,start,poll,events,calls,dbBodies,nativeCalls,anexCalls,observationCalls,mealCatalogCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
 const observed=(q,price=97500)=>{const childAges=String(q.childs||'').trim()?String(q.childs).split(',').map(Number).sort((a,b)=>a-b):[];return {ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:Number(q.adults),childrenCount:childAges.length,childAges,childAgesSignature:childAges.join(','),departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:q.regionId?Number(q.regionId):null,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]};};
@@ -98,6 +111,23 @@ function canonicalMeals(h){
   {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']});
  h.data.catalog.mealPlanAvailable=true;
 }
+test('init loads canonical meal authority through the exposed LOCAL reader action',async()=>{
+ const h=harness({api:(action)=>{
+  if(action==='meals')return [{id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'}];
+  if(action==='countries')return [{id:4,name:'Турция'}];
+ }});
+ h.data.catalog.mealPlans.splice(0);h.data.catalog.mealPlanAvailable=false;h.data.catalog.mealPlanRevision=null;
+ await h.data.init('Москва');
+ assert.equal(h.mealCatalogCalls.length,1);
+ assert.deepEqual(JSON.parse(JSON.stringify(h.mealCatalogCalls[0].body)),{action:'meal_catalog',provider:'tourvisor',scopeKey:'global'});
+ assert.equal(h.mealCatalogCalls[0].headers['X-Requested-With'],'AnyTourSearch3');
+ assert.equal(h.mealCatalogCalls[0].headers['Content-Type'],'application/json');
+ assert.equal(h.data.catalog.mealPlanAvailable,true);
+ assert.deepEqual(Array.from(h.data.catalog.mealPlans,p=>[p.id,p.code,p.nameRu,[...p.nativeIds]]),[
+  [2,'breakfast','Завтраки',['3']],[3,'half-board','Полупансион',['4']],
+  [7,'all-inclusive','Всё включено',['7']],[8,'ultra-all-inclusive','Ультра всё включено',['9']]
+ ]);
+});
 test('canonical mealPlanId owns top-level taxonomy while raw meal stays detail',async()=>{
  const h=harness();canonicalMeals(h);
  const rows=h.data.project([{id:101,anytourHotelId:501,name:'FICTIONAL HOTEL 101',category:5,rating:4.7,images:[],tours:[
