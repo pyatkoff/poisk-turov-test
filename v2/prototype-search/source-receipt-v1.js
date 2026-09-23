@@ -1,7 +1,7 @@
 'use strict';
 (() => {
-  const data = window.AnyTourPrototypeData;
-  if (!data || typeof data.search !== 'function' || data.__searchReceiptV1 === true) return;
+  const source = window.AnyTourPrototypeData;
+  if (!source || typeof source.search !== 'function' || source.__searchReceiptV1 === true) return;
 
   const countFields = new Set([
     'hotels','offers','receivedHotels','receivedOffers','mappedHotels','mappedOffers',
@@ -66,8 +66,8 @@
     const host = document.getElementById('results');
     if (host) host.dataset.searchReceipt = JSON.stringify(receipt);
   };
-  const originalSearch = data.search;
-  data.search = function(search, callback, ...args) {
+  const originalSearch = source.search;
+  const wrappedSearch = function(search, callback, ...args) {
     const receipt = {
       schemaVersion: 1,
       phase: 'loading',
@@ -96,5 +96,9 @@
       return callback(event);
     }, ...args);
   };
-  data.__searchReceiptV1 = true;
+
+  const descriptors = Object.getOwnPropertyDescriptors(source);
+  descriptors.search = {...descriptors.search, value: wrappedSearch};
+  descriptors.__searchReceiptV1 = {value:true, enumerable:false, writable:false, configurable:false};
+  window.AnyTourPrototypeData = Object.freeze(Object.defineProperties({}, descriptors));
 })();
