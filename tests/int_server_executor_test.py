@@ -577,7 +577,7 @@ class ContractTest(unittest.TestCase):
                   "hotel_match_live942_samo_anex_refresh_v1.php",
                   "hotel_match_live30_common4_remainder_v1.py",
                   "hotel_match_common4_resume_salvage_v1.py",
-                  "hotel_match_common4_mass_current_v13.php",
+                  "hotel_match_common4_mass_current_v14.php",
                   ".anytoour-match/operations","match_terminal_hash",
                   "match-secondary-audit","run_match_secondary_audit",
                   "hotel_match_live_anex_samo_missing_secondary_audit_v1.php",
