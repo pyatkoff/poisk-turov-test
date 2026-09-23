@@ -13,6 +13,7 @@ t_need(s942_ids($rows,['Kazan'])===[2],'english_town');
 t_need(s942_ids($rows,['Санкт-Петербург'])===[3],'local_town');
 t_need((s942_departure_binding($rows,'')['state']??'')==='departure_name_missing','empty_departure_local_hold');
 t_need((s942_departure_binding($rows,'Москва')['id']??null)===1,'departure_ready');
+t_need(str_ends_with(s942_source_integrations(),'/app/integrations'),'exact_source_integrations');
 t_need(s942_date_ymd('2026-10-11')==='20261011','date_valid');
 t_need(s942_date_ymd('2026-02-31')===null,'date_invalid');
 t_need(s942_child_ages(0,'')===[],'zero_children');
@@ -35,4 +36,8 @@ putenv('HOME='.$planHome);$ret=m942_retained_original942();
 t_need(($ret['cohort_source']??'')==='retained_terminal_tv_plan'&&count($ret['rows']??[])===942,'retained_original942');
 putenv('HOME='.$oldHome);
 foreach(array_reverse(glob($ops.'/*')?:[]) as $d){@unlink($d.'/plan.json');@rmdir($d);}@rmdir($ops);@rmdir(dirname($ops));@rmdir($planHome);
+
+$runnerSource=(string)file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_live942_samo_anex_refresh_v1.php');
+t_need(str_contains($runnerSource,'$lastHttpStarted=0.0'),'shared_rate_clock');
+t_need(str_contains($runnerSource,'$transport=new AnyTourAndromedaTransport(true);$lastHttpStarted=microtime(true);'),'transport_per_http');
 echo "MATCH_LIVE942_SAMO_RETAINED_CONTEXT_V1_TEST_OK\n";
