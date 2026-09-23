@@ -19,7 +19,7 @@ foreach([
   "'only_samo'=>0",
 ] as $needle)if(!str_contains($s,$needle))throw new RuntimeException('missing_'.$needle);
 if(str_contains($s,"FROM anytour_offers WHERE provider='andromeda'"))throw new RuntimeException('offer_store_substitution_forbidden');
-if(!str_contains($w,"'samo_live30'=>$result['samo_live_30d']??null"))throw new RuntimeException('wrapper_summary_missing');
+if(!str_contains($w,"'samo_live30'=>\$result['samo_live_30d']??null"))throw new RuntimeException('wrapper_summary_missing');
 passthru('php '.escapeshellarg($src).' --self-test',$code);
 if($code!==0)throw new RuntimeException('selftest_failed');
 echo "MATCH_SAMO_LIVE30_COVERAGE_V1_TEST_OK\n";
