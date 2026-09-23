@@ -39,13 +39,32 @@ const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),local
   grouped:true,first_page_only:false,page,pages_count:pagesCount,external_search_pending:false,search_ref:searchRef,status,
   received_offers:hotels.length,mapped_offers:hotels.length,selection_enabled:false}};
 };
+const andromedaVerified=(localId=101,amount='1499000')=>({schema_version:1,provider:'andromeda',local_id:localId,selection_enabled:true,booking_enabled:false,
+ state:'quote_verified',quote_state:'verified',final_price:{amount,currency:'RUB'},final_price_verified:true,flight_selection_required:false,
+ flights:[{direction:'0',name:'OUT 101',datebeg:trip.from,class:'ECONOM',departure:{state:'Россия',town:'Москва',port:'SVO'},arrival:{state:'Турция',town:'Анталья',port:'AYT'}},
+          {direction:'1',name:'BACK 102',datebeg:'2026-10-06',class:'ECONOM',departure:{state:'Турция',town:'Анталья',port:'AYT'},arrival:{state:'Россия',town:'Москва',port:'SVO'}}]});
+const andromedaChoice=(localId=101)=>({schema_version:1,provider:'andromeda',local_id:localId,selection_enabled:true,booking_enabled:false,
+ state:'flight_selection_required',quote_state:'unverified',final_price:null,final_price_verified:false,flight_selection_required:true,
+ flights:[
+  {direction:'0',flight_ref:'flight_'+'1'.repeat(32),name:'OUT A',datebeg:trip.from,class:'ECONOM',departure:{town:'Москва',port:'SVO'},arrival:{town:'Анталья',port:'AYT'}},
+  {direction:'0',flight_ref:'flight_'+'2'.repeat(32),name:'OUT B',datebeg:trip.from,class:'ECONOM',departure:{town:'Москва',port:'VKO'},arrival:{town:'Анталья',port:'AYT'}},
+  {direction:'1',flight_ref:'flight_'+'3'.repeat(32),name:'BACK A',datebeg:'2026-10-06',class:'ECONOM',departure:{town:'Анталья',port:'AYT'},arrival:{town:'Москва',port:'SVO'}}
+ ]});
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
-function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.now()}={}){
- const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],observationCalls=[],mealCatalogCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
+function harness({database,api,onEvent,native,anex,andromedaQuote,observations,clock=()=>Date.now()}={}){
+ const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],observationCalls=[],mealCatalogCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
+  if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'){
+   assert.ok(andromedaQuote,'unexpected Andromeda quote request');
+   assert.equal(options.credentials,'same-origin');assert.equal(options.headers?.['X-Requested-With'],'AnyTourSearch3');
+   const body=JSON.parse(options.body);andromedaQuoteCalls.push(structuredClone(body));
+   const result=await andromedaQuote(body,options.signal,andromedaQuoteCalls);
+   if(result&&result.response)return result.response;
+   return {ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified()})};
+  }
   if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'){
    assert.ok(native,'unexpected Andromeda request');
    const body=JSON.parse(options.body);nativeCalls.push(structuredClone(body));
@@ -101,7 +120,7 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
   throw Error('unexpected API '+action);
  }};
  const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,crypto:crypto.webcrypto,TextEncoder,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
- if(native||anex){win.V2_CONFIG={};if(native)win.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';if(anex)win.V2_CONFIG.anexApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php';}
+ if(native||anex||andromedaQuote){win.V2_CONFIG={};if(native)win.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';if(anex)win.V2_CONFIG.anexApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php';if(andromedaQuote)win.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';}
  const bus=new EventTarget();win.addEventListener=bus.addEventListener.bind(bus);win.removeEventListener=bus.removeEventListener.bind(bus);win.dispatchEvent=bus.dispatchEvent.bind(bus);
  const sandbox={window:win,fetch,URL,URLSearchParams,AbortController,DOMException,structuredClone,console,crypto:crypto.webcrypto,TextEncoder,Date:class extends Date{static now(){return clock();}},setTimeout:win.setTimeout,clearTimeout:win.clearTimeout};
  vm.createContext(sandbox);
@@ -112,7 +131,7 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
  const poll=async()=>{const entry=[...timers].find(([,value])=>value.delay<=2500);assert.ok(entry,'pending poll required');timers.delete(entry[0]);await entry[1].fn();await flush();};
  const latest=()=>events.filter(e=>e.type==='results').at(-1)?.hotels||[];
  const providers=()=>[...new Set(latest().flatMap(h=>h.offers.map(o=>o.provider)))].sort();
- return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,observationCalls,mealCatalogCalls,latest,providers,timers,get searchId(){return currentId;}};
+ return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,observationCalls,mealCatalogCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
 const observed=(q,price=97500)=>{const childAges=String(q.childs||'').trim()?String(q.childs).split(',').map(Number).sort((a,b)=>a-b):[],regionIds=[...new Set((q.regionIds||[]).map(Number))].sort((a,b)=>a-b);return {ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:Number(q.adults),childrenCount:childAges.length,childAges,childAgesSignature:childAges.join(','),departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:regionIds.length===1?regionIds[0]:null,regionIds,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]};};
@@ -598,6 +617,83 @@ test('native Andromeda and LOCAL autosave dedupe the same offer identity',async(
  assert.equal(offers.length,1,'same native+stored Andromeda offer must collapse by canonical digest');
  const final=h.events.filter(e=>e.type==='complete').at(-1);
  assert.equal(final.union.offersByProvider.andromeda,1);
+});
+test('direct Andromeda verification uses exact same-provider quote without Tourvisor fallback',async()=>{
+ const h=harness({
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+  andromedaQuote:async body=>({response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101,'1499000')})}})
+ });
+ await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');assert.ok(offer);
+ const beforeTourvisor=h.calls.filter(call=>call.action==='search_start').length;
+ const quote=await h.data.verifyAndromeda(offer);
+ assert.equal(h.calls.filter(call=>call.action==='search_start').length,beforeTourvisor,'Andromeda verification never launches Tourvisor');
+ assert.equal(h.andromedaQuoteCalls.length,1);
+ const body=h.andromedaQuoteCalls[0],context=offer.raw.offer_context;
+ assert.equal(body.action,'quote');assert.equal(body.generation,context.generation);assert.equal(body.page,context.page);
+ assert.deepEqual(body.offer_context,{provider:'andromeda',search_ref:context.search_ref,generation:context.generation,page:context.page,offer_ref:context.offer_ref});
+ assert.equal(body.listing_price_ref,'listing_'+'e'.repeat(64));assert.deepEqual(body.params,h.nativeCalls[0].params);
+ assert.equal(Object.hasOwn(body,'price'),false);assert.equal(Object.hasOwn(body,'local_hotel_id'),false);
+ assert.equal(quote.state,'quote_verified');assert.deepEqual(JSON.parse(JSON.stringify(quote.finalPrice)),{amount:'1499000',currency:'RUB'});
+ assert.equal(quote.finalPriceVerified,true);assert.equal(quote.flightSelectionRequired,false);assert.equal(quote.flights.length,2);
+ assert.ok(quote.flights.every(row=>!Object.hasOwn(row,'flightRef')),'verified public flights never invent continuation refs');
+});
+test('Andromeda flight choice continuation accepts only retained outbound and return refs',async()=>{
+ let first=true;
+ const h=harness({
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+  andromedaQuote:async body=>{
+   if(first){first=false;return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaChoice(101)})}};}
+   return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101,'1512345')})}};
+  }
+ });
+ await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
+ const pending=await h.data.verifyAndromeda(offer);
+ assert.equal(pending.state,'flight_selection_required');assert.equal(pending.finalPrice,null);assert.equal(pending.flightSelectionRequired,true);
+ assert.deepEqual(JSON.parse(JSON.stringify(pending.flights.map(row=>[row.direction,row.flightRef]))),[
+  ['0','flight_'+'1'.repeat(32)],['0','flight_'+'2'.repeat(32)],['1','flight_'+'3'.repeat(32)]
+ ]);
+ await assert.rejects(h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'9'.repeat(32),return_ref:'flight_'+'3'.repeat(32)}),/устарело/);
+ assert.equal(h.andromedaQuoteCalls.length,1,'unknown opaque ref is rejected before HTTP');
+ const verified=await h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)});
+ assert.equal(h.andromedaQuoteCalls.length,2);const continuation=h.andromedaQuoteCalls[1];
+ assert.equal(continuation.action,'quote_select_flights');
+ assert.deepEqual(JSON.parse(JSON.stringify(continuation.flight_selection)),{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)});
+ assert.equal(verified.state,'quote_verified');assert.equal(verified.finalPrice.amount,'1512345');
+ await assert.rejects(h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)}),/устарело/);
+ assert.equal(h.andromedaQuoteCalls.length,2,'verified continuation cannot be replayed from cleared retained refs');
+});
+test('Stop aborts pending Andromeda quote and stale result cannot be accepted',async()=>{
+ const gate=defer();let quoteSignal=null;
+ const h=harness({
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+  andromedaQuote:async(body,signal)=>{quoteSignal=signal;await gate.promise;return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101)})}};}
+ });
+ await h.start();await h.poll();
+ const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
+ const pending=h.data.verifyAndromeda(offer);await waitFor(()=>quoteSignal!==null,'pending Andromeda quote required');
+ assert.equal(quoteSignal.aborted,false);h.data.stop();assert.equal(quoteSignal.aborted,true);
+ gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
+});
+test('Andromeda quote response fails closed on price, identity and flight-ref corruption',async()=>{
+ const invalid=[
+  {...andromedaVerified(102)},
+  {...andromedaVerified(101),booking_enabled:true},
+  {...andromedaVerified(101),final_price_verified:false},
+  {...andromedaVerified(101),final_price:{amount:'0',currency:'RUB'}},
+  {...andromedaVerified(101),final_price:{amount:'1000',currency:'USD'}},
+  {...andromedaChoice(101),flights:[{...andromedaChoice(101).flights[0],flight_ref:'bad'}]},
+  {...andromedaChoice(101),flights:andromedaChoice(101).flights.filter(row=>row.direction==='0')}
+ ];
+ for(const payload of invalid){
+  const h=harness({
+   native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+   andromedaQuote:async()=>({response:{ok:true,status:200,json:async()=>({ok:true,data:payload})}})
+  });
+  await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
+  await assert.rejects(h.data.verifyAndromeda(offer),/некорректное подтверждение/);
+ }
 });
 test('Andromeda failure is isolated from TV and LOCAL inventory',async()=>{
  const h=harness({native:async()=>({response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}})});

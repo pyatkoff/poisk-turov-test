@@ -173,6 +173,27 @@ assert.match(refreshSource,/await data\.expandAnexGroup\(o\)/,'ANEX group refres
 assert.match(refreshSource,/terminalizeSearchForVerification\(\);renderResults\(\{keepFilters:true\}\)/,'ANEX verification terminalizes the old provider UI before awaiting the exact provider');
 assert.ok(refreshSource.indexOf('expandAnexGroup(o)')<refreshSource.indexOf('runSearch({hotelIds:'),'ANEX same-provider expansion runs before the generic Tourvisor refresh fallback');
 assert.match(refreshSource,/h\.offers=\[\.\.\.h\.offers\.filter.*\.\.\.expanded\.offers\]/s,'expanded concrete ANEX variants replace the selected group minimum in the existing hotel offer list');
+assert.match(refreshSource,/o\.provider==='andromeda'.*o\.raw\?\.quoteRequired===true/s,'Andromeda quote-required offer owns a same-provider verification branch');
+assert.match(refreshSource,/await data\.verifyAndromeda\(o\)/,'Andromeda verification calls the dedicated same-provider quote owner');
+assert.ok(refreshSource.indexOf('verifyAndromeda(o)')<refreshSource.indexOf('runSearch({hotelIds:'),'Andromeda same-provider quote runs before generic Tourvisor fallback');
+assert.match(refreshSource,/quote\.state==='flight_selection_required'.*openAndromedaFlightChoice/s,'ambiguous Andromeda flights stay in provider-specific flight selection');
+assert.match(refreshSource,/openAndromedaVerified\(o,quote\)/,'verified Andromeda quote uses the provider-verified result view');
+
+const andromedaVerifiedStart=source.indexOf('function openAndromedaVerified(o,quote)');
+const andromedaVerifiedEnd=source.indexOf('\nasync function applyAndromedaFlightChoice()',andromedaVerifiedStart);
+assert.ok(andromedaVerifiedStart>=0&&andromedaVerifiedEnd>andromedaVerifiedStart,'Andromeda verified result owner exists');
+const andromedaVerifiedSource=source.slice(andromedaVerifiedStart,andromedaVerifiedEnd);
+assert.match(andromedaVerifiedSource,/quote\.finalPrice/,'verified Andromeda result displays supplier-confirmed final price');
+assert.match(andromedaVerifiedSource,/Оформление заявки из Andromeda.*пока не подключено/s,'Andromeda verified result states the current no-lead boundary');
+assert.doesNotMatch(andromedaVerifiedSource,/openLeadPreview|completeTour|AnyTourPrototypeLead|leadSession/,'Andromeda verified result cannot enter the Tourvisor lead path');
+
+const andromedaChoiceStart=source.indexOf('function openAndromedaFlightChoice(o,quote)');
+const andromedaChoiceEnd=source.indexOf('\nfunction openAndromedaVerified',andromedaChoiceStart);
+assert.ok(andromedaChoiceStart>=0&&andromedaChoiceEnd>andromedaChoiceStart,'Andromeda flight-choice UI owner exists');
+const andromedaChoiceSource=source.slice(andromedaChoiceStart,andromedaChoiceEnd);
+assert.match(andromedaChoiceSource,/name="andromeda-outbound"/,'Andromeda flight choice asks for outbound flight');
+assert.match(andromedaChoiceSource,/name="andromeda-return"/,'Andromeda flight choice asks for return flight');
+assert.match(source,/case 'apply-andromeda-flights':applyAndromedaFlightChoice\(\)/,'opaque Andromeda flight refs have one explicit apply action');
 const terminalizeStart=source.indexOf('function terminalizeSearchForVerification()');
 const terminalizeEnd=source.indexOf('\nfunction stopSearch()',terminalizeStart);
 assert.ok(terminalizeStart>=0&&terminalizeEnd>terminalizeStart,'provider-status terminalizer exists');
