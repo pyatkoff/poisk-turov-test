@@ -179,7 +179,7 @@ assert.ok(refreshSource.indexOf('verifyAnexConcrete(o)')<refreshSource.indexOf('
 assert.match(refreshSource,/openAnexConcreteCurrent\(o,current\)/,'current concrete ANEX result uses provider-current UI');
 
 const anexCurrentStart=source.indexOf('function openAnexConcreteCurrent(o,current)');
-const anexCurrentEnd=source.indexOf('\nfunction openAndromedaFlightChoice',anexCurrentStart);
+const anexCurrentEnd=source.indexOf('\nasync function refreshHotel',anexCurrentStart);
 assert.ok(anexCurrentStart>=0&&anexCurrentEnd>anexCurrentStart,'ANEX provider-current result owner exists');
 const anexCurrentSource=source.slice(anexCurrentStart,anexCurrentEnd);
 assert.match(anexCurrentSource,/finalPriceReady/,'ANEX result distinguishes a retained calculated total from search price');
