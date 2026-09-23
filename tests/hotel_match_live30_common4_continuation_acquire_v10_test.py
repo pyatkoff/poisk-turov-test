@@ -30,3 +30,12 @@ except RuntimeError as e:assert str(e)=='continuation_plan_authority'
 assert m.native_projection(13,'https://agent.anextour.ru/search/tour?HOTELLIST=5200')['positive_native_candidates']==[5200]
 assert m.native_projection(18,'https://www.bgoperator.ru/x?F4=12345')['positive_native_candidates']==[12345]
 print('MATCH_LIVE30_COMMON4_CONTINUATION_ACQUIRE_V10_TEST_OK')
+
+assert m.ACCOUNT_CONST=='TOURVISOR_ANEX_JWT'
+assert m.ACCOUNT_LEDGER=='tourvisor-anex'
+src=P.read_text()
+assert 'defined("TOURVISOR_ANEX_JWT")' in src
+assert 'tourvisor_anex_account_guard' in src
+assert "action in ('search_start','search_continue','flights_actualization')" in src
+assert "self.day=q/f'{ACCOUNT_LEDGER}-{day}.json'" in src
+assert "defined(\"TOURVISOR_JWT\")?TOURVISOR_JWT" in src  # only as distinct-account guard
