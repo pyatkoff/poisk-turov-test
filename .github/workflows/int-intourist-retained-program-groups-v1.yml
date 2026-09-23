@@ -41,7 +41,8 @@ jobs:
               if token in p:
                   raise SystemExit('forbidden:'+token)
           for token in ["'supplier_calls'=>0","'database_reads'=>0","'database_writes'=>0","'filesystem_writes'=>0",
-                        "'distinct_spo_count'","'probe_ready_groups'","IRPG_TARGET_OPERATION"]:
+                        "'distinct_spo_count'","'distinct_mapped_hotel_count'","'probe_ready_groups'",
+                        "'charter_probe_ready_groups'","IRPG_TARGET_OPERATION"]:
               if token not in p:
                   raise SystemExit('missing:'+token)
           print('INTOURIST_GROUP_INVENTORY_BOUNDARY_OK')
