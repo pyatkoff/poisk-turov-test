@@ -73,15 +73,19 @@ function r6_classify(array $candidates):string{
 }
 function r6_manifest(array $audit):array{
     r6_need(($audit['operation']??'')===HMC4R6_AUDIT_OP&&($audit['state']??'')==='completed_read_only_current_audit','audit_state');
-    $rows=[];$targets=[];
+    $rows=[];$targets=[];$missingTotal=0;$missingByStatus=[];
     foreach(($audit['rows']??[]) as $r){
-        if(!is_array($r)||($r['status']??'')!=='current_missing_edge'||($r['anchor_state']??'')!=='canonical_anchor_missing')continue;
+        if(!is_array($r)||($r['anchor_state']??'')!=='canonical_anchor_missing')continue;
         $ns=(string)($r['supplier_namespace']??'');if(!in_array($ns,['bgoperator','operator_315','operator_342'],true))continue;
+        $missingTotal++;$st=(string)($r['status']??'unknown');$missingByStatus[$st]=($missingByStatus[$st]??0)+1;
+        if($st!=='current_missing_edge')continue;
         $tv=(int)($r['tv_hotel_id']??0);r6_need($tv>0,'target_id');$rows[]=['supplier_namespace'=>$ns,'external_hotel_id'=>(string)$r['external_hotel_id'],'tv_hotel_id'=>$tv];
         $targets[$tv]=true;
     }
-    r6_need(count($rows)===HMC4R6_EXPECTED_ROWS,'missing_anchor_rows');
-    return ['rows'=>$rows,'target_ids'=>array_keys($targets)];
+    r6_need($missingTotal===HMC4R6_EXPECTED_ROWS,'missing_anchor_total');
+    r6_need(count($rows)>0&&count($rows)<=$missingTotal,'missing_anchor_current_rows');
+    ksort($missingByStatus);
+    return ['rows'=>$rows,'target_ids'=>array_keys($targets),'missing_anchor_total'=>$missingTotal,'missing_anchor_status_counts'=>$missingByStatus];
 }
 function r6_execute(PDO $db,array $manifest,string $sourceSha):array{
     $targetIds=array_map('intval',$manifest['target_ids']);sort($targetIds,SORT_NUMERIC);r6_need($targetIds!==[],'targets');
@@ -132,7 +136,7 @@ function r6_execute(PDO $db,array $manifest,string $sourceSha):array{
             $out[]=['tv_hotel_id'=>$tv,'source_edges'=>$byTargetRows[$tv]??[],'target'=>$h,'target_names'=>$names??[],'candidate_count'=>count($cands),'verdict'=>$verdict,'candidates'=>$cands,'safe_to_write_now'=>false];
         }
         $db->rollBack();ksort($counts);ksort($candidateIdentity);ksort($geoCounts);ksort($targetCandidateCounts,SORT_NATURAL);
-        return ['operation'=>HMC4R6_OP,'state'=>'completed_read_only_anchor_recovery_census','source_sha'=>$sourceSha,'source_audit_sha256'=>HMC4R6_AUDIT_SHA,'input_rows'=>count($manifest['rows']),'unique_targets'=>count($targetIds),'observation_table_present'=>$obsTable,'observation_columns'=>$obsColumns,'observation_rows_scanned'=>count($observations),'verdict_counts'=>$counts,'candidate_identity_state_counts'=>$candidateIdentity,'candidate_geo_counts'=>$geoCounts,'target_candidate_count_distribution'=>$targetCandidateCounts,'rows'=>$out,'supplier_calls'=>0,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
+        return ['operation'=>HMC4R6_OP,'state'=>'completed_read_only_anchor_recovery_census','source_sha'=>$sourceSha,'source_audit_sha256'=>HMC4R6_AUDIT_SHA,'source_missing_anchor_total'=>$manifest['missing_anchor_total'],'source_missing_anchor_status_counts'=>$manifest['missing_anchor_status_counts'],'input_rows'=>count($manifest['rows']),'unique_targets'=>count($targetIds),'observation_table_present'=>$obsTable,'observation_columns'=>$obsColumns,'observation_rows_scanned'=>count($observations),'verdict_counts'=>$counts,'candidate_identity_state_counts'=>$candidateIdentity,'candidate_geo_counts'=>$geoCounts,'target_candidate_count_distribution'=>$targetCandidateCounts,'rows'=>$out,'supplier_calls'=>0,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
 
@@ -151,7 +155,7 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     try{
         $audit=r6_load($input);$manifest=r6_manifest($audit);require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$result=r6_execute(v2_data_db(),$manifest,$sha);
         $h=r6_save($dir.'/result.json',$result);r6_save($dir.'/receipt.json',['operation'=>HMC4R6_OP,'state'=>$result['state'],'result_sha256'=>$h,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$h,'provider_accessed'=>false,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);
-        echo r6_json(['state'=>$result['state'],'input_rows'=>$result['input_rows'],'unique_targets'=>$result['unique_targets'],'verdict_counts'=>$result['verdict_counts'],'candidate_identity_state_counts'=>$result['candidate_identity_state_counts'],'candidate_geo_counts'=>$result['candidate_geo_counts'],'target_candidate_count_distribution'=>$result['target_candidate_count_distribution']])."\n";
+        echo r6_json(['state'=>$result['state'],'source_missing_anchor_total'=>$result['source_missing_anchor_total'],'source_missing_anchor_status_counts'=>$result['source_missing_anchor_status_counts'],'input_rows'=>$result['input_rows'],'unique_targets'=>$result['unique_targets'],'verdict_counts'=>$result['verdict_counts'],'candidate_identity_state_counts'=>$result['candidate_identity_state_counts'],'candidate_geo_counts'=>$result['candidate_geo_counts'],'target_candidate_count_distribution'=>$result['target_candidate_count_distribution']])."\n";
     }catch(Throwable $e){
         $f=['operation'=>HMC4R6_OP,'state'=>'failed_read_only_anchor_recovery_census','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',mb_substr($e->getMessage(),0,140,'UTF-8')),'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0];
         $h=r6_save($dir.'/result.json',$f);r6_save($dir.'/receipt.json',['operation'=>HMC4R6_OP,'state'=>$f['state'],'result_sha256'=>$h,'readback_verified'=>true,'provider_accessed'=>false,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);fwrite(STDERR,$f['reason']."\n");exit(2);
