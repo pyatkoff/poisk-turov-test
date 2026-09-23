@@ -47,6 +47,8 @@ $departure=$int($need('departure'),1,999999999);
 $country=$int($need('country'),1,999999999);
 $from=$date($need('date-from'));
 $to=$date($args['date-to']??$from);
+$windows=AnyTourAnexLocalOfferCollectorV1::dateWindows($from,$to);
+$windowCount=count($windows);
 $nights=$int($need('nights'),1,28);
 $adults=$int($args['adults']??'2',1,6);
 $childAges=[];
@@ -65,10 +67,12 @@ $generation=$int($args['generation']??'25061801',1,2147483647);
 $region=isset($args['region'])?$int($args['region'],1,999999999):null;
 
 $pdo=v2_data_db();
-$cache=[];$state=[];$searchRequests=0;$apdRequests=0;
-$searchBudget=max(8,$maxExpands+2);
-// One client per unique APD context at worst. Real HTTP reads are globally paced by the APD client.
-$apdBudget=max(8,$maxBatch);
+$cache=[];$searchRequests=0;$apdRequests=0;
+// Each <=7-day window keeps the existing per-window bound. These are local guard
+// capacities only; AnyTourAnexClient and APD transport continue enforcing shared
+// provider pacing/cooldown across the sequential windows.
+$searchBudget=max(8,$windowCount*($maxExpands+2));
+$apdBudget=max(8,$windowCount*$maxBatch);
 $makeClient=static function()use($apiToken,&$searchRequests,$searchBudget):AnyTourAnexClient{
     ++$searchRequests;
     if($searchRequests>$searchBudget)throw new RuntimeException('ANEX_COLLECTOR_SEARCH_BUDGET');
@@ -133,31 +137,80 @@ $batchRunner=static function(array $req,array &$collectorState)use($resolver,$me
     return $reply;
 };
 
-$result=[];
-try{
-    $result=AnyTourAnexLocalOfferCollectorV1::collect(
-        $request,$state,$searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch
-    );
-    if(($result['status']??null)==='complete'&&function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
-        // Only literal zero discovery can expire a prior exact scope as authoritative empty.
-        // Any grouped/charter/regular candidate, even if unmapped or not price-ready,
-        // keeps the previous canonical snapshot unless normal entries are published.
-        $authoritativeEmpty=($result['grouped_candidates']??null)===0
-            &&($result['charter_concrete_candidates']??null)===0
-            &&($result['regular_concrete_candidates']??null)===0;
-        $result['snapshot_finalize']=anytour_anex_anytour_offer_autosave_finalize_runtime($state,$authoritativeEmpty);
-        $requireAutosave($result['snapshot_finalize'],'finalize');
-    }elseif(function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
-        // A bounded/incomplete discovery is not authoritative for canonical freshness.
-        // Preserve staged supplier/APD state but never create a completed LOCAL refresh.
-        $result['snapshot_finalize']=['published'=>false,'reason'=>'collector_incomplete'];
+$runWindow=static function(array $windowRequest,int $index,array $window)use(
+    $searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch,$requireAutosave,&$persistenceFailure
+):array{
+    // Search refs and autosave accumulators are window-scoped. Never carry one
+    // supplier session into the next date window and accidentally publish mixed scope.
+    $state=[];
+    $persistenceFailure=null;
+    $windowResult=[];
+    try{
+        $windowResult=AnyTourAnexLocalOfferCollectorV1::collect(
+            $windowRequest,$state,$searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch
+        );
+        if(($windowResult['status']??null)==='complete'&&function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
+            // Only literal zero discovery can expire a prior exact scope as authoritative empty.
+            // Any grouped/charter/regular candidate, even if unmapped or not price-ready,
+            // keeps the previous canonical snapshot unless normal entries are published.
+            $authoritativeEmpty=($windowResult['grouped_candidates']??null)===0
+                &&($windowResult['charter_concrete_candidates']??null)===0
+                &&($windowResult['regular_concrete_candidates']??null)===0;
+            $windowResult['snapshot_finalize']=anytour_anex_anytour_offer_autosave_finalize_runtime($state,$authoritativeEmpty);
+            $requireAutosave($windowResult['snapshot_finalize'],'finalize');
+        }elseif(function_exists('anytour_anex_anytour_offer_autosave_finalize_runtime')){
+            // A bounded/incomplete discovery is not authoritative for canonical freshness.
+            // Preserve staged supplier/APD state but never create a completed LOCAL refresh.
+            $windowResult['snapshot_finalize']=['published'=>false,'reason'=>'collector_incomplete'];
+        }
+    }catch(RuntimeException $error){
+        if($error->getMessage()!=='ANEX_COLLECTOR_AUTOSAVE'||$persistenceFailure===null)throw $error;
+        $windowResult=array_replace($windowResult,[
+            'source'=>'anex-local-offer-collector-v1','status'=>'incomplete',
+            'autosave_failure'=>$persistenceFailure,'selection_authority'=>false,
+        ]);
     }
-}catch(RuntimeException $error){
-    if($error->getMessage()!=='ANEX_COLLECTOR_AUTOSAVE'||$persistenceFailure===null)throw $error;
-    $result=array_replace($result,[
-        'source'=>'anex-local-offer-collector-v1','status'=>'incomplete',
-        'autosave_failure'=>$persistenceFailure,'selection_authority'=>false,
-    ]);
+    $windowResult['window_index']=$index;
+    $windowResult['requested_date_range']=$window;
+    return $windowResult;
+};
+
+$rangeResult=AnyTourAnexLocalOfferCollectorV1::collectRange($request,$from,$to,$runWindow);
+$windowReceipts=$rangeResult['windows'];
+if($windowCount===1&&count($windowReceipts)===1){
+    $result=$windowReceipts[0]['result'];
+    $result['requested_date_range']=['from'=>$from,'to'=>$to];
+    $result['window_count']=1;
+    $result['windows_completed']=$rangeResult['windows_completed'];
+}else{
+    $sumKeys=['search_hotels','grouped_candidates','expand_calls','charter_concrete_candidates',
+        'regular_concrete_candidates','apd_batch_items','apd_batch_calls','apd_complete_offers',
+        'final_price_ready_offers','retryable_offers'];
+    $result=[
+        'source'=>'anex-local-offer-collector-v1',
+        'status'=>$rangeResult['status'],
+        'requested_date_range'=>['from'=>$from,'to'=>$to],
+        'window_count'=>$windowCount,
+        'windows_completed'=>$rangeResult['windows_completed'],
+        'windows'=>$windowReceipts,
+        'selection_authority'=>false,
+    ];
+    foreach($sumKeys as $key){
+        $result[$key]=0;
+        foreach($windowReceipts as $receipt)$result[$key]+=(int)($receipt['result'][$key]??0);
+    }
+    $allTrue=static function(string $key)use($windowReceipts,$rangeResult):bool{
+        if(($rangeResult['status']??null)!=='complete'||count($windowReceipts)===0)return false;
+        foreach($windowReceipts as $receipt)if(($receipt['result'][$key]??null)!==true)return false;
+        return true;
+    };
+    $result['grouped_drained']=$allTrue('grouped_drained');
+    $result['concrete_drained']=$allTrue('concrete_drained');
+    $result['discovered_set_drained']=$allTrue('discovered_set_drained');
+    if($rangeResult['status']!=='complete'&&$windowReceipts!==[]){
+        $last=$windowReceipts[count($windowReceipts)-1]['result'];
+        if(array_key_exists('autosave_failure',$last))$result['autosave_failure']=$last['autosave_failure'];
+    }
 }
 $result['search_client_instances']=$searchRequests;
 $result['apd_client_instances']=$apdRequests;
