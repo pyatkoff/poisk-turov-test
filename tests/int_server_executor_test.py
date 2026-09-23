@@ -50,7 +50,7 @@ class ParseTest(unittest.TestCase):
             'int-andromeda-funsun-antalya-fuel-probe-20260923-v1',
             'int-andromeda-funsun-antalya-fuel-probe-20260923-v2',
             "program_key']??null)!=='114'", "tour_key']??null)!=='78'",
-            "'amount']??null)!=='140'", "'markup']['amount'",
+            "'amount']??null)!=='140'", "markup['amount']",
             "['adults'=>2,'children'=>0,'child_ages'=>[]]",
             "'per_person_one_way'", "'excluded'", "'102.7'",
             'AnyTourOperatorFuelRuleStoreV1::append',
