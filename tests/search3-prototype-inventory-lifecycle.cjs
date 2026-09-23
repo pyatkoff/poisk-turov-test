@@ -156,15 +156,18 @@ test('direct ANEX rejects mismatched mapped hotel identity instead of inventing 
  await h.start();await h.poll();assert.deepEqual(h.providers(),['tourvisor']);
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='error'));
 });
-test('first search sends selected catalogue resort IDs before any results exist',async()=>{
+test('first search sends selected catalogue resort IDs and preserves exact multi-star OR scope',async()=>{
  const h=harness({api:(action,p)=>action==='regions'?[{id:23,name:'Сиде',countryId:Number(p.countryId)},{id:22,name:'Кемер',countryId:Number(p.countryId)}]:undefined});
  assert.throws(()=>h.data.params(trip,[],{resorts:['Сиде']}),/справочника/);
  await h.data.regions('4');await h.data.regions('4');
+ assert.equal(h.data.params(trip,[],{stars:[4]}).hotelCategory,'4');
+ assert.equal(h.data.params(trip,[],{stars:[3,5]}).hotelCategory,'');
+ assert.equal(h.data.params(trip,[],{stars:[4,5]}).hotelCategory,'');
  await h.start({resorts:['Сиде','Кемер'],stars:[4,5]});
  assert.equal(h.calls.filter(c=>c.action==='regions').length,1);
  const p=h.calls.find(c=>c.action==='search_start').params;
- assert.deepEqual(Array.from(p.regionIds),['23','22']);assert.equal(p.hotelCategory,'4');
- assert.deepEqual(Array.from(h.dbBodies[0].regionIds),['23','22']);
+ assert.deepEqual(Array.from(p.regionIds),['23','22']);assert.equal(p.hotelCategory,'');
+ assert.deepEqual(Array.from(h.dbBodies[0].regionIds),['23','22']);assert.equal(h.dbBodies[0].hotelCategory,'');
  assert.throws(()=>h.data.params(trip,[],{resorts:['Неизвестный']}),/справочника/);
 });
 test('foreign and ambiguous resort catalogue does not silently drop a selected condition',async()=>{
