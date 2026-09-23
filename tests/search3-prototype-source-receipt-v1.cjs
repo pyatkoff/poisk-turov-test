@@ -9,7 +9,8 @@ let calls = 0;
 let callbackEvents = [];
 let scenario = 'late-projection';
 const completeEvent = {type:'complete', sources:{
-  anex:{status:'partial',hotels:1,offers:2,receivedHotels:3,receivedOffers:5,mappedHotels:3,mappedOffers:5,visibleHotels:1,visibleOffers:2,scopeFilteredOffers:3,dateFrom:'2026-09-25',dateTo:'2026-09-30',secret:'x'},
+  anex:{status:'partial',hotels:1,offers:2,receivedHotels:3,receivedOffers:5,mappedHotels:3,mappedOffers:5,visibleHotels:1,visibleOffers:2,scopeFilteredOffers:2,deduplicatedOffers:1,windowsLoaded:1,windowsTotal:2,dateFrom:'2026-09-25',dateTo:'2026-09-30',secret:'x'},
+  andromeda:{status:'partial',hotels:0,offers:0,receivedHotels:2,receivedOffers:7,mappedHotels:2,mappedOffers:6,projectedOffers:5,visibleHotels:0,visibleOffers:0,scopeFilteredOffers:4,deduplicatedOffers:1,pagesLoaded:1,pagesTotal:3,dateFrom:'2026-09-25',dateTo:'2026-09-30',privatePayload:'x'},
   database:{status:'complete',hotels:2,offers:4,storedOffers:9,receivedOffers:9,mappedOffers:8,visibleOffers:4,withheldOffers:1,scopeFilteredOffers:2,eligibleHotels:3,omittedHotels:1,omittedOffers:2,providerOfferCounts:{andromeda:4,bad:null,stringy:'7',fractional:1.5},sql:'x'}
 }, union:{hotels:2,offers:5,hotelsByProvider:{anex:1,andromeda:2,bad:null},offersByProvider:{anex:2,andromeda:3,stringy:'7'},providerSets:{'anex+andromeda':1,andromeda:1},secret:'x'}};
 const data = Object.freeze({
@@ -70,8 +71,10 @@ assert.equal(receipt.schemaVersion, 1);
 assert.equal(receipt.phase, 'complete');
 assert.deepEqual(receipt.projection, {hotels:3,offers:5});
 assert.equal(receipt.providers.anex, 'loading');
-assert.deepEqual(receipt.sources.anex, {status:'partial',hotels:1,offers:2,receivedHotels:3,receivedOffers:5,mappedHotels:3,mappedOffers:5,visibleHotels:1,visibleOffers:2,scopeFilteredOffers:3,dateFrom:'2026-09-25',dateTo:'2026-09-30'});
+assert.deepEqual(receipt.sources.anex, {status:'partial',hotels:1,offers:2,receivedHotels:3,receivedOffers:5,mappedHotels:3,mappedOffers:5,visibleHotels:1,visibleOffers:2,scopeFilteredOffers:2,deduplicatedOffers:1,windowsLoaded:1,windowsTotal:2,dateFrom:'2026-09-25',dateTo:'2026-09-30'});
 assert.equal('secret' in receipt.sources.anex, false);
+assert.deepEqual(receipt.sources.andromeda, {status:'partial',hotels:0,offers:0,receivedHotels:2,receivedOffers:7,mappedHotels:2,mappedOffers:6,projectedOffers:5,visibleHotels:0,visibleOffers:0,scopeFilteredOffers:4,deduplicatedOffers:1,pagesLoaded:1,pagesTotal:3,dateFrom:'2026-09-25',dateTo:'2026-09-30'});
+assert.equal('privatePayload' in receipt.sources.andromeda, false);
 assert.deepEqual(receipt.sources.database, {status:'complete',hotels:2,offers:4,storedOffers:9,receivedOffers:9,mappedOffers:8,visibleOffers:4,
   withheldOffers:1,scopeFilteredOffers:2,eligibleHotels:3,omittedHotels:1,omittedOffers:2,providerOfferCounts:{andromeda:4}});
 assert.equal('fractional' in receipt.sources.database.providerOfferCounts, false, 'non-integer counters are rejected');
