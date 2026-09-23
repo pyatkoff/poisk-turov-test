@@ -24,6 +24,11 @@ function s942_ids(array $rows,array $aliases):array{
 function s942_one(array $rows,array $aliases):int{
     $ids=s942_ids($rows,$aliases);s942_need(count($ids)===1,'dictionary_binding');return $ids[0];
 }
+function s942_source_integrations():string{
+    $path=dirname(__DIR__,2).'/app/integrations';
+    s942_need(is_dir($path)&&!is_link($path),'source_integrations_missing');
+    return $path;
+}
 function s942_departure_binding(array $rows,string $departureName):array{
     $departureName=trim($departureName);
     if($departureName==='')return ['state'=>'departure_name_missing','ids'=>[],'id'=>null];
@@ -70,13 +75,15 @@ function s942_execute(string $root,string $dir,string $planPath,string $sourceSh
     $offset=(int)(getenv('MATCH_OFFSET')!==false?getenv('MATCH_OFFSET'):'0');$limit=(int)(getenv('MATCH_LIMIT')!==false?getenv('MATCH_LIMIT'):'942');
     s942_need($offset>=0&&$limit>=1&&$offset<942&&$offset+$limit<=942,'scope_guard');
     $scope=array_slice($plan['rows'],$offset,$limit);
-    $app=$root.'/app/integrations';if(!is_dir($app))$app=$root.'/v2/app/integrations';
+    $app=s942_source_integrations();
     require_once $app.'/andromeda-client.php';require_once $app.'/andromeda-transport.php';
     $cfg=s942_private_config($root);
-    $private=dirname($cfg['catalog_path']);$calls=0;$transport=new AnyTourAndromedaTransport(true);
-    $wrap=function($url,$opts)use($transport,$private,&$calls,$dir){
+    $private=dirname($cfg['catalog_path']);$calls=0;$lastHttpStarted=0.0;
+    $wrap=function($url,$opts)use($private,&$calls,$dir,&$lastHttpStarted){
         $next=$calls+1;s942_need($next<=MAX_HTTP,'operation_http_cap');s942_budget($private,OP,$next);$calls=$next;
         s942_save($dir.'/samo-http-'.str_pad((string)$calls,4,'0',STR_PAD_LEFT).'-reserved.json',['operation'=>OP,'call'=>$calls,'state'=>'reserved_before_http']);
+        $wait=1.05-(microtime(true)-$lastHttpStarted);if($wait>0)usleep((int)ceil($wait*1000000));
+        $transport=new AnyTourAndromedaTransport(true);$lastHttpStarted=microtime(true);
         return $transport($url,$opts);
     };
     $base=['operation'=>OP,'source_sha'=>$sourceSha,'frontier_count'=>942,'tourvisor_calls'=>0,'direct_anex_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
