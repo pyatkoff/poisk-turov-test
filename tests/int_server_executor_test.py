@@ -119,6 +119,11 @@ class ParseTest(unittest.TestCase):
         self.assertEqual('match-secondary-audit',v['mode'])
         self.assertEqual(SHA,v['source_sha'])
 
+    def test_match_coverage_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-coverage int-andromeda-match-coverage-20260923-v1')
+        self.assertEqual('match-coverage',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
+
     def test_match_tv942_reconcile_mode(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-tv942-reconcile int-anex-match-tv942-reconcile-20260923-v1')
         self.assertEqual('match-tv942-reconcile',v['mode'])
@@ -172,6 +177,8 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} match-readback int-anex-match-tv942-readback-20260923-v1 tv 900 43',
           f'/run-int-server-v1 {SHA} match-secondary-audit int-anex-match-secondary-audit-20260923-v1',
           f'/run-int-server-v1 {SHA} match-secondary-audit int-andromeda-match-secondary-audit-20260923-v1 extra',
+          f'/run-int-server-v1 {SHA} match-coverage int-anex-match-coverage-20260923-v1',
+          f'/run-int-server-v1 {SHA} match-coverage int-andromeda-match-coverage-20260923-v1 extra',
           f'/run-int-server-v1 {SHA} match-tv942-reconcile int-andromeda-match-tv942-reconcile-20260923-v1',
           f'/run-int-server-v1 {SHA} match-tv942-reconcile int-anex-match-tv942-reconcile-20260923-v1 extra',
           f'/run-int-server-v1 {SHA} match-tv942-write int-anex-match-tv942-write-20260923-v1 extra',
@@ -337,13 +344,18 @@ class ContractTest(unittest.TestCase):
                   ".anytoour-match/operations","match_terminal_hash",
                   "match-secondary-audit","run_match_secondary_audit",
                   "hotel_match_live_anex_samo_missing_secondary_audit_v1.php",
-                  "match_secondary_terminal_hash","match-readback","match942_child_name","read_match942",
+                  "match_secondary_terminal_hash",
+                  "match-coverage","run_match_coverage",
+                  "hotel_match_tv_samo_anex_coverage_v1.php",
+                  "hotel_match_current_coverage_wrapper_v1.php",
+                  "match_coverage_terminal_hash",
+                  "match-readback","match942_child_name","read_match942",
                   "match-tv942-reconcile","run_match_tv942_reconcile",
                   "hotel_match_live942_tv_candidate_reconcile_v1.php",
                   "match-tv942-write","run_match_tv942_write",
                   "hotel_match_live942_tv_writer_v1.php",
                   "match_tv_writer_manifest_hash","match_tv_writer_terminal_guard",
-                  "install-runtime','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
+                  "install-runtime','match-coverage','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
