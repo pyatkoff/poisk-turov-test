@@ -52,6 +52,49 @@ pc_assert(($byDate['2026-09-12']['best'] ?? false) === true, 'best date marked')
 $single = v2_price_calendar_build([$rows[0]], '2026-09-10', '2026-09-10');
 pc_assert(array_key_exists('bestDate', $single) && $single['bestDate'] === null, 'one observed day must not manufacture a best badge');
 
+$defaultParty = v2_price_calendar_party(2, []);
+pc_assert($defaultParty === [
+    'adults' => 2,
+    'childAges' => [],
+    'childrenCount' => 0,
+    'childAgesSignature' => '',
+], 'default party preserves legacy 2-adult contract');
+
+$familyParty = v2_price_calendar_party('2', ['7', '2']);
+pc_assert($familyParty === [
+    'adults' => 2,
+    'childAges' => [2, 7],
+    'childrenCount' => 2,
+    'childAgesSignature' => '2,7',
+], 'child ages canonicalize to exact sorted observation signature');
+
+$commaParty = v2_price_calendar_party('1', '10,4,0');
+pc_assert(($commaParty['childAges'] ?? null) === [0, 4, 10], 'comma-separated child ages canonicalize');
+pc_assert(($commaParty['childAgesSignature'] ?? null) === '0,4,10', 'comma-separated child signature exact');
+
+foreach ([
+    [0, []],
+    [7, []],
+    [2, ['', 4]],
+    [2, [18]],
+    [2, [1, 2, 3, 4]],
+    [2, [['age' => 4]]],
+] as [$adults, $childs]) {
+    try {
+        v2_price_calendar_party($adults, $childs);
+        pc_assert(false, 'invalid party must fail closed');
+    } catch (InvalidArgumentException) {
+        // expected
+    }
+}
+
+$readerSource = (string)file_get_contents(__DIR__ . '/../v2/data/price-calendar-read-v1.php');
+pc_assert(str_contains($readerSource, "v2_price_calendar_party(\$_GET['adults'] ?? 2, \$_GET['childs'] ?? [])"), 'reader resolves exact party');
+pc_assert(str_contains($readerSource, 'AND o.adults=:adults'), 'reader filters exact adults');
+pc_assert(str_contains($readerSource, 'AND o.children_count=:children_count'), 'reader filters exact child count');
+pc_assert(str_contains($readerSource, 'AND o.child_ages_signature=:child_ages_signature'), 'reader filters exact child ages');
+pc_assert(!str_contains($readerSource, 'AND o.adults=2 AND o.children_count=0'), 'reader must not hard-code 2 adults/no children');
+
 try {
     v2_price_calendar_build([], '2026-02-31', '2026-03-01');
     pc_assert(false, 'impossible calendar date must fail');
