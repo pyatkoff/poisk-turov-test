@@ -134,6 +134,11 @@ class ParseTest(unittest.TestCase):
         self.assertEqual('match-coverage',v['mode'])
         self.assertEqual(SHA,v['source_sha'])
 
+    def test_match_coverage_v2_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-coverage-v2 int-andromeda-match-coverage-v2-20260923-v1')
+        self.assertEqual('match-coverage-v2',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
+
     def test_match_coverage_readback_mode(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-coverage-readback int-andromeda-match-coverage-readback-20260923-v1')
         self.assertEqual('match-coverage-readback',v['mode'])
@@ -197,6 +202,8 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} match-secondary-audit int-andromeda-match-secondary-audit-20260923-v1 extra',
           f'/run-int-server-v1 {SHA} match-coverage int-anex-match-coverage-20260923-v1',
           f'/run-int-server-v1 {SHA} match-coverage int-andromeda-match-coverage-20260923-v1 extra',
+          f'/run-int-server-v1 {SHA} match-coverage-v2 int-anex-match-coverage-v2-20260923-v1',
+          f'/run-int-server-v1 {SHA} match-coverage-v2 int-andromeda-match-coverage-v2-20260923-v1 extra',
           f'/run-int-server-v1 {SHA} match-coverage-readback int-anex-match-coverage-readback-20260923-v1',
           f'/run-int-server-v1 {SHA} match-coverage-readback int-andromeda-match-coverage-readback-20260923-v1 extra',
           f'/run-int-server-v1 {SHA} match-tv942-reconcile int-andromeda-match-tv942-reconcile-20260923-v1',
