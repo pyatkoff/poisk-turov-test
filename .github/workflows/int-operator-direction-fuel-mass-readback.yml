@@ -1,0 +1,44 @@
+name: INT operator direction fuel mass readback
+
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'scripts/diagnostics/int_operator_direction_fuel_mass_readback_v1.php'
+      - 'tests/int_operator_direction_fuel_mass_readback_v1_test.php'
+      - '.github/workflows/int-operator-direction-fuel-mass-readback.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Validate supplier-free direction fuel readback
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/int_operator_direction_fuel_mass_readback_v1.php
+          php -l tests/int_operator_direction_fuel_mass_readback_v1_test.php
+          php -d allow_url_fopen=0 tests/int_operator_direction_fuel_mass_readback_v1_test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('scripts/diagnostics/int_operator_direction_fuel_mass_readback_v1.php').read_text()
+          assert 'curl_' not in src and 'http://' not in src and 'https://' not in src
+          assert 'START TRANSACTION READ ONLY' in src
+          upper=src.upper()
+          for forbidden in ['INSERT INTO ', 'UPDATE ANYTOUR_', 'DELETE FROM ', 'REPLACE INTO ']:
+              assert forbidden not in upper
+          assert "operator_fuel_rule" in src
+          assert "operator_fuel_direction_rule" in src
+          assert "final_price_verified_promotions" in src
+          print('INT direction fuel readback boundary: PASS')
+          PY
