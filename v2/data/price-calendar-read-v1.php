@@ -35,9 +35,11 @@ try {
     $nightsTo = price_calendar_int('nightsTo', 1, 30, 10);
     if ($nightsTo < $nightsFrom) throw new InvalidArgumentException('nightsTo must not precede nightsFrom');
 
-    // v1 deliberately uses the canonical SEO/search comparison party: two adults,
-    // no children. Child ages materially affect package price and need their own
-    // explicit calendar contract rather than being mixed here.
+    // Backward compatible when omitted, but never mix observations across a
+    // materially different tourist party. `childs[]=...` and comma-separated
+    // `childs=...` both resolve to the same canonical sorted age signature.
+    $party = v2_price_calendar_party($_GET['adults'] ?? 2, $_GET['childs'] ?? []);
+
     $dateFrom = trim((string)($_GET['dateFrom'] ?? ''));
     $dateTo = trim((string)($_GET['dateTo'] ?? ''));
     $from = v2_price_calendar_date($dateFrom);
@@ -66,7 +68,9 @@ try {
            {$regionSql}
            AND o.departure_date BETWEEN :date_from AND :date_to
            AND o.nights BETWEEN :nights_from AND :nights_to
-           AND o.adults=2 AND o.children_count=0
+           AND o.adults=:adults
+           AND o.children_count=:children_count
+           AND o.child_ages_signature=:child_ages_signature
            AND o.price>0 AND o.currency='RUB'
     )
     SELECT departure_date,
@@ -87,6 +91,9 @@ try {
         'date_to' => $dateTo,
         'nights_from' => $nightsFrom,
         'nights_to' => $nightsTo,
+        'adults' => $party['adults'],
+        'children_count' => $party['childrenCount'],
+        'child_ages_signature' => $party['childAgesSignature'],
     ];
     if ($regionId > 0) $params['region_id'] = $regionId;
     $stmt->execute($params);
@@ -100,8 +107,10 @@ try {
         'regionId' => $regionId > 0 ? $regionId : null,
         'nightsFrom' => $nightsFrom,
         'nightsTo' => $nightsTo,
-        'adults' => 2,
-        'childrenCount' => 0,
+        'adults' => $party['adults'],
+        'childrenCount' => $party['childrenCount'],
+        'childAges' => $party['childAges'],
+        'childAgesSignature' => $party['childAgesSignature'],
         'currency' => 'RUB',
         'observationWindowHours' => 72,
         'source' => 'latest-known-exact-segments-from-anytour-first-party-observations',

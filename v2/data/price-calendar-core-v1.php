@@ -12,6 +12,57 @@ function v2_price_calendar_date(string $raw): DateTimeImmutable
     return $date;
 }
 
+/**
+ * Exact package-tour party contract used by observation-backed calendars.
+ *
+ * Search3 already stores child ages in tour_price_observations as a comma-separated
+ * signature. Keep the reader on the same canonical order so an observation can
+ * never leak from another party merely because child ages were supplied in a
+ * different UI order.
+ */
+function v2_price_calendar_party($adultsRaw, $childAgesRaw): array
+{
+    $adults = filter_var($adultsRaw, FILTER_VALIDATE_INT);
+    if ($adults === false || (int)$adults < 1 || (int)$adults > 6) {
+        throw new InvalidArgumentException('calendar adults must be an integer from 1 to 6');
+    }
+
+    if ($childAgesRaw === null || $childAgesRaw === '') {
+        $rawAges = [];
+    } elseif (is_array($childAgesRaw)) {
+        $rawAges = array_values($childAgesRaw);
+    } elseif (is_string($childAgesRaw) || is_int($childAgesRaw)) {
+        $raw = trim((string)$childAgesRaw);
+        $rawAges = $raw === '' ? [] : explode(',', $raw);
+    } else {
+        throw new InvalidArgumentException('calendar child ages must be an array or comma-separated integers');
+    }
+
+    if (count($rawAges) > 3) {
+        throw new InvalidArgumentException('calendar supports at most 3 children');
+    }
+
+    $ages = [];
+    foreach ($rawAges as $rawAge) {
+        if (is_array($rawAge) || is_object($rawAge)) {
+            throw new InvalidArgumentException('calendar child age must be an integer from 0 to 17');
+        }
+        $age = filter_var($rawAge, FILTER_VALIDATE_INT);
+        if ($age === false || (int)$age < 0 || (int)$age > 17) {
+            throw new InvalidArgumentException('calendar child age must be an integer from 0 to 17');
+        }
+        $ages[] = (int)$age;
+    }
+    sort($ages, SORT_NUMERIC);
+
+    return [
+        'adults' => (int)$adults,
+        'childAges' => $ages,
+        'childrenCount' => count($ages),
+        'childAgesSignature' => implode(',', $ages),
+    ];
+}
+
 function v2_price_calendar_build(array $rows, string $dateFrom, string $dateTo): array
 {
     $from = v2_price_calendar_date($dateFrom);
