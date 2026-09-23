@@ -1,0 +1,32 @@
+name: Search3 consumer price history contract
+
+on:
+  pull_request:
+    branches:
+      - release/search3-production-ready-v1
+    paths:
+      - 'v2/data/price-segment-v1.php'
+      - 'v2/data/price-consumer-intelligence-v1.php'
+      - 'v2/data/price-consumer-intelligence-read-v1.php'
+      - 'tests/price-consumer-intelligence-smoke.php'
+      - '.github/workflows/search3-price-consumer-intelligence-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate operator-independent consumer price history
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/price-segment-v1.php >/dev/null
+          php -l v2/data/price-intelligence-v1.php >/dev/null
+          php -l v2/data/price-consumer-intelligence-v1.php >/dev/null
+          php -l v2/data/price-consumer-intelligence-read-v1.php >/dev/null
+          php -l tests/price-consumer-intelligence-smoke.php >/dev/null
+          php tests/price-consumer-intelligence-smoke.php
