@@ -724,43 +724,43 @@ function renderSearchStatus(items,total){
  if(!items.length&&r.pending)$('#cards').innerHTML=Array.from({length:2},()=>'<div class="search-skeleton" aria-hidden="true"><div class="skeleton-photo"></div><div class="skeleton-lines"><i></i><i></i><i></i></div></div>').join('');
 }
 
-function runSearch(options={}){
- if(state.filters.hotelId&&!destinationHotel(state.filters.hotelId)?.legacyIds.length){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return;}
+function prepareSearchRun(options={}){
+ if(state.filters.hotelId&&!destinationHotel(state.filters.hotelId)?.legacyIds.length){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  resultCalendar.controller?.abort();resultCalendar={key:null,hotels:[],observations:[],phase:'idle',controller:null};
  selectionGeneration++;selectedOffer=null;demoteSavedTour();removedSelectedTour=null;removedSelectedTourHotel=null;removedSelectedTourObservedAt=0;window.AnyTourPrototypeLead.reset();updateNav();state.hasSearched=true;
  const key=searchKey(state.search);searchResponse={key,phase:'loading',operators:[],pending:true,exactRefresh:options.exactRefresh===true};collapseSearch();
  if(options.exactRefreshTarget)searchResponse.exactRefreshTarget=selectedTourOfferSnapshot(options.exactRefreshTarget);
- data.search(state.search,event=>{
-  if(key!==searchKey(state.search))return;
-  if(event.type==='results'){
-   const incoming=new Map(event.hotels.map(h=>[h.id,h]));
-   hotels=hotels.filter(h=>state.favorites.includes(h.id)||state.compare.includes(h.id)).map(h=>({...h,offers:[]}));
-   hotels=[...new Map([...hotels,...incoming.values()].map(h=>[h.id,h])).values()];
-   operators.splice(0,operators.length,...new Set(hotels.flatMap(h=>h.offers.map(o=>o.operator))));
-   hotels.forEach(h=>h.offers.forEach(o=>{mealNames[o.meal]=o.meal;}));
-  }
-  if(event.type==='loading'){searchResponse.pending=true;searchResponse.phase='loading';searchResponse.continued=event.continued===true;searchResponse.canContinue=false;searchResponse.message=event.retryRead?'Проверяем результат предыдущего запроса без повторного запуска.':event.continued?'Запрашиваем дополнительные варианты. Найденные предложения сохраняются.':'';}
-  if(event.type==='provider'){searchResponse.providers??={};searchResponse.providers[event.provider]=event.status;}
-  if(event.type==='database-error')searchResponse.databaseError=true;
-  if(event.type==='database')searchResponse.databaseError=false;
-  if(event.type==='progress')searchResponse.message='Получаем предложения · '+event.progress+'%';
-  if(event.type==='complete'){searchResponse.pending=false;searchResponse.phase='complete';searchResponse.canContinue=event.canContinue===true;searchResponse.retryRead=event.retryRead===true;searchResponse.resultLimitReached=event.resultLimitReached===true;searchResponse.sources=event.sources||searchResponse.sources||{};}
-  if(event.type==='error'){searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=event.message;searchResponse.canContinue=event.canContinue===true;searchResponse.retryRead=event.retryRead===true;}
-  renderResults();updateSearchUI();if(modalType==='dates')refreshCalendarPrices();
- },options.hotelIds||(state.filters.hotelId?destinationHotel(state.filters.hotelId)?.legacyIds||[]:[]),structuredClone(state.filters)).catch(error=>{searchResponse.pending=false;searchResponse.phase='error';searchResponse.message=error.message;renderResults();});
- renderResults();
+ return {search:state.search,filters:structuredClone(state.filters),hotelIds:options.hotelIds||(state.filters.hotelId?destinationHotel(state.filters.hotelId)?.legacyIds||[]:[]),response:searchResponse};
 }
-
-function search(){
+function mergeSearchResults(event){
+ const incoming=new Map(event.hotels.map(h=>[h.id,h]));
+ hotels=hotels.filter(h=>state.favorites.includes(h.id)||state.compare.includes(h.id)).map(h=>({...h,offers:[]}));
+ hotels=[...new Map([...hotels,...incoming.values()].map(h=>[h.id,h])).values()];
+ operators.splice(0,operators.length,...new Set(hotels.flatMap(h=>h.offers.map(o=>o.operator))));
+ hotels.forEach(h=>h.offers.forEach(o=>{mealNames[o.meal]=o.meal;}));
+}
+function commitSearchDraft(){
  const selectedDay=draftSelectedDate();
  draft.origin=$('#origin').value;const countryChanged=draft.country!==state.search.country;state.search=structuredClone(draft);state.hasSearched=true;
  if(countryChanged){state.filters.resorts=[];state.filters.hotelId=0;state.filters.q='';state.onlyFavorites=false;}
  if(draftDestination){state.filters.resorts=[...draftDestination.resorts];state.filters.hotelId=draftDestination.hotelId;state.filters.q='';draftDestination=null;}
- rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();renderFilters();runSearch();
- $('#search-status').scrollIntoView({behavior:scrollBehavior(),block:'start'});
+ rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();renderFilters();
+ return {};
 }
-
-$('#search-form').addEventListener('submit',e=>{e.preventDefault();search()});
+const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
+ form:$('#search-form'),
+ data,
+ prepare:prepareSearchRun,
+ currentKey:()=>searchKey(state.search),
+ onResults:mergeSearchResults,
+ afterEvent:()=>{renderResults();updateSearchUI();if(modalType==='dates')refreshCalendarPrices();},
+ afterStart:()=>renderResults(),
+ afterFailure:()=>renderResults(),
+ commit:commitSearchDraft,
+ afterSubmit:()=>$('#search-status').scrollIntoView({behavior:scrollBehavior(),block:'start'})
+});
+function runSearch(options={}){return searchLifecycle.run(options);}
+searchLifecycle.bind();
 document.addEventListener('change',e=>{const t=e.target;
  if(t.name==='flight-pair'&&flightDraft){flightDraft.id=t.value;updateFlightPreview();}
  if(t.name==='comparison-focus'){selectComparisonVariant(+t.value);}
