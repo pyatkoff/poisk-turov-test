@@ -5,9 +5,11 @@ on:
     branches: ['feature/anex-search-adapter-20260907']
     paths:
       - 'app/integrations/andromeda-operator-fuel-retained-intake.php'
+      - 'app/integrations/andromeda-search-surcharge.php'
       - 'app/integrations/operator-fuel-rule-evidence.php'
       - 'app/integrations/operator-fuel-rule-store.php'
       - 'tests/andromeda-operator-fuel-retained-intake-test.php'
+      - 'tests/operator-fuel-rule-evidence-test.php'
       - '.github/workflows/andromeda-operator-fuel-retained-intake.yml'
 
 permissions:
@@ -28,8 +30,12 @@ jobs:
       - name: Validate saved-only SAMO fuel intake
         run: |
           set -euo pipefail
+          php -l app/integrations/andromeda-search-surcharge.php
+          php -l app/integrations/operator-fuel-rule-evidence.php
           php -l app/integrations/andromeda-operator-fuel-retained-intake.php
+          php -l tests/operator-fuel-rule-evidence-test.php
           php -l tests/andromeda-operator-fuel-retained-intake-test.php
+          php -d allow_url_fopen=0 tests/operator-fuel-rule-evidence-test.php
           php -d allow_url_fopen=0 tests/andromeda-operator-fuel-retained-intake-test.php
           python3 - <<'PY'
           from pathlib import Path
