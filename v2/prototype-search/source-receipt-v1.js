@@ -10,13 +10,13 @@
   ]);
   const statuses = new Set(['loading','complete','partial','error','skipped']);
   const safeKey = value => typeof value === 'string' && /^[A-Za-z0-9_.:+-]{1,80}$/.test(value);
+  const safeCount = value => Number.isSafeInteger(value) && value >= 0;
   const cleanCounts = value => {
     const out = {};
     if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
     for (const [key, raw] of Object.entries(value)) {
       if (!safeKey(key)) continue;
-      const n = raw;
-      if (Number.isSafeInteger(n) && n >= 0) out[key] = n;
+      if (safeCount(raw)) out[key] = raw;
     }
     return out;
   };
@@ -26,7 +26,7 @@
     if (statuses.has(value.status)) out.status = value.status;
     for (const field of countFields) {
       const n = value[field];
-      if (Number.isSafeInteger(n) && n >= 0) out[field] = n;
+      if (safeCount(n)) out[field] = n;
     }
     if (value.providerOfferCounts && typeof value.providerOfferCounts === 'object') {
       out.providerOfferCounts = cleanCounts(value.providerOfferCounts);
@@ -56,6 +56,35 @@
       hotelsByProvider: cleanCounts(value.hotelsByProvider),
       offersByProvider: cleanCounts(value.offersByProvider),
       providerSets: cleanCounts(value.providerSets)
+    };
+  };
+  const visibleCount = (row, field, fallback) => {
+    if (!row || typeof row !== 'object' || row.status === 'skipped' || row.status === 'error') return 0;
+    if (safeCount(row[field])) return row[field];
+    return safeCount(row[fallback]) ? row[fallback] : null;
+  };
+  const dedupeSnapshot = (sources, union) => {
+    if (!union || !safeCount(union.hotels) || !safeCount(union.offers)
+      || !sources || typeof sources !== 'object' || Array.isArray(sources)) return null;
+    const rows = Object.values(sources).filter(row => row && typeof row === 'object' && row.status !== 'skipped' && row.status !== 'error');
+    if (!rows.length) return null;
+    let sourceVisibleHotels = 0, sourceVisibleOffers = 0;
+    for (const row of rows) {
+      const hotels = visibleCount(row, 'visibleHotels', 'hotels');
+      const offers = visibleCount(row, 'visibleOffers', 'offers');
+      if (hotels === null || offers === null) return null;
+      sourceVisibleHotels += hotels;
+      sourceVisibleOffers += offers;
+      if (!Number.isSafeInteger(sourceVisibleHotels) || !Number.isSafeInteger(sourceVisibleOffers)) return null;
+    }
+    if (sourceVisibleHotels < union.hotels || sourceVisibleOffers < union.offers) return null;
+    return {
+      sourceVisibleHotels,
+      sourceVisibleOffers,
+      unionHotels: union.hotels,
+      unionOffers: union.offers,
+      dedupedHotels: sourceVisibleHotels - union.hotels,
+      dedupedOffers: sourceVisibleOffers - union.offers
     };
   };
   const resultSnapshot = event => {
@@ -92,6 +121,7 @@
       providers: {},
       sources: {},
       union: null,
+      dedupe: null,
       projection: {hotels: 0, offers: 0}
     };
     let projectedUnion = null;
@@ -104,6 +134,7 @@
           receipt.projection = snapshot.projection;
           projectedUnion = snapshot.union;
           receipt.union = snapshot.union;
+          receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
         }
         if (event.type === 'provider' && safeKey(event.provider)) {
           const provider = cleanSource(event);
@@ -113,6 +144,7 @@
           receipt.phase = event.partial === true ? 'partial' : 'complete';
           receipt.sources = cleanSources(event.sources);
           receipt.union = projectedUnion || cleanUnion(event.union);
+          receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
         }
         if (event.type === 'error') receipt.phase = 'error';
       }
