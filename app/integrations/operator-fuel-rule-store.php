@@ -48,15 +48,7 @@ final class AnyTourOperatorFuelRuleStoreV1
             self::assertDirectory($directory);
             $operator = $target['operator'] ?? null;
             if (!is_string($operator)) return null;
-            if (array_key_exists('direction', $target)) {
-                $direction = AnyTourOperatorFuelRuleEvidenceV1::canonicalDirection($operator, $target['direction']);
-            } elseif (is_array($target['search_params'] ?? null)) {
-                $direction = AnyTourOperatorFuelRuleEvidenceV1::directionFromSearch($operator, $target['search_params']);
-            } else {
-                $provider = $target['provider'] ?? null;
-                $scope = AnyTourOperatorFuelRuleEvidenceV1::canonicalScope($provider, $operator, $target['scope'] ?? null);
-                $direction = AnyTourOperatorFuelRuleEvidenceV1::directionFromScope($operator, $scope);
-            }
+            $direction = self::directionForTarget($target, $operator);
             $digest = AnyTourOperatorFuelRuleEvidenceV1::directionDigest($direction);
             $envelope = self::readEnvelope(self::path($directory, $digest), true);
             if ($envelope === null) return null;
@@ -70,22 +62,114 @@ final class AnyTourOperatorFuelRuleStoreV1
     public static function pricingEnvelopeForTarget(string $directory, array $target, int $now, ?array $exchange = null): ?array
     {
         $input = self::inputForTarget($directory, $target, $now, $exchange);
-        if ($input === null) return null;
-        if (($input['direction']['operator_family'] ?? null) === 'fun_and_sun'
-            && ($input['direction']['destination'] ?? null) === 'country:4') {
-            $input['owner_policy'] = [
-                'schema_version'=>1,
-                'source'=>'owner_policy',
-                'policy_date'=>'2026-09-23',
-                'operator_family'=>'fun_and_sun',
-                'destination'=>'country:4',
-                'amount'=>'70.00',
-                'currency'=>'EUR',
-                'unit'=>'per_person_one_way',
-                'base_relation'=>'excluded',
-            ];
+        if ($input !== null) {
+            $policy = self::ownerPolicyForDirection($input['direction'] ?? null);
+            if ($policy !== null) $input['owner_policy'] = $policy;
+            return ['state'=>'operator_fuel','operator_fuel'=>$input];
         }
-        return ['state'=>'operator_fuel','operator_fuel'=>$input];
+        $fallback = self::ownerFallbackInput($directory, $target, $now, $exchange);
+        return $fallback === null ? null : ['state'=>'operator_fuel','operator_fuel'=>$fallback];
+    }
+
+    private static function ownerFallbackInput(string $directory, array $target, int $now, ?array $exchange): ?array
+    {
+        try {
+            self::assertDirectory($directory);
+            if ($now < 1 || !is_array($exchange)) return null;
+            $operator = $target['operator'] ?? null;
+            if (!is_string($operator)) return null;
+            $direction = self::directionForTarget($target, $operator);
+            $policy = self::ownerPolicyForDirection($direction);
+            if ($policy === null) return null;
+            $party = self::partyForTarget($target);
+            foreach ($party['child_ages'] as $age) if ($age < 2) return null;
+            $offer = self::digest($target['offer_ref_digest'] ?? null);
+            $fx = self::exchangeForDirection($exchange, $direction, $now);
+            return [
+                'offer_ref_digest'=>$offer,
+                'direction'=>$direction,
+                'party'=>$party,
+                'observations'=>[],
+                'exchange'=>$fx,
+                'owner_policy'=>$policy,
+            ];
+        } catch (Throwable $ignored) {
+            return null;
+        }
+    }
+
+    private static function directionForTarget(array $target, string $operator): array
+    {
+        if (array_key_exists('direction', $target)) {
+            return AnyTourOperatorFuelRuleEvidenceV1::canonicalDirection($operator, $target['direction']);
+        }
+        if (is_array($target['search_params'] ?? null)) {
+            return AnyTourOperatorFuelRuleEvidenceV1::directionFromSearch($operator, $target['search_params']);
+        }
+        $provider = $target['provider'] ?? null;
+        $scope = AnyTourOperatorFuelRuleEvidenceV1::canonicalScope($provider, $operator, $target['scope'] ?? null);
+        return AnyTourOperatorFuelRuleEvidenceV1::directionFromScope($operator, $scope);
+    }
+
+    private static function ownerPolicyForDirection(mixed $direction): ?array
+    {
+        if (!is_array($direction)
+            || ($direction['operator_family'] ?? null) !== 'fun_and_sun'
+            || ($direction['destination'] ?? null) !== 'country:4') return null;
+        return [
+            'schema_version'=>1,
+            'source'=>'owner_policy',
+            'policy_date'=>'2026-09-23',
+            'operator_family'=>'fun_and_sun',
+            'destination'=>'country:4',
+            'amount'=>'70.00',
+            'currency'=>'EUR',
+            'unit'=>'per_person_one_way',
+            'base_relation'=>'excluded',
+        ];
+    }
+
+    private static function partyForTarget(array $target): array
+    {
+        $value = array_key_exists('party', $target)
+            ? $target['party']
+            : (is_array($target['scope'] ?? null) ? ($target['scope']['party'] ?? null) : null);
+        if (!is_array($value) || count($value) !== 3
+            || !is_int($value['adults'] ?? null) || $value['adults'] < 1 || $value['adults'] > 9
+            || !is_int($value['children'] ?? null) || $value['children'] < 0 || $value['children'] > 9
+            || !is_array($value['child_ages'] ?? null) || !array_is_list($value['child_ages'])
+            || count($value['child_ages']) !== $value['children']) throw new InvalidArgumentException('OPERATOR_FUEL_PARTY');
+        $ages = $value['child_ages'];
+        foreach ($ages as $age) if (!is_int($age) || $age < 0 || $age > 17) throw new InvalidArgumentException('OPERATOR_FUEL_PARTY');
+        sort($ages, SORT_NUMERIC);
+        return ['adults'=>$value['adults'],'children'=>$value['children'],'child_ages'=>$ages];
+    }
+
+    private static function exchangeForDirection(array $value, array $direction, int $now): array
+    {
+        if (($value['from'] ?? null) !== 'EUR' || ($value['to'] ?? null) !== 'RUB'
+            || !is_string($value['rate'] ?? null)
+            || preg_match('/\A(?:0|[1-9][0-9]{0,5})(?:\.[0-9]{1,8})?\z/D', $value['rate']) !== 1
+            || preg_match('/[1-9]/', $value['rate']) !== 1
+            || ($value['scope_sha256'] ?? null) !== AnyTourOperatorFuelRuleEvidenceV1::directionDigest($direction)
+            || !is_int($value['observed_at'] ?? null) || !is_int($value['expires_at'] ?? null)
+            || $value['observed_at'] < 1 || $value['observed_at'] > $now || $value['expires_at'] <= $now) {
+            throw new InvalidArgumentException('OPERATOR_FUEL_EXCHANGE');
+        }
+        return [
+            'from'=>'EUR','to'=>'RUB','rate'=>$value['rate'],
+            'scope_sha256'=>$value['scope_sha256'],
+            'observed_at'=>$value['observed_at'],'expires_at'=>$value['expires_at'],
+            'evidence_sha256'=>self::digest($value['evidence_sha256'] ?? null),
+        ];
+    }
+
+    private static function digest(mixed $value): string
+    {
+        if (!is_string($value) || preg_match('/\A[a-f0-9]{64}\z/D', $value) !== 1) {
+            throw new InvalidArgumentException('OPERATOR_FUEL_DIGEST');
+        }
+        return $value;
     }
 
     private static function path(string $directory, string $digest): string
