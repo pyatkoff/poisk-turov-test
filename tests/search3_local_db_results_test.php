@@ -106,10 +106,12 @@ $pdo->exec("CREATE TABLE tour_price_observations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 $obs=$pdo->prepare("INSERT INTO tour_price_observations
  (departure_id,country_id,region_id,hotel_id,departure_date,nights,adults,children_count,child_ages_signature,meal_id,room_id,room_type,operator_id,currency,price,search_id,observed_at)
- VALUES(1,4,23,?,?,?,?,2,?,NULL,NULL,'STANDARD',NULL,'RUB',?,?,?)");
-$obs->execute([501,'2026-10-06',7,1,'3,7','99000',11,'2026-10-06 09:00:00']);
-$obs->execute([502,'2026-10-06',7,1,'4,7','1000',12,'2026-10-06 09:05:00']);
-$obs->execute([503,'2026-10-07',7,1,'3,7','110000',13,'2026-10-06 09:10:00']);
+ VALUES(1,4,?,?,?,?,?,2,?,NULL,NULL,'STANDARD',NULL,'RUB',?,?,?)");
+$obs->execute([23,501,'2026-10-06',7,1,'3,7','99000',11,'2026-10-06 09:00:00']);
+$obs->execute([23,502,'2026-10-06',7,1,'4,7','1000',12,'2026-10-06 09:05:00']);
+$obs->execute([23,503,'2026-10-07',7,1,'3,7','110000',13,'2026-10-06 09:10:00']);
+$obs->execute([24,504,'2026-10-06',7,1,'3,7','88000',14,'2026-10-06 09:15:00']);
+$obs->execute([25,505,'2026-10-06',7,1,'3,7','50000',15,'2026-10-06 09:20:00']);
 $calendar=search3_local_price_calendar($pdo,[
  'action'=>'price_calendar','departureId'=>1,'countryId'=>4,'regionId'=>23,
  'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07','nightsFrom'=>7,'nightsTo'=>7,
@@ -117,14 +119,35 @@ $calendar=search3_local_price_calendar($pdo,[
 ],$at);
 need($calendar['ok']===true&&$calendar['adults']===1&&$calendar['childrenCount']===2
     &&$calendar['childAges']===[3,7]&&$calendar['childAgesSignature']==='3,7','price calendar exact party echoed');
-need($calendar['observedDays']===2&&$calendar['bestDate']==='2026-10-06'&&(float)$calendar['bestPrice']===99000.0,'price calendar excludes wrong child ages');
+need($calendar['regionId']===23&&$calendar['regionIds']===[23],'single-region calendar keeps legacy echo plus normalized scope');
+need($calendar['observedDays']===2&&$calendar['bestDate']==='2026-10-06'&&(float)$calendar['bestPrice']===99000.0,'price calendar excludes wrong child ages and other regions');
 need((float)$calendar['series'][0]['minPrice']===99000.0&&(float)$calendar['series'][1]['minPrice']===110000.0,'price calendar exact-party daily prices');
+
+$multiRegion=search3_local_price_calendar($pdo,[
+ 'action'=>'price_calendar','departureId'=>1,'countryId'=>4,'regionIds'=>[24,23,24],
+ 'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07','nightsFrom'=>7,'nightsTo'=>7,
+ 'adults'=>1,'childs'=>[3,7],
+],$at);
+need($multiRegion['regionId']===null&&$multiRegion['regionIds']===[23,24],'multi-region calendar normalizes unique OR scope');
+need($multiRegion['observedDays']===2&&$multiRegion['bestDate']==='2026-10-06'&&(float)$multiRegion['bestPrice']===88000.0,'multi-region calendar unions selected regions only');
+need((float)$multiRegion['series'][0]['minPrice']===88000.0&&(float)$multiRegion['series'][1]['minPrice']===110000.0,'unselected cheaper region cannot leak into calendar');
+
 $badCalendar=false;try{search3_local_price_calendar($pdo,[
  'action'=>'price_calendar','departureId'=>1,'countryId'=>4,'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07',
  'nightsFrom'=>7,'nightsTo'=>7,'adults'=>1,'childs'=>[18],
 ],$at);}catch(InvalidArgumentException){$badCalendar=true;}
 need($badCalendar,'price calendar invalid child fails closed');
-echo "SEARCH3_LOCAL_PRICE_CALENDAR_OK exact_party=1 wrong_party_excluded=1 writes=0\n";
+$ambiguousRegion=false;try{search3_local_price_calendar($pdo,[
+ 'action'=>'price_calendar','departureId'=>1,'countryId'=>4,'regionId'=>23,'regionIds'=>[23,24],
+ 'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07','nightsFrom'=>7,'nightsTo'=>7,'adults'=>1,'childs'=>[3,7],
+],$at);}catch(InvalidArgumentException){$ambiguousRegion=true;}
+need($ambiguousRegion,'price calendar rejects conflicting region envelopes');
+$invalidRegionList=false;try{search3_local_price_calendar($pdo,[
+ 'action'=>'price_calendar','departureId'=>1,'countryId'=>4,'regionIds'=>[23,0],
+ 'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07','nightsFrom'=>7,'nightsTo'=>7,'adults'=>1,'childs'=>[3,7],
+],$at);}catch(InvalidArgumentException){$invalidRegionList=true;}
+need($invalidRegionList,'price calendar invalid region list fails closed');
+echo "SEARCH3_LOCAL_PRICE_CALENDAR_OK exact_party=1 wrong_party_excluded=1 multi_region_or=1 unselected_region_excluded=1 writes=0\n";
 
 need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$scope,$at),'narrow scope indexed');
 foreach([
