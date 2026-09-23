@@ -56,6 +56,7 @@ fuel_ok($obsA['direction'] === [
     'operator_family'=>'fun_and_sun','market'=>'departure:1','destination'=>'country:4'
 ], 'canonical direction');
 fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::observation($obsA) === $obsA, 'observation idempotent');
+fuel_ok(!array_key_exists('exchange',$obsA),'pre-FX observation remains byte-compatible without exchange key');
 
 $target = [
     'operator'=>'FUN&SUN',
@@ -104,17 +105,37 @@ $ppA['unit']='per_person_one_way';$ppA['amount']='85.00';
 $ppA['scope']['party']=$ppPartyA;
 $ppA['offer_ref_digest']=fuel_h('pp-offer-a');$ppA['evidence_sha256']=fuel_h('pp-ev-a');
 $ppA['source_response_sha256']=fuel_h('pp-resp-a');
+$ppA['exchange']=[
+    'from'=>'EUR','to'=>'RUB','rate'=>'99.26','source'=>'andromeda_claim_money',
+    'observed_at'=>1500,'expires_at'=>2600,'evidence_sha256'=>fuel_h('pp-fx-a'),
+];
 $ppB=$b;
 $ppB['provider']='andromeda';$ppB['source']='andromeda_claim_service';
 $ppB['unit']='per_person_one_way';$ppB['amount']='85.00';
 $ppB['scope']['party']=$ppPartyB;
 $ppB['offer_ref_digest']=fuel_h('pp-offer-b');$ppB['evidence_sha256']=fuel_h('pp-ev-b');
 $ppB['source_response_sha256']=fuel_h('pp-resp-b');
+$ppB['exchange']=[
+    'from'=>'EUR','to'=>'RUB','rate'=>'99.49','source'=>'andromeda_claim_money',
+    'observed_at'=>1600,'expires_at'=>2700,'evidence_sha256'=>fuel_h('pp-fx-b'),
+];
 $ppInput=AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($ppTarget,[$ppA,$ppB],2000);
 fuel_ok(is_array($ppInput),'per-person independent observations confirm');
 fuel_ok(($ppInput['observations'][0]['unit']??null)==='per_person_one_way','per-person unit retained');
 fuel_ok(($ppInput['party']??null)===$ppTarget['party'],'target party retained for later arithmetic');
 fuel_ok(($ppInput['observations'][0]['party']??null)!==$ppTarget['party'],'source party remains provenance, not applicability key');
+fuel_ok(($ppInput['exchange']['rate']??null)==='99.49','freshest supplier FX selected');
+fuel_ok(($ppInput['exchange']['scope_sha256']??null)===AnyTourOperatorFuelRuleEvidenceV1::directionDigest($ppInput['direction']),'FX scoped to canonical direction');
+fuel_ok(($ppInput['exchange']['from']??null)==='EUR'&&($ppInput['exchange']['to']??null)==='RUB','typed native RUB exchange');
+$ppStaleA=$ppA;$ppStaleB=$ppB;
+$ppStaleA['exchange']['expires_at']=$ppStaleB['exchange']['expires_at']=1999;
+$ppStale=AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($ppTarget,[$ppStaleA,$ppStaleB],2000);
+fuel_ok(is_array($ppStale)&&$ppStale['exchange']===null,'stale FX holds conversion without discarding fuel evidence');
+$ppTieA=$ppA;$ppTieB=$ppB;
+$ppTieA['exchange']['observed_at']=$ppTieB['exchange']['observed_at']=1600;
+$ppTieA['exchange']['expires_at']=$ppTieB['exchange']['expires_at']=2700;
+$ppTie=AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($ppTarget,[$ppTieA,$ppTieB],2000);
+fuel_ok(is_array($ppTie)&&$ppTie['exchange']===null,'same-time conflicting FX is ambiguous');
 $ppConflict=$ppB;$ppConflict['amount']='90.00';
 fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($ppTarget,[$ppA,$ppConflict],2000)===null,'per-person rate conflict blocks rule');
 $ppInfant=$ppTarget;$ppInfant['party']=['adults'=>2,'children'=>1,'child_ages'=>[1]];
