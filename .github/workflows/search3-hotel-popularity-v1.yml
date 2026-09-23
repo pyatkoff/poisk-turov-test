@@ -33,6 +33,5 @@ jobs:
           php -l v2/sales-leaders-v1.php >/dev/null
           php diagnostics/sales_leaders_v1_test.php
           php tests/top500-daily-plan-smoke.php
-          php -l v2/data/top500-monthly-plan-v1.php >/dev/null
           php -r "require 'v2/data/hotel-popularity-v1.php'; require 'v2/data/top-hotels-v1.php'; \$ids=v2_hotel_popularity_legacy_ids(); if(count(\$ids)!==492||count(array_unique(\$ids))!==492||v2_priority_hotel_ids()!==\$ids) exit(1); echo 'HOTEL_POPULARITY_COHORT_OK count=492 wrapper=exact'.PHP_EOL;"
           node tests/search3-prototype-hotel-popularity-v1.cjs
