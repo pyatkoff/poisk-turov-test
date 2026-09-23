@@ -32,5 +32,5 @@ function v2_hotel_popularity_legacy_rank(int $legacyHotelId): ?int
 function v2_hotel_popularity_badge_for_rank(?int $rank): ?string
 {
     if ($rank === null || $rank < 1) return null;
-    return $rank <= 100 ? 'Хит продаж' : 'Популярный отель';
+    return 'Популярный отель';
 }
