@@ -441,7 +441,8 @@ class InstallRuntimeTest(unittest.TestCase):
                  ).hexdigest()}
         env=dict(os.environ,HOME=str(home),PATH=str(bindir)+os.pathsep+os.environ.get('PATH',''))
         if fail_target_lint:env['FAKE_PHP_FAIL_TARGET']='1'
-        run=subprocess.run(['python3','-c',m.REMOTE],input=json.dumps(payload),
+        remote_py=root/'remote.py';remote_py.write_text(m.REMOTE)
+        run=subprocess.run(['python3',str(remote_py)],input=json.dumps(payload),
                            text=True,capture_output=True,env=env,timeout=30)
         self.assertEqual('',run.stderr)
         self.assertEqual(0,run.returncode)
