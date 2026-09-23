@@ -332,7 +332,7 @@ class ContractTest(unittest.TestCase):
                   "match_secondary_terminal_hash","match-readback","match942_child_name","read_match942",
                   "match-tv942-reconcile","run_match_tv942_reconcile",
                   "hotel_match_live942_tv_candidate_reconcile_v1.php",
-                  "install-runtime','match-readback','match-tv942','match-samo942",
+                  "install-runtime','match-readback','match-tv942-reconcile','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
