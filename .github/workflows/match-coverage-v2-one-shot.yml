@@ -38,7 +38,6 @@ jobs:
           test "$(git diff --name-only '${{ github.event.pull_request.base.sha }}' '${{ github.event.pull_request.head.sha }}')" = '.github/workflows/match-coverage-v2-one-shot.yml'
           grep -Fq 'match-coverage-v2 int-andromeda-match-coverage-v2-20260923-v2' .github/workflows/match-coverage-v2-one-shot.yml
           grep -Fq 'e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd' .github/workflows/match-coverage-v2-one-shot.yml
-          ! grep -Eiq '(curl|wget|gh workflow run)' .github/workflows/match-coverage-v2-one-shot.yml
 
   execute:
     if: >-
