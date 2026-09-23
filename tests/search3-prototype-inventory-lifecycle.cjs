@@ -36,7 +36,7 @@ function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.n
  const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],observationCalls=[],mealCatalogCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
-  if(target.pathname==='/data/price-calendar-read-v1.php'){
+  if(target.pathname==='/_preview/search3-local-candidate/data/price-calendar-read-v1.php'){
    const query=Object.fromEntries(target.searchParams);observationCalls.push(query);
    assert.ok(observations,'unexpected observation request');
    return {ok:true,json:async()=>observations(query,options.signal)};

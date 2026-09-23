@@ -555,7 +555,7 @@
     const childAges=[...s.ages].sort((a,b)=>a-b),childSignature=childAges.join(',');
     const selected=regionIds(s,filters),query={departureId:String(departure.id),countryId:String(s.country),dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights),adults:String(s.adults),childs:childSignature};
     if(selected.length)query.regionId=selected[0];
-    const response=await fetch('/data/price-calendar-read-v1.php?'+new URLSearchParams(query),{credentials:'same-origin',signal});
+    const response=await fetch(local+'data/price-calendar-read-v1.php?'+new URLSearchParams(query),{credentials:'same-origin',signal});
     if(!response.ok)throw new Error('Сохранённые цены календаря временно недоступны.');
     const result=await response.json();
     if(result?.ok!==true||result.source!=='latest-known-exact-segments-from-anytour-first-party-observations'
