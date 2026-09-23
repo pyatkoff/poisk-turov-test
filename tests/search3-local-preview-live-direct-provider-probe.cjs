@@ -27,16 +27,18 @@ const params={
     const call=async(url,body)=>{
       const response=await fetch(url,{
         method:'POST',credentials:'same-origin',
-        headers:{'Content-Type':'application/json','Accept':'application/json'},
+        headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'AnyTourSearch3'},
         body:JSON.stringify(body)
       });
       let payload;
       try{payload=await response.json();}catch{payload={error:'non_json'};}
       return {status:response.status,payload};
     };
+    const manifestResponse=await fetch('/_preview/search3-anex-candidate/anex-preview-manifest.json',{credentials:'same-origin',cache:'no-store'});
+    let manifest=null;try{manifest=await manifestResponse.json();}catch{manifest={error:'non_json'};}
     return {
-      andromeda:await call('/_preview/search3-anex-candidate/api-andromeda-search3-preview.php',{generation:910001,params}),
-      anex:await call('/_preview/search3-anex-candidate/api-anex-search3-preview.php',{action:'search',generation:910002,params})
+      manifest:{status:manifestResponse.status,payload:manifest},
+      andromeda:await call('/_preview/search3-anex-candidate/api-andromeda-search3-preview.php',{generation:910003,params})
     };
   },{params});
 
