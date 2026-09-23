@@ -62,7 +62,14 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         $other = $row['base_includes_other_required_charges'] ?? null;
         if (!is_bool($other)) throw new InvalidArgumentException('OPERATOR_FUEL_REQUIRED_CHARGES');
         $sourceResponse = self::digest($row['source_response_sha256'] ?? null, 'OPERATOR_FUEL_SOURCE_DIGEST');
-        return [
+        $exchange = null;
+        if (array_key_exists('exchange', $row)) {
+            $exchange = self::exchange($row['exchange'], $currency);
+            if ($exchange['observed_at'] < $observed || $exchange['expires_at'] > $expires) {
+                throw new InvalidArgumentException('OPERATOR_FUEL_EXCHANGE_TIME');
+            }
+        }
+        $out = [
             'schema_version' => 2,
             'provider' => $provider,
             'operator_family' => $family,
@@ -86,6 +93,11 @@ final class AnyTourOperatorFuelRuleEvidenceV1
             'valid_from' => $validFrom,
             'valid_to' => $validTo,
         ];
+        if ($exchange !== null) {
+            // Optional so pre-FX v2 observation files remain byte-valid/idempotent.
+            $out['exchange'] = $exchange;
+        }
+        return $out;
     }
 
     /**
@@ -146,6 +158,48 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         $unit = array_key_first($confirmed);
         $compatible = $confirmed[$unit];
 
+        $resolvedExchange = $exchange;
+        $ruleCurrency = $compatible[0]['currency'];
+        if ($resolvedExchange === null && $ruleCurrency !== 'RUB') {
+            $fresh = [];
+            $latestObserved = 0;
+            foreach ($compatible as $obs) {
+                $candidate = $obs['exchange'] ?? null;
+                if (!is_array($candidate)
+                    || ($candidate['from'] ?? null) !== $ruleCurrency
+                    || ($candidate['to'] ?? null) !== 'RUB'
+                    || ($candidate['observed_at'] ?? 0) > $now
+                    || ($candidate['expires_at'] ?? 0) <= $now) continue;
+                $seenAt = (int)$candidate['observed_at'];
+                if ($seenAt > $latestObserved) {
+                    $latestObserved = $seenAt;
+                    $fresh = [$candidate];
+                } elseif ($seenAt === $latestObserved) {
+                    $fresh[] = $candidate;
+                }
+            }
+            if ($fresh !== []) {
+                $rates = [];
+                foreach ($fresh as $candidate) $rates[$candidate['rate']] = true;
+                if (count($rates) === 1) {
+                    usort($fresh, static function(array $a, array $b): int {
+                        $expiry = $b['expires_at'] <=> $a['expires_at'];
+                        return $expiry !== 0 ? $expiry : strcmp($a['evidence_sha256'], $b['evidence_sha256']);
+                    });
+                    $picked = $fresh[0];
+                    $resolvedExchange = [
+                        'from' => $picked['from'],
+                        'to' => $picked['to'],
+                        'rate' => $picked['rate'],
+                        'scope_sha256' => self::directionDigest($direction),
+                        'observed_at' => $picked['observed_at'],
+                        'expires_at' => $picked['expires_at'],
+                        'evidence_sha256' => $picked['evidence_sha256'],
+                    ];
+                }
+            }
+        }
+
         $inputObs = [];
         foreach ($compatible as $obs) {
             $inputObs[] = [
@@ -172,7 +226,7 @@ final class AnyTourOperatorFuelRuleEvidenceV1
             'direction' => $direction,
             'party' => $party,
             'observations' => $inputObs,
-            'exchange' => $exchange,
+            'exchange' => $resolvedExchange,
         ];
     }
 
@@ -369,6 +423,44 @@ final class AnyTourOperatorFuelRuleEvidenceV1
     private static function currency(mixed $value): string
     {
         if (!is_string($value) || !preg_match('/\A[A-Z]{3}\z/D', $value)) throw new InvalidArgumentException('OPERATOR_FUEL_CURRENCY');
+        return $value;
+    }
+
+    private static function exchange(mixed $value, string $fuelCurrency): array
+    {
+        if (!is_array($value) || array_is_list($value)) throw new InvalidArgumentException('OPERATOR_FUEL_EXCHANGE');
+        $keys = array_keys($value); sort($keys, SORT_STRING);
+        if ($keys !== ['evidence_sha256','expires_at','from','observed_at','rate','source','to']) {
+            throw new InvalidArgumentException('OPERATOR_FUEL_EXCHANGE');
+        }
+        $from = self::currency($value['from'] ?? null);
+        $to = self::currency($value['to'] ?? null);
+        if ($from !== $fuelCurrency || $to !== 'RUB'
+            || ($value['source'] ?? null) !== 'andromeda_claim_money') {
+            throw new InvalidArgumentException('OPERATOR_FUEL_EXCHANGE');
+        }
+        $rate = self::rate($value['rate'] ?? null);
+        $observed = self::positiveInt($value['observed_at'] ?? null, 'OPERATOR_FUEL_EXCHANGE_TIME');
+        $expires = self::positiveInt($value['expires_at'] ?? null, 'OPERATOR_FUEL_EXCHANGE_TIME');
+        if ($expires <= $observed) throw new InvalidArgumentException('OPERATOR_FUEL_EXCHANGE_TIME');
+        return [
+            'from'=>$from,
+            'to'=>$to,
+            'rate'=>$rate,
+            'source'=>'andromeda_claim_money',
+            'observed_at'=>$observed,
+            'expires_at'=>$expires,
+            'evidence_sha256'=>self::digest($value['evidence_sha256'] ?? null, 'OPERATOR_FUEL_EXCHANGE_DIGEST'),
+        ];
+    }
+
+    private static function rate(mixed $value): string
+    {
+        if (!is_string($value)
+            || !preg_match('/\A(?:0|[1-9][0-9]{0,5})(?:\.[0-9]{1,8})?\z/D', $value)
+            || preg_match('/[1-9]/', $value) !== 1) {
+            throw new InvalidArgumentException('OPERATOR_FUEL_EXCHANGE_RATE');
+        }
         return $value;
     }
 

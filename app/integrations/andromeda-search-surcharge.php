@@ -88,6 +88,28 @@ final class AnyTourAndromedaSearchSurcharge
     }
 
     /**
+     * Return one direct supplier-reported exchange rate without using floats.
+     *
+     * Andromeda claim money rows are relative rates. The existing exact pricing
+     * converter uses toRate/fromRate; expose that same interpretation so retained
+     * direction evidence can carry a typed native->RUB rate into the existing
+     * operator-fuel handoff. Missing/ambiguous currencies remain unknown.
+     */
+    public static function directExchangeRate(array $claim, string $from, string $to): ?string
+    {
+        if (preg_match('/^[A-Z]{3}$/D', $from) !== 1 || preg_match('/^[A-Z]{3}$/D', $to) !== 1) {
+            throw new InvalidArgumentException('ANDROMEDA_SEARCH_SURCHARGE_CURRENCY');
+        }
+        if ($from === $to) return '1';
+        $rates = self::rates(self::document($claim));
+        if (!isset($rates[$from], $rates[$to])) return null;
+        $fromRate = self::units($rates[$from]['rate'], 6);
+        $toRate = self::units($rates[$to]['rate'], 6);
+        if ($fromRate === null || $toRate === null || $fromRate < 1 || $toRate < 1) return null;
+        return self::divideRate($toRate, $fromRate, 8);
+    }
+
+    /**
      * Private server-side strategy for a choice-dependent get_flights claim.
      *
      * This chooses the lowest safely comparable supplier-reported transport
@@ -414,6 +436,38 @@ final class AnyTourAndromedaSearchSurcharge
         $numerator = $money * $toRate;
         $cents = intdiv($numerator + intdiv($fromRate, 2), $fromRate);
         return self::fromUnits($cents, 2);
+    }
+
+    private static function divideRate(int $numerator, int $denominator, int $scale): ?string
+    {
+        if ($numerator < 1 || $denominator < 1 || $scale < 1 || $scale > 8) return null;
+        $whole = intdiv($numerator, $denominator);
+        if ($whole > 999999) return null;
+        $remainder = $numerator % $denominator;
+        $digits = [];
+        for ($i = 0; $i <= $scale; ++$i) {
+            if ($remainder > intdiv(PHP_INT_MAX, 10)) return null;
+            $remainder *= 10;
+            $digits[] = intdiv($remainder, $denominator);
+            $remainder %= $denominator;
+        }
+        $round = array_pop($digits);
+        if ($round >= 5) {
+            for ($i = count($digits) - 1; $i >= 0; --$i) {
+                if ($digits[$i] < 9) {
+                    ++$digits[$i];
+                    $round = 0;
+                    break;
+                }
+                $digits[$i] = 0;
+            }
+            if ($round !== 0) {
+                ++$whole;
+                if ($whole > 999999) return null;
+            }
+        }
+        $fraction = rtrim(implode('', array_map('strval', $digits)), '0');
+        return (string)$whole . ($fraction === '' ? '' : '.' . $fraction);
     }
 
     private static function addMoney(string $left, string $right): ?string
