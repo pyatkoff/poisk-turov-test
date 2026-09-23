@@ -1,4 +1,4 @@
-name: MATCH coverage v2 one-shot
+name: MATCH COMMON4 acquire one-shot
 
 'on':
   pull_request:
@@ -14,7 +14,7 @@ permissions:
   issues: read
 
 concurrency:
-  group: anytoour-match-coverage-v2-one-shot
+  group: anytoour-int-server-executor
   cancel-in-progress: false
 
 jobs:
@@ -33,8 +33,8 @@ jobs:
           set -euo pipefail
           test "$(git diff --name-only '${{ github.event.pull_request.base.sha }}' '${{ github.event.pull_request.head.sha }}' | wc -l)" -eq 1
           test "$(git diff --name-only '${{ github.event.pull_request.base.sha }}' '${{ github.event.pull_request.head.sha }}')" = '.github/workflows/match-coverage-v2-one-shot.yml'
-          grep -Fq 'match-coverage-v2-readback int-andromeda-match-coverage-v2-readback-20260923-v1' .github/workflows/match-coverage-v2-one-shot.yml
-          grep -Fq 'e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd' .github/workflows/match-coverage-v2-one-shot.yml
+          grep -Fq 'match-common4-acquire int-andromeda-match-common4-acquire-o0-20260923-v1 0 100' .github/workflows/match-coverage-v2-one-shot.yml
+          grep -Fq '23846733195e88286fa77672d471f815fb0c32a0' .github/workflows/match-coverage-v2-one-shot.yml
 
   execute:
     if: >-
@@ -62,13 +62,13 @@ jobs:
       - name: Checkout exact MATCH feature source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd
+          ref: 23846733195e88286fa77672d471f815fb0c32a0
           path: source
           persist-credentials: false
-      - name: Read existing supplier-free CURRENT coverage v2
+      - name: Execute bounded COMMON4 tranche 0-99
         env:
           GH_TOKEN: ${{ github.token }}
-          INT_OWNER_COMMAND: /run-int-server-v1 e4d866a32c1e7bba0b9ada9eff1ed44c031c76bd match-coverage-v2-readback int-andromeda-match-coverage-v2-readback-20260923-v1
+          INT_OWNER_COMMAND: /run-int-server-v1 23846733195e88286fa77672d471f815fb0c32a0 match-common4-acquire int-andromeda-match-common4-acquire-o0-20260923-v1 0 100
           INT_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           INT_SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           INT_SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -79,7 +79,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-coverage-v2-one-shot-${{ github.run_id }}-${{ github.run_attempt }}
+          name: match-common4-o0-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/int-server-executor/result.json
           if-no-files-found: error
           retention-days: 30
