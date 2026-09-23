@@ -39,6 +39,10 @@ final class AnyTourAndromedaOperatorFuelRetainedIntakeV1
         $currency = $fuel['currency'];
         $sum = self::addMoney($fuel['outbound']['amount'], $fuel['return']['amount']);
         $unit = self::unit($fuel['outbound']['unit'], $fuel['return']['unit'], $fuel['outbound']['amount'], $fuel['return']['amount']);
+        // A per-person one-way observation stores the native rate for ONE leg.
+        // The two equal route rows corroborate that rate; multiplying by party and
+        // directions belongs to the target pricing handoff, not retained evidence.
+        $amount = $unit === 'per_person_one_way' ? $fuel['outbound']['amount'] : $sum;
         $relation = self::relation($fuel['outbound']['included'], $fuel['return']['included']);
         $otherRequiredClear = self::otherRequiredChargesClear($doc);
 
@@ -61,7 +65,7 @@ final class AnyTourAndromedaOperatorFuelRetainedIntakeV1
             ],
             'unit' => $unit,
             'base_relation' => $relation,
-            'amount' => $sum,
+            'amount' => $amount,
             'currency' => $currency,
             'source' => 'andromeda_claim_service',
             'observed_at' => $observedAt,
