@@ -5,6 +5,8 @@ const source=fs.readFileSync(process.argv[2]||'v2/prototype-search/search-lifecy
 const app=fs.readFileSync(process.argv[3]||'v2/prototype-search/app.js','utf8');
 const entry=fs.readFileSync(process.argv[4]||'v2/prototype-search/index.html','utf8');
 const php=fs.readFileSync(process.argv[5]||'v2/prototype-search/index.php','utf8');
+const dataSource=fs.readFileSync('v2/prototype-search/data.js','utf8');
+const tourController=fs.readFileSync('v2/tour-controller-v4.js','utf8');
 
 assert.match(entry,/search-lifecycle-v1\.js/,'prototype entrypoint must load the canonical lifecycle owner');
 assert.ok(entry.indexOf('search-lifecycle-v1.js')<entry.indexOf('./app.js'),'lifecycle owner must load before app.js');
@@ -14,6 +16,14 @@ assert.doesNotMatch(app,/\$\('#search-form'\)\.addEventListener\('submit'/,'app.
 assert.match(app,/supplierFilters:\(\)=>structuredClone\(state\.filters\)/,'inventory scope must come from canonical applied app state');
 assert.match(app,/refreshResults=dateContext\.source==='results'.*searchLifecycle\.requestSubmit\(\)/s,'results-side date apply must ask the lifecycle owner for a real search');
 assert.doesNotMatch(php,/results-date-refresh-v1\.js|inventory-scope-refresh-v1\.js/,'PHP runtime must not inject post-app lifecycle patches');
+assert.equal(fs.existsSync('v2/prototype-search/results-date-refresh-v1.js'),false,'absorbed results-date patch source must be retired');
+assert.equal(fs.existsSync('v2/prototype-search/inventory-scope-refresh-v1.js'),false,'absorbed inventory-scope patch source must be retired');
+assert.equal(fs.existsSync('tests/search3-prototype-results-date-refresh-v1.cjs'),false,'retired results-date patch test must not remain a second behavior owner');
+assert.equal(fs.existsSync('tests/search3-prototype-inventory-scope-refresh-v1.cjs'),false,'retired inventory-scope patch test must not remain a second behavior owner');
+assert.match(entry,/\.\.\/tour-controller-v4\.js/,'prototype still loads the compatibility tour controller');
+assert.ok(entry.indexOf('../tour-controller-v4.js')<entry.indexOf('./data.js'),'lead-session compatibility owner must exist before data.js uses it');
+assert.match(dataSource,/root\.V2TourController\.createLeadSession\(/,'prototype data leadSession still depends on the compatibility controller');
+assert.match(tourController,/window\.V2TourController=\{[^}]*createLeadSession/s,'compatibility controller must export the protected lead-session seam');
 
 const flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
 
