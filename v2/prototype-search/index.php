@@ -6,7 +6,7 @@ header('Cache-Control: no-cache');
 $html = file_get_contents(__DIR__ . '/index.html');
 $html = str_replace(
     '</head>',
-    "  <script src=\"./results-date-refresh-v1.js\" defer></script>\n</head>",
+    "  <script src=\"./results-date-refresh-v1.js\" defer></script>\n  <script src=\"./inventory-scope-refresh-v1.js\" defer></script>\n</head>",
     $html
 );
 echo preg_replace_callback(
