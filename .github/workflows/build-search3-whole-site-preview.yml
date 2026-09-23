@@ -15,6 +15,7 @@ on:
       - 'tests/search3-tourvisor-results-limit.php'
       - 'tests/search3-prototype-inventory-lifecycle.cjs'
       - 'tests/search3-prototype-selected-tour-retention.cjs'
+      - 'tests/search3-prototype-provider-config-v1.cjs'
       - 'tests/search3-prototype-inventory-browser.py'
       - 'tests/search3_source_build_test.py'
       - 'v2/**'
@@ -98,6 +99,7 @@ jobs:
           php tests/search3-tourvisor-results-limit.php
           node tests/search3-prototype-inventory-lifecycle.cjs
           node tests/search3-prototype-selected-tour-retention.cjs
+          node tests/search3-prototype-provider-config-v1.cjs
           python3 -B tests/search3_source_build_test.py
           python3 -B tests/search3_production_presentation_test.py
           python3 -B tests/search3_site_preview_isolation_test.py
