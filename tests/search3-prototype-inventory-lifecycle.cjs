@@ -31,6 +31,7 @@ const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),local
 };
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
+const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
 function harness({database,api,onEvent,native,anex,observations,clock=()=>Date.now()}={}){
  const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],observationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
@@ -296,7 +297,8 @@ test('one user search invokes Andromeda autosave once and rereads LOCAL after it
 });
 test('native Andromeda offers are visible even when LOCAL reread fails',async()=>{
  const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),database:async()=>{throw new Error('fictional LOCAL outage');}});
- await h.start();await flush();assert.ok(h.providers().includes('andromeda'),'successful native Andromeda must not wait for autosave readback');
+ await h.start();await waitFor(()=>h.providers().includes('andromeda'),'successful native Andromeda must become visible without autosave readback');
+ assert.ok(h.providers().includes('andromeda'),'successful native Andromeda must not wait for autosave readback');
  await h.poll();assert.deepEqual(h.providers(),['andromeda','tourvisor']);
  assert.ok(h.events.some(e=>e.type==='database-error'));
  const final=h.events.filter(e=>e.type==='complete').at(-1);
