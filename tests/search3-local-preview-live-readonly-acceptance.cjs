@@ -136,16 +136,22 @@ async function auditWidth(browser, width) {
   await page.locator('[data-action="close-modal"]').click();
 
   const observationResponse = page.waitForResponse(resp => {
-    try { return new URL(resp.url()).pathname === '/data/price-calendar-read-v1.php'; }
-    catch { return false; }
+    try {
+      const request = resp.request();
+      const body = request.postDataJSON();
+      return new URL(resp.url()).pathname.endsWith('/data/search3-local-results-read-v1.php')
+        && request.method() === 'POST' && body?.action === 'price_calendar';
+    } catch { return false; }
   }, { timeout: 30000 });
   await page.locator('[data-action="dates"]').first().click();
   const observed = await observationResponse;
-  assert.equal(observed.status(), 200, 'live observation calendar endpoint must return HTTP 200');
-  const observedUrl = new URL(observed.url());
-  assert.equal(observedUrl.searchParams.get('adults'), '1');
-  assert.equal(observedUrl.searchParams.get('childs'), '3,7');
-  const observedBody = await observed.json();
+  assert.equal(observed.status(), 200, 'live guarded observation calendar action must return HTTP 200');
+  const observedRequest = observed.request().postDataJSON();
+  assert.equal(observedRequest.adults, 1);
+  assert.deepEqual(observedRequest.childs, [3, 7]);
+  const observedPayload = await observed.json();
+  assert.equal(observedPayload.ok, true);
+  const observedBody = observedPayload.data;
   assert.equal(observedBody.ok, true);
   assert.equal(observedBody.adults, 1);
   assert.equal(observedBody.childrenCount, 2);
