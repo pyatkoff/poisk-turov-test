@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(process.argv[2] || '/tmp/source-receipt-v1.js', 'utf8');
+const source = fs.readFileSync(process.argv[2] || 'v2/prototype-search/source-receipt-v1.js', 'utf8');
 const host = {dataset:{}};
 let calls = 0;
 let callbackEvents = [];
