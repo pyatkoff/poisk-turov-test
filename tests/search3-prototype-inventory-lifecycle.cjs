@@ -18,15 +18,15 @@ const directAnex=body=>{
    tours:[{price:{amount:'1490000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,meal:'AI',room:'STANDARD',
     kind:'group_minimum',flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:offerRef,selection_enabled:false}]}]}};
 };
-const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),localId=101}={})=>{
- const searchRef='c'.repeat(64),hotels=empty?[]:[{local_id:localId,mapping_status:'resolved',tours:[{
+const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),localId=101,pagesCount=1,status='complete',searchRef='c'.repeat(64)}={})=>{
+ const page=Number(body.page),hotels=empty?[]:[{local_id:localId,mapping_status:'resolved',tours:[{
   provider:'andromeda',price:{amount:'1480000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,
   meal:'AI',room:'STANDARD',placement:'DBL',operator:{name:'FUN&SUN'},offer_ref:offerRef,
-  offer_context:{provider:'andromeda',search_ref:searchRef,generation:body.generation,page:1,offer_ref:offerRef},
+  offer_context:{provider:'andromeda',search_ref:searchRef,generation:body.generation,page,offer_ref:offerRef},
   listing_price_ref:'listing_'+'e'.repeat(64),selection_enabled:false
  }]}];
  return {ok:true,data:{provider:'andromeda',generation:body.generation,hotels,date_range:{from:body.params.dateFrom,to:body.params.dateTo},
-  grouped:true,first_page_only:false,page:1,pages_count:1,external_search_pending:false,search_ref:searchRef,status:'complete',
+  grouped:true,first_page_only:false,page,pages_count:pagesCount,external_search_pending:false,search_ref:searchRef,status,
   received_offers:hotels.length,mapped_offers:hotels.length,selection_enabled:false}};
 };
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
@@ -345,6 +345,65 @@ test('one user search invokes Andromeda autosave once and rereads LOCAL after it
  const completing=h.poll();await flush();assert.deepEqual(h.providers(),['tourvisor']);assert.equal(h.events.some(e=>e.type==='complete'),false);
  gate.resolve();await completing;await flush();assert.equal(h.nativeCalls.length,1);assert.deepEqual(h.providers(),['andromeda','tourvisor']);
  assert.equal(h.dbBodies.length,3);assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='complete'));assert.equal(h.events.at(-1).type,'complete');
+});
+test('remaining Andromeda pages load in background without delaying first completion',async()=>{
+ const page2=defer(),ref=page=>'offer_'+String(page).repeat(64);
+ const h=harness({
+  native:async body=>{
+   if(body.page===2)await page2.promise;
+   return {response:{ok:true,json:async()=>directAndromeda(body,{offerRef:ref(body.page),localId:200+body.page,pagesCount:3,status:'complete'})}};
+  },
+  database:(i,p)=>snapshot(p,[])
+ });
+ await h.start();await flush();
+ const completing=h.poll();await flush();await completing;
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2],'page 2 starts only after the bounded initial source settles');
+ const first=h.events.filter(e=>e.type==='complete').at(-1);
+ assert.ok(first,'Tourvisor/LOCAL completion must not wait for Andromeda page 2');
+ assert.equal(first.sources.andromeda.status,'partial');assert.equal(first.sources.andromeda.pagesLoaded,1);assert.equal(first.sources.andromeda.pagesTotal,3);
+ assert.equal(first.sources.andromeda.offers,1);
+ page2.resolve();
+ await waitFor(()=>h.nativeCalls.length===3&&h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.pagesLoaded===3),
+  'background Andromeda continuation must reach every advertised page');
+ await flush();
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2,3]);
+ const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.pagesLoaded===3).at(-1);
+ assert.equal(receipt.status,'complete');assert.equal(receipt.pagesTotal,3);assert.equal(receipt.offers,3);
+ await waitFor(()=>h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda').length===3,
+  'all mapped Andromeda pages must join the canonical union');
+ assert.ok(h.dbBodies.length>=4,'completed background pagination must perform one final LOCAL readback');
+});
+test('late Andromeda page failure preserves accepted pages and stops the sequence',async()=>{
+ const ref=page=>'offer_'+String(page).repeat(64);
+ const h=harness({
+  native:async body=>body.page===1
+   ?{response:{ok:true,json:async()=>directAndromeda(body,{offerRef:ref(1),localId:211,pagesCount:3,status:'complete'})}}
+   :{response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}},
+  database:(i,p)=>snapshot(p,[])
+ });
+ await h.start();await flush();await h.poll();
+ await waitFor(()=>h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.continuationFailed===true),
+  'late page failure must produce a partial retained receipt');
+ const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.continuationFailed===true).at(-1);
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2]);assert.equal(receipt.status,'partial');
+ assert.equal(receipt.pagesLoaded,1);assert.equal(receipt.pagesTotal,3);assert.equal(receipt.offers,1);
+ await waitFor(()=>h.latest().flatMap(hotel=>hotel.offers).some(offer=>offer.provider==='andromeda'),
+  'a late page failure must not clear the accepted first page');
+});
+test('stop aborts a pending Andromeda background continuation before another page is applied',async()=>{
+ const page2=defer(),ref=page=>'offer_'+String(page).repeat(64);
+ const h=harness({
+  native:async body=>{
+   if(body.page===2)await page2.promise;
+   return {response:{ok:true,json:async()=>directAndromeda(body,{offerRef:ref(body.page),localId:220+body.page,pagesCount:3,status:'complete'})}};
+  },
+  database:(i,p)=>snapshot(p,[])
+ });
+ await h.start();await flush();await h.poll();
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2]);
+ const before=h.events.length;h.data.stop();page2.resolve();await flush();
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2],'stopped generation must never request page 3');
+ assert.equal(h.events.length,before,'stopped generation must ignore the late page 2 response');
 });
 test('native Andromeda offers are visible even when LOCAL reread fails',async()=>{
  const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),database:async()=>{throw new Error('fictional LOCAL outage');}});
