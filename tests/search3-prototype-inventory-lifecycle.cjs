@@ -174,7 +174,7 @@ test('LOCAL source accounting preserves backend losses and malformed counts fail
  })});
  await h.start();await h.poll();
  const dbEvent=h.events.filter(e=>e.type==='database').at(-1);
- assert.deepEqual(dbEvent,{type:'database',status:'complete',hotels:1,offers:2,storedOffers:8,receivedOffers:8,mappedOffers:6,
+ assert.deepEqual(JSON.parse(JSON.stringify(dbEvent)),{type:'database',status:'complete',hotels:1,offers:2,storedOffers:8,receivedOffers:8,mappedOffers:6,
   visibleOffers:2,withheldOffers:2,scopeFilteredOffers:3,eligibleHotels:2,omittedHotels:1,omittedOffers:1,
   providerOfferCounts:{andromeda:1,anex:1}});
  const final=h.events.filter(e=>e.type==='complete').at(-1);
