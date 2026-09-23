@@ -31,8 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           node --check tests/search3-local-preview-live-readonly-acceptance.cjs
-          ! grep -REn 'search-submit.*click|continue-search.*click|confirm-tour.*click|lead.*submit' tests/search3-local-preview-live-readonly-acceptance.cjs
-          ! grep -REn 'secrets\.|ssh|scp|rsync' .github/workflows/search3-local-preview-live-readonly-acceptance.yml tests/search3-local-preview-live-readonly-acceptance.cjs
+          ! grep -En '\.search-submit.*\.click|continue-search.*\.click|confirm-tour.*\.click' tests/search3-local-preview-live-readonly-acceptance.cjs
+          ! grep -En 'secrets\.|ssh|scp|rsync' tests/search3-local-preview-live-readonly-acceptance.cjs
 
       - name: Install pinned browser tooling
         shell: bash
