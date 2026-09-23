@@ -8,9 +8,11 @@ on:
       - 'app/integrations/andromeda-search-surcharge.php'
       - 'app/integrations/operator-fuel-rule-evidence.php'
       - 'app/integrations/operator-fuel-rule-store.php'
+      - 'app/integrations/three-provider-fuel-evidence.php'
       - 'tests/andromeda-operator-fuel-retained-intake-test.php'
       - 'tests/operator-fuel-rule-evidence-test.php'
       - 'tests/int-funsun-direction-fuel-store-contract.php'
+      - 'tests/int-funsun-owner-no-seed-test.php'
       - '.github/workflows/andromeda-operator-fuel-retained-intake.yml'
 
 permissions:
@@ -33,13 +35,17 @@ jobs:
           set -euo pipefail
           php -l app/integrations/andromeda-search-surcharge.php
           php -l app/integrations/operator-fuel-rule-evidence.php
+          php -l app/integrations/operator-fuel-rule-store.php
+          php -l app/integrations/three-provider-fuel-evidence.php
           php -l app/integrations/andromeda-operator-fuel-retained-intake.php
           php -l tests/operator-fuel-rule-evidence-test.php
           php -l tests/andromeda-operator-fuel-retained-intake-test.php
           php -l tests/int-funsun-direction-fuel-store-contract.php
+          php -l tests/int-funsun-owner-no-seed-test.php
           php -d allow_url_fopen=0 tests/operator-fuel-rule-evidence-test.php
           php -d allow_url_fopen=0 tests/andromeda-operator-fuel-retained-intake-test.php
           php -d allow_url_fopen=0 tests/int-funsun-direction-fuel-store-contract.php
+          php -d allow_url_fopen=0 tests/int-funsun-owner-no-seed-test.php
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/andromeda-operator-fuel-retained-intake.php').read_text()

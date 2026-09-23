@@ -34,6 +34,7 @@ final class AnyTourThreeProviderFuelEvidenceV1
             $party = self::party($input['party'] ?? null);
             if ($party !== self::party($dto['tour']['party'] ?? null)) return $hold('fuel_party_binding');
             if (self::hasInfant($party)) return $hold('fuel_infant_separate');
+            $ownerPolicy = self::ownerPolicy($input['owner_policy'] ?? null, $family, $direction);
 
             $observations = $input['observations'] ?? null;
             if (!is_array($observations) || !array_is_list($observations) || count($observations) > 256) {
@@ -70,7 +71,7 @@ final class AnyTourThreeProviderFuelEvidenceV1
                 $currency = self::currency($sample['currency'] ?? null);
                 $factKey = $currency . '|' . $native . '|' . $sample['base_relation'] . '|' . $unit;
                 $amounts[$factKey] = [$native, $currency, $sample['base_relation'], $unit];
-                if (count($amounts) > 1) return $hold('fuel_rule_conflict');
+                if (count($amounts) > 1 && $ownerPolicy === null) return $hold('fuel_rule_conflict');
                 $offers[$sample['offer_ref_digest']] = true;
                 $digests[$sample['evidence_sha256']] = true;
                 ++$matched;
@@ -78,16 +79,22 @@ final class AnyTourThreeProviderFuelEvidenceV1
                 $evidenceFrom = $evidenceFrom === null ? $sample['evidence_valid_from'] : min($evidenceFrom, $sample['evidence_valid_from']);
                 $evidenceTo = $evidenceTo === null ? $sample['evidence_valid_to'] : max($evidenceTo, $sample['evidence_valid_to']);
             }
-            if (count($offers) < 2 || count($digests) < 2 || $amounts === []) {
-                return $hold('fuel_independent_evidence_missing');
-            }
-            [$nativeRateOrTotal, $currency, $relation, $unit] = array_values($amounts)[0];
-            $ownerPolicy = self::ownerPolicy($input['owner_policy'] ?? null, $family, $direction);
-            if ($ownerPolicy !== null) {
+            if ($ownerPolicy === null) {
+                if (count($offers) < 2 || count($digests) < 2 || $amounts === []) {
+                    return $hold('fuel_independent_evidence_missing');
+                }
+                [$nativeRateOrTotal, $currency, $relation, $unit] = array_values($amounts)[0];
+            } else {
                 $nativeRateOrTotal = self::units($ownerPolicy['amount']);
                 $currency = $ownerPolicy['currency'];
                 $relation = $ownerPolicy['base_relation'];
                 $unit = $ownerPolicy['unit'];
+                // Owner policy, not retained supplier observations, is the reusable
+                // listing authority. Its native rule stays stable until source policy
+                // changes; only fresh FX controls the displayed RUB estimate lifetime.
+                $freshUntil = PHP_INT_MAX;
+                $evidenceFrom = $ownerPolicy['policy_date'];
+                $evidenceTo = $ownerPolicy['policy_date'];
             }
             $nativeTotal = $nativeRateOrTotal;
             $passengers = $party['adults'] + $party['children'];
@@ -127,6 +134,9 @@ final class AnyTourThreeProviderFuelEvidenceV1
             if ($baseUnits > 99999999999999 - $increment) return $hold('fuel_total_overflow');
             $total = self::format($baseUnits + $increment);
             $evidenceKeys = array_keys($digests); sort($evidenceKeys, SORT_STRING);
+            $ruleEvidenceCount = $ownerPolicy === null ? count($digests) : 0;
+            $ruleOfferCount = $ownerPolicy === null ? count($offers) : 0;
+            $ruleEvidenceDigest = $ownerPolicy === null ? self::hash($evidenceKeys) : self::hash($ownerPolicy);
             $rule = [
                 'schema_version'=>2,
                 'kind'=>'fuel',
@@ -139,9 +149,9 @@ final class AnyTourThreeProviderFuelEvidenceV1
                 'evidence_period_from'=>$evidenceFrom,
                 'evidence_period_to'=>$evidenceTo,
                 'expires_at'=>$freshUntil,
-                'independent_offer_count'=>count($offers),
-                'evidence_count'=>count($digests),
-                'evidence_sha256'=>self::hash($evidenceKeys),
+                'independent_offer_count'=>$ruleOfferCount,
+                'evidence_count'=>$ruleEvidenceCount,
+                'evidence_sha256'=>$ruleEvidenceDigest,
             ];
             if ($ownerPolicy !== null) $rule['owner_policy'] = $ownerPolicy;
             if ($unit === 'per_person_one_way') {
