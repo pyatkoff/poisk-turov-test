@@ -6,6 +6,7 @@
   const catalog = { departures: [], countries: [], meals: [], mealPlans: [], mealPlanRevision: null, mealPlanAvailable: false, regions: {} };
   const regionRequests=new Map();
   const quoteReceipts = new WeakMap();
+  const andromedaQuoteChoices=new Map();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
@@ -239,7 +240,7 @@
   function stop(){
     clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
-    activeVerification?.abort();activeVerification=null;
+    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();
     return generation;
   }
   async function searchError(run,error){
@@ -837,6 +838,103 @@
       return Object.freeze({hotelId:o.hotelId,offers:projected.map(item=>structuredClone(item))});
     }finally{if(activeVerification===controller)activeVerification=null;}
   }
+  function andromedaContext(value,depth=0){
+    if(!value||depth>1||value.provider!=='andromeda'||!(/^offer_[a-f0-9]{64}$/).test(String(value.offer_ref||''))
+      ||!(/^[a-f0-9]{64}$/).test(String(value.search_ref||''))||!Number.isInteger(value.generation)||value.generation<1
+      ||!Number.isInteger(value.page)||value.page<1||value.page>1000)return null;
+    const result={provider:'andromeda',search_ref:String(value.search_ref),generation:value.generation,page:value.page,offer_ref:String(value.offer_ref)};
+    if(value.hotel_scope!==undefined){
+      const scope=value.hotel_scope;
+      if(!scope||!Number.isSafeInteger(scope.local_id)||scope.local_id<1||!scope.seed||scope.seed.hotel_scope)return null;
+      const seed=andromedaContext(scope.seed,depth+1);if(!seed)return null;
+      result.hotel_scope={local_id:scope.local_id,seed};
+    }
+    return result;
+  }
+  function andromedaQuoteKey(context){return context?JSON.stringify(context):'';}
+  function andromedaQuoteRequest(o,flightSelection=null){
+    const rawOffer=o&&o.raw,ctx=andromedaContext(rawOffer?.offer_context),localId=Number(rawOffer?.andromedaLocalHotelId);
+    if(!o||o.cached||o.provider!=='andromeda'||rawOffer?.selectionEnabled!==false||rawOffer?.quoteRequired!==true
+      ||!ctx||ctx.generation!==generation||ctx.offer_ref!==String(rawOffer?.offerRef||'')
+      ||!Number.isSafeInteger(localId)||localId<1||!searchParams)return null;
+    const {hotel_scope,...identity}=ctx,body={action:flightSelection?'quote_select_flights':'quote',generation:ctx.generation,page:ctx.page,
+      params:structuredClone(searchParams),offer_context:identity};
+    if(hotel_scope){if(hotel_scope.local_id!==localId)return null;body.hotel_scope=structuredClone(hotel_scope);}
+    const listing=String(rawOffer?.listing_price_ref||'');if((/^listing_[a-f0-9]{64}$/).test(listing))body.listing_price_ref=listing;
+    if(flightSelection){
+      const keys=Object.keys(flightSelection).sort();
+      if(keys.join(',')!=='outbound_ref,provider,return_ref'||flightSelection.provider!=='andromeda'
+        ||!(/^flight_[a-f0-9]{32}$/).test(String(flightSelection.outbound_ref||''))
+        ||!(/^flight_[a-f0-9]{32}$/).test(String(flightSelection.return_ref||'')))return null;
+      const retained=andromedaQuoteChoices.get(andromedaQuoteKey(ctx));
+      const outbound=retained?.flights?.find(row=>row.direction==='0'&&row.flightRef===flightSelection.outbound_ref);
+      const inbound=retained?.flights?.find(row=>row.direction==='1'&&row.flightRef===flightSelection.return_ref);
+      if(!outbound||!inbound)return null;
+      body.flight_selection=structuredClone(flightSelection);
+    }
+    return {body,ctx,localId,key:andromedaQuoteKey(ctx)};
+  }
+  function andromedaPoint(value){
+    if(!value||typeof value!=='object')return null;
+    const clean={};
+    for(const key of ['state','town','port']){
+      const item=value[key];if(item!==null&&item!==undefined&&typeof item!=='string')return null;
+      clean[key]=typeof item==='string'?item.slice(0,100):null;
+    }
+    return clean;
+  }
+  function andromedaQuoteFlight(value,pending,seen){
+    if(!value||!['0','1'].includes(String(value.direction||'')))return null;
+    const row={direction:String(value.direction),name:typeof value.name==='string'?value.name.slice(0,160):null,
+      datebeg:typeof value.datebeg==='string'?value.datebeg.slice(0,40):null,dateend:typeof value.dateend==='string'?value.dateend.slice(0,40):null,
+      class:typeof value.class==='string'?value.class.slice(0,80):null,departure:andromedaPoint(value.departure),arrival:andromedaPoint(value.arrival)};
+    if(value.departure!==null&&value.departure!==undefined&&!row.departure||value.arrival!==null&&value.arrival!==undefined&&!row.arrival)return null;
+    if(pending){
+      const ref=String(value.flight_ref||'');if(!(/^flight_[a-f0-9]{32}$/).test(ref)||seen.has(ref))return null;
+      seen.add(ref);row.flightRef=ref;
+    }
+    return Object.freeze(row);
+  }
+  function normalizeAndromedaQuote(value,localId){
+    if(!value||value.schema_version!==1||value.provider!=='andromeda'||Number(value.local_id)!==localId
+      ||value.selection_enabled!==true||value.booking_enabled!==false||!Array.isArray(value.flights)||value.flights.length>100)return null;
+    const verified=value.state==='quote_verified'&&value.quote_state==='verified'&&value.final_price_verified===true
+      &&value.flight_selection_required===false;
+    const pending=value.state==='flight_selection_required'&&value.quote_state==='unverified'&&value.final_price_verified===false
+      &&value.flight_selection_required===true&&value.final_price===null;
+    if(!verified&&!pending)return null;
+    let finalPrice=null;
+    if(verified){
+      const amount=String(value.final_price?.amount??''),currency=String(value.final_price?.currency??'');
+      if(currency!=='RUB'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(amount)||Number(amount)<=0)return null;
+      finalPrice=Object.freeze({amount,currency});
+    }
+    const seen=new Set(),flights=[];
+    for(const raw of value.flights){const flight=andromedaQuoteFlight(raw,pending,seen);if(!flight)return null;flights.push(flight);}
+    if(pending&&(!flights.some(row=>row.direction==='0')||!flights.some(row=>row.direction==='1')))return null;
+    return Object.freeze({state:pending?'flight_selection_required':'quote_verified',finalPrice,finalPriceVerified:verified,
+      flightSelectionRequired:pending,flights:Object.freeze(flights)});
+  }
+  async function verifyAndromeda(o,flightSelection=null){
+    const prepared=andromedaQuoteRequest(o,flightSelection);
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaQuoteApi,'/_preview/search3-anex-candidate/api-andromeda-quote-preview.php');
+    if(!prepared||!url)throw new Error('Предложение Andromeda устарело. Повторите поиск.');
+    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    const epoch=generation,timeout=setTimeout(()=>controller.abort(),45000);
+    try{
+      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(prepared.body)});
+      const payload=await response.json().catch(()=>null);
+      if(controller.signal.aborted||epoch!==generation||!andromedaQuoteRequest(o,flightSelection))throw new Error('Условия поиска изменились. Выберите тур заново.');
+      if(!response.ok||payload?.ok!==true||!payload.data){
+        if(flightSelection)andromedaQuoteChoices.delete(prepared.key);
+        throw new Error(response.status===429?'Лимит проверки Andromeda временно исчерпан.':'Andromeda не смог подтвердить выбранное предложение.');
+      }
+      const quote=normalizeAndromedaQuote(payload.data,prepared.localId);if(!quote){if(flightSelection)andromedaQuoteChoices.delete(prepared.key);throw new Error('Andromeda вернул некорректное подтверждение.');}
+      if(quote.flightSelectionRequired)andromedaQuoteChoices.set(prepared.key,quote);else andromedaQuoteChoices.delete(prepared.key);
+      return quote;
+    }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
+  }
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
     const run=generation,id=searchId;
@@ -871,5 +969,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAndromeda,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);
