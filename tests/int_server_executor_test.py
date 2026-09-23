@@ -578,7 +578,7 @@ class ContractTest(unittest.TestCase):
                   "match-tv942-write","run_match_tv942_write",
                   "hotel_match_live942_tv_writer_v1.php",
                   "match_tv_writer_manifest_hash","match_tv_writer_terminal_guard",
-                  "install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
+                  "install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-continuation-remainder','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
@@ -607,3 +607,8 @@ class MatchContinuationResumeParseTest(unittest.TestCase):
     def test_match_common4_resume_readback(self):
         cmd=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-resume-readback int-andromeda-match-common4-resume-readback-20260924-v1')
         self.assertEqual(cmd['mode'],'match-common4-resume-readback')
+
+    def test_match_common4_continuation_remainder(self):
+        cmd=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-continuation-remainder int-andromeda-match-common4-continuation-remainder-20260924-v1 300')
+        self.assertEqual(cmd['mode'],'match-common4-continuation-remainder')
+        self.assertEqual(cmd['limit'],300)
