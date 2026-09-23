@@ -1,0 +1,62 @@
+name: INT FUN&SUN owner fuel reference
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/funsun-fuel-owner-reference.php'
+      - 'tests/funsun-fuel-owner-reference-test.php'
+      - '.github/workflows/int-funsun-fuel-owner-reference.yml'
+  push:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'app/integrations/funsun-fuel-owner-reference.php'
+      - 'tests/funsun-fuel-owner-reference-test.php'
+      - '.github/workflows/int-funsun-fuel-owner-reference.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint bounded INT source
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/integrations/funsun-fuel-owner-reference.php
+          php -l tests/funsun-fuel-owner-reference-test.php
+      - name: Reject authority creep
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/integrations/funsun-fuel-owner-reference.php').read_text()
+          forbidden=[
+              'curl_', 'PDO', 'mysqli', 'file_put_contents', 'fwrite(', 'rename(',
+              'getFlights(', 'changeService(', '->calc(', 'booking', 'final_price_verified',
+          ]
+          for token in forbidden:
+              if token in p:
+                  raise SystemExit('forbidden authority primitive: '+token)
+          required=[
+              "'source' => 'owner_reference'",
+              "'unit' => 'per_person_one_way'",
+              "'base_relation' => 'excluded'",
+              "'separate_from_fuel'=>true",
+              "'per_infant_unspecified'",
+              "'per_infant_one_way'",
+          ]
+          for token in required:
+              if token not in p:
+                  raise SystemExit('missing contract token: '+token)
+          print('FUNSUN_FUEL_REFERENCE_AUTHORITY_OK supplier=0 db=0 fswrite=0 booking=0 final_verified=0')
+          PY
+      - name: Run focused reference contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/funsun-fuel-owner-reference-test.php
