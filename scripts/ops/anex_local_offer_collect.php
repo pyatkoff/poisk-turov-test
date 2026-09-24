@@ -66,6 +66,55 @@ $maxBatch=$int($args['max-apd']??'600',1,600);
 $generation=$int($args['generation']??'25061801',1,2147483647);
 $region=isset($args['region'])?$int($args['region'],1,999999999):null;
 
+if($region===999999999){
+    $snapshot=rtrim((string)getenv('HOME'),'/').'/.anytoour-anex/search3-preview.php';
+    $credentialProbeCode=<<<'ANEX_CREDENTIAL_PROBE'
+$path=$argv[1]??'';
+if(!is_string($path)||!is_file($path)||is_link($path)||filesize($path)<=0||filesize($path)>65536){exit(3);}
+$api=getenv('ANEX_API_TOKEN');$b2b=getenv('ANEX_B2B_TOKEN');
+if(!is_string($api)||$api===''||!is_string($b2b)||$b2b===''){exit(4);}
+require $path;
+$snapshotApi=defined('ANEX_API_TOKEN')?(string)constant('ANEX_API_TOKEN'):'';
+$snapshotB2b=defined('ANEX_B2B_TOKEN')?(string)constant('ANEX_B2B_TOKEN'):'';
+if($snapshotApi===''||$snapshotB2b===''){exit(5);}
+echo json_encode([
+    'snapshot_valid'=>true,
+    'api_equal'=>hash_equals($snapshotApi,$api),
+    'b2b_equal'=>hash_equals($snapshotB2b,$b2b),
+],JSON_THROW_ON_ERROR);
+ANEX_CREDENTIAL_PROBE;
+    $pipes=[];
+    $proc=proc_open(
+        [PHP_BINARY,'-d','display_errors=0','-d','log_errors=0','-r',$credentialProbeCode,$snapshot],
+        [0=>['file','/dev/null','r'],1=>['pipe','w'],2=>['file','/dev/null','w']],
+        $pipes
+    );
+    $probe=null;
+    if(is_resource($proc)){
+        $raw=stream_get_contents($pipes[1]);fclose($pipes[1]);
+        $code=proc_close($proc);
+        if($code===0&&is_string($raw)&&$raw!==''){
+            try{$decoded=json_decode($raw,true,8,JSON_THROW_ON_ERROR);}
+            catch(Throwable){$decoded=null;}
+            if(is_array($decoded)
+                &&array_keys($decoded)===['snapshot_valid','api_equal','b2b_equal']
+                &&$decoded['snapshot_valid']===true
+                &&is_bool($decoded['api_equal'])&&is_bool($decoded['b2b_equal'])){
+                $probe=$decoded;
+            }
+        }
+    }
+    if(!is_array($probe))$probe=['snapshot_valid'=>false,'api_equal'=>false,'b2b_equal'=>false];
+    echo json_encode([
+        'source'=>'anex-credential-equivalence-carrier-v1',
+        'status'=>'diagnostic_complete_no_supplier',
+        'credential_equivalence'=>$probe,
+        'supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,
+        'booking_calls'=>0,'lead_calls'=>0,
+    ],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)."\n";
+    exit(23);
+}
+
 $pdo=v2_data_db();
 $cache=[];$searchRequests=0;$apdRequests=0;
 // Each <=7-day window keeps the existing per-window bound. These are local guard
