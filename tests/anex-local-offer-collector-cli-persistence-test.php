@@ -34,6 +34,11 @@ function fixtureTrace(string $stage, mixed $value=null):void{
 function fixtureScenario():array{
     return json_decode(file_get_contents(getenv('FIXTURE_DIR').'/scenario.json'),true,64,JSON_THROW_ON_ERROR);
 }
+function fixtureCounter(string $name):int{
+    $file=getenv('FIXTURE_DIR').'/'.$name.'.count';
+    $value=is_file($file)?(int)file_get_contents($file):0;
+    ++$value;file_put_contents($file,(string)$value);return $value;
+}
 function anytour_anex_anytour_offer_autosave_runtime(array $plan,array &$state,array $results):array{
     $expected=getenv('FIXTURE_DIR').'/' . 'anytoour.ru/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php';
     if(getenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE')!==$expected||!is_file($expected))throw new RuntimeException('INGEST_BINDING_MISSING');
@@ -59,6 +64,11 @@ require_once __DIR__.'/../app/integrations/anex-additional-prices-batch.php';
 final class AnyTourAnexClient{
     public function __construct(string $token){}
     public function lastRequestDiagnostics():array{
+        $diagnostic=getenv('FIXTURE_DIR').'/last-search-diagnostics.json';
+        if(is_file($diagnostic)){
+            $decoded=json_decode(file_get_contents($diagnostic),true,16,JSON_THROW_ON_ERROR);
+            if(is_array($decoded))return $decoded;
+        }
         $scenario=fixtureScenario();
         return ($scenario['http_error']??false)===true
             ? ['action'=>'SearchTour_CURRENCIES','http_status'=>429,'response_bytes'=>0,'curl_errno'=>0,'elapsed_ms'=>42,'unsafe'=>'drop-me']
@@ -87,8 +97,27 @@ function anytour_anex_search3_run($request,$db,$client,&$cache,&$diagnostics,$ob
     return ['provider'=>'anex','search_ref'=>str_repeat('a',32),'hotels'=>[['local_id'=>501,'tours'=>$tours]]];
 }
 function anytour_anex_search3_followup($request,&$state,$resolver,$factory,$metadata,$clock,$checkpoint,$additional,$browser):array{
-    $factory();$n=($state['fixture_expands']??0)+1;$state['fixture_expands']=$n;fixtureTrace('expand',$n);
-    if((fixtureScenario()['expand_error']??0)===$n)throw new RuntimeException('FIXTURE_EXPAND_INVARIANT');
+    $factory();
+    $diagnostic=getenv('FIXTURE_DIR').'/last-search-diagnostics.json';
+    if(is_file($diagnostic))unlink($diagnostic);
+    $attempt=fixtureCounter('expand-attempt');
+    $n=($state['fixture_expands']??0)+1;$state['fixture_expands']=$n;fixtureTrace('expand',$n);
+    $scenario=fixtureScenario();
+    $httpFailures=$scenario['expand_http_failures']??[];
+    if(is_array($httpFailures)&&in_array($attempt,$httpFailures,true)){
+        $state['fixture_expand_unknown']='poisoned-'.$attempt;
+        file_put_contents($diagnostic,json_encode([
+            'action'=>$scenario['expand_http_action']??'SearchTour_PRICES',
+            'http_status'=>$scenario['expand_http_status']??502,
+            'response_bytes'=>150,
+            'curl_errno'=>$scenario['expand_curl_errno']??0,
+            'elapsed_ms'=>42,
+            'unsafe'=>'drop-me',
+        ],JSON_THROW_ON_ERROR));
+        throw new RuntimeException('ANEX_HTTP_ERROR');
+    }
+    if(isset($state['fixture_expand_unknown']))throw new RuntimeException('FIXTURE_POISON_REUSED');
+    if(($scenario['expand_error']??0)===$n)throw new RuntimeException('FIXTURE_EXPAND_INVARIANT');
     $ref='anex_online:'.hash('sha256','c'.$n);
     $offer=['offer_key'=>$ref,'kind'=>'concrete','hotel'=>['local_id'=>501,'external_id'=>'77'],'checkin'=>'2026-10-30','nights'=>7];
     $state['gateway']['saved_offers']['offers'][$ref]=['offer'=>$offer,'supplier_tour_program_id'=>(string)$n,'supplier_currency_id'=>'1'];
@@ -223,7 +252,29 @@ persistenceCheck($http['code']===1&&$http['stderr']===''&&is_array($http['result
     &&($http['result']['additional_last_request']??null)==[]
     &&!isset($http['result']['search_last_request']['unsafe']),
     'http error retains only safe fixed diagnostics');
+$retry=persistenceCli(['groups'=>1,'expand_http_failures'=>[1]]);
+persistenceCheck($retry['code']===0&&($retry['result']['status']??null)==='complete'
+    &&($retry['counts']['expand']??0)===2&&($retry['counts']['apd']??0)===1
+    &&($retry['counts']['finalize']??0)===1&&($retry['result']['expand_calls']??null)===1
+    &&($retry['result']['search_client_instances']??null)===3,
+    'one exact expand 502 retries once with fresh state/client and keeps logical count');
+$onePerRef=persistenceCli(['groups'=>2,'expand_http_failures'=>[1,3]]);
+persistenceCheck($onePerRef['code']===1&&($onePerRef['result']['status']??null)==='supplier_error'
+    &&($onePerRef['result']['error_code']??null)==='ANEX_HTTP_ERROR'
+    &&($onePerRef['counts']['expand']??0)===3&&!isset($onePerRef['counts']['apd'])
+    &&!isset($onePerRef['counts']['finalize'])&&($onePerRef['result']['search_client_instances']??null)===4,
+    'only one 502 retry allowed per search ref/window');
+$non502=persistenceCli(['groups'=>1,'expand_http_failures'=>[1],'expand_http_status'=>503]);
+persistenceCheck($non502['code']===1&&($non502['result']['status']??null)==='supplier_error'
+    &&($non502['counts']['expand']??0)===1&&($non502['result']['search_client_instances']??null)===2
+    &&($non502['result']['search_last_request']['action']??null)==='SearchTour_PRICES'
+    &&($non502['result']['search_last_request']['http_status']??null)===503,
+    'non-502 expand HTTP error is not retried');
+$wrongAction=persistenceCli(['groups'=>1,'expand_http_failures'=>[1],'expand_http_action'=>'SearchTour_CURRENCIES']);
+persistenceCheck($wrongAction['code']===1&&($wrongAction['result']['status']??null)==='supplier_error'
+    &&($wrongAction['counts']['expand']??0)===1&&($wrongAction['result']['search_client_instances']??null)===2,
+    'non-PRICES 502 is not retried');
 $other=persistenceCli(['expand_error'=>7]);
 persistenceCheck($other['code']!==0&&$other['result']===null&&str_contains($other['stderr'],'FIXTURE_EXPAND_INVARIANT')
     &&!isset($other['counts']['finalize']),'unrelated invariant not swallowed');
-echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=2 late=1 final_no_ready=1 final=1 missing=1 empty_regular=2 supplier_diag=1 http_diag=1 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
+echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=2 late=1 final_no_ready=1 final=1 missing=1 empty_regular=2 supplier_diag=1 http_diag=1 expand_502_retry=1 retry_cap=1 non502=1 wrong_action=1 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
