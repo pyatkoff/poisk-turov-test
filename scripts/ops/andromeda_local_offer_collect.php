@@ -48,6 +48,7 @@ if($site===false||basename($site)!=='anytoour.ru'||$privateConfig===false||!is_f
 
 $runtime=dirname(__DIR__,2);
 require_once $runtime.'/app/integrations/andromeda-local-offer-collector.php';
+require_once $runtime.'/app/integrations/andromeda-search-envelope-diagnostic.php';
 require_once $runtime.'/v2/api-andromeda-search3-preview.php';
 require_once $runtime.'/app/integrations/andromeda-saved-package-runtime.php';
 require_once $runtime.'/app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php';
@@ -104,7 +105,7 @@ if(!is_dir($directory)||is_link($directory))throw new RuntimeException('ANDROMED
 
 $lastPageFinishedAt=0.0;
 $searchComplete=static function(array $req)use($pdo,$saved,$config,$session,&$lastPageFinishedAt):array{
-    return anytour_andromeda_search3_run_pages($req,
+    $search=anytour_andromeda_search3_run_pages($req,
         static function(array $pageRequest)use($pdo,$saved,$config,$session,&$lastPageFinishedAt):array{
             if($lastPageFinishedAt>0.0){
                 $wait=1.05-(microtime(true)-$lastPageFinishedAt);
@@ -117,6 +118,9 @@ $searchComplete=static function(array $req)use($pdo,$saved,$config,$session,&$la
             }
         }
     );
+    $diagnostic=AnyTourAndromedaSearchEnvelopeDiagnosticV1::exceptionCode($req,$search);
+    if($diagnostic!==null)throw new RuntimeException($diagnostic);
+    return $search;
 };
 
 $loadCohort=static function(string $ref,int $generation)use($directory):array{
