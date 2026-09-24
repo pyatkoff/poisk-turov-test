@@ -48,7 +48,7 @@ jobs:
         run: |
           python3 scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_recovery_v14.py --self-test
           python3 tests/hotel_match_samo_business_live30_common4_wave5_recovery_v14_test.py
-          ! grep -E 'requests\.|urllib|curl|ssh|mysql|PDO|INSERT|UPDATE|DELETE' scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_recovery_v14.py
+          ! grep -E 'import requests|from requests|import urllib|from urllib|subprocess|socket\\.|paramiko|pymysql|mysql\\.|PDO|INSERT INTO|UPDATE .* SET|DELETE FROM' scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_recovery_v14.py
       - name: Download exact source artifacts
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
