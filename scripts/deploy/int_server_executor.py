@@ -2885,6 +2885,24 @@ try:
         result['collector']=collector
         result['after_db']=db_summary(provider)
         parseable=collector.get('status')!='unparseable'
+        collector_incomplete_safe=(
+            mode in ('andromeda-scope','andromeda-external-group','andromeda-operator-scope')
+            and run.returncode!=0 and parseable
+            and collector.get('source')=='andromeda-local-offer-collector-v1'
+            and collector.get('status')=='incomplete'
+            and collector.get('incomplete_reason')=='search_partial'
+            and isinstance(collector.get('pages'),int) and collector['pages']>=1
+            and isinstance(collector.get('advertised_pages'),int)
+            and collector['advertised_pages']>collector['pages']
+            and isinstance(collector.get('received_offers'),int) and collector['received_offers']>=0
+            and isinstance(collector.get('mapped_offers'),int) and collector['mapped_offers']>=0
+            and collector.get('autosave_published') is False
+            and collector.get('autosave_reason')=='cohort_incomplete'
+            and collector.get('autosave')=={'published':False,'reason':'cohort_incomplete'}
+            and collector.get('selection_authority') is False
+            and collector.get('booking_calls')==0
+            and result['after_db']==result['before_db']
+        )
         if run.returncode==0 and parseable:
             if mode=='anex-demand':
                 scopes=[x.get('scope',{}) for x in collector.get('results',[])
@@ -2904,13 +2922,24 @@ try:
                 result['local_readback']=local_read(scopes) if scopes else []
             except Exception as exc:
                 result['local_readback']={'status':'failed','reason':str(exc)}
+        elif collector_incomplete_safe:
+            result['local_readback']={'status':'skipped_after_collector_incomplete'}
         else:
             result['local_readback']={'status':'skipped_after_collector_nonzero'}
         result['production_after']=fingerprints()
         if result['production_after']!=before: fail('production_drift')
-        result['status']='complete' if run.returncode==0 and parseable else 'unknown_no_replay'
-        result['supplier_calls']='bounded_by_collector' if result['status']=='complete' else 'unknown'
-        result['database_writes']='collector_owned' if result['status']=='complete' else 'unknown'
+        if run.returncode==0 and parseable:
+            result['status']='complete'
+            result['supplier_calls']='bounded_by_collector'
+            result['database_writes']='collector_owned'
+        elif collector_incomplete_safe:
+            result['status']='incomplete'
+            result['supplier_calls']='bounded_by_collector'
+            result['database_writes']=0
+        else:
+            result['status']='unknown_no_replay'
+            result['supplier_calls']='unknown'
+            result['database_writes']='unknown'
         result['production_unchanged']=True
 except Exception as exc:
     if mode in ('install-runtime','install-anex-preview','install-andromeda-preview') and install_started:
@@ -3186,7 +3215,7 @@ def main() -> None:
         for key,value in command.items():
             print(f'{key}={value}')
         return
-    if command['mode'] in ('anex-range','match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-continuation-remainder','program-fuel-probe'):
+    if command['mode'] in ('anex-range','andromeda-scope','andromeda-external-group','andromeda-operator-scope','match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-continuation-remainder','program-fuel-probe'):
         ensure_supplier_slot(token)
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))

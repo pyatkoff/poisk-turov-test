@@ -52,6 +52,9 @@ class AnexSecretTransportTest(unittest.TestCase):
         self.assertIn('anex-range', m.SUPPLIER_SLOT_MODES)
         self.assertIn('program-fuel-probe', m.SUPPLIER_SLOT_MODES)
         self.assertIn('match-common4-continuation-remainder', m.SUPPLIER_SLOT_MODES)
+        self.assertIn('andromeda-scope', m.SUPPLIER_SLOT_MODES)
+        self.assertIn('andromeda-external-group', m.SUPPLIER_SLOT_MODES)
+        self.assertIn('andromeda-operator-scope', m.SUPPLIER_SLOT_MODES)
         self.assertNotIn('local-readback', m.SUPPLIER_SLOT_MODES)
 
     def test_workflow_uses_existing_github_secrets_and_wrapper(self):
