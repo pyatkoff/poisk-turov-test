@@ -79,7 +79,7 @@ async function nativeRecovery(){
  window.Search3CanonicalProfilesV1={create:()=>({reset(){},read:()=>[]})};
  Object.assign(sandbox,{location:window.location,URLSearchParams,structuredClone,AbortController,fetch:(...args)=>window.fetch(...args),setTimeout:()=>0,clearTimeout(){}});
  for(const file of ['lead-search-context.js','tour-controller-v4.js','prototype-search/data.js'])vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../v2',file),'utf8'),sandbox,{filename:file});
- const data=window.AnyTourPrototypeData;data.catalog.departures.push({id:1,name:'Москва'});data.catalog.countries.push({id:4,name:'Турция'});
+ const data=window.AnyTourPrototypeData;data.catalog.departures.push({id:1,name:'Москва'});data.catalog.countries.push({id:4,name:'Турция',tourvisorIds:['4']});
  const trip={origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-01',minNights:7,maxNights:7,adults:2,ages:[17,0]};
  await data.search(trip,()=>{});
  const offer={raw:{id:tour.id},provider:'tourvisor',cached:false,flightChoiceId:null};offer.tour=await data.quote(offer);
