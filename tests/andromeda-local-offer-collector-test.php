@@ -86,6 +86,40 @@ $drained=AnyTourAndromedaLocalOfferCollectorV1::collect(
 ok($drained['pages']===3 && $drainedCaptureCalls===1 && $drainedAutosaveCalls===1,'drained partial aggregate accepted');
 ok($drained['status']==='incomplete','unpublished drained cohort must not report complete');
 
+$interruptedLoadCalls=0;$interruptedCaptureCalls=0;$interruptedAutosaveCalls=0;
+$interrupted=AnyTourAndromedaLocalOfferCollectorV1::collect(
+    $request,
+    static fn(array $r):array=>[
+        'provider'=>'andromeda','search_ref'=>str_repeat('1',64),
+        'page'=>2,'pages_count'=>3,'status'=>'partial','grouped'=>true,
+        'first_page_only'=>false,'external_search_pending'=>true,
+        'received_offers'=>41,'mapped_offers'=>37,
+    ],
+    static function(string $ref,int $generation)use(&$interruptedLoadCalls):array{
+        ++$interruptedLoadCalls;throw new RuntimeException('interrupted_cohort_must_not_load');
+    },
+    static fn(array $selection,array $row):bool=>true,
+    static function(array $selection)use(&$interruptedCaptureCalls):array{
+        ++$interruptedCaptureCalls;throw new RuntimeException('interrupted_capture_must_not_run');
+    },
+    static function(array $r,string $ref,int $generation)use(&$interruptedAutosaveCalls):array{
+        ++$interruptedAutosaveCalls;throw new RuntimeException('interrupted_autosave_must_not_run');
+    },
+    2
+);
+ok($interrupted['status']==='incomplete'
+    &&$interrupted['incomplete_reason']==='search_partial'
+    &&$interrupted['pages']===2&&$interrupted['advertised_pages']===3
+    &&$interrupted['received_offers']===41&&$interrupted['mapped_offers']===37,
+    'interrupted partial preserves sanitized progress as incomplete');
+ok($interruptedLoadCalls===0&&$interruptedCaptureCalls===0&&$interruptedAutosaveCalls===0,
+    'interrupted partial never loads incomplete cohort, captures surcharge or autosaves');
+ok($interrupted['autosave_published']===false
+    &&$interrupted['autosave_reason']==='cohort_incomplete'
+    &&$interrupted['selection_authority']===false
+    &&$interrupted['booking_calls']===0,
+    'interrupted partial gains no persistence/selection/booking authority');
+
 foreach ([
     ['page'=>2,'pages_count'=>3,'status'=>'partial','grouped'=>true,'first_page_only'=>false,'external_search_pending'=>false,'received_offers'=>5,'mapped_offers'=>5],
     ['page'=>1,'pages_count'=>1,'status'=>'partial','grouped'=>true,'first_page_only'=>false,'external_search_pending'=>false,'received_offers'=>1,'mapped_offers'=>1],
@@ -475,4 +509,4 @@ ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('FUN&SUN')===true,'FUNSUN
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Библио-Глобус')===true,'BG owned');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('Интурист')===true,'Intourist owned');
 
-echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 partial_fail_closed=4 night_independent_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1 persistence_fail_closed=7 cli_exit_guard=1 external_group_probe=2 terminal_empty=6 empty_fail_closed=51\n";
+echo "ANDROMEDA_LOCAL_OFFER_COLLECTOR_OK pages=3 routing=1 capture_bound=2 ready=1 drained_partial=1 interrupted_partial=1 partial_fail_closed=4 night_independent_grouping=1 malformed_unique=1 nonexternal_mass=1 time_budget=1 terminal_continue=1 invariant_fail_closed=1 autosave=1 persistence_fail_closed=7 cli_exit_guard=1 external_group_probe=2 terminal_empty=6 empty_fail_closed=51\n";

@@ -22,6 +22,8 @@ $code=static fn($search)=>AnyTourAndromedaSearchEnvelopeDiagnosticV1::exceptionC
 $assert($code($base),null,'complete accepted');
 $partial=$base;$partial['status']='partial';
 $assert($code($partial),null,'drained partial accepted');
+$interrupted=$partial;$interrupted['page']=28;$interrupted['external_search_pending']=true;
+$assert($code($interrupted),null,'interrupted live partial accepted as incomplete evidence');
 $empty=$base;$empty['pages_count']=0;$empty['page']=1;$empty['status']='complete';$empty['hotels']=[];$empty['received_offers']=0;$empty['mapped_offers']=0;
 $assert($code($empty),null,'terminal empty accepted');
 
