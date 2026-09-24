@@ -76,6 +76,7 @@ function search3_destination_read(PDO $db,string $action,array $query): array
             $dto=$catalog->get($localId);
             if(!$dto||$dto['kind']!=='country')throw new RuntimeException('DESTINATION_HIERARCHY');
             $item=search3_destination_item($catalog,$dto);
+            $item['tourvisorIds']=[(string)$external];
             $items[$localId]=$item;
         }
         $items=array_values($items);
