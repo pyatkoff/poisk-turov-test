@@ -136,6 +136,30 @@ class ParseTest(unittest.TestCase):
     def test_anex(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} anex-demand int-anex-current-demand-20260921-v1 3')
         self.assertEqual(3,v['limit']);self.assertEqual('anex-demand',v['mode'])
+    def test_anex_range(self):
+        v=m.parse_command(
+            f'/run-int-server-v1 {SHA} anex-range int-anex-mow-turkey-range-20260924-v4 '
+            '1 4 2026-09-29 2026-10-19 7 2 - - 0'
+        )
+        self.assertEqual('anex-range',v['mode'])
+        self.assertEqual(1,v['departure']);self.assertEqual(4,v['country'])
+        self.assertEqual('2026-09-29',v['date_from']);self.assertEqual('2026-10-19',v['date_to'])
+        self.assertEqual([],v['child_ages']);self.assertEqual('',v['meal']);self.assertEqual(0,v['region'])
+        kids=m.parse_command(
+            f'/run-int-server-v1 {SHA} anex-range int-anex-mow-turkey-family-20260924-v4 '
+            '1 4 2026-10-01 2026-10-08 10 2 7,2 AI 15'
+        )
+        self.assertEqual([2,7],kids['child_ages']);self.assertEqual('AI',kids['meal']);self.assertEqual(15,kids['region'])
+        bad=[
+            f'/run-int-server-v1 {SHA} anex-range int-andromeda-bad-range-20260924-v4 1 4 2026-09-29 2026-10-19 7 2 - - 0',
+            f'/run-int-server-v1 {SHA} anex-range int-anex-bad-range-20260924-v4 1 4 2026-10-19 2026-09-29 7 2 - - 0',
+            f'/run-int-server-v1 {SHA} anex-range int-anex-bad-range-20260924-v4 1 4 2026-09-29 2026-10-20 7 2 - - 0',
+            f'/run-int-server-v1 {SHA} anex-range int-anex-bad-range-20260924-v4 1 4 2026-09-29 2026-10-19 7 2 18 - 0',
+            f'/run-int-server-v1 {SHA} anex-range int-anex-bad-range-20260924-v4 1 4 2026-09-29 2026-10-19 7 2 1,2,3,4 - 0',
+        ]
+        for value in bad:
+            with self.subTest(value=value),self.assertRaises(ValueError):
+                m.parse_command(value)
     def test_andromeda(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} andromeda-scope int-andromeda-current-scope-20260921-v1 1 4 2026-10-10 2026-10-12 7 2 - 0 0')
         self.assertEqual('',v['meal']);self.assertEqual(0,v['max_captures'])
@@ -522,6 +546,7 @@ class ContractTest(unittest.TestCase):
                   "install-runtime","install-andromeda-preview","install-andromeda-quote-preview","install-plan.json","preview-install-plan.json","quote-preview-install-plan.json","install-state.json","rollback_install",
                   "v2/api-andromeda-search3-preview.php","api-andromeda-search3-preview.php","v2/api-andromeda-quote-preview.php","api-andromeda-quote-preview.php",
                   "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",
+                  "anex-range","anex_date_range","anex_local_offer_collect.php",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
                   "search3-local-results-read-v1.php","--max-captures=","non_external_only",
                   "andromeda-external-group","external_group_only",

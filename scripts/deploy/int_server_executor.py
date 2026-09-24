@@ -359,6 +359,31 @@ def parse_command(body: str) -> dict:
         need(len(parts) == 4, 'command_shape')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
                 'limit': integer(parts[3], 1, 20, 'anex_limit')}
+    if mode == 'anex-range':
+        # Exact owner-authorized direct-ANEX search/autosave over one user-visible range.
+        need(len(parts) == 12, 'command_shape')
+        need(operation.startswith('int-anex-'), 'anex_range_operation_namespace')
+        departure = integer(parts[3], 1, 999999999, 'departure')
+        country = integer(parts[4], 1, 999999999, 'country')
+        date_from, date_to = date(parts[5]), date(parts[6])
+        import datetime as dt
+        inclusive_days = (dt.date.fromisoformat(date_to) - dt.date.fromisoformat(date_from)).days + 1
+        need(1 <= inclusive_days <= 21, 'anex_date_range')
+        nights = integer(parts[7], 1, 28, 'nights')
+        adults = integer(parts[8], 1, 6, 'adults')
+        child_raw = parts[9]
+        need(re.fullmatch(r'(?:-|(?:[0-9]|1[0-7])(?:,(?:[0-9]|1[0-7])){0,2})', child_raw) is not None,
+             'child_ages')
+        child_ages = [] if child_raw == '-' else sorted(int(x) for x in child_raw.split(','))
+        meal = parts[10]
+        need(re.fullmatch(r'(?:-|[A-Za-z0-9_,&]{1,32})', meal) is not None, 'meal')
+        region = integer(parts[11], 0, 999999999, 'region')
+        return {
+            'source_sha': source, 'mode': mode, 'operation_id': operation,
+            'departure': departure, 'country': country, 'date_from': date_from,
+            'date_to': date_to, 'nights': nights, 'adults': adults,
+            'child_ages': child_ages, 'meal': '' if meal == '-' else meal, 'region': region,
+        }
     if mode == 'reconcile':
         need(len(parts) == 4, 'command_shape')
         target = parts[3]
@@ -2738,7 +2763,7 @@ try:
         result['database_writes']=0
         result['production_unchanged']=True
     if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
-        provider='anex' if mode=='anex-demand' else 'andromeda'
+        provider='anex' if mode in ('anex-demand','anex-range') else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
         env['ANYTOUR_PROJECT_ROOT']=str(project)
@@ -2747,6 +2772,15 @@ try:
         command=['php',str(stage/'scripts/ops/anex_local_offer_demand_fill.php'),
           '--limit='+str(payload['limit']),'--lookback-hours=168','--horizon-days=21',
           '--max-expands=600','--max-apd=600','--generation-base='+generation]
+    elif mode=='anex-range':
+        command=['php',str(stage/'scripts/ops/anex_local_offer_collect.php'),
+          '--departure='+str(payload['departure']),'--country='+str(payload['country']),
+          '--date-from='+payload['date_from'],'--date-to='+payload['date_to'],
+          '--nights='+str(payload['nights']),'--adults='+str(payload['adults']),
+          '--child-ages='+','.join(str(x) for x in payload['child_ages']),
+          '--meal='+payload['meal'],'--generation='+generation,
+          '--max-expands=600','--max-apd=600']
+        if payload['region']: command.append('--region='+str(payload['region']))
     elif mode in ('andromeda-scope','andromeda-external-group','andromeda-operator-scope'):
         config=project/'_preview/search3-anex-candidate/.andromeda-private.php'
         if not safe_file(config,65536): fail('andromeda_private_config_missing')
@@ -2777,6 +2811,11 @@ try:
             if mode=='anex-demand':
                 scopes=[x.get('scope',{}) for x in collector.get('results',[])
                         if isinstance(x,dict) and isinstance(x.get('scope'),dict)]
+            elif mode=='anex-range':
+                scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
+                         'regionId':payload['region'] or None,'dateFrom':payload['date_from'],
+                         'dateTo':payload['date_to'],'nights':payload['nights'],
+                         'adults':payload['adults'],'childAges':payload['child_ages']}]
             else:
                 scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
                          'regionId':payload['region'] or None,'dateFrom':payload['date_from'],
@@ -3069,7 +3108,7 @@ def main() -> None:
         for key,value in command.items():
             print(f'{key}={value}')
         return
-    if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-continuation-remainder','program-fuel-probe'):
+    if command['mode'] in ('anex-range','match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-continuation-remainder','program-fuel-probe'):
         ensure_supplier_slot(token)
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
