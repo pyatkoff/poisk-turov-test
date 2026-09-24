@@ -693,7 +693,7 @@ class ContractTest(unittest.TestCase):
         text=SCRIPT.read_text()
         for mode in ('andromeda-scope','andromeda-external-group','andromeda-operator-scope'):
             self.assertIn(mode,text)
-        self.assertIn("collector_incomplete_safe=(",text)
+        self.assertIn("collector_incomplete_safe=collector_incomplete_base and (",text)
         self.assertIn("collector.get('incomplete_reason')=='search_partial'",text)
         self.assertIn("collector.get('autosave_reason')=='cohort_incomplete'",text)
         self.assertIn("collector_incomplete_first_page=(",text)
