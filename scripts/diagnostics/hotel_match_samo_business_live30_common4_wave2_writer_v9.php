@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 const SBW5_AUDIT_OP='hotel-match-samo-business-live30-common4-wave2-current-1971-20260924-v8';
-const SBW5_NS=['operator_5'=>5,'operator_115'=>115,'operator_315'=>315,'operator_115'=>342];
+const SBW5_NS=['operator_5'=>5,'operator_115'=>115,'operator_315'=>315,'operator_342'=>342];
 
 function sbw5_need(bool $v,string $why):void{if(!$v)throw new RuntimeException($why);}
 function sbw5_sort(mixed $v):mixed{if(!is_array($v))return $v;if(array_is_list($v))return array_map('sbw5_sort',$v);ksort($v,SORT_STRING);foreach($v as $k=>$x)$v[$k]=sbw5_sort($x);return $v;}
@@ -93,7 +93,7 @@ function sbw5_self_test():void{
     $anchor=['supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>'10','local_hotel_id'=>100,'decision_status'=>'accepted','catalog_sha256'=>str_repeat('a',64),'evidence_sha256'=>str_repeat('b',64)];
     $row=['supplier_namespace'=>'operator_115','operator_id'=>115,'external_hotel_id'=>'900','local_hotel_id'=>100,'source_operation'=>'hotel-match-samo-business-live30-common4-acquire-1971-20260924-v3-wave2','source_result_sha256'=>str_repeat('c',64),'source_edge_sha256'=>str_repeat('d',64),'source_edge_sha256s'=>[str_repeat('d',64)],'input_catalog_ids'=>['10'],'catalog_hotel'=>['id'=>100,'name'=>'X','country_id'=>1,'country_name'=>'Turkey','region_id'=>2,'region_name'=>'R','subregion_id'=>3,'subregion_name'=>'S','category'=>'5','is_active'=>1],'unanimous_catalog_sha256'=>str_repeat('a',64),'anchors'=>[$anchor],'status'=>'writer_ready','anchor_state'=>'canonical_anchor_ok','writer_ready'=>true,'safe_to_write_now'=>false];
     $rows=array_fill(0,17,$row);for($i=0;$i<17;$i++){$rows[$i]['external_hotel_id']=(string)(900+$i);$rows[$i]['local_hotel_id']=100+$i;$rows[$i]['catalog_hotel']['id']=100+$i;$rows[$i]['anchors'][0]['local_hotel_id']=100+$i;}
-    $audit=['operation'=>SBW5_AUDIT_OP,'state'=>'completed_read_only_samo_business_common4_current','source_operation'=>$row['source_operation'],'source_result_sha256'=>$row['source_result_sha256'],'captured_single_native_edge_count'=>17,'writer_ready_counts'=>['operator_115'=>188],'writer_ready_total'=>17,'rows'=>$rows,'provider_http_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
+    $audit=['operation'=>SBW5_AUDIT_OP,'state'=>'completed_read_only_samo_business_common4_current','source_operation'=>$row['source_operation'],'source_result_sha256'=>$row['source_result_sha256'],'captured_single_native_edge_count'=>17,'writer_ready_counts'=>['operator_115'=>17],'writer_ready_total'=>17,'rows'=>$rows,'provider_http_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
     $m=sbw5_manifest($audit,0,17);sbw5_need($m['total']===17&&count($m['rows'])===17,'self_manifest');
 }
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
