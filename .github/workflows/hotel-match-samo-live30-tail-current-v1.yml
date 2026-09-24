@@ -1,0 +1,158 @@
+name: MATCH SAMO live30 tail current v1
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: ['.github/workflows/hotel-match-samo-live30-tail-current-v1.yml']
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-live30-tail-current-1971-20260924-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-samo-live30-tail-current-1971-20260924-v1
+  BASE: e1176f5936e336574767800793849b8968c65d92
+  CLAIM: '5805078039'
+  PLAN_ARTIFACT: '10780093445'
+  PLAN_ZIP_SHA256: 6e88ad112b7ba53ff3608c80ad9a42683d6cf9ff980e21eb959a20597b326541
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate authority, immutable plan and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-samo-live30-tail-current-v1.yml "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >terminal/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('terminal/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],'105210','121911','37534','38021','45907','CURRENT','provider/Tourvisor/SAMO/ANEX/Andromeda HTTP0','DB0/mapping writes0']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success'; break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$PLAN_ARTIFACT/zip" >terminal/plan.zip
+          test "$(sha256sum terminal/plan.zip | awk '{print $1}')" = "$PLAN_ZIP_SHA256"
+          python3 - <<'PY'
+          import zipfile,json,os,pathlib
+          z=zipfile.ZipFile('terminal/plan.zip')
+          names=[n for n in z.namelist() if n.endswith('result.json')]
+          assert len(names)==1,names
+          raw=z.read(names[0]); pathlib.Path('terminal/plan-result.json').write_bytes(raw)
+          r=json.loads(raw)
+          assert r['operation']=='hotel-match-samo-live30-common4-plan-1971-20260924-v1'
+          assert r['state']=='samo_live30_common4_plan_ready' and r['catalog_live30_count']==450
+          want={'105210':'saved_catalog_missing','121911':'saved_catalog_missing','37534':'saved_catalog_missing','38021':'saved_catalog_missing','45907':'saved_catalog_state_ambiguous'}
+          rows={str(x['andromeda_catalog_id']):x for x in r['rows'] if str(x.get('andromeda_catalog_id')) in want}
+          assert set(rows)==set(want)
+          for k,state in want.items():
+              x=rows[k]; assert x['saved_catalog_state']==state and x['mapping_state']=='unresolved' and x['local_hotel_id'] is None and x['local_targets']==[]
+              assert x['missing_operator_ids']==[5,115,315,342]
+          PY
+      - name: Build supplier-free current auditor
+        run: |
+          cat >terminal/tail_current.php <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const TC_OP='hotel-match-samo-live30-tail-current-1971-20260924-v1';
+          const TC_IDS=['105210','121911','37534','38021','45907'];
+          function tc_need(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
+          function tc_excluded(string $v):bool{return preg_match('/^(?:россия|абхазия|russia|russian federation|abkhazia)$/iu',trim($v))===1;}
+          function tc_anchor(array $rows):string{
+              if(!$rows)return 'canonical_anchor_missing';$cats=[];
+              foreach($rows as $r){
+                  if(($r['decision_status']??'')!=='accepted'||$r['local_hotel_id']===null)return 'canonical_anchor_invalid';
+                  $ej=(string)($r['evidence_json']??'');$eh=(string)($r['evidence_sha256']??'');$cat=(string)($r['catalog_sha256']??'');
+                  if(preg_match('/^[a-f0-9]{64}$/D',$eh)!==1||preg_match('/^[a-f0-9]{64}$/D',$cat)!==1||hash('sha256',$ej)!==$eh)return 'canonical_anchor_evidence_invalid';
+                  $cats[$cat]=true;
+              }
+              return count($cats)===1?'canonical_anchor_ok':'canonical_anchor_catalog_conflict';
+          }
+          $root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$sha=(string)getenv('MATCH_SOURCE_SHA');$planScript=(string)getenv('MATCH_PLAN_SCRIPT');
+          tc_need(is_dir($root)&&basename($root)==='anytoour.ru'&&is_dir($dir)&&basename($dir)===TC_OP&&is_file($planScript)&&preg_match('/^[a-f0-9]{40}$/D',$sha)===1,'runtime_scope');
+          require_once $planScript;
+          require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+          try{
+              $db=v2_data_db();$current=slc4p_execute($db,$root);$by=[];foreach($current['rows'] as $r)$by[(string)$r['andromeda_catalog_id']]=$r;
+              $ph=implode(',',array_fill(0,count(TC_IDS),'?'));
+              $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+              $all=slc4p_query($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,catalog_sha256,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' ORDER BY external_hotel_id,local_hotel_id");
+              $src=[];$anchors=[];foreach($all as $r){$src[(string)$r['external_hotel_id']][]=$r;if(($r['decision_status']??'')==='accepted'&&$r['local_hotel_id']!==null)$anchors[(int)$r['local_hotel_id']][]=$r;}
+              $manual=[];foreach(slc4p_query($db,"SELECT catalog_hotel_id FROM anex_hotel_decisions WHERE catalog_hotel_id IS NOT NULL") as $r)$manual[(int)$r['catalog_hotel_id']]=true;
+              $db->rollBack();
+              $out=[];$counts=[];$ready=0;
+              foreach(TC_IDS as $id){
+                  $r=$by[$id]??null;$status='hold_not_live30';$local=null;$anchor='not_applicable';$saved=null;$stateinc=null;$missing=[];
+                  if($r!==null){
+                      $saved=(string)($r['saved_catalog_state']??'');$stateinc=$r['saved_stateinc']??null;$missing=$r['missing_operator_ids']??[];$local=$r['local_hotel_id']??null;
+                      if(($r['mapping_state']??'')!=='mapped_unique'||!is_int($local)||$local<1)$status='hold_catalog_target_unresolved';
+                      elseif(!is_array($r['local_hotel']??null)||(int)($r['local_hotel']['is_active']??0)!==1)$status='hold_target_inactive';
+                      elseif(tc_excluded((string)($r['local_hotel']['country_name']??'')))$status='hold_excluded_country';
+                      else{
+                          $sourceRows=$src[$id]??[];$nonAccepted=array_filter($sourceRows,fn($x)=>(string)($x['decision_status']??'')!=='accepted');$anchor=tc_anchor($anchors[$local]??[]);
+                          if($nonAccepted)$status='hold_source_has_nonaccepted_decision';
+                          elseif(isset($manual[$local]))$status='hold_manual_target';
+                          elseif($anchor!=='canonical_anchor_ok')$status='hold_'.$anchor;
+                          elseif($saved!=='saved_catalog_ready'||!is_int($stateinc)||$stateinc<1)$status='hold_'.$saved;
+                          elseif(!is_array($missing)||$missing===[])$status='resolved_no_missing_operator_lane';
+                          else{$status='acquisition_ready';$ready++;}
+                      }
+                  }
+                  $counts[$status]=($counts[$status]??0)+1;
+                  $out[]=['andromeda_catalog_id'=>$id,'still_live30'=>$r!==null,'mapping_state'=>$r['mapping_state']??null,'local_hotel_id'=>$local,'saved_catalog_state'=>$saved,'saved_stateinc'=>$stateinc,'missing_operator_ids'=>$missing,'anchor_state'=>$anchor,'status'=>$status,'acquisition_ready'=>$status==='acquisition_ready','safe_to_write_now'=>false];
+              }
+              ksort($counts);$res=['operation'=>TC_OP,'state'=>'completed_read_only_tail_current','source_sha'=>$sha,'tail_count'=>5,'acquisition_ready_count'=>$ready,'hold_count'=>5-$ready,'status_counts'=>$counts,'rows'=>$out,'provider_http_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
+              $h=slc4p_save($dir.'/result.json',$res);slc4p_save($dir.'/receipt.json',['operation'=>TC_OP,'state'=>$res['state'],'result_sha256'=>$h,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$h,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);
+              echo slc4p_json(['state'=>$res['state'],'acquisition_ready_count'=>$ready,'hold_count'=>5-$ready,'status_counts'=>$counts])."\n";
+          }catch(Throwable $e){if(isset($db)&&$db instanceof PDO&&$db->inTransaction())$db->rollBack();$f=['operation'=>TC_OP,'state'=>'failed_read_only_tail_current','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',mb_substr($e->getMessage(),0,150,'UTF-8')),'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0];$h=slc4p_save($dir.'/result.json',$f);slc4p_save($dir.'/receipt.json',['operation'=>TC_OP,'state'=>$f['state'],'result_sha256'=>$h,'readback_verified'=>true,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);fwrite(STDERR,$f['reason']."\n");exit(2);}
+          PHP
+          php -l terminal/tail_current.php
+      - name: Execute CURRENT readback only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\";printf '%s\n' '{\"operation\":\"$OP\",\"state\":\"reserved_before_db_read\"}' >\"\$HOME/$op/reservation.json\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_live30_common4_plan_v1.php terminal/tail_current.php "$remote:$op/payload/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_PLAN_SCRIPT=\"\$HOME/$op/payload/hotel_match_samo_live30_common4_plan_v1.php\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/tail_current.php\"" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
+          set -e
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile(): pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state']=='completed_read_only_tail_current' and r['tail_count']==5 and len(r['rows'])==5
+          assert r['provider_http_calls']==r['tourvisor_calls']==r['samo_calls']==r['anex_calls']==r['andromeda_calls']==r['database_writes']==r['mapping_writes']==0
+          assert r['safe_to_write_now'] is False
+          print(json.dumps({k:r[k] for k in ['state','tail_count','acquisition_ready_count','hold_count','status_counts']},sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-live30-tail-current-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
