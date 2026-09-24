@@ -1,0 +1,127 @@
+name: MATCH Side4 baseline COMMON4 CURRENT v12
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-side4-baseline-common4-current-v12.yml]
+permissions: {contents: read, actions: read, issues: read}
+env:
+  CLAIM: '5783209835'
+  OP: hotel-match-side4-baseline-common4-current-probe-1971-20260922-v12
+jobs:
+  probe:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim and exact one-file carrier
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p out
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git diff-tree --no-commit-id --name-only -r HEAD)" = ".github/workflows/hotel-match-side4-baseline-common4-current-v12.yml"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >out/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('out/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for s in [os.environ['OP'],'TV9337','SAMO343342','TV28660','SAMO2000023127','DB READ ONLY','writes0']:
+              assert s in b,s
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f:
+                  rs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD_SHA']]
+              if rs and max(rs,key=lambda x:x['id'])['status']=='completed':
+                  assert max(rs,key=lambda x:x['id'])['conclusion']=='success'
+                  break
+              time.sleep(5)
+          else:
+              raise SystemExit('security_not_green')
+          PY
+      - name: CURRENT read-only exact baseline audit
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          cat >"$RUNNER_TEMP/probe.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          function need(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
+          function q(PDO $db,string $sql,array $p=[]):array{$st=$db->prepare($sql);$st->execute(array_values($p));return $st->fetchAll(PDO::FETCH_ASSOC)?:[];}
+          $root=(string)getenv('ANYTOUR_ROOT');
+          require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+          $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $pairs=[
+            ['tv'=>9337,'samo'=>'343342','name'=>'Side Yesiloz','operators'=>['biblio','funsun']],
+            ['tv'=>28660,'samo'=>'2000023127','name'=>'Selenium','operators'=>['biblio']],
+          ];
+          $out=['operation'=>getenv('OP'),'state'=>'started','provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'pairs'=>[]];
+          try{
+            $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+            $db->exec('START TRANSACTION READ ONLY');
+            $tv=array_column($pairs,'tv');$ph=implode(',',array_fill(0,count($tv),'?'));
+            $hot=[];foreach(q($db,"SELECT id,name,country_name,region_name,subregion_name,category,is_active FROM catalog_hotels WHERE id IN ($ph) ORDER BY id",$tv) as $r)$hot[(int)$r['id']]=$r;
+            $source=q($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id IN (?,?) ORDER BY external_hotel_id,local_hotel_id",array_column($pairs,'samo'));
+            $targets=q($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status FROM andromeda_hotel_identities WHERE local_hotel_id IN ($ph) ORDER BY local_hotel_id,supplier_namespace,external_hotel_id",$tv);
+            $manual=q($db,"SELECT catalog_hotel_id,decision_status FROM anex_hotel_decisions WHERE catalog_hotel_id IN ($ph) ORDER BY catalog_hotel_id",$tv);
+            $bySource=[];foreach($source as $r)$bySource[(string)$r['external_hotel_id']][]=$r;
+            $byTarget=[];foreach($targets as $r)$byTarget[(int)$r['local_hotel_id']][]=$r;
+            $man=[];foreach($manual as $r)$man[(int)$r['catalog_hotel_id']][]=$r;
+            foreach($pairs as $p){
+              $h=$hot[$p['tv']]??null;$src=$bySource[$p['samo']]??[];$reason='current_missing_edge_candidate';
+              if(!$h||(int)$h['is_active']!==1)$reason='target_missing_or_inactive';
+              elseif(isset($man[$p['tv']]))$reason='manual_target_protected';
+              elseif(count($src)===1&&(int)$src[0]['local_hotel_id']===$p['tv']&&$src[0]['decision_status']==='accepted')$reason='already_accepted_same';
+              elseif(count($src)>0)$reason='source_identity_occupied';
+              $out['pairs'][]=$p+[
+                'current_reason'=>$reason,
+                'catalog_hotel'=>$h,
+                'source_identity_rows'=>$src,
+                'target_identity_rows'=>$byTarget[$p['tv']]??[],
+                'manual_rows'=>$man[$p['tv']]??[],
+                'safe_to_write_now'=>false,
+              ];
+            }
+            $db->rollBack();
+            $out['state']='completed_read_only_common4_baseline_probe';
+          }catch(Throwable $e){
+            if($db->inTransaction())$db->rollBack();
+            $out['state']='failed_read_only_common4_baseline_probe';
+            $out['error_class']=get_class($e);
+            $out['error_code']=(string)$e->getCode();
+            $out['error_message']=mb_substr($e->getMessage(),0,160,'UTF-8');
+          }
+          echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),PHP_EOL;
+          exit($out['state']==='completed_read_only_common4_baseline_probe'?0:2);
+          PHP
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; remoteFile="/tmp/match-baseline-common4-$GITHUB_RUN_ID.php"
+          scp "${opts[@]}" "$RUNNER_TEMP/probe.php" "$remote:$remoteFile"
+          ssh "${opts[@]}" "$remote" "set -eu; trap 'rm -f $remoteFile' EXIT; OP='$OP' ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php $remoteFile" >out/result.json 2>out/remote.stderr
+          python3 - <<'PY'
+          import json
+          x=json.load(open('out/result.json'))
+          assert x['state']=='completed_read_only_common4_baseline_probe'
+          assert x['provider_http_calls']==x['database_writes']==x['mapping_writes']==0
+          assert len(x['pairs'])==2
+          print(json.dumps({'state':x['state'],'pairs':[{'tv':p['tv'],'samo':p['samo'],'reason':p['current_reason']} for p in x['pairs']]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-side4-baseline-common4-v12-${{ github.run_id }}', path: out/, retention-days: 90, if-no-files-found: error}
