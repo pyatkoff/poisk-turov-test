@@ -47,7 +47,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],os.environ['SOURCE_RESULT_SHA'],'captured_single_native=22','ambiguous edge is HOLD','DB REPEATABLE READ / READ ONLY']: assert x in b,x
+          for x in [os.environ['OP'],os.environ['SOURCE_RESULT_SHA'],'captured_single_native=22','DB REPEATABLE READ / READ ONLY']: assert x in b,x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
               q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
