@@ -1,0 +1,22 @@
+name: Search3 calendar async hydration
+
+on:
+  pull_request:
+    paths:
+      - 'v2/prototype-search/app.js'
+      - 'tests/search3-prototype-calendar-async-hydration.cjs'
+      - '.github/workflows/search3-prototype-calendar-async-hydration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  calendar-async-hydration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check prototype app syntax
+        run: node --check v2/prototype-search/app.js
+      - name: Verify async calendar price hydration
+        run: node tests/search3-prototype-calendar-async-hydration.cjs
