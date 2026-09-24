@@ -1,0 +1,27 @@
+name: Search3 prototype stale auto-resubmit
+
+on:
+  pull_request:
+    paths:
+      - 'v2/prototype-search/search-lifecycle-v1.js'
+      - 'tests/search3-prototype-stale-autoresubmit-v1.cjs'
+      - 'tests/search3-prototype-union-receipt-v1.cjs'
+      - '.github/workflows/search3-prototype-stale-autoresubmit-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check lifecycle source
+        run: node --check v2/prototype-search/search-lifecycle-v1.js
+      - name: Verify stale auto-resubmit cancellation
+        run: node --test tests/search3-prototype-stale-autoresubmit-v1.cjs
+      - name: Verify first-union receipt retention
+        run: node --test tests/search3-prototype-union-receipt-v1.cjs
