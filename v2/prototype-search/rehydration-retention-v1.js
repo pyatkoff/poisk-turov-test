@@ -55,33 +55,32 @@
     return source[method].call(source, search, receive || callback, ...rest);
   }
 
-  const wrapped = Object.create(source);
-  Object.defineProperties(wrapped, {
-    search: {value(search, callback, ...rest) { return start('search', search, callback, ...rest); }},
-    resumeCached: {value(search, callback, ...rest) { return start('resumeCached', search, callback, ...rest); }},
-    stop: {value(...args) {
-      epoch++;
-      snapshot = null;
+  const descriptors = Object.getOwnPropertyDescriptors(source);
+  descriptors.search = {...descriptors.search, value(search, callback, ...rest) { return start('search', search, callback, ...rest); }};
+  descriptors.resumeCached = {...descriptors.resumeCached, value(search, callback, ...rest) { return start('resumeCached', search, callback, ...rest); }};
+  descriptors.stop = {...descriptors.stop, value(...args) {
+    epoch++;
+    snapshot = null;
+    pending = null;
+    receive = null;
+    return source.stop.apply(source, args);
+  }};
+  descriptors.rehydrateCached = {...descriptors.rehydrateCached, value: async function (cached, ...args) {
+    const token = epoch, result = await source.rehydrateCached.call(source, cached, ...args);
+    if (token !== epoch) return result;
+    const offers = Array.isArray(result?.offers) ? result.offers : [];
+    const exact = result?.state === 'current' ? offers.find(item => sameCurrentOffer(item, cached)) : null;
+    if (exact) {
       pending = null;
-      receive = null;
-      return source.stop.apply(source, args);
-    }},
-    rehydrateCached: {value: async function (cached, ...args) {
-      const token = epoch, result = await source.rehydrateCached.call(source, cached, ...args);
-      if (token !== epoch) return result;
-      const offers = Array.isArray(result?.offers) ? result.offers : [];
-      const exact = result?.state === 'current' ? offers.find(item => sameCurrentOffer(item, cached)) : null;
-      if (exact) {
-        pending = null;
-        publishReplacement(cached, exact, token);
-      } else {
-        pending = result?.state === 'current' && offers.length
-          ? {token, cached, offers: offers.map(clone)}
-          : null;
-      }
-      return result;
-    }}
-  });
+      publishReplacement(cached, exact, token);
+    } else {
+      pending = result?.state === 'current' && offers.length
+        ? {token, cached, offers: offers.map(clone)}
+        : null;
+    }
+    return result;
+  }};
+  descriptors.__rehydrationRetentionV1 = {value: true, enumerable: false, writable: false, configurable: false};
 
   document.addEventListener('click', event => {
     const button = event?.target?.closest?.('[data-action="rehydrated-offer"]');
@@ -92,6 +91,6 @@
     if (publishReplacement(draft.cached, offer, draft.token)) pending = null;
   }, true);
 
-  window.AnyTourPrototypeData = Object.freeze(wrapped);
+  window.AnyTourPrototypeData = Object.freeze(Object.defineProperties({}, descriptors));
   window.AnyTourPrototypeRehydrationRetentionV1 = Object.freeze({version: 1});
 })();
