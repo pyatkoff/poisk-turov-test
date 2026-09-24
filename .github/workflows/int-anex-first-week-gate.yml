@@ -1,0 +1,26 @@
+name: INT direct ANEX first-week gate
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/anex-initial-week-gate.php'
+      - 'v2/api-anex-search3-preview.php'
+      - 'tests/anex-initial-week-gate-test.php'
+      - '.github/workflows/int-anex-first-week-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          php -l app/integrations/anex-initial-week-gate.php
+          php -l v2/api-anex-search3-preview.php
+          php -l tests/anex-initial-week-gate-test.php
+      - name: First-week quota contract
+        run: php tests/anex-initial-week-gate-test.php

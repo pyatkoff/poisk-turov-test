@@ -18,6 +18,11 @@ $programObservationFile = is_file(__DIR__ . '/app/integrations/anex-program-obse
     : __DIR__ . '/../app/integrations/anex-program-observation-runtime.php';
 require_once $programObservationFile;
 unset($programObservationFile);
+$initialWeekGateFile = is_file(__DIR__ . '/app/integrations/anex-initial-week-gate.php')
+    ? __DIR__ . '/app/integrations/anex-initial-week-gate.php'
+    : __DIR__ . '/../app/integrations/anex-initial-week-gate.php';
+require_once $initialWeekGateFile;
+unset($initialWeekGateFile);
 
 /** Preview Search3 supplier boundary. No booking or Tourvisor transport. */
 function anytour_anex_search3_name(string $name): string
@@ -807,6 +812,15 @@ function anytour_anex_search3_http(): void
     try {
         $action = $request['action'] ?? 'search';
         if (!in_array($action, ['search', 'offer', 'expand', 'additional_prices', 'additional_prices_batch'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
+        if ($action === 'search') {
+            $initialWeekGate=anytour_anex_initial_week_gate($_SESSION,$request);
+            if (($initialWeekGate['action'] ?? null) === 'skip') {
+                $_SESSION['offer_context'] = [];
+                session_write_close();
+                anytour_anex_search3_out(['ok'=>true,'data'=>anytour_anex_initial_week_skipped($initialWeekGate)],200);
+            }
+            if (($initialWeekGate['action'] ?? null) !== 'allow') throw new RuntimeException('ANEX_INITIAL_WEEK_GATE_RESULT');
+        }
         if ($action === 'search' || !is_array($_SESSION['offer_context'] ?? null)) $_SESSION['offer_context'] = [];
         if (!is_array($_SESSION['dictionaries'] ?? null)) $_SESSION['dictionaries'] = [];
         $app = is_file(__DIR__ . '/app/integrations/anex-search.php') ? __DIR__ . '/app/integrations' : __DIR__ . '/../app/integrations';
