@@ -9,7 +9,7 @@ function s3d_error(callable $fn,string $message):void{
     catch(Throwable $e){if($e->getMessage()!==$message)throw $e;}
 }
 
-$dsn=(string)getenv('ANYTOUR_DESTINATION_TEST_DSN');
+$dsn=(string)getenv('SEARCH3_DESTINATION_READ_TEST_DSN');
 if($dsn===''){echo "SEARCH3_DESTINATION_READ_PURE_OK\n";exit(0);}
 $db=new PDO($dsn,'root',(string)getenv('ANYTOUR_DESTINATION_TEST_PASSWORD'),[
     PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
