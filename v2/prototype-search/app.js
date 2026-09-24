@@ -541,7 +541,7 @@ function openNights(){nightsDraft={min:draft.minNights,max:draft.maxNights,phase
 function renderNightSelection(){$$('.night-grid button').forEach(b=>{const n=+b.dataset.value,active=n===nightsDraft.min||n===nightsDraft.max;b.classList.toggle('active',active);b.classList.toggle('in-range',n>nightsDraft.min&&n<nightsDraft.max);b.setAttribute('aria-pressed',n>=nightsDraft.min&&n<=nightsDraft.max)});$$('.nights-options button').forEach(b=>b.setAttribute('aria-pressed',nightsDraft.min===+b.dataset.value&&nightsDraft.max===+b.dataset.value));const label=durationText({minNights:nightsDraft.min,maxNights:nightsDraft.max});$('.night-selection').textContent=nightsDraft.phase?'Выберите вторую границу или подтвердите '+label:'Выбрано: '+label;$('[data-action="apply-nights"]').textContent='Выбрать '+label;}
 function openGallery(id,index=0){const h=hotels.find(x=>x.id===id);if(!h?.photos.length){toast('Фотографии этого отеля пока недоступны.');return;}showModal('gallery',h.name,'ФОТОГРАФИИ ОТЕЛЯ','');gallery={id,index};renderGallery();}
 function renderGallery(){const h=hotels.find(x=>x.id===gallery.id);if(!h?.photos.length)return;$('#modal-body').innerHTML=`<div class="gallery-stage"><img id="gallery-image" src="${esc(photoUrl(h,gallery.index))}" alt="Фото ${gallery.index+1} из ${h.photos.length}"><button class="icon-button gallery-arrow prev" data-action="gallery-prev" aria-label="Предыдущее фото">${icon('back')}</button><button class="icon-button gallery-arrow next" data-action="gallery-next" aria-label="Следующее фото">${icon('arrow')}</button></div><div class="gallery-caption"><span>${esc(h.name)}</span><span>${gallery.index+1} / ${h.photos.length}</span></div><div class="gallery-thumbs">${h.photos.map((p,i)=>`<button data-action="gallery-index" data-value="${i}" class="${gallery.index===i?'active':''}" aria-label="Фото ${i+1}"><img src="${esc(p)}" alt=""></button>`).join('')}</div>`;}
-let flightDraft=null,andromedaQuoteDraft=null,selectionGeneration=0;
+let flightDraft=null,andromedaQuoteDraft=null,anexCurrentDraft=null,selectionGeneration=0;
 const flightPairFor=o=>o?.variants?.[Number(o.flightChoiceId)]||null;
 function offerFromKey(key){return hotels.flatMap(h=>h.offers||[]).find(o=>o.key===key)||null;}
 function fuelText(o){const n=data.fuel(o.tour,flightPairFor(o));return n===null?'Сбор уточняется':n===0?'Без доплаты':money(n)+' · условия включения уточняются';}
@@ -626,9 +626,32 @@ async function applyAndromedaFlightChoice(){
 function openAnexConcreteCurrent(o,current){
  const h=selectedTourHotel(o),ready=current?.finalPriceReady===true,price=ready?Number(current.finalPrice?.amount):Number(o.total);
  if(!h||!Number.isFinite(price)||price<=0){selectedOffer={...o,loading:false,quoteError:'ANEX не вернул корректную цену предложения.'};renderRealOffer();return;}
- selectedOffer={...o,loading:false};
- showModal('anex-current','Тур ANEX проверен','ANEX · АКТУАЛЬНОЕ ПРЕДЛОЖЕНИЕ',`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span><strong>${money(price)}</strong></div><p class="modal-intro">${ready?'ANEX подтвердил текущее предложение. Показанная сумма включает сохранённую расчётную обязательную доплату, но не помечается как финально подтверждённая цена.':'ANEX подтвердил, что конкретное предложение всё ещё актуально. Показана цена из текущего поиска; обязательные доплаты и итоговая цена ещё требуют подтверждения.'}</p><p class="modal-intro">Оформление заявки из ANEX в этой preview-версии пока не подключено.</p>`,true);
+ selectedOffer={...o,loading:false};anexCurrentDraft={offer:o,current};
+ showModal('anex-current','Тур ANEX проверен','ANEX · АКТУАЛЬНОЕ ПРЕДЛОЖЕНИЕ',`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span><strong>${money(price)}</strong></div><p class="modal-intro">${ready?'ANEX подтвердил текущее предложение. Показанная сумма включает сохранённую расчётную обязательную доплату, но не помечается как финально подтверждённая цена.':'ANEX подтвердил, что конкретное предложение всё ещё актуально. Показана цена из текущего поиска; обязательные доплаты и итоговая цена ещё требуют подтверждения.'}</p><p class="modal-intro">Оформление заявки из ANEX в этой preview-версии пока не подключено.</p><p class="error-text" id="anex-additional-error" role="alert"></p>`,true);
+ $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=ready
+  ?`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="close-modal">Готово</button>`
+  :`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="anex-additional-prices">Уточнить обязательные доплаты</button>`;
+}
+function openAnexAdditionalEstimate(o,result){
+ const h=selectedTourHotel(o),search=Number(result?.searchPrice?.amount),surcharge=Number(result?.partySurcharge?.amount),total=Number(result?.calculatedTotal?.amount);
+ if(!h||![search,surcharge,total].every(value=>Number.isFinite(value)&&value>0)){throw new Error('ANEX вернул некорректный расчёт доплат.');}
+ anexCurrentDraft=null;
+ showModal('anex-additional','Доплаты ANEX рассчитаны','ANEX · ОБЯЗАТЕЛЬНЫЕ ДОПЛАТЫ',`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span></div><div class="price-breakdown"><div class="price-line"><span>Цена из поиска ANEX</span><strong>${money(search)}</strong></div><div class="price-line"><span>Обязательная доплата за состав туристов</span><strong>${money(surcharge)}</strong></div><div class="price-line total"><span>Расчётная сумма с доплатой</span><strong>${money(total)}</strong></div></div><p class="modal-intro">Доплата и сумма рассчитаны сервером по данным ANEX для этого конкретного предложения. Это расчёт обязательных доплат, а не финально подтверждённая цена бронирования.</p><p class="modal-intro">Оформление заявки из ANEX в этой preview-версии пока не подключено.</p>`,true);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="close-modal">Готово</button>`;
+}
+async function applyAnexAdditionalPrices(){
+ const draft=anexCurrentDraft;if(!draft||modalType!=='anex-current')return;
+ const run=++selectionGeneration,button=$('[data-action="anex-additional-prices"]');if(button)button.disabled=true;
+ const error=$('#anex-additional-error');if(error)error.textContent='';
+ try{
+  const result=await data.verifyAnexAdditional(draft.offer);
+  if(run!==selectionGeneration||modalType!=='anex-current')return;
+  openAnexAdditionalEstimate(draft.offer,result);
+ }catch(e){
+  if(run===selectionGeneration&&modalType==='anex-current'){
+   const node=$('#anex-additional-error');if(node)node.textContent=e.message+' Для новой попытки повторите поиск.';
+  }
+ }
 }
 async function refreshHotel(id){
  const o=selectedOffer,h=selectedTourHotel(o);
@@ -839,7 +862,7 @@ function prepareSearchRun(options={}){
  if(state.filters.hotelId&&!destinationHotel(state.filters.hotelId)?.legacyIds.length){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  resultCalendar.controller?.abort();resultCalendar={key:null,hotels:[],observations:[],phase:'idle',controller:null};
  const resumeOnly=options.resumeOnly===true;
- if(!resumeOnly){selectionGeneration++;selectedOffer=null;andromedaQuoteDraft=null;demoteSavedTour();removedSelectedTour=null;removedSelectedTourHotel=null;removedSelectedTourObservedAt=0;window.AnyTourPrototypeLead.reset();updateNav();}
+ if(!resumeOnly){selectionGeneration++;selectedOffer=null;andromedaQuoteDraft=null;anexCurrentDraft=null;demoteSavedTour();removedSelectedTour=null;removedSelectedTourHotel=null;removedSelectedTourObservedAt=0;window.AnyTourPrototypeLead.reset();updateNav();}
  state.hasSearched=true;
  const key=searchKey(state.search);searchResponse={key,phase:'loading',operators:[],pending:true,exactRefresh:options.exactRefresh===true,cachedResume:resumeOnly};collapseSearch();
  if(options.exactRefreshTarget)searchResponse.exactRefreshTarget=selectedTourOfferSnapshot(options.exactRefreshTarget);
@@ -968,7 +991,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'group-more':offerView.limits[b.dataset.value]=(offerView.limits[b.dataset.value]||4)+8;renderOfferList();break;
  case 'reset-offer-filters':offerView.flight='';offerView.room='';offerView.meal='';renderOfferList(true);break;
  case 'more-offers':{const h=hotels.find(h=>h.id===id),offers=hotelOffers(h),off=+b.dataset.offset;$('#all-offers-list').insertAdjacentHTML('beforeend',offers.slice(off,off+30).map(o=>offerHTML(h,o)).join(''));if(off+30>=offers.length)b.remove();else b.dataset.offset=off+30;break}
- case 'offer':openOffer(b.dataset.key);break;case 'confirm-tour':confirmTour();break;case 'apply-andromeda-flights':applyAndromedaFlightChoice();break;case 'accept-price':if(verifiedOffer){const accepted=verifiedOffer;verifiedOffer=null;completeTour(accepted);}break;
+ case 'offer':openOffer(b.dataset.key);break;case 'confirm-tour':confirmTour();break;case 'apply-andromeda-flights':applyAndromedaFlightChoice();break;case 'anex-additional-prices':applyAnexAdditionalPrices();break;case 'accept-price':if(verifiedOffer){const accepted=verifiedOffer;verifiedOffer=null;completeTour(accepted);}break;
  case 'gallery':openGallery(id,state.photoIndexes[id]||0);break;case 'gallery-next':case 'gallery-prev':{const count=hotels.find(h=>h.id===gallery.id).photos.length;gallery.index=(gallery.index+(action==='gallery-next'?1:-1)+count)%count;renderGallery();break}
  case 'gallery-index':gallery.index=+b.dataset.value;renderGallery();break;
  case 'favorite':toggleFavorite(id);break;case 'favorites':openFavorites();break;
