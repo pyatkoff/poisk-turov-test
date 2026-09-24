@@ -23,9 +23,9 @@ function search3_destination_tourvisor_ids(AnyTourDestinationCatalogV1 $catalog,
     $out=[];
     foreach($ids as $id){
         if(!is_string($id)||preg_match('/^[1-9][0-9]*$/D',$id)!==1)throw new RuntimeException('DESTINATION_TOURVISOR_ID');
-        $out[$id]=true;
+        $out['id:'.$id]=$id;
     }
-    $ids=array_keys($out);
+    $ids=array_values($out);
     usort($ids,static fn(string $a,string $b):int=>(int)$a<=>(int)$b);
     return $ids;
 }
