@@ -5,6 +5,7 @@ on:
     paths:
       - 'v2/search3-canonical-profiles-v1.js'
       - 'tests/search3-canonical-batch-isolation.cjs'
+      - 'tests/search3-canonical-live-offer-priority.cjs'
       - '.github/workflows/search3-canonical-batch-isolation.yml'
   workflow_dispatch:
 
@@ -18,3 +19,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Canonical catalogue batch isolation
         run: node tests/search3-canonical-batch-isolation.cjs
+      - name: Canonical live offer priority
+        run: node tests/search3-canonical-live-offer-priority.cjs
