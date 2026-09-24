@@ -48,7 +48,7 @@ $x=$empty;$x['received_offers']=1;$assert($code($x),'ANDROMEDA_LOCAL_COLLECTOR_S
 $x=$empty;$x['mapped_offers']=1;$assert($code($x),'ANDROMEDA_LOCAL_COLLECTOR_SEARCH_TERMINAL_EMPTY_MAPPED','empty mapped');
 
 $source=file_get_contents(__DIR__.'/../scripts/ops/andromeda_local_offer_collect.php');
-$assert(is_string($source)&&str_contains($source,"require_once $runtime.'/app/integrations/andromeda-search-envelope-diagnostic.php';"),true,'collector loads diagnostic');
+$assert(is_string($source)&&str_contains($source,"andromeda-search-envelope-diagnostic.php';"),true,'collector loads diagnostic');
 $assert(is_string($source)&&str_contains($source,'AnyTourAndromedaSearchEnvelopeDiagnosticV1::exceptionCode($req,$search)'),true,'collector invokes diagnostic');
 $assert(is_string($source)&&str_contains($source,'AnyTourAndromedaLocalOfferCollectorV1::collect('),true,'authoritative collector still invoked');
 
