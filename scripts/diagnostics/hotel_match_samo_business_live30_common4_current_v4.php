@@ -115,7 +115,7 @@ function sb4_execute(PDO $db,array $source,string $sourceResultSha,string $sourc
         }
         $db->rollBack();ksort($status);ksort($anchorCounts);ksort($ready);
         return ['operation'=>SBLC4C4_OP,'state'=>'completed_read_only_samo_business_common4_current','source_sha'=>$sourceSha,'source_operation'=>SBLC4C4_SOURCE_OP,'source_result_sha256'=>$sourceResultSha,'source_state'=>$source['state'],
-            'queried_edge_count'=>(int)$source['queried_edge_count'],'captured_single_native_edge_count'=>count($edges),'unique_input_identity_count'=>count($input['exact']),'deduped_same_identity_edges'=>count($edges)-count($input['exact']),
+            'queried_edge_count'=>(int)$source['queried_edge_count'],'captured_single_native_edge_count'=>count($edges),'resolved_input_edge_count'=>array_sum(array_map('count',$input['exact'])),'unique_input_identity_count'=>count($input['exact']),'deduped_same_identity_edges'=>array_sum(array_map('count',$input['exact']))-count($input['exact']),'unresolved_catalog_target_single_native_edges'=>count($edges)-array_sum(array_map('count',$input['exact'])),
             'status_counts'=>$status,'anchor_state_counts'=>$anchorCounts,'writer_ready_counts'=>$ready,'writer_ready_total'=>array_sum($ready),'rows'=>$rows,
             'provider_http_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
