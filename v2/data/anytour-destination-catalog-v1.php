@@ -37,6 +37,52 @@ final class AnyTourDestinationCatalogV1
         $s->execute([$parentId,$kind]);$rows=$s->fetchAll(PDO::FETCH_ASSOC);if(count($rows)>self::LIMIT)throw new RuntimeException('DESTINATION_LIMIT');
         return array_map(self::dto(...),$rows);
     }
+    /** Active region + subregion descendants of one local country, preserving local hierarchy. */
+    public function descendants(int $countryId): array {
+        self::id($countryId);if(!$this->readable())return[];
+        $s=$this->pdo->prepare("SELECT d.id,d.kind,d.parent_id,d.name_ru,d.slug,d.revision
+          FROM anytour_destinations_v1 d
+          LEFT JOIN anytour_destinations_v1 p ON p.id=d.parent_id
+          WHERE d.is_active=1 AND (
+            (d.kind='region' AND d.parent_id=?)
+            OR
+            (d.kind='subregion' AND p.kind='region' AND p.is_active=1 AND p.parent_id=?)
+          )
+          ORDER BY d.kind,d.name_ru,d.id LIMIT 1001");
+        $s->execute([$countryId,$countryId]);$rows=$s->fetchAll(PDO::FETCH_ASSOC);
+        if(count($rows)>self::LIMIT)throw new RuntimeException('DESTINATION_LIMIT');
+        return array_map(self::dto(...),$rows);
+    }
+    /** Local IDs -> exact native IDs grouped by local destination. Every requested local ID must resolve. */
+    public function nativeMap(string $provider,string $kind,array $localIds): array {
+        self::provider($provider);self::kind($kind);
+        if(!array_is_list($localIds)||count($localIds)>self::LIMIT)throw new InvalidArgumentException('DESTINATION_SELECTION');
+        $ids=[];foreach($localIds as $id)$ids[self::id($id)]=true;$ids=array_keys($ids);if(!$ids)return[];
+        if(!$this->readable())throw new RuntimeException('DESTINATION_UNAVAILABLE');
+        $slots=implode(',',array_fill(0,count($ids),'?'));
+        $s=$this->pdo->prepare("SELECT d.id,d.kind,d.is_active,s.external_id,s.state,s.evidence_ref,s.evidence_sha256,s.reviewed_by
+          FROM anytour_destinations_v1 d LEFT JOIN anytour_destination_sources_v1 s
+          ON s.anytour_destination_id=d.id AND s.provider=? AND s.kind=d.kind AND s.state='accepted'
+          WHERE d.id IN ($slots) AND d.kind=? ORDER BY d.id,s.external_id LIMIT 10001");
+        $s->execute([$provider,...$ids,$kind]);$rows=$s->fetchAll(PDO::FETCH_ASSOC);
+        if(count($rows)>10000)throw new RuntimeException('DESTINATION_LIMIT');
+        $found=[];$owners=[];
+        foreach($rows as $r){
+            $id=self::id($r['id']);if((int)$r['is_active']!==1)continue;$found[$id]??=[];
+            if($r['external_id']===null)continue;
+            if(!is_string($r['evidence_sha256'])||preg_match('/^[a-f0-9]{64}$/D',$r['evidence_sha256'])!==1
+                ||trim((string)$r['evidence_ref'])===''||trim((string)$r['reviewed_by'])==='')throw new RuntimeException('DESTINATION_EVIDENCE');
+            $ext=self::external($r['external_id']);$key='id:'.$ext;
+            if(isset($owners[$key])&&$owners[$key]!==$id)throw new RuntimeException('DESTINATION_CONFLICT');
+            $owners[$key]=$id;$found[$id][$key]=$ext;
+        }
+        $out=[];
+        foreach($ids as $id){
+            if(empty($found[$id]))throw new RuntimeException('DESTINATION_UNMAPPED');
+            $values=array_values($found[$id]);usort($values,'strnatcmp');$out[$id]=$values;
+        }
+        return $out;
+    }
     /** Local IDs -> exact native IDs. Missing one selected mapping blocks the whole selection. */
     public function nativeIds(string $provider,string $kind,array $localIds): array {
         self::provider($provider);self::kind($kind);
