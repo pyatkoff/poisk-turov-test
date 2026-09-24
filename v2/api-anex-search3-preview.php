@@ -810,6 +810,7 @@ function anytour_anex_search3_http(): void
         if ($action === 'search' || !is_array($_SESSION['offer_context'] ?? null)) $_SESSION['offer_context'] = [];
         if (!is_array($_SESSION['dictionaries'] ?? null)) $_SESSION['dictionaries'] = [];
         $app = is_file(__DIR__ . '/app/integrations/anex-search.php') ? __DIR__ . '/app/integrations' : __DIR__ . '/../app/integrations';
+        require_once $app . '/anex-initial-week-gate.php';
         require_once $app . '/anex-preview-gateway.php';
         require_once $app . '/anex-search-mapping-registry.php';
         require_once $app . '/anex-search-observations.php';
@@ -840,6 +841,12 @@ function anytour_anex_search3_http(): void
         };
         $pdo = v2_data_db();
         if ($action === 'search') {
+            if (!is_array($_SESSION['anex_initial_week_gate'] ?? null)) $_SESSION['anex_initial_week_gate'] = [];
+            $initialWeekGate = anytour_anex_initial_week_gate($_SESSION['anex_initial_week_gate'], $request);
+            if (!$initialWeekGate['allowed']) {
+                session_write_close();
+                anytour_anex_search3_out(['ok' => true, 'data' => anytour_anex_initial_week_skipped_response($initialWeekGate)], 200);
+            }
             $diagnostics = null;
             $observer = static function (array $offers, array $context) use ($pdo): array {
                 return AnyTourAnexSearchObservations::record($pdo, $offers, $context);
