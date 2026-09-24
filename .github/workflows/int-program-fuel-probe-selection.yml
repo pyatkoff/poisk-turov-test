@@ -2,7 +2,7 @@ name: INT program fuel probe selection
 
 on:
   pull_request:
-    branches: [main]
+    branches: [feature/anex-search-adapter-20260907]
     paths:
       - 'scripts/diagnostics/int_andromeda_program_getflights_probe_v1.php'
       - 'tests/int_andromeda_program_getflights_probe_v1_test.php'
