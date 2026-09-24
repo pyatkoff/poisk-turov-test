@@ -1,0 +1,158 @@
+name: MATCH SAMO live30 crosswalk census v1
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: ['.github/workflows/hotel-match-samo-live30-crosswalk-census-v1.yml']
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-live30-crosswalk-census-1971-20260924-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-samo-live30-crosswalk-census-1971-20260924-v1
+  BASE: 67069a476fc99d628a3079bd38ff0f4bb6e84a1b
+  CLAIM: '5806247926'
+  CURRENT_ARTIFACT: '10781694698'
+  CURRENT_ZIP_SHA256: 04f9a059191b21d9c7f7b62ecf9ec43e7676daf10d5415adf2b5f35a8e667ef3
+  CURRENT_RESULT_SHA256: f19f6c9a9fa929e7ce07a552b4739918e680cc6cfe35b24f61946215d5de643f
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate authority, immutable CURRENT artifact and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-samo-live30-crosswalk-census-v1.yml "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >terminal/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('terminal/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],'117','468','exact','no name/geo/price/fuzzy','HTTP0','DB0/mapping writes0']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success'; break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$CURRENT_ARTIFACT/zip" >terminal/current.zip
+          test "$(sha256sum terminal/current.zip | awk '{print $1}')" = "$CURRENT_ZIP_SHA256"
+          python3 - <<'PY'
+          import zipfile,json,pathlib,hashlib,os
+          z=zipfile.ZipFile('terminal/current.zip'); names=[n for n in z.namelist() if n.endswith('result.json')]
+          assert len(names)==1,names
+          raw=z.read(names[0]); assert hashlib.sha256(raw).hexdigest()==os.environ['CURRENT_RESULT_SHA256']
+          pathlib.Path('terminal/current-result.json').write_bytes(raw); r=json.loads(raw)
+          assert r['operation']=='hotel-match-samo-live30-common4-current-1971-20260924-v3'
+          assert r['state']=='completed_read_only_samo_common4_current'
+          xs=[x for x in r['rows'] if x.get('status')=='hold_catalog_target_unresolved']
+          ids=sorted({str(x['catalog_id']) for x in xs},key=lambda x:int(x))
+          assert len(xs)==468 and len(ids)==117,(len(xs),len(ids))
+          pathlib.Path('terminal/source-ids.json').write_text(json.dumps(ids,separators=(',',':'))+'\n')
+          print(json.dumps({'unresolved_lane_rows':len(xs),'unique_source_ids':len(ids)}))
+          PY
+      - name: Build exact persisted-crosswalk auditor
+        run: |
+          cat >terminal/crosswalk.php <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const CW_OP='hotel-match-samo-live30-crosswalk-census-1971-20260924-v1';
+          function cw_need(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
+          function cw_json(mixed $v):string{return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
+          function cw_save(string $p,array $v):string{$raw=cw_json($v)."\n";$f=@fopen($p,'x+b');cw_need($f!==false,'exclusive_create');try{cw_need(fwrite($f,$raw)===strlen($raw)&&fflush($f),'durable_write');if(function_exists('fsync'))cw_need(fsync($f),'durable_sync');}finally{fclose($f);}return hash('sha256',$raw);}
+          function cw_excluded(string $v):bool{return preg_match('/^(?:россия|абхазия|russia|russian federation|abkhazia)$/iu',trim($v))===1;}
+          $root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$sha=(string)getenv('MATCH_SOURCE_SHA');$idsPath=(string)getenv('MATCH_SOURCE_IDS');
+          cw_need(is_dir($root)&&basename($root)==='anytoour.ru'&&is_dir($dir)&&basename($dir)===CW_OP&&is_file($idsPath)&&preg_match('/^[a-f0-9]{40}$/D',$sha)===1,'runtime_scope');
+          $ids=json_decode((string)file_get_contents($idsPath),true,512,JSON_THROW_ON_ERROR);cw_need(is_array($ids)&&count($ids)===117,'source_ids');
+          $idset=[];foreach($ids as $id){$id=(string)$id;cw_need(preg_match('/^[1-9][0-9]{0,19}$/D',$id)===1&&!isset($idset[$id]),'source_id');$idset[$id]=true;}
+          require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+          try{
+            $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+            $srcAllowed=['andromeda_hotel_id'=>true,'samo_hotel_id'=>true,'external_hotel_id'=>true,'supplier_hotel_id'=>true,'operator_hotel_id'=>true,'hotel_code'=>true,'hotelcode'=>true,'hotel_key'=>true,'external_id'=>true];
+            $dstAllowed=['local_hotel_id'=>true,'catalog_hotel_id'=>true,'tourvisor_hotel_id'=>true,'tv_hotel_id'=>true,'hotel_id'=>true];
+            $st=$db->query("SELECT TABLE_NAME,COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%hotel%' ORDER BY TABLE_NAME,ORDINAL_POSITION");
+            $cols=[];foreach($st->fetchAll(PDO::FETCH_ASSOC)?:[] as $r){$t=(string)$r['TABLE_NAME'];$c=(string)$r['COLUMN_NAME'];if(preg_match('/^[A-Za-z0-9_]{1,64}$/D',$t)!==1||preg_match('/^[A-Za-z0-9_]{1,64}$/D',$c)!==1)continue;$cols[$t][$c]=true;}
+            $ph=implode(',',array_fill(0,count($ids),'?'));$evidence=[];$schemas=[];
+            foreach($cols as $table=>$cc){
+              $srcs=array_values(array_intersect(array_keys($cc),array_keys($srcAllowed)));$dsts=array_values(array_intersect(array_keys($cc),array_keys($dstAllowed)));
+              if(!$srcs||!$dsts)continue;
+              foreach($srcs as $sc)foreach($dsts as $dc){if($sc===$dc)continue;
+                $hasNs=isset($cc['supplier_namespace']);$intrinsic=in_array($sc,['andromeda_hotel_id','samo_hotel_id'],true);$scope=$intrinsic?'intrinsic_andromeda_samo':($hasNs?'namespace_scoped':'unscoped_exact');
+                $schemas[]=['table'=>$table,'source_column'=>$sc,'target_column'=>$dc,'scope'=>$scope];
+                $sql="SELECT CAST(`$sc` AS CHAR) source_id,CAST(`$dc` AS CHAR) target_id".($hasNs?",supplier_namespace":"")." FROM `$table` WHERE CAST(`$sc` AS CHAR) IN ($ph) AND `$dc` IS NOT NULL";
+                $args=$ids;if($hasNs){$sql.=" AND supplier_namespace='andromeda_catalog'";}
+                $q=$db->prepare($sql);$q->execute($args);
+                foreach($q->fetchAll(PDO::FETCH_ASSOC)?:[] as $r){$sid=(string)($r['source_id']??'');$tid=(string)($r['target_id']??'');if(!isset($idset[$sid])||preg_match('/^[1-9][0-9]{0,19}$/D',$tid)!==1)continue;$evidence[$sid][]=['table'=>$table,'source_column'=>$sc,'target_column'=>$dc,'target_id'=>$tid,'scope'=>$scope,'supplier_namespace'=>$r['supplier_namespace']??null];}
+              }
+            }
+            $targetIds=[];foreach($evidence as $rows)foreach($rows as $r)$targetIds[(int)$r['target_id']]=true;$hotels=[];
+            if($targetIds){$tids=array_keys($targetIds);$tph=implode(',',array_fill(0,count($tids),'?'));$q=$db->prepare("SELECT id,country_name,is_active FROM catalog_hotels WHERE id IN ($tph)");$q->execute($tids);foreach($q->fetchAll(PDO::FETCH_ASSOC)?:[] as $r)$hotels[(int)$r['id']]=$r;}
+            $db->rollBack();$rows=[];$counts=[];$unique=[];
+            foreach($ids as $sid){$ev=$evidence[$sid]??[];$scoped=[];$unscoped=[];foreach($ev as $x){$tid=(int)$x['target_id'];$h=$hotels[$tid]??null;$x['target_exists']=$h!==null;$x['target_active']=$h!==null&&(int)$h['is_active']===1;$x['target_excluded']=$h!==null&&cw_excluded((string)$h['country_name']);if($x['scope']==='unscoped_exact')$unscoped[]=$x;else $scoped[]=$x;}
+              $targets=[];foreach($scoped as $x)if($x['target_exists']&&$x['target_active']&&!$x['target_excluded'])$targets[(int)$x['target_id']]=true;
+              if(count($targets)===1){$status='exact_scoped_unique_candidate';$unique[]=['source_id'=>$sid,'local_hotel_id'=>(int)array_key_first($targets),'safe_to_write_now'=>false];}
+              elseif(count($targets)>1)$status='hold_exact_scoped_collision';
+              elseif($scoped)$status='hold_scoped_target_invalid';
+              elseif($unscoped)$status='hold_unscoped_exact_only';
+              else $status='hold_no_exact_crosswalk';
+              $counts[$status]=($counts[$status]??0)+1;$rows[]=['source_id'=>$sid,'status'=>$status,'scoped_evidence'=>$scoped,'unscoped_evidence'=>$unscoped,'safe_to_write_now'=>false];
+            }
+            ksort($counts);$res=['operation'=>CW_OP,'state'=>'completed_read_only_crosswalk_census','source_sha'=>$sha,'source_count'=>117,'schema_pair_count'=>count($schemas),'evidence_source_count'=>count($evidence),'exact_scoped_unique_count'=>count($unique),'status_counts'=>$counts,'schema_pairs'=>$schemas,'unique_candidates'=>$unique,'rows'=>$rows,'provider_http_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
+            $h=cw_save($dir.'/result.json',$res);cw_save($dir.'/receipt.json',['operation'=>CW_OP,'state'=>$res['state'],'result_sha256'=>$h,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$h,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);echo cw_json(['state'=>$res['state'],'source_count'=>117,'schema_pair_count'=>count($schemas),'evidence_source_count'=>count($evidence),'exact_scoped_unique_count'=>count($unique),'status_counts'=>$counts])."\n";
+          }catch(Throwable $e){if(isset($db)&&$db instanceof PDO&&$db->inTransaction())$db->rollBack();$f=['operation'=>CW_OP,'state'=>'failed_read_only_crosswalk_census','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',mb_substr($e->getMessage(),0,180,'UTF-8')),'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0];$h=cw_save($dir.'/result.json',$f);cw_save($dir.'/receipt.json',['operation'=>CW_OP,'state'=>$f['state'],'result_sha256'=>$h,'readback_verified'=>true,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);fwrite(STDERR,$f['reason']."\n");exit(2);}
+          PHP
+          php -l terminal/crosswalk.php
+      - name: Execute supplier-free exact census
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\";printf '%s\n' '{\"operation\":\"$OP\",\"state\":\"reserved_before_db_read\"}' >\"\$HOME/$op/reservation.json\""
+          scp "${opts[@]}" terminal/crosswalk.php terminal/source-ids.json "$remote:$op/payload/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_IDS=\"\$HOME/$op/payload/source-ids.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/crosswalk.php\"" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
+          set -e
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile(): pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state']=='completed_read_only_crosswalk_census' and r['source_count']==117 and len(r['rows'])==117
+          assert r['provider_http_calls']==r['tourvisor_calls']==r['samo_calls']==r['anex_calls']==r['andromeda_calls']==r['database_writes']==r['mapping_writes']==0
+          assert r['safe_to_write_now'] is False and all(x['safe_to_write_now'] is False for x in r['rows'])
+          print(json.dumps({k:r[k] for k in ['state','source_count','schema_pair_count','evidence_source_count','exact_scoped_unique_count','status_counts']},sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-samo-live30-crosswalk-census-v1
+          path: |
+            terminal/result.json
+            terminal/receipt.json
+            terminal/remote.stdout
+            terminal/remote.stderr
+          retention-days: 14
+          if-no-files-found: error
