@@ -23,7 +23,9 @@ if (substr_count($html, $rehydrationNeedle) !== 1) {
 }
 $html = str_replace(
     $rehydrationNeedle,
-    $rehydrationNeedle . "\n  <script src=\"./rehydration-retention-v1.js\" defer></script>",
+    $rehydrationNeedle
+        . "\n  <script src=\"./rehydration-retention-v1.js\" defer></script>"
+        . "\n  <script src=\"./calendar-exact-hotel-v1.js\" defer></script>",
     $html
 );
 $legacyIdAttribute = htmlspecialchars(implode(',', array_values($priorityHotelIds)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
