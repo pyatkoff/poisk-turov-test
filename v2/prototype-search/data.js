@@ -132,25 +132,39 @@
     if(catalog.regions[key])return catalog.regions[key];
     if(regionRequests.has(key))return regionRequests.get(key);
     const request=destinationCatalog('regions',{countryId:key}).then(rows=>{
-      const seen=new Set(),items=[];
+      const seen=new Set(),items=[],regionIds=new Set();
       for(const row of rows){
         const id=String(row?.id||''),name=text(row).trim();
-        if(!/^[1-9][0-9]*$/.test(id)||!name||seen.has(id)||String(row.parentId)!==key)throw new Error('Не удалось проверить канонический справочник курортов.');
-        const native=tourvisorIds(row);seen.add(id);items.push({id,name,country:key,tourvisorIds:native});
+        if(row?.kind!=='region'||!/^[1-9][0-9]*$/.test(id)||!name||seen.has(id)||String(row.parentId)!==key)throw new Error('Не удалось проверить канонический справочник курортов.');
+        const native=tourvisorIds(row);seen.add(id);regionIds.add(id);
+        items.push({id,name,country:key,kind:'region',parentId:key,tourvisorIds:native});
+        const children=Array.isArray(row.subregions)?row.subregions:[];
+        for(const child of children){
+          const childId=String(child?.id||''),childName=text(child).trim(),parentId=String(child?.parentId||'');
+          if(child?.kind!=='subregion'||!/^[1-9][0-9]*$/.test(childId)||!childName||seen.has(childId)||parentId!==id)throw new Error('Не удалось проверить канонический справочник подкурортов.');
+          const childNative=tourvisorIds(child);seen.add(childId);
+          items.push({id:childId,name:childName,country:key,kind:'subregion',parentId:id,tourvisorIds:childNative});
+        }
       }
+      for(const item of items)if(item.kind==='subregion'&&!regionIds.has(item.parentId))throw new Error('Не удалось проверить иерархию курортов.');
       catalog.regions[key]=items;return items;
     }).finally(()=>regionRequests.delete(key));
     regionRequests.set(key,request);return request;
   }
-  function regionIds(s,filters) {
-    const ids=[];
+  function destinationScope(s,filters) {
+    const regionIds=[],subregionIds=[];
     for(const name of filters.resorts||[]){
       const found=(catalog.regions[String(s.country)]||[]).filter(row=>row.name===name);
       if(found.length!==1)throw new Error('Выберите курорт из канонического справочника.');
-      ids.push(...tourvisorIds(found[0]));
+      const row=found[0],target=row.kind==='region'?regionIds:row.kind==='subregion'?subregionIds:null;
+      if(!target)throw new Error('Некорректный тип направления.');
+      target.push(...tourvisorIds(row));
     }
-    return [...new Set(ids)].sort((a,b)=>Number(a)-Number(b));
+    const unique=ids=>[...new Set(ids)].sort((a,b)=>Number(a)-Number(b));
+    return {regionIds:unique(regionIds),subregionIds:unique(subregionIds)};
   }
+  function regionIds(s,filters) {return destinationScope(s,filters).regionIds;}
+  function subregionIds(s,filters) {return destinationScope(s,filters).subregionIds;}
   function supplierScope(filters = {}, hotelIds = []) {
     const selectedMeal=filters.meals?.length===1?String(filters.meals[0]||'').trim():'';
     const selectedPlans=selectedMeal?catalog.mealPlans.filter(plan=>plan.nameRu===selectedMeal&&plan.nativeIds.length):[];
@@ -195,8 +209,8 @@
     if (!date(s.from) || !date(s.to) || s.from > s.to || (new Date(s.to) - new Date(s.from)) / 86400000 > 21) throw new Error('Выберите диапазон вылета не больше 21 дня.');
     if (!Number.isInteger(s.adults) || s.adults < 1 || s.adults > 6 || !Array.isArray(s.ages) || s.ages.length > 3 || s.ages.some(x => !Number.isInteger(x) || x < 0 || x > 17)) throw new Error('Укажите возраст каждого ребёнка.');
     if (!Number.isInteger(s.minNights) || !Number.isInteger(s.maxNights) || s.minNights < 1 || s.maxNights > 28 || s.maxNights < s.minNights || s.maxNights - s.minNights > 10) throw new Error('Проверьте диапазон ночей.');
-    const scope=supplierScope(filters,hotelIds);
-    const request={departureId:String(departure.id),countryId:nativeCountryId,dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:scope.meal,hotelCategory:scope.hotelCategory,hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:regionIds(s,filters),subregionIds:[],operatorIds:[],priceFrom:scope.priceFrom,priceTo:scope.priceTo,currency:'RUB',onlyCharter:false,onlyDirect:false};
+    const scope=supplierScope(filters,hotelIds),destination=destinationScope(s,filters);
+    const request={departureId:String(departure.id),countryId:nativeCountryId,dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:scope.meal,hotelCategory:scope.hotelCategory,hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:destination.regionIds,subregionIds:destination.subregionIds,operatorIds:[],priceFrom:scope.priceFrom,priceTo:scope.priceTo,currency:'RUB',onlyCharter:false,onlyDirect:false};
     return {request,scope};
   }
   function params(s, hotelIds = [], filters = {}) {
@@ -799,11 +813,13 @@
   }
   function observationScopeSupported(s,filters={}) {
     // Party and canonical region OR are exact first-class observation scopes.
-    // Keep unrelated filters conservative so an aggregate can never stand in for unsupported detail.
+    // The observation reader has no exact subregion dimension yet: suppress it
+    // instead of presenting a broader parent-region minimum as exact.
     if(filters.hotelId||filters.q||filters.min>0
       ||filters.max!==undefined&&filters.max!==null&&filters.max!==''
       ||['stars','meals','operators','flight','amenities'].some(key=>filters[key]?.length)
       ||['rating','beach','family','spa'].some(key=>filters[key]))return false;
+    try{if(destinationScope(s,filters).subregionIds.length)return false;}catch{return false;}
     return true;
   }
   async function observedCalendar(s,from,to,signal,filters={}) {
@@ -812,7 +828,8 @@
     if(!departure)return [];
     let nativeCountryId;try{nativeCountryId=tourvisorCountryId(s.country);}catch{return [];}
     const childAges=[...s.ages].sort((a,b)=>a-b),childSignature=childAges.join(',');
-    const selected=[...new Set(regionIds(s,filters).map(Number))].sort((a,b)=>a-b);
+    const destination=destinationScope(s,filters);if(destination.subregionIds.length)return [];
+    const selected=[...new Set(destination.regionIds.map(Number))].sort((a,b)=>a-b);
     const query={departureId:String(departure.id),countryId:nativeCountryId,dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights),adults:String(s.adults),childs:childSignature,regionIds:selected.map(String)};
     const response=await fetch(local+'data/search3-local-results-read-v1.php',{
       method:'POST',credentials:'same-origin',cache:'no-store',signal,
