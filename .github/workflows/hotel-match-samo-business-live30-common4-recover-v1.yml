@@ -13,7 +13,7 @@ env:
   OP: hotel-match-samo-business-live30-common4-recover-1971-20260924-v1
   SEALED_OP: hotel-match-samo-business-live30-common4-acquire-1971-20260924-v2
   BASE: 5d73897c6df42c255e37363fc3f02f656960d656
-  CLAIM: '5811510117'
+  CLAIM: '5811626831'
   PLAN_ARTIFACT: '10798255813'
   PLAN_ARCHIVE_SHA: 1adf8a92bba3e447fec566c6b3a89a557d1446d5ca49dd5492b08b5b8625d87a
   PLAN_RESULT_SHA: 174cdd0bd45f48929fbda2e7c07383fbf81afccd18acccca990aee3ee94e6b23
