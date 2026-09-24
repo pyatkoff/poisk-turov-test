@@ -553,7 +553,7 @@ test('observation aggregates preserve exact party and canonical multi-resort OR 
  const family={...trip,adults:1,ages:[7,3]};
  assert.equal((await h.data.observedCalendar(family,trip.from,trip.to,signal,{})).length,1);
  assert.equal(h.observationCalls[0].adults,'1');assert.equal(h.observationCalls[0].childs,'3,7');assert.deepEqual(h.observationCalls[0].regionIds,[]);
- h.data.catalog.regions['4']=[{id:'203',name:'Сиде',tourvisorIds:['23']},{id:'202',name:'Кемер',tourvisorIds:['22']}];
+ h.data.catalog.regions['4']=[{id:'203',name:'Сиде',kind:'region',parentId:'4',tourvisorIds:['23']},{id:'202',name:'Кемер',kind:'region',parentId:'4',tourvisorIds:['22']}];
  await h.data.observedCalendar(trip,trip.from,trip.to,signal,{resorts:['Сиде']});
  assert.equal(h.observationCalls[1].regionId,'23');assert.deepEqual(h.observationCalls[1].regionIds,['23']);
  assert.equal(h.observationCalls[1].adults,'2');assert.equal(h.observationCalls[1].childs,'');
@@ -567,7 +567,7 @@ test('observation response must match exact date night party and region scope',a
   await assert.rejects(h.data.observedCalendar(trip,trip.from,trip.to,new AbortController().signal,{}));
  }
  const scoped=harness({observations:q=>({...observed(q),regionIds:[22],regionId:22})});
- scoped.data.catalog.regions['4']=[{id:'203',name:'Сиде',tourvisorIds:['23']},{id:'202',name:'Кемер',tourvisorIds:['22']}];
+ scoped.data.catalog.regions['4']=[{id:'203',name:'Сиде',kind:'region',parentId:'4',tourvisorIds:['23']},{id:'202',name:'Кемер',kind:'region',parentId:'4',tourvisorIds:['22']}];
  await assert.rejects(scoped.data.observedCalendar(trip,trip.from,trip.to,new AbortController().signal,{resorts:['Сиде','Кемер']}),
   /не соответствуют/,'a partial region echo cannot stand in for the selected OR scope');
 });

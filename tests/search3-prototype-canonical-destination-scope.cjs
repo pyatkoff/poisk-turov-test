@@ -29,8 +29,10 @@ function harness(){
           {id:101,kind:'country',parentId:null,name:'Турция',russianName:'Турция',slug:'turkey',revision:1,tourvisorIds:['4']}
         ]})};
         if(action==='regions')return {ok:true,json:async()=>({ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',kind:'region',parentId:101,items:[
-          {id:201,kind:'region',parentId:101,name:'Белек',russianName:'Белек',slug:'belek',revision:1,tourvisorIds:['21','121']},
-          {id:202,kind:'region',parentId:101,name:'Кемер',russianName:'Кемер',slug:'kemer',revision:1,tourvisorIds:['22']}
+          {id:201,kind:'region',parentId:101,name:'Белек',russianName:'Белек',slug:'belek',revision:1,tourvisorIds:['21','121'],subregions:[
+            {id:301,kind:'subregion',parentId:201,name:'Кадрие',russianName:'Кадрие',slug:'kadriye',revision:1,tourvisorIds:['2101']}
+          ]},
+          {id:202,kind:'region',parentId:101,name:'Кемер',russianName:'Кемер',slug:'kemer',revision:1,tourvisorIds:['22'],subregions:[]}
         ]})};
         throw new Error('unexpected destination action '+action);
       }
@@ -63,13 +65,27 @@ test('local country and region IDs resolve to accepted Tourvisor request IDs',as
   assert.deepEqual(Array.from(init.countries[0].tourvisorIds),['4']);
 
   const regions=await h.data.regions('101');
-  assert.deepEqual(Array.from(regions,row=>row.id),['201','202'],'region choices own local ids');
+  assert.deepEqual(Array.from(regions,row=>[row.id,row.kind,row.parentId]),[
+    ['201','region','101'],['301','subregion','201'],['202','region','101']
+  ],'region and subregion choices keep local hierarchy');
   assert.deepEqual(Array.from(regions[0].tourvisorIds),['21','121']);
+  assert.deepEqual(Array.from(regions[1].tourvisorIds),['2101']);
 
   const search={origin:'Москва',country:'101',from:'2026-10-01',to:'2026-10-07',minNights:7,maxNights:7,adults:2,ages:[]};
-  const params=h.data.params(search,[],{resorts:['Белек'],stars:[],meals:[],min:0,max:null});
-  assert.equal(params.countryId,'4','supplier/LOCAL scope uses exact accepted Tourvisor country id');
-  assert.deepEqual(Array.from(params.regionIds),['21','121'],'one local resort expands only to its accepted Tourvisor ids');
+  const regionParams=h.data.params(search,[],{resorts:['Белек'],stars:[],meals:[],min:0,max:null});
+  assert.equal(regionParams.countryId,'4','supplier/LOCAL scope uses exact accepted Tourvisor country id');
+  assert.deepEqual(Array.from(regionParams.regionIds),['21','121'],'region uses accepted Tourvisor region ids');
+  assert.deepEqual(Array.from(regionParams.subregionIds),[],'region does not leak into subregion scope');
+
+  const subregionParams=h.data.params(search,[],{resorts:['Кадрие'],stars:[],meals:[],min:0,max:null});
+  assert.deepEqual(Array.from(subregionParams.regionIds),[],'subregion does not widen to parent region');
+  assert.deepEqual(Array.from(subregionParams.subregionIds),['2101'],'subregion uses exact accepted Tourvisor subregion id');
+
+  const mixed=h.data.params(search,[],{resorts:['Белек','Кадрие'],stars:[],meals:[],min:0,max:null});
+  assert.deepEqual(Array.from(mixed.regionIds),['21','121']);
+  assert.deepEqual(Array.from(mixed.subregionIds),['2101']);
+  assert.equal(h.data.observationScopeSupported(search,{resorts:['Белек']}),true,'region aggregate remains exact');
+  assert.equal(h.data.observationScopeSupported(search,{resorts:['Кадрие']}),false,'subregion suppresses broader observation aggregate');
 });
 
 test('hotel lookup uses native country but returns hotel in local country scope',async()=>{
