@@ -13,7 +13,7 @@ env:
   OP: hotel-match-samo-business-live30-common4-wave3-writer-1971-20260924-v11-w2b
   AUDIT_OP: hotel-match-samo-business-live30-common4-wave3-current-1971-20260924-v10
   BASE: 48db6edecc206a5fe0937168288ff9a1af084d0f
-  CLAIM: '5821324621'
+  CLAIM: '5821335254'
   AUDIT_ARTIFACT: '10828978531'
   AUDIT_ARCHIVE_SHA: 5fadd857438c0f2148caf9ce4c46354572dee44f0773cd0bc4dab731d8f3587e
   EXPECTED: '25'
