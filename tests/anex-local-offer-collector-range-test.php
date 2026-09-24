@@ -63,6 +63,24 @@ rangeCheck($seen[20]===['index'=>20,'window'=>['from'=>'2026-11-19','to'=>'2026-
 rangeCheck($baseRequest['params']['dateFrom']==='2026-10-30'&&$baseRequest['params']['dateTo']==='2026-11-19','base-request-unchanged');
 rangeCheck($success['selection_authority']===false,'no-selection-authority');
 
+$budgetSeen=[];
+$budgeted=AnyTourAnexLocalOfferCollectorV1::collectRange(
+    $baseRequest,'2026-10-30','2026-11-19',
+    static function(array $request,int $index,array $window)use(&$budgetSeen):array{
+        $budgetSeen[]=$window['from'];
+        return ['status'=>'complete'];
+    },
+    static function(int $index,array $window,int $completed,int $attempted):bool{
+        rangeCheck($completed===$attempted,'budget-completed-attempted');
+        return $index<2;
+    }
+);
+rangeCheck($budgeted['status']==='incomplete','budget-status');
+rangeCheck($budgeted['window_count']===21&&$budgeted['windows_attempted']===2&&$budgeted['windows_completed']===2,'budget-counts');
+rangeCheck($budgetSeen===['2026-10-30','2026-10-31'],'budget-attempts');
+rangeCheck($budgeted['continuation_date']==='2026-11-01'&&$budgeted['stop_reason']==='bounded_runtime','budget-continuation');
+rangeCheck(count($budgeted['windows'])===2&&$budgeted['selection_authority']===false,'budget-receipts');
+
 $failedCalls=[];
 $failed=AnyTourAnexLocalOfferCollectorV1::collectRange(
     $baseRequest,'2026-10-30','2026-11-19',
@@ -89,4 +107,4 @@ rangeThrows(
     'ANEX_LOCAL_COLLECTOR_INPUT','invalid-request'
 );
 
-echo "ANEX_LOCAL_OFFER_RANGE_OK windows21=21 fail_stop=1 invalid=4 supplier=0 db=0\n";
+echo "ANEX_LOCAL_OFFER_RANGE_OK windows21=21 bounded_runtime=1 fail_stop=1 invalid=4 supplier=0 db=0\n";

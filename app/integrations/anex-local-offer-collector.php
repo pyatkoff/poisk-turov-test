@@ -54,7 +54,8 @@ final class AnyTourAnexLocalOfferCollectorV1
         array $searchRequest,
         string $from,
         string $to,
-        callable $collectWindow
+        callable $collectWindow,
+        ?callable $continueBeforeWindow = null
     ): array {
         if (($searchRequest['action'] ?? null) !== 'search'
             || !is_int($searchRequest['generation'] ?? null)
@@ -65,8 +66,17 @@ final class AnyTourAnexLocalOfferCollectorV1
         $receipts = [];
         $completed = 0;
         $status = 'complete';
+        $continuationDate = null;
+        $stopReason = null;
         $multiWindow = count($windows) > 1;
         foreach ($windows as $index => $window) {
+            if ($continueBeforeWindow !== null
+                && !$continueBeforeWindow($index, $window, $completed, count($receipts))) {
+                $status = 'incomplete';
+                $continuationDate = $window['from'];
+                $stopReason = 'bounded_runtime';
+                break;
+            }
             $request = $searchRequest;
             $request['params']['dateFrom'] = $window['from'];
             $request['params']['dateTo'] = $window['to'];
@@ -102,8 +112,11 @@ final class AnyTourAnexLocalOfferCollectorV1
             'status' => $status,
             'requested_date_range' => ['from' => $from, 'to' => $to],
             'window_count' => count($windows),
+            'windows_attempted' => count($receipts),
             'windows_completed' => $completed,
             'windows' => $receipts,
+            'continuation_date' => $continuationDate,
+            'stop_reason' => $stopReason,
             'selection_authority' => false,
         ];
     }
