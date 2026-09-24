@@ -1,0 +1,32 @@
+name: INT Andromeda search envelope diagnostic
+
+on:
+  push:
+    paths:
+      - 'app/integrations/andromeda-search-envelope-diagnostic.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
+      - 'tests/andromeda-search-envelope-diagnostic-test.php'
+      - '.github/workflows/int-andromeda-search-envelope-diagnostic.yml'
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-search-envelope-diagnostic.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
+      - 'tests/andromeda-search-envelope-diagnostic-test.php'
+      - '.github/workflows/int-andromeda-search-envelope-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          php -l app/integrations/andromeda-search-envelope-diagnostic.php
+          php -l scripts/ops/andromeda_local_offer_collect.php
+          php -l tests/andromeda-search-envelope-diagnostic-test.php
+      - name: Predicate diagnostics
+        run: php tests/andromeda-search-envelope-diagnostic-test.php
