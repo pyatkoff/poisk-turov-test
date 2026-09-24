@@ -124,6 +124,23 @@ ANEX_CREDENTIAL_PROBE;
     exit(23);
 }
 
+$checkpointId=$args['checkpoint-id']??('g'.$generation);
+if(!is_string($checkpointId)||preg_match('/\A[a-z0-9][a-z0-9_-]{7,95}\z/D',$checkpointId)!==1){
+    throw new InvalidArgumentException('ANEX_COLLECTOR_CHECKPOINT_ID');
+}
+$checkpointRoot=getenv('ANYTOUR_ANEX_RANGE_CHECKPOINT_ROOT');
+if(!is_string($checkpointRoot)||trim($checkpointRoot)===''){
+    $home=rtrim((string)getenv('HOME'),'/');
+    if($home==='')throw new RuntimeException('ANEX_COLLECTOR_CHECKPOINT_ROOT');
+    $checkpointRoot=$home.'/.anytour-anex/range-checkpoints';
+}
+$scopeDigest=hash('sha256',json_encode([
+    'schema_version'=>1,'provider'=>'anex','departure'=>$departure,'country'=>$country,
+    'date_from'=>$from,'date_to'=>$to,'nights'=>$nights,'adults'=>$adults,
+    'child_ages'=>$childAges,'meal'=>$meal,'region'=>$region,
+],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
+$rangeCheckpoint=new AnyTourAnexRangeCheckpointV1($checkpointRoot,$checkpointId,$scopeDigest);
+
 $pdo=v2_data_db();
 $cache=[];$searchRequests=0;$apdRequests=0;
 // Each <=7-day window keeps the existing per-window bound. These are local guard
@@ -242,8 +259,19 @@ $batchRunner=static function(array $req,array &$collectorState)use($resolver,$me
 };
 
 $runWindow=static function(array $windowRequest,int $index,array $window)use(
-    $searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch,$requireAutosave,&$persistenceFailure
+    $searchRunner,$expandRunner,$programRecorder,$batchRunner,$maxExpands,$maxBatch,$requireAutosave,
+    $rangeCheckpoint,&$persistenceFailure
 ):array{
+    $checkpoint=$rangeCheckpoint->begin($window['from']);
+    if(($checkpoint['action']??null)==='reuse'){
+        $reused=$checkpoint['result']??null;
+        if(!is_array($reused))throw new RuntimeException('ANEX_RANGE_CHECKPOINT_RESULT');
+        $reused['window_index']=$index;
+        $reused['requested_date_range']=$window;
+        return $reused;
+    }
+    if(($checkpoint['action']??null)!=='run')throw new RuntimeException('ANEX_RANGE_CHECKPOINT_ACTION');
+
     // Search refs and autosave accumulators are window-scoped. Never carry one
     // supplier session into the next date window and accidentally publish mixed scope.
     $state=[];
@@ -268,11 +296,24 @@ $runWindow=static function(array $windowRequest,int $index,array $window)use(
             $windowResult['snapshot_finalize']=['published'=>false,'reason'=>'collector_incomplete'];
         }
     }catch(RuntimeException $error){
-        if($error->getMessage()!=='ANEX_COLLECTOR_AUTOSAVE'||$persistenceFailure===null)throw $error;
+        $code=$error->getMessage();
+        if(in_array($code,['ANEX_SUPPLIER_ERROR','ANEX_HTTP_ERROR'],true)){
+            $rangeCheckpoint->finish($window['from'],'supplier_error',[
+                'source'=>'anex-local-offer-collector-v1',
+                'status'=>'supplier_error',
+                'error_code'=>$code,
+                'selection_authority'=>false,
+            ]);
+            throw $error;
+        }
+        if($code!=='ANEX_COLLECTOR_AUTOSAVE'||$persistenceFailure===null)throw $error;
         $windowResult=array_replace($windowResult,[
             'source'=>'anex-local-offer-collector-v1','status'=>'incomplete',
             'autosave_failure'=>$persistenceFailure,'selection_authority'=>false,
         ]);
+    }
+    if(($windowResult['status']??null)==='complete'){
+        $rangeCheckpoint->finish($window['from'],'complete',$windowResult);
     }
     $windowResult['window_index']=$index;
     $windowResult['requested_date_range']=$window;
@@ -344,6 +385,7 @@ $result['search_client_instances']=$searchRequests;
 $result['apd_client_instances']=$apdRequests;
 $result['search_budget']=$searchBudget;
 $result['apd_budget']=$apdBudget;
+$result['range_checkpoint_id']=$checkpointId;
 $result['supplier_calls_bounded']=true;
 $result['browser_supplier_calls']=0;
 $result['db_only_customer_results']=true;
