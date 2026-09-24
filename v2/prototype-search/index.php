@@ -16,6 +16,16 @@ if (is_file($popularitySource)) {
 }
 // The host caches JS/CSS for a day. Bind each URL to the deployed file bytes.
 $html = file_get_contents(__DIR__ . '/index.html');
+$rehydrationNeedle = '<script src="./data.js" defer></script>';
+if (substr_count($html, $rehydrationNeedle) !== 1) {
+    http_response_code(500);
+    exit('Prototype asset order is invalid.');
+}
+$html = str_replace(
+    $rehydrationNeedle,
+    $rehydrationNeedle . "\n  <script src=\"./rehydration-retention-v1.js\" defer></script>",
+    $html
+);
 $legacyIdAttribute = htmlspecialchars(implode(',', array_values($priorityHotelIds)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $html = str_replace('<body>', '<body data-popular-hotel-legacy-ids="' . $legacyIdAttribute . '">', $html);
 echo preg_replace_callback(

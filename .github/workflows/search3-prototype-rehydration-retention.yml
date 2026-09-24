@@ -1,0 +1,25 @@
+name: Search3 rehydrated offer retention
+
+on:
+  pull_request:
+    paths:
+      - 'v2/prototype-search/rehydration-retention-v1.js'
+      - 'v2/prototype-search/index.php'
+      - 'tests/search3-prototype-rehydration-retention.cjs'
+      - '.github/workflows/search3-prototype-rehydration-retention.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rehydration-retention:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check retention bridge syntax
+        run: node --check v2/prototype-search/rehydration-retention-v1.js
+      - name: Check served prototype entry syntax
+        run: php -l v2/prototype-search/index.php
+      - name: Verify cached to current in-memory retention
+        run: node --test tests/search3-prototype-rehydration-retention.cjs
