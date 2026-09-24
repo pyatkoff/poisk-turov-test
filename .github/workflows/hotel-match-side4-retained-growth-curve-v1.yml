@@ -1,0 +1,104 @@
+name: MATCH Side4 retained growth curve
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-side4-retained-growth-curve-v1.yml]
+permissions: {contents: read, issues: read}
+env:
+  CLAIM: '5781723960'
+  OP: hotel-match-tv-samo-common4-side-star4-1971-20260922-v4b
+  SEARCH_ID: '13692326204'
+  BASE: f21d1f4a9f890f5d8d81a55595964696aad17fdf
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-side4-growth-curve-1971-20260922-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail; mkdir out
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD")" = ".github/workflows/hotel-match-side4-retained-growth-curve-v1.yml"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > out/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('out/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for s in [os.environ['OP'],os.environ['SEARCH_ID'],'provider calls0','READ-ONLY']: assert s in b,s
+          PY
+      - name: Reconstruct retained result growth
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$USER@$HOST" "OP='$OP' SEARCH_ID='$SEARCH_ID' python3 -" > out/growth.json <<'PY'
+          import hashlib,json,os,pathlib,re
+          d=pathlib.Path.home()/'.anytoour-match/operations'/os.environ['OP']/'evidence-private';sid=os.environ['SEARCH_ID']
+          events=[]
+          for mp in sorted(d.glob('*.meta.json')):
+            m=json.loads(mp.read_text());meta=m.get('meta') or {};path=str(meta.get('path',''))
+            if m.get('source')!='tourvisor': continue
+            bp=pathlib.Path(str(mp).replace('.meta.json','.bin'));raw=bp.read_bytes()
+            assert hashlib.sha256(raw).hexdigest()==m.get('raw_sha256') and len(raw)==int(m.get('bytes'))
+            try: body=json.loads(raw)
+            except: body=None
+            params=meta.get('params') or {}
+            kind='other'
+            if path=='/tours/search': kind='start'
+            elif path==f'/tours/search/{sid}/continue': kind='continue'
+            elif path==f'/tours/search/{sid}/status': kind='status'
+            elif path==f'/tours/search/{sid}': kind='result'
+            events.append({'seq':int(m['sequence']),'kind':kind,'status':m.get('http_status'),'sha':m['raw_sha256'],'bytes':m['bytes'],
+                           'limit':int(params.get('limit',0) or 0) if kind=='result' else None,'body':body})
+          events.sort(key=lambda x:x['seq']);round_no=0;pending_req=None;rows=[];prev_h=set();prev_t=set()
+          for e in events:
+            if e['kind']=='continue':
+              round_no+=1;b=e['body'] if isinstance(e['body'],dict) else {}
+              pending_req=b.get('requestCount',b.get('request_count'))
+            elif e['kind']=='result':
+              b=e['body']; assert isinstance(b,dict)
+              data=b.get('data',b); hs=data.get('hotels',data.get('result',data.get('items',[]))) if isinstance(data,dict) else []
+              if isinstance(hs,dict): hs=hs.get('hotels',hs.get('items',[]))
+              assert isinstance(hs,list)
+              h=set();t=set()
+              for hotel in hs:
+                if not isinstance(hotel,dict):continue
+                hid=hotel.get('id')
+                if hid is not None:h.add(str(hid))
+                for tour in hotel.get('tours',[]) or []:
+                  if not isinstance(tour,dict):continue
+                  tid=tour.get('id',tour.get('tourId'))
+                  if tid is not None:t.add(str(tid))
+                  else:t.add(hashlib.sha256(json.dumps(tour,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+              rows.append({'round':round_no,'requestCount':pending_req,'hotels':len(h),'delta_hotels':len(h-prev_h),
+                           'tours':len(t),'delta_tours':len(t-prev_t),'removed_hotels':len(prev_h-h),'removed_tours':len(prev_t-t),
+                           'limit':e['limit'],'hit_limit':bool(e['limit'] and len(h)>=e['limit']),
+                           'http_status':e['status'],'sha256':e['sha'],'bytes':e['bytes']})
+              prev_h,prev_t=h,t;pending_req=None
+          assert len(rows)==32 and rows[-1]['hotels']==140 and rows[-1]['tours']==1809
+          out={'operation':os.environ['OP'],'search_id':sid,'result_reads':len(rows),'rows':rows,
+               'summary':{'first':rows[0],'last':rows[-1],'any_hit_limit':any(x['hit_limit'] for x in rows),
+                          'any_decrease':any(x['removed_hotels'] or x['removed_tours'] for x in rows),
+                          'total_positive_hotel_rounds':sum(x['delta_hotels']>0 for x in rows),
+                          'total_positive_tour_rounds':sum(x['delta_tours']>0 for x in rows)}}
+          print(json.dumps(out,sort_keys=True))
+          PY
+          python3 - <<'PY'
+          import json
+          x=json.load(open('out/growth.json'))
+          assert x['result_reads']==32 and x['summary']['last']['hotels']==140
+          print(json.dumps(x['summary'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-side4-growth-${{ github.run_id }}', path: out/growth.json, retention-days: 90, if-no-files-found: error}
