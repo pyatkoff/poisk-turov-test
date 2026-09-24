@@ -236,6 +236,6 @@ function search3_destination_census_main(): int
     }
 }
 
-if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__ || (string)getenv('SEARCH3_DESTINATION_CENSUS') === '1') {
     exit(search3_destination_census_main());
 }
