@@ -501,7 +501,7 @@ ok(is_string($cliSource)&&str_contains($cliSource,'if (($result[\'status\'] ?? n
 ok(str_contains($cliSource,'$inclusiveDays>7')&&str_contains($cliSource,'collectRange('),'CLI must window wide date ranges');
 ok(str_contains($cliSource,'ANDROMEDA_COLLECTOR_RANGE_CAPTURE_UNSUPPORTED'),'wide capture mode must fail before supplier capture');
 ok(str_contains($cliSource,"supplier_unavailable_before_first_page")
-    &&str_contains($cliSource,"if($error->getMessage()!=='supplier_unavailable')throw $error;")
+    &&str_contains($cliSource,'catch(RuntimeException $error)')
     &&str_contains($cliSource,"'pages'=>0")
     &&str_contains($cliSource,"'autosave_reason'=>'supplier_unavailable'")
     &&str_contains($cliSource,"'selection_authority'=>false")
