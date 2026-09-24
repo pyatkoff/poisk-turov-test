@@ -16,6 +16,7 @@ env:
   CLAIM: '5823627883'
   AUDIT_ARTIFACT: '10838420703'
   AUDIT_ARCHIVE_SHA: 02270ce9186cf8c09d5598937d15fec31d558d988084cd2138389a413c402ea1
+  AUDIT_RESULT_SHA: 72918355199f346f337ed9175c20318daa5d93af88ebf22ec633aa3ef617bff2
   EXPECTED: '22'
 jobs:
   focused:
@@ -49,7 +50,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],'expected writes=22','offset0','max300']: assert x in b,x
+          for x in [os.environ['OP'],'expected writes=22','offset0','Max300']: assert x in b,x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
               q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
@@ -71,7 +72,7 @@ jobs:
           import json,hashlib,pathlib,os
           r=json.load(open('input/audit-result.json'));q=json.load(open('input/audit-receipt.json'))
           h=hashlib.sha256(pathlib.Path('input/audit-result.json').read_bytes()).hexdigest()
-          assert q['result_sha256']==h
+          assert q['result_sha256']==h==os.environ['AUDIT_RESULT_SHA']
           assert r['operation']==os.environ['AUDIT_OP'] and r['state']=='completed_read_only_samo_business_common4_current'
           assert r['captured_single_native_edge_count']==22 and r['writer_ready_total']==22
           assert r['writer_ready_counts']=={'operator_115':22}
