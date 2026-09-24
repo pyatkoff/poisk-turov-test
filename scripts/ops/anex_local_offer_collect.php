@@ -18,6 +18,15 @@ require_once $config;
 $dbFile=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';
 require_once $dbFile;
 
+$localIngest=getenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE');
+if(!is_string($localIngest)||trim($localIngest)===''){
+    $localIngest=$root.'/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php';
+}
+if(!is_file($localIngest)||is_link($localIngest)||filesize($localIngest)<=0||filesize($localIngest)>2097152){
+    throw new RuntimeException('ANEX_COLLECTOR_LOCAL_INGEST');
+}
+putenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE='.$localIngest);
+
 $apiToken=trim((string)getenv('ANEX_API_TOKEN'));
 if($apiToken===''&&defined('ANEX_API_TOKEN'))$apiToken=trim((string)ANEX_API_TOKEN);
 $b2bToken=trim((string)getenv('ANEX_B2B_TOKEN'));
