@@ -29,7 +29,7 @@ jobs:
       - run: php -l scripts/diagnostics/hotel_match_samo_business_live30_common4_wave3_writer_v11_w2.php
       - run: php scripts/diagnostics/hotel_match_samo_business_live30_common4_wave3_writer_v11_w2.php --self-test
       - run: php tests/hotel_match_samo_business_live30_common4_wave3_writer_v11_w2_test.php
-      - run: "! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|curl_|https?://' scripts/diagnostics/hotel_match_samo_business_live30_common4_wave3_writer_v11_w2.php"
+      - run: "! grep -E 'curl_|https?://|Tourvisor|SearchTour|PRICES\\?|package/getFlights' scripts/diagnostics/hotel_match_samo_business_live30_common4_wave3_writer_v11_w2.php"
   live:
     needs: focused
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-wave3-writer-v11-w2-20260924'
