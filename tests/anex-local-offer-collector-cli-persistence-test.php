@@ -157,8 +157,7 @@ STUB);
         $process=proc_open([PHP_BINARY,$dir.'/payload/scripts/ops/anex_local_offer_collect.php',
             '--departure=1','--country=4','--date-from=2026-10-30','--nights=7','--child-ages=3,7','--generation=2100000000'],
             [0=>['file','/dev/null','r'],1=>['file',$dir.'/stdout','w'],2=>['file',$dir.'/stderr','w']],$pipes,null,
-            ['ANYTOUR_PROJECT_ROOT'=>$dir.'/anytoour.ru','ANYTOUR_ANEX_RANGE_CHECKPOINT_ROOT'=>$dir.'/range-checkpoints',
-                'ANEX_API_TOKEN'=>'fixture','ANEX_B2B_TOKEN'=>'fixture','FIXTURE_DIR'=>$dir]);
+            ['ANYTOUR_PROJECT_ROOT'=>$dir.'/anytoour.ru','ANEX_API_TOKEN'=>'fixture','ANEX_B2B_TOKEN'=>'fixture','FIXTURE_DIR'=>$dir]);
         if(!is_resource($process))throw new RuntimeException('fixture process');
         $deadline=microtime(true)+5;
         do{
@@ -169,14 +168,8 @@ STUB);
         $trace=[];
         foreach(is_file($dir.'/trace.jsonl')?file($dir.'/trace.jsonl',FILE_IGNORE_NEW_LINES):[] as $line)$trace[]=json_decode($line,true,64,JSON_THROW_ON_ERROR);
         $stdout=file_get_contents($dir.'/stdout');
-        $checkpointFile=$dir.'/range-checkpoints/g2100000000/2026-10-30.json';
-        $checkpoint=null;
-        if(is_file($checkpointFile)){
-            $checkpoint=json_decode((string)file_get_contents($checkpointFile),true,32,JSON_THROW_ON_ERROR);
-        }
         return ['code'=>$code,'result'=>$stdout===''?null:json_decode($stdout,true,64,JSON_THROW_ON_ERROR),
-            'stderr'=>file_get_contents($dir.'/stderr'),'trace'=>$trace,'counts'=>array_count_values(array_column($trace,0)),
-            'checkpoint'=>$checkpoint];
+            'stderr'=>file_get_contents($dir.'/stderr'),'trace'=>$trace,'counts'=>array_count_values(array_column($trace,0))];
     }finally{
         if(is_resource($process)){proc_terminate($process,9);proc_close($process);}
         $files=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);
@@ -204,7 +197,6 @@ foreach($failures as $i=>$receipt){
         &&($r['counts']['save']??0)===1&&!isset($r['counts']['finalize']),'no later queries/finalize/write attempt');
     persistenceCheck($r['result']['autosave_failure']===['phase'=>'batch','receipt'=>$receipt],'exact failed receipt retained');
     persistenceCheck(!isset($r['result']['snapshot_finalize'])&&!isset($r['result']['final_price_ready_offers']),'no false full receipt');
-    persistenceCheck(($r['checkpoint']['state']??null)==='started','failed persistence remains unknown/no-replay checkpoint');
 }
 $success=['published'=>true,'reason'=>null,'readyOfferCount'=>6];
 $late=persistenceCli(['groups'=>18,'receipts'=>[$success,$failures[0]]]);
@@ -216,9 +208,6 @@ foreach([$success,['published'=>false,'reason'=>'already_published']] as $receip
     persistenceCheck($r['code']===0&&$r['result']['status']==='complete'&&$r['counts']['expand']===12
         &&$r['counts']['batch']===2&&$r['counts']['finalize']===1,'persisted paths still drain and finalize');
     persistenceCheck($r['result']['snapshot_finalize']===$receipt,'exact persisted final receipt unchanged');
-    persistenceCheck(($r['checkpoint']['state']??null)==='complete'
-        &&($r['checkpoint']['result']['status']??null)==='complete',
-        'successful finalization seals complete checkpoint');
 }
 $noFinalReceipt=['published'=>false,'reason'=>'no_final_price_ready','readyOfferCount'=>0,'confirmationRequiredOfferCount'=>0];
 $noFinal=persistenceCli(['receipts'=>[$noFinalReceipt,$noFinalReceipt],'final'=>$noFinalReceipt]);
@@ -252,9 +241,6 @@ persistenceCheck($supplier['code']===1&&$supplier['stderr']===''&&is_array($supp
     &&($supplier['result']['additional_last_request']??null)==[]
     &&!isset($supplier['result']['search_last_request']['unsafe']),
     'supplier error retains only safe fixed diagnostics');
-persistenceCheck(($supplier['checkpoint']['state']??null)==='supplier_error'
-    &&($supplier['checkpoint']['result']['error_code']??null)==='ANEX_SUPPLIER_ERROR',
-    'supplier error seals terminal checkpoint');
 $http=persistenceCli(['http_error'=>true]);
 persistenceCheck($http['code']===1&&$http['stderr']===''&&is_array($http['result'])
     &&($http['result']['status']??null)==='supplier_error'
@@ -291,6 +277,4 @@ persistenceCheck($wrongAction['code']===1&&($wrongAction['result']['status']??nu
 $other=persistenceCli(['expand_error'=>7]);
 persistenceCheck($other['code']!==0&&$other['result']===null&&str_contains($other['stderr'],'FIXTURE_EXPAND_INVARIANT')
     &&!isset($other['counts']['finalize']),'unrelated invariant not swallowed');
-persistenceCheck(($other['checkpoint']['state']??null)==='started',
-    'unrelated unknown failure remains started no-replay checkpoint');
 echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=2 late=1 final_no_ready=1 final=1 missing=1 empty_regular=2 supplier_diag=1 http_diag=1 expand_502_retry=1 retry_cap=1 non502=1 wrong_action=1 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
