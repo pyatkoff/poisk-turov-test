@@ -860,8 +860,22 @@ def program_fuel_probe():
                 or target.get('operator_family')!=payload['operator_family']
                 or target.get('program_key')!=str(payload['program_key'])
                 or target.get('tour_key')!=str(payload['tour_key'])
-                or target.get('sample_distinct_spo_index')!=payload['sample_index']
-                or not isinstance(target.get('spo_key'),str)
+                or not (
+                    (target.get('sample_basis')=='distinct_spo'
+                     and target.get('sample_distinct_spo_index')==payload['sample_index']
+                     and isinstance(target.get('spo_key'),str))
+                    or
+                    (payload['operator_family']=='intourist'
+                     and target.get('sample_basis')=='distinct_mapped_hotel'
+                     and target.get('sample_distinct_spo_index') is None
+                     and target.get('spo_key') is None
+                     and target.get('sample_distinct_mapped_hotel_index')==payload['sample_index']
+                     and target.get('retained_distinct_spo_count')==0
+                     and isinstance(target.get('retained_distinct_mapped_hotel_count'),int)
+                     and target.get('retained_distinct_mapped_hotel_count')>=2
+                     and target.get('mapped_local_hotel') is True
+                     and target.get('retained_freight_external') is False)
+                )
                 or not isinstance(target.get('selected_offer_ref_sha256'),str)
                 or not re.fullmatch(r'[a-f0-9]{64}',target['selected_offer_ref_sha256'])):
             fail('program_fuel_probe_acceptance')

@@ -537,6 +537,9 @@ class ContractTest(unittest.TestCase):
                   "int-program-fuel-readback-wrapper-v1","set_exception_handler","diagnostic_status","partial",
                   "program-fuel-probe","program_fuel_probe","program_fuel_probe_php_b64",
                   "program_fuel_probe_acceptance","program_fuel_probe_db_drift",
+                  "sample_basis","distinct_spo","distinct_mapped_hotel",
+                  "sample_distinct_mapped_hotel_index","retained_distinct_mapped_hotel_count",
+                  "retained_distinct_spo_count","mapped_local_hotel","retained_freight_external",
                   "funsun-direction-fuel-seed","funsun_direction_fuel_seed",
                   "funsun_direction_fuel_seed_php_b64","direction_fuel_seed_acceptance",
                   "direction_fuel_seed_db_drift","int-funsun-direction-fuel-seed-v1",
@@ -598,6 +601,10 @@ class ContractTest(unittest.TestCase):
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
+        self.assertIn("payload['operator_family']=='intourist'",text)
+        self.assertIn("target.get('sample_basis')=='distinct_mapped_hotel'",text)
+        self.assertIn("target.get('spo_key') is None",text)
+        self.assertIn("target.get('sample_distinct_spo_index') is None",text)
         self.assertIn("if command['mode'] == 'match-common4-continuation-remainder':",text)
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)
