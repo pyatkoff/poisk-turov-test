@@ -568,6 +568,20 @@ class InstallRuntimeTest(unittest.TestCase):
             self.assertEqual(0,result['supplier_calls'])
             self.assertEqual(0,result['database_writes'])
 
+    def test_anex_preview_post_install_failure_rolls_back_both_files(self):
+        with tempfile.TemporaryDirectory() as td:
+            result,home,project=self.fixture(
+                Path(td),'int-anex-preview-install-20260925-v2',True,mode='install-anex-preview')
+            self.assertEqual('rolled_back',result['status'])
+            self.assertEqual('complete',result['rollback']['status'])
+            runtime=project/'_preview/search3-anex-candidate'
+            self.assertEqual('<?php /* old endpoint */\n',(runtime/'api-anex-search3-preview.php').read_text())
+            self.assertFalse((runtime/'app/integrations/anex-initial-week-gate.php').exists())
+            self.assertEqual('<?php /* old */\n',(runtime/'app/integrations/x0.php').read_text())
+            self.assertFalse(result['runtime_changed'])
+            self.assertEqual(0,result['supplier_calls'])
+            self.assertEqual(0,result['database_writes'])
+
     def test_post_install_failure_rolls_back_every_file(self):
         with tempfile.TemporaryDirectory() as td:
             result,home,project=self.fixture(
@@ -663,7 +677,7 @@ class ContractTest(unittest.TestCase):
                   "match-tv942-write","run_match_tv942_write",
                   "hotel_match_live942_tv_writer_v1.php",
                   "match_tv_writer_manifest_hash","match_tv_writer_terminal_guard",
-                  "install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
+                  "install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942",
                   "provider_attempted_without_terminal","pre_provider_reservation_only",
                   "match_readback_hash"]:
             self.assertIn(x,text)
