@@ -10,7 +10,7 @@ on:
 permissions: {contents: read, actions: read, issues: read}
 jobs:
   focused:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-common4-current-v4-20260924'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && (github.event.pull_request.head.ref == 'match/samo-business-live30-common4-current-v4-20260924' || github.event.pull_request.head.ref == 'match/samo-business-live30-current-edgecount-fix-20260924')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
