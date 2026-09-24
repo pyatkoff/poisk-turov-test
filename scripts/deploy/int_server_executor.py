@@ -2885,12 +2885,17 @@ try:
         result['collector']=collector
         result['after_db']=db_summary(provider)
         parseable=collector.get('status')!='unparseable'
-        collector_incomplete_safe=(
+        collector_incomplete_base=(
             mode in ('andromeda-scope','andromeda-external-group','andromeda-operator-scope')
             and run.returncode!=0 and parseable
             and collector.get('source')=='andromeda-local-offer-collector-v1'
             and collector.get('status')=='incomplete'
-            and collector.get('incomplete_reason')=='search_partial'
+            and collector.get('selection_authority') is False
+            and collector.get('booking_calls')==0
+            and result['after_db']==result['before_db']
+        )
+        collector_incomplete_partial=(
+            collector.get('incomplete_reason')=='search_partial'
             and isinstance(collector.get('pages'),int) and collector['pages']>=1
             and isinstance(collector.get('advertised_pages'),int)
             and collector['advertised_pages']>collector['pages']
@@ -2899,9 +2904,17 @@ try:
             and collector.get('autosave_published') is False
             and collector.get('autosave_reason')=='cohort_incomplete'
             and collector.get('autosave')=={'published':False,'reason':'cohort_incomplete'}
-            and collector.get('selection_authority') is False
-            and collector.get('booking_calls')==0
-            and result['after_db']==result['before_db']
+        )
+        collector_incomplete_first_page=(
+            collector.get('incomplete_reason')=='supplier_unavailable_before_first_page'
+            and collector.get('pages')==0 and collector.get('advertised_pages') is None
+            and collector.get('received_offers')==0 and collector.get('mapped_offers')==0
+            and collector.get('autosave_published') is False
+            and collector.get('autosave_reason')=='supplier_unavailable'
+            and collector.get('autosave')=={'published':False,'reason':'supplier_unavailable'}
+        )
+        collector_incomplete_safe=collector_incomplete_base and (
+            collector_incomplete_partial or collector_incomplete_first_page
         )
         if run.returncode==0 and parseable:
             if mode=='anex-demand':
