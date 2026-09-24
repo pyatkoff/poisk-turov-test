@@ -16,9 +16,8 @@ function search3_destination_positive_int(mixed $value,string $label): int
     return (int)$value;
 }
 
-function search3_destination_tourvisor_ids(AnyTourDestinationCatalogV1 $catalog,string $kind,int $localId): array
+function search3_destination_validate_tourvisor_ids(array $ids): array
 {
-    $ids=$catalog->nativeIds('tourvisor',$kind,[$localId]);
     if(!$ids)throw new RuntimeException('DESTINATION_UNMAPPED');
     $out=[];
     foreach($ids as $id){
@@ -30,7 +29,12 @@ function search3_destination_tourvisor_ids(AnyTourDestinationCatalogV1 $catalog,
     return $ids;
 }
 
-function search3_destination_item(AnyTourDestinationCatalogV1 $catalog,array $dto): array
+function search3_destination_tourvisor_ids(AnyTourDestinationCatalogV1 $catalog,string $kind,int $localId): array
+{
+    return search3_destination_validate_tourvisor_ids($catalog->nativeIds('tourvisor',$kind,[$localId]));
+}
+
+function search3_destination_item(AnyTourDestinationCatalogV1 $catalog,array $dto,?array $tourvisorIds=null): array
 {
     $id=search3_destination_positive_int($dto['id']??null,'DESTINATION_ID');
     $kind=(string)($dto['kind']??'');
@@ -46,7 +50,7 @@ function search3_destination_item(AnyTourDestinationCatalogV1 $catalog,array $dt
         'russianName'=>$name,
         'slug'=>(string)($dto['slug']??''),
         'revision'=>search3_destination_positive_int($dto['revision']??null,'DESTINATION_REVISION'),
-        'tourvisorIds'=>search3_destination_tourvisor_ids($catalog,$kind,$id),
+        'tourvisorIds'=>$tourvisorIds===null?search3_destination_tourvisor_ids($catalog,$kind,$id):search3_destination_validate_tourvisor_ids($tourvisorIds),
     ];
 }
 
@@ -84,16 +88,47 @@ function search3_destination_read(PDO $db,string $action,array $query): array
         return ['ok'=>true,'source'=>'anytour-destination-identities-v1','provider'=>'tourvisor','kind'=>'country','items'=>$items,'count'=>count($items)];
     }
 
-    if($action==='regions'||$action==='subregions'){
-        $parentKey=$action==='regions'?'countryId':'regionId';
-        $parentKind=$action==='regions'?'country':'region';
-        $kind=$action==='regions'?'region':'subregion';
-        $parentId=search3_destination_positive_int($query[$parentKey]??null,strtoupper($parentKey));
-        $parent=$catalog->get($parentId);
-        if(!$parent||$parent['kind']!==$parentKind)throw new InvalidArgumentException('DESTINATION_PARENT');
-        $rows=$catalog->children($parentId,$kind);
+    if($action==='regions'){
+        $countryId=search3_destination_positive_int($query['countryId']??null,'COUNTRYID');
+        $country=$catalog->get($countryId);
+        if(!$country||$country['kind']!=='country')throw new InvalidArgumentException('DESTINATION_PARENT');
+        $rows=$catalog->descendants($countryId);
+        $regions=[];$subregions=[];$regionIds=[];$subregionIds=[];
+        foreach($rows as $row){
+            if(($row['kind']??null)==='region')$regionIds[]=(int)$row['id'];
+            elseif(($row['kind']??null)==='subregion')$subregionIds[]=(int)$row['id'];
+            else throw new RuntimeException('DESTINATION_HIERARCHY');
+        }
+        $regionNative=$regionIds?$catalog->nativeMap('tourvisor','region',$regionIds):[];
+        $subregionNative=$subregionIds?$catalog->nativeMap('tourvisor','subregion',$subregionIds):[];
+        foreach($rows as $row){
+            $id=(int)$row['id'];
+            if($row['kind']==='region'){
+                $regions[$id]=search3_destination_item($catalog,$row,$regionNative[$id]??null);
+                $regions[$id]['subregions']=[];
+            }else{
+                $item=search3_destination_item($catalog,$row,$subregionNative[$id]??null);
+                $parentId=(int)$item['parentId'];
+                $subregions[]=$item;
+                if(!isset($regions[$parentId]))continue;
+                $regions[$parentId]['subregions'][]=$item;
+            }
+        }
+        foreach($subregions as $item){
+            if(!isset($regions[(int)$item['parentId']]))throw new RuntimeException('DESTINATION_HIERARCHY');
+        }
+        $items=array_values($regions);
+        return ['ok'=>true,'source'=>'anytour-destination-identities-v1','provider'=>'tourvisor','kind'=>'region','parentId'=>$countryId,
+            'items'=>$items,'count'=>count($items),'subregionCount'=>count($subregions)];
+    }
+
+    if($action==='subregions'){
+        $regionId=search3_destination_positive_int($query['regionId']??null,'REGIONID');
+        $region=$catalog->get($regionId);
+        if(!$region||$region['kind']!=='region')throw new InvalidArgumentException('DESTINATION_PARENT');
+        $rows=$catalog->children($regionId,'subregion');
         $items=array_map(static fn(array $row):array=>search3_destination_item($catalog,$row),$rows);
-        return ['ok'=>true,'source'=>'anytour-destination-identities-v1','provider'=>'tourvisor','kind'=>$kind,'parentId'=>$parentId,'items'=>$items,'count'=>count($items)];
+        return ['ok'=>true,'source'=>'anytour-destination-identities-v1','provider'=>'tourvisor','kind'=>'subregion','parentId'=>$regionId,'items'=>$items,'count'=>count($items)];
     }
 
     throw new InvalidArgumentException('DESTINATION_ACTION');
