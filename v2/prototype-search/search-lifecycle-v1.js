@@ -2,6 +2,29 @@
 (() => {
   if (window.AnyTourPrototypeSearchLifecycleV1) return;
 
+  const unionReceipt = value => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)
+      || !Number.isSafeInteger(value.hotels) || value.hotels < 0
+      || !Number.isSafeInteger(value.offers) || value.offers < 0) return null;
+    const counts = key => {
+      const source=value[key];
+      if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+      const result={};
+      for (const [name,count] of Object.entries(source)) {
+        if (!name || name.length > 96 || !Number.isSafeInteger(count) || count < 0) return null;
+        result[name]=count;
+      }
+      return result;
+    };
+    const hotelsByProvider=counts('hotelsByProvider'),offersByProvider=counts('offersByProvider'),providerSets=counts('providerSets');
+    if (!hotelsByProvider || !offersByProvider || !providerSets) return null;
+    const providerOfferTotal=Object.values(offersByProvider).reduce((sum,count)=>sum+count,0);
+    if (providerOfferTotal !== value.offers || Object.values(hotelsByProvider).some(count=>count>value.hotels)
+      || Object.values(providerSets).reduce((sum,count)=>sum+count,0)!==value.hotels) return null;
+    return Object.freeze({hotels:value.hotels,offers:value.offers,
+      hotelsByProvider:Object.freeze(hotelsByProvider),offersByProvider:Object.freeze(offersByProvider),providerSets:Object.freeze(providerSets)});
+  };
+
   const reduce = (response, event) => {
     if (!response || !event || typeof event !== 'object') return;
     if (event.type === 'loading') {
@@ -10,6 +33,7 @@
       response.continued = event.continued === true;
       response.cachedResume = event.cachedResume === true;
       response.canContinue = false;
+      response.union = null;
       response.message = event.cachedResume
         ? 'Восстанавливаем сохранённые предложения без нового запроса к туроператорам.'
         : event.retryRead
@@ -33,6 +57,7 @@
       response.resultLimitReached = event.resultLimitReached === true;
       response.cachedResume = event.cachedResume === true;
       response.sources = event.sources || response.sources || {};
+      response.union = unionReceipt(event.union);
     }
     if (event.type === 'error') {
       response.pending = false;
@@ -50,7 +75,7 @@
       || typeof options.prepare !== 'function'
       || typeof options.currentKey !== 'function') throw new Error('Prototype search lifecycle dependencies are unavailable.');
 
-    let generation = 0, bound = false, submitScheduled = false, scopeScheduled = false;
+    let generation = 0, bound = false, submitScheduledGeneration = null, scopeScheduledGeneration = null;
     const canSubmit = () => typeof options.canSubmit !== 'function' || options.canSubmit() !== false;
 
     const run = (runOptions = {}) => {
@@ -100,19 +125,21 @@
     };
 
     const requestSubmit = () => {
-      if (submitScheduled) return true;
-      submitScheduled = true;
+      const scheduledGeneration = generation;
+      if (submitScheduledGeneration === scheduledGeneration) return true;
+      submitScheduledGeneration = scheduledGeneration;
       queueMicrotask(() => {
-        submitScheduled = false;
-        if (!canSubmit() || typeof form.requestSubmit !== 'function') return;
+        if (submitScheduledGeneration === scheduledGeneration) submitScheduledGeneration = null;
+        if (scheduledGeneration !== generation || !canSubmit() || typeof form.requestSubmit !== 'function') return;
         form.requestSubmit();
       });
       return true;
     };
 
-    const inspectSupplierScope = () => {
-      scopeScheduled = false;
-      if (form.hidden !== true
+    const inspectSupplierScope = scheduledGeneration => {
+      if (scopeScheduledGeneration === scheduledGeneration) scopeScheduledGeneration = null;
+      if (scheduledGeneration !== generation
+        || form.hidden !== true
         || typeof options.supplierFilters !== 'function'
         || typeof data.supplierScope !== 'function'
         || typeof data.supplierScopeCovered !== 'function') return;
@@ -125,9 +152,11 @@
     };
 
     const scheduleSupplierScope = () => {
-      if (form.hidden !== true || scopeScheduled) return;
-      scopeScheduled = true;
-      queueMicrotask(inspectSupplierScope);
+      if (form.hidden !== true) return;
+      const scheduledGeneration = generation;
+      if (scopeScheduledGeneration === scheduledGeneration) return;
+      scopeScheduledGeneration = scheduledGeneration;
+      queueMicrotask(() => inspectSupplierScope(scheduledGeneration));
     };
 
     const click = event => {

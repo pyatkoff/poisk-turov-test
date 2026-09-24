@@ -36,13 +36,41 @@ function searchMealPlan(row,hotelId,concept){
  if(!concept||!m||m.source!=='anytour-search-meal-v1'||positiveId(m.hotelId)!==hotelId||m.conceptId!==concept.id||m.conceptRevision!==concept.revision||!p||!positiveId(p.id)||!safeText(p.nameRu,255)||!safeText(p.code,64))return null;
  return{id:Number(p.id),code:p.code,nameRu:p.nameRu};
 }
+function rehydrationParty(party){
+ if(!party||!Number.isInteger(party.adults)||party.adults<1||party.adults>6||!Number.isInteger(party.children)||party.children<0||party.children>3
+   ||!Array.isArray(party.child_ages)||party.child_ages.length!==party.children||party.child_ages.some(age=>!Number.isInteger(age)||age<0||age>17))return null;
+ return{adults:party.adults,children:party.children,child_ages:[...party.child_ages]};
+}
+function rehydrationStay(row,kind,canonical,raw){
+ const match=row.stayMatch;
+ if(match!==undefined){
+  const part=match&&match[kind];
+  if(!match||match.source!=='anytour-hotel-stay-v2'||match.exactScope!==true||!part||!['accepted','unmapped','missing'].includes(part.status))return undefined;
+  if(part.status==='accepted'){
+   if(!canonical)return undefined;
+   return{basis:'canonical',id:canonical.id,revision:canonical.revision,local_key:canonical.localKey,name_ru:canonical.nameRu};
+  }
+  if(part.canonical!==null&&part.canonical!==undefined)return undefined;
+  if(part.status==='missing')return null;
+ }
+ return raw?{basis:'raw',value:raw}:null;
+}
+function rehydrationDescriptor(row,hotelId,tour,operatorName,localMeal,localRoom,meal,room){
+ const legacyHotelId=positiveId(row.legacyHotelId),party=rehydrationParty(tour.party);
+ if(!legacyHotelId||!party||!operatorName)return null;
+ const mealKey=rehydrationStay(row,'meal',localMeal,meal),roomKey=rehydrationStay(row,'room',localRoom,room);
+ if(mealKey===undefined||roomKey===undefined)return null;
+ return{schema_version:1,provider:row.provider,anytour_hotel_id:Number(hotelId),legacy_hotel_id:Number(legacyHotelId),
+  checkin:String(tour.checkin),nights:tour.nights,party,operator:{name:operatorName},meal:mealKey,room:roomKey};
+}
 function offerTour(row,hotelId){
  const listing=listingOf(row);if(!listing)return null;
  const listingPriceState=priceState(listing),identity=listing.identity,tour=listing.tour,operator=listing.operator;if(!identity||!digest(identity.offer_ref_digest)||!digest(identity.search_ref_digest)||!digest(identity.provider_hotel_ref_digest)||!tour||!operator)return null;
  const price=amount(listing.listingPrice);if(!/^\d{4}-\d{2}-\d{2}$/.test(String(tour.checkin||''))||!Number.isInteger(tour.nights)||tour.nights<1||tour.nights>60)return null;
  const localMeal=canonicalStay(row,hotelId,'meal'),localRoom=canonicalStay(row,hotelId,'room');
  const meal=safeText(tour.meal&&tour.meal.raw,160),room=safeText(tour.room&&tour.room.raw,300),placement=safeText(tour.placement&&tour.placement.raw,160),operatorName=safeText(operator.canonical_name||operator.raw,180),party=tour.party||{};
- return{...(searchMealPlan(row,hotelId,localMeal)?{searchMealPlan:searchMealPlan(row,hotelId,localMeal)}:{}),...(localMeal||localRoom?{localStay:{source:'anytour-hotel-stay-v2',meal:localMeal,room:localRoom}}:{}),id:'cached:'+row.provider+':'+identity.offer_ref_digest,provider:row.provider,cachedListing:true,offerIdentityDigest:identity.offer_ref_digest,searchIdentityDigest:identity.search_ref_digest,selectionEnabled:false,quoteRequired:true,listingPriceState,finalPriceReady:listing.listingPriceReady,priceNeedsConfirmation:listingPriceState==='search_price_confirmation_required',price,currency:'RUB',date:String(tour.checkin),nights:tour.nights,meal:{name:meal},roomType:room,placement,operator:{name:operatorName},adults:Number.isInteger(party.adults)?party.adults:undefined,childs:Number.isInteger(party.children)?party.children:undefined};
+ const rehydration=rehydrationDescriptor(row,hotelId,tour,operatorName,localMeal,localRoom,meal,room);
+ return{...(searchMealPlan(row,hotelId,localMeal)?{searchMealPlan:searchMealPlan(row,hotelId,localMeal)}:{}),...(localMeal||localRoom?{localStay:{source:'anytour-hotel-stay-v2',meal:localMeal,room:localRoom}}:{}),...(rehydration?{rehydration}:{}),id:'cached:'+row.provider+':'+identity.offer_ref_digest,provider:row.provider,cachedListing:true,offerIdentityDigest:identity.offer_ref_digest,searchIdentityDigest:identity.search_ref_digest,selectionEnabled:false,quoteRequired:true,listingPriceState,finalPriceReady:listing.listingPriceReady,priceNeedsConfirmation:listingPriceState==='search_price_confirmation_required',price,currency:'RUB',date:String(tour.checkin),nights:tour.nights,meal:{name:meal},roomType:room,placement,operator:{name:operatorName},adults:Number.isInteger(party.adults)?party.adults:undefined,childs:Number.isInteger(party.children)?party.children:undefined};
 }
 function parse(data){
  if(!data||data.source!=='anytour-db-first-results-v1'||data.scopeVersion!==1||!digest(data.scopeDigest)||data.selectionAuthority!==false||!Array.isArray(data.hotels)||data.hotels.length>MAX_HOTELS)return null;
@@ -55,7 +83,14 @@ function parse(data){
    // The DB reader can retain legacy display rows without identity. Withhold that
    // row, never invent an ID or discard independently identified sibling offers.
    if(listing&&!Object.prototype.hasOwnProperty.call(listing,'identity')){withheldOfferCount++;continue;}
-   const tour=offerTour(stored,own),legacyHotelId=positiveId(stored&&stored.legacyHotelId);if(!tour||!legacyHotelId)return null;
+   // Listing safety and exact identity remain snapshot authority. Only after both
+   // are valid may a display-only projection failure be isolated to this row.
+   if(!listing)return null;
+   const identity=listing.identity;
+   if(!identity||!digest(identity.offer_ref_digest)||!digest(identity.search_ref_digest)||!digest(identity.provider_hotel_ref_digest))return null;
+   const legacyHotelId=positiveId(stored&&stored.legacyHotelId);if(!legacyHotelId)return null;
+   const tour=offerTour(stored,own);
+   if(!tour){withheldOfferCount++;continue;}
    offers.push({tour,legacyHotelId});offerCount++;
   }
   if(offers.length)hotels.push({anytourHotelId:own,hotel,offers});
