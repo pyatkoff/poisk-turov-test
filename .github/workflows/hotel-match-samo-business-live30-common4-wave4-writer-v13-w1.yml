@@ -1,0 +1,125 @@
+name: MATCH SAMO business-live30 wave4 writer v13 w1
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1.php'
+      - 'tests/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1_test.php'
+      - '.github/workflows/hotel-match-samo-business-live30-common4-wave4-writer-v13-w1.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-business-live30-common4-wave4-writer-1971-20260925-v13-w1, cancel-in-progress: false}
+env:
+  OP: hotel-match-samo-business-live30-common4-wave4-writer-1971-20260925-v13-w1
+  AUDIT_OP: hotel-match-samo-business-live30-common4-wave4-current-1971-20260925-v12
+  BASE: 336870a4b2c8bd8bc8f7b74e5b65a32d12db44a0
+  CLAIM: '5823627883'
+  AUDIT_ARTIFACT: '10838420703'
+  AUDIT_ARCHIVE_SHA: 02270ce9186cf8c09d5598937d15fec31d558d988084cd2138389a413c402ea1
+  AUDIT_RESULT_SHA: 72918355199f346f337ed9175c20318daa5d93af88ebf22ec633aa3ef617bff2
+  EXPECTED: '22'
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-wave4-writer-v13-w1-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1.php
+      - run: php scripts/diagnostics/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1.php --self-test
+      - run: php tests/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1_test.php
+      - run: |
+          ! grep -E 'curl_|https?://|Tourvisor|SearchTour|PRICES\?|package/getFlights' scripts/diagnostics/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1.php
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-wave4-writer-v13-w1-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact claim Security and audit
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/audit terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-samo-business-live30-common4-wave4-writer-v13-w1.yml scripts/diagnostics/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1.php tests/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'expected writes=22','offset0','Max300']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$AUDIT_ARTIFACT/zip" -o input/audit.zip
+          test "$(sha256sum input/audit.zip|awk '{print $1}')" = "$AUDIT_ARCHIVE_SHA"
+          unzip -q input/audit.zip -d input/audit
+          result="$(find input/audit -type f -name result.json -print -quit)";receipt="$(find input/audit -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt";cp "$result" input/audit-result.json;cp "$receipt" input/audit-receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          r=json.load(open('input/audit-result.json'));q=json.load(open('input/audit-receipt.json'))
+          h=hashlib.sha256(pathlib.Path('input/audit-result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==h==os.environ['AUDIT_RESULT_SHA']
+          assert r['operation']==os.environ['AUDIT_OP'] and r['state']=='completed_read_only_samo_business_common4_current'
+          assert r['captured_single_native_edge_count']==22 and r['writer_ready_total']==22
+          assert r['writer_ready_counts']=={'operator_115':22}
+          assert r['status_counts']=={'writer_ready':22}
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          pathlib.Path('input/audit.sha').write_text(h)
+          PY
+      - name: Commit 22 writer-ready Biblio identities
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP";asha="$(cat input/audit.sha)"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_write','expected_writes':22,'write_offset':0,'audit_operation':os.environ['AUDIT_OP'],'provider_http_calls':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
+          scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" input/audit-result.json "$remote:$op/payload/audit-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1.php "$remote:$op/payload/scripts/diagnostics/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA='$asha' MATCH_SOURCE_SHA='$HEAD' MATCH_WRITER_OPERATION='$OP' MATCH_EXPECTED_WRITES=22 MATCH_WRITE_OFFSET=0 php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_samo_business_live30_common4_wave4_writer_v13_w1.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json pre-commit.json commit-attempt.json result.json receipt.json" >terminal/server.tgz
+          set -e
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile():pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          if r['state']!='committed_verified':
+              print(json.dumps({'state':r['state'],'reason':r.get('reason')},sort_keys=True));raise SystemExit(2)
+          assert r['inserted']==22 and r['database_writes']==22 and r['mapping_writes']==22
+          assert r['inserted_by_namespace']=={'operator_115':22} and r['readback_verified'] is True
+          print(json.dumps({k:r[k] for k in ['state','inserted','inserted_by_namespace','unique_targets','readback_verified','preexisting_rows_preserved']},sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-business-live30-wave4-writer-v13-w1-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
