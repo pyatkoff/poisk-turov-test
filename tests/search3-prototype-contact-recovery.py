@@ -94,6 +94,20 @@ def check_width(browser, origin, width):
             route.fulfill(content_type="image/svg+xml", body=PHOTO)
         elif url.path == "/data/departures-v1.php":
             reply({"ok": True, "items": [{"id": 1, "name": "Москва"}]})
+        elif url.path.endswith("/data/search3-destination-read-v1.php"):
+            action = query.get("action", [""])[0]
+            if action == "countries":
+                reply({"ok": True, "source": "anytour-destination-identities-v1", "provider": "tourvisor", "kind": "country",
+                       "items": [{"id": 4, "kind": "country", "parentId": None, "name": "Турция", "russianName": "Турция",
+                                  "slug": "turkey", "revision": 1, "tourvisorIds": ["4"]}]})
+            elif action == "regions":
+                assert query.get("countryId") == ["4"], query
+                reply({"ok": True, "source": "anytour-destination-identities-v1", "provider": "tourvisor", "kind": "region",
+                       "parentId": 4, "items": [{"id": 20, "kind": "region", "parentId": 4, "name": "Анталья",
+                                                 "russianName": "Анталья", "slug": "antalya", "revision": 1,
+                                                 "tourvisorIds": ["20"]}]})
+            else:
+                reply({"ok": False, "error": "unexpected destination action"}, 400)
         elif url.path == "/data/price-calendar-read-v1.php":
             reply({"ok": True, "source": "latest-known-exact-segments-from-anytour-first-party-observations",
                    "cachedPriceIsFinal": False, "currency": "RUB", "adults": 2, "childrenCount": 0,
@@ -154,11 +168,7 @@ def check_width(browser, origin, width):
         elif url.path == "/api-v2.php" and request.method == "GET":
             action = query.get("action", [""])[0]
             calls.append(action)
-            if action == "countries":
-                reply([{"id": 4, "name": "Турция"}])
-            elif action == "regions":
-                reply([{"id": 20, "name": "Анталья", "countryId": 4}])
-            elif action == "meals":
+            if action == "meals":
                 reply([{"id": 7, "name": "AI"}, {"id": 5, "name": "HB"}])
             elif action == "search_start":
                 reply({"searchId": 123})

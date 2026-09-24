@@ -135,6 +135,23 @@ def check_width(browser, origin, width):
             route.fulfill(content_type="image/svg+xml", body=FIXTURE.PHOTO)
         elif url.path == "/data/departures-v1.php":
             reply({"ok": True, "items": [{"id": 1, "name": "Москва"}]})
+        elif url.path.endswith("/data/search3-destination-read-v1.php"):
+            action = query.get("action", [""])[0]
+            if action == "countries":
+                reply({"ok": True, "source": "anytour-destination-identities-v1", "provider": "tourvisor", "kind": "country",
+                       "items": [{"id": 4, "kind": "country", "parentId": None, "name": "Турция", "russianName": "Турция",
+                                  "slug": "turkey", "revision": 1, "tourvisorIds": ["4"]}]})
+            elif action == "regions":
+                assert query.get("countryId") == ["4"], query
+                reply({"ok": True, "source": "anytour-destination-identities-v1", "provider": "tourvisor", "kind": "region",
+                       "parentId": 4, "items": [
+                           {"id": 20, "kind": "region", "parentId": 4, "name": "Анталья", "russianName": "Анталья",
+                            "slug": "antalya", "revision": 1, "tourvisorIds": ["20"]},
+                           {"id": 23, "kind": "region", "parentId": 4, "name": "Сиде", "russianName": "Сиде",
+                            "slug": "side", "revision": 1, "tourvisorIds": ["23"]},
+                       ]})
+            else:
+                reply({"ok": False, "error": "unexpected destination action"}, 400)
         elif url.path.endswith("/search3-meal-catalog-read-v1.php"):
             reply({"ok": True, "source": "anytour-search-meal-v1", "provider": "tourvisor", "scopeKey": "global",
                    "available": True, "revision": "a" * 64, "plans": [
@@ -232,11 +249,7 @@ def check_width(browser, origin, width):
         elif url.path == "/api-v2.php" and request.method == "GET":
             action = query.get("action", [""])[0]
             calls.append({"action": action, "params": query})
-            if action == "countries":
-                reply([{"id": 4, "name": "Турция"}])
-            elif action == "regions":
-                reply([{"id": 20, "name": "Анталья", "countryId": 4}, {"id": 23, "name": "Сиде", "countryId": 4}])
-            elif action == "meals":
+            if action == "meals":
                 reply([
                     {"id": 3, "name": "BB", "fullName": "BB - Только завтрак"},
                     {"id": 4, "name": "HB", "fullName": "HB - Полупансион"},

@@ -5,7 +5,11 @@ on:
     paths:
       - 'v2/data/migrations/20260921-anytour-destination-identities-v1.sql'
       - 'v2/data/anytour-destination-catalog-v1.php'
+      - 'v2/data/search3-destination-read-v1.php'
+      - 'v2/prototype-search/data.js'
       - 'tests/anytour-destination-catalog-v1.php'
+      - 'tests/search3-destination-read-v1-test.php'
+      - 'tests/search3-prototype-canonical-destination-scope.cjs'
       - '.github/workflows/search3-anytour-destination-identities.yml'
 permissions: {contents: read}
 jobs:
@@ -28,10 +32,18 @@ jobs:
       - name: Exact ID bridge contract
         env:
           ANYTOUR_DESTINATION_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_destination_fixture;charset=utf8mb4'
+          SEARCH3_DESTINATION_READ_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_destination_read_fixture;charset=utf8mb4'
           ANYTOUR_DESTINATION_TEST_PASSWORD: fixture-only-password
         run: |
           set -euo pipefail
+          php -r '$db=new PDO("mysql:host=127.0.0.1;port=3306;charset=utf8mb4","root",getenv("ANYTOUR_DESTINATION_TEST_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);$db->exec("CREATE DATABASE IF NOT EXISTS anytour_destination_read_fixture CHARACTER SET utf8mb4 COLLATE utf8mb4_bin");'
           php -l v2/data/anytour-destination-catalog-v1.php
           php -l tests/anytour-destination-catalog-v1.php
+          php -l v2/data/search3-destination-read-v1.php
+          php -l tests/search3-destination-read-v1-test.php
+          node --check v2/prototype-search/data.js
+          node --check tests/search3-prototype-canonical-destination-scope.cjs
           php tests/anytour-destination-catalog-v1.php
+          php tests/search3-destination-read-v1-test.php
+          node --test tests/search3-prototype-canonical-destination-scope.cjs
           ! grep -Eq 'LOWER\(|LIKE|normalized|levenshtein|similar' v2/data/anytour-destination-catalog-v1.php
