@@ -104,16 +104,16 @@ function create(refresh){
   return Array.from(wanted).filter(key=>unresolved(key,wanted)).slice(0,100);
  }
  function checkedBatch(payload,requested){
-  try{
-   const checked=batch(payload,requested);
-   // Validate every revision before any profile/link/missing-ID mutation. A
-   // rejected sibling must not change descriptions already visible on cards.
-   return{checked,prepared:Array.from(checked.profiles.values(),checkedProfile)};
-  }catch(error){
+  let checked;
+  try{checked=batch(payload,requested);}catch(error){
    const failure=new Error(error&&error.message||'Invalid canonical catalogue batch');
    failure.name='Search3CanonicalBatchValidationError';
    throw failure;
   }
+  // State/revision conflicts stay fail-closed for the whole subset and require
+  // an explicit retry; only malformed catalogue response rows are isolated.
+  const prepared=Array.from(checked.profiles.values(),checkedProfile);
+  return{checked,prepared};
  }
  function isolateInvalidBatch(requested){
   if(requested.length<2||splitBudget<2){requested.forEach(key=>failed.add(key));return;}
