@@ -438,7 +438,23 @@ final class AnyTourAnexRangeCheckpointV1
     {
         $json = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         if (!is_string($json) || strlen($json) > 32768) throw new RuntimeException('ANEX_RANGE_CHECKPOINT_WRITE');
-        if ($exclusive && file_exists($path)) throw new RuntimeException('ANEX_RANGE_CHECKPOINT_EXISTS');
+        if ($exclusive) {
+            $h = @fopen($path, 'xb');
+            if ($h === false) throw new RuntimeException('ANEX_RANGE_CHECKPOINT_EXISTS');
+            $ok = false;
+            try {
+                @chmod($path, 0600);
+                $written = fwrite($h, $json);
+                if ($written !== strlen($json) || !fflush($h) || (function_exists('fsync') && !fsync($h))) {
+                    throw new RuntimeException('ANEX_RANGE_CHECKPOINT_WRITE');
+                }
+                $ok = true;
+            } finally {
+                fclose($h);
+                if (!$ok) @unlink($path);
+            }
+            return;
+        }
         $tmp = $path . '.tmp.' . bin2hex(random_bytes(8));
         $h = @fopen($tmp, 'xb');
         if ($h === false) throw new RuntimeException('ANEX_RANGE_CHECKPOINT_WRITE');
