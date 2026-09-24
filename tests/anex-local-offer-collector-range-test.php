@@ -18,24 +18,21 @@ function rangeThrows(callable $fn,string $message,string $label):void
 rangeCheck(AnyTourAnexLocalOfferCollectorV1::dateWindows('2026-09-29','2026-09-29')===[
     ['from'=>'2026-09-29','to'=>'2026-09-29'],
 ],'one-day');
-rangeCheck(AnyTourAnexLocalOfferCollectorV1::dateWindows('2026-09-29','2026-10-05')===[
-    ['from'=>'2026-09-29','to'=>'2026-10-05'],
-],'seven-day');
-rangeCheck(AnyTourAnexLocalOfferCollectorV1::dateWindows('2026-09-29','2026-10-06')===[
-    ['from'=>'2026-09-29','to'=>'2026-10-05'],
-    ['from'=>'2026-10-06','to'=>'2026-10-06'],
-],'eight-day');
+$windows7=AnyTourAnexLocalOfferCollectorV1::dateWindows('2026-09-29','2026-10-05');
+rangeCheck(count($windows7)===7,'seven-day-count');
+rangeCheck($windows7[0]===['from'=>'2026-09-29','to'=>'2026-09-29'],'seven-day-first');
+rangeCheck($windows7[6]===['from'=>'2026-10-05','to'=>'2026-10-05'],'seven-day-last');
+$windows8=AnyTourAnexLocalOfferCollectorV1::dateWindows('2026-09-29','2026-10-06');
+rangeCheck(count($windows8)===8,'eight-day-count');
+rangeCheck($windows8[7]===['from'=>'2026-10-06','to'=>'2026-10-06'],'eight-day-last');
 $windows21=AnyTourAnexLocalOfferCollectorV1::dateWindows('2026-10-30','2026-11-19');
-rangeCheck($windows21===[
-    ['from'=>'2026-10-30','to'=>'2026-11-05'],
-    ['from'=>'2026-11-06','to'=>'2026-11-12'],
-    ['from'=>'2026-11-13','to'=>'2026-11-19'],
-],'twenty-one-day');
-rangeCheck(AnyTourAnexLocalOfferCollectorV1::dateWindows('2028-02-25','2028-03-16')===[
-    ['from'=>'2028-02-25','to'=>'2028-03-02'],
-    ['from'=>'2028-03-03','to'=>'2028-03-09'],
-    ['from'=>'2028-03-10','to'=>'2028-03-16'],
-],'leap-rollover');
+rangeCheck(count($windows21)===21,'twenty-one-day-count');
+rangeCheck($windows21[0]===['from'=>'2026-10-30','to'=>'2026-10-30'],'twenty-one-day-first');
+rangeCheck($windows21[20]===['from'=>'2026-11-19','to'=>'2026-11-19'],'twenty-one-day-last');
+$leap=AnyTourAnexLocalOfferCollectorV1::dateWindows('2028-02-25','2028-03-16');
+rangeCheck(count($leap)===21,'leap-rollover-count');
+rangeCheck($leap[4]===['from'=>'2028-02-29','to'=>'2028-02-29'],'leap-day');
+rangeCheck($leap[20]===['from'=>'2028-03-16','to'=>'2028-03-16'],'leap-rollover-last');
 
 foreach([
     ['2026-02-30','2026-03-01','invalid-date'],
@@ -59,10 +56,10 @@ $success=AnyTourAnexLocalOfferCollectorV1::collectRange(
         return ['status'=>'complete','window_marker'=>$index];
     }
 );
-rangeCheck($success['status']==='complete'&&$success['window_count']===3&&$success['windows_completed']===3,'success-counts');
-rangeCheck(count($success['windows'])===3&&count($seen)===3,'success-calls');
-rangeCheck($seen[0]===['index'=>0,'window'=>['from'=>'2026-10-30','to'=>'2026-11-05'],'from'=>'2026-10-30','to'=>'2026-11-05'],'first-window-request');
-rangeCheck($seen[2]===['index'=>2,'window'=>['from'=>'2026-11-13','to'=>'2026-11-19'],'from'=>'2026-11-13','to'=>'2026-11-19'],'last-window-request');
+rangeCheck($success['status']==='complete'&&$success['window_count']===21&&$success['windows_completed']===21,'success-counts');
+rangeCheck(count($success['windows'])===21&&count($seen)===21,'success-calls');
+rangeCheck($seen[0]===['index'=>0,'window'=>['from'=>'2026-10-30','to'=>'2026-10-30'],'from'=>'2026-10-30','to'=>'2026-10-30'],'first-window-request');
+rangeCheck($seen[20]===['index'=>20,'window'=>['from'=>'2026-11-19','to'=>'2026-11-19'],'from'=>'2026-11-19','to'=>'2026-11-19'],'last-window-request');
 rangeCheck($baseRequest['params']['dateFrom']==='2026-10-30'&&$baseRequest['params']['dateTo']==='2026-11-19','base-request-unchanged');
 rangeCheck($success['selection_authority']===false,'no-selection-authority');
 
@@ -75,8 +72,8 @@ $failed=AnyTourAnexLocalOfferCollectorV1::collectRange(
         return ['status'=>'complete'];
     }
 );
-rangeCheck($failed['status']==='incomplete'&&$failed['window_count']===3&&$failed['windows_completed']===1,'fail-stop-counts');
-rangeCheck($failedCalls===[0,1]&&count($failed['windows'])===2,'fail-stop-no-third-window');
+rangeCheck($failed['status']==='incomplete'&&$failed['window_count']===21&&$failed['windows_completed']===1,'fail-stop-counts');
+rangeCheck($failedCalls===[0,1]&&count($failed['windows'])===2,'fail-stop-after-incomplete-day');
 rangeCheck($failed['windows'][1]['result']['autosave_failure']['phase']==='finalize','failure-receipt-preserved');
 
 rangeThrows(
@@ -92,4 +89,4 @@ rangeThrows(
     'ANEX_LOCAL_COLLECTOR_INPUT','invalid-request'
 );
 
-echo "ANEX_LOCAL_OFFER_RANGE_OK windows21=3 fail_stop=1 invalid=4 supplier=0 db=0\n";
+echo "ANEX_LOCAL_OFFER_RANGE_OK windows21=21 fail_stop=1 invalid=4 supplier=0 db=0\n";
