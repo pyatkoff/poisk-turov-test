@@ -1,0 +1,111 @@
+name: SEARCH3 result-calendar full-filter codemod
+
+on:
+  push:
+    branches:
+      - search/search3-result-calendar-full-filter-20260924
+    paths:
+      - '.github/workflows/search3-result-calendar-full-filter-codemod.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: search/search3-result-calendar-full-filter-20260924
+          fetch-depth: 0
+      - name: Apply bounded SEARCH patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app = Path('v2/prototype-search/app.js')
+          source = app.read_text()
+          old = "const s=structuredClone(state.search),f=state.filters,filters={stars:[...f.stars],meals:[...f.meals],resorts:[...f.resorts],min:f.min,max:f.max};"
+          new = "const s=structuredClone(state.search),filters=structuredClone(state.filters);"
+          if source.count(old) != 1:
+              raise SystemExit(f'expected one result-calendar narrow filter assignment, got {source.count(old)}')
+          app.write_text(source.replace(old, new, 1))
+
+          test = Path('tests/search3-prototype-result-calendar-filter-scope.cjs')
+          test.write_text(r'''const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+
+          const source = fs.readFileSync('v2/prototype-search/app.js', 'utf8');
+          const start = source.indexOf('function loadResultCalendar(){');
+          const end = source.indexOf('\nfunction renderCalendarStrip(){', start);
+          assert.ok(start >= 0 && end > start, 'loadResultCalendar must remain a bounded function');
+          const body = source.slice(start, end);
+
+          assert.match(
+            body,
+            /const s=structuredClone\(state\.search\),filters=structuredClone\(state\.filters\);/,
+            'result-strip calendar must clone the complete active filter model'
+          );
+          assert.doesNotMatch(body, /f=state\.filters,filters=\{stars:/, 'legacy narrowed filter projection must stay removed');
+          assert.match(body, /JSON\.stringify\(\[s,filters\]\)/, 'calendar cache key must include the complete filter model');
+          assert.match(
+            body,
+            /data\.calendarPrices\(s,s\.from,s\.to,request\.controller\.signal,filters,show\)/,
+            'calendar request must receive the same complete filter model'
+          );
+
+          const contextStart = source.indexOf("function createDateContext(source='form'){");
+          const contextEnd = source.indexOf('\nconst dateContextLabel=', contextStart);
+          assert.ok(contextStart >= 0 && contextEnd > contextStart, 'date modal context must remain present');
+          const context = source.slice(contextStart, contextEnd);
+          assert.match(
+            context,
+            /filters=structuredClone\(state\.filters\)/,
+            'result-strip and date modal must start from the same complete filter semantics'
+          );
+
+          for (const field of ['hotelId','q','stars','meals','resorts','operators','flight','amenities','min','max','rating','beach','family','spa']) {
+            assert.match(source, new RegExp('defaultFilters=.*' + field), `default filter model must still expose ${field}`);
+          }
+
+          console.log('Search3 result-calendar full-filter scope: OK');
+          ''')
+
+          workflow = Path('.github/workflows/search3-prototype-calendar-exact-hotel.yml')
+          text = workflow.read_text()
+          path_anchor = "      - 'v2/prototype-search/calendar-exact-hotel-v1.js'\n"
+          if "      - 'v2/prototype-search/app.js'\n" not in text:
+              if path_anchor not in text:
+                  raise SystemExit('focused workflow path anchor missing')
+              text = text.replace(path_anchor, path_anchor + "      - 'v2/prototype-search/app.js'\n", 1)
+          test_anchor = "      - 'tests/search3-prototype-calendar-exact-hotel.cjs'\n"
+          if "      - 'tests/search3-prototype-result-calendar-filter-scope.cjs'\n" not in text:
+              if test_anchor not in text:
+                  raise SystemExit('focused workflow test path anchor missing')
+              text = text.replace(test_anchor, test_anchor + "      - 'tests/search3-prototype-result-calendar-filter-scope.cjs'\n", 1)
+          syntax_anchor = "      - name: Check bridge syntax\n        run: node --check v2/prototype-search/calendar-exact-hotel-v1.js\n"
+          if "node --check v2/prototype-search/app.js" not in text:
+              if syntax_anchor not in text:
+                  raise SystemExit('focused workflow syntax anchor missing')
+              text = text.replace(syntax_anchor, syntax_anchor + "      - name: Check prototype app syntax\n        run: node --check v2/prototype-search/app.js\n", 1)
+          run_anchor = "      - name: Verify exact-hotel calendar scope\n        run: node tests/search3-prototype-calendar-exact-hotel.cjs\n"
+          if "node tests/search3-prototype-result-calendar-filter-scope.cjs" not in text:
+              if run_anchor not in text:
+                  raise SystemExit('focused workflow test command anchor missing')
+              text = text.replace(run_anchor, run_anchor + "      - name: Verify result-calendar full-filter scope\n        run: node tests/search3-prototype-result-calendar-filter-scope.cjs\n", 1)
+          workflow.write_text(text)
+
+          Path('.github/workflows/search3-result-calendar-full-filter-codemod.yml').unlink()
+          PY
+
+          node --check v2/prototype-search/app.js
+          node tests/search3-prototype-calendar-exact-hotel.cjs
+          node tests/search3-prototype-result-calendar-filter-scope.cjs
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'SEARCH: preserve full filter scope in result calendar'
+          git push origin HEAD:search/search3-result-calendar-full-filter-20260924
