@@ -27,7 +27,8 @@ jobs:
       - run: php -l scripts/diagnostics/hotel_match_samo_business_live30_common4_recover_calibrate_v2.php
       - run: php scripts/diagnostics/hotel_match_samo_business_live30_common4_recover_calibrate_v2.php --self-test
       - run: php tests/hotel_match_samo_business_live30_common4_recover_calibrate_v2_test.php
-      - run: "! grep -E 'curl_|file_get_contents\\(["'"']https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\\(' scripts/diagnostics/hotel_match_samo_business_live30_common4_recover_calibrate_v2.php"
+      - run: |
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\\(' scripts/diagnostics/hotel_match_samo_business_live30_common4_recover_calibrate_v2.php
   live:
     needs: focused
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-recover-calibrate-v2-20260924'
