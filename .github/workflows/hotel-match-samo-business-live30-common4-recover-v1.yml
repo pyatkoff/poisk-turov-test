@@ -13,7 +13,8 @@ env:
   OP: hotel-match-samo-business-live30-common4-recover-1971-20260924-v1
   SEALED_OP: hotel-match-samo-business-live30-common4-acquire-1971-20260924-v2
   BASE: 5d73897c6df42c255e37363fc3f02f656960d656
-  CLAIM: '5811510117'
+  CLAIM: '5811655124'
+  BASE_CLAIM: '5811510117'
   PLAN_ARTIFACT: '10798255813'
   PLAN_ARCHIVE_SHA: 1adf8a92bba3e447fec566c6b3a89a557d1446d5ca49dd5492b08b5b8625d87a
   PLAN_RESULT_SHA: 174cdd0bd45f48929fbda2e7c07383fbf81afccd18acccca990aee3ee94e6b23
@@ -43,11 +44,13 @@ jobs:
           test "$(git merge-base HEAD "$BASE")" = "$BASE"
           expected=".github/workflows/hotel-match-samo-business-live30-common4-recover-v1.yml scripts/diagnostics/hotel_match_samo_business_live30_common4_recover_v1.py tests/hotel_match_samo_business_live30_common4_recover_v1_test.py "
           test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$BASE_CLAIM" >input/base-claim.json
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
           python3 - <<'PY'
           import json,os,time,urllib.request
-          c=json.load(open('input/claim.json'));b=c['body']
-          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          base=json.load(open('input/base-claim.json'));c=json.load(open('input/claim.json'));b=base['body']+"\n"+c['body']
+          for x in (base,c):
+              assert x['user']['id']==226193297 and x['author_association']=='OWNER' and x['issue_url'].endswith('/issues/3419')
           for x in [os.environ['OP'],os.environ['SEALED_OP'],'HTTP0','DB/mapping writes0','5988 acquisition-ready lane edges','502 deterministic request groups','fail if its provider process is still alive','partial_unresolved_no_replay','continuation_start_batch']:
               assert x in b,x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
