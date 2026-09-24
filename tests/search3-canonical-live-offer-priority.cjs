@@ -12,8 +12,8 @@ function setup(){
 function offer(provider,digest,price,extra={}){
  return {id:`${provider}:${digest}`,provider,offerIdentityDigest:digest,price,...extra};
 }
-function card(owner){
- const rows=owner.read([],{});
+function card(owner,raw=[]){
+ const rows=owner.read(raw,{});
  assert.equal(rows.length,1);
  return rows[0];
 }
@@ -53,11 +53,22 @@ function card(owner){
 
 {
  const owner=setup();
- const anex=offer('anex','d'.repeat(64),130000,{cachedListing:false});
- const andromeda=offer('andromeda','d'.repeat(64),130000,{cachedListing:false});
+ const digest='d'.repeat(64),cached=offer('tourvisor',digest,140000,{cachedListing:true});
+ const live=offer('tourvisor',digest,142000,{cachedListing:false});
+ owner.upsertOffer(500,cached,{source:'local-db',legacyHotelId:903});
+ const result=card(owner,[{id:903,provider:'tourvisor',mappingStatus:'resolved',tours:[live]}]);
+ assert.equal(result.tours.length,1,'raw current supplier result still deduplicates the exact cached identity');
+ assert.equal(result.tours[0],live,'raw current supplier result outranks cached LOCAL duplicate');
+ assert.equal(result.price,142000);
+}
+
+{
+ const owner=setup();
+ const anex=offer('anex','e'.repeat(64),130000,{cachedListing:false});
+ const andromeda=offer('andromeda','e'.repeat(64),130000,{cachedListing:false});
  owner.upsertLegacyOffer(902,anex,{source:'direct-anex'});
  owner.upsertLegacyOffer(902,andromeda,{source:'direct-andromeda'});
- owner.upsertOffer(500,offer('tourvisor','e'.repeat(64),131000,{cachedListing:true}),{source:'local-db',legacyHotelId:902});
+ owner.upsertOffer(500,offer('tourvisor','f'.repeat(64),131000,{cachedListing:true}),{source:'local-db',legacyHotelId:902});
  // Stored offer establishes the canonical legacy link for the live rows above.
  const result=card(owner);
  assert.equal(result.tours.length,3,'same token across different providers stays distinct');
