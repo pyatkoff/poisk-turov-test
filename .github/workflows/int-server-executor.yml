@@ -6,7 +6,9 @@ on:
     paths:
       - '.github/workflows/int-server-executor.yml'
       - 'scripts/deploy/int_server_executor.py'
+      - 'scripts/deploy/int_server_executor_anex_secret_transport.py'
       - 'tests/int_server_executor_test.py'
+      - 'tests/int_server_executor_anex_secret_transport_test.py'
       - 'scripts/diagnostics/int_funsun_direction_store_server_readback.py'
       - 'tests/int_funsun_direction_store_server_readback_test.py'
   workflow_dispatch:
@@ -39,6 +41,8 @@ jobs:
           set -euo pipefail
           python3 -m py_compile scripts/deploy/int_server_executor.py
           python3 tests/int_server_executor_test.py -v
+          python3 -m py_compile scripts/deploy/int_server_executor_anex_secret_transport.py
+          python3 tests/int_server_executor_anex_secret_transport_test.py -v
           python3 -m py_compile scripts/diagnostics/int_funsun_direction_store_server_readback.py
           python3 tests/int_funsun_direction_store_server_readback_test.py -v
 
@@ -69,6 +73,8 @@ jobs:
           set -euo pipefail
           python3 -m py_compile scripts/deploy/int_server_executor.py
           python3 tests/int_server_executor_test.py -v
+          python3 -m py_compile scripts/deploy/int_server_executor_anex_secret_transport.py
+          python3 tests/int_server_executor_anex_secret_transport_test.py -v
       - name: Parse and authorize exact current-source command
         id: command
         env:
@@ -93,7 +99,9 @@ jobs:
           INT_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           INT_SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           INT_SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: python3 scripts/deploy/int_server_executor.py --source-root source
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_B2B_TOKEN: ${{ secrets.ANEX_B2B_TOKEN }}
+        run: python3 scripts/deploy/int_server_executor_anex_secret_transport.py --source-root source
       - name: Preserve sanitized terminal receipt
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
