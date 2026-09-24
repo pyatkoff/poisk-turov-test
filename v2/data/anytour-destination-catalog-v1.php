@@ -24,6 +24,12 @@ final class AnyTourDestinationCatalogV1
     private static function dto(array $r): array {
         return['id'=>self::id($r['id']),'kind'=>self::kind((string)$r['kind']),'parentId'=>$r['parent_id']===null?null:self::id($r['parent_id']),'nameRu'=>(string)$r['name_ru'],'slug'=>(string)$r['slug'],'revision'=>self::id($r['revision'])];
     }
+    public function get(int $id): ?array {
+        self::id($id);if(!$this->readable())return null;
+        $s=$this->pdo->prepare('SELECT id,kind,parent_id,name_ru,slug,revision FROM anytour_destinations_v1 WHERE id=? AND is_active=1 LIMIT 2');
+        $s->execute([$id]);$rows=$s->fetchAll(PDO::FETCH_ASSOC);if(count($rows)>1)throw new RuntimeException('DESTINATION_CONFLICT');
+        return $rows?self::dto($rows[0]):null;
+    }
     public function children(int $parentId,string $kind): array {
         self::id($parentId);self::kind($kind);if($kind==='country')throw new InvalidArgumentException('DESTINATION_PARENT_KIND');
         if(!$this->readable())return[];
