@@ -1,0 +1,31 @@
+name: Andromeda search-envelope diagnostic
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-search-envelope-diagnostic.php'
+      - 'scripts/ops/andromeda_local_offer_collect.php'
+      - 'tests/andromeda-search-envelope-diagnostic-test.php'
+      - '.github/workflows/andromeda-search-envelope-diagnostic-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: andromeda-search-envelope-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate safe envelope classification offline
+        run: |
+          php -l app/integrations/andromeda-search-envelope-diagnostic.php
+          php -l scripts/ops/andromeda_local_offer_collect.php
+          php -l tests/andromeda-search-envelope-diagnostic-test.php
+          php tests/andromeda-search-envelope-diagnostic-test.php
