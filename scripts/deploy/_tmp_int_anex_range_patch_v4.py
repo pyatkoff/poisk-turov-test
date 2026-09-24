@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+
+def replace_once(text: str, old: str, new: str, label: str) -> str:
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f'{label}: expected1 got{count}')
+    return text.replace(old, new, 1)
+
+
+ep = Path('scripts/deploy/int_server_executor.py')
+s = ep.read_text()
+if "if mode == 'anex-range':" in s:
+    raise SystemExit('anex-range already present')
+
+parse_anchor = "    if mode == 'reconcile':\n"
+parse_block = """    if mode == 'anex-range':
+        # Exact owner-authorized direct-ANEX search/autosave over one user-visible range.
+        need(len(parts) == 12, 'command_shape')
+        need(operation.startswith('int-anex-'), 'anex_range_operation_namespace')
+        departure = integer(parts[3], 1, 999999999, 'departure')
+        country = integer(parts[4], 1, 999999999, 'country')
+        date_from, date_to = date(parts[5]), date(parts[6])
+        import datetime as dt
+        inclusive_days = (dt.date.fromisoformat(date_to) - dt.date.fromisoformat(date_from)).days + 1
+        need(1 <= inclusive_days <= 21, 'anex_date_range')
+        nights = integer(parts[7], 1, 28, 'nights')
+        adults = integer(parts[8], 1, 6, 'adults')
+        child_raw = parts[9]
+        need(re.fullmatch(r'(?:-|(?:[0-9]|1[0-7])(?:,(?:[0-9]|1[0-7])){0,2})', child_raw) is not None,
+             'child_ages')
+        child_ages = [] if child_raw == '-' else sorted(int(x) for x in child_raw.split(','))
+        meal = parts[10]
+        need(re.fullmatch(r'(?:-|[A-Za-z0-9_,&]{1,32})', meal) is not None, 'meal')
+        region = integer(parts[11], 0, 999999999, 'region')
+        return {
+            'source_sha': source, 'mode': mode, 'operation_id': operation,
+            'departure': departure, 'country': country, 'date_from': date_from,
+            'date_to': date_to, 'nights': nights, 'adults': adults,
+            'child_ages': child_ages, 'meal': '' if meal == '-' else meal, 'region': region,
+        }
+"""
+s = replace_once(s, parse_anchor, parse_block + parse_anchor, 'parse_anchor')
+s = replace_once(
+    s,
+    "        provider='anex' if mode=='anex-demand' else 'andromeda'\n",
+    "        provider='anex' if mode in ('anex-demand','anex-range') else 'andromeda'\n",
+    'provider',
+)
+
+demand = """    if mode=='anex-demand':
+        command=['php',str(stage/'scripts/ops/anex_local_offer_demand_fill.php'),
+          '--limit='+str(payload['limit']),'--lookback-hours=168','--horizon-days=21',
+          '--max-expands=600','--max-apd=600','--generation-base='+generation]
+"""
+range_block = """    elif mode=='anex-range':
+        command=['php',str(stage/'scripts/ops/anex_local_offer_collect.php'),
+          '--departure='+str(payload['departure']),'--country='+str(payload['country']),
+          '--date-from='+payload['date_from'],'--date-to='+payload['date_to'],
+          '--nights='+str(payload['nights']),'--adults='+str(payload['adults']),
+          '--child-ages='+','.join(str(x) for x in payload['child_ages']),
+          '--meal='+payload['meal'],'--generation='+generation,
+          '--max-expands=600','--max-apd=600']
+        if payload['region']: command.append('--region='+str(payload['region']))
+"""
+s = replace_once(s, demand, demand + range_block, 'collector_command')
+
+scope_old = """            if mode=='anex-demand':
+                scopes=[x.get('scope',{}) for x in collector.get('results',[])
+                        if isinstance(x,dict) and isinstance(x.get('scope'),dict)]
+            else:
+"""
+scope_new = """            if mode=='anex-demand':
+                scopes=[x.get('scope',{}) for x in collector.get('results',[])
+                        if isinstance(x,dict) and isinstance(x.get('scope'),dict)]
+            elif mode=='anex-range':
+                scopes=[{'departureId':payload['departure'],'countryId':payload['country'],
+                         'regionId':payload['region'] or None,'dateFrom':payload['date_from'],
+                         'dateTo':payload['date_to'],'nights':payload['nights'],
+                         'adults':payload['adults'],'childAges':payload['child_ages']}]
+            else:
+"""
+s = replace_once(s, scope_old, scope_new, 'scope')
+
+supplier_old = """    if command['mode'] in ('match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-continuation-remainder','program-fuel-probe'):
+"""
+supplier_new = """    if command['mode'] in ('anex-range','match-tv942','match-samo942','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-continuation-remainder','program-fuel-probe'):
+"""
+s = replace_once(s, supplier_old, supplier_new, 'supplier_slot')
+ep.write_text(s)
+
+tp = Path('tests/int_server_executor_test.py')
+t = tp.read_text()
+test_anchor = "    def test_andromeda(self):\n"
+test_block = """    def test_anex_range(self):
+        v=m.parse_command(
+            f'/run-int-server-v1 {SHA} anex-range int-anex-mow-turkey-range-20260924-v4 '
+            '1 4 2026-09-29 2026-10-19 7 2 - - 0'
+        )
+        self.assertEqual('anex-range',v['mode'])
+        self.assertEqual(1,v['departure']);self.assertEqual(4,v['country'])
+        self.assertEqual('2026-09-29',v['date_from']);self.assertEqual('2026-10-19',v['date_to'])
+        self.assertEqual([],v['child_ages']);self.assertEqual('',v['meal']);self.assertEqual(0,v['region'])
+        kids=m.parse_command(
+            f'/run-int-server-v1 {SHA} anex-range int-anex-mow-turkey-family-20260924-v4 '
+            '1 4 2026-10-01 2026-10-08 10 2 7,2 AI 15'
+        )
+        self.assertEqual([2,7],kids['child_ages']);self.assertEqual('AI',kids['meal']);self.assertEqual(15,kids['region'])
+        bad=[
+            f'/run-int-server-v1 {SHA} anex-range int-andromeda-bad-range-20260924-v4 1 4 2026-09-29 2026-10-19 7 2 - - 0',
+            f'/run-int-server-v1 {SHA} anex-range int-anex-bad-range-20260924-v4 1 4 2026-10-19 2026-09-29 7 2 - - 0',
+            f'/run-int-server-v1 {SHA} anex-range int-anex-bad-range-20260924-v4 1 4 2026-09-29 2026-10-20 7 2 - - 0',
+            f'/run-int-server-v1 {SHA} anex-range int-anex-bad-range-20260924-v4 1 4 2026-09-29 2026-10-19 7 2 18 - 0',
+            f'/run-int-server-v1 {SHA} anex-range int-anex-bad-range-20260924-v4 1 4 2026-09-29 2026-10-19 7 2 1,2,3,4 - 0',
+        ]
+        for value in bad:
+            with self.subTest(value=value),self.assertRaises(ValueError):
+                m.parse_command(value)
+"""
+t = replace_once(t, test_anchor, test_block + test_anchor, 'test_anchor')
+ctl_old = '''                  "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",\n                  "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",\n'''
+ctl_new = '''                  "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",\n                  "anex-range","anex_date_range","anex_local_offer_collect.php",\n                  "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",\n'''
+t = replace_once(t, ctl_old, ctl_new, 'control_boundaries')
+tp.write_text(t)
