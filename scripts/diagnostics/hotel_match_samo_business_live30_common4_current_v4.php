@@ -4,7 +4,7 @@ declare(strict_types=1);
 const SBLC4C4_OP='hotel-match-samo-business-live30-common4-current-1971-20260924-v4';
 const SBLC4C4_SOURCE_OP='hotel-match-samo-business-live30-common4-acquire-1971-20260924-v2';
 const SBLC4C4_PLAN_OP='hotel-match-samo-business-live30-common4-plan-1971-20260924-v2';
-const SBLC4C4_EXPECTED_EDGES=6480;
+const SBLC4C4_EXPECTED_EDGES=5988;
 const SBLC4C4_NS=[5=>'operator_5',115=>'operator_115',315=>'operator_315',342=>'operator_342'];
 
 function sb4_need(bool $v,string $why):void{if(!$v)throw new RuntimeException($why);}
