@@ -514,6 +514,7 @@ function openDates(source='form'){
  if(innerWidth<=760&&calendarMonth!==startDay.slice(0,7)+'-01')requestAnimationFrame(()=>document.querySelector(`[data-month="${calendarMonth}"]`)?.scrollIntoView({block:'start'}));
 }
 function calendarPrice(day){if(!datePrices.has(day))datePrices.set(day,calendarMinimum(day,{search:dateContext.search,filters:dateContext.filters,calendarHotels:[...hotels,...calendarHotels]},calendarObservations));return datePrices.get(day);}
+function refreshCalendarPriceView(){datePrices.clear();refreshCalendarPrices();}
 function monthFrame(month){
  const date=dateObj(month),first=(date.getUTCDay()+6)%7,count=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate(),heading=date.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'});
  const prices=Array.from({length:count},(_,i)=>{const d=month.slice(0,8)+String(i+1).padStart(2,'0');return d>=startDay&&d<=endDay?calendarPrice(d):null}),cheapest=Math.min(...prices.filter(p=>p!==null));
@@ -1075,12 +1076,12 @@ function refreshCalendarPrices(){
 }
 function loadCalendarPrices(){
  calendarRequest?.abort();calendarObserver?.disconnect();calendarRequest=new AbortController();const controller=calendarRequest,ctx=dateContext,loads=new Map();
- calendarHotels=[];calendarObservations=[];const snapshots=new Map();refreshCalendarPrices();
+ calendarHotels=[];calendarObservations=[];const snapshots=new Map();refreshCalendarPriceView();
  const legend=()=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;const phases=[...loads.values()];$('.calendar-legend span').textContent=phases.includes('error')?'Не все цены загрузились. Даты можно выбрать без цены.':phases.includes('loading')?'Загружаем цены из базы…':'Цены из базы и текущей выдачи за всех, от · прочерк — нет цены';};
  const read=async month=>{
   if(loads.has(month)||controller.signal.aborted)return;loads.set(month,'loading');legend();
   const from=month<startDay?startDay:month,next=dateObj(month);next.setUTCMonth(next.getUTCMonth()+1);next.setUTCDate(0);const to=iso(next)>endDay?endDay:iso(next);
-  const show=snapshot=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;snapshots.set(month,snapshot);calendarHotels=[...snapshots.values()].flatMap(row=>row.hotels);calendarObservations=[...snapshots.values()].flatMap(row=>row.observations);refreshCalendarPrices();};
+  const show=snapshot=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;snapshots.set(month,snapshot);calendarHotels=[...snapshots.values()].flatMap(row=>row.hotels);calendarObservations=[...snapshots.values()].flatMap(row=>row.observations);refreshCalendarPriceView();};
   try{const snapshot=await data.calendarPrices(ctx.search,from,to,controller.signal,ctx.filters,show);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;show(snapshot);loads.set(month,snapshot.partial?'error':'complete');legend();}
   catch(error){if(error.name!=='AbortError'){loads.set(month,'error');legend();}}
  };
