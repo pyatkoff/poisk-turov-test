@@ -63,7 +63,7 @@ test('local country and region IDs resolve to accepted Tourvisor request IDs',as
   assert.deepEqual(Array.from(init.countries[0].tourvisorIds),['4']);
 
   const regions=await h.data.regions('101');
-  assert.deepEqual(regions.map(row=>row.id),['201','202'],'region choices own local ids');
+  assert.deepEqual(Array.from(regions,row=>row.id),['201','202'],'region choices own local ids');
   assert.deepEqual(Array.from(regions[0].tourvisorIds),['21','121']);
 
   const search={origin:'Москва',country:'101',from:'2026-10-01',to:'2026-10-07',minNights:7,maxNights:7,adults:2,ages:[]};
