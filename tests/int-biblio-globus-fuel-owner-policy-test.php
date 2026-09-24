@@ -36,7 +36,8 @@ $same('departure:1', $input['direction']['market'] ?? null, 'departure market');
 $same('country:4', $input['direction']['destination'] ?? null, 'destination');
 $same(['adults'=>2,'children'=>2,'child_ages'=>[2,7]], $input['party'] ?? null, 'eligible party normalized');
 $same([], $input['observations'] ?? null, 'must not fabricate supplier evidence');
-$same(null, $input['exchange'] ?? 'unexpected', 'zero policy must not require FX');
+$ok(array_key_exists('exchange', $input), 'zero policy exchange key missing');
+$same(null, $input['exchange'], 'zero policy must not require FX');
 $same([
     'schema_version'=>1,
     'source'=>'owner_policy',
