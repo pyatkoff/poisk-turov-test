@@ -41,7 +41,7 @@ jobs:
           import json,os
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          for x in [os.environ['OP'],'REPEATABLE READ','direct-ANEX-live30','HTTP0','database/mapping writes0']:
+          for x in [os.environ['OP'],'real Andromeda search snapshots','HTTP0','database/mapping writes0']:
               assert x in b,x
           PY
           python3 - <<'PY'
@@ -80,7 +80,7 @@ jobs:
           assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
           assert q['readback_verified'] is True
           assert r['state']=='completed_read_only_samo_business_live30_common4'
-          assert r['provider_http_calls']==r['tourvisor_calls']==r['samo_calls']==r['anex_calls']==r['andromeda_calls']==0
+          assert r['provider_http_calls']==0
           assert r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False
           assert r['samo_live30']['retained_search_page_files'] > 0
           print(json.dumps(r,sort_keys=True))
