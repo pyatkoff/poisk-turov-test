@@ -108,7 +108,7 @@ function v2_data_db():PDO{return new FixturePdo();}
 STUB);
         $pipes=[];
         $process=proc_open([PHP_BINARY,$dir.'/payload/scripts/ops/anex_local_offer_collect.php',
-            '--departure=1','--country=4','--date-from=2026-10-30','--nights=7','--child-ages=3,7'],
+            '--departure=1','--country=4','--date-from=2026-10-30','--nights=7','--child-ages=3,7','--generation=2100000000'],
             [0=>['file','/dev/null','r'],1=>['file',$dir.'/stdout','w'],2=>['file',$dir.'/stderr','w']],$pipes,null,
             ['ANYTOUR_PROJECT_ROOT'=>$dir.'/anytoour.ru','ANEX_API_TOKEN'=>'fixture','ANEX_B2B_TOKEN'=>'fixture','FIXTURE_DIR'=>$dir]);
         if(!is_resource($process))throw new RuntimeException('fixture process');
