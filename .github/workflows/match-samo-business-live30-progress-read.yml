@@ -1,7 +1,7 @@
 name: MATCH SAMO business live30 progress read
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
     branches: [feature/anex-search-adapter-20260907]
     paths: ['.github/workflows/match-samo-business-live30-progress-read.yml']
 permissions: {contents: read, issues: read}
