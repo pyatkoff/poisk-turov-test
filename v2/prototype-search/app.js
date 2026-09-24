@@ -312,7 +312,7 @@ function renderFilters(){const model=editingFilterModel(),f=model.filters,hs=hot
 }
 function loadResultCalendar(){
  if(!catalogReady||!state.hasSearched)return;
- const s=structuredClone(state.search),f=state.filters,filters={stars:[...f.stars],meals:[...f.meals],resorts:[...f.resorts],min:f.min,max:f.max};
+ const s=structuredClone(state.search),filters=structuredClone(state.filters);
  const key=JSON.stringify([s,filters]);if(resultCalendar.key===key)return;
  resultCalendar.controller?.abort();const request={key,hotels:[],observations:[],phase:'loading',controller:new AbortController()};resultCalendar=request;
  const show=snapshot=>{if(resultCalendar!==request)return;request.hotels=snapshot.hotels;request.observations=snapshot.observations;renderCalendarStrip();};
