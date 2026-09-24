@@ -83,7 +83,8 @@ function create(refresh){
   const groups=new Map(),seenByOwn=new Map();
   const detail=root.V2SearchLifecycle&&root.V2SearchLifecycle.hotelDetail;
   if(detail&&detail.profileOnly){const view=ensureView(groups,id(detail.hotelId));return view?[view]:[];}
-  storedOffers.forEach((bucket,own)=>{const first=bucket.values().next().value,view=ensureView(groups,own,first&&first.legacyHotelId);if(!view)return;let seen=seenByOwn.get(own);if(!seen){seen=new Set();seenByOwn.set(own,seen);}bucket.forEach(record=>addTour(view,record.tour,record.legacyHotelId,seen));});
+  // Exact current supplier rows must win the same provider+offer identity over
+  // LOCAL cache. The cache is inventory/fallback, not a fresher selectable copy.
   legacyOffers.forEach((bucket,old)=>{const own=links.get(old),view=ensureView(groups,own,old);if(!view)return;let seen=seenByOwn.get(own);if(!seen){seen=new Set();seenByOwn.set(own,seen);}bucket.forEach(record=>addTour(view,record.tour,old,seen));applyLegacyState(view,old);});
   raw.forEach(h=>{
    const old=legacyId(h),own=links.get(old),view=ensureView(groups,own,h&&h.id),tours=Array.isArray(h&&h.tours)?h.tours:[];if(!view||!tours.length)return;
@@ -91,6 +92,7 @@ function create(refresh){
    view.providers=Array.from(new Set(view.providers.concat(Array.isArray(h.providers)?h.providers:[h.provider||'tourvisor']).map(v=>String(v||'').toLowerCase()).filter(Boolean)));
    if(h.andromedaExpansion&&(!view.andromedaExpansion||view.andromedaExpansion.status!=='loading'))view.andromedaExpansion=h.andromedaExpansion;
   });
+  storedOffers.forEach((bucket,own)=>{const first=bucket.values().next().value,view=ensureView(groups,own,first&&first.legacyHotelId);if(!view)return;let seen=seenByOwn.get(own);if(!seen){seen=new Set();seenByOwn.set(own,seen);}bucket.forEach(record=>addTour(view,record.tour,record.legacyHotelId,seen));});
   return Array.from(groups.values()).filter(view=>view.tours.length).map(view=>{const prices=view.tours.map(t=>Number(t&&t.price)).filter(n=>Number.isFinite(n)&&n>0);view.price=prices.length?Math.min(...prices):0;return view;});
  }
  function wantedLegacyIds(){return Array.from(new Set(raw.map(legacyId).filter(Boolean).concat(Array.from(legacyOffers.keys()))));}
