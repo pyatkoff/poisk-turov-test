@@ -1,0 +1,25 @@
+name: Search3 exact-hotel calendar scope
+
+on:
+  pull_request:
+    paths:
+      - 'v2/prototype-search/calendar-exact-hotel-v1.js'
+      - 'v2/prototype-search/index.php'
+      - 'tests/search3-prototype-calendar-exact-hotel.cjs'
+      - '.github/workflows/search3-prototype-calendar-exact-hotel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-hotel-calendar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check bridge syntax
+        run: node --check v2/prototype-search/calendar-exact-hotel-v1.js
+      - name: Check PHP asset injection syntax
+        run: php -l v2/prototype-search/index.php
+      - name: Verify exact-hotel calendar scope
+        run: node tests/search3-prototype-calendar-exact-hotel.cjs
