@@ -1,19 +1,17 @@
 name: TEMP INT semantic ANEX range patch v4
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/_tmp-int-anex-range-semantic-v4.yml'
+  push:
+    branches: ['ops/int-anex-range-semantic-20260924-v4']
 permissions:
   contents: write
 jobs:
   patch:
-    if: github.head_ref == 'ops/int-anex-range-semantic-20260924-v4'
+    if: github.ref == 'refs/heads/ops/int-anex-range-semantic-20260924-v4'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ops/int-anex-range-semantic-20260924-v4
           fetch-depth: 0
       - name: Apply exact semantic patch and self-delete helper
         shell: bash
@@ -146,4 +144,4 @@ jobs:
           git config user.name 'AnyTour INT autopilot'
           git config user.email 'actions@users.noreply.github.com'
           git commit -m 'INT: add bounded direct ANEX range control'
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:ops/int-anex-range-semantic-20260924-v4
