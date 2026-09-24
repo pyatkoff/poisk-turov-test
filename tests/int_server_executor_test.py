@@ -460,6 +460,8 @@ class InstallRuntimeTest(unittest.TestCase):
         (app/'three-provider-fuel-evidence.php').write_text('<?php\n')
         for rel in m.FIXED:
             p=source/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('<?php\n')
+        if mode == 'install-anex-preview':
+            (app/'anex-initial-week-gate.php').write_text('<?php\n')
         bundle,manifest=m.bundle_source(source)
         archive=root/'source.tar.gz';archive.write_bytes(bundle)
         home=root/'home';project=home/'www/anytoour.ru'
@@ -511,12 +513,21 @@ class InstallRuntimeTest(unittest.TestCase):
             result,home,project=self.fixture(
                 Path(td),'int-anex-preview-install-20260925-v1',mode='install-anex-preview')
             self.assertEqual('installed',result['status'])
-            self.assertEqual(23,result['install']['files'])
+            self.assertEqual(2,result['install']['files'])
+            self.assertEqual(2,result['install']['changed_files'])
+            self.assertEqual(1,result['install']['created_files'])
             endpoint=result['install']['endpoint']
+            dependency=result['install']['dependency']
             self.assertEqual('v2/api-anex-search3-preview.php',endpoint['source'])
             self.assertEqual('api-anex-search3-preview.php',endpoint['target'])
             self.assertTrue(endpoint['changed'])
-            self.assertEqual('<?php\n',(project/'_preview/search3-anex-candidate/api-anex-search3-preview.php').read_text())
+            self.assertEqual('app/integrations/anex-initial-week-gate.php',dependency['source'])
+            self.assertEqual('app/integrations/anex-initial-week-gate.php',dependency['target'])
+            self.assertTrue(dependency['changed'])
+            runtime=project/'_preview/search3-anex-candidate'
+            self.assertEqual('<?php\n',(runtime/'api-anex-search3-preview.php').read_text())
+            self.assertEqual('<?php\n',(runtime/'app/integrations/anex-initial-week-gate.php').read_text())
+            self.assertEqual('<?php /* old */\n',(runtime/'app/integrations/x0.php').read_text())
             backup=home/'.anytoour-int-executor/int-anex-preview-install-20260925-v1/backup/api-anex-search3-preview.php'
             self.assertEqual('<?php /* old endpoint */\n',backup.read_text())
             self.assertTrue(result['public_ui_entrypoints_unchanged'])
@@ -574,7 +585,7 @@ class ContractTest(unittest.TestCase):
         for x in ["ISSUE = 3419","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
                   "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged","remote_command_size","zlib.compress",
                   "install-runtime","install-anex-preview","install-andromeda-preview","install-andromeda-quote-preview","install-plan.json","anex-preview-install-plan.json","preview-install-plan.json","quote-preview-install-plan.json","install-state.json","rollback_install",
-                  "v2/api-anex-search3-preview.php","api-anex-search3-preview.php","v2/api-andromeda-search3-preview.php","api-andromeda-search3-preview.php","v2/api-andromeda-quote-preview.php","api-andromeda-quote-preview.php",
+                  "app/integrations/anex-initial-week-gate.php","v2/api-anex-search3-preview.php","api-anex-search3-preview.php","v2/api-andromeda-search3-preview.php","api-andromeda-search3-preview.php","v2/api-andromeda-quote-preview.php","api-andromeda-quote-preview.php",
                   "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",
                   "anex-range","anex_date_range","anex_local_offer_collect.php",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
