@@ -1,0 +1,28 @@
+name: ANEX range supplier-error check
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/anex-local-offer-collector.php'
+      - 'tests/anex-local-offer-collector-range-supplier-error-test.php'
+      - '.github/workflows/anex-range-supplier-error-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Syntax
+        run: |
+          php -l app/integrations/anex-local-offer-collector.php
+          php -l tests/anex-local-offer-collector-range-supplier-error-test.php
+      - name: Range supplier error regression
+        run: php tests/anex-local-offer-collector-range-supplier-error-test.php
