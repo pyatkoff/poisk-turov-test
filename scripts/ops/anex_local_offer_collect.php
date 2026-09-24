@@ -35,7 +35,7 @@ $need=static function(string $key)use($args):string{
     return $v;
 };
 $int=static function(string $value,int $min,int $max):int{
-    if(!preg_match('/\A(?:0|[1-9][0-9]{0,8})\z/D',$value))throw new InvalidArgumentException('ANEX_COLLECTOR_INT');
+    if(!preg_match('/\A(?:0|[1-9][0-9]{0,9})\z/D',$value))throw new InvalidArgumentException('ANEX_COLLECTOR_INT');
     $n=(int)$value;if($n<$min||$n>$max)throw new InvalidArgumentException('ANEX_COLLECTOR_INT');return $n;
 };
 $date=static function(string $value):string{
