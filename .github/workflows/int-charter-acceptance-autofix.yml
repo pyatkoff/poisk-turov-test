@@ -2,33 +2,34 @@ name: TEMP INT charter acceptance patch
 
 on:
   push:
-    branches: [fix/int-program-fuel-probe-charter-acceptance-20260924]
-    paths:
-      - '.github/workflows/int-charter-acceptance-autofix.yml'
+    branches:
+      - fix/int-program-fuel-probe-charter-acceptance-20260924
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.event.head_commit.message != 'chore: remove temporary INT patch workflow'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: fix/int-program-fuel-probe-charter-acceptance-20260924
       - name: Apply exact bounded acceptance patch
+        shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
 
           executor = Path('scripts/deploy/int_server_executor.py')
           text = executor.read_text()
-          old = """                or target.get('sample_distinct_spo_index')!=payload['sample_index']
+          if "target.get('sample_basis')=='distinct_mapped_hotel'" not in text:
+              old = """                or target.get('sample_distinct_spo_index')!=payload['sample_index']
                 or not isinstance(target.get('spo_key'),str)
 """
-          new = """                or not (
+              new = """                or not (
                     (target.get('sample_basis')=='distinct_spo'
                      and target.get('sample_distinct_spo_index')==payload['sample_index']
                      and isinstance(target.get('spo_key'),str))
@@ -45,28 +46,34 @@ jobs:
                      and target.get('retained_freight_external') is False)
                 )
 """
-          if text.count(old) != 1:
-              raise SystemExit(f'executor anchor count={text.count(old)}')
-          executor.write_text(text.replace(old, new, 1))
+              if text.count(old) != 1:
+                  raise SystemExit(f'executor anchor count={text.count(old)}')
+              executor.write_text(text.replace(old, new, 1))
 
           tests = Path('tests/int_server_executor_test.py')
           t = tests.read_text()
-          old_tokens = '                  "program_fuel_probe_acceptance","program_fuel_probe_db_drift",\n'
-          new_tokens = old_tokens + '''                  "sample_basis","distinct_spo","distinct_mapped_hotel",\n                  "sample_distinct_mapped_hotel_index","retained_distinct_mapped_hotel_count",\n                  "retained_distinct_spo_count","mapped_local_hotel","retained_freight_external",\n'''
-          if t.count(old_tokens) != 1:
-              raise SystemExit(f'test token anchor count={t.count(old_tokens)}')
-          t = t.replace(old_tokens, new_tokens, 1)
-          old_assert = '        self.assertIn("if command[\'mode\'] == \'match-common4-continuation-remainder\':",text)\n'
-          new_assert = '''        self.assertIn("payload['operator_family']=='intourist'",text)\n        self.assertIn("target.get('sample_basis')=='distinct_mapped_hotel'",text)\n        self.assertIn("target.get('spo_key') is None",text)\n        self.assertIn("target.get('sample_distinct_spo_index') is None",text)\n''' + old_assert
-          if t.count(old_assert) != 1:
-              raise SystemExit(f'test assertion anchor count={t.count(old_assert)}')
-          tests.write_text(t.replace(old_assert, new_assert, 1))
+          if '"sample_basis","distinct_spo","distinct_mapped_hotel"' not in t:
+              old_tokens = '                  "program_fuel_probe_acceptance","program_fuel_probe_db_drift",\n'
+              new_tokens = old_tokens + '''                  "sample_basis","distinct_spo","distinct_mapped_hotel",\n                  "sample_distinct_mapped_hotel_index","retained_distinct_mapped_hotel_count",\n                  "retained_distinct_spo_count","mapped_local_hotel","retained_freight_external",\n'''
+              if t.count(old_tokens) != 1:
+                  raise SystemExit(f'test token anchor count={t.count(old_tokens)}')
+              t = t.replace(old_tokens, new_tokens, 1)
+              old_assert = '        self.assertIn("if command[\'mode\'] == \'match-common4-continuation-remainder\':",text)\n'
+              new_assert = '''        self.assertIn("payload['operator_family']=='intourist'",text)\n        self.assertIn("target.get('sample_basis')=='distinct_mapped_hotel'",text)\n        self.assertIn("target.get('spo_key') is None",text)\n        self.assertIn("target.get('sample_distinct_spo_index') is None",text)\n''' + old_assert
+              if t.count(old_assert) != 1:
+                  raise SystemExit(f'test assertion anchor count={t.count(old_assert)}')
+              tests.write_text(t.replace(old_assert, new_assert, 1))
           PY
           python3 -m py_compile scripts/deploy/int_server_executor.py
           python3 tests/int_server_executor_test.py -v
           git diff --check
-      - name: Commit exact source and focused test
+      - name: Commit source changes when present
+        shell: bash
         run: |
+          set -euo pipefail
+          if git diff --quiet -- scripts/deploy/int_server_executor.py tests/int_server_executor_test.py; then
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add scripts/deploy/int_server_executor.py tests/int_server_executor_test.py
