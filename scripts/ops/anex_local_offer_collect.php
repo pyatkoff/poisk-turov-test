@@ -195,11 +195,12 @@ $runWindow=static function(array $windowRequest,int $index,array $window)use(
 try{
     $rangeResult=AnyTourAnexLocalOfferCollectorV1::collectRange($request,$from,$to,$runWindow);
 }catch(RuntimeException $error){
-    if($error->getMessage()!=='ANEX_SUPPLIER_ERROR')throw $error;
+    $errorCode=$error->getMessage();
+    if(!in_array($errorCode,['ANEX_SUPPLIER_ERROR','ANEX_HTTP_ERROR'],true))throw $error;
     $result=[
         'source'=>'anex-local-offer-collector-v1',
         'status'=>'supplier_error',
-        'error_code'=>'ANEX_SUPPLIER_ERROR',
+        'error_code'=>$errorCode,
         'requested_date_range'=>['from'=>$from,'to'=>$to],
         'window_count'=>$windowCount,
         'search_client_instances'=>$searchRequests,
