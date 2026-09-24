@@ -1360,53 +1360,74 @@ def install_runtime(stage,files,op):
     return complete
 
 def install_anex_preview(stage,files,op):
-    integration=install_runtime(stage,files,op)
-    source_relative='v2/api-anex-search3-preview.php'
-    target_relative='api-anex-search3-preview.php'
-    source_path=stage/source_relative
-    expected=files.get(source_relative)
-    if (not safe_file(source_path,2*1024*1024)
-            or not isinstance(expected,str)
-            or hashlib.sha256(source_path.read_bytes()).hexdigest()!=expected):
-        fail('anex_preview_install_source_hash')
-    lint=subprocess.run(['php','-l',str(source_path)],capture_output=True,text=True,timeout=20)
-    if lint.returncode!=0: fail('anex_preview_install_source_lint')
-    target=runtime/target_relative
-    if not target.parent.is_dir() or target.parent.is_symlink() or target.parent.resolve()!=target.parent:
-        fail('anex_preview_install_target_parent')
-    prior={'exists':False,'sha256':None,'mode':0o644}
-    if target.exists() or target.is_symlink():
-        if not safe_file(target,2*1024*1024): fail('anex_preview_install_target_invalid')
-        data=target.read_bytes()
-        prior={'exists':True,'sha256':hashlib.sha256(data).hexdigest(),
-               'mode':target.stat().st_mode&0o777}
-        backup=op/'backup'/target_relative
-        backup.write_bytes(data);os.chmod(backup,0o600)
-        if hashlib.sha256(backup.read_bytes()).hexdigest()!=prior['sha256']:
-            fail('anex_preview_install_backup_hash')
-    install_previous[target_relative]=prior
-    install_expected[target_relative]=expected
-    changed=prior['sha256']!=expected
+    global install_started
+    selected=[
+        ('app/integrations/anex-initial-week-gate.php','app/integrations/anex-initial-week-gate.php'),
+        ('v2/api-anex-search3-preview.php','api-anex-search3-preview.php'),
+    ]
+    backup_root=op/'backup';backup_root.mkdir(mode=0o700)
+    changed=[]
+    endpoint_expected=None
+    for source_relative,target_relative in selected:
+        source_path=stage/source_relative
+        expected=files.get(source_relative)
+        if (not safe_file(source_path,2*1024*1024)
+                or not isinstance(expected,str)
+                or hashlib.sha256(source_path.read_bytes()).hexdigest()!=expected):
+            fail('anex_preview_install_source_hash')
+        lint=subprocess.run(['php','-l',str(source_path)],capture_output=True,text=True,timeout=20)
+        if lint.returncode!=0: fail('anex_preview_install_source_lint')
+        target=runtime/target_relative
+        if not target.parent.is_dir() or target.parent.is_symlink() or target.parent.resolve()!=target.parent:
+            fail('anex_preview_install_target_parent')
+        prior={'exists':False,'sha256':None,'mode':0o644}
+        if target.exists() or target.is_symlink():
+            if not safe_file(target,2*1024*1024): fail('anex_preview_install_target_invalid')
+            data=target.read_bytes()
+            prior={'exists':True,'sha256':hashlib.sha256(data).hexdigest(),
+                   'mode':target.stat().st_mode&0o777}
+            backup=backup_root/target_relative;backup.parent.mkdir(parents=True,exist_ok=True)
+            backup.write_bytes(data);os.chmod(backup,0o600)
+            if hashlib.sha256(backup.read_bytes()).hexdigest()!=prior['sha256']:
+                fail('anex_preview_install_backup_hash')
+        install_previous[target_relative]=prior
+        install_expected[target_relative]=expected
+        if source_relative=='v2/api-anex-search3-preview.php':
+            endpoint_expected=expected
+        if prior['sha256']!=expected:
+            changed.append(target_relative)
+            install_temps[target_relative]=stage_target_bytes(target,source_path.read_bytes(),prior['mode'])
     write_private_json(op/'anex-preview-install-plan.json',{
-        'schema_version':1,'source_sha':source,'source':source_relative,'target':target_relative,
-        'previous':prior,'expected_sha256':expected,'changed':changed,'status':'prepared'})
-    if changed:
-        install_temps[target_relative]=stage_target_bytes(target,source_path.read_bytes(),prior['mode'])
+        'schema_version':1,'source_sha':source,
+        'files':[{'source':a,'target':b} for a,b in selected],
+        'changed_files':changed,'previous':install_previous,'expected':install_expected,'status':'prepared'})
+    install_started=True
+    for target_relative in changed:
+        target=runtime/target_relative
         os.replace(install_temps[target_relative],target)
         install_applied.append(target_relative)
-        os.chmod(target,prior['mode'])
+        os.chmod(target,install_previous[target_relative]['mode'])
         write_private_json(op/'install-state.json',
             {'status':'applying-anex-preview','source_sha':source,'applied':install_applied})
-    if (not safe_file(target,2*1024*1024)
-            or hashlib.sha256(target.read_bytes()).hexdigest()!=expected):
-        fail('anex_preview_install_readback_hash')
-    lint=subprocess.run(['php','-l',str(target)],capture_output=True,text=True,timeout=20)
-    if lint.returncode!=0: fail('anex_preview_install_readback_lint')
-    complete={'status':'installed','source_sha':source,'files':integration['files']+1,
-              'changed_files':integration['changed_files']+(1 if changed else 0),
-              'created_files':integration['created_files']+(1 if changed and not prior['exists'] else 0),
+    for target_relative,expected in install_expected.items():
+        target=runtime/target_relative
+        if (not safe_file(target,2*1024*1024)
+                or hashlib.sha256(target.read_bytes()).hexdigest()!=expected):
+            fail('anex_preview_install_readback_hash')
+        lint=subprocess.run(['php','-l',str(target)],capture_output=True,text=True,timeout=20)
+        if lint.returncode!=0: fail('anex_preview_install_readback_lint')
+    complete={'status':'installed','source_sha':source,'files':len(selected),
+              'changed_files':len(changed),'created_files':sum(
+                  1 for relative in changed if not install_previous[relative]['exists']),
               'manifest_sha256':payload['manifest_sha256'],
-              'endpoint':{'source':source_relative,'target':target_relative,'sha256':expected,'changed':changed}}
+              'endpoint':{'source':'v2/api-anex-search3-preview.php',
+                          'target':'api-anex-search3-preview.php',
+                          'sha256':endpoint_expected,
+                          'changed':'api-anex-search3-preview.php' in changed},
+              'dependency':{'source':'app/integrations/anex-initial-week-gate.php',
+                            'target':'app/integrations/anex-initial-week-gate.php',
+                            'sha256':install_expected['app/integrations/anex-initial-week-gate.php'],
+                            'changed':'app/integrations/anex-initial-week-gate.php' in changed}}
     write_private_json(op/'install-state.json',complete)
     return complete
 
