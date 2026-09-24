@@ -69,7 +69,7 @@ jobs:
           test -n "$result";test -n "$receipt";cp "$result" input/plan-result.json;cp "$receipt" input/plan-receipt.json
           test "$(sha256sum input/plan-result.json|awk '{print $1}')" = "$PLAN_RESULT_SHA"
           python3 - <<'PY'
-          import json,hashlib,pathlib,os
+          import json,hashlib,pathlib,os,urllib.request
           r=json.load(open('input/plan-result.json'));q=json.load(open('input/plan-receipt.json'))
           assert q['result_sha256']==hashlib.sha256(pathlib.Path('input/plan-result.json').read_bytes()).hexdigest()==os.environ['PLAN_RESULT_SHA']
           assert r['operation']=='hotel-match-samo-business-live30-common4-plan-1971-20260924-v2'
