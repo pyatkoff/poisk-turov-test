@@ -43,8 +43,10 @@ final class AnyTourAnexLocalOfferCollectorV1
     }
 
     /**
-     * Run supplier-safe windows sequentially and fail-stop before later windows.
-     * A caller owns all per-window state/persistence details through the callback.
+     * Run supplier-safe windows sequentially. Persistence/invariant failures still
+     * fail-stop. In a multi-window range only bounded supplier transport/result
+     * errors are isolated to their exact window so later independent windows can
+     * still complete. A failed supplier window never becomes an empty-success fact.
      *
      * @param callable(array,int,array):array $collectWindow
      */
@@ -63,17 +65,34 @@ final class AnyTourAnexLocalOfferCollectorV1
         $receipts = [];
         $completed = 0;
         $status = 'complete';
+        $multiWindow = count($windows) > 1;
         foreach ($windows as $index => $window) {
             $request = $searchRequest;
             $request['params']['dateFrom'] = $window['from'];
             $request['params']['dateTo'] = $window['to'];
-            $result = $collectWindow($request, $index, $window);
+            $supplierError = false;
+            try {
+                $result = $collectWindow($request, $index, $window);
+            } catch (RuntimeException $error) {
+                if (!$multiWindow || !in_array($error->getMessage(), ['ANEX_SUPPLIER_ERROR', 'ANEX_HTTP_ERROR'], true)) {
+                    throw $error;
+                }
+                $supplierError = true;
+                $result = [
+                    'source' => 'anex-local-offer-collector-range-v1',
+                    'status' => 'supplier_error',
+                    'error_code' => $error->getMessage(),
+                    'requested_date_range' => $window,
+                    'selection_authority' => false,
+                ];
+            }
             if (!is_array($result) || !is_string($result['status'] ?? null)) {
                 throw new RuntimeException('ANEX_LOCAL_COLLECTOR_RANGE_RESULT');
             }
             $receipts[] = ['date_range' => $window, 'result' => $result];
             if ($result['status'] !== 'complete') {
                 $status = 'incomplete';
+                if ($supplierError) continue;
                 break;
             }
             ++$completed;
