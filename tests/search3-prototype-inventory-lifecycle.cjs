@@ -98,6 +98,16 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,c
    if(result&&result.response)return result.response;
    return {ok:true,json:async()=>directAnex(body)};
   }
+  if(target.pathname.endsWith('/data/search3-destination-read-v1.php')){
+   const action=target.searchParams.get('action');
+   if(action==='countries')return {ok:true,json:async()=>({ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',kind:'country',items:[
+    {id:4,kind:'country',parentId:null,name:'Турция',russianName:'Турция',slug:'turkey',revision:1,tourvisorIds:['4']}
+   ]})};
+   if(action==='regions')return {ok:true,json:async()=>({ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',kind:'region',parentId:Number(target.searchParams.get('countryId')),items:[
+    {id:21,kind:'region',parentId:4,name:'Белек',russianName:'Белек',slug:'belek',revision:1,tourvisorIds:['21']}
+   ]})};
+   throw new Error('unexpected destination request '+url);
+  }
   if(String(url).includes('search3-local-results-read')){
    const body=JSON.parse(options.body);
    if(body.action==='meal_catalog'){
@@ -218,7 +228,6 @@ test('cached same-provider rehydration returns empty without falling through to 
 test('init loads canonical meal authority through the exposed LOCAL reader action',async()=>{
  const h=harness({api:(action)=>{
   if(action==='meals')return [{id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'}];
-  if(action==='countries')return [{id:4,name:'Турция'}];
  }});
  h.data.catalog.mealPlans.splice(0);h.data.catalog.mealPlanAvailable=false;h.data.catalog.mealPlanRevision=null;
  await h.data.init('Москва');
