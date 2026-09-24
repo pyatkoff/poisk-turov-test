@@ -5,6 +5,7 @@ on:
     paths:
       - 'v2/prototype-search/search-lifecycle-v1.js'
       - 'tests/search3-prototype-stale-autoresubmit-v1.cjs'
+      - 'tests/search3-prototype-union-receipt-v1.cjs'
       - '.github/workflows/search3-prototype-stale-autoresubmit-v1.yml'
 
 permissions:
@@ -22,3 +23,5 @@ jobs:
         run: node --check v2/prototype-search/search-lifecycle-v1.js
       - name: Verify stale auto-resubmit cancellation
         run: node --test tests/search3-prototype-stale-autoresubmit-v1.cjs
+      - name: Verify first-union receipt retention
+        run: node --test tests/search3-prototype-union-receipt-v1.cjs
