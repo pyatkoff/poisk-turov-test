@@ -4,7 +4,7 @@ require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_samo_business_li
 
 if(SBLC4C4_OP!=='hotel-match-samo-business-live30-common4-current-1971-20260924-v4')throw new RuntimeException('operation');
 if(SBLC4C4_SOURCE_OP!=='hotel-match-samo-business-live30-common4-acquire-1971-20260924-v2')throw new RuntimeException('source_operation');
-if(SBLC4C4_EXPECTED_EDGES!==6480)throw new RuntimeException('edge_count');
+if(SBLC4C4_EXPECTED_EDGES!==5988)throw new RuntimeException('edge_count');
 if(SBLC4C4_NS!==[5=>'operator_5',115=>'operator_115',315=>'operator_315',342=>'operator_342'])throw new RuntimeException('namespaces');
 
 $edges=[
