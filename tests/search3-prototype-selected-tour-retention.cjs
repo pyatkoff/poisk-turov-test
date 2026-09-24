@@ -171,11 +171,11 @@ const refreshSource=source.slice(refreshStart,refreshEnd);
 assert.match(refreshSource,/o\.provider==='anex'.*o\.raw\?\.anexKind==='group_minimum'/s,'ANEX group minimum owns a same-provider refresh branch');
 assert.match(refreshSource,/await data\.expandAnexGroup\(o\)/,'ANEX group refresh calls the dedicated direct-provider expansion');
 assert.match(refreshSource,/terminalizeSearchForVerification\(\);renderResults\(\{keepFilters:true\}\)/,'ANEX verification terminalizes the old provider UI before awaiting the exact provider');
-assert.ok(refreshSource.indexOf('expandAnexGroup(o)')<refreshSource.indexOf('runSearch({hotelIds:'),'ANEX same-provider expansion runs before the generic Tourvisor refresh fallback');
+assert.ok(refreshSource.indexOf('expandAnexGroup(o)')<refreshSource.indexOf('genericExactRefresh(o,h)'),'ANEX same-provider expansion runs before the generic cross-provider refresh fallback');
 assert.match(refreshSource,/h\.offers=\[\.\.\.h\.offers\.filter.*\.\.\.expanded\.offers\]/s,'expanded concrete ANEX variants replace the selected group minimum in the existing hotel offer list');
 assert.match(refreshSource,/o\.provider==='anex'.*o\.raw\?\.anexKind==='concrete'.*o\.raw\?\.anexSessionCurrent===true/s,'expanded concrete ANEX owns a same-provider current-offer branch');
 assert.match(refreshSource,/await data\.verifyAnexConcrete\(o\)/,'expanded concrete ANEX verifies through the retained provider session');
-assert.ok(refreshSource.indexOf('verifyAnexConcrete(o)')<refreshSource.indexOf('runSearch({hotelIds:'),'concrete ANEX provider follow-up runs before generic Tourvisor fallback');
+assert.ok(refreshSource.indexOf('verifyAnexConcrete(o)')<refreshSource.indexOf('genericExactRefresh(o,h)'),'concrete ANEX provider follow-up runs before generic cross-provider fallback');
 assert.match(refreshSource,/openAnexConcreteCurrent\(o,current\)/,'current concrete ANEX result uses provider-current UI');
 
 const anexCurrentStart=source.indexOf('function openAnexConcreteCurrent(o,current)');
@@ -205,7 +205,18 @@ assert.doesNotMatch(anexAdditionalApplySource,/searchPrice|partySurcharge|calcul
 assert.match(source,/case 'anex-additional-prices':applyAnexAdditionalPrices\(\)/,'ANEX mandatory additions have one explicit click action');
 assert.match(refreshSource,/o\.provider==='andromeda'.*o\.raw\?\.quoteRequired===true/s,'Andromeda quote-required offer owns a same-provider verification branch');
 assert.match(refreshSource,/await data\.verifyAndromeda\(o\)/,'Andromeda verification calls the dedicated same-provider quote owner');
-assert.ok(refreshSource.indexOf('verifyAndromeda(o)')<refreshSource.indexOf('runSearch({hotelIds:'),'Andromeda same-provider quote runs before generic Tourvisor fallback');
+assert.ok(refreshSource.indexOf('verifyAndromeda(o)')<refreshSource.indexOf('genericExactRefresh(o,h)'),'Andromeda same-provider quote runs before generic cross-provider fallback');
+assert.match(refreshSource,/o\.cached&&\['anex','andromeda'\]\.includes\(o\.provider\)&&o\.raw\?\.rehydration/,'cached ANEX/Andromeda offers enter silent same-provider rehydration first');
+assert.match(refreshSource,/await data\.rehydrateCached\(o\)/,'cached offer delegates fresh provider search to the data owner');
+assert.match(refreshSource,/offers\.find\(item=>sameRehydratedTour\(item,o\)\)/,'fresh provider results require a strict semantic match before replacing the cached selection');
+assert.ok(refreshSource.indexOf('rehydrateCached(o)')<refreshSource.indexOf('genericExactRefresh(o,h)'),'cached same-provider rehydration runs before the visible generic fallback');
+assert.doesNotMatch(refreshSource.slice(0,refreshSource.indexOf('genericExactRefresh(o,h)')),/closeModal\(\)|runSearch\(/,'silent provider rehydration keeps the selected-tour UI in place');
+const rehydratedVariantsStart=source.indexOf('function openRehydratedVariants(cached,offers)');
+const rehydratedVariantsEnd=source.indexOf('\nfunction chooseRehydratedOffer',rehydratedVariantsStart);
+assert.ok(rehydratedVariantsStart>=0&&rehydratedVariantsEnd>rehydratedVariantsStart,'same-provider current variants have an in-place UI owner');
+const rehydratedVariantsSource=source.slice(rehydratedVariantsStart,rehydratedVariantsEnd);
+assert.match(rehydratedVariantsSource,/только свежие предложения того же поставщика/,'changed cached offer shows same-provider variants rather than silently substituting another tour');
+assert.match(source,/case 'rehydrated-offer':chooseRehydratedOffer\(b\.dataset\.key\)/,'same-provider variant selection has one explicit continuation action');
 assert.match(refreshSource,/quote\.state==='flight_selection_required'.*openAndromedaFlightChoice/s,'ambiguous Andromeda flights stay in provider-specific flight selection');
 assert.match(refreshSource,/openAndromedaVerified\(o,quote\)/,'verified Andromeda quote uses the provider-verified result view');
 
