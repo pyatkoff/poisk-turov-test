@@ -22,9 +22,9 @@ assert.ok(
 const context = {
   datePrices: new Map([['2026-10-17', null], ['2026-10-18', 250000]]),
   observedSize: null,
-  refreshCalendarPrices() {
-    this.observedSize = this.datePrices.size;
-  },
+};
+context.refreshCalendarPrices = () => {
+  context.observedSize = context.datePrices.size;
 };
 vm.createContext(context);
 vm.runInContext(`${helperSource}\nthis.refreshCalendarPriceViewTest=refreshCalendarPriceView;`, context);
