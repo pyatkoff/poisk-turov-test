@@ -689,6 +689,19 @@ class ContractTest(unittest.TestCase):
         for x in ['shell=True',"booking(","bron_ticket","workflow_dispatch("]:
             self.assertNotIn(x,text)
 
+    def test_andromeda_supplier_slot_and_incomplete_receipt_contract(self):
+        text=SCRIPT.read_text()
+        for mode in ('andromeda-scope','andromeda-external-group','andromeda-operator-scope'):
+            self.assertIn(mode,text)
+        self.assertIn("collector_incomplete_safe=(",text)
+        self.assertIn("collector.get('incomplete_reason')=='search_partial'",text)
+        self.assertIn("collector.get('autosave_reason')=='cohort_incomplete'",text)
+        self.assertIn("result['after_db']==result['before_db']",text)
+        self.assertIn("skipped_after_collector_incomplete",text)
+        self.assertIn("result['status']='incomplete'",text)
+        self.assertIn("result['database_writes']=0",text)
+        self.assertIn("'anex-range','andromeda-scope','andromeda-external-group','andromeda-operator-scope'",text)
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 
