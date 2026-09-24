@@ -515,7 +515,7 @@
         if(target.mapping_status!=='resolved'||!Array.isArray(target.tours)||target.tours.length>300)throw new Error('Andromeda вернула некорректные варианты отеля.');
         for(const tour of target.tours){
           const item=await directAndromedaOffer(target,tour,{filters:{},generation:epoch},p,seen,data);
-          if(item)offers.push(item);
+          if(item){item.rehydrationParams=structuredClone(p);offers.push(item);}
         }
       }
       page++;
@@ -1036,11 +1036,13 @@
   function andromedaQuoteKey(context){return context?JSON.stringify(context):'';}
   function andromedaQuoteRequest(o,flightSelection=null){
     const rawOffer=o&&o.raw,ctx=andromedaContext(rawOffer?.offer_context),localId=Number(rawOffer?.andromedaLocalHotelId);
+    const quoteParams=rawOffer?.rehydrationParams&&typeof rawOffer.rehydrationParams==='object'&&!Array.isArray(rawOffer.rehydrationParams)
+      ?rawOffer.rehydrationParams:searchParams;
     if(!o||o.cached||o.provider!=='andromeda'||rawOffer?.selectionEnabled!==false||rawOffer?.quoteRequired!==true
       ||!ctx||ctx.generation!==generation||ctx.offer_ref!==String(rawOffer?.offerRef||'')
-      ||!Number.isSafeInteger(localId)||localId<1||!searchParams)return null;
+      ||!Number.isSafeInteger(localId)||localId<1||!quoteParams)return null;
     const {hotel_scope,...identity}=ctx,body={action:flightSelection?'quote_select_flights':'quote',generation:ctx.generation,page:ctx.page,
-      params:structuredClone(searchParams),offer_context:identity};
+      params:structuredClone(quoteParams),offer_context:identity};
     if(hotel_scope){if(hotel_scope.local_id!==localId)return null;body.hotel_scope=structuredClone(hotel_scope);}
     const listing=String(rawOffer?.listing_price_ref||'');if((/^listing_[a-f0-9]{64}$/).test(listing))body.listing_price_ref=listing;
     if(flightSelection){
