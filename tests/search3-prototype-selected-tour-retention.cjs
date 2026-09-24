@@ -171,11 +171,11 @@ const refreshSource=source.slice(refreshStart,refreshEnd);
 assert.match(refreshSource,/o\.provider==='anex'.*o\.raw\?\.anexKind==='group_minimum'/s,'ANEX group minimum owns a same-provider refresh branch');
 assert.match(refreshSource,/await data\.expandAnexGroup\(o\)/,'ANEX group refresh calls the dedicated direct-provider expansion');
 assert.match(refreshSource,/terminalizeSearchForVerification\(\);renderResults\(\{keepFilters:true\}\)/,'ANEX verification terminalizes the old provider UI before awaiting the exact provider');
-assert.ok(refreshSource.indexOf('expandAnexGroup(o)')<refreshSource.indexOf('genericExactRefresh(o,h)'),'ANEX same-provider expansion runs before the generic cross-provider refresh fallback');
+assert.ok(refreshSource.indexOf('expandAnexGroup(o)')<refreshSource.lastIndexOf('genericExactRefresh(o,h)'),'ANEX same-provider expansion runs before the final generic cross-provider refresh fallback');
 assert.match(refreshSource,/h\.offers=\[\.\.\.h\.offers\.filter.*\.\.\.expanded\.offers\]/s,'expanded concrete ANEX variants replace the selected group minimum in the existing hotel offer list');
 assert.match(refreshSource,/o\.provider==='anex'.*o\.raw\?\.anexKind==='concrete'.*o\.raw\?\.anexSessionCurrent===true/s,'expanded concrete ANEX owns a same-provider current-offer branch');
 assert.match(refreshSource,/await data\.verifyAnexConcrete\(o\)/,'expanded concrete ANEX verifies through the retained provider session');
-assert.ok(refreshSource.indexOf('verifyAnexConcrete(o)')<refreshSource.indexOf('genericExactRefresh(o,h)'),'concrete ANEX provider follow-up runs before generic cross-provider fallback');
+assert.ok(refreshSource.indexOf('verifyAnexConcrete(o)')<refreshSource.lastIndexOf('genericExactRefresh(o,h)'),'concrete ANEX provider follow-up runs before final generic cross-provider fallback');
 assert.match(refreshSource,/openAnexConcreteCurrent\(o,current\)/,'current concrete ANEX result uses provider-current UI');
 
 const anexCurrentStart=source.indexOf('function openAnexConcreteCurrent(o,current)');
@@ -205,7 +205,7 @@ assert.doesNotMatch(anexAdditionalApplySource,/searchPrice|partySurcharge|calcul
 assert.match(source,/case 'anex-additional-prices':applyAnexAdditionalPrices\(\)/,'ANEX mandatory additions have one explicit click action');
 assert.match(refreshSource,/o\.provider==='andromeda'.*o\.raw\?\.quoteRequired===true/s,'Andromeda quote-required offer owns a same-provider verification branch');
 assert.match(refreshSource,/await data\.verifyAndromeda\(o\)/,'Andromeda verification calls the dedicated same-provider quote owner');
-assert.ok(refreshSource.indexOf('verifyAndromeda(o)')<refreshSource.indexOf('genericExactRefresh(o,h)'),'Andromeda same-provider quote runs before generic cross-provider fallback');
+assert.ok(refreshSource.indexOf('verifyAndromeda(o)')<refreshSource.lastIndexOf('genericExactRefresh(o,h)'),'Andromeda same-provider quote runs before final generic cross-provider fallback');
 assert.match(refreshSource,/o\.cached&&\['anex','andromeda'\]\.includes\(o\.provider\)&&o\.raw\?\.rehydration/,'cached ANEX/Andromeda offers enter silent same-provider rehydration first');
 assert.match(refreshSource,/await data\.rehydrateCached\(o\)/,'cached offer delegates fresh provider search to the data owner');
 assert.match(refreshSource,/offers\.find\(item=>sameRehydratedTour\(item,o\)\)/,'fresh provider results require a strict semantic match before replacing the cached selection');
