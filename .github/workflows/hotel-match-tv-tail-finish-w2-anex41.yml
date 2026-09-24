@@ -92,7 +92,29 @@ jobs:
           import json,os,pathlib
           pathlib.Path('input/w2-reservation.json').write_text(json.dumps({'operation':os.environ['OP_W2'],'state':'reserved_before_write','expected_writes':67,'write_offset':300},sort_keys=True)+'\n')
           PY
-          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          if ssh "${opts[@]}" "$remote" "test -e \"\$HOME/$op\""; then
+            ssh "${opts[@]}" "$remote" "set -eu;tmp=\$(mktemp -d);trap 'rm -rf \"\$tmp\"' EXIT;for f in reservation.json pre-commit.json commit-attempt.json result.json receipt.json;do test -f \"\$HOME/$op/\$f\"&&cp \"\$HOME/$op/\$f\" \"\$tmp/\"||:;done;tar -czf - -C \"\$tmp\" ." >terminal/w2/server.tgz
+            python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          d=pathlib.Path('terminal/w2')
+          with tarfile.open(d/'server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  n=m.name.lstrip('./')
+                  if m.isfile():(d/n).write_bytes(t.extractfile(m).read())
+          files=sorted(p.name for p in d.iterdir() if p.is_file())
+          if not (d/'result.json').is_file() or not (d/'receipt.json').is_file():
+              print(json.dumps({'existing_operation':'nonterminal','files':files},sort_keys=True));raise SystemExit(3)
+          r=json.load(open(d/'result.json'));q=json.load(open(d/'receipt.json'))
+          assert q['result_sha256']==hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+          if r.get('state')=='committed_verified':
+              assert r['inserted']==67 and r['database_writes']==67 and r['mapping_writes']==67 and r['readback_verified'] is True
+              assert q['state']=='committed_verified' and q['no_replay'] is True
+              print(json.dumps({'existing_operation':'committed_verified','inserted':67},sort_keys=True));raise SystemExit(0)
+          print(json.dumps({'existing_operation':r.get('state'),'reason':r.get('reason'),'database_writes':r.get('database_writes'),'files':files},sort_keys=True));raise SystemExit(4)
+          PY
+            exit 0
+          fi
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;mkdir -p \"\$HOME/$op/payload\""
           scp "${opts[@]}" input/w2-reservation.json "$remote:$op/reservation.json"
           scp "${opts[@]}" input/audit-result.json scripts/diagnostics/hotel_match_common4_tail_writer_v15.php "$remote:$op/payload/"
           set +e
@@ -133,7 +155,29 @@ jobs:
           import json,os,pathlib
           pathlib.Path('input/anex-reservation.json').write_text(json.dumps({'operation':os.environ['OP_ANEX'],'state':'reserved_before_write','expected_writes':41},sort_keys=True)+'\n')
           PY
-          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
+          if ssh "${opts[@]}" "$remote" "test -e \"\$HOME/$op\""; then
+            ssh "${opts[@]}" "$remote" "set -eu;tmp=\$(mktemp -d);trap 'rm -rf \"\$tmp\"' EXIT;for f in reservation.json pre-commit.json commit-attempt.json result.json receipt.json;do test -f \"\$HOME/$op/\$f\"&&cp \"\$HOME/$op/\$f\" \"\$tmp/\"||:;done;tar -czf - -C \"\$tmp\" ." >terminal/anex/server.tgz
+            python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          d=pathlib.Path('terminal/anex')
+          with tarfile.open(d/'server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  n=m.name.lstrip('./')
+                  if m.isfile():(d/n).write_bytes(t.extractfile(m).read())
+          files=sorted(p.name for p in d.iterdir() if p.is_file())
+          if not (d/'result.json').is_file() or not (d/'receipt.json').is_file():
+              print(json.dumps({'existing_operation':'nonterminal','files':files},sort_keys=True));raise SystemExit(3)
+          r=json.load(open(d/'result.json'));q=json.load(open(d/'receipt.json'))
+          assert q['result_sha256']==hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+          if r.get('state')=='committed_verified':
+              assert r['inserted']==41 and r['database_writes']==41 and r['mapping_writes']==41 and r['readback_verified'] is True and r['registry_readback_verified'] is True
+              assert q['state']=='committed_verified' and q['no_replay'] is True
+              print(json.dumps({'existing_operation':'committed_verified','inserted':41},sort_keys=True));raise SystemExit(0)
+          print(json.dumps({'existing_operation':r.get('state'),'reason':r.get('reason'),'database_writes':r.get('database_writes'),'files':files},sort_keys=True));raise SystemExit(4)
+          PY
+            exit 0
+          fi
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
           scp "${opts[@]}" input/anex-reservation.json "$remote:$op/reservation.json"
           scp "${opts[@]}" input/audit-result.json "$remote:$op/payload/audit-result.json"
           scp "${opts[@]}" scripts/diagnostics/hotel_match_common4_tail_anex_writer_v17.php "$remote:$op/payload/scripts/diagnostics/"
