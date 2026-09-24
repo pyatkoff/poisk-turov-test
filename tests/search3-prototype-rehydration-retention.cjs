@@ -7,6 +7,7 @@ const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'v2/prototype-search/rehydration-retention-v1.js'), 'utf8');
+const lifecycleSource = fs.readFileSync(path.join(root, 'v2/prototype-search/search-lifecycle-v1.js'), 'utf8');
 const entry = fs.readFileSync(path.join(root, 'v2/prototype-search/index.php'), 'utf8');
 const clone = value => JSON.parse(JSON.stringify(value));
 
@@ -38,7 +39,14 @@ function harness(result) {
   const sandbox = {window: {AnyTourPrototypeData: base}, document, structuredClone: clone, JSON, Object, String, Number, Array, RegExp};
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox);
-  return {data: sandbox.window.AnyTourPrototypeData, calls, listeners, emit: event => callback(event)};
+  vm.runInContext(lifecycleSource, sandbox);
+  return {
+    data: sandbox.window.AnyTourPrototypeData,
+    lifecycle: sandbox.window.AnyTourPrototypeSearchLifecycleV1,
+    calls,
+    listeners,
+    emit: event => callback(event)
+  };
 }
 
 test('served prototype injects retention bridge immediately after data owner', () => {
@@ -71,6 +79,34 @@ test('exact same-provider rehydration replaces only the cached row in the full c
   const first = replacement.hotels.find(row => row.id === 101);
   assert.deepEqual(first.offers.map(row => row.key).sort(), ['live', 'other']);
   assert.equal(replacement.hotels.find(row => row.id === 202).offers[0].key, 'second');
+});
+
+test('rehydration replacement keeps the validated first-union receipt in lifecycle state', async () => {
+  const h = harness({state: 'current', offers: [fresh('live')]}), response = {key: 'search:1', union: null};
+  const form = {addEventListener() {}};
+  const lifecycle = h.lifecycle.create({
+    form,
+    data: h.data,
+    prepare() { return {response, search: {country: 4}}; },
+    currentKey() { return response.key; },
+    onResults(event, target) { target.hotels = clone(event.hotels); }
+  });
+  assert.equal(lifecycle.run(), true);
+  const receipt = {
+    hotels: 2,
+    offers: 3,
+    hotelsByProvider: {tourvisor: 1, anex: 2},
+    offersByProvider: {tourvisor: 1, anex: 2},
+    providerSets: {anex: 1, 'anex+tourvisor': 1}
+  };
+  h.emit({type: 'results', hotels: union()});
+  h.emit({type: 'complete', union: receipt});
+  assert.deepEqual(clone(response.union), receipt);
+  await h.data.rehydrateCached(cached());
+  assert.deepEqual(clone(response.union), receipt, 'a retention-only results event must not erase the completed first-union receipt');
+  const first = response.hotels.find(row => row.id === 101);
+  assert.deepEqual(first.offers.map(row => row.key).sort(), ['live', 'other']);
+  assert.equal(response.hotels.find(row => row.id === 202).offers[0].key, 'second');
 });
 
 test('changed variants wait for the explicit same-provider choice before replacing the cached row', async () => {
