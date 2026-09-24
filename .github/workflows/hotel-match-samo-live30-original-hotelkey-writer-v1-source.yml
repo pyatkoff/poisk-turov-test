@@ -1,0 +1,63 @@
+name: MATCH SAMO original hotelKey writer v1 source
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_samo_live30_original_hotelkey_writer_v1.php'
+      - 'tests/hotel_match_samo_live30_original_hotelkey_writer_v1_test.php'
+      - '.github/workflows/hotel-match-samo-live30-original-hotelkey-writer-v1-source.yml'
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: match-samo-original-hotelkey-writer-v1-source-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  BASE: bafbbdb163684a0d259145e1aa1199666287c18b
+  CLAIM: '5809624273'
+  AMENDMENT: '5809675278'
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.event.pull_request.head.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate authority and exact source scope
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-samo-live30-original-hotelkey-writer-v1-source.yml scripts/diagnostics/hotel_match_samo_live30_original_hotelkey_writer_v1.php tests/hotel_match_samo_live30_original_hotelkey_writer_v1_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > claim.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$AMENDMENT" > amendment.json
+          python3 - <<'PY'
+          import json
+          c=json.load(open('claim.json')); a=json.load(open('amendment.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert a['user']['id']==226193297 and a['author_association']=='OWNER'
+          for x in ['hotel-match-samo-live30-original-hotelkey-writer-1971-20260924-v1','exact expected writes=39','operator_115','SERIALIZABLE','Provider/Andromeda/Tourvisor/direct-ANEX HTTP0']:
+              assert x in c['body'], x
+          assert 'hotel-match-samo-live30-original-hotelkey-writer-v1-source.yml' in a['body']
+          PY
+
+      - name: Focused writer tests
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_samo_live30_original_hotelkey_writer_v1.php
+          php -l tests/hotel_match_samo_live30_original_hotelkey_writer_v1_test.php
+          php scripts/diagnostics/hotel_match_samo_live30_original_hotelkey_writer_v1.php --self-test
+          php tests/hotel_match_samo_live30_original_hotelkey_writer_v1_test.php
+          ! grep -E 'curl|wget|AndromedaClient|Tourvisor|Transport' scripts/diagnostics/hotel_match_samo_live30_original_hotelkey_writer_v1.php
