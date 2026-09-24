@@ -125,7 +125,7 @@
       dedupe: null,
       projection: {hotels: 0, offers: 0}
     };
-    let projectedUnion = null;
+    let projectedUnion = null, terminalSeen = false;
     write(receipt);
     return originalSearch.call(this, search, event => {
       if (event && typeof event === 'object') {
@@ -140,6 +140,22 @@
         if (event.type === 'provider' && safeKey(event.provider)) {
           const provider = cleanSource(event);
           receipt.providers[event.provider] = provider.status || 'loading';
+          if (terminalSeen) {
+            receipt.sources[event.provider] = provider;
+            receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
+          }
+        }
+        if (event.type === 'database' && terminalSeen) {
+          const database = cleanSource(event);
+          receipt.sources.database = database;
+          if (database.status) receipt.providers.database = database.status;
+          receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
+        }
+        if (event.type === 'database-error' && terminalSeen) {
+          const database = cleanSource({...event, status:'error'});
+          receipt.sources.database = database;
+          receipt.providers.database = 'error';
+          receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
         }
         if (event.type === 'complete') {
           receipt.phase = event.partial === true ? 'partial' : 'complete';
@@ -149,6 +165,7 @@
           }
           receipt.union = projectedUnion || cleanUnion(event.union);
           receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
+          terminalSeen = true;
         }
         if (event.type === 'error') receipt.phase = 'error';
       }

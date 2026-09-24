@@ -1,0 +1,32 @@
+name: Search3 prototype source receipt
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    paths:
+      - 'v2/prototype-search/source-receipt-v1.js'
+      - 'tests/search3-prototype-source-receipt-v1.cjs'
+      - '.github/workflows/search3-prototype-source-receipt-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-receipt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify late continuation accounting
+        run: |
+          set -euo pipefail
+          node --check v2/prototype-search/source-receipt-v1.js
+          node --check tests/search3-prototype-source-receipt-v1.cjs
+          node tests/search3-prototype-source-receipt-v1.cjs
