@@ -2,6 +2,29 @@
 (() => {
   if (window.AnyTourPrototypeSearchLifecycleV1) return;
 
+  const unionReceipt = value => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)
+      || !Number.isSafeInteger(value.hotels) || value.hotels < 0
+      || !Number.isSafeInteger(value.offers) || value.offers < 0) return null;
+    const counts = key => {
+      const source=value[key];
+      if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+      const result={};
+      for (const [name,count] of Object.entries(source)) {
+        if (!name || name.length > 96 || !Number.isSafeInteger(count) || count < 0) return null;
+        result[name]=count;
+      }
+      return result;
+    };
+    const hotelsByProvider=counts('hotelsByProvider'),offersByProvider=counts('offersByProvider'),providerSets=counts('providerSets');
+    if (!hotelsByProvider || !offersByProvider || !providerSets) return null;
+    const providerOfferTotal=Object.values(offersByProvider).reduce((sum,count)=>sum+count,0);
+    if (providerOfferTotal !== value.offers || Object.values(hotelsByProvider).some(count=>count>value.hotels)
+      || Object.values(providerSets).reduce((sum,count)=>sum+count,0)!==value.hotels) return null;
+    return Object.freeze({hotels:value.hotels,offers:value.offers,
+      hotelsByProvider:Object.freeze(hotelsByProvider),offersByProvider:Object.freeze(offersByProvider),providerSets:Object.freeze(providerSets)});
+  };
+
   const reduce = (response, event) => {
     if (!response || !event || typeof event !== 'object') return;
     if (event.type === 'loading') {
@@ -10,6 +33,7 @@
       response.continued = event.continued === true;
       response.cachedResume = event.cachedResume === true;
       response.canContinue = false;
+      response.union = null;
       response.message = event.cachedResume
         ? 'Восстанавливаем сохранённые предложения без нового запроса к туроператорам.'
         : event.retryRead
@@ -33,6 +57,7 @@
       response.resultLimitReached = event.resultLimitReached === true;
       response.cachedResume = event.cachedResume === true;
       response.sources = event.sources || response.sources || {};
+      response.union = unionReceipt(event.union);
     }
     if (event.type === 'error') {
       response.pending = false;
