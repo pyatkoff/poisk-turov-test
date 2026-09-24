@@ -72,8 +72,8 @@ function rehydratableSnapshot(params,provider){
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
-function harness({database,api,onEvent,native,anex,andromedaQuote,observations,clock=()=>Date.now()}={}){
- const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],observationCalls=[],mealCatalogCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
+function harness({database,api,onEvent,native,anex,andromedaQuote,observations,destinations,clock=()=>Date.now()}={}){
+ const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
   if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'){
@@ -99,7 +99,12 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,c
    return {ok:true,json:async()=>directAnex(body)};
   }
   if(target.pathname.endsWith('/data/search3-destination-read-v1.php')){
-   const action=target.searchParams.get('action');
+   const action=target.searchParams.get('action'),params=Object.fromEntries(target.searchParams.entries());
+   destinationCalls.push({action,params:structuredClone(params)});
+   if(destinations){
+    const result=await destinations(action,params,destinationCalls);
+    if(result!==undefined)return {ok:true,json:async()=>({ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',kind:action==='countries'?'country':action==='regions'?'region':'subregion',items:result})};
+   }
    if(action==='countries')return {ok:true,json:async()=>({ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',kind:'country',items:[
     {id:4,kind:'country',parentId:null,name:'Турция',russianName:'Турция',slug:'turkey',revision:1,tourvisorIds:['4']}
    ]})};
@@ -160,7 +165,7 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,c
  const poll=async()=>{const entry=[...timers].find(([,value])=>value.delay<=2500);assert.ok(entry,'pending poll required');timers.delete(entry[0]);await entry[1].fn();await flush();};
  const latest=()=>events.filter(e=>e.type==='results').at(-1)?.hotels||[];
  const providers=()=>[...new Set(latest().flatMap(h=>h.offers.map(o=>o.provider)))].sort();
- return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,observationCalls,mealCatalogCalls,latest,providers,timers,get searchId(){return currentId;}};
+ return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
 const observed=(q,price=97500)=>{const childAges=String(q.childs||'').trim()?String(q.childs).split(',').map(Number).sort((a,b)=>a-b):[],regionIds=[...new Set((q.regionIds||[]).map(Number))].sort((a,b)=>a-b);return {ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:Number(q.adults),childrenCount:childAges.length,childAges,childAgesSignature:childAges.join(','),departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:regionIds.length===1?regionIds[0]:null,regionIds,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]};};
@@ -497,24 +502,31 @@ test('direct ANEX rejects mismatched mapped hotel identity instead of inventing 
  await h.start();await h.poll();assert.deepEqual(h.providers(),['tourvisor']);
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='error'));
 });
-test('first search sends selected catalogue resort IDs and preserves exact multi-star OR scope',async()=>{
- const h=harness({api:(action,p)=>action==='regions'?[{id:23,name:'Сиде',countryId:Number(p.countryId)},{id:22,name:'Кемер',countryId:Number(p.countryId)}]:undefined});
+test('first search sends accepted native resort IDs and preserves exact multi-star OR scope',async()=>{
+ const h=harness({destinations:(action,p)=>action==='regions'?[
+  {id:203,kind:'region',parentId:Number(p.countryId),name:'Сиде',russianName:'Сиде',slug:'side',revision:1,tourvisorIds:['23']},
+  {id:202,kind:'region',parentId:Number(p.countryId),name:'Кемер',russianName:'Кемер',slug:'kemer',revision:1,tourvisorIds:['22']}
+ ]:undefined});
  assert.throws(()=>h.data.params(trip,[],{resorts:['Сиде']}),/справочника/);
  await h.data.regions('4');await h.data.regions('4');
  assert.equal(h.data.params(trip,[],{stars:[4]}).hotelCategory,'4');
  assert.equal(h.data.params(trip,[],{stars:[3,5]}).hotelCategory,'');
  assert.equal(h.data.params(trip,[],{stars:[4,5]}).hotelCategory,'');
  await h.start({resorts:['Сиде','Кемер'],stars:[4,5]});
- assert.equal(h.calls.filter(c=>c.action==='regions').length,1);
+ assert.equal(h.destinationCalls.filter(c=>c.action==='regions').length,1);
  const p=h.calls.find(c=>c.action==='search_start').params;
- assert.deepEqual(Array.from(p.regionIds),['23','22']);assert.equal(p.hotelCategory,'');
- assert.deepEqual(Array.from(h.dbBodies[0].regionIds),['23','22']);assert.equal(h.dbBodies[0].hotelCategory,'');
+ assert.deepEqual(Array.from(p.regionIds),['22','23']);assert.equal(p.hotelCategory,'');
+ assert.deepEqual(Array.from(h.dbBodies[0].regionIds),['22','23']);assert.equal(h.dbBodies[0].hotelCategory,'');
  assert.throws(()=>h.data.params(trip,[],{resorts:['Неизвестный']}),/справочника/);
 });
 test('foreign and ambiguous resort catalogue does not silently drop a selected condition',async()=>{
- const h=harness({api:action=>action==='regions'?[{id:23,name:'Сиде',countryId:99}]:undefined});
+ const h=harness({destinations:(action)=>action==='regions'?[
+  {id:203,kind:'region',parentId:99,name:'Сиде',russianName:'Сиде',slug:'side',revision:1,tourvisorIds:['23']}
+ ]:undefined});
  await assert.rejects(h.data.regions('4'),/справочник/);assert.equal(h.data.catalog.regions['4'],undefined);
- h.data.catalog.regions['4']=[{id:'23',name:'Сиде'},{id:'22',name:'Сиде'}];
+ h.data.catalog.regions['4']=[
+  {id:'203',name:'Сиде',tourvisorIds:['23']},{id:'204',name:'Сиде',tourvisorIds:['24']}
+ ];
  assert.throws(()=>h.data.params(trip,[],{resorts:['Сиде']}),/справочника/);
 });
 test('TOP500 observation prices fill calendars even with empty normalized offer storage',async()=>{
