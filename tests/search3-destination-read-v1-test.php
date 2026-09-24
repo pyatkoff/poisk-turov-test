@@ -50,6 +50,13 @@ s3d(array_column($regions['items'],'id')===[$belek,$kemer],'local region ids');
 s3d($regions['items'][0]['parentId']===$turkey,'region parent local');
 s3d($regions['items'][0]['tourvisorIds']===['21'],'region native bridge');
 
+$belekRegion=array_values(array_filter($regions['items'],fn($row)=>$row['id']===$belek))[0]??null;
+s3d(is_array($belekRegion)&&count($belekRegion['subregions']??[])===1,'nested subregion count');
+s3d($belekRegion['subregions'][0]['id']===$kadriye,'nested subregion local id');
+s3d($belekRegion['subregions'][0]['parentId']===$belek,'nested subregion parent local');
+s3d($belekRegion['subregions'][0]['tourvisorIds']===['2101'],'nested subregion native bridge');
+s3d(($regions['subregionCount']??null)===1,'region response subregion count');
+
 $subs=search3_destination_read($db,'subregions',['regionId'=>(string)$belek]);
 s3d(count($subs['items'])===1&&$subs['items'][0]['id']===$kadriye,'subregion local id');
 s3d($subs['items'][0]['tourvisorIds']===['2101'],'subregion native bridge');
@@ -58,4 +65,4 @@ $db->exec("DELETE FROM anytour_destination_sources_v1 WHERE provider='tourvisor'
 s3d_error(fn()=>search3_destination_read($db,'countries',['departureId'=>'1']),'DESTINATION_UNMAPPED');
 s3d_error(fn()=>search3_destination_read($db,'regions',['countryId'=>(string)$belek]),'DESTINATION_PARENT');
 
-echo "SEARCH3_DESTINATION_READ_MYSQL_OK local_ids=1 accepted_bridge_only=1 source_id_as_local=0 name_identity=0\n";
+echo "SEARCH3_DESTINATION_READ_MYSQL_OK local_ids=1 accepted_bridge_only=1 subregions=1 source_id_as_local=0 name_identity=0\n";
