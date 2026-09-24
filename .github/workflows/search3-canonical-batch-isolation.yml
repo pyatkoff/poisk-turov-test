@@ -1,0 +1,20 @@
+name: Search3 canonical batch isolation
+
+on:
+  pull_request:
+    paths:
+      - 'v2/search3-canonical-profiles-v1.js'
+      - 'tests/search3-canonical-batch-isolation.cjs'
+      - '.github/workflows/search3-canonical-batch-isolation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Canonical catalogue batch isolation
+        run: node tests/search3-canonical-batch-isolation.cjs
