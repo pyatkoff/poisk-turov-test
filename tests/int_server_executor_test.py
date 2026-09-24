@@ -20,6 +20,15 @@ class ParseTest(unittest.TestCase):
         self.assertEqual('install-runtime',v['mode'])
         self.assertEqual(SHA,v['source_sha'])
 
+    def test_install_anex_preview(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} install-anex-preview int-anex-preview-install-20260925-v1')
+        self.assertEqual('install-anex-preview',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
+        with self.assertRaises(ValueError):
+            m.parse_command(f'/run-int-server-v1 {SHA} install-anex-preview int-andromeda-preview-install-20260925-v1')
+        with self.assertRaises(ValueError):
+            m.parse_command(f'/run-int-server-v1 {SHA} install-anex-preview int-anex-preview-install-20260925-v1 extra')
+
     def test_install_andromeda_preview(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} install-andromeda-preview int-andromeda-preview-install-20260923-v1')
         self.assertEqual('install-andromeda-preview',v['mode'])
@@ -333,6 +342,8 @@ class ParseTest(unittest.TestCase):
           f'/run-int-server-v1 {SHA} reconcile int-andromeda-reconcile-turkey-20260921-v1 ../../bad',
           f'/run-int-server-v1 {SHA} reconcile int-andromeda-current-turkey-20260921-v1 int-andromeda-current-turkey-20260921-v1',
           f'/run-int-server-v1 {SHA} install-runtime int-andromeda-runtime-install-20260922-v1 extra',
+          f'/run-int-server-v1 {SHA} install-anex-preview int-anex-preview-install-20260925-v1 extra',
+          f'/run-int-server-v1 {SHA} install-anex-preview int-andromeda-preview-install-20260925-v1',
           f'/run-int-server-v1 {SHA} install-andromeda-preview int-andromeda-preview-install-20260923-v1 extra',
           f'/run-int-server-v1 {SHA} install-andromeda-preview int-anex-preview-install-20260923-v1',
           f'/run-int-server-v1 {SHA} andromeda-external-group int-andromeda-external-group-turkey-20260922-v1 1 4 2026-10-20 2026-10-20 7 2 - 0 2',
@@ -455,6 +466,8 @@ class InstallRuntimeTest(unittest.TestCase):
         runtime=project/'_preview/search3-anex-candidate'
         (runtime/'app/integrations').mkdir(parents=True)
         (runtime/'app/integrations/x0.php').write_text('<?php /* old */\n')
+        if mode == 'install-anex-preview':
+            (runtime/'api-anex-search3-preview.php').write_text('<?php /* old endpoint */\n')
         if mode == 'install-andromeda-preview':
             (runtime/'api-andromeda-search3-preview.php').write_text('<?php /* old endpoint */\n')
         if mode == 'install-andromeda-quote-preview':
@@ -492,6 +505,23 @@ class InstallRuntimeTest(unittest.TestCase):
             self.assertEqual(0,result['supplier_calls'])
             self.assertEqual(0,result['database_writes'])
             self.assertFalse((project/'app').exists())
+
+    def test_anex_preview_install_backup_and_readback(self):
+        with tempfile.TemporaryDirectory() as td:
+            result,home,project=self.fixture(
+                Path(td),'int-anex-preview-install-20260925-v1',mode='install-anex-preview')
+            self.assertEqual('installed',result['status'])
+            self.assertEqual(23,result['install']['files'])
+            endpoint=result['install']['endpoint']
+            self.assertEqual('v2/api-anex-search3-preview.php',endpoint['source'])
+            self.assertEqual('api-anex-search3-preview.php',endpoint['target'])
+            self.assertTrue(endpoint['changed'])
+            self.assertEqual('<?php\n',(project/'_preview/search3-anex-candidate/api-anex-search3-preview.php').read_text())
+            backup=home/'.anytoour-int-executor/int-anex-preview-install-20260925-v1/backup/api-anex-search3-preview.php'
+            self.assertEqual('<?php /* old endpoint */\n',backup.read_text())
+            self.assertTrue(result['public_ui_entrypoints_unchanged'])
+            self.assertEqual(0,result['supplier_calls'])
+            self.assertEqual(0,result['database_writes'])
 
     def test_andromeda_preview_install_backup_and_readback(self):
         with tempfile.TemporaryDirectory() as td:
@@ -543,8 +573,8 @@ class ContractTest(unittest.TestCase):
         text=SCRIPT.read_text()
         for x in ["ISSUE = 3419","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
                   "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged","remote_command_size","zlib.compress",
-                  "install-runtime","install-andromeda-preview","install-andromeda-quote-preview","install-plan.json","preview-install-plan.json","quote-preview-install-plan.json","install-state.json","rollback_install",
-                  "v2/api-andromeda-search3-preview.php","api-andromeda-search3-preview.php","v2/api-andromeda-quote-preview.php","api-andromeda-quote-preview.php",
+                  "install-runtime","install-anex-preview","install-andromeda-preview","install-andromeda-quote-preview","install-plan.json","anex-preview-install-plan.json","preview-install-plan.json","quote-preview-install-plan.json","install-state.json","rollback_install",
+                  "v2/api-anex-search3-preview.php","api-anex-search3-preview.php","v2/api-andromeda-search3-preview.php","api-andromeda-search3-preview.php","v2/api-andromeda-quote-preview.php","api-andromeda-quote-preview.php",
                   "manifest_digest","public_ui_entrypoints_unchanged","three-provider-fuel-evidence.php",
                   "anex-range","anex_date_range","anex_local_offer_collect.php",
                   "anex_local_offer_demand_fill.php","andromeda_local_offer_collect.php",
