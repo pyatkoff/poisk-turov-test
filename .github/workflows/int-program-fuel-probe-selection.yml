@@ -1,0 +1,27 @@
+name: INT program fuel probe selection
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/diagnostics/int_andromeda_program_getflights_probe_v1.php'
+      - 'tests/int_andromeda_program_getflights_probe_v1_test.php'
+      - '.github/workflows/int-program-fuel-probe-selection.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Validate strict program fuel sample selection
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/int_andromeda_program_getflights_probe_v1.php
+          php -l tests/int_andromeda_program_getflights_probe_v1_test.php
+          php tests/int_andromeda_program_getflights_probe_v1_test.php
