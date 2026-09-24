@@ -8,6 +8,7 @@ on:
       - 'tests/search3-local-db-provider-v1.test.js'
       - 'tests/search3-local-db-meal-plan-v1.test.js'
       - 'tests/search3-local-db-projection-row-isolation.cjs'
+      - 'tests/search3-local-db-rehydration-fingerprint.cjs'
       - 'tests/search3-local-db-price-states-browser.py'
       - 'tests/search3-lean-base-bundle-smoke.php'
       - 'v2/prototype-search/lead.js'
@@ -31,6 +32,7 @@ jobs:
           node tests/search3-local-db-provider-v1.test.js
           node tests/search3-local-db-meal-plan-v1.test.js
           node --test tests/search3-local-db-projection-row-isolation.cjs
+          node --test tests/search3-local-db-rehydration-fingerprint.cjs
       - name: Search3-only dependency order and legacy isolation
         run: php tests/search3-lean-base-bundle-smoke.php
       - name: Contact recovery native integration and browser test syntax
