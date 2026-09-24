@@ -1012,4 +1012,51 @@ test('calendar reuse has bounded entry and payload memory rather than an invento
  const rows=await calendarRead(large,undefined,{},trip,calendarFrom,calendarFrom);assert.equal(rows.length,1,'Oversize valid results still return');
  await calendarRead(large,undefined,{},trip,calendarFrom,calendarFrom);assert.equal(large.dbBodies.length,2,'Oversize results are not retained in memory');
 });
+
+function cachedProviderSnapshot(params,provider,operatorName){
+ const data=snapshot(params,[provider]),row=data.hotels[0].offers[0];
+ row.listing.tour.party.child_ages=[];
+ row.listing.operator={raw:operatorName,canonical_name:operatorName};
+ return data;
+}
+test('cached ANEX rehydration performs a fresh exact same-provider search without stale supplier refs',async()=>{
+ const staleOffer=hash('stale-anex-offer'),staleSearch=hash('stale-anex-search');
+ const h=harness({
+  database:(i,p)=>{const data=cachedProviderSnapshot(p,'anex','ANEX');data.hotels[0].offers[0].listing.identity.offer_ref_digest=staleOffer;data.hotels[0].offers[0].listing.identity.search_ref_digest=staleSearch;return data;},
+  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{localId:101,searchRef:'f'.repeat(32),offerRef:'anex_online:'+'9'.repeat(64)})}})
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');assert.ok(cached?.cached);assert.ok(cached.raw.rehydration);
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'current');assert.equal(result.provider,'anex');assert.equal(result.hotelId,501);assert.equal(result.offers.length,1);
+ const request=h.anexCalls.at(-1);assert.equal(request.action,'search');assert.equal(request.params.dateFrom,trip.from);assert.equal(request.params.dateTo,trip.from);
+ assert.equal(request.params.nightsFrom,7);assert.equal(request.params.nightsTo,7);assert.deepEqual(request.params.hotelIds,['101']);
+ const sent=JSON.stringify(request);assert.equal(sent.includes(staleOffer),false);assert.equal(sent.includes(staleSearch),false,'cached supplier session identity is never replayed');
+ const live=result.offers[0];assert.equal(live.cached,false);assert.equal(live.provider,'anex');assert.equal(live.raw.anexSessionCurrent,true);assert.equal(live.raw.anexLocalHotelId,101);
+});
+test('cached Andromeda rehydration carries its fresh exact scope into quote verification',async()=>{
+ const h=harness({
+  database:(i,p)=>cachedProviderSnapshot(p,'andromeda','FUN&SUN'),
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body,{localId:101,offerRef:'offer_'+'8'.repeat(64),searchRef:'7'.repeat(64)})}}),
+  andromedaQuote:async body=>({response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101,'1499000')})}})
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');assert.ok(cached?.cached);assert.ok(cached.raw.rehydration);
+ const result=await h.data.rehydrateCached(cached);assert.equal(result.state,'current');assert.equal(result.offers.length,1);
+ const live=result.offers[0];assert.equal(live.cached,false);assert.equal(live.provider,'andromeda');
+ assert.equal(h.nativeCalls.length,1);assert.equal(h.nativeCalls[0].params.dateFrom,trip.from);assert.equal(h.nativeCalls[0].params.dateTo,trip.from);assert.deepEqual(h.nativeCalls[0].params.hotelIds,['101']);
+ const quote=await h.data.verifyAndromeda(live);assert.equal(quote.state,'quote_verified');assert.equal(h.andromedaQuoteCalls.length,1);
+ assert.deepEqual(h.andromedaQuoteCalls[0].params,h.nativeCalls[0].params,'quote uses the exact fresh scope that created the rehydrated offer context');
+});
+test('Stop aborts pending cached same-provider rehydration and stale response cannot become current',async()=>{
+ const gate=defer();let signal=null;
+ const h=harness({
+  database:(i,p)=>cachedProviderSnapshot(p,'anex','ANEX'),
+  anex:async(body,s)=>{signal=s;await gate.promise;return {response:{ok:true,status:200,json:async()=>directAnex(body,{localId:101})}};}
+ });
+ canonicalMeals(h);await h.resume();const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ const pending=h.data.rehydrateCached(cached);await waitFor(()=>signal!==null,'pending cached rehydration required');assert.equal(signal.aborted,false);
+ h.data.stop();assert.equal(signal.aborted,true);gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
+ assert.equal(h.anexCalls.filter(call=>call.action==='search').length,1,'stale cached rehydration is never replayed');
+});
 (async()=>{for(const [name,fn]of tests){await fn();console.log('PASS',name);}console.log('SEARCH3_PROTOTYPE_INVENTORY_LIFECYCLE_OK',tests.length);})().catch(error=>{console.error(error);process.exitCode=1;});
