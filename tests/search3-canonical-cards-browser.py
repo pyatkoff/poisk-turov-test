@@ -392,8 +392,13 @@ with sync_playwright() as p:
     for change,label in invalids:
         c,page,errors=boot(browser);render(page,[hotel(102),hotel(106)])
         resolve(page,0,{102:1,106:1},override=change)
-        check(page.locator('.hotel-card').count()==0,'malformed: '+label+' fails entire batch')
-        check(page.locator('.canonical-profile-retry').count()==1,'malformed: '+label+' exposes retry')
+        check(page.locator('.hotel-card').count()==0,'malformed: '+label+' withholds the invalid multi-ID response')
+        check(page.evaluate('__requests.length')==3,'malformed: '+label+' automatically bisects into two singleton retries')
+        check(page.evaluate('__requests.slice(1).map(x=>new URL(x.url,"https://fixture.invalid/").searchParams.getAll("legacyHotelIds[]").map(Number))')==[[102],[106]],'malformed: '+label+' keeps exact child identities')
+        resolve(page,1,{102:1});resolve(page,2,{106:2})
+        check(page.locator('.hotel-card').count()==2,'malformed: '+label+' valid singleton children recover independently')
+        check(page.locator('.canonical-profile-retry').count()==0,'malformed: '+label+' successful isolation needs no manual retry')
+        check(not errors,'malformed: '+label+' isolation has no browser JavaScript error')
         c.close()
 
     c,page,errors=boot(browser);render(page,[hotel(102)]);resolve(page,0,{},status=503)
