@@ -1,4 +1,4 @@
-name: MATCH SAMO live30 key-shape canary v1
+name: MATCH SAMO live30 key-shape canary v2
 
 on:
   pull_request:
@@ -13,13 +13,13 @@ permissions:
   issues: read
 
 concurrency:
-  group: hotel-match-samo-live30-keyshape-canary-1971-20260924-v1
+  group: hotel-match-samo-live30-keyshape-canary-1971-20260924-v2
   cancel-in-progress: false
 
 env:
-  OP: hotel-match-samo-live30-keyshape-canary-1971-20260924-v1
+  OP: hotel-match-samo-live30-keyshape-canary-1971-20260924-v2
   BASE: ecd294be9107d1a59418ca31d4d9378896251827
-  CLAIM: '5807383475'
+  CLAIM: '5808079566'
   PLAN_ARTIFACT: '10780093445'
   PLAN_ARCHIVE_SHA256: 6e88ad112b7ba53ff3608c80ad9a42683d6cf9ff980e21eb959a20597b326541
 
@@ -86,7 +86,7 @@ jobs:
           cat > input/canary.php <<'PHP'
           <?php
           declare(strict_types=1);
-          const OP='hotel-match-samo-live30-keyshape-canary-1971-20260924-v1';
+          const OP='hotel-match-samo-live30-keyshape-canary-1971-20260924-v2';
           const OPS=[5=>'operator_5',115=>'operator_115',315=>'operator_315',342=>'operator_342'];
           const MONTHLY_LIMIT=5000000;
           function need(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
@@ -144,7 +144,8 @@ jobs:
           pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_provider','provider':'andromeda','database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
           PY
           ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
-          scp "${opts[@]}" input/reservation.json input/plan-result.json "$remote:$op/payload/"
+          scp "${opts[@]}" input/reservation.json "$remote:$op/"
+          scp "${opts[@]}" input/plan-result.json "$remote:$op/payload/"
           scp "${opts[@]}" input/canary.php "$remote:$op/payload/scripts/diagnostics/"
           scp "${opts[@]}" app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php "$remote:$op/payload/app/integrations/"
           set +e
@@ -167,7 +168,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: 'match-samo-live30-keyshape-canary-v1-${{ github.run_id }}'
+          name: 'match-samo-live30-keyshape-canary-v2-${{ github.run_id }}'
           path: terminal/
           retention-days: 90
           if-no-files-found: error
