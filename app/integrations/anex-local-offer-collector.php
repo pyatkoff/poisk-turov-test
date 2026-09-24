@@ -9,9 +9,11 @@ declare(strict_types=1);
 final class AnyTourAnexLocalOfferCollectorV1
 {
     /**
-     * Split one user-visible direct-ANEX date intent into supplier-safe windows.
-     * The owner contract is at most 21 inclusive days; ANEX keeps its existing
-     * seven-day request boundary. Invalid/reversed/too-wide ranges fail before I/O.
+     * Split one user-visible direct-ANEX date intent into exact-day supplier windows.
+     * The owner contract is at most 21 inclusive days. Live supplier evidence shows
+     * broad windows can fail while later exact days remain valid, so a bad date must
+     * not prevent collection of independently valid dates. Invalid/reversed/too-wide
+     * ranges still fail before I/O.
      *
      * @return list<array{from:string,to:string}>
      */
@@ -33,11 +35,9 @@ final class AnyTourAnexLocalOfferCollectorV1
         }
 
         $windows = [];
-        for ($cursor = $start; $cursor <= $end;) {
-            $windowEnd = $cursor->modify('+6 days');
-            if ($windowEnd > $end) $windowEnd = $end;
-            $windows[] = ['from' => $cursor->format('Y-m-d'), 'to' => $windowEnd->format('Y-m-d')];
-            $cursor = $windowEnd->modify('+1 day');
+        for ($cursor = $start; $cursor <= $end; $cursor = $cursor->modify('+1 day')) {
+            $day = $cursor->format('Y-m-d');
+            $windows[] = ['from' => $day, 'to' => $day];
         }
         return $windows;
     }
