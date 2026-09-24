@@ -48,7 +48,8 @@ if($site===false||basename($site)!=='anytoour.ru'||$privateConfig===false||!is_f
 
 $runtime=dirname(__DIR__,2);
 require_once $runtime.'/app/integrations/andromeda-local-offer-collector.php';
-require_once $runtime.'/app/integrations/andromeda-search-envelope-diagnostic.php';
+$searchEnvelopeDiagnostic=$runtime.'/app/integrations/andromeda-search-envelope-diagnostic.php';
+if(is_file($searchEnvelopeDiagnostic)&&!is_link($searchEnvelopeDiagnostic))require_once $searchEnvelopeDiagnostic;
 require_once $runtime.'/v2/api-andromeda-search3-preview.php';
 require_once $runtime.'/app/integrations/andromeda-saved-package-runtime.php';
 require_once $runtime.'/app/integrations/andromeda-anytour-offer-autosave-cache-runtime.php';
@@ -118,8 +119,10 @@ $searchComplete=static function(array $req)use($pdo,$saved,$config,$session,&$la
             }
         }
     );
-    $diagnostic=AnyTourAndromedaSearchEnvelopeDiagnosticV1::exceptionCode($req,$search);
-    if($diagnostic!==null)throw new RuntimeException($diagnostic);
+    if(class_exists('AnyTourAndromedaSearchEnvelopeDiagnosticV1',false)){
+        $diagnostic=AnyTourAndromedaSearchEnvelopeDiagnosticV1::exceptionCode($req,$search);
+        if($diagnostic!==null)throw new RuntimeException($diagnostic);
+    }
     return $search;
 };
 
