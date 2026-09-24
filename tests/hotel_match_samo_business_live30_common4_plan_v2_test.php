@@ -12,4 +12,5 @@ tt(isset($x['catalog']['10'])&&isset($x['catalog']['20']),'catalog_ids');
 tt($x['operator_resolved']===2,'resolved');
 tt($x['operator_collision']===1,'collision');
 tt(count($x['operator_unresolved'])===0,'unresolved');
+tt($x['operator_resolved']+$x['operator_collision']===3,'operator_accounting');
 echo "MATCH_SAMO_BUSINESS_LIVE30_COMMON4_PLAN_V2_TEST_OK\n";
