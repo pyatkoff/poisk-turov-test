@@ -316,14 +316,8 @@
       anexSessionCurrent:run?.anexSessionCurrent===true};
   }
   function directAnexWindows(p){
-    const windows=[];let from=p.dateFrom;
-    while(from<=p.dateTo){
-      const end=plus(from,6)<p.dateTo?plus(from,6):p.dateTo;
-      windows.push({...p,dateFrom:from,dateTo:end});
-      from=plus(end,1);
-    }
-    if(!windows.length||windows.length>4)throw new Error('Invalid ANEX date windows');
-    return windows;
+    const end=plus(p.dateFrom,6)<p.dateTo?plus(p.dateFrom,6):p.dateTo;
+    return [{...p,dateTo:end}];
   }
   function rebuildDirectAnex(run){
     const windows=run.anexWindows;
