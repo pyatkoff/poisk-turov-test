@@ -177,12 +177,41 @@ $searchRunner=static function(array $req,array &$collectorState)use($pdo,&$cache
     $observer=static fn(array $offers,array $context):array=>AnyTourAnexSearchObservations::record($pdo,$offers,$context);
     return anytour_anex_search3_run($req,$pdo,$makeClient(),$cache,$diagnostics,$observer,$collectorState,'all',true);
 };
-$expandRunner=static function(array $req,array &$collectorState)use($resolver,$metadata,$makeClient,$checkpoint,$makeAdditional):array{
-    // Background worker has its own explicit budget and uses AnyTourAnexClient's
-    // shared supplier pacing. Do not inherit the browser preview session cap.
-    return anytour_anex_search3_followup(
-        $req,$collectorState,$resolver,$makeClient,$metadata,null,$checkpoint,$makeAdditional,false
+$expand502Retried=[];
+$expandRunner=static function(array $req,array &$collectorState)use(
+    $resolver,$metadata,$makeClient,$checkpoint,$makeAdditional,$safeDiagnostics,&$lastSearchClient,&$expand502Retried
+):array{
+    // Followups mark the candidate state unknown before supplier access. Keep the
+    // caller-owned state untouched until a whole expansion succeeds so a transient
+    // upstream 502 can be retried without reusing poisoned state.
+    $originalState=$collectorState;
+    $candidateState=$originalState;
+    try{
+        $reply=anytour_anex_search3_followup(
+            $req,$candidateState,$resolver,$makeClient,$metadata,null,$checkpoint,$makeAdditional,false
+        );
+        $collectorState=$candidateState;
+        return $reply;
+    }catch(RuntimeException $error){
+        $diagnostics=$safeDiagnostics($lastSearchClient);
+        $searchRef=$req['search_ref']??null;
+        $retryable=$error->getMessage()==='ANEX_HTTP_ERROR'
+            &&is_string($searchRef)&&$searchRef!==''&&!isset($expand502Retried[$searchRef])
+            &&($diagnostics['action']??null)==='SearchTour_PRICES'
+            &&($diagnostics['http_status']??null)===502
+            &&($diagnostics['curl_errno']??null)===0;
+        if(!$retryable)throw $error;
+        $expand502Retried[$searchRef]=true;
+    }
+
+    // Exactly one fresh-client retry is allowed for this supplier search_ref. If it
+    // fails, let the original fail-closed collector path report that terminal error.
+    $retryState=$originalState;
+    $reply=anytour_anex_search3_followup(
+        $req,$retryState,$resolver,$makeClient,$metadata,null,$checkpoint,$makeAdditional,false
     );
+    $collectorState=$retryState;
+    return $reply;
 };
 $programRecorder=static function(array &$collectorState)use($pdo):array{
     return AnyTourAnexProgramObservationRuntimeV1::record($pdo,$collectorState,new DateTimeImmutable('now',new DateTimeZone('UTC')));
