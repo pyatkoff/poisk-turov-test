@@ -82,7 +82,8 @@ jobs:
           if out['result_exists'] and out['receipt_exists']:
               r=json.loads((d/'result.json').read_text());q=json.loads((d/'receipt.json').read_text())
               h=hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
-              out['receipt_hash_ok']=(q.get('result_sha256')==h)\n              out['result_sha256']=h
+              out['receipt_hash_ok']=(q.get('result_sha256')==h)
+              out['result_sha256']=h
               for k in ['state','reason','queried_edge_count','planned_batch_count','completed_batch_count','batch_error_count','samo_http_calls','edge_state_counts','operator_state_counts','single_native_source_unique_count','single_native_source_collision_count']:
                   if k in r:out[k]=r[k]
           print(json.dumps(out,sort_keys=True))
