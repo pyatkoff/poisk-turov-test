@@ -73,15 +73,32 @@ $cache=[];$searchRequests=0;$apdRequests=0;
 // provider pacing/cooldown across the sequential windows.
 $searchBudget=max(8,$windowCount*($maxExpands+2));
 $apdBudget=max(8,$windowCount*$maxBatch);
-$makeClient=static function()use($apiToken,&$searchRequests,$searchBudget):AnyTourAnexClient{
+$lastSearchClient=null;
+$lastAdditionalClient=null;
+$makeClient=static function()use($apiToken,&$searchRequests,$searchBudget,&$lastSearchClient):AnyTourAnexClient{
     ++$searchRequests;
     if($searchRequests>$searchBudget)throw new RuntimeException('ANEX_COLLECTOR_SEARCH_BUDGET');
-    return new AnyTourAnexClient($apiToken);
+    $lastSearchClient=new AnyTourAnexClient($apiToken);
+    return $lastSearchClient;
 };
-$makeAdditional=static function()use($b2bToken,&$apdRequests,$apdBudget):AnyTourAnexAdditionalPricesClient{
+$makeAdditional=static function()use($b2bToken,&$apdRequests,$apdBudget,&$lastAdditionalClient):AnyTourAnexAdditionalPricesClient{
     ++$apdRequests;
     if($apdRequests>$apdBudget)throw new RuntimeException('ANEX_COLLECTOR_APD_BUDGET');
-    return new AnyTourAnexAdditionalPricesClient($b2bToken);
+    $lastAdditionalClient=new AnyTourAnexAdditionalPricesClient($b2bToken);
+    return $lastAdditionalClient;
+};
+$safeDiagnostics=static function(mixed $client):array{
+    if(!is_object($client)||!method_exists($client,'lastRequestDiagnostics'))return [];
+    $raw=$client->lastRequestDiagnostics();
+    if(!is_array($raw))return [];
+    $out=[];
+    $action=$raw['action']??null;
+    if(is_string($action)&&preg_match('/\A[A-Za-z][A-Za-z0-9_]{0,63}\z/D',$action)===1)$out['action']=$action;
+    foreach(['http_status','response_bytes','supplier_code','curl_errno','elapsed_ms','page','page_size'] as $key){
+        $value=$raw[$key]??null;
+        if(is_int($value)&&$value>=0&&$value<=2147483647)$out[$key]=$value;
+    }
+    return $out;
 };
 $resolver=AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver();
 $metadata=static fn(array $offers):array=>anytour_anex_search3_metadata($pdo,$offers);
@@ -175,7 +192,30 @@ $runWindow=static function(array $windowRequest,int $index,array $window)use(
     return $windowResult;
 };
 
-$rangeResult=AnyTourAnexLocalOfferCollectorV1::collectRange($request,$from,$to,$runWindow);
+try{
+    $rangeResult=AnyTourAnexLocalOfferCollectorV1::collectRange($request,$from,$to,$runWindow);
+}catch(RuntimeException $error){
+    if($error->getMessage()!=='ANEX_SUPPLIER_ERROR')throw $error;
+    $result=[
+        'source'=>'anex-local-offer-collector-v1',
+        'status'=>'supplier_error',
+        'error_code'=>'ANEX_SUPPLIER_ERROR',
+        'requested_date_range'=>['from'=>$from,'to'=>$to],
+        'window_count'=>$windowCount,
+        'search_client_instances'=>$searchRequests,
+        'apd_client_instances'=>$apdRequests,
+        'search_last_request'=>$safeDiagnostics($lastSearchClient),
+        'additional_last_request'=>$safeDiagnostics($lastAdditionalClient),
+        'selection_authority'=>false,
+        'supplier_calls_bounded'=>true,
+        'browser_supplier_calls'=>0,
+        'db_only_customer_results'=>true,
+        'booking_calls'=>0,
+        'lead_calls'=>0,
+    ];
+    echo json_encode($result,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)."\n";
+    exit(1);
+}
 $windowReceipts=$rangeResult['windows'];
 if($windowCount===1&&count($windowReceipts)===1){
     $result=$windowReceipts[0]['result'];

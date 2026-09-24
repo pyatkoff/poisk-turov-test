@@ -52,8 +52,14 @@ STUB);
         $write('payload/v2/api-anex-search3-preview.php', <<<'STUB'
 <?php
 require_once __DIR__.'/../app/integrations/anex-additional-prices-batch.php';
-final class AnyTourAnexClient{public function __construct(string $token){}}
-final class AnyTourAnexAdditionalPricesClient{public function __construct(string $token){}}
+final class AnyTourAnexClient{
+    public function __construct(string $token){}
+    public function lastRequestDiagnostics():array{return ['action'=>'SearchTour_PRICES','http_status'=>200,'response_bytes'=>123,'supplier_code'=>101,'unsafe'=>'drop-me'];}
+}
+final class AnyTourAnexAdditionalPricesClient{
+    public function __construct(string $token){}
+    public function lastRequestDiagnostics():array{return ['action'=>'AdditionalPricesDaily','page'=>1,'page_size'=>10,'http_status'=>200,'response_bytes'=>77];}
+}
 final class AnyTourAnexSearchMappingRegistry{
     public static function fromPdo(PDO $db):self{return new self();}
     public function previewResolver():callable{return static fn():int=>501;}
@@ -65,6 +71,7 @@ function anytour_anex_search3_metadata(PDO $db,array $offers):array{return [];}
 function anytour_anex_search3_run($request,$db,$client,&$cache,&$diagnostics,$observer,&$state,$scope,$background):array{
     fixtureTrace('search',$request);$state=['gateway'=>['saved_offers'=>['offers'=>[]],'search'=>['offers'=>[]]]];
     $tours=[];$scenario=fixtureScenario();
+    if(($scenario['supplier_error']??false)===true)throw new RuntimeException('ANEX_SUPPLIER_ERROR');
     for($i=0;$i<($scenario['groups']??12);++$i)$tours[]=['kind'=>'group_minimum','offer_ref'=>'anex_online:'.hash('sha256','g'.$i)];
     if(($scenario['regular']??false)===true)$tours[]=['kind'=>'concrete','offer_ref'=>'anex_online:'.hash('sha256','regular'),'flight_type'=>'regular'];
     return ['provider'=>'anex','search_ref'=>str_repeat('a',32),'hotels'=>[['local_id'=>501,'tours'=>$tours]]];
@@ -184,7 +191,17 @@ foreach([
     persistenceCheck($r['code']===0&&$r['result']['status']==='complete'&&!isset($r['counts']['apd'])
         &&$r['counts']['finalize']===1,'authoritative-zero/regular-only publication succeeds without APD');
 }
+$supplier=persistenceCli(['supplier_error'=>true]);
+persistenceCheck($supplier['code']===1&&$supplier['stderr']===''&&is_array($supplier['result'])
+    &&($supplier['result']['status']??null)==='supplier_error'
+    &&($supplier['result']['error_code']??null)==='ANEX_SUPPLIER_ERROR'
+    &&($supplier['result']['search_last_request']??null)===[
+        'action'=>'SearchTour_PRICES','http_status'=>200,'response_bytes'=>123,'supplier_code'=>101,
+    ]
+    &&($supplier['result']['additional_last_request']??null)==[]
+    &&!isset($supplier['result']['search_last_request']['unsafe']),
+    'supplier error retains only safe fixed diagnostics');
 $other=persistenceCli(['expand_error'=>7]);
 persistenceCheck($other['code']!==0&&$other['result']===null&&str_contains($other['stderr'],'FIXTURE_EXPAND_INVARIANT')
     &&!isset($other['counts']['finalize']),'unrelated invariant not swallowed');
-echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=2 late=1 final_no_ready=1 final=1 missing=1 empty_regular=2 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
+echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=2 late=1 final_no_ready=1 final=1 missing=1 empty_regular=2 supplier_diag=1 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
