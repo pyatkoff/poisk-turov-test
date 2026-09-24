@@ -88,7 +88,7 @@ function contextHarness() {
   const beforeMissing=h.fetchCalls.length;
   const missing=await data.calendarPrices(h.trip,h.trip.from,h.trip.from,new AbortController().signal,{hotelId:999},()=>{});
   assert.equal(h.fetchCalls.length,beforeMissing,'missing exact hotel identity does not fall back to broad LOCAL scope');
-  assert.equal(h.broadCalendarCalls,1);assert.equal(missing.partial,true);assert.deepEqual(missing.hotels,[]);
+  assert.equal(h.broadCalendarCalls,1);assert.equal(missing.partial,true);assert.deepEqual(Array.from(missing.hotels),[]);
 
   await data.lookupHotels('x','4',new AbortController().signal);
   const lookupBefore=h.fetchCalls.length;
@@ -96,7 +96,7 @@ function contextHarness() {
   assert.equal(h.fetchCalls.length,lookupBefore+1,'catalog lookup identity can scope a pre-search hotel calendar');
   assert.deepEqual(Array.from(h.fetchCalls.at(-1).body.params.hotelIds),['201']);
   assert.equal(lookupScoped.partial,true,'wrong canonical hotel response fails closed');
-  assert.deepEqual(lookupScoped.hotels,[]);
+  assert.deepEqual(Array.from(lookupScoped.hotels),[]);
 
   h.setSearchId(77);
   assert.equal(data.searchId,77,'descriptor cloning preserves live getters from the wrapped data owner');
