@@ -35,11 +35,15 @@ function fixtureScenario():array{
     return json_decode(file_get_contents(getenv('FIXTURE_DIR').'/scenario.json'),true,64,JSON_THROW_ON_ERROR);
 }
 function anytour_anex_anytour_offer_autosave_runtime(array $plan,array &$state,array $results):array{
+    $expected=getenv('FIXTURE_DIR').'/' . 'anytoour.ru/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php';
+    if(getenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE')!==$expected||!is_file($expected))throw new RuntimeException('INGEST_BINDING_MISSING');
     $scenario=fixtureScenario();$n=($state['fixture_saves']??0)+1;$state['fixture_saves']=$n;
     $receipt=$scenario['receipts'][$n-1]??['published'=>true,'reason'=>null,'readyOfferCount'=>$n*6];
     fixtureTrace('save',$receipt);return $receipt;
 }
 function anytour_anex_anytour_offer_autosave_finalize_runtime(array &$state):array{
+    $expected=getenv('FIXTURE_DIR').'/' . 'anytoour.ru/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php';
+    if(getenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE')!==$expected||!is_file($expected))throw new RuntimeException('INGEST_BINDING_MISSING');
     $receipt=fixtureScenario()['final']??['published'=>false,'reason'=>'already_published','readyOfferCount'=>12];
     fixtureTrace('finalize',$receipt);return $receipt;
 }
@@ -114,6 +118,7 @@ STUB);
         foreach(['anex-preview-gateway','anex-search-mapping-registry','anex-search-observations','anex-additional-prices-client'] as $name)
             $write('payload/app/integrations/'.$name.'.php','<?php // isolated dependency');
         $write('anytoour.ru/config.php','<?php // no real site configuration');
+        $write('anytoour.ru/_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php','<?php // isolated LOCAL ingest boundary');
         $write('anytoour.ru/data/db-v1.php', <<<'STUB'
 <?php
 final class FixturePdo extends PDO{public function __construct(){}}
