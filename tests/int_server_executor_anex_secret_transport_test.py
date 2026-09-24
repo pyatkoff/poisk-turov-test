@@ -5,6 +5,7 @@ import base64
 import importlib.util
 import os
 from pathlib import Path
+import re
 import unittest
 from unittest import mock
 
@@ -47,6 +48,17 @@ class AnexSecretTransportTest(unittest.TestCase):
         self.assertIn("env['ANEX_API_TOKEN']=api_token", patched)
         self.assertIn("env['ANEX_B2B_TOKEN']=b2b_token", patched)
         self.assertEqual({'anex-demand', 'anex-range'}, set(m.DIRECT_ANEX_MODES))
+
+    def test_direct_generation_stays_inside_collector_integer_text_contract(self):
+        patched = m.patched_remote()
+        self.assertEqual(1, patched.count('generation=str(900000000-'))
+        self.assertEqual(1, patched.count('generation=str(2100000000-'))
+        for suffix in (0, 1, 999999):
+            generation = 900000000 - suffix
+            self.assertGreaterEqual(generation, 1)
+            self.assertLessEqual(generation, 999999999)
+            self.assertRegex(str(generation), r'^(?:0|[1-9][0-9]{0,8})$')
+        self.assertNotRegex(str(2100000000), r'^(?:0|[1-9][0-9]{0,8})$')
 
     def test_wrapper_preserves_existing_supplier_slot_contract(self):
         self.assertIn('anex-range', m.SUPPLIER_SLOT_MODES)
