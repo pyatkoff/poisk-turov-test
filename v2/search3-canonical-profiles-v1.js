@@ -24,8 +24,8 @@ function create(refresh){
  if(pathname!==path.slice(0,-1)&&!pathname.startsWith(path))return null;
  if(typeof refresh!=='function')throw new TypeError('Renderer callback required');
  let lifecycleGeneration=0;
- let epoch=0,raw=[],options={},links=new Map(),profiles=new Map(),anchors=new Map(),storedOffers=new Map(),legacyOffers=new Map(),legacyStates=new Map(),missing=new Set(),failed=new Set(),pending=new Set(),workers=new Set(),profileReads=new Map();
- function reset(){epoch++;workers.forEach(task=>task.controller.abort());profileReads.forEach(read=>{if(!read.started)read.resolve(null);});workers=new Set();profileReads=new Map();pending=new Set();links=new Map();profiles=new Map();anchors=new Map();storedOffers=new Map();legacyOffers=new Map();legacyStates=new Map();missing=new Set();failed=new Set();raw=[];options={};}
+ let epoch=0,raw=[],options={},links=new Map(),profiles=new Map(),anchors=new Map(),storedOffers=new Map(),legacyOffers=new Map(),legacyStates=new Map(),missing=new Set(),failed=new Set(),pending=new Set(),workers=new Set(),profileReads=new Map(),retryBatches=[],splitBudget=32;
+ function reset(){epoch++;workers.forEach(task=>task.controller.abort());profileReads.forEach(read=>{if(!read.started)read.resolve(null);});workers=new Set();profileReads=new Map();pending=new Set();links=new Map();profiles=new Map();anchors=new Map();storedOffers=new Map();legacyOffers=new Map();legacyStates=new Map();missing=new Set();failed=new Set();retryBatches=[];splitBudget=32;raw=[];options={};}
  function checkedProfile(rawProfile){const p=profile(rawProfile),previous=profiles.get(id(p.id));if(previous&&p.revision===previous.revision&&JSON.stringify(p)!==JSON.stringify(previous))throw new Error('Conflicting profile revision');return previous&&p.revision<previous.revision?previous:p;}
  function putProfile(rawProfile){const p=checkedProfile(rawProfile);profiles.set(id(p.id),p);return p;}
  async function readProfile(anytourHotelId){
@@ -83,7 +83,8 @@ function create(refresh){
   const groups=new Map(),seenByOwn=new Map();
   const detail=root.V2SearchLifecycle&&root.V2SearchLifecycle.hotelDetail;
   if(detail&&detail.profileOnly){const view=ensureView(groups,id(detail.hotelId));return view?[view]:[];}
-  storedOffers.forEach((bucket,own)=>{const first=bucket.values().next().value,view=ensureView(groups,own,first&&first.legacyHotelId);if(!view)return;let seen=seenByOwn.get(own);if(!seen){seen=new Set();seenByOwn.set(own,seen);}bucket.forEach(record=>addTour(view,record.tour,record.legacyHotelId,seen));});
+  // Exact current supplier rows must win the same provider+offer identity over
+  // LOCAL cache. The cache is inventory/fallback, not a fresher selectable copy.
   legacyOffers.forEach((bucket,old)=>{const own=links.get(old),view=ensureView(groups,own,old);if(!view)return;let seen=seenByOwn.get(own);if(!seen){seen=new Set();seenByOwn.set(own,seen);}bucket.forEach(record=>addTour(view,record.tour,old,seen));applyLegacyState(view,old);});
   raw.forEach(h=>{
    const old=legacyId(h),own=links.get(old),view=ensureView(groups,own,h&&h.id),tours=Array.isArray(h&&h.tours)?h.tours:[];if(!view||!tours.length)return;
@@ -91,25 +92,55 @@ function create(refresh){
    view.providers=Array.from(new Set(view.providers.concat(Array.isArray(h.providers)?h.providers:[h.provider||'tourvisor']).map(v=>String(v||'').toLowerCase()).filter(Boolean)));
    if(h.andromedaExpansion&&(!view.andromedaExpansion||view.andromedaExpansion.status!=='loading'))view.andromedaExpansion=h.andromedaExpansion;
   });
+  storedOffers.forEach((bucket,own)=>{const first=bucket.values().next().value,view=ensureView(groups,own,first&&first.legacyHotelId);if(!view)return;let seen=seenByOwn.get(own);if(!seen){seen=new Set();seenByOwn.set(own,seen);}bucket.forEach(record=>addTour(view,record.tour,record.legacyHotelId,seen));});
   return Array.from(groups.values()).filter(view=>view.tours.length).map(view=>{const prices=view.tours.map(t=>Number(t&&t.price)).filter(n=>Number.isFinite(n)&&n>0);view.price=prices.length?Math.min(...prices):0;return view;});
  }
  function wantedLegacyIds(){return Array.from(new Set(raw.map(legacyId).filter(Boolean).concat(Array.from(legacyOffers.keys()))));}
+ function unresolved(key,wanted){return wanted.has(key)&&!links.has(key)&&!missing.has(key)&&!failed.has(key)&&!pending.has(key);}
+ function nextBatch(){
+  const wanted=new Set(wantedLegacyIds());
+  while(retryBatches.length){
+   const retry=retryBatches.shift().filter(key=>unresolved(key,wanted));
+   if(retry.length)return retry;
+  }
+  return Array.from(wanted).filter(key=>unresolved(key,wanted)).slice(0,100);
+ }
+ function checkedBatch(payload,requested){
+  let checked;
+  try{checked=batch(payload,requested);}catch(error){
+   const failure=new Error(error&&error.message||'Invalid canonical catalogue batch');
+   failure.name='Search3CanonicalBatchValidationError';
+   throw failure;
+  }
+  // State/revision conflicts stay fail-closed for the whole subset and require
+  // an explicit retry; only malformed catalogue response rows are isolated.
+  const prepared=Array.from(checked.profiles.values(),checkedProfile);
+  return{checked,prepared};
+ }
+ function isolateInvalidBatch(requested){
+  if(requested.length<2||splitBudget<2){requested.forEach(key=>failed.add(key));return;}
+  const middle=Math.ceil(requested.length/2);
+  splitBudget-=2;
+  retryBatches.push(requested.slice(0,middle),requested.slice(middle));
+ }
  function pump(){
-  const ids=wantedLegacyIds().filter(key=>!links.has(key)&&!missing.has(key)&&!failed.has(key)&&!pending.has(key));
-  while(ids.length&&workers.size<2){
-   const requested=ids.splice(0,100),generation=epoch,controller=new AbortController(),task={controller};workers.add(task);requested.forEach(key=>pending.add(key));
-   const timer=setTimeout(()=>controller.abort(),15000),query=new URLSearchParams({catalog:'anytour'});requested.forEach(key=>query.append('legacyHotelIds[]',key));
+  let requested=nextBatch();
+  while(requested.length&&workers.size<2){
+   const current=requested,generation=epoch,controller=new AbortController(),task={controller};workers.add(task);current.forEach(key=>pending.add(key));
+   const timer=setTimeout(()=>controller.abort(),15000),query=new URLSearchParams({catalog:'anytour'});current.forEach(key=>query.append('legacyHotelIds[]',key));
    Promise.resolve().then(()=>{const fetcher=root.V2Runtime&&root.V2Runtime.fetch||root.fetch.bind(root);return fetcher(endpoint+'?'+query.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal});}).then(response=>{if(!response.ok)throw new Error('Catalogue HTTP '+response.status);return response.json();}).then(payload=>{
     if(generation!==epoch)return;if(controller.signal.aborted)throw new Error('Catalogue timeout');
-    const checked=batch(payload,requested);
-    // Validate every revision before any profile/link/missing-ID mutation. A
-    // rejected sibling must not change descriptions already visible on cards.
-    const prepared=Array.from(checked.profiles.values(),checkedProfile);
-    prepared.forEach(p=>profiles.set(id(p.id),p));checked.links.forEach((own,old)=>links.set(old,own));checked.missing.forEach(key=>missing.add(key));
-   }).catch(()=>{if(generation===epoch)requested.forEach(key=>failed.add(key));}).finally(()=>{
-    clearTimeout(timer);if(generation!==epoch)return;workers.delete(task);requested.forEach(key=>pending.delete(key));
+    const validated=checkedBatch(payload,current),checked=validated.checked;
+    validated.prepared.forEach(p=>profiles.set(id(p.id),p));checked.links.forEach((own,old)=>links.set(old,own));checked.missing.forEach(key=>missing.add(key));
+   }).catch(error=>{
+    if(generation!==epoch)return;
+    if(error&&error.name==='Search3CanonicalBatchValidationError')isolateInvalidBatch(current);
+    else current.forEach(key=>failed.add(key));
+   }).finally(()=>{
+    clearTimeout(timer);if(generation!==epoch)return;workers.delete(task);current.forEach(key=>pending.delete(key));
     try{refresh();}finally{if(generation===epoch)pump();}
    });
+   requested=nextBatch();
   }
   // Current result descriptions take the next free slot before waiting favourites.
   // Both consumers share the existing two-worker limit and in-flight ID registry.
@@ -124,7 +155,7 @@ function create(refresh){
   if(!loading&&!error&&!excluded)return;
   const node=document.createElement('div');node.className='canonical-catalog-status search-progress-error';node.setAttribute('role',error?'alert':'status');
   const text=document.createElement('span');text.textContent=error?'Не удалось загрузить описания некоторых отелей.':loading?'Загружаем описания и фотографии отелей…':'Часть предложений пока недоступна.';node.appendChild(text);
-  if(error){const button=document.createElement('button');button.type='button';button.className='secondary canonical-profile-retry';button.textContent='Повторить загрузку';button.addEventListener('click',()=>{failed.clear();refresh();});node.appendChild(button);}
+  if(error){const button=document.createElement('button');button.type='button';button.className='secondary canonical-profile-retry';button.textContent='Повторить загрузку';button.addEventListener('click',()=>{failed.clear();retryBatches=[];splitBudget=32;refresh();});node.appendChild(button);}
   results.prepend(node);
  }
  function requestRefresh(patch){if(!patch||typeof patch!=='object'||Array.isArray(patch))return refresh();const previous=options;options=Object.assign({},options,patch);try{return refresh();}finally{options=previous;}}

@@ -7,6 +7,7 @@
   const regionRequests=new Map();
   const quoteReceipts = new WeakMap();
   const andromedaQuoteChoices=new Map();
+  const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
@@ -240,7 +241,7 @@
   function stop(){
     clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
-    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();
+    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();
     return generation;
   }
   async function searchError(run,error){
@@ -450,6 +451,94 @@
     if(tour.base_search_price&&typeof tour.base_search_price==='object')normalized.base_search_price=structuredClone(tour.base_search_price);
     if(tour.search_surcharge&&typeof tour.search_surcharge==='object')normalized.search_surcharge=structuredClone(tour.search_surcharge);
     return normalized;
+  }
+  function cachedRehydration(o){
+    const r=o?.raw?.rehydration,party=r?.party,legacy=Number(r?.legacy_hotel_id),own=Number(r?.anytour_hotel_id);
+    if(!o||o.cached!==true||!r||r.schema_version!==1||r.provider!==o.provider||!['anex','andromeda'].includes(r.provider)
+      ||!Number.isSafeInteger(legacy)||legacy<1||!Number.isSafeInteger(own)||own!==Number(o.hotelId)
+      ||r.checkin!==o.day||!Number.isInteger(r.nights)||r.nights!==o.nights
+      ||!party||!Number.isInteger(party.adults)||party.adults!==o.adults||!Number.isInteger(party.children)
+      ||!Array.isArray(party.child_ages)||party.children!==party.child_ages.length
+      ||party.child_ages.some(age=>!Number.isInteger(age)||age<0||age>17)
+      ||JSON.stringify(party.child_ages)!==JSON.stringify(o.ages||[])
+      ||!r.operator||typeof r.operator.name!=='string'||!r.operator.name.trim())return null;
+    return {provider:r.provider,legacyHotelId:legacy,anytourHotelId:own,checkin:r.checkin,nights:r.nights,
+      adults:party.adults,ages:[...party.child_ages],operator:r.operator.name.trim()};
+  }
+  function cachedRehydrationSearch(o,r){
+    const base=o.search;
+    if(!base||typeof base!=='object'||Array.isArray(base)||typeof base.origin!=='string'||!base.origin||typeof base.country!=='string'||!base.country)return null;
+    return {...structuredClone(base),from:r.checkin,to:r.checkin,minNights:r.nights,maxNights:r.nights,adults:r.adults,ages:[...r.ages]};
+  }
+  async function rehydrateAnexCached(o,r,exact,p,controller,epoch){
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+    if(!url)throw new Error('ANEX сейчас недоступен.');
+    const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+      headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
+      body:JSON.stringify({action:'search',generation:epoch,params:p})});
+    const payload=await response.json().catch(()=>null),data=payload&&payload.data;
+    if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
+    if(!response.ok||payload?.ok!==true||!data)throw new Error(response.status===429?'Лимит проверки ANEX временно исчерпан.':'ANEX не смог обновить сохранённое предложение.');
+    const empty=Array.isArray(data.hotels)&&data.hotels.length===0&&data.search_ref===undefined;
+    if(data.provider!=='anex'||data.generation!==epoch||!data.date_range||data.date_range.from!==r.checkin||data.date_range.to!==r.checkin
+      ||!Array.isArray(data.hotels)||data.hotels.length>300||(!empty&&!(/^[a-f0-9]{32}$/).test(String(data.search_ref||''))))throw new Error('ANEX вернул ответ для других условий.');
+    const target=data.hotels.find(h=>Number(h?.local_id)===r.legacyHotelId);
+    if(!target)return [];
+    if(target.catalog?.source!=='tourvisor'||Number(target.catalog?.hotel_id)!==r.legacyHotelId||!Array.isArray(target.tours)||target.tours.length>300)throw new Error('ANEX вернул некорректные варианты отеля.');
+    const seen=new Set(),normalized=[];
+    for(const tour of target.tours){
+      if(tour?.search_ref!==data.search_ref)throw new Error('ANEX вернул устаревший контекст поиска.');
+      const item=await directAnexOffer(target,tour,{filters:{},generation:epoch,anexSessionCurrent:true},p,seen);
+      if(item)normalized.push(item);
+    }
+    if(!normalized.length)return [];
+    const projected=project([{anytourHotelId:r.anytourHotelId,canonicalLegacyIds:[String(r.legacyHotelId)],name:'ANEX',tours:normalized}],exact)[0]?.offers||[];
+    if(projected.length!==normalized.length||projected.some(item=>item.provider!=='anex'||item.cached||Number(item.raw?.anexLocalHotelId)!==r.legacyHotelId))throw new Error('Не удалось подготовить актуальные варианты ANEX.');
+    return projected;
+  }
+  async function rehydrateAndromedaCached(o,r,exact,p,controller,epoch){
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');
+    if(!url)throw new Error('Andromeda сейчас недоступна.');
+    const offers=[],seen=new Set();let page=1,pages=1;
+    do{
+      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
+        body:JSON.stringify({generation:epoch,page,params:p})});
+      const payload=await response.json().catch(()=>null),data=payload&&payload.data;
+      if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
+      if(!response.ok||payload?.ok!==true||!data)throw new Error(response.status===429?'Лимит проверки Andromeda временно исчерпан.':'Andromeda не смогла обновить сохранённое предложение.');
+      if(data.provider!=='andromeda'||data.generation!==epoch||data.page!==page||!Number.isInteger(data.pages_count)||data.pages_count<1||data.pages_count>20
+        ||!data.date_range||data.date_range.from!==r.checkin||data.date_range.to!==r.checkin||!Array.isArray(data.hotels)||data.hotels.length>300)throw new Error('Andromeda вернула ответ для других условий.');
+      if(page===1)pages=data.pages_count;else if(data.pages_count!==pages)throw new Error('Andromeda изменила страницы во время проверки.');
+      const target=data.hotels.find(h=>Number(h?.local_id)===r.legacyHotelId);
+      if(target){
+        if(target.mapping_status!=='resolved'||!Array.isArray(target.tours)||target.tours.length>300)throw new Error('Andromeda вернула некорректные варианты отеля.');
+        for(const tour of target.tours){
+          const item=await directAndromedaOffer(target,tour,{filters:{},generation:epoch},p,seen,data);
+          if(item){item.rehydrationParams=structuredClone(p);offers.push(item);}
+        }
+      }
+      page++;
+    }while(page<=pages);
+    if(!offers.length)return [];
+    const projected=project([{anytourHotelId:r.anytourHotelId,canonicalLegacyIds:[String(r.legacyHotelId)],name:'Andromeda',tours:offers}],exact)[0]?.offers||[];
+    if(projected.length!==offers.length||projected.some(item=>item.provider!=='andromeda'||item.cached||Number(item.raw?.andromedaLocalHotelId)!==r.legacyHotelId))throw new Error('Не удалось подготовить актуальные варианты Andromeda.');
+    return projected;
+  }
+  async function rehydrateCached(o){
+    const r=cachedRehydration(o);if(!r)return Object.freeze({state:'unsupported',provider:String(o?.provider||''),offers:Object.freeze([])});
+    const exact=cachedRehydrationSearch(o,r);if(!exact)throw new Error('Не удалось восстановить условия сохранённого тура.');
+    const p=params(exact,[String(r.legacyHotelId)],{}),epoch=generation;
+    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    const timeout=setTimeout(()=>controller.abort(),45000);
+    try{
+      const rows=r.provider==='anex'
+        ?await rehydrateAnexCached(o,r,exact,p,controller,epoch)
+        :await rehydrateAndromedaCached(o,r,exact,p,controller,epoch);
+      if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
+      return Object.freeze({state:rows.length?'current':'empty',provider:r.provider,hotelId:r.anytourHotelId,
+        offers:Object.freeze(rows.map(item=>structuredClone(item)))});
+    }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
   function rebuildDirectAndromeda(run){
     const pages=run.andromedaPages;
@@ -839,6 +928,20 @@
       return Object.freeze({hotelId:o.hotelId,offers:projected.map(item=>structuredClone(item))});
     }finally{if(activeVerification===controller)activeVerification=null;}
   }
+  function anexConcreteKey(o){
+    const raw=o&&o.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');
+    if(!o||o.cached||o.provider!=='anex'||raw?.selectionEnabled!==false||raw?.anexKind!=='concrete'||raw?.anexSessionCurrent!==true
+      ||!Number.isSafeInteger(localId)||localId<1||!Number.isInteger(epoch)||epoch!==generation
+      ||!(/^anex_online:[a-f0-9]{64}$/).test(offerRef)||!(/^[a-f0-9]{32}$/).test(searchRef))return null;
+    return {key:[epoch,searchRef,offerRef,localId].join('|'),localId,epoch,offerRef,searchRef};
+  }
+  function anexMoneyFact(value,positive=true){
+    if(!value||value.currency!=='RUB'||typeof value.amount!=='string'||!(/^(?:0|[1-9][0-9]{0,10})(?:\.[0-9]{1,4})?$/).test(value.amount))return null;
+    const parts=value.amount.split('.'),whole=Number(parts[0]),fraction=Number((parts[1]||'').padEnd(4,'0'));
+    const units=whole*10000+fraction;
+    if(!Number.isSafeInteger(units)||(positive?units<=0:units<0))return null;
+    return Object.freeze({amount:value.amount,currency:'RUB',units});
+  }
   function normalizeAnexConcrete(value,o){
     const raw=o?.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');
     if(!value||value.provider!=='anex'||value.generation!==epoch||value.search_ref!==searchRef||value.offer_ref!==offerRef
@@ -873,7 +976,48 @@
       if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
       if(!response.ok||payload?.ok!==true||!payload.data)throw new Error(response.status===429?'Лимит проверки ANEX временно исчерпан.':'ANEX не смог проверить выбранное предложение.');
       const currentOffer=normalizeAnexConcrete(payload.data,o);if(!currentOffer)throw new Error('ANEX вернул ответ для другого или устаревшего предложения.');
+      const identity=anexConcreteKey(o);if(!identity)throw new Error('Условия поиска изменились. Выберите тур заново.');
+      anexCurrentReceipts.add(identity.key);
       return currentOffer;
+    }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
+  }
+  function normalizeAnexAdditional(value,o){
+    const identity=anexConcreteKey(o),evidence=value&&value.additional_prices;
+    if(!identity||!value||value.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef
+      ||value.offer_ref!==identity.offerRef||value.status!=='additional_prices'||value.selection_state!=='disabled'
+      ||!evidence||evidence.application_state!=='applied'||evidence.arithmetic_applied!==true||evidence.final_price_verified!==false
+      ||evidence.included_in_search_price!==false||evidence.converted_currency!=='RUB'
+      ||evidence.per_person_or_package!=='per_person_by_party_type')return null;
+    const search=anexMoneyFact(evidence.search_price),surcharge=anexMoneyFact(evidence.party_surcharge),total=anexMoneyFact(evidence.search_plus_additional);
+    if(!search||!surcharge||!total||search.units+surcharge.units!==total.units
+      ||evidence.search_price.source!=='direct_anex_search'
+      ||evidence.party_surcharge.source!=='anex_b2b_additional_prices_daily'
+      ||evidence.search_plus_additional.formula!=='search_price_plus_program_date_party_additional')return null;
+    return Object.freeze({state:'additional_prices',finalPriceVerified:false,arithmeticApplied:true,
+      searchPrice:Object.freeze({amount:search.amount,currency:'RUB'}),
+      partySurcharge:Object.freeze({amount:surcharge.amount,currency:'RUB'}),
+      calculatedTotal:Object.freeze({amount:total.amount,currency:'RUB'})});
+  }
+  async function verifyAnexAdditional(o){
+    const identity=anexConcreteKey(o);
+    if(!identity||!anexCurrentReceipts.has(identity.key))throw new Error('Сначала подтвердите актуальность конкретного предложения ANEX.');
+    if(anexAdditionalAttempts.has(identity.key))throw new Error('Обязательные доплаты уже запрашивались для этого предложения. Повторите поиск для новой проверки.');
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+    if(!url)throw new Error('ANEX сейчас недоступен.');
+    anexAdditionalAttempts.add(identity.key);
+    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    const timeout=setTimeout(()=>controller.abort(),30000);
+    try{
+      const body={action:'additional_prices',generation:identity.epoch,search_ref:identity.searchRef,offer_ref:identity.offerRef,local_hotel_id:identity.localId};
+      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
+      const payload=await response.json().catch(()=>null);
+      if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
+      if(!response.ok||payload?.ok!==true||!payload.data){
+        throw new Error(response.status===429?'Лимит проверки доплат ANEX временно исчерпан.':'ANEX не смог уточнить обязательные доплаты.');
+      }
+      const result=normalizeAnexAdditional(payload.data,o);if(!result)throw new Error('ANEX не вернул применимый расчёт обязательных доплат.');
+      return result;
     }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
   function andromedaContext(value,depth=0){
@@ -892,11 +1036,13 @@
   function andromedaQuoteKey(context){return context?JSON.stringify(context):'';}
   function andromedaQuoteRequest(o,flightSelection=null){
     const rawOffer=o&&o.raw,ctx=andromedaContext(rawOffer?.offer_context),localId=Number(rawOffer?.andromedaLocalHotelId);
+    const quoteParams=rawOffer?.rehydrationParams&&typeof rawOffer.rehydrationParams==='object'&&!Array.isArray(rawOffer.rehydrationParams)
+      ?rawOffer.rehydrationParams:searchParams;
     if(!o||o.cached||o.provider!=='andromeda'||rawOffer?.selectionEnabled!==false||rawOffer?.quoteRequired!==true
       ||!ctx||ctx.generation!==generation||ctx.offer_ref!==String(rawOffer?.offerRef||'')
-      ||!Number.isSafeInteger(localId)||localId<1||!searchParams)return null;
+      ||!Number.isSafeInteger(localId)||localId<1||!quoteParams)return null;
     const {hotel_scope,...identity}=ctx,body={action:flightSelection?'quote_select_flights':'quote',generation:ctx.generation,page:ctx.page,
-      params:structuredClone(searchParams),offer_context:identity};
+      params:structuredClone(quoteParams),offer_context:identity};
     if(hotel_scope){if(hotel_scope.local_id!==localId)return null;body.hotel_scope=structuredClone(hotel_scope);}
     const listing=String(rawOffer?.listing_price_ref||'');if((/^listing_[a-f0-9]{64}$/).test(listing))body.listing_price_ref=listing;
     if(flightSelection){
@@ -1007,5 +1153,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAndromeda,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,rehydrateCached,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAndromeda,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);

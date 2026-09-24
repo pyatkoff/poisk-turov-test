@@ -33,6 +33,14 @@ const currentAnexConcrete=(body,{ready=false}={})=>({ok:true,data:{
  finalPriceReady:ready,finalPrice:ready?'1530000':null,price:ready?'1530000':null,
  offer:{final_price_verified:false,context:{current_context_verified:true}}
 }});
+const additionalAnexConcrete=(body,{search='1510000',surcharge='20000',total='1530000'}={})=>({ok:true,data:{
+ provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'additional_prices',selection_state:'disabled',
+ additional_prices:{source:'anex_b2b_additional_prices_daily',application_state:'applied',converted_currency:'RUB',
+  per_person_or_package:'per_person_by_party_type',included_in_search_price:false,arithmetic_applied:true,final_price_verified:false,
+  party_surcharge:{amount:surcharge,currency:'RUB',source:'anex_b2b_additional_prices_daily'},
+  search_price:{amount:search,currency:'RUB',source:'direct_anex_search'},
+  search_plus_additional:{amount:total,currency:'RUB',formula:'search_price_plus_program_date_party_additional'}}
+}});
 const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),localId=101,pagesCount=1,status='complete',searchRef='c'.repeat(64)}={})=>{
  const page=Number(body.page),hotels=empty?[]:[{local_id:localId,mapping_status:'resolved',tours:[{
   provider:'andromeda',price:{amount:'1480000',currency:'RUB'},checkin:body.params.dateFrom,nights:7,adults:2,children:0,
@@ -55,6 +63,12 @@ const andromedaChoice=(localId=101)=>({schema_version:1,provider:'andromeda',loc
   {direction:'0',flight_ref:'flight_'+'2'.repeat(32),name:'OUT B',datebeg:trip.from,class:'ECONOM',departure:{town:'Москва',port:'VKO'},arrival:{town:'Анталья',port:'AYT'}},
   {direction:'1',flight_ref:'flight_'+'3'.repeat(32),name:'BACK A',datebeg:'2026-10-06',class:'ECONOM',departure:{town:'Анталья',port:'AYT'},arrival:{town:'Москва',port:'SVO'}}
  ]});
+function rehydratableSnapshot(params,provider){
+ const data=snapshot(params,[provider]),row=data.hotels[0].offers[0],name=provider==='anex'?'ANEX':'FUN&SUN';
+ row.listing.tour.party.child_ages=[];
+ row.listing.operator={raw:name,canonical_name:name};
+ return data;
+}
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
@@ -150,6 +164,57 @@ function canonicalMeals(h){
   {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']});
  h.data.catalog.mealPlanAvailable=true;
 }
+test('cached ANEX rehydrates with a fresh same-provider search identity and never sends stale refs',async()=>{
+ const staleOffer=hash('anex'),staleSearch=hash('search-anex');
+ const h=harness({
+  database:async(_n,p)=>rehydratableSnapshot(p,'anex'),
+  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{offerRef:'anex_online:'+'9'.repeat(64),localId:101,searchRef:'f'.repeat(32)})}})
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ assert.ok(cached?.cached);assert.ok(cached.raw?.rehydration,'LOCAL cached offer carries durable descriptor');
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'current');assert.equal(result.provider,'anex');assert.equal(result.hotelId,501);assert.equal(result.offers.length,1);
+ const current=result.offers[0];assert.equal(current.cached,false);assert.equal(current.provider,'anex');assert.equal(current.raw.anexSessionCurrent,true);
+ assert.equal(current.raw.searchRef,'f'.repeat(32));assert.equal(current.raw.offerRef,'anex_online:'+'9'.repeat(64));
+ assert.equal(h.anexCalls.length,1);assert.equal(h.anexCalls[0].action,'search');
+ const sent=JSON.stringify(h.anexCalls[0]);assert.equal(sent.includes(staleOffer),false);assert.equal(sent.includes(staleSearch),false);
+ assert.equal(h.anexCalls[0].params.dateFrom,trip.from);assert.equal(h.anexCalls[0].params.dateTo,trip.from);
+ assert.equal(h.anexCalls[0].params.nightsFrom,7);assert.equal(h.anexCalls[0].params.nightsTo,7);
+ assert.deepEqual(Array.from(h.anexCalls[0].params.hotelIds||[]),['101']);
+});
+test('cached Andromeda rehydrates in the same provider and retains exact scope for quote follow-up',async()=>{
+ const h=harness({
+  database:async(_n,p)=>rehydratableSnapshot(p,'andromeda'),
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body,{localId:101,offerRef:'offer_'+'8'.repeat(64),searchRef:'7'.repeat(64)})}}),
+  andromedaQuote:async body=>{
+   assert.equal(body.params.dateFrom,trip.from);assert.equal(body.params.dateTo,trip.from);
+   assert.equal(body.params.nightsFrom,7);assert.equal(body.params.nightsTo,7);
+   assert.deepEqual(Array.from(body.params.hotelIds||[]),['101']);
+   return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified()})}};
+  }
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
+ assert.ok(cached?.cached);assert.ok(cached.raw?.rehydration);
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'current');assert.equal(result.offers.length,1);
+ const current=result.offers[0];assert.equal(current.cached,false);assert.equal(current.provider,'andromeda');
+ assert.equal(current.raw.offerRef,'offer_'+'8'.repeat(64));assert.ok(current.raw.rehydrationParams);
+ const quote=await h.data.verifyAndromeda(current);
+ assert.equal(quote.state,'quote_verified');assert.equal(h.andromedaQuoteCalls.length,1);
+});
+test('cached same-provider rehydration returns empty without falling through to another provider',async()=>{
+ const h=harness({
+  database:async(_n,p)=>rehydratableSnapshot(p,'anex'),
+  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{empty:true})}})
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'empty');assert.equal(result.provider,'anex');assert.equal(result.offers.length,0);
+ assert.equal(h.nativeCalls.length,0);assert.equal(h.calls.length,0,'rehydration does not start Tourvisor');
+});
 test('init loads canonical meal authority through the exposed LOCAL reader action',async()=>{
  const h=harness({api:(action)=>{
   if(action==='meals')return [{id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'}];
@@ -270,6 +335,65 @@ test('expanded concrete ANEX offer verifies in the same provider session without
  assert.equal(request.search_ref,verifyRef);assert.equal(request.offer_ref,concrete.raw.offerRef);assert.equal(request.local_hotel_id,101);
  assert.equal(current.state,'current');assert.equal(current.currentContextVerified,true);assert.equal(current.finalPriceReady,false);
  assert.equal(current.finalPrice,null);assert.equal(current.finalPriceVerified,false);
+});
+test('ANEX AdditionalPrices requires a current concrete receipt and is explicit no-replay',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const h=harness({anex:async body=>{
+  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
+  if(body.action==='offer')return {response:{ok:true,status:200,json:async()=>currentAnexConcrete(body)}};
+  if(body.action==='additional_prices')return {response:{ok:true,status:200,json:async()=>additionalAnexConcrete(body)}};
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');verification=true;
+ const concrete=(await h.data.expandAnexGroup(group)).offers[0];
+ const before=h.anexCalls.length;
+ await assert.rejects(h.data.verifyAnexAdditional(concrete),/Сначала подтвердите/);
+ assert.equal(h.anexCalls.length,before,'AdditionalPrices cannot reach HTTP before current-offer receipt');
+ await h.data.verifyAnexConcrete(concrete);
+ const result=await h.data.verifyAnexAdditional(concrete);
+ const request=h.anexCalls.at(-1);
+ assert.deepEqual(Object.keys(request).sort(),['action','generation','local_hotel_id','offer_ref','search_ref']);
+ assert.equal(request.action,'additional_prices');assert.equal(request.generation,concrete.raw.anexGeneration);
+ assert.equal(request.search_ref,verifyRef);assert.equal(request.offer_ref,concrete.raw.offerRef);assert.equal(request.local_hotel_id,101);
+ assert.equal(result.state,'additional_prices');assert.equal(result.finalPriceVerified,false);assert.equal(result.arithmeticApplied,true);
+ assert.deepEqual(JSON.parse(JSON.stringify(result.searchPrice)),{amount:'1510000',currency:'RUB'});
+ assert.deepEqual(JSON.parse(JSON.stringify(result.partySurcharge)),{amount:'20000',currency:'RUB'});
+ assert.deepEqual(JSON.parse(JSON.stringify(result.calculatedTotal)),{amount:'1530000',currency:'RUB'});
+ const sent=h.anexCalls.length;
+ await assert.rejects(h.data.verifyAnexAdditional(concrete),/уже запрашивались/);
+ assert.equal(h.anexCalls.length,sent,'same AdditionalPrices request cannot replay in one browser generation');
+});
+test('ANEX AdditionalPrices rejects inconsistent server arithmetic',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const h=harness({anex:async body=>{
+  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
+  if(body.action==='offer')return {response:{ok:true,status:200,json:async()=>currentAnexConcrete(body)}};
+  if(body.action==='additional_prices')return {response:{ok:true,status:200,json:async()=>additionalAnexConcrete(body,{search:'1510000',surcharge:'20000',total:'1540000'})}};
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');verification=true;
+ const concrete=(await h.data.expandAnexGroup(group)).offers[0];await h.data.verifyAnexConcrete(concrete);
+ await assert.rejects(h.data.verifyAnexAdditional(concrete),/применимый расчёт/);
+ assert.equal(h.anexCalls.filter(call=>call.action==='additional_prices').length,1);
+});
+test('Stop aborts pending ANEX AdditionalPrices and invalidates its receipt',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32),gate=defer();let verification=false,additionalSignal=null;
+ const h=harness({anex:async(body,signal)=>{
+  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
+  if(body.action==='offer')return {response:{ok:true,status:200,json:async()=>currentAnexConcrete(body)}};
+  if(body.action==='additional_prices'){additionalSignal=signal;await gate.promise;return {response:{ok:true,status:200,json:async()=>additionalAnexConcrete(body)}};}
+  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');verification=true;
+ const concrete=(await h.data.expandAnexGroup(group)).offers[0];await h.data.verifyAnexConcrete(concrete);
+ const pending=h.data.verifyAnexAdditional(concrete);await waitFor(()=>additionalSignal!==null,'pending AdditionalPrices request required');
+ assert.equal(additionalSignal.aborted,false);h.data.stop();assert.equal(additionalSignal.aborted,true);
+ gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
+ await assert.rejects(h.data.verifyAnexAdditional(concrete),/Сначала подтвердите/);
+ assert.equal(h.anexCalls.filter(call=>call.action==='additional_prices').length,1,'stale AdditionalPrices is never replayed');
 });
 test('only exact-expanded session-current ANEX concrete rows can use provider follow-up',async()=>{
  const h=harness();const raw={selectionEnabled:false,anexKind:'concrete',anexLocalHotelId:101,anexGeneration:1,
@@ -944,5 +1068,52 @@ test('calendar reuse has bounded entry and payload memory rather than an invento
  const large=harness({clock:()=>now,database:(i,p)=>{const data=calendarSnapshot(p,new Date(now+60000).toISOString());data.hotels[0].hotel.description='x'.repeat(2200000);return data;}});
  const rows=await calendarRead(large,undefined,{},trip,calendarFrom,calendarFrom);assert.equal(rows.length,1,'Oversize valid results still return');
  await calendarRead(large,undefined,{},trip,calendarFrom,calendarFrom);assert.equal(large.dbBodies.length,2,'Oversize results are not retained in memory');
+});
+
+function cachedProviderSnapshot(params,provider,operatorName){
+ const data=snapshot(params,[provider]),row=data.hotels[0].offers[0];
+ row.listing.tour.party.child_ages=[];
+ row.listing.operator={raw:operatorName,canonical_name:operatorName};
+ return data;
+}
+test('cached ANEX rehydration performs a fresh exact same-provider search without stale supplier refs',async()=>{
+ const staleOffer=hash('stale-anex-offer'),staleSearch=hash('stale-anex-search');
+ const h=harness({
+  database:(i,p)=>{const data=cachedProviderSnapshot(p,'anex','ANEX');data.hotels[0].offers[0].listing.identity.offer_ref_digest=staleOffer;data.hotels[0].offers[0].listing.identity.search_ref_digest=staleSearch;return data;},
+  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{localId:101,searchRef:'f'.repeat(32),offerRef:'anex_online:'+'9'.repeat(64)})}})
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');assert.ok(cached?.cached);assert.ok(cached.raw.rehydration);
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'current');assert.equal(result.provider,'anex');assert.equal(result.hotelId,501);assert.equal(result.offers.length,1);
+ const request=h.anexCalls.at(-1);assert.equal(request.action,'search');assert.equal(request.params.dateFrom,trip.from);assert.equal(request.params.dateTo,trip.from);
+ assert.equal(request.params.nightsFrom,7);assert.equal(request.params.nightsTo,7);assert.deepEqual(request.params.hotelIds,['101']);
+ const sent=JSON.stringify(request);assert.equal(sent.includes(staleOffer),false);assert.equal(sent.includes(staleSearch),false,'cached supplier session identity is never replayed');
+ const live=result.offers[0];assert.equal(live.cached,false);assert.equal(live.provider,'anex');assert.equal(live.raw.anexSessionCurrent,true);assert.equal(live.raw.anexLocalHotelId,101);
+});
+test('cached Andromeda rehydration carries its fresh exact scope into quote verification',async()=>{
+ const h=harness({
+  database:(i,p)=>cachedProviderSnapshot(p,'andromeda','FUN&SUN'),
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body,{localId:101,offerRef:'offer_'+'8'.repeat(64),searchRef:'7'.repeat(64)})}}),
+  andromedaQuote:async body=>({response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101,'1499000')})}})
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');assert.ok(cached?.cached);assert.ok(cached.raw.rehydration);
+ const result=await h.data.rehydrateCached(cached);assert.equal(result.state,'current');assert.equal(result.offers.length,1);
+ const live=result.offers[0];assert.equal(live.cached,false);assert.equal(live.provider,'andromeda');
+ assert.equal(h.nativeCalls.length,1);assert.equal(h.nativeCalls[0].params.dateFrom,trip.from);assert.equal(h.nativeCalls[0].params.dateTo,trip.from);assert.deepEqual(h.nativeCalls[0].params.hotelIds,['101']);
+ const quote=await h.data.verifyAndromeda(live);assert.equal(quote.state,'quote_verified');assert.equal(h.andromedaQuoteCalls.length,1);
+ assert.deepEqual(h.andromedaQuoteCalls[0].params,h.nativeCalls[0].params,'quote uses the exact fresh scope that created the rehydrated offer context');
+});
+test('Stop aborts pending cached same-provider rehydration and stale response cannot become current',async()=>{
+ const gate=defer();let signal=null;
+ const h=harness({
+  database:(i,p)=>cachedProviderSnapshot(p,'anex','ANEX'),
+  anex:async(body,s)=>{signal=s;await gate.promise;return {response:{ok:true,status:200,json:async()=>directAnex(body,{localId:101})}};}
+ });
+ canonicalMeals(h);await h.resume();const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ const pending=h.data.rehydrateCached(cached);await waitFor(()=>signal!==null,'pending cached rehydration required');assert.equal(signal.aborted,false);
+ h.data.stop();assert.equal(signal.aborted,true);gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
+ assert.equal(h.anexCalls.filter(call=>call.action==='search').length,1,'stale cached rehydration is never replayed');
 });
 (async()=>{for(const [name,fn]of tests){await fn();console.log('PASS',name);}console.log('SEARCH3_PROTOTYPE_INVENTORY_LIFECYCLE_OK',tests.length);})().catch(error=>{console.error(error);process.exitCode=1;});
