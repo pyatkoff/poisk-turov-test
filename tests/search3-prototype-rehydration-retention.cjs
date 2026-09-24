@@ -52,6 +52,10 @@ test('bridge preserves the frozen data API and current scope getter', () => {
   assert.equal(h.data.marker, 'base');
   assert.deepEqual(clone(h.data.currentSupplierScope), {hotel: 'supplier:101'});
   assert.equal(h.data.catalog.mealPlans.length, 0);
+  assert.ok(Object.getOwnPropertyDescriptor(h.data, 'currentSupplierScope'), 'downstream wrappers can copy the complete descriptor API');
+  const downstream = Object.freeze(Object.defineProperties({}, Object.getOwnPropertyDescriptors(h.data)));
+  assert.deepEqual(clone(downstream.currentSupplierScope), {hotel: 'supplier:101'});
+  assert.equal(typeof downstream.rehydrateCached, 'function');
 });
 
 test('exact same-provider rehydration replaces only the cached row in the full current union', async () => {
