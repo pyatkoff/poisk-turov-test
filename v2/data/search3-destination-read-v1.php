@@ -58,11 +58,12 @@ function search3_destination_read(PDO $db,string $action,array $query): array
 
     if($action==='countries'){
         $departureId=search3_destination_positive_int($query['departureId']??null,'DEPARTURE_ID');
-        $stmt=$db->prepare("SELECT DISTINCT c.id AS external_id
+        $stmt=$db->prepare("SELECT c.id AS external_id,c.name AS source_name
             FROM catalog_departure_countries dc
             JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1
             WHERE dc.departure_id=? AND dc.is_active=1
-            ORDER BY c.name,c.id
+            GROUP BY c.id,c.name
+            ORDER BY source_name,c.id
             LIMIT 1001");
         $stmt->execute([$departureId]);
         $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
