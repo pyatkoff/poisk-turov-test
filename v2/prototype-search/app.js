@@ -541,7 +541,7 @@ function openNights(){nightsDraft={min:draft.minNights,max:draft.maxNights,phase
 function renderNightSelection(){$$('.night-grid button').forEach(b=>{const n=+b.dataset.value,active=n===nightsDraft.min||n===nightsDraft.max;b.classList.toggle('active',active);b.classList.toggle('in-range',n>nightsDraft.min&&n<nightsDraft.max);b.setAttribute('aria-pressed',n>=nightsDraft.min&&n<=nightsDraft.max)});$$('.nights-options button').forEach(b=>b.setAttribute('aria-pressed',nightsDraft.min===+b.dataset.value&&nightsDraft.max===+b.dataset.value));const label=durationText({minNights:nightsDraft.min,maxNights:nightsDraft.max});$('.night-selection').textContent=nightsDraft.phase?'Выберите вторую границу или подтвердите '+label:'Выбрано: '+label;$('[data-action="apply-nights"]').textContent='Выбрать '+label;}
 function openGallery(id,index=0){const h=hotels.find(x=>x.id===id);if(!h?.photos.length){toast('Фотографии этого отеля пока недоступны.');return;}showModal('gallery',h.name,'ФОТОГРАФИИ ОТЕЛЯ','');gallery={id,index};renderGallery();}
 function renderGallery(){const h=hotels.find(x=>x.id===gallery.id);if(!h?.photos.length)return;$('#modal-body').innerHTML=`<div class="gallery-stage"><img id="gallery-image" src="${esc(photoUrl(h,gallery.index))}" alt="Фото ${gallery.index+1} из ${h.photos.length}"><button class="icon-button gallery-arrow prev" data-action="gallery-prev" aria-label="Предыдущее фото">${icon('back')}</button><button class="icon-button gallery-arrow next" data-action="gallery-next" aria-label="Следующее фото">${icon('arrow')}</button></div><div class="gallery-caption"><span>${esc(h.name)}</span><span>${gallery.index+1} / ${h.photos.length}</span></div><div class="gallery-thumbs">${h.photos.map((p,i)=>`<button data-action="gallery-index" data-value="${i}" class="${gallery.index===i?'active':''}" aria-label="Фото ${i+1}"><img src="${esc(p)}" alt=""></button>`).join('')}</div>`;}
-let flightDraft=null,andromedaQuoteDraft=null,anexCurrentDraft=null,selectionGeneration=0;
+let flightDraft=null,andromedaQuoteDraft=null,anexCurrentDraft=null,rehydrationDraft=null,selectionGeneration=0;
 const flightPairFor=o=>o?.variants?.[Number(o.flightChoiceId)]||null;
 function offerFromKey(key){return hotels.flatMap(h=>h.offers||[]).find(o=>o.key===key)||null;}
 function fuelText(o){const n=data.fuel(o.tour,flightPairFor(o));return n===null?'Сбор уточняется':n===0?'Без доплаты':money(n)+' · условия включения уточняются';}
@@ -653,9 +653,68 @@ async function applyAnexAdditionalPrices(){
   }
  }
 }
+const rehydrationText=value=>String(value||'').toLocaleLowerCase('ru-RU').replace(/\s+/g,' ').trim();
+function sameRehydratedTour(candidate,target){
+ if(!candidate||!target||candidate.cached||candidate.provider!==target.provider||candidate.hotelId!==target.hotelId
+   ||candidate.day!==target.day||candidate.nights!==target.nights||candidate.adults!==target.adults
+   ||JSON.stringify(candidate.ages||[])!==JSON.stringify(target.ages||[]))return false;
+ if(rehydrationText(candidate.operator)!==rehydrationText(target.operator))return false;
+ const room=rehydrationText(target.room),meal=rehydrationText(target.mealRaw||target.meal);
+ if(room&&!/уточняется/.test(room)&&rehydrationText(candidate.room)!==room)return false;
+ if(meal&&!/уточняется/.test(meal)){
+  const liveMeals=[candidate.mealRaw,candidate.meal].map(rehydrationText).filter(Boolean);
+  if(!liveMeals.includes(meal))return false;
+ }
+ if(['regular','charter'].includes(target.flight)&&candidate.flight!==target.flight)return false;
+ return true;
+}
+function openRehydratedVariants(cached,offers){
+ const h=selectedTourHotel(cached);if(!h||!offers.length)return;
+ rehydrationDraft={cached,offers:[...offers]};
+ const provider=cached.provider==='anex'?'ANEX':'Andromeda';
+ showModal('rehydrated-variants','Предложение обновилось',provider+' · АКТУАЛЬНЫЕ ВАРИАНТЫ',`
+  <p class="modal-intro">Сохранённый вариант больше не совпал один в один. Ниже только свежие предложения того же поставщика для этого отеля, даты, длительности и состава туристов.</p>
+  <div class="favorite-list">${offers.map(o=>`<article class="favorite-item"><div class="favorite-info"><strong>${dateText(o.day)} · ${nightsText(o.nights)}</strong><h3>${esc(o.room)}</h3><p>${esc(mealLabel(o))} · ${esc(o.operator)}</p></div><div class="favorite-summary"><strong class="saved-price">${money(o.total)}</strong><span>${flightLabel(o)}</span></div><div class="favorite-actions"><button class="primary" data-action="rehydrated-offer" data-key="${esc(o.key)}">Проверить этот вариант ${icon('arrow')}</button></div></article>`).join('')}</div>`,true);
+ $('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="secondary" data-action="modal-back">К сохранённому туру</button>';
+}
+function chooseRehydratedOffer(key){
+ const draft=rehydrationDraft,offer=draft?.offers.find(item=>item.key===key);if(!offer)return;
+ rehydrationDraft=null;selectedOffer={...offer};renderRealOffer();refreshHotel(offer.hotelId);
+}
+function genericExactRefresh(o,h){
+ if(!h.legacyIds.length){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}
+ const next={...structuredClone(o.search),from:o.day,to:o.day,minNights:o.nights,maxNights:o.nights,adults:o.adults,ages:[...o.ages]};
+ const exactFilters=defaultFilters();exactFilters.hotelId=h.id;if(o.meal&&!/уточняется/i.test(o.meal))exactFilters.meals=[o.meal];if(o.operator&&!/уточняется/i.test(o.operator))exactFilters.operators=[o.operator];if(['regular','charter'].includes(o.flight))exactFilters.flight=[o.flight];
+ try{data.params(next,h.legacyIds,exactFilters);}catch(error){toast(error.message);return;}
+ closeModal();state.search=next;draft=structuredClone(next);draftDestination=null;state.filters=exactFilters;state.selectedDate=null;state.openHotel=h.id;
+ updateSearchUI();updateURL();renderFilters();runSearch({hotelIds:h.legacyIds,exactRefresh:true,exactRefreshTarget:selectedTourOfferSnapshot(o)});
+ $('#search-status').scrollIntoView({behavior:scrollBehavior(),block:'start'});
+}
 async function refreshHotel(id){
  const o=selectedOffer,h=selectedTourHotel(o);
  if(!o||o.hotelId!==id||!needsRefresh(o)||!h){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}
+ if(o.cached&&['anex','andromeda'].includes(o.provider)&&o.raw?.rehydration){
+  const run=++selectionGeneration;selectedOffer={...o,loading:true,quoteError:''};renderRealOffer();
+  try{
+   const refreshed=await data.rehydrateCached(o);
+   if(run!==selectionGeneration||!$('#modal').open||modalType!=='offer'||selectedOffer?.key!==o.key)return;
+   if(refreshed.state==='unsupported'){selectedOffer={...o,loading:false};genericExactRefresh(o,h);return;}
+   const offers=Array.isArray(refreshed.offers)?refreshed.offers:[];
+   const exact=offers.find(item=>sameRehydratedTour(item,o));
+   if(exact){
+    selectedOffer={...exact,loading:false};renderRealOffer();
+    await refreshHotel(id);return;
+   }
+   selectedOffer={...o,loading:false};
+   if(offers.length){openRehydratedVariants(o,offers);return;}
+   genericExactRefresh(o,h);
+  }catch(error){
+   if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===o.key){
+    selectedOffer={...o,loading:false,quoteError:error.message};renderRealOffer();
+   }
+  }
+  return;
+ }
  if(o.provider==='anex'&&o.raw?.anexKind==='concrete'&&o.raw?.anexSessionCurrent===true){
   const run=++selectionGeneration;selectedOffer={...o,loading:true,quoteError:''};renderRealOffer();
   try{
@@ -683,7 +742,6 @@ async function refreshHotel(id){
   }
   return;
  }
- if(!h.legacyIds.length){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}
  if(o.provider==='anex'&&o.raw?.anexKind==='group_minimum'){
   const run=++selectionGeneration;terminalizeSearchForVerification();renderResults({keepFilters:true});
   selectedOffer={...o,loading:true,quoteError:''};renderRealOffer();
@@ -702,12 +760,7 @@ async function refreshHotel(id){
   }
   return;
  }
- const next={...structuredClone(o.search),from:o.day,to:o.day,minNights:o.nights,maxNights:o.nights,adults:o.adults,ages:[...o.ages]};
- const exactFilters=defaultFilters();exactFilters.hotelId=id;if(o.meal&&!/уточняется/i.test(o.meal))exactFilters.meals=[o.meal];if(o.operator&&!/уточняется/i.test(o.operator))exactFilters.operators=[o.operator];if(['regular','charter'].includes(o.flight))exactFilters.flight=[o.flight];
- try{data.params(next,h.legacyIds,exactFilters);}catch(error){toast(error.message);return;}
- closeModal();state.search=next;draft=structuredClone(next);draftDestination=null;state.filters=exactFilters;state.selectedDate=null;state.openHotel=id;
- updateSearchUI();updateURL();renderFilters();runSearch({hotelIds:h.legacyIds,exactRefresh:true,exactRefreshTarget:selectedTourOfferSnapshot(o)});
- $('#search-status').scrollIntoView({behavior:scrollBehavior(),block:'start'});
+ genericExactRefresh(o,h);
 }
 function openLeadPreview(){
  const o=selectedOffer,h=selectedTourHotel(o);if(!o?.tour||!h)return;if(o.pricePending){toast('Цена перелёта пока не подтверждена. Выберите другой вариант.');return;}storeSelectedTour(o,h);updateNav();
@@ -991,7 +1044,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'group-more':offerView.limits[b.dataset.value]=(offerView.limits[b.dataset.value]||4)+8;renderOfferList();break;
  case 'reset-offer-filters':offerView.flight='';offerView.room='';offerView.meal='';renderOfferList(true);break;
  case 'more-offers':{const h=hotels.find(h=>h.id===id),offers=hotelOffers(h),off=+b.dataset.offset;$('#all-offers-list').insertAdjacentHTML('beforeend',offers.slice(off,off+30).map(o=>offerHTML(h,o)).join(''));if(off+30>=offers.length)b.remove();else b.dataset.offset=off+30;break}
- case 'offer':openOffer(b.dataset.key);break;case 'confirm-tour':confirmTour();break;case 'apply-andromeda-flights':applyAndromedaFlightChoice();break;case 'anex-additional-prices':applyAnexAdditionalPrices();break;case 'accept-price':if(verifiedOffer){const accepted=verifiedOffer;verifiedOffer=null;completeTour(accepted);}break;
+ case 'offer':openOffer(b.dataset.key);break;case 'rehydrated-offer':chooseRehydratedOffer(b.dataset.key);break;case 'confirm-tour':confirmTour();break;case 'apply-andromeda-flights':applyAndromedaFlightChoice();break;case 'anex-additional-prices':applyAnexAdditionalPrices();break;case 'accept-price':if(verifiedOffer){const accepted=verifiedOffer;verifiedOffer=null;completeTour(accepted);}break;
  case 'gallery':openGallery(id,state.photoIndexes[id]||0);break;case 'gallery-next':case 'gallery-prev':{const count=hotels.find(h=>h.id===gallery.id).photos.length;gallery.index=(gallery.index+(action==='gallery-next'?1:-1)+count)%count;renderGallery();break}
  case 'gallery-index':gallery.index=+b.dataset.value;renderGallery();break;
  case 'favorite':toggleFavorite(id);break;case 'favorites':openFavorites();break;
