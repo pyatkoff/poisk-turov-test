@@ -200,23 +200,50 @@ $rangeEnd=new DateTimeImmutable($to,new DateTimeZone('UTC'));
 $inclusiveDays=(int)$rangeStart->diff($rangeEnd)->days+1;
 if($rangeEnd<$rangeStart||$inclusiveDays<1||$inclusiveDays>21)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_DATE_RANGE');
 if($inclusiveDays>7 && $maxCaptures>0)throw new InvalidArgumentException('ANDROMEDA_COLLECTOR_RANGE_CAPTURE_UNSUPPORTED');
+$collectWindow=static function(array $windowRequest)use(
+    $searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
+    $maxCaptures,$captureMode,$maxCaptureSeconds,$hasReusableSurcharge
+):array{
+    try{
+        return AnyTourAndromedaLocalOfferCollectorV1::collect(
+            $windowRequest,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
+            $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
+        );
+    }catch(RuntimeException $error){
+        if($error->getMessage()!=='supplier_unavailable')throw $error;
+        return [
+            'source'=>'andromeda-local-offer-collector-v1',
+            'status'=>'incomplete',
+            'incomplete_reason'=>'supplier_unavailable_before_first_page',
+            'pages'=>0,
+            'advertised_pages'=>null,
+            'received_offers'=>0,
+            'mapped_offers'=>0,
+            'owned_operator_offers'=>null,
+            'eligible_offers'=>null,
+            'capture_mode'=>$captureMode,
+            'capture_queue_offers'=>0,
+            'reusable_surcharge_groups'=>0,
+            'capture_time_budget_seconds'=>$maxCaptureSeconds,
+            'capture_time_budget_exhausted'=>false,
+            'surcharge_capture_attempts'=>0,
+            'surcharge_ready'=>0,
+            'autosave_published'=>false,
+            'autosave_reason'=>'supplier_unavailable',
+            'ready_offer_count'=>null,
+            'confirmation_required_offer_count'=>null,
+            'autosave'=>['published'=>false,'reason'=>'supplier_unavailable'],
+            'selection_authority'=>false,
+            'booking_calls'=>0,
+        ];
+    }
+};
 if($inclusiveDays<=7){
-    $result=AnyTourAndromedaLocalOfferCollectorV1::collect(
-        $request,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
-        $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
-    );
+    $result=$collectWindow($request);
 }else{
     $result=AnyTourAndromedaLocalOfferCollectorV1::collectRange(
         $request,$from,$to,
-        static function(array $windowRequest,int $index,array $window)use(
-            $searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
-            $maxCaptures,$captureMode,$maxCaptureSeconds,$hasReusableSurcharge
-        ):array{
-            return AnyTourAndromedaLocalOfferCollectorV1::collect(
-                $windowRequest,$searchComplete,$loadCohort,$candidateAllowed,$capture,$autosave,
-                $maxCaptures,$captureMode,$maxCaptureSeconds,null,$hasReusableSurcharge
-            );
-        }
+        static fn(array $windowRequest,int $index,array $window):array=>$collectWindow($windowRequest)
     );
 }
 echo json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";

@@ -500,6 +500,13 @@ $cliSource=file_get_contents(__DIR__.'/../scripts/ops/andromeda_local_offer_coll
 ok(is_string($cliSource)&&str_contains($cliSource,'if (($result[\'status\'] ?? null) !== \'complete\') exit(1);'),'CLI must propagate incomplete collector status after printing receipt');
 ok(str_contains($cliSource,'$inclusiveDays>7')&&str_contains($cliSource,'collectRange('),'CLI must window wide date ranges');
 ok(str_contains($cliSource,'ANDROMEDA_COLLECTOR_RANGE_CAPTURE_UNSUPPORTED'),'wide capture mode must fail before supplier capture');
+ok(str_contains($cliSource,"supplier_unavailable_before_first_page")
+    &&str_contains($cliSource,'catch(RuntimeException $error)')
+    &&str_contains($cliSource,"'pages'=>0")
+    &&str_contains($cliSource,"'autosave_reason'=>'supplier_unavailable'")
+    &&str_contains($cliSource,"'selection_authority'=>false")
+    &&str_contains($cliSource,"'booking_calls'=>0"),
+    'first-page supplier unavailability must emit bounded incomplete no-authority receipt');
 
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('ANEX')===false,'ANEX excluded');
 ok(AnyTourAndromedaLocalOfferCollectorV1::ownsOperator('PEGAS Touristik')===false,'PEGAS excluded');
