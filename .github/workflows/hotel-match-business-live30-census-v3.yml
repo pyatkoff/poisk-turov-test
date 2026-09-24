@@ -1,0 +1,20 @@
+name: MATCH business live30 postwrite census v3
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_business_live30_census_v3.php'
+      - 'tests/hotel_match_business_live30_census_v3_test.php'
+      - '.github/workflows/hotel-match-business-live30-census-v3.yml'
+permissions: {contents: read}
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/business-live30-postwrite-census-v3-20260924'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_business_live30_census_v3.php
+      - run: php scripts/diagnostics/hotel_match_business_live30_census_v3.php --self-test
+      - run: php tests/hotel_match_business_live30_census_v3_test.php
