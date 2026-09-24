@@ -44,6 +44,13 @@ _REMOTE_SECRET_BLOCK = r"""env={k:v for k,v in os.environ.items() if k not in ('
                 fail('anex_b2b_secret_transport')
             env['ANEX_API_TOKEN']=api_token
             env['ANEX_B2B_TOKEN']=b2b_token"""
+_REMOTE_GENERATION_LINE = (
+    "        generation=str(2100000000-(int(hashlib.sha256(operation.encode()).hexdigest()[:6],16)%1000000))"
+)
+_REMOTE_GENERATION_BLOCK = r"""        if mode in ('anex-demand','anex-range'):
+            generation=str(900000000-(int(hashlib.sha256(operation.encode()).hexdigest()[:6],16)%1000000))
+        else:
+            generation=str(2100000000-(int(hashlib.sha256(operation.encode()).hexdigest()[:6],16)%1000000))"""
 
 
 def need(value: bool, reason: str) -> None:
@@ -67,11 +74,14 @@ def validated_anex_secret_payload() -> dict[str, str]:
 
 def patched_remote() -> str:
     need(core.REMOTE.count(_REMOTE_ENV_LINE) == 1, 'remote_secret_transport_anchor')
+    need(core.REMOTE.count(_REMOTE_GENERATION_LINE) == 1, 'remote_generation_anchor')
     value = core.REMOTE.replace(_REMOTE_ENV_LINE, _REMOTE_SECRET_BLOCK, 1)
+    value = value.replace(_REMOTE_GENERATION_LINE, _REMOTE_GENERATION_BLOCK, 1)
     need(value.count("payload.pop('_anex_api_token_b64',None)") == 1,
          'remote_api_secret_transport')
     need(value.count("payload.pop('_anex_b2b_token_b64',None)") == 1,
          'remote_b2b_secret_transport')
+    need(value.count("generation=str(900000000-") == 1, 'remote_direct_generation_transport')
     return value
 
 
