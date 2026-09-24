@@ -103,24 +103,53 @@
     return operatorAliases[key]||label;
   }
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
+  async function destinationCatalog(action,params={},signal){
+    const query=new URLSearchParams({action});Object.entries(params).forEach(([key,value])=>{if(value!==''&&value!==null&&value!==undefined)query.set(key,String(value));});
+    const response=await fetch(local+'data/search3-destination-read-v1.php?'+query.toString(),{credentials:'same-origin',cache:'no-store',signal,headers:{Accept:'application/json'}});
+    const payload=await response.json().catch(()=>null);
+    if(!response.ok||payload?.ok!==true||payload.source!=='anytour-destination-identities-v1'||payload.provider!=='tourvisor'||!Array.isArray(payload.items))throw new Error('Канонический справочник направлений временно недоступен.');
+    return payload.items;
+  }
+  function tourvisorIds(row){
+    if(!row||!Array.isArray(row.tourvisorIds)||!row.tourvisorIds.length)throw new Error('Для направления нет подтверждённого соответствия Tourvisor.');
+    const ids=[...new Set(row.tourvisorIds.map(String))];
+    if(ids.some(id=>!/^[1-9][0-9]*$/.test(id)))throw new Error('Некорректное соответствие направления Tourvisor.');
+    return ids.sort((a,b)=>Number(a)-Number(b));
+  }
+  function countryRow(country){
+    const matches=catalog.countries.filter(row=>String(row?.id)===String(country));
+    if(matches.length!==1)throw new Error('Выберите страну из канонического справочника.');
+    return matches[0];
+  }
+  function tourvisorCountryId(country){
+    const ids=tourvisorIds(countryRow(country));
+    if(ids.length!==1)throw new Error('Для страны нет однозначного соответствия Tourvisor.');
+    return ids[0];
+  }
   async function regions(country) {
     const key=String(country);
+    countryRow(key);
     if(catalog.regions[key])return catalog.regions[key];
     if(regionRequests.has(key))return regionRequests.get(key);
-    const request=rt.api('regions',{countryId:key}).then(rows=>{
-      if(!Array.isArray(rows))throw new Error('Не удалось загрузить курорты.');
+    const request=destinationCatalog('regions',{countryId:key}).then(rows=>{
       const seen=new Set(),items=[];
-      for(const row of rows){const id=String(row?.id||''),name=text(row).trim();if(!/^[1-9][0-9]*$/.test(id)||!name||seen.has(id)||String(row.countryId)!==key)throw new Error('Не удалось проверить справочник курортов.');seen.add(id);items.push({id,name,country:key});}
+      for(const row of rows){
+        const id=String(row?.id||''),name=text(row).trim();
+        if(!/^[1-9][0-9]*$/.test(id)||!name||seen.has(id)||String(row.parentId)!==key)throw new Error('Не удалось проверить канонический справочник курортов.');
+        const native=tourvisorIds(row);seen.add(id);items.push({id,name,country:key,tourvisorIds:native});
+      }
       catalog.regions[key]=items;return items;
     }).finally(()=>regionRequests.delete(key));
     regionRequests.set(key,request);return request;
   }
   function regionIds(s,filters) {
-    return (filters.resorts||[]).map(name=>{
+    const ids=[];
+    for(const name of filters.resorts||[]){
       const found=(catalog.regions[String(s.country)]||[]).filter(row=>row.name===name);
-      if(found.length!==1)throw new Error('Выберите курорт из загруженного справочника.');
-      return found[0].id;
-    });
+      if(found.length!==1)throw new Error('Выберите курорт из канонического справочника.');
+      ids.push(...tourvisorIds(found[0]));
+    }
+    return [...new Set(ids)].sort((a,b)=>Number(a)-Number(b));
   }
   function supplierScope(filters = {}, hotelIds = []) {
     const selectedMeal=filters.meals?.length===1?String(filters.meals[0]||'').trim():'';
@@ -161,12 +190,13 @@
   }
   function requestPlan(s, hotelIds = [], filters = {}) {
     const departure = catalog.departures.find(x => text(x) === s.origin || String(x.id) === s.origin);
-    if (!departure || !catalog.countries.some(x => String(x.id) === String(s.country))) throw new Error('Выберите город вылета и страну из загруженного списка.');
+    if (!departure) throw new Error('Выберите город вылета из загруженного списка.');
+    const nativeCountryId=tourvisorCountryId(s.country);
     if (!date(s.from) || !date(s.to) || s.from > s.to || (new Date(s.to) - new Date(s.from)) / 86400000 > 21) throw new Error('Выберите диапазон вылета не больше 21 дня.');
     if (!Number.isInteger(s.adults) || s.adults < 1 || s.adults > 6 || !Array.isArray(s.ages) || s.ages.length > 3 || s.ages.some(x => !Number.isInteger(x) || x < 0 || x > 17)) throw new Error('Укажите возраст каждого ребёнка.');
     if (!Number.isInteger(s.minNights) || !Number.isInteger(s.maxNights) || s.minNights < 1 || s.maxNights > 28 || s.maxNights < s.minNights || s.maxNights - s.minNights > 10) throw new Error('Проверьте диапазон ночей.');
     const scope=supplierScope(filters,hotelIds);
-    const request={departureId:String(departure.id),countryId:String(s.country),dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:scope.meal,hotelCategory:scope.hotelCategory,hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:regionIds(s,filters),subregionIds:[],operatorIds:[],priceFrom:scope.priceFrom,priceTo:scope.priceTo,currency:'RUB',onlyCharter:false,onlyDirect:false};
+    const request={departureId:String(departure.id),countryId:nativeCountryId,dateFrom:s.from,dateTo:s.to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:[...s.ages].sort((a,b)=>a-b),meal:scope.meal,hotelCategory:scope.hotelCategory,hotelRating:'',hotelTypes:[],hotelIds:hotelIds.map(String),hotelServices:[],arrivalId:'',regionIds:regionIds(s,filters),subregionIds:[],operatorIds:[],priceFrom:scope.priceFrom,priceTo:scope.priceTo,currency:'RUB',onlyCharter:false,onlyDirect:false};
     return {request,scope};
   }
   function params(s, hotelIds = [], filters = {}) {
@@ -779,10 +809,11 @@
   async function observedCalendar(s,from,to,signal,filters={}) {
     if(!observationScopeSupported(s,filters))return [];
     const departure=catalog.departures.find(x=>text(x)===s.origin||String(x.id)===s.origin);
-    if(!departure||!catalog.countries.some(x=>String(x.id)===String(s.country)))return [];
+    if(!departure)return [];
+    let nativeCountryId;try{nativeCountryId=tourvisorCountryId(s.country);}catch{return [];}
     const childAges=[...s.ages].sort((a,b)=>a-b),childSignature=childAges.join(',');
     const selected=[...new Set(regionIds(s,filters).map(Number))].sort((a,b)=>a-b);
-    const query={departureId:String(departure.id),countryId:String(s.country),dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights),adults:String(s.adults),childs:childSignature,regionIds:selected.map(String)};
+    const query={departureId:String(departure.id),countryId:nativeCountryId,dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights),adults:String(s.adults),childs:childSignature,regionIds:selected.map(String)};
     const response=await fetch(local+'data/search3-local-results-read-v1.php',{
       method:'POST',credentials:'same-origin',cache:'no-store',signal,
       headers:{Accept:'application/json','Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
@@ -837,16 +868,24 @@
   let catalogGeneration=0;
   async function countries(origin) {
     const run=++catalogGeneration,departure=catalog.departures.find(x=>text(x)===origin)||catalog.departures[0];
-    const rows=await rt.api('countries',{departureId:departure.id,onlyDirect:false,onlyCharter:false});
-    if(run!==catalogGeneration)return null;if(!Array.isArray(rows)||!rows.length)throw new Error('Для этого города список стран недоступен.');
-    catalog.countries=rows;return {departures:catalog.departures,countries:rows,origin:text(departure)};
+    const rows=await destinationCatalog('countries',{departureId:departure.id});
+    if(run!==catalogGeneration)return null;if(!rows.length)throw new Error('Для этого города список стран недоступен.');
+    const seen=new Set(),items=[];
+    for(const row of rows){
+      const id=String(row?.id||''),name=text(row).trim();
+      if(!/^[1-9][0-9]*$/.test(id)||!name||seen.has(id))throw new Error('Не удалось проверить канонический список стран.');
+      const native=tourvisorIds(row);if(native.length!==1)throw new Error('Для страны нет однозначного соответствия Tourvisor.');
+      seen.add(id);items.push({id,name,russianName:name,tourvisorIds:native});
+    }
+    catalog.countries=items;catalog.regions={};return {departures:catalog.departures,countries:items,origin:text(departure)};
   }
   async function savedHotels(ids,s){if(!owner)return[];const rows=await Promise.allSettled(ids.slice(0,20).map(id=>owner.readProfile(id)));return rows.filter(r=>r.status==='fulfilled'&&r.value).map(r=>hotel({...r.value,anytourHotelId:r.value.id},s));}
   async function lookupHotels(q,country,signal){
     if(q.trim().length<2)return[];
     const read=async url=>{const r=await fetch(url,{signal,credentials:'same-origin',headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Hotel catalogue unavailable');const p=await r.json();if(p?.ok!==true||!Array.isArray(p.items))throw new Error('Invalid hotel catalogue');return p;};
-    const found=await read('/data/hotel-search-v1.php?'+new URLSearchParams({q:q.trim(),countryId:country,limit:'10'}));
-    const ids=[...new Set(found.items.filter(h=>String(h.country?.id)===String(country)&&Number.isSafeInteger(Number(h.id))&&Number(h.id)>0).map(h=>String(h.id)))].slice(0,10);
+    const nativeCountryId=tourvisorCountryId(country);
+    const found=await read('/data/hotel-search-v1.php?'+new URLSearchParams({q:q.trim(),countryId:nativeCountryId,limit:'10'}));
+    const ids=[...new Set(found.items.filter(h=>String(h.country?.id)===nativeCountryId&&Number.isSafeInteger(Number(h.id))&&Number(h.id)>0).map(h=>String(h.id)))].slice(0,10);
     if(!ids.length)return[];
     const query=new URLSearchParams({catalog:'anytour'});ids.forEach(id=>query.append('legacyHotelIds[]',id));
     const p=await read(local+'data/hotel-details-read-v1.php?'+query);
