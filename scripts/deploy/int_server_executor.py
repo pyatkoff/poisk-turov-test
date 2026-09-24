@@ -295,6 +295,10 @@ def parse_command(body: str) -> dict:
     if mode == 'install-runtime':
         need(len(parts) == 3, 'command_shape')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'install-anex-preview':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-anex-'), 'anex_preview_install_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'install-andromeda-preview':
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'preview_install_operation_namespace')
@@ -1352,6 +1356,57 @@ def install_runtime(stage,files,op):
               'changed_files':len(changed),'created_files':sum(
                   1 for relative in changed if not install_previous[relative]['exists']),
               'manifest_sha256':payload['manifest_sha256']}
+    write_private_json(op/'install-state.json',complete)
+    return complete
+
+def install_anex_preview(stage,files,op):
+    integration=install_runtime(stage,files,op)
+    source_relative='v2/api-anex-search3-preview.php'
+    target_relative='api-anex-search3-preview.php'
+    source_path=stage/source_relative
+    expected=files.get(source_relative)
+    if (not safe_file(source_path,2*1024*1024)
+            or not isinstance(expected,str)
+            or hashlib.sha256(source_path.read_bytes()).hexdigest()!=expected):
+        fail('anex_preview_install_source_hash')
+    lint=subprocess.run(['php','-l',str(source_path)],capture_output=True,text=True,timeout=20)
+    if lint.returncode!=0: fail('anex_preview_install_source_lint')
+    target=runtime/target_relative
+    if not target.parent.is_dir() or target.parent.is_symlink() or target.parent.resolve()!=target.parent:
+        fail('anex_preview_install_target_parent')
+    prior={'exists':False,'sha256':None,'mode':0o644}
+    if target.exists() or target.is_symlink():
+        if not safe_file(target,2*1024*1024): fail('anex_preview_install_target_invalid')
+        data=target.read_bytes()
+        prior={'exists':True,'sha256':hashlib.sha256(data).hexdigest(),
+               'mode':target.stat().st_mode&0o777}
+        backup=op/'backup'/target_relative
+        backup.write_bytes(data);os.chmod(backup,0o600)
+        if hashlib.sha256(backup.read_bytes()).hexdigest()!=prior['sha256']:
+            fail('anex_preview_install_backup_hash')
+    install_previous[target_relative]=prior
+    install_expected[target_relative]=expected
+    changed=prior['sha256']!=expected
+    write_private_json(op/'anex-preview-install-plan.json',{
+        'schema_version':1,'source_sha':source,'source':source_relative,'target':target_relative,
+        'previous':prior,'expected_sha256':expected,'changed':changed,'status':'prepared'})
+    if changed:
+        install_temps[target_relative]=stage_target_bytes(target,source_path.read_bytes(),prior['mode'])
+        os.replace(install_temps[target_relative],target)
+        install_applied.append(target_relative)
+        os.chmod(target,prior['mode'])
+        write_private_json(op/'install-state.json',
+            {'status':'applying-anex-preview','source_sha':source,'applied':install_applied})
+    if (not safe_file(target,2*1024*1024)
+            or hashlib.sha256(target.read_bytes()).hexdigest()!=expected):
+        fail('anex_preview_install_readback_hash')
+    lint=subprocess.run(['php','-l',str(target)],capture_output=True,text=True,timeout=20)
+    if lint.returncode!=0: fail('anex_preview_install_readback_lint')
+    complete={'status':'installed','source_sha':source,'files':integration['files']+1,
+              'changed_files':integration['changed_files']+(1 if changed else 0),
+              'created_files':integration['created_files']+(1 if changed and not prior['exists'] else 0),
+              'manifest_sha256':payload['manifest_sha256'],
+              'endpoint':{'source':source_relative,'target':target_relative,'sha256':expected,'changed':changed}}
     write_private_json(op/'install-state.json',complete)
     return complete
 
@@ -2500,8 +2555,10 @@ try:
             fail('source_hash')
     (op/'installed-source.json').write_text(json.dumps({'source_sha':source,'files':files},sort_keys=True))
     os.chmod(op/'installed-source.json',0o600)
-    if mode in ('install-runtime','install-andromeda-preview','install-andromeda-quote-preview'):
-        if mode=='install-andromeda-preview':
+    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview'):
+        if mode=='install-anex-preview':
+            result['install']=install_anex_preview(stage,files,op)
+        elif mode=='install-andromeda-preview':
             result['install']=install_andromeda_preview(stage,files,op)
         elif mode=='install-andromeda-quote-preview':
             result['install']=install_andromeda_quote_preview(stage,files,op)
@@ -2762,7 +2819,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode in ('anex-demand','anex-range') else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -2794,7 +2851,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
@@ -2835,7 +2892,7 @@ try:
         result['database_writes']='collector_owned' if result['status']=='complete' else 'unknown'
         result['production_unchanged']=True
 except Exception as exc:
-    if mode in ('install-runtime','install-andromeda-preview') and install_started:
+    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview') and install_started:
         failure=str(exc)
         result['install_failure_class']=failure if re.fullmatch(r'[A-Za-z0-9_:-]{1,96}',failure) else type(exc).__name__
         try:
