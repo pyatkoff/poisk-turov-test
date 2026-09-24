@@ -17,6 +17,8 @@ $db->beginTransaction();try{
  foreach([['tourvisor','country','4',$country],['tourvisor','region','1',$region],['tourvisor','subregion','10',$belek],['tourvisor','subregion','11',$side],['anex','subregion','BELEK',$belek],['samo','subregion','777',$belek],['andromeda','subregion','A-77',$belek]]as$r)$s->execute([$r[0],$r[1],$r[2],$r[3],'fixture://reviewed',hash('sha256',implode('|',$r)),'fixture']);
  $c=new AnyTourDestinationCatalogV1($db);dc($c->readable(),'readable');
  dc(array_column($c->children($region,'subregion'),'id')===[$belek,$side],'own child IDs');
+ dc(array_map(fn($row)=>[$row['kind'],$row['id'],$row['parentId']],$c->descendants($country))===[['region',$region,$country],['subregion',$belek,$region],['subregion',$side,$region]],'country descendants');
+ dc($c->nativeMap('tourvisor','subregion',[$belek,$side])===[$belek=>['10'],$side=>['11']],'grouped local to TV IDs');
  dc($c->nativeIds('tourvisor','subregion',[$belek,$side])===['10','11'],'local to TV IDs');
  dc($c->nativeIds('anex','subregion',[$belek])===['BELEK'],'local to ANEX ID');
  dc($c->nativeIds('samo','subregion',[$belek])===['777'],'local to SAMO ID');
