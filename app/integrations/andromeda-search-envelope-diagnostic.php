@@ -49,12 +49,21 @@ final class AnyTourAndromedaSearchEnvelopeDiagnosticV1
     {
         $page = $search['page'] ?? null;
         $pages = $search['pages_count'] ?? null;
-        if (!is_int($page)) return 'PARTIAL_PAGE';
-        if (!is_int($pages) || $pages <= 1) return 'PARTIAL_PAGES_COUNT';
-        if ($page !== $pages) return 'PARTIAL_NOT_DRAINED';
+        if (!is_int($page) || $page < 1) return 'PARTIAL_PAGE';
+        if (!is_int($pages) || $pages <= 1 || $page > $pages) return 'PARTIAL_PAGES_COUNT';
         if (($search['grouped'] ?? null) !== true) return 'PARTIAL_GROUPED';
         if (($search['first_page_only'] ?? null) !== false) return 'PARTIAL_FIRST_PAGE';
-        if (($search['external_search_pending'] ?? null) !== false) return 'PARTIAL_EXTERNAL_PENDING';
+        $pending = $search['external_search_pending'] ?? null;
+        if ($pending === true) {
+            // run_pages() emits this exact shape after one or more valid pages when
+            // a later page becomes temporarily unavailable. It is useful evidence,
+            // but it is not a complete/publishable supplier cohort.
+            if ($page >= $pages) return 'PARTIAL_EXTERNAL_PENDING';
+        } elseif ($pending === false) {
+            if ($page !== $pages) return 'PARTIAL_NOT_DRAINED';
+        } else {
+            return 'PARTIAL_EXTERNAL_PENDING';
+        }
         $received = $search['received_offers'] ?? null;
         if (!is_int($received) || $received < 0) return 'PARTIAL_RECEIVED';
         $mapped = $search['mapped_offers'] ?? null;
