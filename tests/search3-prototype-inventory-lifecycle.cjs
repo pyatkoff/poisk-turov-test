@@ -63,6 +63,12 @@ const andromedaChoice=(localId=101)=>({schema_version:1,provider:'andromeda',loc
   {direction:'0',flight_ref:'flight_'+'2'.repeat(32),name:'OUT B',datebeg:trip.from,class:'ECONOM',departure:{town:'Москва',port:'VKO'},arrival:{town:'Анталья',port:'AYT'}},
   {direction:'1',flight_ref:'flight_'+'3'.repeat(32),name:'BACK A',datebeg:'2026-10-06',class:'ECONOM',departure:{town:'Анталья',port:'AYT'},arrival:{town:'Москва',port:'SVO'}}
  ]});
+function rehydratableSnapshot(params,provider){
+ const data=snapshot(params,[provider]),row=data.hotels[0].offers[0],name=provider==='anex'?'ANEX':'FUN&SUN';
+ row.listing.tour.party.child_ages=[];
+ row.listing.operator={raw:name,canonical_name:name};
+ return data;
+}
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
@@ -158,6 +164,57 @@ function canonicalMeals(h){
   {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']});
  h.data.catalog.mealPlanAvailable=true;
 }
+test('cached ANEX rehydrates with a fresh same-provider search identity and never sends stale refs',async()=>{
+ const staleOffer=hash('anex'),staleSearch=hash('search-anex');
+ const h=harness({
+  database:async(_n,p)=>rehydratableSnapshot(p,'anex'),
+  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{offerRef:'anex_online:'+'9'.repeat(64),localId:101,searchRef:'f'.repeat(32)})}})
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ assert.ok(cached?.cached);assert.ok(cached.raw?.rehydration,'LOCAL cached offer carries durable descriptor');
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'current');assert.equal(result.provider,'anex');assert.equal(result.hotelId,501);assert.equal(result.offers.length,1);
+ const current=result.offers[0];assert.equal(current.cached,false);assert.equal(current.provider,'anex');assert.equal(current.raw.anexSessionCurrent,true);
+ assert.equal(current.raw.searchRef,'f'.repeat(32));assert.equal(current.raw.offerRef,'anex_online:'+'9'.repeat(64));
+ assert.equal(h.anexCalls.length,1);assert.equal(h.anexCalls[0].action,'search');
+ const sent=JSON.stringify(h.anexCalls[0]);assert.equal(sent.includes(staleOffer),false);assert.equal(sent.includes(staleSearch),false);
+ assert.equal(h.anexCalls[0].params.dateFrom,trip.from);assert.equal(h.anexCalls[0].params.dateTo,trip.from);
+ assert.equal(h.anexCalls[0].params.nightsFrom,7);assert.equal(h.anexCalls[0].params.nightsTo,7);
+ assert.deepEqual(Array.from(h.anexCalls[0].params.hotelIds||[]),['101']);
+});
+test('cached Andromeda rehydrates in the same provider and retains exact scope for quote follow-up',async()=>{
+ const h=harness({
+  database:async(_n,p)=>rehydratableSnapshot(p,'andromeda'),
+  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body,{localId:101,offerRef:'offer_'+'8'.repeat(64),searchRef:'7'.repeat(64)})}}),
+  andromedaQuote:async body=>{
+   assert.equal(body.params.dateFrom,trip.from);assert.equal(body.params.dateTo,trip.from);
+   assert.equal(body.params.nightsFrom,7);assert.equal(body.params.nightsTo,7);
+   assert.deepEqual(Array.from(body.params.hotelIds||[]),['101']);
+   return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified()})}};
+  }
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
+ assert.ok(cached?.cached);assert.ok(cached.raw?.rehydration);
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'current');assert.equal(result.offers.length,1);
+ const current=result.offers[0];assert.equal(current.cached,false);assert.equal(current.provider,'andromeda');
+ assert.equal(current.raw.offerRef,'offer_'+'8'.repeat(64));assert.ok(current.raw.rehydrationParams);
+ const quote=await h.data.verifyAndromeda(current);
+ assert.equal(quote.state,'quote_verified');assert.equal(h.andromedaQuoteCalls.length,1);
+});
+test('cached same-provider rehydration returns empty without falling through to another provider',async()=>{
+ const h=harness({
+  database:async(_n,p)=>rehydratableSnapshot(p,'anex'),
+  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{empty:true})}})
+ });
+ canonicalMeals(h);await h.resume();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'empty');assert.equal(result.provider,'anex');assert.equal(result.offers.length,0);
+ assert.equal(h.nativeCalls.length,0);assert.equal(h.calls.length,0,'rehydration does not start Tourvisor');
+});
 test('init loads canonical meal authority through the exposed LOCAL reader action',async()=>{
  const h=harness({api:(action)=>{
   if(action==='meals')return [{id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'}];
