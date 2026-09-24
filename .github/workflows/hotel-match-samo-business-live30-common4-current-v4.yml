@@ -1,0 +1,21 @@
+name: MATCH SAMO business live30 COMMON4 current v4
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_samo_business_live30_common4_current_v4.php'
+      - 'tests/hotel_match_samo_business_live30_common4_current_v4_test.php'
+      - '.github/workflows/hotel-match-samo-business-live30-common4-current-v4.yml'
+permissions: {contents: read, actions: read, issues: read}
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-common4-current-v4-20260924'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_samo_business_live30_common4_current_v4.php
+      - run: php scripts/diagnostics/hotel_match_samo_business_live30_common4_current_v4.php --self-test
+      - run: php tests/hotel_match_samo_business_live30_common4_current_v4_test.php
+      - run: "! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\\(' scripts/diagnostics/hotel_match_samo_business_live30_common4_current_v4.php"
