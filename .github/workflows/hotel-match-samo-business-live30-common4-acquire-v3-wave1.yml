@@ -12,7 +12,7 @@ concurrency: {group: hotel-match-samo-business-live30-common4-acquire-1971-20260
 env:
   OP: hotel-match-samo-business-live30-common4-acquire-1971-20260924-v3-wave1
   BASE: 9555488a563a1b73c7074ab6fa0c49b7bd1f4a81
-  CLAIM: '5811922626'
+  CLAIM: '5811991486'
   PLAN_ARTIFACT: '10798255813'
   PLAN_ARCHIVE_SHA: 1adf8a92bba3e447fec566c6b3a89a557d1446d5ca49dd5492b08b5b8625d87a
   PLAN_RESULT_SHA: 174cdd0bd45f48929fbda2e7c07383fbf81afccd18acccca990aee3ee94e6b23
