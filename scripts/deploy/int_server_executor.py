@@ -2922,13 +2922,24 @@ try:
                 result['local_readback']=local_read(scopes) if scopes else []
             except Exception as exc:
                 result['local_readback']={'status':'failed','reason':str(exc)}
+        elif collector_incomplete_safe:
+            result['local_readback']={'status':'skipped_after_collector_incomplete'}
         else:
             result['local_readback']={'status':'skipped_after_collector_nonzero'}
         result['production_after']=fingerprints()
         if result['production_after']!=before: fail('production_drift')
-        result['status']='complete' if run.returncode==0 and parseable else 'unknown_no_replay'
-        result['supplier_calls']='bounded_by_collector' if result['status']=='complete' else 'unknown'
-        result['database_writes']='collector_owned' if result['status']=='complete' else 'unknown'
+        if run.returncode==0 and parseable:
+            result['status']='complete'
+            result['supplier_calls']='bounded_by_collector'
+            result['database_writes']='collector_owned'
+        elif collector_incomplete_safe:
+            result['status']='incomplete'
+            result['supplier_calls']='bounded_by_collector'
+            result['database_writes']=0
+        else:
+            result['status']='unknown_no_replay'
+            result['supplier_calls']='unknown'
+            result['database_writes']='unknown'
         result['production_unchanged']=True
 except Exception as exc:
     if mode in ('install-runtime','install-anex-preview','install-andromeda-preview') and install_started:
