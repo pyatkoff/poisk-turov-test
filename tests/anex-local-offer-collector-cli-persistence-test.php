@@ -54,7 +54,12 @@ STUB);
 require_once __DIR__.'/../app/integrations/anex-additional-prices-batch.php';
 final class AnyTourAnexClient{
     public function __construct(string $token){}
-    public function lastRequestDiagnostics():array{return ['action'=>'SearchTour_PRICES','http_status'=>200,'response_bytes'=>123,'supplier_code'=>101,'unsafe'=>'drop-me'];}
+    public function lastRequestDiagnostics():array{
+        if((fixtureScenario()['http_error']??false)===true){
+            return ['action'=>'SearchTour_PRICES','http_status'=>503,'response_bytes'=>0,'unsafe'=>'drop-me'];
+        }
+        return ['action'=>'SearchTour_PRICES','http_status'=>200,'response_bytes'=>123,'supplier_code'=>101,'unsafe'=>'drop-me'];
+    }
 }
 final class AnyTourAnexAdditionalPricesClient{
     public function __construct(string $token){}
@@ -72,6 +77,7 @@ function anytour_anex_search3_run($request,$db,$client,&$cache,&$diagnostics,$ob
     fixtureTrace('search',$request);$state=['gateway'=>['saved_offers'=>['offers'=>[]],'search'=>['offers'=>[]]]];
     $tours=[];$scenario=fixtureScenario();
     if(($scenario['supplier_error']??false)===true)throw new RuntimeException('ANEX_SUPPLIER_ERROR');
+    if(($scenario['http_error']??false)===true)throw new RuntimeException('ANEX_HTTP_ERROR');
     for($i=0;$i<($scenario['groups']??12);++$i)$tours[]=['kind'=>'group_minimum','offer_ref'=>'anex_online:'.hash('sha256','g'.$i)];
     if(($scenario['regular']??false)===true)$tours[]=['kind'=>'concrete','offer_ref'=>'anex_online:'.hash('sha256','regular'),'flight_type'=>'regular'];
     return ['provider'=>'anex','search_ref'=>str_repeat('a',32),'hotels'=>[['local_id'=>501,'tours'=>$tours]]];
@@ -201,7 +207,17 @@ persistenceCheck($supplier['code']===1&&$supplier['stderr']===''&&is_array($supp
     &&($supplier['result']['additional_last_request']??null)==[]
     &&!isset($supplier['result']['search_last_request']['unsafe']),
     'supplier error retains only safe fixed diagnostics');
+$http=persistenceCli(['http_error'=>true]);
+persistenceCheck($http['code']===1&&$http['stderr']===''&&is_array($http['result'])
+    &&($http['result']['status']??null)==='supplier_error'
+    &&($http['result']['error_code']??null)==='ANEX_HTTP_ERROR'
+    &&($http['result']['search_last_request']??null)===[
+        'action'=>'SearchTour_PRICES','http_status'=>503,'response_bytes'=>0,
+    ]
+    &&($http['result']['additional_last_request']??null)==[]
+    &&!isset($http['result']['search_last_request']['unsafe']),
+    'HTTP error retains only safe fixed diagnostics');
 $other=persistenceCli(['expand_error'=>7]);
 persistenceCheck($other['code']!==0&&$other['result']===null&&str_contains($other['stderr'],'FIXTURE_EXPAND_INVARIANT')
     &&!isset($other['counts']['finalize']),'unrelated invariant not swallowed');
-echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=2 late=1 final_no_ready=1 final=1 missing=1 empty_regular=2 supplier_diag=1 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
+echo 'ANEX_CLI_PERSISTENCE_OK failures='.count($failures).' success=2 late=1 final_no_ready=1 final=1 missing=1 empty_regular=2 supplier_diag=2 invariant=1 public_unchanged=1 supplier=0 db=0'."\n";
