@@ -1,9 +1,12 @@
 name: TEMP INT charter acceptance patch
 
 on:
-  push:
-    branches:
-      - fix/int-program-fuel-probe-charter-acceptance-20260924
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/int-charter-acceptance-autofix.yml'
+      - 'scripts/deploy/int_server_executor.py'
+      - 'tests/int_server_executor_test.py'
 
 permissions:
   contents: write
@@ -15,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: fix/int-program-fuel-probe-charter-acceptance-20260924
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Apply exact bounded acceptance patch
         shell: bash
         run: |
