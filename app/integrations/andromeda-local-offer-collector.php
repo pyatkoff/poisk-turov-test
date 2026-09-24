@@ -136,6 +136,23 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             && $search['received_offers'] >= 0
             && is_int($search['mapped_offers'] ?? null)
             && $search['mapped_offers'] >= 0;
+        // Live pagination deliberately returns the already validated prefix when a
+        // later page becomes temporarily unavailable. Keep that evidence explicit
+        // and incomplete: never load/publish a missing-page cohort as authoritative.
+        $interruptedPartial = is_array($search)
+            && $status === 'partial'
+            && is_int($search['page'] ?? null)
+            && is_int($search['pages_count'] ?? null)
+            && $search['page'] >= 1
+            && $search['pages_count'] > 1
+            && $search['page'] < $search['pages_count']
+            && ($search['grouped'] ?? null) === true
+            && ($search['first_page_only'] ?? null) === false
+            && ($search['external_search_pending'] ?? null) === true
+            && is_int($search['received_offers'] ?? null)
+            && $search['received_offers'] >= 0
+            && is_int($search['mapped_offers'] ?? null)
+            && $search['mapped_offers'] >= 0;
         // The complete first empty page is returned unchanged by run_pages with
         // pages_count=0. Admit only that exact projection, not an arbitrary zero.
         // The retained cohort and canonical autosave independently validate it.
@@ -157,8 +174,41 @@ final class AnyTourAndromedaLocalOfferCollectorV1
             || !is_int($search['pages_count'] ?? null)
             || $search['pages_count'] < 0
             || ($search['pages_count'] === 0 && !$terminalEmpty)
-            || ($status !== 'complete' && !$drainedPartial)) {
+            || ($status !== 'complete' && !$drainedPartial && !$interruptedPartial)) {
             throw new RuntimeException('ANDROMEDA_LOCAL_COLLECTOR_SEARCH');
+        }
+
+        if ($interruptedPartial) {
+            return [
+                'source' => 'andromeda-local-offer-collector-v1',
+                'status' => 'incomplete',
+                'incomplete_reason' => 'search_partial',
+                'pages' => $search['page'],
+                'advertised_pages' => $search['pages_count'],
+                'received_offers' => $search['received_offers'],
+                'mapped_offers' => $search['mapped_offers'],
+                'owned_operator_offers' => null,
+                'eligible_offers' => null,
+                'capture_mode' => $captureMode,
+                'capture_queue_offers' => 0,
+                'reusable_surcharge_groups' => 0,
+                'reusable_surcharge_offers' => 0,
+                'surcharge_group_duplicate_skips' => 0,
+                'surcharge_cache_checks' => 0,
+                'surcharge_cache_hits' => 0,
+                'surcharge_cache_covered_offers' => 0,
+                'capture_time_budget_seconds' => $maxCaptureSeconds > 0 ? $maxCaptureSeconds : null,
+                'capture_time_budget_exhausted' => false,
+                'surcharge_capture_attempts' => 0,
+                'surcharge_ready' => 0,
+                'autosave_published' => false,
+                'autosave_reason' => 'cohort_incomplete',
+                'ready_offer_count' => null,
+                'confirmation_required_offer_count' => null,
+                'autosave' => ['published'=>false, 'reason'=>'cohort_incomplete'],
+                'selection_authority' => false,
+                'booking_calls' => 0,
+            ];
         }
 
         $rows = $loadCohort($search['search_ref'], $request['generation']);
