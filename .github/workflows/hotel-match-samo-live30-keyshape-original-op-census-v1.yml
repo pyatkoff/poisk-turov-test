@@ -1,0 +1,138 @@
+name: MATCH SAMO live30 original operator-key census v1
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - '.github/workflows/hotel-match-samo-live30-keyshape-original-op-census-v1.yml'
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-samo-live30-keyshape-original-op-census-1971-20260924-v1
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-samo-live30-keyshape-original-op-census-1971-20260924-v1
+  SOURCE_OP: hotel-match-samo-live30-keyshape-canary-1971-20260924-v2
+  SOURCE_RESULT_SHA256: 99236dd288d19e84a154ed7a56a515f03fc03cc2a4390e88ca2723033c14a6ff
+  BASE: 5b63a8ac4658c891e096a7ceac96781e468e9a3f
+  CLAIM: '5808130209'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.event.pull_request.head.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate owner authority, exact scope and Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p terminal input
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-samo-live30-keyshape-original-op-census-v1.yml "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],os.environ['SOURCE_OP'],'supplier-free','Andromeda/Tourvisor/direct-ANEX HTTP0','DB0','mapping writes0','safe_to_write_now=false']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion']; break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+
+      - name: Build supplier-free census
+        run: |
+          cat > input/audit.php <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const OP='hotel-match-samo-live30-keyshape-original-op-census-1971-20260924-v1';
+          const SRC='hotel-match-samo-live30-keyshape-canary-1971-20260924-v2';
+          const SRC_SHA='99236dd288d19e84a154ed7a56a515f03fc03cc2a4390e88ca2723033c14a6ff';
+          const COMMON=[5,115,315,342];
+          function need(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
+          function j(mixed $v):string{return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
+          function loadj(string $p):array{$raw=(string)file_get_contents($p);$v=json_decode($raw,true,256,JSON_THROW_ON_ERROR);need(is_array($v),'json_shape');return $v;}
+          function savej(string $p,array $v):string{$raw=j($v)."\n";$f=@fopen($p,'x+b');need($f!==false,'exclusive_create');try{need(fwrite($f,$raw)===strlen($raw)&&fflush($f),'durable_write');if(function_exists('fsync'))need(fsync($f),'durable_sync');}finally{fclose($f);}return hash('sha256',$raw);}
+          function keyv(mixed $v):string{$s=trim((string)$v);return preg_match('/^[0-9]{1,12}$/D',$s)===1?$s:'invalid';}
+          function bump(array &$a,string $k):void{$a[$k]=($a[$k]??0)+1;}
+          $root=(string)getenv('MATCH_OPERATIONS_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$sha=(string)getenv('MATCH_SOURCE_SHA');
+          need(is_dir($root)&&is_dir($dir)&&basename($dir)===OP&&preg_match('/^[a-f0-9]{40}$/D',$sha)===1,'runtime_scope');
+          $src=$root.'/'.SRC;need(is_dir($src)&&!is_link($src),'source_missing');
+          foreach(['result.json','receipt.json','response-private.json'] as $f)need(is_file($src.'/'.$f)&&!is_link($src.'/'.$f),'source_'.$f);
+          $rr=(string)file_get_contents($src.'/result.json');need(hash('sha256',$rr)===SRC_SHA,'source_result_hash');$r=json_decode($rr,true,128,JSON_THROW_ON_ERROR);$q=loadj($src.'/receipt.json');
+          need(($r['operation']??'')===SRC&&($r['state']??'')==='completed_read_only_keyshape_canary','source_result_state');
+          need(($q['operation']??'')===SRC&&($q['state']??'')==='completed_read_only_keyshape_canary'&&($q['result_sha256']??'')===SRC_SHA&&($q['readback_verified']??false)===true&&($q['provider_accessed']??false)===true&&($q['no_replay']??false)===true,'source_receipt');
+          need((int)($r['provider_http_calls']??-1)===2&&(int)($r['tourvisor_calls']??-1)===0&&(int)($r['direct_anex_calls']??-1)===0&&(int)($r['database_writes']??-1)===0&&(int)($r['mapping_writes']??-1)===0,'source_contract');
+          $reply=loadj($src.'/response-private.json');$rows=$reply['PRICES']??[];need(is_array($rows),'prices_shape');
+          $top=[];$orig=[];$flag=[];$known=array_fill_keys(array_map('strval',COMMON),0);$origHotel=0;$same=0;$invalid=0;
+          foreach($rows as $x){if(!is_array($x))continue;$tk=keyv($x['operatorKey']??null);bump($top,$tk);$o=is_array($x['original']??null)?$x['original']:[];$ok=keyv($o['operatorKey']??null);bump($orig,$ok);$fl=(string)($x['isOperatorHotelKey']??'other');if($fl!=='0'&&$fl!=='1')$fl='other';if(!isset($flag[$ok]))$flag[$ok]=['flag0'=>0,'flag1'=>0,'other'=>0];$flag[$ok][$fl==='0'?'flag0':($fl==='1'?'flag1':'other')]++;if(trim((string)($o['hotelKey']??''))!=='')$origHotel++;if($ok===$tk)$same++;if($ok==='invalid')$invalid++;if(array_key_exists($ok,$known))$known[$ok]++;}
+          ksort($top,SORT_NATURAL);ksort($orig,SORT_NATURAL);ksort($flag,SORT_NATURAL);ksort($known,SORT_NATURAL);
+          $out=['operation'=>OP,'state'=>'completed_read_only_original_operator_key_census','source_sha'=>$sha,'source_operation'=>SRC,'source_result_sha256'=>SRC_SHA,'source_response_sha256'=>hash_file('sha256',$src.'/response-private.json'),'source_price_rows'=>count($rows),'top_level_operator_key_counts'=>$top,'original_operator_key_counts'=>$orig,'flag_by_original_operator_key'=>$flag,'known_common4_original_operator_key_counts'=>$known,'original_hotel_key_present_count'=>$origHotel,'original_operator_equals_top_level_count'=>$same,'original_operator_invalid_count'=>$invalid,'provider_http_calls'=>0,'andromeda_calls'=>0,'tourvisor_calls'=>0,'direct_anex_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
+          $h=savej($dir.'/result.json',$out);savej($dir.'/receipt.json',['operation'=>OP,'state'=>$out['state'],'result_sha256'=>$h,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$h,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]);echo j($out)."\n";
+          PHP
+          php -l input/audit.php
+          ! grep -E 'curl|wget|AndromedaClient|Transport|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' input/audit.php
+
+      - name: Execute retained-evidence census
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null; ssh-keyscan -T15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          remote="$USER@$HOST"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op\""
+          scp "${opts[@]}" input/audit.php "$remote:$op/"
+          ssh "${opts[@]}" "$remote" "set -eu;MATCH_OPERATIONS_ROOT=\"\$HOME/.anytoour-match/operations\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/audit.php\"" > terminal/remote.stdout 2> terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - result.json receipt.json" > terminal/server.tgz
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile(): pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json')); q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state']=='completed_read_only_original_operator_key_census'
+          for k in ['provider_http_calls','andromeda_calls','tourvisor_calls','direct_anex_calls','database_writes','mapping_writes']:
+              assert r[k]==0,(k,r[k])
+          assert r['safe_to_write_now'] is False
+          print(json.dumps(r,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'match-samo-live30-original-op-census-v1-${{ github.run_id }}'
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
