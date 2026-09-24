@@ -25,7 +25,8 @@ SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
     'match-common4-acquire', 'match-common4-continuation-acquire',
     'match-common4-continuation-resume-day', 'match-common4-continuation-remainder',
-    'program-fuel-probe',
+    'program-fuel-probe', 'andromeda-scope', 'andromeda-external-group',
+    'andromeda-operator-scope',
 })
 _REMOTE_ENV_LINE = "env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}"
 _REMOTE_SECRET_BLOCK = r"""env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
