@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const SBLC4C4_OP='hotel-match-samo-business-live30-common4-wave5-current-1971-20260925-v16b';
+const SBLC4C4_OP='hotel-match-samo-business-live30-common4-wave5-current-1971-20260925-v16c';
 const SBLC4C4_SOURCE_OP='hotel-match-samo-business-live30-common4-wave5-recovery-acquire-1971-20260925-v15';
 const SBLC4C4_PLAN_OP='hotel-match-samo-business-live30-common4-plan-1971-20260924-v2';
 const SBLC4C4_EXPECTED_EDGES=1217;
@@ -41,7 +41,7 @@ function sb4_source_edges(array $source,string $sourceResultSha):array{
     sb4_need(($source['plan_operation']??'')===SBLC4C4_PLAN_OP,'source_plan');
     sb4_need((int)($source['global_group_count']??0)===502&&(int)($source['group_start']??0)===401&&(int)($source['group_end']??0)===502,'source_group_scope');
     sb4_need((int)($source['queried_edge_count']??0)===SBLC4C4_EXPECTED_EDGES,'source_edge_count');
-    sb4_need((int)($source['planned_batch_count']??0)===100&&(int)($source['completed_batch_count']??0)===100&&(int)($source['batch_error_count']??-1)===0,'source_group_counts');
+    sb4_need((int)($source['planned_batch_count']??0)===102&&(int)($source['completed_batch_count']??0)===102&&(int)($source['batch_error_count']??-1)===0,'source_group_counts');
     sb4_need((int)($source['single_native_source_unique_count']??0)===SBLC4C4_EXPECTED_CAPTURED&&(int)($source['single_native_source_collision_count']??-1)===0,'source_native_counts');
     sb4_need((int)($source['samo_http_calls']??0)===103,'source_samo_calls');
     foreach(['tourvisor_calls','direct_anex_calls','database_writes','mapping_writes'] as $k)sb4_need((int)($source[$k]??-1)===0,'source_zero_'.$k);
