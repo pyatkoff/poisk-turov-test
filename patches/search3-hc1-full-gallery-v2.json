@@ -1,0 +1,47 @@
+[
+  {
+    "path": "v2/prototype-search/data.js",
+    "beforeSha256": "4b3d11c5b5048d51f1ec8c3f2c355bc1567bae32e020ceac1c9d5285357d7b86",
+    "afterSha256": "49b9ca57df1f075f94da7bcb5f300108249b531ad11d5d96fb4ed5ca916ef0bb",
+    "replacements": [
+      {
+        "old": "photos:[...new Set(photos)].slice(0,12)",
+        "new": "photos:[...new Set(photos)]"
+      }
+    ]
+  },
+  {
+    "path": "v2/prototype-search/app.js",
+    "beforeSha256": "68b4ced17d06c8d0d5cdb15b8b42e0ccd26d135fa31905cb1a2a4e1caa84718b",
+    "afterSha256": "4484c0715291029d96673e2858cd6ee59700b1d034fe240668c657a8f894a270",
+    "replacements": [
+      {
+        "old": "<div class=\"card-thumbs\">${h.photos.map",
+        "new": "<div class=\"card-thumbs\">${h.photos.slice(0,12).map"
+      },
+      {
+        "old": "aria-label=\"Фото ${i+1}\"><img src=\"${esc(p)}\" alt=\"\">",
+        "new": "aria-label=\"Фото ${i+1}\"><img src=\"${esc(p)}\" alt=\"\" loading=\"lazy\">"
+      },
+      {
+        "old": "</div>`;}\nlet flightDraft",
+        "new": "</div>`;const thumbs=$('.gallery-thumbs'),active=thumbs?.querySelector('.active');if(active)thumbs.scrollLeft+=active.getBoundingClientRect().left-thumbs.getBoundingClientRect().left-(thumbs.clientWidth-active.offsetWidth)/2;}\nlet flightDraft"
+      }
+    ]
+  },
+  {
+    "path": "v2/prototype-search/styles.css",
+    "beforeSha256": "bd6381267943d37e21a001041dbc5005b887d2713f863598a84bbbfb401693ec",
+    "afterSha256": "24988af9b44414d98c178d315d999039221a1a70a2098565578798bf7bc00c2b",
+    "replacements": [
+      {
+        "old": ".gallery-thumbs{display:flex;gap:8px}",
+        "new": ".gallery-thumbs{display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain}"
+      },
+      {
+        "old": ".gallery-thumbs button{padding:3px;width:80px;",
+        "new": ".gallery-thumbs button{flex-shrink:0;padding:3px;width:80px;"
+      }
+    ]
+  }
+]
