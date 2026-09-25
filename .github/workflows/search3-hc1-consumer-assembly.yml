@@ -1,0 +1,58 @@
+name: HC1 assemble reviewed hotel consumer source
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths: ['.github/workflows/search3-hc1-consumer-assembly.yml']
+permissions: {contents: write, actions: read, issues: read}
+jobs:
+  assemble:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.id == 226193297 && github.run_attempt == 1 &&
+      github.head_ref == 'ops/search3-hc1-consumer-assembly-20260925'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', path: carrier, fetch-depth: 0, persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '2a9efb9bebaa662467ae4dcad1c84ce426fdbd04', path: work, fetch-depth: 0, persist-credentials: false}
+      - name: Verify exact ownership and green ingredients
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail
+          python -m py_compile carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py
+          test "$(git -C carrier diff --name-only 00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8 HEAD | sort | tr '\n' ' ')" = '.github/workflows/search3-hc1-consumer-assembly.yml scripts/diagnostics/search3_hc1_assemble_consumer.py '
+          python - <<'PY'
+          import json,os,time,urllib.request
+          root='https://api.github.com/repos/pyatkoff/poisk-turov-test/'
+          def get(path):
+              q=urllib.request.Request(root+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=20) as r:return json.load(r)
+          c=get('issues/comments/5836203623');assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/3419') and 'HC-1' in c['body'] and 'app.js' in c['body']
+          for run,sha in [(36163725958,'2a9efb9bebaa662467ae4dcad1c84ce426fdbd04'),(36163726154,'2a9efb9bebaa662467ae4dcad1c84ce426fdbd04'),(36112796833,'9a4cb4f812f0eb03056ae1a639887f00c29980b4'),(36143904360,'c905a9b38e50c771a475768103afabe97e98abe0')]:
+              r=get('actions/runs/'+str(run));assert r['head_sha']==sha and r['conclusion']=='success'
+          for _ in range(30):
+              rs=get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+              rs=[r for r in rs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if rs and max(rs,key=lambda r:r['id'])['status']=='completed':
+                  assert max(rs,key=lambda r:r['id'])['conclusion']=='success';break
+              time.sleep(2)
+          else:raise SystemExit('security_not_confirmed')
+          PY
+      - name: Assemble source Git objects, without changing any branch
+        working-directory: work
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          HC1_ASSEMBLY_OUTPUT: '${{ runner.temp }}/hc1-consumer-source'
+        run: python ../carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: hc1-consumer-source-${{ github.run_id }}
+          path: '${{ runner.temp }}/hc1-consumer-source/'
+          if-no-files-found: error
+          retention-days: 30
