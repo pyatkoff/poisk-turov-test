@@ -389,7 +389,7 @@
     }
     owner.refresh();
     const total=run.anexWindowsTotal||order.length,contiguous=order.every((value,index)=>value===index);
-    const status=contiguous&&order.length===total?'complete':'partial',first=windows.get(0),last=windows.get(order[order.length-1]);
+    const status=contiguous&&order.length===total?'complete':'partial',first=windows.get(order[0]),last=windows.get(order[order.length-1]);
     run.sourceCounts.anex={status,hotels:visibleHotels.size,offers:seenOffers.size,receivedHotels:receivedHotels.size,receivedOffers,
       mappedHotels:receivedHotels.size,mappedOffers,visibleHotels:visibleHotels.size,visibleOffers:seenOffers.size,
       scopeFilteredOffers,deduplicatedOffers,windowsLoaded:order.length,windowsTotal:total,dateFrom:first.dateFrom,dateTo:last.dateTo};
@@ -402,7 +402,7 @@
       ||!Number.isInteger(index)||index<0||!Number.isInteger(total)||total<1||index>=total
       ||(!emptyExcluded&&(typeof data.search_ref!=='string'||!(/^[a-f0-9]{32}$/).test(data.search_ref))))throw new Error('Invalid ANEX search response');
     const windows=run.anexWindows||(run.anexWindows=new Map());
-    if(windows.has(index)||index>0&&!windows.has(index-1))throw new Error('Invalid ANEX window sequence');
+    if(windows.has(index))throw new Error('Invalid ANEX window sequence');
     const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let receivedOffers=0;
     for(const hotel of data.hotels){
       if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||seenHotels.has(hotel.local_id)
@@ -456,19 +456,40 @@
     if(!url||!current(run)){run.sourceCounts.anex={status:'skipped',hotels:0,offers:0};return;}
     notify({type:'provider',provider:'anex',status:'loading'});if(!current(run))return;
     const windows=directAnexWindows(p);
-    try{
-      const first=await requestDirectAnex(run,windows[0],url.href);if(!first||!current(run))return;
-      const result=await applyDirectAnex(run,first,windows[0],0,windows.length);if(!current(run))return;
-      notify({type:'provider',provider:'anex',...result});
-      if(windows.length>1){
-        notify({type:'provider',provider:'anex',...result,status:'loading',background:true});
-        await continueDirectAnex(run,url.href,windows,1);
+    if(windows.length===1){
+      try{
+        const first=await requestDirectAnex(run,windows[0],url.href);if(!first||!current(run))return;
+        const result=await applyDirectAnex(run,first,windows[0],0,1);if(!current(run))return;
+        notify({type:'provider',provider:'anex',...result});
+      }catch(error){
+        if(!current(run)||error?.name==='AbortError')return;
+        run.sourceCounts.anex={status:'error',hotels:0,offers:0};
+        notify({type:'provider',provider:'anex',status:'error'});
       }
-    }catch(error){
-      if(!current(run)||error?.name==='AbortError')return;
-      run.sourceCounts.anex={status:'error',hotels:0,offers:0};
-      notify({type:'provider',provider:'anex',status:'error'});
+      return;
     }
+    let loaded=0,failed=0;
+    for(let index=0;current(run)&&index<windows.length;index++){
+      try{
+        const resultData=await requestDirectAnex(run,windows[index],url.href);if(!resultData||!current(run))return;
+        const result=await applyDirectAnex(run,resultData,windows[index],index,windows.length);if(!current(run))return;
+        loaded++;notify({type:'provider',provider:'anex',...result});
+      }catch(error){
+        if(!current(run)||error?.name==='AbortError')return;
+        failed++;
+      }
+    }
+    if(!current(run))return;
+    if(!loaded){
+      run.sourceCounts.anex={status:'error',hotels:0,offers:0};
+      notify({type:'provider',provider:'anex',status:'error'});return;
+    }
+    if(failed){
+      const previous=run.sourceCounts.anex||{hotels:0,offers:0};
+      run.sourceCounts.anex={...previous,status:'partial',destinationBranchFailed:true};
+      notify({type:'provider',provider:'anex',...run.sourceCounts.anex});
+    }
+    await refreshDatabase(run);
   }
   async function directAndromedaOffer(hotel,tour,run,p,seen,data){
     const price=tour&&tour.price,context=tour&&tour.offer_context;
