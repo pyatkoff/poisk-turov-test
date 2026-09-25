@@ -60,10 +60,22 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           code=Path('../carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py').read_text()
-          old="    for path,text in files.items():\n        blob=api('POST','git/blobs'"
-          new="    for path,text in files.items():\n        if path.startswith('.github/workflows/'):\n            continue  # A separate connector write carries the reviewed CI edit.\n        blob=api('POST','git/blobs'"
+          old="    needle='    profiles[old] = p\\n'"
+          new="    needle='    profiles[old] = p'"
           assert code.count(old)==1
-          exec(compile(code.replace(old,new,1),'<reviewed-hc1-source-assembly>','exec'),{'__name__':'__main__'})
+          code=code.replace(old,new,1)
+          old="    for path,text in files.items():\n        blob=api('POST','git/blobs'"
+          new="    for path,text in files.items():\n        if path.startswith('.github/workflows/'):\n            continue  # Connector carries the reviewed CI edit.\n        blob=api('POST','git/blobs'"
+          assert code.count(old)==1
+          code=code.replace(old,new,1)
+          scope={'__name__':'hc1_assembly'}
+          exec(compile(code,'<reviewed-hc1-source-assembly>','exec'),scope)
+          original=scope['source']
+          def normalized_source(ref,path):
+              text=original(ref,path)
+              return '\n'.join(text.splitlines())+'\n' if path.endswith('.py') else text
+          scope['source']=normalized_source
+          scope['main']()
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
