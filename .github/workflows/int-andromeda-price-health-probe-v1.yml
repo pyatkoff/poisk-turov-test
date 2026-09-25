@@ -4,9 +4,8 @@ on:
     types: [opened, synchronize]
     branches: [feature/anex-search-adapter-20260907]
     paths:
-      - 'scripts/diagnostics/hotel_match_samo_business_live30_common4_acquire_v3_wave5.php'
-      - 'tests/hotel_match_samo_business_live30_common4_acquire_v3_wave5_test.php'
-      - '.github/workflows/hotel-match-samo-business-live30-common4-acquire-v3-wave5.yml'
+      - 'scripts/diagnostics/int_andromeda_price_health_probe_v1.php'
+      - '.github/workflows/int-andromeda-price-health-probe-v1.yml'
 permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: int-andromeda-price-health-20260925-v1, cancel-in-progress: false}
 env:
