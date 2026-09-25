@@ -13,7 +13,7 @@ env:
   OP: hotel-match-common4-retained-context-v26-recovery-1971-20260925-v27
   TARGET_OP: hotel-match-common4-retained-context-acquire-1971-20260925-v26
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
-  CLAIM: '5831171534'
+  CLAIM: '5831207996'
   TARGET_RESULT_SHA: 036b64868f17ca2b9f087e998c1064f3f6b1d312c7683bef4768e5f6338844c4
 jobs:
   focused:
