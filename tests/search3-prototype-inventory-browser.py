@@ -409,7 +409,11 @@ def check_width(browser, origin, width):
         ).flatMap(h => h.tours || []).filter(t => t.provider === 'andromeda').length""")
         assert andromeda_offer_count == 1, "live union contains only the native Andromeda offer"
         assert page.locator('#hotel-505').count() == 1, "native Andromeda hotel is rendered"
-        page.locator('#hotel-505 [data-action="offer"]').click()
+        # Use the real visible journey: hotel CTA opens the concrete-tour chooser;
+        # the per-offer button inside that modal is the selectable Andromeda offer.
+        page.locator('#hotel-505 [data-action="all-offers"]').click()
+        page.locator('#all-offers-list [data-action="offer"]').wait_for()
+        page.locator('#all-offers-list [data-action="offer"]').click()
         page.locator('[data-action="refresh-hotel"]').wait_for()
         page.locator('[data-action="refresh-hotel"]').click()
         page.locator('[data-action="andromeda-application-preview"]').wait_for()
