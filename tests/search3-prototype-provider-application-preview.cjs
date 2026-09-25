@@ -86,7 +86,8 @@ assert.doesNotMatch(applicationSource,/fetch\s*\(|leadSession\(/);
 assert.match(appSource,/case 'andromeda-application-preview':openAndromedaApplicationPreview\(\)/);
 
 const anexStart=appSource.indexOf('function openAnexConcreteCurrent(o,current)');
-const anexEnd=appSource.indexOf('\nfunction andromedaApplicationReceipt',anexStart);
+const anexEnd=appSource.indexOf('\nasync function refreshHotel(id)',anexStart);
+assert.ok(anexStart>=0&&anexEnd>anexStart,'ANEX provider-current block exists');
 const anexSource=appSource.slice(anexStart,anexEnd);
 assert.doesNotMatch(anexSource,/bindProviderPreview|andromeda-application-preview/,'ANEX non-final money cannot enter the verified Andromeda application preview path');
 
