@@ -756,6 +756,35 @@ test('direct ANEX initial search is limited to the first seven days of a wider u
  assert.equal(complete.sources.anex.status,'complete');assert.equal(complete.sources.anex.windowsLoaded,1);assert.equal(complete.sources.anex.windowsTotal,1);
  assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='anex').length,1);
 });
+test('direct Andromeda initial search is limited to the first seven days of a wider user range',async()=>{
+ const search={...trip,to:'2026-10-19'};
+ const h=harness({
+  native:async body=>({response:{ok:true,json:async()=>directAndromeda(body,{offerRef:'offer_'+'4'.repeat(64),localId:304,searchRef:'4'.repeat(64)})}}),
+  database:(i,p)=>snapshot(p,[])
+ });
+ await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();
+ await h.poll();await flush();
+ assert.equal(h.nativeCalls.length,1,'one user search must schedule only the first-week Andromeda supplier scope');
+ assert.deepEqual([h.nativeCalls[0].params.dateFrom,h.nativeCalls[0].params.dateTo],['2026-09-29','2026-10-05']);
+ const tv=h.calls.find(call=>call.action==='search_start');
+ assert.ok(tv);assert.deepEqual([tv.params.dateFrom,tv.params.dateTo],['2026-09-29','2026-10-19'],'Tourvisor keeps the full user date range');
+ assert.equal(h.dbBodies[0].dateFrom,'2026-09-29');assert.equal(h.dbBodies[0].dateTo,'2026-10-19','LOCAL keeps the full user date range');
+ const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.pagesLoaded===1).at(-1);
+ assert.ok(receipt);assert.equal(receipt.status,'complete');assert.equal(receipt.dateFrom,'2026-09-29');assert.equal(receipt.dateTo,'2026-10-05');
+});
+
+test('direct Andromeda keeps a shorter user range unchanged',async()=>{
+ const search={...trip,to:'2026-10-03'};
+ const h=harness({
+  native:async body=>({response:{ok:true,json:async()=>directAndromeda(body,{offerRef:'offer_'+'5'.repeat(64),localId:305,searchRef:'5'.repeat(64)})}}),
+  database:(i,p)=>snapshot(p,[])
+ });
+ await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();
+ await h.poll();await flush();
+ assert.equal(h.nativeCalls.length,1);
+ assert.deepEqual([h.nativeCalls[0].params.dateFrom,h.nativeCalls[0].params.dateTo],[search.from,search.to]);
+});
+
 test('direct ANEX keeps a shorter user range unchanged',async()=>{
  const search={...trip,to:'2026-10-03'};
  const h=harness({
