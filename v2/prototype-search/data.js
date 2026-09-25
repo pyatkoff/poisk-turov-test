@@ -520,18 +520,22 @@
     if(tour.search_surcharge&&typeof tour.search_surcharge==='object')normalized.search_surcharge=structuredClone(tour.search_surcharge);
     return normalized;
   }
+  function rehydrationAgeMultiset(value){
+    if(!Array.isArray(value)||value.some(age=>!Number.isInteger(age)||age<0||age>17))return null;
+    return [...value].sort((a,b)=>a-b);
+  }
   function cachedRehydration(o){
     const r=o?.raw?.rehydration,party=r?.party,legacy=Number(r?.legacy_hotel_id),own=Number(r?.anytour_hotel_id);
+    const storedAges=rehydrationAgeMultiset(party?.child_ages),currentAges=rehydrationAgeMultiset(o?.ages);
     if(!o||o.cached!==true||!r||r.schema_version!==1||r.provider!==o.provider||!['anex','andromeda'].includes(r.provider)
       ||!Number.isSafeInteger(legacy)||legacy<1||!Number.isSafeInteger(own)||own!==Number(o.hotelId)
       ||r.checkin!==o.day||!Number.isInteger(r.nights)||r.nights!==o.nights
       ||!party||!Number.isInteger(party.adults)||party.adults!==o.adults||!Number.isInteger(party.children)
-      ||!Array.isArray(party.child_ages)||party.children!==party.child_ages.length
-      ||party.child_ages.some(age=>!Number.isInteger(age)||age<0||age>17)
-      ||JSON.stringify(party.child_ages)!==JSON.stringify(o.ages||[])
+      ||storedAges===null||currentAges===null||party.children!==storedAges.length
+      ||JSON.stringify(storedAges)!==JSON.stringify(currentAges)
       ||!r.operator||typeof r.operator.name!=='string'||!r.operator.name.trim())return null;
     return {provider:r.provider,legacyHotelId:legacy,anytourHotelId:own,checkin:r.checkin,nights:r.nights,
-      adults:party.adults,ages:[...party.child_ages],operator:r.operator.name.trim()};
+      adults:party.adults,ages:storedAges,operator:r.operator.name.trim()};
   }
   function cachedRehydrationSearch(o,r){
     const base=o.search;
