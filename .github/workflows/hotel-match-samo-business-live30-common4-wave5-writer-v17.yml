@@ -11,10 +11,10 @@ permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-samo-business-live30-common4-wave5-writer-v17, cancel-in-progress: false}
 env:
   AUDIT_OP: hotel-match-samo-business-live30-common4-wave5-current-1971-20260925-v16c
-  W1: hotel-match-samo-business-live30-common4-wave5-writer-1971-20260925-v17-w1
-  W2: hotel-match-samo-business-live30-common4-wave5-writer-1971-20260925-v17-w2
+  W1: hotel-match-samo-business-live30-common4-wave5-writer-1971-20260925-v17-w1b
+  W2: hotel-match-samo-business-live30-common4-wave5-writer-1971-20260925-v17-w2b
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
-  CLAIM: '5829674112'
+  CLAIM: '5829712940'
   AUDIT_ARTIFACT: '10854607010'
   AUDIT_ARCHIVE_SHA: 1d4a1f66015990e09945a414c70beb2ae619d26c63663bf43ee8f478e1f8122e
   AUDIT_RESULT_SHA: 1791594e468c29a433c2a3263bf29ade2d34dbb3311e060c2c0071b28b5cf8f8
