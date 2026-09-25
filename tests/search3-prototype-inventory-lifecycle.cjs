@@ -449,6 +449,7 @@ test('mixed region and subregion OR is split only for native providers and union
  ]:undefined;
  const h=harness({
   destinations,database:(i,p)=>snapshot(p,[]),
+  andromedaQuote:async body=>({response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(body.params.regionIds.length?401:402)})}}),
   anex:async body=>{
    const region=body.params.regionIds.length>0;
    return {response:{ok:true,json:async()=>directAnex(body,{
@@ -479,6 +480,11 @@ test('mixed region and subregion OR is split only for native providers and union
  assert.equal(complete.sources.anex.status,'complete');assert.equal(complete.sources.anex.windowsTotal,2);
  assert.equal(complete.sources.andromeda.status,'complete');assert.equal(complete.sources.andromeda.branchesTotal,2);
  assert.equal(complete.union.offersByProvider.anex,2);assert.equal(complete.union.offersByProvider.andromeda,2);
+ for(const offer of h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda')){
+  await h.data.verifyAndromeda(offer);
+  const request=h.andromedaQuoteCalls.at(-1),original=h.nativeCalls.find(call=>(call.params.regionIds.length?'9':'a').repeat(64)===request.offer_context.search_ref);
+  assert.deepEqual(request.params,original.params,'quote must retain the exact destination branch that issued this offer');
+ }
 });
 test('mixed direct ANEX keeps a valid sibling branch when the first branch fails',async()=>{
  const destinations=(action,p)=>action==='regions'?[
@@ -494,7 +500,9 @@ test('mixed direct ANEX keeps a valid sibling branch when the first branch fails
   }
  });
  await h.data.regions('4');
- await h.start({resorts:['Белек','Кадрие'],min:0,max:null});await h.poll();await flush();
+ await h.start({resorts:['Белек','Кадрие'],min:0,max:null});
+ await waitFor(()=>h.providers().includes('anex'),'the sibling profile must be projected before checking its terminal union count');
+ await h.poll();await flush();
  assert.equal(h.anexCalls.length,2,'both mixed destination branches are attempted');
  assert.deepEqual(h.anexCalls.map(call=>[Array.from(call.params.regionIds),Array.from(call.params.subregionIds)]),[
   [['21'],[]],[[],['2101']]
@@ -671,6 +679,7 @@ test('direct Andromeda initial search is limited to the first seven days of a wi
  const search={...trip,to:'2026-10-19'};
  const h=harness({
   native:async body=>({response:{ok:true,json:async()=>directAndromeda(body,{offerRef:'offer_'+'4'.repeat(64),localId:304,searchRef:'4'.repeat(64)})}}),
+  andromedaQuote:async body=>({response:{ok:true,status:200,json:async()=>({ok:true,data:body.action==='quote'?andromedaChoice(304):andromedaVerified(304)})}}),
   database:(i,p)=>snapshot(p,[])
  });
  await h.data.search(structuredClone(search),event=>h.events.push(event),[],{min:0,max:null});await flush();
@@ -682,6 +691,11 @@ test('direct Andromeda initial search is limited to the first seven days of a wi
  assert.equal(h.dbBodies.length,0,'live search never reads LOCAL offers for the wide user range');
  const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.pagesLoaded===1).at(-1);
  assert.ok(receipt);assert.equal(receipt.status,'complete');assert.equal(receipt.dateFrom,'2026-09-29');assert.equal(receipt.dateTo,'2026-10-05');
+ const offer=h.latest().flatMap(hotel=>hotel.offers).find(item=>item.provider==='andromeda');
+ await h.data.verifyAndromeda(offer);
+ await h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)});
+ assert.equal(h.andromedaQuoteCalls.length,2);
+ for(const request of h.andromedaQuoteCalls)assert.deepEqual(request.params,h.nativeCalls[0].params,'quote and selected flights must use the retained first-week search, not the wider Tourvisor range');
 });
 
 test('direct Andromeda keeps a shorter user range unchanged',async()=>{

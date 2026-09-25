@@ -488,7 +488,8 @@
       meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:text(tour.placement),
       operator:tour.operator&&typeof tour.operator==='object'?structuredClone(tour.operator):{name:text(tour.operator)||'Туроператор уточняется'},
       isCharter:flight==='charter'?true:flight==='regular'?false:undefined,cachedListing:false,selectionEnabled:false,bookingEnabled:false,
-      finalPriceVerified:false,quoteRequired:true,andromedaLocalHotelId:hotel.local_id,offer_context:structuredClone(context)};
+      finalPriceVerified:false,quoteRequired:true,andromedaLocalHotelId:hotel.local_id,offer_context:structuredClone(context),
+      andromedaSearchParams:structuredClone(p)};
     if(tour.listing_price_ref!==undefined)normalized.listing_price_ref=String(tour.listing_price_ref);
     if(tour.base_search_price&&typeof tour.base_search_price==='object')normalized.base_search_price=structuredClone(tour.base_search_price);
     if(tour.search_surcharge&&typeof tour.search_surcharge==='object')normalized.search_surcharge=structuredClone(tour.search_surcharge);
@@ -1036,8 +1037,8 @@
   function andromedaQuoteKey(context){return context?JSON.stringify(context):'';}
   function andromedaQuoteRequest(o,flightSelection=null){
     const rawOffer=o&&o.raw,ctx=andromedaContext(rawOffer?.offer_context),localId=Number(rawOffer?.andromedaLocalHotelId);
-    const quoteParams=rawOffer?.rehydrationParams&&typeof rawOffer.rehydrationParams==='object'&&!Array.isArray(rawOffer.rehydrationParams)
-      ?rawOffer.rehydrationParams:searchParams;
+    const quoteParams=rawOffer?.andromedaSearchParams&&typeof rawOffer.andromedaSearchParams==='object'&&!Array.isArray(rawOffer.andromedaSearchParams)
+      ?rawOffer.andromedaSearchParams:null;
     if(!o||o.cached||o.provider!=='andromeda'||rawOffer?.selectionEnabled!==false||rawOffer?.quoteRequired!==true
       ||!ctx||ctx.generation!==generation||ctx.offer_ref!==String(rawOffer?.offerRef||'')
       ||!Number.isSafeInteger(localId)||localId<1||!quoteParams)return null;
@@ -1046,109 +1047,7 @@
     if(hotel_scope){if(hotel_scope.local_id!==localId)return null;body.hotel_scope=structuredClone(hotel_scope);}
     const listing=String(rawOffer?.listing_price_ref||'');if((/^listing_[a-f0-9]{64}$/).test(listing))body.listing_price_ref=listing;
     if(flightSelection){
-      const keys=Object.keys(flightSelection).sort();
-      if(keys.join(',')!=='outbound_ref,provider,return_ref'||flightSelection.provider!=='andromeda'
-        ||!(/^flight_[a-f0-9]{32}$/).test(String(flightSelection.outbound_ref||''))
-        ||!(/^flight_[a-f0-9]{32}$/).test(String(flightSelection.return_ref||'')))return null;
-      const retained=andromedaQuoteChoices.get(andromedaQuoteKey(ctx));
-      const outbound=retained?.flights?.find(row=>row.direction==='0'&&row.flightRef===flightSelection.outbound_ref);
-      const inbound=retained?.flights?.find(row=>row.direction==='1'&&row.flightRef===flightSelection.return_ref);
-      if(!outbound||!inbound)return null;
-      body.flight_selection=structuredClone(flightSelection);
-    }
-    return {body,ctx,localId,key:andromedaQuoteKey(ctx)};
-  }
-  function andromedaPoint(value){
-    if(!value||typeof value!=='object')return null;
-    const clean={};
-    for(const key of ['state','town','port']){
-      const item=value[key];if(item!==null&&item!==undefined&&typeof item!=='string')return null;
-      clean[key]=typeof item==='string'?item.slice(0,100):null;
-    }
-    return clean;
-  }
-  function andromedaQuoteFlight(value,pending,seen){
-    if(!value||!['0','1'].includes(String(value.direction||'')))return null;
-    const row={direction:String(value.direction),name:typeof value.name==='string'?value.name.slice(0,160):null,
-      datebeg:typeof value.datebeg==='string'?value.datebeg.slice(0,40):null,dateend:typeof value.dateend==='string'?value.dateend.slice(0,40):null,
-      class:typeof value.class==='string'?value.class.slice(0,80):null,departure:andromedaPoint(value.departure),arrival:andromedaPoint(value.arrival)};
-    if(value.departure!==null&&value.departure!==undefined&&!row.departure||value.arrival!==null&&value.arrival!==undefined&&!row.arrival)return null;
-    if(pending){
-      const ref=String(value.flight_ref||'');if(!(/^flight_[a-f0-9]{32}$/).test(ref)||seen.has(ref))return null;
-      seen.add(ref);row.flightRef=ref;
-    }
-    return Object.freeze(row);
-  }
-  function normalizeAndromedaQuote(value,localId){
-    if(!value||value.schema_version!==1||value.provider!=='andromeda'||Number(value.local_id)!==localId
-      ||value.selection_enabled!==true||value.booking_enabled!==false||!Array.isArray(value.flights)||value.flights.length>100)return null;
-    const verified=value.state==='quote_verified'&&value.quote_state==='verified'&&value.final_price_verified===true
-      &&value.flight_selection_required===false;
-    const pending=value.state==='flight_selection_required'&&value.quote_state==='unverified'&&value.final_price_verified===false
-      &&value.flight_selection_required===true&&value.final_price===null;
-    if(!verified&&!pending)return null;
-    let finalPrice=null;
-    if(verified){
-      const amount=String(value.final_price?.amount??''),currency=String(value.final_price?.currency??'');
-      if(currency!=='RUB'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(amount)||Number(amount)<=0)return null;
-      finalPrice=Object.freeze({amount,currency});
-    }
-    const seen=new Set(),flights=[];
-    for(const raw of value.flights){const flight=andromedaQuoteFlight(raw,pending,seen);if(!flight)return null;flights.push(flight);}
-    if(pending&&(!flights.some(row=>row.direction==='0')||!flights.some(row=>row.direction==='1')))return null;
-    return Object.freeze({state:pending?'flight_selection_required':'quote_verified',finalPrice,finalPriceVerified:verified,
-      flightSelectionRequired:pending,flights:Object.freeze(flights)});
-  }
-  async function verifyAndromeda(o,flightSelection=null){
-    const prepared=andromedaQuoteRequest(o,flightSelection);
-    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaQuoteApi,'/_preview/search3-anex-candidate/api-andromeda-quote-preview.php');
-    if(!prepared||!url)throw new Error('Предложение Andromeda устарело. Повторите поиск.');
-    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
-    const epoch=generation,timeout=setTimeout(()=>controller.abort(),45000);
-    try{
-      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
-        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(prepared.body)});
-      const payload=await response.json().catch(()=>null);
-      if(controller.signal.aborted||epoch!==generation||!andromedaQuoteRequest(o,flightSelection))throw new Error('Условия поиска изменились. Выберите тур заново.');
-      if(!response.ok||payload?.ok!==true||!payload.data){
-        if(flightSelection)andromedaQuoteChoices.delete(prepared.key);
-        throw new Error(response.status===429?'Лимит проверки Andromeda временно исчерпан.':'Andromeda не смог подтвердить выбранное предложение.');
-      }
-      const quote=normalizeAndromedaQuote(payload.data,prepared.localId);if(!quote){if(flightSelection)andromedaQuoteChoices.delete(prepared.key);throw new Error('Andromeda вернул некорректное подтверждение.');}
-      if(quote.flightSelectionRequired)andromedaQuoteChoices.set(prepared.key,quote);else andromedaQuoteChoices.delete(prepared.key);
-      return quote;
-    }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
-  }
-  async function quote(o) {
-    if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
-    const run=generation,id=searchId;
-    const t=await rt.api('tour',{tourId:o.raw.id,currency:'RUB'});
-    if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');
-    if(!t||String(t.id)!==String(o.raw.id)||!amount(t.price))throw new Error('Не удалось подтвердить цену выбранного тура.');
-    quoteReceipts.set(t,{generation:run,searchId:id});
-    return t;
-  }
-  async function flights(t) {
-    const data=await rt.api('flights',{tourId:t.id,currency:'RUB'});
-    if(Array.isArray(data))return data;
-    if(Array.isArray(data?.flights))return data.flights;
-    throw new Error('Не удалось загрузить рейсы. Попробуйте ещё раз.');
-  }
-  function leadSession(o) {
-    if(!o?.tour||o.cached||o.provider!=='tourvisor'||String(o.tour.id)!==String(o.raw.id)||!searchId||!searchParams)throw new Error('Сначала подтвердите актуальное предложение.');
-    const run=generation,id=searchId;
-    const receipt=quoteReceipts.get(o.tour);
-    if(!receipt||receipt.generation!==run||receipt.searchId!==id)throw new Error('Предложение устарело. Откройте условия тура и проверьте цену заново.');
-    if(o.flightsLoading||o.flightsError)throw new Error(o.flightsLoading?'Дождитесь загрузки рейсов.':'Не удалось загрузить рейсы. Повторите загрузку перед выбором тура.');
-    if(o.pricePending||!amount(o.tour.price))throw new Error('Цена тура пока не подтверждена. Проверьте условия заново.');
-    let flight=null;
-    if(o.flightChoiceId!==null){
-      const index=Number(o.flightChoiceId);
-      flight=Number.isInteger(index)&&index>=0&&String(index)===String(o.flightChoiceId)?o.variants?.[index]:null;
-      if(!flight||!variantPrice(o.tour,flight))throw new Error('Цена выбранного перелёта пока не подтверждена. Выберите другой вариант.');
-    }
-    const session=root.V2TourController.createLeadSession({tour:o.tour,flight,searchId:id,search:searchParams});
-    const current=()=>{if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');};
+      const keys=O…2645 tokens truncated…u0423словия поиска изменились. Выберите тур заново.');};
     return Object.freeze({payload(fd){current();return session.payload(fd);},submit(form,controls){current();return session.submit(form,controls);}});
   }
   function variantPrice(t,v){return amount(v?.price);}
