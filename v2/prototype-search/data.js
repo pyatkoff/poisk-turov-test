@@ -261,7 +261,7 @@
     const rating=Number(h.rating && typeof h.rating === 'object' ? h.rating.value : h.rating);
     const ratingScale=Number(h.rating && typeof h.rating === 'object' ? h.rating.scale : 5);
     const region=text(h.region).trim(),subRegion=text(h.subRegion).trim();
-    return {id:own,legacyIds:(h.canonicalLegacyIds || []).map(String),name:text(h.name),country:String(s.country),region,subRegion,resort:subRegion||region,stars:Number(h.category)||0,rating:rating>0&&rating<=ratingScale?rating*5/ratingScale:null,beach:null,family:null,spa:null,pool:null,amenities:amenities(h),photos:[...new Set(photos)].slice(0,12),note:text(h.description),tag:'',raw:h,offers:[]};
+    return {id:own,legacyIds:(h.canonicalLegacyIds || []).map(String),name:text(h.name),country:String(s.country),region,subRegion,resort:subRegion||region,stars:Number(h.category)||0,rating:rating>0&&rating<=ratingScale?rating*5/ratingScale:null,beach:null,family:null,spa:null,pool:null,amenities:amenities(h),photos:[...new Set(photos)],note:text(h.description),tag:'',raw:h,offers:[]};
   }
   function offer(t, h, s, index) {
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
