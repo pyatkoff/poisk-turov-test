@@ -22,6 +22,7 @@ env:
   OP: hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
   CLAIM: '5836930493'
+  AMEND: '5837002941'
   ROUTER_ARTIFACT: '10878842741'
   ROUTER_ARTIFACT_SHA: d91ea08b0e6d30e883a7575d1b43afc81440ce26e1d75dd6f4f5aafd8aa72433
   ROUTER_HEAD: 06941bfc38ef71abdb1d77b0cb3e5077bf7cc544
@@ -67,12 +68,14 @@ jobs:
           test "$actual" = ".github/workflows/hotel-match-live-samo-missing-anex-operator13-acquire-v41.yml scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py tests/hotel_match_live_samo_missing_anex_operator13_acquire_v41_test.py "
 
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$AMEND" >input/amend.json
           python3 - <<'PY'
           import json,os,time,urllib.request
-          c=json.load(open('input/claim.json'));b=c['body']
-          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],'659','261','operatorIds=[13]','<=500','max50','TOURVISOR_ANEX_JWT']:
+          c=json.load(open('input/claim.json'));a=json.load(open('input/amend.json'));b=c['body'];ab=a['body']
+          for x in (c,a): assert x['user']['id']==226193297 and x['author_association']=='OWNER' and x['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'659','261','operatorIds=[13]','<=500','max50']:
               assert x in b,x
+          assert 'TOURVISOR_ANEX_JWT' in ab
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
               q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
