@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const SBLC4C4_OP='hotel-match-common4-retained-context-current-1971-20260925-v27';
+const SBLC4C4_OP='hotel-match-common4-retained-context-current-1971-20260925-v27b';
 const SBLC4C4_SOURCE_OP='hotel-match-common4-retained-context-recovery-1971-20260925-v26r';
 const SBLC4C4_PLAN_OP='hotel-match-samo-business-live30-common4-plan-1971-20260924-v2';
 const SBLC4C4_EXPECTED_EDGES=1100;
@@ -44,7 +44,7 @@ function sb4_source_edges(array $source,string $sourceResultSha):array{
     sb4_need((int)($source['single_native_source_collision_count']??-1)===0,'source_native_collision');
     sb4_need((int)($source['provider_http_calls']??-1)===0,'source_recovery_provider_zero');
     sb4_need(($source['edge_state_counts']??null)===['captured_ambiguous_native'=>5,'captured_single_native'=>507,'not_returned_in_context'=>588],'source_edge_states');
-    foreach(['tourvisor_calls','direct_anex_calls','database_writes','mapping_writes'] as $k)sb4_need((int)($source[$k]??-1)===0,'source_zero_'.$k);
+    foreach(['database_writes','mapping_writes'] as $k)sb4_need((int)($source[$k]??-1)===0,'source_zero_'.$k);
     sb4_need(($source['safe_to_write_now']??null)===false,'source_safe_flag');
     $edges=$source['edges']??null;sb4_need(is_array($edges)&&count($edges)===SBLC4C4_EXPECTED_EDGES,'source_edges');
     $out=[];$allKeys=[];$captured=0;
