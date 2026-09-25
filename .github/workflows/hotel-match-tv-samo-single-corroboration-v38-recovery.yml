@@ -1,0 +1,149 @@
+name: MATCH TV-SAMO single corroboration v38 recovery
+
+'on':
+  pull_request:
+    types: [synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - .github/workflows/hotel-match-tv-samo-single-corroboration-v38-recovery.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-tv-samo-single-corroboration-v38-recovery
+  cancel-in-progress: false
+
+env:
+  CLAIM: '5838745540'
+  TARGET_OP: hotel-match-tv-samo-single-fingerprint-corroboration-1971-20260925-v38
+
+jobs:
+  recover:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/tv-samo-single-corroboration-v38-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate recovery authority and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p terminal
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['TARGET_OP'],'do NOT replay v38','provider HTTP0','DB reads0/writes0','server mutation0']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+
+      - name: Read sealed v38 result only
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known" recovery.py' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+
+          cat >recovery.py <<'PY'
+          import os,sys,json,hashlib
+          root=sys.argv[1]
+          out={'target_operation':os.path.basename(root),'exists':os.path.isdir(root),'server_mutation':0,'provider_http_calls':0,'database_reads':0,'database_writes':0,'mapping_writes':0}
+          files=[]
+          if out['exists']:
+              for base,dirs,names in os.walk(root,followlinks=False):
+                  dirs[:]=[d for d in dirs if not os.path.islink(os.path.join(base,d))]
+                  for name in names:
+                      p=os.path.join(base,name)
+                      if os.path.islink(p): continue
+                      try:size=os.path.getsize(p)
+                      except OSError:continue
+                      files.append({'path':os.path.relpath(p,root),'size':size})
+                      if len(files)>=100:break
+                  if len(files)>=100:break
+          out['files']=files
+          allowed={'operation','state','reason','source_result_sha256','candidate_count','saved_catalog_file_count','saved_candidate_catalog_count','corroborated_count','status_counts','bucket_status_counts','provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes','safe_to_write_now','result_sha256','readback_verified','provider_accessed'}
+          for name in ['result.json','receipt.json']:
+              p=os.path.join(root,name)
+              if not os.path.isfile(p) or os.path.islink(p): continue
+              raw=open(p,'rb').read()
+              ent={'sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw)}
+              try:
+                  data=json.loads(raw)
+                  if isinstance(data,dict):
+                      ent['fields']={k:data[k] for k in allowed if k in data}
+                      if name=='result.json' and isinstance(data.get('rows'),list):
+                          proj=[]
+                          for row in data['rows']:
+                              if not isinstance(row,dict):continue
+                              proj.append({
+                                'andromeda_catalog_id':row.get('andromeda_catalog_id'),
+                                'candidate_local_hotel_id':row.get('candidate_local_hotel_id'),
+                                'frontier_bucket':row.get('frontier_bucket'),
+                                'source_status':row.get('source_status'),
+                                'status':row.get('status'),
+                                'country_match':row.get('country_match'),
+                                'name_evidence_count':len(row.get('name_evidence_keys') or []),
+                                'place_evidence_count':len(row.get('place_evidence_keys') or []),
+                                'min_distance_m':row.get('min_distance_m'),
+                                'current_source_occupancy_count':len(row.get('current_source_targets') or []),
+                                'current_target_occupancy_count':len(row.get('current_target_catalog_ids') or []),
+                              })
+                          ent['candidate_projection']=proj
+              except Exception as e:
+                  ent['parse_error']=type(e).__name__
+              out[name]=ent
+          print(json.dumps(out,sort_keys=True,separators=(',',':')))
+          PY
+
+          base64 <recovery.py | ssh "${opts[@]}" "$remote" "base64 -d | python3 - \"\$HOME/.anytoour-match/operations/$TARGET_OP\"" >terminal/recovery.json
+
+          python3 - <<'PY'
+          import json
+          r=json.load(open('terminal/recovery.json'))
+          assert r['target_operation']=='hotel-match-tv-samo-single-fingerprint-corroboration-1971-20260925-v38'
+          assert r['server_mutation']==0 and r['database_reads']==r['database_writes']==r['mapping_writes']==0
+          fields=(r.get('result.json') or {}).get('fields') or {}
+          if fields:
+              assert fields.get('provider_http_calls',0)==0
+              assert fields.get('database_writes',0)==0
+              assert fields.get('mapping_writes',0)==0
+          print(json.dumps(r,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-samo-single-corroboration-v38-recovery-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
