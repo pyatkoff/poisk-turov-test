@@ -1,0 +1,162 @@
+name: MATCH TV-SAMO COMMON4 fingerprint join v37
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_tv_samo_common4_fingerprint_join_v37.php'
+      - 'tests/hotel_match_tv_samo_common4_fingerprint_join_v37_test.php'
+      - '.github/workflows/hotel-match-tv-samo-common4-fingerprint-join-v37.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-tv-samo-common4-fingerprint-join-v37, cancel-in-progress: false}
+env:
+  OP: hotel-match-tv-samo-common4-fingerprint-join-1971-20260925-v37
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5836094916'
+  AMEND: '5836118630'
+  FRONTIER_ARTIFACT: '10874272775'
+  FRONTIER_ARCHIVE_SHA: 56c2df24d247d64a2392d137da95daee229830f9d9b52fa842fda688d27a6e23
+  FRONTIER_RESULT_SHA: efaeb33f14a1a2aba4c207254be388e470636e2ad965b461a5a671c3bee72184
+  FRONTIER_TARGET_SHA: 5001297e29a920acc2d565e45fec0e4d0a5b2244e0ba60a860941be882ad1c77
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/tv-samo-common4-fingerprint-join-v37-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_tv_samo_common4_fingerprint_join_v37.php
+      - run: php scripts/diagnostics/hotel_match_tv_samo_common4_fingerprint_join_v37.php --self-test
+      - run: php tests/hotel_match_tv_samo_common4_fingerprint_join_v37_test.php
+      - name: Read-only boundary
+        run: |
+          set -euo pipefail
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_tv_samo_common4_fingerprint_join_v37.php
+
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/tv-samo-common4-fingerprint-join-v37-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate authority and exact scope
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/frontier terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-tv-samo-common4-fingerprint-join-v37.yml scripts/diagnostics/hotel_match_tv_samo_common4_fingerprint_join_v37.php tests/hotel_match_tv_samo_common4_fingerprint_join_v37_test.php "
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$AMEND" >input/amend.json
+          python3 - <<'PY'
+          import json,os
+          for p in ['input/claim.json','input/amend.json']:
+              c=json.load(open(p))
+              assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+              assert c['issue_url'].endswith('/issues/3419')
+          b=json.load(open('input/claim.json'))['body']
+          a=json.load(open('input/amend.json'))['body']
+          for x in [os.environ['OP'],'1737','REPEATABLE READ / READ ONLY','HTTP0','safe_to_write_now=false','operator_315','operator_342']:
+              assert x in b,x
+          for x in ['sealed','$HOME/.anytoour-match/operations','bgoperator','operator_115','anex','operator_5','<=5000','<=64MiB']:
+              assert x in a,x
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$FRONTIER_ARTIFACT/zip" -o input/frontier.zip
+          test "$(sha256sum input/frontier.zip|awk '{print $1}')" = "$FRONTIER_ARCHIVE_SHA"
+          unzip -q input/frontier.zip -d input/frontier
+          result="$(find input/frontier -type f -name result.json -print -quit)"
+          receipt="$(find input/frontier -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt"
+          cp "$result" input/frontier-result.json
+          python3 - "$result" "$receipt" <<'PY'
+          import json,hashlib,pathlib,sys,os
+          r=json.load(open(sys.argv[1]));q=json.load(open(sys.argv[2]))
+          sha=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest()
+          assert sha==os.environ['FRONTIER_RESULT_SHA']==q['result_sha256']
+          assert r['operation']=='hotel-match-business-live30-frontier-plan-1971-20260925-v33'
+          assert r['state']=='completed_read_only_business_live30_frontier_plan'
+          assert r['non_full_triple_total']==1737 and r['bucket_counts']=={'tv_samo_missing_anex':777,'tv_anex_missing_samo':234,'tv_only_missing_both':726}
+          assert r['target_set_sha256']==os.environ['FRONTIER_TARGET_SHA']
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          PY
+          python3 - <<'PY'
+          import json,os,pathlib,datetime
+          pathlib.Path('input/reservation.json').write_text(json.dumps({
+            'operation':os.environ['OP'],'state':'reserved_before_read_only_join',
+            'provider_http_calls':0,'database_writes':0,'mapping_writes':0,
+            'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()
+          },sort_keys=True)+'\n')
+          PY
+      - name: Require Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion']
+                      break
+              time.sleep(4)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Execute supplier-free fingerprint join
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/input\""
+          scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" input/frontier-result.json "$remote:$op/input/frontier-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_tv_samo_common4_fingerprint_join_v37.php "$remote:$op/payload/scripts/diagnostics/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_OPERATIONS_ROOT=\"\$HOME/.anytoour-match/operations\" MATCH_FRONTIER_RESULT=\"\$HOME/$op/input/frontier-result.json\" MATCH_FRONTIER_RESULT_SHA='$FRONTIER_RESULT_SHA' MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_tv_samo_common4_fingerprint_join_v37.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
+          set -e
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile():
+                      p=pathlib.Path('terminal',m.name);p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only_tv_samo_common4_fingerprint_join'
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert q['readback_verified'] is True and r['safe_to_write_now'] is False
+          assert r['frontier_total']==1737
+          for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes']:
+              assert r[k]==0,k
+          print(json.dumps({
+            'operation_scan':r['operation_scan'],
+            'tv_semantic_edges':r['tv_semantic_edges'],
+            'samo_semantic_edges':r['samo_semantic_edges'],
+            'shared_direct_fingerprints':r['shared_direct_fingerprints'],
+            'shared_support_fingerprints':r['shared_support_fingerprints'],
+            'strong_current_missing_count':r['strong_current_missing_count'],
+            'single_direct_review_count':r['single_direct_review_count'],
+            'support_only_review_count':r['support_only_review_count'],
+            'candidate_status_counts':r['candidate_status_counts'],
+            'lift_potential_by_v33_bucket':r['lift_potential_by_v33_bucket'],
+          },ensure_ascii=False,sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-tv-samo-common4-fingerprint-v37-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
