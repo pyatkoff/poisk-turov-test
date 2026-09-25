@@ -58,7 +58,7 @@ jobs:
               assert x['user']['id']==226193297 and x['author_association']=='OWNER'
               assert x['issue_url'].endswith('/issues/3419')
           b=c['body']
-          for x in [os.environ['OP'],'1737','REPEATABLE READ / READ ONLY','HTTP0','2+ independent','safe_to_write_now=false','operator_5/115/315/342']:
+          for x in [os.environ['OP'],'1737','REPEATABLE READ / READ ONLY','HTTP0','>=2 independent','safe_to_write_now=false','operator_5/115/315/342']:
               assert x in b,x
           assert 'strong_two_direct_current_missing: 0' in v['body']
           PY
