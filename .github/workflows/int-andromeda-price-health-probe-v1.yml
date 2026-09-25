@@ -7,7 +7,7 @@ on:
       - 'scripts/diagnostics/int_andromeda_price_health_probe_v1.php'
       - '.github/workflows/int-andromeda-price-health-probe-v1.yml'
 permissions: {contents: read, actions: read, issues: read}
-concurrency: {group: int-andromeda-price-health-20260925-v1, cancel-in-progress: false}
+concurrency: {group: int-andromeda-price-health-20260925-v2, cancel-in-progress: false}
 env:
   OP: int-andromeda-price-health-20260925-v2
 jobs:
