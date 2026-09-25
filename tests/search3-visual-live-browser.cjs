@@ -38,7 +38,7 @@ const server=http.createServer((req,res)=>{
   assert(await page.evaluate(()=>!!(document.querySelector('#hotel-services-heading').compareDocumentPosition(document.querySelector('#hotel-rooms-heading')) & Node.DOCUMENT_POSITION_FOLLOWING)));
   await page.locator('[data-action="close-modal"]').click();
   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
-  const tvOffer=page.locator('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
+  const tvOffer=page.locator('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
   if(!await tvOffer.isVisible())await tvOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await tvOffer.click();await page.waitForFunction(()=>document.querySelector('[data-action="confirm-tour"]')&&!document.querySelector('[data-action="confirm-tour"]').disabled);
   await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();
@@ -47,7 +47,7 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
   await page.screenshot({path:path.join(evidence,`application-${width}.png`)});
   await page.locator('[data-action="close-modal"]').click();await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
-  const samoOffer=page.locator('[data-action="offer"][data-key^="andromeda%3A"]').first();
+  const samoOffer=page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').first();
   if(!await samoOffer.isVisible())await samoOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await samoOffer.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="andromeda-application-preview"]').click();
   assert((await page.locator('#modal-body').textContent()).includes('SAMO STANDARD'));
