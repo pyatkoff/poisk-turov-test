@@ -12,12 +12,13 @@ on:
 permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-samo-registry-current-bridge-audit-v39, cancel-in-progress: false}
 env:
-  OP: hotel-match-samo-registry-current-bridge-audit-1971-20260925-v39
+  OP: hotel-match-samo-registry-current-bridge-audit-1971-20260925-v39r2
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
   CLAIM: '5836339223'
   PIN: '5836347538'
   TRANSPORT: '5836427908'
   ENTRY: '5836448018'
+  RETRY: '5836482824'
   V38_ARTIFACT: '10877086151'
   V38_ARCHIVE_SHA: 38e40c861917e6c2e5e84b6a2f0948d1336ef7a18d7ce420586fb243ed14920b
   V38_SOURCE_SHA: fcb21a9ac50d3b1777db003f28d555d106ec8a81
@@ -58,17 +59,19 @@ jobs:
           test "$(git merge-base HEAD "$BASE")" = "$BASE"
           expected=".github/workflows/hotel-match-samo-registry-current-bridge-audit-v39.yml scripts/deploy/hotel_match_v39_readonly_runner.py scripts/deploy/hotel_match_v39_readonly_runner_entry.py scripts/diagnostics/hotel_match_samo_registry_current_bridge_audit_v39.php tests/hotel_match_samo_registry_current_bridge_audit_v39_test.php "
           test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
-          for id in "$CLAIM" "$PIN" "$TRANSPORT" "$ENTRY"; do gh api "repos/$GITHUB_REPOSITORY/issues/comments/$id" >"input/comment-$id.json"; done
+          for id in "$CLAIM" "$PIN" "$TRANSPORT" "$ENTRY" "$RETRY"; do gh api "repos/$GITHUB_REPOSITORY/issues/comments/$id" >"input/comment-$id.json"; done
           python3 - <<'PY'
           import json,os
-          ids=[os.environ['CLAIM'],os.environ['PIN'],os.environ['TRANSPORT'],os.environ['ENTRY']]
+          ids=[os.environ['CLAIM'],os.environ['PIN'],os.environ['TRANSPORT'],os.environ['ENTRY'],os.environ['RETRY']]
           rows=[json.load(open('input/comment-'+i+'.json')) for i in ids]
           for c in rows:
               assert c['user']['id']==226193297 and c['author_association']=='OWNER'
               assert c['issue_url'].endswith('/issues/3419')
-          b=rows[0]['body']; p=rows[1]['body']; t=rows[2]['body']; e=rows[3]['body']
-          for x in [os.environ['OP'],'551','REPEATABLE READ / READ ONLY','HTTP0','safe_to_write_now=false','andromeda_catalog']:
+          b=rows[0]['body']; p=rows[1]['body']; t=rows[2]['body']; e=rows[3]['body']; retry=rows[4]['body']
+          for x in ['551','REPEATABLE READ / READ ONLY','HTTP0','safe_to_write_now=false','andromeda_catalog']:
               assert x in b,x
+          for x in [os.environ['OP'],'command_failed:scp:1','home-relative SFTP/scp destinations']:
+              assert x in retry,x
           for x in ['10877086151',os.environ['V38_SOURCE_SHA'],os.environ['V38_ARCHIVE_SHA']]:
               assert x in p,x
           assert 'hotel_match_v39_readonly_runner.py' in t
