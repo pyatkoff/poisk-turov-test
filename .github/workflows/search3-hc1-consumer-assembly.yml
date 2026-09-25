@@ -41,7 +41,7 @@ jobs:
               time.sleep(2)
           else:raise SystemExit('security_not_confirmed')
           PY
-      - name: Assemble source objects only; no branch or live changes
+      - name: Assemble checked inputs without ref or live writes
         working-directory: work
         env:
           GH_TOKEN: '${{ github.token }}'
@@ -49,13 +49,11 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import os,re,subprocess
+          import os,re,subprocess,json,hashlib,urllib.request
           out=Path(os.environ['HC1_ASSEMBLY_OUTPUT']);out.mkdir(parents=True,exist_ok=True)
           code=Path('../carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py').read_text()
-          code=code.replace("    needle='    profiles[old] = p\\n'", "    needle='    profiles[old] = p'")
-          old="    for path,text in files.items():\n        blob=api('POST','git/blobs'"
-          assert code.count(old)==1
-          code=code.replace(old,"    for path,text in files.items():\n        if path.startswith('.github/workflows/'):\n            continue\n        blob=api('POST','git/blobs'",1)
+          (out/'assembly-source.py').write_text(code)
+          subprocess.run(['git','archive','--format=tar','-o',str(out/'source-tree.tar'),'HEAD'],check=True)
           scope={'__name__':'hc1_assembly'};exec(compile(code,'hc1_assembly','exec'),scope)
           original=scope['source']
           def normalized_source(ref,path):
@@ -65,9 +63,31 @@ jobs:
                   (out/'donor-gallery-test.py').write_text(text)
                   text,n=re.subn(r'(?m)^[ \t]+profiles\[old\][ \t]*=[ \t]*p[ \t]*$', '    profiles[old] = p', text);assert n==1
                   text,n=re.subn(r"ids\s*=\s*list\(map\(int,\s*q\['legacyHotelIds\[\]'\]\)\)", "ids = list(map(int,q['legacyHotelIds[]']))",text);assert n==1
+              target=out/'inputs'/ref/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(text)
               return text
           scope['source']=normalized_source
-          scope['main']()
+          files=scope['assemble']()
+          for path,text in files.items():
+              target=Path(path);target.parent.mkdir(parents=True,exist_ok=True);target.write_text(text)
+              target=out/'files'/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(text)
+          for p in ['v2/prototype-search/app.js','v2/prototype-search/data.js']:subprocess.run(['node','--check',p],check=True)
+          subprocess.run(['python3','-m','py_compile',scope['NEW_TEST']],check=True)
+          subprocess.run(['git','diff','--check'],check=True)
+          base=scope['BASE'];token=os.environ['GH_TOKEN']
+          def api(method,path,payload=None):
+              request=urllib.request.Request('https://api.github.com/repos/pyatkoff/poisk-turov-test/'+path,data=json.dumps(payload).encode() if payload is not None else None,headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},method=method)
+              with urllib.request.urlopen(request,timeout=30) as response:return json.load(response)
+          assert api('GET','git/ref/heads/release/search3-production-ready-v1')['object']['sha']==base
+          parent=api('GET','git/commits/'+base);tree=[]
+          for path,text in files.items():
+              if path.startswith('.github/workflows/'):continue
+              blob=api('POST','git/blobs',{'encoding':'utf-8','content':text})
+              assert blob['sha']==hashlib.sha1(b'blob '+str(len(text.encode())).encode()+b'\0'+text.encode()).hexdigest()
+              tree.append({'path':path,'mode':'100644','type':'blob','sha':blob['sha']})
+          created=api('POST','git/trees',{'base_tree':parent['tree']['sha'],'tree':tree})
+          commit=api('POST','git/commits',{'message':'Search3: complete canonical hotel facts and galleries; preserve live-only search','tree':created['sha'],'parents':[base]})
+          result={'state':'source_objects_created_no_ref_changed','base':base,'commit':commit['sha'],'tree':created['sha'],'files':[{'path':p,'sha256':hashlib.sha256(s.encode()).hexdigest()} for p,s in files.items()],'supplierCalls':0,'databaseWrites':0,'refWrites':0,'deploy':False}
+          (out/'result.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
@@ -75,4 +95,5 @@ jobs:
           name: hc1-consumer-source-${{ github.run_id }}
           path: '${{ runner.temp }}/hc1-consumer-source/'
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 30
