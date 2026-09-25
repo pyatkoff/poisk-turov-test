@@ -8,7 +8,7 @@ const tour={id:'visual-tv-101',price:120000,date:day,nights:7,adults:2,childs:0,
 const segment=(number,returning)=>({company:{name:'Тестовая авиакомпания'},number,departure:{date:returning?back:day,time:'10:00',port:{name:returning?'Анталья':'Москва',id:returning?'AYT':'SVO'}},arrival:{date:returning?back:day,time:'14:00',port:{name:returning?'Москва':'Анталья',id:returning?'SVO':'AYT'}},baggage:20,carryOn:'5 кг'});
 const flights=[{isDefault:true,price:{value:120000},fuelCharge:0,forward:[segment('TEST101',false)],backward:[segment('TEST102',true)]},{price:{value:133500.5},fuelCharge:0,forward:[segment('TEST201',false)],backward:[segment('TEST202',true)]}];
 const searchRef='a'.repeat(32),offerRef='anex_online:'+'b'.repeat(64),andromedaRef='offer_'+'d'.repeat(64);
-function fixture(){
+function fixture({tvFuel=0}={}){
  const calls=[],state={hold:false,failAnex:false,extended:false};
  const json=async(url,options={})=>{
   const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},q=u.searchParams,action=q.get('action')||body.action;
@@ -40,8 +40,8 @@ function fixture(){
    if(action==='search_status')return {searchId:123,status:'complete',progress:100};
    if(action==='search_continue'){state.extended=true;return {requestCount:1};}
    if(action==='search_results')return [{id:101,provider:'tourvisor',tours:[tour]}];
-   if(action==='tour')return {...tour,hotel:{id:101,name:profile.name}};
-   if(action==='flights')return flights;
+   if(action==='tour')return {...tour,fuelCharge:tvFuel,hotel:{id:101,name:profile.name}};
+   if(action==='flights')return flights.map(pair=>({...pair,fuelCharge:tvFuel}));
   }
   throw Error('Forbidden fixture request: '+url);
  };
