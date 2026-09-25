@@ -224,6 +224,14 @@
       return typeof a === 'boolean' ? a === b : b !== null && String(a) === String(b);
     });
   }
+  function providerDestinationScopes(p) {
+    const regions=Array.isArray(p?.regionIds)?[...p.regionIds]:[],subregions=Array.isArray(p?.subregionIds)?[...p.subregionIds]:[];
+    if(!regions.length||!subregions.length)return [p];
+    return [
+      {...p,regionIds:regions,subregionIds:[]},
+      {...p,regionIds:[],subregionIds:subregions}
+    ];
+  }
   async function db(s, signal, hotelIds=[], filters={}) {
     const p = params(s, hotelIds,filters);
     const response = await fetch(local+'data/search3-local-results-read-v1.php', {method:'POST',credentials:'same-origin',cache:'no-store',signal,headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({params:p})});
@@ -361,7 +369,7 @@
   }
   function directAnexWindows(p){
     const end=plus(p.dateFrom,6)<p.dateTo?plus(p.dateFrom,6):p.dateTo;
-    return [{...p,dateTo:end}];
+    return providerDestinationScopes({...p,dateTo:end});
   }
   function rebuildDirectAnex(run){
     const windows=run.anexWindows;
@@ -578,44 +586,60 @@
         offers:Object.freeze(rows.map(item=>structuredClone(item)))});
     }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
+  function andromedaBranch(run,index,total,p){
+    if(!Number.isInteger(index)||index<0||!Number.isInteger(total)||total<1||index>=total)throw new Error('Invalid Andromeda destination branch');
+    const branches=run.andromedaBranches||(run.andromedaBranches=new Map());
+    if(run.andromedaBranchesTotal!==undefined&&run.andromedaBranchesTotal!==total)throw new Error('Invalid Andromeda destination branch count');
+    run.andromedaBranchesTotal=total;
+    let branch=branches.get(index);
+    if(!branch){branch={pages:new Map(),searchRef:null,pagesTotal:0,params:p};branches.set(index,branch);}
+    return branch;
+  }
   function rebuildDirectAndromeda(run){
-    const pages=run.andromedaPages;
-    if(!(pages instanceof Map)||!pages.size)throw new Error('Invalid Andromeda page state');
-    const order=[...pages.keys()].sort((a,b)=>a-b),seenOffers=new Set(),visibleHotels=new Set(),receivedHotels=new Set();
-    let projectedOffers=0,receivedOffers=0,mappedOffers=0,scopeFilteredOffers=0,deduplicatedOffers=0,allComplete=true;
+    const branches=run.andromedaBranches;
+    if(!(branches instanceof Map)||!branches.size)throw new Error('Invalid Andromeda branch state');
+    const branchOrder=[...branches.keys()].sort((a,b)=>a-b),seenOffers=new Set(),visibleHotels=new Set(),receivedHotels=new Set();
+    let projectedOffers=0,receivedOffers=0,mappedOffers=0,scopeFilteredOffers=0,deduplicatedOffers=0,pagesLoaded=0,pagesTotal=0,allComplete=true,first=null;
     owner.clearOffers('direct-andromeda');
-    for(const pageNumber of order){
-      const page=pages.get(pageNumber);
-      projectedOffers+=page.projectedOffers;receivedOffers+=page.receivedOffers;mappedOffers+=page.mappedOffers;
-      scopeFilteredOffers+=page.scopeFilteredOffers;allComplete=allComplete&&page.status==='complete';
-      for(const id of page.hotelIds)receivedHotels.add(id);
-      for(const entry of page.prepared){
-        if(seenOffers.has(entry.tour.offerRef)){deduplicatedOffers++;continue;}
-        seenOffers.add(entry.tour.offerRef);visibleHotels.add(entry.legacyHotelId);
-        owner.upsertLegacyOffer(entry.legacyHotelId,entry.tour,{source:'direct-andromeda'});
+    for(const branchIndex of branchOrder){
+      const branch=branches.get(branchIndex),pages=branch.pages,order=[...pages.keys()].sort((a,b)=>a-b);
+      if(!(pages instanceof Map)||!order.length)throw new Error('Invalid Andromeda page state');
+      const branchPagesTotal=branch.pagesTotal||order[order.length-1],contiguous=order.every((page,index)=>page===index+1);
+      pagesLoaded+=order.length;pagesTotal+=branchPagesTotal;
+      allComplete=allComplete&&contiguous&&order.length===branchPagesTotal;
+      for(const pageNumber of order){
+        const page=pages.get(pageNumber);if(!first)first=page;
+        projectedOffers+=page.projectedOffers;receivedOffers+=page.receivedOffers;mappedOffers+=page.mappedOffers;
+        scopeFilteredOffers+=page.scopeFilteredOffers;allComplete=allComplete&&page.status==='complete';
+        for(const id of page.hotelIds)receivedHotels.add(id);
+        for(const entry of page.prepared){
+          if(seenOffers.has(entry.tour.offerRef)){deduplicatedOffers++;continue;}
+          seenOffers.add(entry.tour.offerRef);visibleHotels.add(entry.legacyHotelId);
+          owner.upsertLegacyOffer(entry.legacyHotelId,entry.tour,{source:'direct-andromeda'});
+        }
       }
     }
     owner.refresh();
-    const pagesTotal=run.andromedaPagesTotal||order[order.length-1],contiguous=order.every((page,index)=>page===index+1);
-    const status=contiguous&&order.length===pagesTotal&&allComplete?'complete':'partial',first=pages.get(1);
+    const branchesTotal=run.andromedaBranchesTotal||branchOrder.length,contiguousBranches=branchOrder.every((value,index)=>value===index);
+    const status=contiguousBranches&&branchOrder.length===branchesTotal&&allComplete?'complete':'partial';
     run.sourceCounts.andromeda={status,hotels:visibleHotels.size,offers:seenOffers.size,
       receivedHotels:receivedHotels.size,mappedHotels:receivedHotels.size,projectedOffers,receivedOffers,mappedOffers,
       visibleHotels:visibleHotels.size,visibleOffers:seenOffers.size,scopeFilteredOffers,deduplicatedOffers,
-      pagesLoaded:order.length,pagesTotal,dateFrom:first.dateFrom,dateTo:first.dateTo};
+      branchesLoaded:branchOrder.length,branchesTotal,pagesLoaded,pagesTotal,dateFrom:first.dateFrom,dateTo:first.dateTo};
     return run.sourceCounts.andromeda;
   }
-  async function applyDirectAndromeda(run,data,p){
+  async function applyDirectAndromeda(run,data,p,branchIndex=0,branchTotal=1){
     if(!data||data.provider!=='andromeda'||data.generation!==run.generation||!Array.isArray(data.hotels)||data.hotels.length>5000
       ||!data.date_range||data.date_range.from!==p.dateFrom||data.date_range.to!==p.dateTo
       ||typeof data.search_ref!=='string'||!(/^[a-f0-9]{64}$/).test(data.search_ref)
       ||!Number.isInteger(data.page)||data.page<1||data.page>1000
       ||!Number.isInteger(data.pages_count)||data.pages_count<data.page||data.pages_count>1000
       ||!['complete','partial'].includes(data.status)||data.selection_enabled!==false||data.first_page_only!==false)throw new Error('Invalid Andromeda search response');
-    const pages=run.andromedaPages||(run.andromedaPages=new Map());
+    const branch=andromedaBranch(run,branchIndex,branchTotal,p),pages=branch.pages;
     if(data.page===1){
-      if(pages.size||run.andromedaSearchRef&&run.andromedaSearchRef!==data.search_ref)throw new Error('Invalid Andromeda page sequence');
-      run.andromedaSearchRef=data.search_ref;
-    }else if(run.andromedaSearchRef!==data.search_ref||pages.has(data.page)||!pages.has(data.page-1))throw new Error('Invalid Andromeda page sequence');
+      if(pages.size||branch.searchRef&&branch.searchRef!==data.search_ref)throw new Error('Invalid Andromeda page sequence');
+      branch.searchRef=data.search_ref;
+    }else if(branch.searchRef!==data.search_ref||pages.has(data.page)||!pages.has(data.page-1))throw new Error('Invalid Andromeda page sequence');
     const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let projectedOffers=0;
     for(const hotel of data.hotels){
       if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||hotel.mapping_status!=='resolved'||seenHotels.has(hotel.local_id)
@@ -627,16 +651,17 @@
         if(normalized)prepared.push({legacyHotelId:hotel.local_id,tour:normalized});
       }
     }
-    const accumulated=[...pages.values()].reduce((sum,page)=>sum+page.projectedOffers,0);
+    const branches=run.andromedaBranches;
+    const accumulated=[...branches.values()].reduce((sum,item)=>sum+[...item.pages.values()].reduce((inner,page)=>inner+page.projectedOffers,0),0);
     if(accumulated+projectedOffers>15000)throw new Error('Invalid Andromeda result size');
-    const allHotels=new Set([...pages.values()].flatMap(page=>page.hotelIds));
+    const allHotels=new Set([...branches.values()].flatMap(item=>[...item.pages.values()].flatMap(page=>page.hotelIds)));
     for(const id of seenHotels)allHotels.add(id);
     if(allHotels.size>5000)throw new Error('Invalid Andromeda result size');
     const receivedOffers=Number.isInteger(data.received_offers)&&data.received_offers>=projectedOffers?data.received_offers:projectedOffers;
     const mappedOffers=Number.isInteger(data.mapped_offers)&&data.mapped_offers>=projectedOffers?data.mapped_offers:projectedOffers;
     pages.set(data.page,{status:data.status,prepared,hotelIds:[...seenHotels],projectedOffers,receivedOffers,mappedOffers,
       scopeFilteredOffers:Math.max(0,projectedOffers-prepared.length),dateFrom:data.date_range.from,dateTo:data.date_range.to});
-    run.andromedaPagesTotal=data.pages_count;
+    branch.pagesTotal=data.pages_count;
     return rebuildDirectAndromeda(run);
   }
   async function requestDirectAndromeda(run,p,url,page){
@@ -648,12 +673,12 @@
     if(!response.ok||payload?.ok!==true)throw new Error('Andromeda search unavailable');
     return data;
   }
-  async function continueDirectAndromeda(run,p,url,startPage,pagesTotal){
+  async function continueDirectAndromeda(run,p,url,startPage,pagesTotal,branchIndex=0,branchTotal=1){
     let page=startPage,target=pagesTotal;
     try{
       while(current(run)&&page<=target){
         const data=await requestDirectAndromeda(run,p,url,page);if(!data||!current(run))return;
-        const result=await applyDirectAndromeda(run,data,p);if(!current(run))return;
+        const result=await applyDirectAndromeda(run,data,p,branchIndex,branchTotal);if(!current(run))return;
         target=data.pages_count;notify({type:'provider',provider:'andromeda',...result});page++;
       }
       if(current(run))await refreshDatabase(run);
@@ -671,22 +696,41 @@
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');
     if(!url||!current(run)){run.sourceCounts.andromeda={status:'skipped',hotels:0,offers:0};return;}
     notify({type:'provider',provider:'andromeda',status:'loading'});if(!current(run))return;
-    try{
-      const data=await requestDirectAndromeda(run,p,url.href,1);if(!data||!current(run))return;
-      const result=await applyDirectAndromeda(run,data,p);if(!current(run))return;
-      notify({type:'provider',provider:'andromeda',...result});
-      // Keep durable/cache visibility independent: autosave may land the same
-      // offer later, and the canonical SHA-256 identity collapses that duplicate.
-      await refreshDatabase(run);if(!current(run))return;
-      if(data.pages_count>1){
-        notify({type:'provider',provider:'andromeda',...result,status:'loading',background:true});
-        await continueDirectAndromeda(run,p,url.href,2,data.pages_count);
+    const scopes=providerDestinationScopes(p);let loaded=0,failed=0;
+    for(let branchIndex=0;current(run)&&branchIndex<scopes.length;branchIndex++){
+      const scope=scopes[branchIndex];
+      try{
+        const data=await requestDirectAndromeda(run,scope,url.href,1);if(!data||!current(run))return;
+        const result=await applyDirectAndromeda(run,data,scope,branchIndex,scopes.length);if(!current(run))return;
+        loaded++;notify({type:'provider',provider:'andromeda',...result});
+        // Keep durable/cache visibility independent: autosave may land the same
+        // offer later, and the canonical SHA-256 identity collapses that duplicate.
+        await refreshDatabase(run);if(!current(run))return;
+        if(data.pages_count>1){
+          notify({type:'provider',provider:'andromeda',...result,status:'loading',background:true});
+          await continueDirectAndromeda(run,scope,url.href,2,data.pages_count,branchIndex,scopes.length);
+        }
+      }catch(error){
+        if(!current(run)||error?.name==='AbortError')return;
+        failed++;
+        if(scopes.length===1){
+          owner.clearOffers('direct-andromeda');owner.refresh();
+          run.sourceCounts.andromeda={status:'error',hotels:0,offers:0};
+          notify({type:'provider',provider:'andromeda',status:'error'});return;
+        }
       }
-    }catch(error){
-      if(!current(run)||error?.name==='AbortError')return;
+    }
+    if(!current(run))return;
+    if(!loaded){
       owner.clearOffers('direct-andromeda');owner.refresh();
       run.sourceCounts.andromeda={status:'error',hotels:0,offers:0};
-      notify({type:'provider',provider:'andromeda',status:'error'});
+      notify({type:'provider',provider:'andromeda',status:'error'});return;
+    }
+    if(failed){
+      const previous=run.sourceCounts.andromeda||{hotels:0,offers:0};
+      run.sourceCounts.andromeda={...previous,status:'partial',destinationBranchFailed:true};
+      notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda});
+      await refreshDatabase(run);
     }
   }
   async function settleInitialSources(run){
