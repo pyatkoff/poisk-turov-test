@@ -1,4 +1,4 @@
-"""Create-only transaction for the owner-authorized v18 preview.
+"""Create-only transaction for the owner-authorized next preview.
 
 No configurable destination, production writes, source execution or overwrite.
 An existing/unknown target requires a separate reviewed update, never takeover.
@@ -15,8 +15,8 @@ import tarfile
 import tempfile
 from contextlib import contextmanager
 
-ROUTE = '/_preview/search3-v18-candidate/'
-NAME = 'search3-v18-candidate'
+ROUTE = '/_preview/search3-next-candidate/'
+NAME = 'search3-next-candidate'
 REQUIRED = ('index.php', 'search-page-v2.php', 'poisk-turov/index.php', 'assets.php',
     'api-v2.php', 'lead-adapter-v2.php', 'lead-bridge-v1.php', 'lead-receiver-v1.php',
     'lead-price-v1.php', 'lead-idempotency-v1.php', 'analytics-config.php',
@@ -101,12 +101,12 @@ def verify(root, q):
     checksums = (root / 'control/payload.sha256').read_bytes()
     need(digest(manifest_bytes) == q['manifest_sha256'] and digest(checksums) == q['payload_sha256'], 'control_hash')
     m = json.loads(manifest_bytes)
-    need(m.get('schema_version') == 1 and m.get('target') == 'search3-v18-preview'
+    need(m.get('schema_version') == 1 and m.get('target') == 'search3-next-preview'
          and m.get('route') == ROUTE and m.get('source_sha') == q['source_sha']
          and m.get('source_tree_sha') == q['source_tree'], 'manifest_identity')
     need(m.get('invariants') == INVARIANTS, 'manifest_invariants')
     need(m.get('derived_from') == {'artifact_id': q['artifact_id'], 'build_run': q['build_run'],
-                                 'ZIP_sha256': q['source_ZIP_sha256'], 'transform': 'v18-route-v1'}, 'derivation_identity')
+                                 'ZIP_sha256': q['source_ZIP_sha256'], 'transform': 'next-route-v1'}, 'derivation_identity')
     expected = {}
     for f in m['files']:
         name = str(safe_name(f['path']))
@@ -121,7 +121,7 @@ def verify(root, q):
     need(all(p in expected for p in ('.htaccess', 'preview-lead-disabled.php', 'search-page-v2.php',
         'data/hotel-details-read-v1.php', 'data/hotel-presentation-read-v1.php', 'poisk-turov/index.php')), 'missing_guard_or_catalog')
     need('metrikaCounter=0' in (root / 'payload/search-page-v2.php').read_text(), 'counter_not_zero')
-    need('#^(/_preview/search3-v18-candidate)(?:/|$)#' in (root / 'payload/site-path-v1.php').read_text(), 'wrong_route_helper')
+    need('#^(/_preview/search3-next-candidate)(?:/|$)#' in (root / 'payload/site-path-v1.php').read_text(), 'wrong_route_helper')
     return expected
 
 
@@ -131,13 +131,13 @@ class Site:
         for p in (self.root, self.parent):
             need(p.is_dir() and not p.is_symlink(), 'invalid_site_root')
         need(self.root.name == 'anytoour.ru', 'wrong_project')
-        self.owner = self.parent / '.search3-v18-owner'
+        self.owner = self.parent / '.search3-next-owner'
         need(not self.target.is_symlink() and not self.owner.is_symlink(), 'target_or_owner_link')
 
     @contextmanager
     def lock(self):
-        p = self.parent / '.search3-v18-lock'
-        need(not (self.parent / '.search3-site-lock').exists() and not (self.parent / '.search3-local-lock').exists() and not (self.parent / '.search3-v17-lock').exists(), 'existing_preview_busy')
+        p = self.parent / '.search3-next-lock'
+        need(not (self.parent / '.search3-site-lock').exists() and not (self.parent / '.search3-local-lock').exists() and not (self.parent / '.search3-v17-lock').exists() and not (self.parent / '.search3-v18-lock').exists(), 'existing_preview_busy')
         p.mkdir(mode=0o700)
         try:
             yield
@@ -154,7 +154,7 @@ class Site:
                 need(p.is_file(), 'protected_not_file'); result[name] = digest(p.read_bytes())
             else:
                 need(name not in REQUIRED, 'protected_missing'); result[name] = None
-        for name in ('search3-site-candidate', 'search3-candidate', 'search3-local-candidate', 'search3-v17-candidate'):
+        for name in ('search3-site-candidate', 'search3-candidate', 'search3-local-candidate', 'search3-v17-candidate', 'search3-v18-candidate'):
             p = self.parent / name
             result['preview:' + name] = digest(json_bytes(inventory(p))) if p.exists() else None
         return result
@@ -166,7 +166,7 @@ class Site:
 
     def binding(self, q, remove=False):
         name = q['name']; nonce = q['nonce']
-        need(re.fullmatch(r'search3-v18-bind-[1-9][0-9]*-[0-9a-f]{24}\.txt', name)
+        need(re.fullmatch(r'search3-next-bind-[1-9][0-9]*-[0-9a-f]{24}\.txt', name)
              and re.fullmatch('[0-9a-f]{64}', nonce), 'binding_input')
         p = self.parent / name
         if remove:
@@ -178,13 +178,13 @@ class Site:
         return {'status': 'removed' if remove else 'bound'}
 
     def receipt(self, q):
-        return self.parent / ('.search3-v18-receipt-' + str(q['deploy_run']))
+        return self.parent / ('.search3-next-receipt-' + str(q['deploy_run']))
 
     def activate(self, q):
         validate(q); archive = Path(q['archive'])
-        need(re.fullmatch(r'/tmp/search3-v18\.[A-Za-z0-9_-]+\.tar\.gz', str(archive)), 'upload_path')
+        need(re.fullmatch(r'/tmp/search3-next\.[A-Za-z0-9_-]+\.tar\.gz', str(archive)), 'upload_path')
         need(archive.is_file() and not archive.is_symlink() and digest(archive.read_bytes()) == q['archive_sha256'], 'upload_digest')
-        stage = self.parent / ('.search3-v18-stage-' + str(q['deploy_run']))
+        stage = self.parent / ('.search3-next-stage-' + str(q['deploy_run']))
         with self.lock():
             need(self.snapshot() == q['before'], 'predecessor_changed')
             need(not self.target.exists() and not self.target.is_symlink() and not self.owner.exists(), 'create_only_target_exists')
@@ -237,7 +237,7 @@ def main():
     elif action in ('bind', 'unbind'):
         result = site.binding(q, action == 'unbind')
     elif action == 'upload':
-        fd, name = tempfile.mkstemp(prefix='search3-v18.', suffix='.tar.gz', dir='/tmp'); os.close(fd)
+        fd, name = tempfile.mkstemp(prefix='search3-next.', suffix='.tar.gz', dir='/tmp'); os.close(fd)
         result = {'archive': name}
     elif action == 'activate':
         result = site.activate(q)

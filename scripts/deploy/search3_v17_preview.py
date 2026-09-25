@@ -1,4 +1,4 @@
-"""Two-phase, trusted-main provisioning of the separate v18 preview.
+"""Two-phase, trusted-main provisioning of the separate next preview.
 
 First derive/retain the checked artifact without SSH secrets. The publisher then
 rechecks provenance and exact derived bytes before any server write. Only the
@@ -21,7 +21,7 @@ import tarfile
 import zipfile
 from search3_v17_preview_remote import ROUTE, INVARIANTS, digest, inventory, json_bytes, need, verify
 
-PREFIX = '/create-search3-v18-preview '
+PREFIX = '/create-search3-next-preview '
 OLD_ROUTE = '/_preview/search3-site-candidate/'
 REPO = 'pyatkoff/poisk-turov-test'
 RELEASE = 'release/search3-production-ready-v1'
@@ -53,7 +53,7 @@ def derive(source, output, request, zip_digest):
     shutil.copytree(source, output)
     p = output / 'payload/site-path-v1.php'; before = p.read_text()
     old = '#^(/_preview/search3-site-candidate)(?:/|$)#'
-    new = '#^(/_preview/search3-v18-candidate)(?:/|$)#'
+    new = '#^(/_preview/search3-next-candidate)(?:/|$)#'
     need(before.count(old) == 1, 'route_source_drift')
     p.write_text(before.replace(old, new))
     for f in (output / 'payload').rglob('*'):
@@ -62,9 +62,9 @@ def derive(source, output, request, zip_digest):
     previous = inventory(source / 'payload'); files = inventory(output / 'payload')
     need(previous.keys() == files.keys() and {n for n in files if files[n] != previous[n]} == {'site-path-v1.php'}, 'unexpected_payload_delta')
     m = json.loads((source / 'control/manifest.json').read_bytes())
-    m.update(target='search3-v18-preview', route=ROUTE, invariants=INVARIANTS,
+    m.update(target='search3-next-preview', route=ROUTE, invariants=INVARIANTS,
         derived_from={'artifact_id': request['artifact_id'], 'build_run': request['build_run'],
-                      'ZIP_sha256': zip_digest, 'transform': 'v18-route-v1'})
+                      'ZIP_sha256': zip_digest, 'transform': 'next-route-v1'})
     m['files'] = [{'path': n, 'sha256': h, 'size': (output / 'payload' / n).stat().st_size} for n, h in files.items()]
     m['file_count'] = len(files)
     (output / 'control/manifest.json').write_bytes(json_bytes(m))
@@ -97,6 +97,16 @@ def render_checks(root):
             for marker in ('id="tourSearch"', 'metrikaCounter:0', 'leadApi:"' + ROUTE + 'preview-lead-disabled.php"'):
                 need(marker in r.stdout, 'local_search_guard')
             need('web-consultant/widget.js' not in r.stdout and OLD_ROUTE not in r.stdout, 'local_wrong_preview')
+    path = root / 'payload/visual-search/index.php'
+    r = subprocess.run(['php', '-d', 'display_errors=1', '-r', php, str(empty),
+                        ROUTE + 'visual-search/index.php', str(path)],
+                       capture_output=True, text=True, timeout=30)
+    need(r.returncode == 0 and 'Fatal error' not in r.stdout
+         and '<meta name="robots" content="noindex, nofollow, noarchive"' in r.stdout
+         and 'Живой поиск ещё не подключён' in r.stdout
+         and re.search(r'app.js\?v=[0-9a-f]{12}', r.stdout), 'visual_render_or_boundary')
+    need('live-data.js' not in r.stdout and 'src="./data.js"' not in r.stdout,
+         'visual_stage_must_be_offline')
     empty.rmdir()
 
 
@@ -113,13 +123,13 @@ def authorized():
 def prepare():
     from search3_preview_publish import prepare_zip
     q, api, tree, zip_hash = authorized()
-    work = Path(os.environ['RUNNER_TEMP']) / 'search3-v18-prepare'; work.mkdir(mode=0o700)
+    work = Path(os.environ['RUNNER_TEMP']) / 'search3-next-prepare'; work.mkdir(mode=0o700)
     original = work / 'original'
     prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
     ready, archive = derive(original / 'release', work / 'derived', q, zip_hash)
     render_checks(work / 'derived')
     retained = work / 'retained'; retained.mkdir()
-    (retained / 'v18-preview.tar.gz').write_bytes(archive)
+    (retained / 'next-preview.tar.gz').write_bytes(archive)
     (retained / 'request.json').write_bytes(json_bytes(ready))
     print(json.dumps({'status': 'prepared_not_published', 'route': ROUTE, 'archive_sha256': ready['archive_sha256'], 'changed_payload_files': ['site-path-v1.php']}))
 
@@ -151,15 +161,27 @@ def live_checks(files):
     for name in ('search3-results-filters-v1.css', 'search3-results-filters-v1.js', 'site-header-v2.css'):
         status, body = http(ROUTE + name + '?sha=' + files[name], binary=True)
         need(status == 200 and digest(body) == files[name], 'served_asset_hash')
+    status, html = http(ROUTE + 'visual-search/')
+    need(status == 200 and 'Живой поиск ещё не подключён' in html
+         and '<meta name="robots" content="noindex, nofollow, noarchive"' in html
+         and re.search(r'app.js\?v=[0-9a-f]{12}', html), 'visual_live_entry')
+    visual_assets = [name for name in files if name.startswith('visual-search/')
+                     and not name.endswith('.php')]
+    need(len(visual_assets) >= 29, 'visual_assets_missing')
+    for name in visual_assets:
+        status, body = http(ROUTE + name + '?sha=' + files[name], binary=True)
+        need(status == 200 and digest(body) == files[name], 'visual_served_hash:' + name)
     need(http('/')[0] == 200 and http('/poisk-turov/')[0] == 200, 'production_pages_unhealthy')
     return {'routes_200': 9, 'noindex': True, 'counter': 0, 'lead_HTTP': 403,
-            'LOCAL_only_data_HTTP': 403, 'supplier_searches': 0, 'real_leads': 0}
+            'LOCAL_only_data_HTTP': 403, 'supplier_searches': 0, 'real_leads': 0,
+            'visual_route_200': True, 'visual_assets_verified': len(visual_assets),
+            'visual_live_connected': False}
 
 
 def publish():
     from search3_preview_publish import prepare_zip, command, http
     q, api, tree, zip_hash = authorized()
-    work = Path(os.environ['RUNNER_TEMP']) / 'search3-v18-publish'; work.mkdir(mode=0o700)
+    work = Path(os.environ['RUNNER_TEMP']) / 'search3-next-publish'; work.mkdir(mode=0o700)
     original = work / 'original'
     prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
     expected_q, archive = derive(original / 'release', work / 'expected', q, zip_hash)
@@ -169,13 +191,13 @@ def publish():
     meta = api.get('/actions/artifacts/' + artifact_id)
     need(not meta.get('expired') and meta.get('workflow_run', {}).get('id') == q['deploy_run']
          and meta['workflow_run'].get('head_sha') == os.environ['GITHUB_SHA']
-         and meta.get('name') == 'search3-v18-ready-' + str(q['deploy_run']), 'ready_artifact_identity')
+         and meta.get('name') == 'search3-next-ready-' + str(q['deploy_run']), 'ready_artifact_identity')
     packed = api.download(int(artifact_id)); need('sha256:' + digest(packed) == meta.get('digest'), 'ready_ZIP_hash')
     with zipfile.ZipFile(io.BytesIO(packed)) as z:
-        need(len(z.infolist()) == 2 and set(z.namelist()) == {'v18-preview.tar.gz', 'request.json'}, 'ready_ZIP_inventory')
+        need(len(z.infolist()) == 2 and set(z.namelist()) == {'next-preview.tar.gz', 'request.json'}, 'ready_ZIP_inventory')
         need(sum(x.file_size for x in z.infolist()) <= 64 * 1024 * 1024, 'ready_ZIP_limit')
-        need(z.read('v18-preview.tar.gz') == archive and json.loads(z.read('request.json')) == expected_q, 'derived_artifact_drift')
-    q = expected_q; (work / 'v18-preview.tar.gz').write_bytes(archive)
+        need(z.read('next-preview.tar.gz') == archive and json.loads(z.read('request.json')) == expected_q, 'derived_artifact_drift')
+    q = expected_q; (work / 'next-preview.tar.gz').write_bytes(archive)
     files = inventory(work / 'expected/payload')
     evidence = {'route': ROUTE, 'source_sha': q['source_sha'], 'release_sha': q['release_sha'],
                 'source_artifact': q['artifact_id'], 'derived_artifact': int(artifact_id), 'derived_ZIP_sha256': digest(packed), 'status': 'checked_not_published'}
@@ -199,7 +221,7 @@ def publish():
         def remote(action, request):
             shell = 'python3 - ' + shlex.quote(action) + ' ' + shlex.quote(json.dumps(request, separators=(',', ':')))
             return json.loads(command(['ssh', *opts, user + '@' + host, shell], source, 180))
-        binding = {'name': f"search3-v18-bind-{q['deploy_run']}-{secrets.token_hex(12)}.txt", 'nonce': secrets.token_hex(32)}
+        binding = {'name': f"search3-next-bind-{q['deploy_run']}-{secrets.token_hex(12)}.txt", 'nonce': secrets.token_hex(32)}
         remote('bind', binding)
         try:
             status, text = http('/_preview/' + binding['name'])
@@ -211,8 +233,8 @@ def publish():
         need(api.get('/git/ref/heads/' + RELEASE)['object']['sha'] == q['release_sha'], 'release_changed_before_activation')
         need(api.get('/git/ref/heads/main')['object']['sha'] == os.environ['GITHUB_SHA'], 'main_changed_before_activation')
         q['archive'] = remote('upload', {})['archive']
-        need(re.fullmatch(r'/tmp/search3-v18\.[A-Za-z0-9_-]+\.tar\.gz', q['archive']), 'remote_upload_path')
-        command(['scp', *opts, str(work / 'v18-preview.tar.gz'), user + '@' + host + ':' + q['archive']])
+        need(re.fullmatch(r'/tmp/search3-next\.[A-Za-z0-9_-]+\.tar\.gz', q['archive']), 'remote_upload_path')
+        command(['scp', *opts, str(work / 'next-preview.tar.gz'), user + '@' + host + ':' + q['archive']])
         attempted = True; evidence['activation'] = remote('activate', q)
         evidence.update(live_checks(files))
         evidence['completion'] = remote('complete', q)
