@@ -5,8 +5,8 @@ p=pathlib.Path(__file__).resolve().parents[1]/'scripts/diagnostics/hotel_match_l
 spec=importlib.util.spec_from_file_location('v41',p)
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 
-assert m.OP=='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41'
-assert m.ACCOUNT=='TOURVISOR_ANEX_JWT'
+assert m.OP=='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41b'
+assert m.ACCOUNT=='TOURVISOR_ANEX_JWT'\nassert m.ACCOUNT_LEDGER=='tourvisor-anex'
 assert m.DAILY_LIMIT==3000 and m.CALL_CAP==500 and m.MAX_BATCHES==50
 x=m.link_projection({'operatorLink':'https://agent.anextour.ru/x?HOTELLIST=5844'})
 assert x['link_state']=='captured_single_native' and x['positive_native_candidates']==[5844]
