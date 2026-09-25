@@ -198,6 +198,49 @@ test('cached ANEX rehydrates with a fresh same-provider search identity and neve
  assert.equal(h.anexCalls[0].params.nightsFrom,7);assert.equal(h.anexCalls[0].params.nightsTo,7);
  assert.deepEqual(Array.from(h.anexCalls[0].params.hotelIds||[]),['101']);
 });
+test('cached rehydration compares child ages as a multiset and preserves duplicates',async()=>{
+ const family={...trip,ages:[12,6,6]};
+ const h=harness({
+  database:async(_n,p)=>{
+   const data=rehydratableSnapshot(p,'anex'),row=data.hotels[0].offers[0];
+   row.listing.tour.party={adults:2,children:3,child_ages:[6,12,6]};
+   return data;
+  },
+  anex:async body=>{
+   const payload=directAnex(body,{offerRef:'anex_online:'+'6'.repeat(64),localId:101,searchRef:'6'.repeat(32)});
+   payload.data.hotels[0].tours[0].children=body.params.childs.length;
+   return {response:{ok:true,status:200,json:async()=>payload}};
+  }
+ });
+ canonicalMeals(h);
+ await h.data.resumeCached(structuredClone(family),event=>h.events.push(event),[],{min:0,max:null});await flush();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ assert.ok(cached?.cached);assert.deepEqual(Array.from(cached.ages),[12,6,6]);
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'current');
+ assert.equal(h.anexCalls.length,1);
+ assert.deepEqual(Array.from(h.anexCalls[0].params.childs),[6,6,12],'provider exact re-search uses a stable sorted age multiset');
+});
+
+test('cached rehydration rejects different child-age multiplicity',async()=>{
+ const family={...trip,ages:[12,6,6]};
+ const h=harness({
+  database:async(_n,p)=>{
+   const data=rehydratableSnapshot(p,'anex'),row=data.hotels[0].offers[0];
+   row.listing.tour.party={adults:2,children:3,child_ages:[6,12,7]};
+   return data;
+  },
+  anex:async()=>assert.fail('different child-age multiset must not call provider')
+ });
+ canonicalMeals(h);
+ await h.data.resumeCached(structuredClone(family),event=>h.events.push(event),[],{min:0,max:null});await flush();
+ const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ assert.ok(cached?.cached);
+ const result=await h.data.rehydrateCached(cached);
+ assert.equal(result.state,'unsupported');
+ assert.equal(h.anexCalls.length,0);
+});
+
 test('cached Andromeda rehydrates in the same provider and retains exact scope for quote follow-up',async()=>{
  const h=harness({
   database:async(_n,p)=>rehydratableSnapshot(p,'andromeda'),
