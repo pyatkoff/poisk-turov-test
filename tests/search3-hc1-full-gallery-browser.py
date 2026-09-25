@@ -85,6 +85,23 @@ def check(browser, origin, width):
             forbidden.append(u.path); route.abort()
     ctx.route('**/*',intercept)
     checks={}
+    geometry=[]
+    def visible_gallery():
+        metrics=page.evaluate("""() => {
+            const image=document.querySelector('#gallery-image').getBoundingClientRect();
+            const body=document.querySelector('#modal-body').getBoundingClientRect();
+            const strip=document.querySelector('.gallery-thumbs').getBoundingClientRect();
+            const active=document.querySelector('.gallery-thumbs .active').getBoundingClientRect();
+            return {
+                imageVisible:image.left>=body.left-1 && image.right<=body.right+1 && image.top>=body.top-1 && image.bottom<=body.bottom+1,
+                activeVisible:active.left>=strip.left-1 && active.right<=strip.right+1,
+                thumbWidth:active.width,thumbHeight:active.height,
+                pageOverflow:document.documentElement.scrollWidth-innerWidth
+            };
+        }""")
+        assert metrics['imageVisible'] and metrics['activeVisible'], metrics
+        assert metrics['thumbWidth']>=44 and metrics['thumbHeight']>=44 and metrics['pageOverflow']<=1, metrics
+        geometry.append(metrics)
     try:
         query=urlencode({'origin':'Москва','country':4,'from':fx.DATE,'to':fx.DATE,'minNights':7,'maxNights':7,'adults':2,'ages':''})
         page.goto(origin+fx.BASE+'prototype-search/?'+query)
@@ -101,6 +118,7 @@ def check(browser, origin, width):
         page.locator('[data-action="gallery-index"][data-value="42"]').click()
         assert page.locator('#gallery-image').get_attribute('src').endswith('/photo-101-42.svg')
         page.wait_for_function("document.querySelector('#gallery-image').complete && document.querySelector('#gallery-image').naturalWidth>0")
+        visible_gallery()
         page.screenshot(path=str(OUT/f'full-gallery-{width}.png'))
         page.locator('[data-action="gallery-next"]').click()
         assert page.locator('#gallery-image').get_attribute('src').endswith('/photo-101-0.svg')
@@ -113,7 +131,9 @@ def check(browser, origin, width):
         assert current.endswith('/photo-101-15.svg')
         card.locator('[data-action="gallery"]').click()
         assert page.locator('#gallery-image').get_attribute('src')==current
+        visible_gallery()
         checks['opensCurrentFrameBeyond12']=True
+        checks['longGalleryHasUsableVisibleThumbs']=True
         page.locator('#modal [data-action="close-modal"]').click()
         card.locator('[data-action="hotel-details"]').click()
         assert page.locator('.hotel-detail-copy').inner_text()==profiles[101]['description']
@@ -140,7 +160,7 @@ def check(browser, origin, width):
         assert not page.locator('#modal').is_visible()
         checks['oneAndZeroPhotoHotelsRemainUsable']=True
         page.screenshot(path=str(OUT/f'cards-return-{width}.png'))
-        return {'width':width,'status':'passed','checks':checks,'externalCalls':0,'fictionalApiCalls':api_calls}
+        return {'width':width,'status':'passed','checks':checks,'geometry':geometry,'externalCalls':0,'fictionalApiCalls':api_calls}
     finally:
         ctx.close()
 
