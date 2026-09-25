@@ -138,7 +138,7 @@ function search3_destination_read_out(array $payload,int $status=200): never
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: private, max-age=300, stale-while-revalidate=3600');
+    header($status>=400?'Cache-Control: no-store':'Cache-Control: private, max-age=300, stale-while-revalidate=3600');
     header('X-Content-Type-Options: nosniff');
     echo json_encode($payload,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
     exit;
@@ -146,6 +146,15 @@ function search3_destination_read_out(array $payload,int $status=200): never
 
 function search3_destination_read_main(): never
 {
+    // Match the other catalogue readers: real filesystem identity, not request headers.
+    $directory=realpath(__DIR__);
+    if(!is_string($directory)||!str_ends_with(str_replace('\\','/',$directory),'/_preview/search3-local-candidate/data')){
+        search3_destination_read_out(['ok'=>false,'error'=>'Destination catalogue is isolated to local preview'],403);
+    }
+    if(($_SERVER['REQUEST_METHOD']??'')!=='GET'){
+        header('Allow: GET');
+        search3_destination_read_out(['ok'=>false,'error'=>'Only GET is allowed'],405);
+    }
     $action=(string)($_GET['action']??'');
     try{
         $payload=search3_destination_read(v2_data_db(),$action,$_GET);

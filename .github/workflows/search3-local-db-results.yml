@@ -11,6 +11,8 @@ on:
       - 'v2/data/anytour-stay-catalog-v1.php'
       - 'v2/data/anytour-hotel-stay-catalog-v2.php'
       - 'v2/data/.htaccess'
+      - 'v2/data/search3-destination-read-v1.php'
+      - 'tests/search3_destination_boundary_test.py'
       - 'tests/search3_local_db_results_test.php'
       - 'tests/search3_local_stay_dictionaries_test.php'
       - 'tests/anytour-offer-store-v2-snapshot-test.php'
@@ -64,13 +66,14 @@ jobs:
           import pathlib,re
           text=pathlib.Path('v2/data/.htaccess').read_text()
           grants=re.findall(r'<Files\s+"([^"]+\.php)">\s*Require all granted\s*</Files>',text,re.S)
-          assert grants==['hotel-details-read-v1.php','search3-local-results-read-v1.php'],grants
+          assert grants==['hotel-details-read-v1.php','search3-local-results-read-v1.php','search3-destination-read-v1.php'],grants
           endpoint=pathlib.Path('v2/data/search3-local-results-read-v1.php').read_text()
           assert '/_preview/search3-local-candidate/data' in endpoint
           assert "search3_local_results_out(['ok'=>false,'error'=>'Local DB results are isolated to local preview'],403)" in endpoint
           migration=pathlib.Path('v2/data/migrations/20260917-anytour-offer-scope-index.sql').read_text()
           assert 'CREATE TABLE IF NOT EXISTS anytour_offer_scopes' in migration
           PY
+          python3 tests/search3_destination_boundary_test.py
       - name: Existing offer store regression
         env:
           ANYTOUR_OFFER_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_local_results_fixture;charset=utf8mb4'
