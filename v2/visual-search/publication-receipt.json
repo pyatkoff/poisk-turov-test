@@ -1,0 +1,55 @@
+{
+  "LOCAL_only_data_HTTP": 403,
+  "activation": {
+    "files": 828,
+    "status": "activated"
+  },
+  "completion": {
+    "existing_preview_unchanged": true,
+    "route": "/_preview/search3-next-candidate/",
+    "source_sha": "4dd5b78dab815dac199550f4bcad3047f4d850b6",
+    "status": "published"
+  },
+  "counter": 0,
+  "derived_ZIP_sha256": "98d013cb4c3c5a0521aecd912383ca357c11429e29447bf2aee4bb655b0a5f59",
+  "derived_artifact": 10876694247,
+  "existing_preview_unchanged": true,
+  "lead_HTTP": 403,
+  "noindex": true,
+  "production_unchanged": true,
+  "real_leads": 0,
+  "release_sha": "2583c284b2631c1cdfa94df710f71f492fe3d38f",
+  "route": "/_preview/search3-next-candidate/",
+  "routes_200": 9,
+  "source_artifact": 10876891541,
+  "source_sha": "4dd5b78dab815dac199550f4bcad3047f4d850b6",
+  "status": "published",
+  "supplier_searches": 0,
+  "visual_assets_verified": 31,
+  "visual_live_connected": false,
+  "visual_route_200": true,
+  "receipt_artifact": 10877185741,
+  "receipt_zip_sha256": "320f09982f9406f31cee63364000f69eab90c6c7b299b0e2c71d63200f8e84de",
+  "deploy_run": 36164769312,
+  "source_pr": 3917,
+  "control_pr": 3918,
+  "checked_at": "2026-09-25",
+  "public_browser_acceptance": {
+    "browser": "Chromium desktop",
+    "stored_listing_hotels": 1047,
+    "stored_listing_offers": 1453,
+    "date_selection_cancel_restores_results": true,
+    "labelled_demo": "family",
+    "children_ages": [
+      0,
+      8
+    ],
+    "selected_flight": "DEMO 102",
+    "selected_total_rub": 187700,
+    "local_application_validation": "passed; same dates, party, room, meal, flights and total",
+    "real_application_sent": false,
+    "new_host_mobile_viewport": "not_measured; local responsive harness blocked by browser URL/network policy",
+    "safari_physical_phone": "not_measured",
+    "site_v147_mobile_parity": "earlier Site evidence at 360/390/768/1280; 29 presentation/data file hashes preserved; not a new-host mobile claim"
+  }
+}
