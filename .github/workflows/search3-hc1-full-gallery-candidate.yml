@@ -1,0 +1,69 @@
+name: HC1 full gallery candidate regression
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'tests/search3-hc1-full-gallery-browser.py'
+      - 'patches/search3-hc1-full-gallery.patch'
+      - '.github/workflows/search3-hc1-full-gallery-candidate.yml'
+permissions: {contents: read}
+jobs:
+  gallery:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/search3-hc1-gallery-candidate-20260925'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check exact scope
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD 772cef853390afde25041a7ca65d30f86f97b549)" = 772cef853390afde25041a7ca65d30f86f97b549
+          test "$(git diff --name-only 772cef853390afde25041a7ca65d30f86f97b549 HEAD | sort | tr '\n' ' ')" = '.github/workflows/search3-hc1-full-gallery-candidate.yml patches/search3-hc1-full-gallery.patch tests/search3-hc1-full-gallery-browser.py '
+          python3 -m py_compile tests/search3-hc1-full-gallery-browser.py
+          git apply --check patches/search3-hc1-full-gallery.patch
+      - name: Install pinned offline browser tools
+        run: |
+          python3 -m pip install playwright==1.57.0
+          python3 -m playwright install --with-deps chromium
+      - name: Reproduce specifically the twelve-photo defect on unmodified runtime
+        env:
+          HC1_OUTPUT: ${{ runner.temp }}/hc1-gallery/before
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/hc1-gallery"
+          set +e
+          python3 tests/search3-hc1-full-gallery-browser.py > "$RUNNER_TEMP/hc1-gallery/before.log" 2>&1
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          grep -F 'FULL_GALLERY_TRUNCATED expected=43 actual=12' "$RUNNER_TEMP/hc1-gallery/before.log"
+      - name: Apply candidate only in disposable checkout and check actual app
+        env:
+          HC1_OUTPUT: ${{ runner.temp }}/hc1-gallery/after
+        run: |
+          set -euo pipefail
+          git apply patches/search3-hc1-full-gallery.patch
+          test "$(git diff --name-only | sort | tr '\n' ' ')" = 'v2/prototype-search/app.js v2/prototype-search/data.js '
+          git diff --check
+          node --check v2/prototype-search/data.js
+          node --check v2/prototype-search/app.js
+          python3 tests/search3-hc1-full-gallery-browser.py
+          cp patches/search3-hc1-full-gallery.patch "$RUNNER_TEMP/hc1-gallery/"
+          git diff > "$RUNNER_TEMP/hc1-gallery/checked-runtime.diff"
+          sha256sum "$RUNNER_TEMP/hc1-gallery/after/result.json" > "$RUNNER_TEMP/hc1-gallery/result.sha256"
+      - name: Retain fixture-only evidence and exact patch for current writer
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hc1-gallery-candidate-${{ github.run_id }}
+          path: ${{ runner.temp }}/hc1-gallery/
+          if-no-files-found: warn
+          retention-days: 30
