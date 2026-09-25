@@ -1,0 +1,71 @@
+name: HC1 actual installed UI D2
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/diagnostics/search3_hc1_actual_ui_d2.py'
+      - '.github/workflows/search3-hc1-actual-ui-d2.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: search3-hc1-actual-ui-20260925-d2, cancel-in-progress: false}
+jobs:
+  actual-ui:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'ops/search3-hc1-actual-ui-20260925-d2' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact scope and Security before public reads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD 772cef853390afde25041a7ca65d30f86f97b549)" = 772cef853390afde25041a7ca65d30f86f97b549
+          test "$(git diff --name-only 772cef853390afde25041a7ca65d30f86f97b549 HEAD | sort | tr '\n' ' ')" = '.github/workflows/search3-hc1-actual-ui-d2.yml scripts/diagnostics/search3_hc1_actual_ui_d2.py '
+          test "$(git hash-object scripts/diagnostics/search3_hc1_actual_ui_d2.py)" = fed2089b0b6e8fde451b7b954a5a9bb6ff4534a6
+          test "$(git hash-object scripts/diagnostics/search3_hotel_content_readback.py)" = 8a0d8f0895f3e691578fea7b66ff191d6a5ff817
+          python3 -m py_compile scripts/diagnostics/search3_hc1_actual_ui_d2.py
+          python3 scripts/diagnostics/search3_hc1_actual_ui_d2.py --self-test
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          root='https://api.github.com/repos/pyatkoff/poisk-turov-test/'
+          def get(path):
+              req=urllib.request.Request(root+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=20) as response:return json.load(response)
+          claim=get('issues/comments/5833171167')
+          assert claim['user']['id']==226193297 and claim['author_association']=='OWNER'
+          assert claim['issue_url'].endswith('/issues/3419') and 'HC-1 D2' in claim['body']
+          for _ in range(30):
+              runs=get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+              guards=[r for r in runs if r['head_sha']==os.environ['HEAD'] and r['name']=='Security guard']
+              if guards:
+                  current=max(guards,key=lambda r:r['id'])
+                  if current['status']=='completed':
+                      assert current['conclusion']=='success';break
+              time.sleep(4)
+          else:raise SystemExit('Security not confirmed, public reads not started')
+          PY
+      - name: Install pinned browser tools
+        run: |
+          python3 -m pip install playwright==1.57.0
+          python3 -m playwright install --with-deps chromium
+      - name: Actual installed UI with saved inventory only
+        env:
+          HC1_OUTPUT: ${{ runner.temp }}/hc1-d2
+        run: python3 scripts/diagnostics/search3_hc1_actual_ui_d2.py
+      - name: Retain sanitized findings and actual UI screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hc1-d2-actual-ui-${{ github.run_id }}
+          path: ${{ runner.temp }}/hc1-d2/
+          if-no-files-found: warn
+          retention-days: 30
