@@ -718,6 +718,8 @@
           run.sourceCounts.andromeda={status:'error',hotels:0,offers:0};
           notify({type:'provider',provider:'andromeda',status:'error'});return;
         }
+        const failedBranch=run.andromedaBranches?.get(branchIndex);
+        if(failedBranch&&failedBranch.pages instanceof Map&&!failedBranch.pages.size)run.andromedaBranches.delete(branchIndex);
       }
     }
     if(!current(run))return;
