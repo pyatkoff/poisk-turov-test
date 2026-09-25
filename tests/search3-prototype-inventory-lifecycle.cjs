@@ -211,7 +211,7 @@ test('cached rehydration compares child ages as a multiset and preserves duplica
  canonicalMeals(h);
  await h.data.resumeCached(structuredClone(family),event=>h.events.push(event),[],{min:0,max:null});await flush();
  const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
- assert.ok(cached?.cached);assert.deepEqual(cached.ages,[12,6,6]);
+ assert.ok(cached?.cached);assert.deepEqual(Array.from(cached.ages),[12,6,6]);
  const result=await h.data.rehydrateCached(cached);
  assert.equal(result.state,'current');
  assert.equal(h.anexCalls.length,1);
