@@ -107,12 +107,20 @@ function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intr
 const providerSearchPending=()=>Object.values(searchResponse.providers||{}).includes('loading');
 function editSearch(){if(searchResponse.pending||providerSearchPending())stopSearch();if(innerWidth<=1100)closeFilters();$('#search-form').hidden=false;$('.intro').hidden=false;$('#applied-search').hidden=true;$('#search').classList.remove('search-collapsed');$('#search').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#origin').focus({preventScroll:true});}
 const hotelPlaces=h=>[...new Set([h.subRegion,h.region,h.resort].map(value=>String(value||'').trim()).filter(Boolean))];
+const sameResortScope=(left,right)=>{
+ const a=[...new Set((left||[]).map(String))].sort(),b=[...new Set((right||[]).map(String))].sort();
+ return a.length===b.length&&a.every((value,index)=>value===b[index]);
+};
+function supplierAlreadyScopedResorts(f,s){
+ const scope=data.currentSupplierScope;
+ return !!f.resorts?.length&&searchResponse.key===searchKey(s)&&Array.isArray(scope?.resorts)&&sameResortScope(f.resorts,scope.resorts);
+}
 function hotelMatch(h,f=state.filters,s=state.search,onlyFavorites=state.onlyFavorites){
  const q=f.q.toLowerCase().trim(),places=[...new Set([h.subRegion,h.region,h.resort].map(value=>String(value||'').trim()).filter(Boolean))];
  return h.country===s.country&&(!f.hotelId||h.id===f.hotelId)
   &&(!q||h.name.toLowerCase().includes(q)||places.some(place=>place.toLowerCase().includes(q)))
   &&(!f.stars.length||f.stars.includes(h.stars))
-  &&(!f.resorts.length||f.resorts.some(resort=>places.includes(resort)))
+  &&(!f.resorts.length||supplierAlreadyScopedResorts(f,s)||f.resorts.some(resort=>places.includes(resort)))
   &&(f.amenities||[]).every(key=>(h.amenities||[]).some(a=>a.key===key))
   &&(!f.rating||ratingValue(h)>=4.5)&&(!f.beach||h.beach!==null&&h.beach<=150)&&(!f.family||h.family)&&(!f.spa||h.spa)
   &&(!onlyFavorites||s.country!==state.search.country||state.favorites.includes(h.id));
