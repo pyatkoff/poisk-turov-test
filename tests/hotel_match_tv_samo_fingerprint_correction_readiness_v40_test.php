@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_tv_samo_fingerprint_correction_readiness_v40.php';
 function v40t(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
-v40t(V40_OP==='hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40','op');
+v40t(V40_OP==='hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40b','op');
 v40t(V40_V37_SHA==='b7ef6082b8d27ad822ddaf69dd86e9249523f859cd61ee1b547c106118ffc55a','v37');
 v40t(v40_core('AKRA FETHIYE THE RESIDENCE TUI BLUE SENSATORI ADULTS ONLY 16+')===['akra','blue','fethiye','residence','sensatori','tui'],'core');
 v40t(v40_jaccard(['a','b'],['a','b'])===1.0,'jac');
