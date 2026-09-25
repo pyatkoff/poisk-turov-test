@@ -988,7 +988,7 @@ test('calendar reuse is isolated by exact request criteria and retains fractiona
  for(const s of [{...trip,adults:3},{...trip,ages:[5]},{...trip,minNights:10,maxNights:10}])await calendarRead(h,undefined,{},s,calendarFrom,calendarFrom);
  assert.equal(h.dbBodies.length,variants.length+3);assert.equal(h.calls.length,0);
 });
-test('new search stop and successful completion readback invalidate calendar reuse',async()=>{
+test('new search stop and live completion invalidate calendar reuse',async()=>{
  const now=Date.parse('2026-09-22T16:00:00Z');
  const h=harness({clock:()=>now,database:(i,p)=>calendarSnapshot(p,new Date(now+60000).toISOString())});
  const read=()=>calendarRead(h,undefined,{},trip,calendarFrom,calendarFrom);
@@ -997,12 +997,12 @@ test('new search stop and successful completion readback invalidate calendar reu
  await h.start();const started=h.dbBodies.length;await read();assert.equal(h.dbBodies.length,started+1);
  await h.poll();const completed=h.dbBodies.length;await read();assert.equal(h.dbBodies.length,completed+1);
 });
-test('native completion invalidates a calendar window without a duplicate provider search',async()=>{
+test('native completion invalidates a calendar window without a live DB reread or duplicate provider search',async()=>{
  const now=Date.parse('2026-09-22T16:00:00Z'),gate=defer();
  const h=harness({clock:()=>now,native:()=>gate.promise,database:(i,p)=>calendarSnapshot(p,new Date(now+60000).toISOString())});
  await h.start();await calendarRead(h,undefined,{},trip,calendarFrom,calendarFrom);const before=h.dbBodies.length;
- gate.resolve();await flush();assert.equal(h.dbBodies.length,before+1);
- await calendarRead(h,undefined,{},trip,calendarFrom,calendarFrom);assert.equal(h.dbBodies.length,before+2);assert.equal(h.nativeCalls.length,1);
+ gate.resolve();await flush();assert.equal(h.dbBodies.length,before,'provider completion never rereads stored offers into live search');
+ await calendarRead(h,undefined,{},trip,calendarFrom,calendarFrom);assert.equal(h.dbBodies.length,before+1,'next calendar read refreshes after cache invalidation');assert.equal(h.nativeCalls.length,1);
 });
 test('aborted or invalidated calendar requests cannot populate reusable results',async()=>{
  const now=Date.parse('2026-09-22T16:00:00Z');
