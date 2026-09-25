@@ -124,6 +124,27 @@ test('changed variants wait for the explicit same-provider choice before replaci
   assert.equal(h.listeners.click.capture, true, 'replacement lands before the existing app click handler continues verification');
 });
 
+test('child age order is treated as a multiset without losing duplicate ages', async () => {
+  const reordered = fresh('reordered', {ages: [6, 6, 12]});
+  const h = harness({state: 'current', offers: [reordered]}), seen = [];
+  const stored = {...cached(), ages: [12, 6, 6]};
+  h.data.search({}, event => seen.push(clone(event)));
+  h.emit({type: 'results', hotels: union(stored)});
+  await h.data.rehydrateCached(stored);
+  assert.equal(seen.length, 2);
+  assert.equal(seen.at(-1).hotels[0].offers.some(row => row.key === 'reordered'), true);
+});
+
+test('unknown essential stay identity never acts as an exact-match wildcard', async () => {
+  const stored = {...cached(), placement: ''};
+  const h = harness({state: 'current', offers: [fresh('candidate')]}), seen = [];
+  h.data.search({}, event => seen.push(clone(event)));
+  h.emit({type: 'results', hotels: union(stored)});
+  await h.data.rehydrateCached(stored);
+  assert.equal(seen.length, 1, 'incomplete cached identity must require explicit selection');
+  assert.equal(seen[0].hotels[0].offers[0].key, 'cached');
+});
+
 test('placement mismatch remains an explicit alternative instead of replacing the cached row', async () => {
   const h = harness({state: 'current', offers: [{...fresh('changed-placement'), placement: 'SGL'}]}), seen = [];
   h.data.search({}, event => seen.push(clone(event)));
