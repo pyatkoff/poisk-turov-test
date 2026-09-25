@@ -49,6 +49,9 @@ HTACCESS = '''Options -Indexes
 <Files "api-andromeda-search3-preview.php">
   Require all granted
 </Files>
+<FilesMatch "^api-andromeda-quote-preview\\.php$">
+  Require expr "%{REQUEST_URI} == '/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'"
+</FilesMatch>
 '''
 
 
@@ -111,7 +114,7 @@ def build_payload(repo: Path, payload: Path, source_sha: str) -> dict:
         encoding="utf-8")
     # PHP includes remain readable by the interpreter, never routable directly.
     (payload / "app" / ".htaccess").write_text("Require all denied\n", encoding="utf-8")
-    required = ("poisk-turov/index.php", "api-anex-search3-preview.php", "api-andromeda-search3-preview.php",
+    required = ("poisk-turov/index.php", "api-anex-search3-preview.php", "api-andromeda-search3-preview.php", "api-andromeda-quote-preview.php",
                 "anex-search3-preview-v1.js", "preview-lead-disabled.php",
                 "app/integrations/anex-search-mapping-registry.php",
                 "app/integrations/anex-additional-prices-client.php")

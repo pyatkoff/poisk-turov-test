@@ -51,7 +51,7 @@ define('V2_PUBLIC_BASE_PATH', '');
 require dirname(__DIR__) . '/index.php';
 """)
         for name in ("poisk-turov/index.php", "api-anex-search3-preview.php",
-                     "api-andromeda-search3-preview.php", "preview-lead-disabled.php"):
+                     "api-andromeda-search3-preview.php", "api-andromeda-quote-preview.php", "preview-lead-disabled.php"):
             self.write("v2/" + name, "<?php // fixture\n")
         self.write("v2/anex-search3-preview-v1.js", "window.fixture = true;\n")
         self.write("v2/site-path-v1.php", (ROOT / "v2/site-path-v1.php").read_text())
@@ -128,6 +128,8 @@ require dirname(__DIR__) . '/index.php';
         access = (payload / ".htaccess").read_text()
         self.assertIn('<Files "api-anex-search3-preview.php">', access)
         self.assertIn('<Files "api-andromeda-search3-preview.php">', access)
+        self.assertIn('<FilesMatch "^api-andromeda-quote-preview\\.php$">', access)
+        self.assertIn("Require expr \"%{REQUEST_URI} == '/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'\"", access)
         self.assertTrue((payload / "app/integrations/anex-additional-prices-client.php").is_file())
         self.assertFalse((payload / ".andromeda-private.php").exists())
 
