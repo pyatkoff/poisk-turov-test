@@ -10,11 +10,11 @@ on:
 permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-common4-retained-context-current-1971-20260925-v27, cancel-in-progress: false}
 env:
-  OP: hotel-match-common4-retained-context-current-1971-20260925-v27
+  OP: hotel-match-common4-retained-context-current-1971-20260925-v27b
   SOURCE_OP: hotel-match-common4-retained-context-recovery-1971-20260925-v26r
   SOURCE_RESULT_SHA: cf9714ab229963c2d7a85da54cd9da7dbc1036974ab8e1b135376aea18bf7562
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
-  CLAIM: '5831223320'
+  CLAIM: '5831303715'
 jobs:
   focused:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-retained-context-current-v27-20260925'
