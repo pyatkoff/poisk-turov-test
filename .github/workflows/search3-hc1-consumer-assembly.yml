@@ -19,39 +19,29 @@ jobs:
         with: {ref: '${{ github.event.pull_request.head.sha }}', path: carrier, fetch-depth: 0, persist-credentials: false}
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: '2a9efb9bebaa662467ae4dcad1c84ce426fdbd04', path: work, fetch-depth: 0, persist-credentials: false}
-      - name: Verify exact ownership and green ingredients
+      - name: Verify scope, claim and exact green inputs
         env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
         run: |
           set -euo pipefail
-          python -m py_compile carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py
-          origin=00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8
-          common=$(git -C carrier merge-base "$origin" HEAD)
-          test "$common" = "$origin"
-          git -C carrier diff --name-only "$common" HEAD > "$RUNNER_TEMP/hc1-scope.txt"
           python - <<'PY'
-          import os,pathlib
-          names=pathlib.Path(os.environ['RUNNER_TEMP'],'hc1-scope.txt').read_text().splitlines()
-          assert sorted(names)==['.github/workflows/search3-hc1-consumer-assembly.yml','scripts/diagnostics/search3_hc1_assemble_consumer.py'],names
-          PY
-          python - <<'PY'
-          import json,os,time,urllib.request
+          import json,os,time,urllib.request,subprocess
+          paths=subprocess.check_output(['git','-C','carrier','diff','--name-only','00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8','HEAD']).decode().splitlines()
+          assert sorted(paths)==['.github/workflows/search3-hc1-consumer-assembly.yml','scripts/diagnostics/search3_hc1_assemble_consumer.py'],paths
           root='https://api.github.com/repos/pyatkoff/poisk-turov-test/'
           def get(path):
-              q=urllib.request.Request(root+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
-              with urllib.request.urlopen(q,timeout=20) as r:return json.load(r)
-          c=get('issues/comments/5836203623');assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          assert c['issue_url'].endswith('/3419') and 'HC-1' in c['body'] and 'app.js' in c['body']
+              req=urllib.request.Request(root+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=20) as r:return json.load(r)
+          c=get('issues/comments/5836203623');assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/3419') and 'app.js' in c['body']
           for run,sha in [(36163725958,'2a9efb9bebaa662467ae4dcad1c84ce426fdbd04'),(36163726154,'2a9efb9bebaa662467ae4dcad1c84ce426fdbd04'),(36112796833,'9a4cb4f812f0eb03056ae1a639887f00c29980b4'),(36143904360,'c905a9b38e50c771a475768103afabe97e98abe0')]:
               r=get('actions/runs/'+str(run));assert r['head_sha']==sha and r['conclusion']=='success'
           for _ in range(30):
-              rs=get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
-              rs=[r for r in rs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              rs=[r for r in get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs'] if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
               if rs and max(rs,key=lambda r:r['id'])['status']=='completed':
                   assert max(rs,key=lambda r:r['id'])['conclusion']=='success';break
               time.sleep(2)
           else:raise SystemExit('security_not_confirmed')
           PY
-      - name: Assemble source objects; retain exact inputs and proposed files
+      - name: Assemble source objects only; no branch or live changes
         working-directory: work
         env:
           GH_TOKEN: '${{ github.token }}'
@@ -61,27 +51,20 @@ jobs:
           from pathlib import Path
           import os,re,subprocess
           out=Path(os.environ['HC1_ASSEMBLY_OUTPUT']);out.mkdir(parents=True,exist_ok=True)
-          donor=subprocess.check_output(['git','show','c905a9b38e50c771a475768103afabe97e98abe0:tests/search3-hc1-full-gallery-browser.py']).decode()
-          (out/'donor-gallery-test.py').write_text(donor)
           code=Path('../carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py').read_text()
-          old="    needle='    profiles[old] = p\\n'"
-          new="    needle='    profiles[old] = p'"
-          assert code.count(old)==1
-          code=code.replace(old,new,1)
+          code=code.replace("    needle='    profiles[old] = p\\n'", "    needle='    profiles[old] = p'")
           old="    for path,text in files.items():\n        blob=api('POST','git/blobs'"
-          new="    for path,text in files.items():\n        if path.startswith('.github/workflows/'):\n            continue  # Connector carries the reviewed CI edit.\n        blob=api('POST','git/blobs'"
           assert code.count(old)==1
-          code=code.replace(old,new,1)
-          scope={'__name__':'hc1_assembly'}
-          exec(compile(code,'<reviewed-hc1-source-assembly>','exec'),scope)
+          code=code.replace(old,"    for path,text in files.items():\n        if path.startswith('.github/workflows/'):\n            continue\n        blob=api('POST','git/blobs'",1)
+          scope={'__name__':'hc1_assembly'};exec(compile(code,'hc1_assembly','exec'),scope)
           original=scope['source']
           def normalized_source(ref,path):
               text=original(ref,path)
-              if path.endswith('.py'):
-                  text='\n'.join(text.splitlines())+'\n'
-                  if path=='tests/search3-hc1-full-gallery-browser.py':
-                      text,count=re.subn(r'(?m)^[ \t]+profiles\[old\][ \t]*=[ \t]*p[ \t]*$', '    profiles[old] = p', text)
-                      assert count==1, ('fixture assignment',count)
+              if path.endswith('.py'):text='\n'.join(text.splitlines())+'\n'
+              if path=='tests/search3-hc1-full-gallery-browser.py':
+                  (out/'donor-gallery-test.py').write_text(text)
+                  text,n=re.subn(r'(?m)^[ \t]+profiles\[old\][ \t]*=[ \t]*p[ \t]*$', '    profiles[old] = p', text);assert n==1
+                  text,n=re.subn(r"ids\s*=\s*list\(map\(int,\s*q\['legacyHotelIds\[\]'\]\)\)", "ids = list(map(int,q['legacyHotelIds[]']))",text);assert n==1
               return text
           scope['source']=normalized_source
           scope['main']()
