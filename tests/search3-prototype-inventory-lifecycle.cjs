@@ -558,6 +558,35 @@ test('mixed region and subregion OR is split only for native providers and union
  assert.equal(complete.sources.andromeda.status,'complete');assert.equal(complete.sources.andromeda.branchesTotal,2);
  assert.equal(complete.union.offersByProvider.anex,2);assert.equal(complete.union.offersByProvider.andromeda,2);
 });
+test('mixed Andromeda keeps a valid sibling branch when the first branch is malformed',async()=>{
+ const destinations=(action,p)=>action==='regions'?[
+  {id:21,kind:'region',parentId:Number(p.countryId),name:'Белек',russianName:'Белек',slug:'belek',revision:1,tourvisorIds:['21'],subregions:[
+   {id:2101,kind:'subregion',parentId:21,name:'Кадрие',russianName:'Кадрие',slug:'kadriye',revision:1,tourvisorIds:['2101']}
+  ]}
+ ]:undefined;
+ const h=harness({
+  destinations,database:(i,p)=>snapshot(p,[]),
+  native:async body=>{
+   const region=body.params.regionIds.length>0,payload=directAndromeda(body,{
+    offerRef:'offer_'+(region?'b':'c').repeat(64),localId:region?501:502,searchRef:(region?'d':'e').repeat(64)
+   });
+   if(region)payload.data.hotels[0].mapping_status='invalid';
+   return {response:{ok:true,json:async()=>payload}};
+  }
+ });
+ await h.data.regions('4');
+ await h.start({resorts:['Белек','Кадрие'],min:0,max:null});await h.poll();await flush();
+ assert.equal(h.nativeCalls.length,2);
+ const offers=h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda');
+ assert.equal(offers.length,1,'valid sibling branch must survive malformed first branch');
+ assert.equal(offers[0].hotelId,902);
+ const complete=h.events.filter(event=>event.type==='complete').at(-1);assert.ok(complete);
+ assert.equal(complete.sources.andromeda.status,'partial');
+ assert.equal(complete.sources.andromeda.destinationBranchFailed,true);
+ assert.equal(complete.sources.andromeda.branchesLoaded,1);
+ assert.equal(complete.sources.andromeda.branchesTotal,2);
+ assert.equal(complete.sources.andromeda.offers,1);
+});
 test('foreign and ambiguous resort catalogue does not silently drop a selected condition',async()=>{
  const h=harness({destinations:(action)=>action==='regions'?[
   {id:203,kind:'region',parentId:99,name:'Сиде',russianName:'Сиде',slug:'side',revision:1,tourvisorIds:['23']}
