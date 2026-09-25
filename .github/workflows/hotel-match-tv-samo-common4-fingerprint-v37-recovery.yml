@@ -133,6 +133,19 @@ jobs:
                           ent['derived_status_counts']=status_counts
                           ent['derived_bucket_status_counts']=bucket_status_counts
                           ent['derived_direct_vote_histogram']=direct_vote_hist
+                          projection=[]
+                          allowed_row={'status','tv_hotel_id','local_hotel_id','samo_catalog_id','catalog_id','frontier_bucket','namespace','operator_id','native_id','direct_namespace','direct_native_id','support_namespace','support_native_id'}
+                          row_keys=set()
+                          for row in rows:
+                              if not isinstance(row,dict): continue
+                              row_keys.update(row.keys())
+                              s=str(row.get('status',''))
+                              if s not in {'single_direct','support_only','hold_source_occupied','single_direct_review','support_only_review'}: continue
+                              p={k:row[k] for k in allowed_row if k in row and not isinstance(row[k],(dict,list))}
+                              p['status']=s
+                              projection.append(p)
+                          ent['derived_row_keys']=sorted(row_keys)
+                          ent['candidate_projection']=projection
               except Exception as e:
                   ent['parse_error']=type(e).__name__
               out[name]=ent
