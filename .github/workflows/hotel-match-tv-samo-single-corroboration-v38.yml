@@ -43,7 +43,7 @@ jobs:
 
   live:
     needs: focused
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/tv-samo-single-corroboration-v38-20260925'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/tv-samo-single-corroboration-v38-20260925' && github.event.pull_request.head.sha == '2fadc708425d9d37d0c2067c387fd6697fba7b38'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
