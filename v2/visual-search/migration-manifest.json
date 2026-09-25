@@ -3,7 +3,7 @@
   "stage": "canonical-live-integration-candidate",
   "visualVersion": 147,
   "siteCommit": "3aa4d9001f51dfd732b01194b695deabcf8e033f",
-  "functionalBase": "2c50fd0e23a95cbae1f75d14eedc01864ce40631",
+  "functionalBase": "3b460f04b4f6262147c7e44b93fe32cefcfaf03c",
   "entry": "/_preview/search3-next-candidate/visual-search/",
   "liveConnected": true,
   "supplierRequests": "explicit-user-actions-only",
@@ -53,6 +53,6 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "prepared-not-published",
   "adaptedFiles": {
-    "app.js": "58236a554e8f305357c8070d3c7d851a7247492ba71015e457eed4bd30748393"
+    "app.js": "d970d10c7f2a34d10b1311a0b7f22e7fa34ab1ec0790e82503161986b2331b6d"
   }
 }
