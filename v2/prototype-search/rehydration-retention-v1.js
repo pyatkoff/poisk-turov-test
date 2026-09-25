@@ -18,12 +18,13 @@
       || Number(candidate.nights) !== Number(cached.nights) || Number(candidate.adults) !== Number(cached.adults)
       || JSON.stringify(candidate.ages || []) !== JSON.stringify(cached.ages || [])) return false;
     if (text(candidate.operator) !== text(cached.operator)) return false;
-    const room = text(cached.room), meal = text(cached.mealRaw || cached.meal);
+    const room = text(cached.room), meal = text(cached.mealRaw || cached.meal), placement = text(cached.placement);
     if (room && !/уточняется/.test(room) && text(candidate.room) !== room) return false;
     if (meal && !/уточняется/.test(meal)) {
       const liveMeals = [candidate.mealRaw, candidate.meal].map(text).filter(Boolean);
       if (!liveMeals.includes(meal)) return false;
     }
+    if (placement && !/уточняется/.test(placement) && text(candidate.placement) !== placement) return false;
     if (['regular', 'charter'].includes(cached.flight) && candidate.flight !== cached.flight) return false;
     return true;
   }
@@ -69,7 +70,8 @@
     const token = epoch, result = await source.rehydrateCached.call(source, cached, ...args);
     if (token !== epoch) return result;
     const offers = Array.isArray(result?.offers) ? result.offers : [];
-    const exact = result?.state === 'current' ? offers.find(item => sameCurrentOffer(item, cached)) : null;
+    const exactMatches = result?.state === 'current' ? offers.filter(item => sameCurrentOffer(item, cached)) : [];
+    const exact = exactMatches.length === 1 ? exactMatches[0] : null;
     if (exact) {
       pending = null;
       publishReplacement(cached, exact, token);
