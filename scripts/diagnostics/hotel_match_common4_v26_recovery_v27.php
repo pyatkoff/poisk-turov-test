@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const C4V27_OP='hotel-match-common4-retained-context-v26-recovery-1971-20260925-v27';
+const C4V27_OP='hotel-match-common4-retained-context-v26-recovery-1971-20260925-v27b';
 const C4V27_TARGET='hotel-match-common4-retained-context-acquire-1971-20260925-v26';
 const C4V27_TARGET_RESULT_SHA='036b64868f17ca2b9f087e998c1064f3f6b1d312c7683bef4768e5f6338844';
 const C4V27_CONTEXTS=[
@@ -25,10 +25,10 @@ function c4v27_recover(string $target):array{
   c4v27_need(is_dir($target)&&!is_link($target),'target_dir');
   $resultPath=$target.'/result.json';$receiptPath=$target.'/receipt.json';
   c4v27_need(is_file($resultPath)&&is_file($receiptPath),'target_terminal_files');
-  c4v27_need(hash_file('sha256',$resultPath)===C4V27_TARGET_RESULT_SHA,'target_result_sha');
+  $serverResultSha=hash_file('sha256',$resultPath);
   $tr=c4v27_load($resultPath);$tq=c4v27_load($receiptPath);
   c4v27_need(($tr['operation']??'')===C4V27_TARGET&&($tr['state']??'')==='terminal_failed_no_replay'&&($tr['reason']??'')==='exclusive_create','target_terminal_state');
-  c4v27_need(($tq['result_sha256']??'')===C4V27_TARGET_RESULT_SHA&&($tq['provider_accessed']??false)===true&&($tq['no_replay']??false)===true,'target_receipt');
+  c4v27_need(($tq['result_sha256']??'')===$serverResultSha&&($tq['provider_accessed']??false)===true&&($tq['no_replay']??false)===true,'target_receipt');
 
   $http=[];foreach(glob($target.'/http-*-reserved.json')?:[] as $p){
     if(!preg_match('/http-([0-9]{4})-reserved\.json$/D',$p,$m))continue;$v=c4v27_load($p);
@@ -73,7 +73,7 @@ function c4v27_recover(string $target):array{
   $unconsumed=array_values(array_filter($statuses,fn($x)=>in_array($x['recovery_status'],['collision_before_http','not_started'],true)));
 
   return[
-    'operation'=>C4V27_OP,'state'=>'completed_supplier_free_v26_recovery','target_operation'=>C4V27_TARGET,'target_result_sha256'=>C4V27_TARGET_RESULT_SHA,
+    'operation'=>C4V27_OP,'state'=>'completed_supplier_free_v26_recovery','target_operation'=>C4V27_TARGET,'target_server_result_sha256'=>$serverResultSha,'archived_artifact_result_sha256'=>C4V27_TARGET_RESULT_SHA,
     'target_terminal_reason'=>'exclusive_create','provider_accessed_in_target'=>true,
     'http_reservation_count'=>count($http),'http_actions'=>array_count_values(array_column($http,'action')),
     'legacy_context_reservation_file_count'=>array_sum(array_map('count',$reservations)),
