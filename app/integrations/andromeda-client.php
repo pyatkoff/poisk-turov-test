@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /** Fixed-message supplier rejection with bounded, non-raw diagnostic facts. */
-class AnyTourAndromedaSupplierException extends RuntimeException
+class AnyTourAndromedaPriceSupplierException extends RuntimeException
 {
     private array $diagnosticFacts;
 
@@ -46,7 +46,7 @@ final class AnyTourAndromedaPackageSupplierException extends RuntimeException
     private array $diagnosticFacts;
     public function __construct(mixed $error)
     {
-        $generic = new AnyTourAndromedaSupplierException($error, 'broninit');
+        $generic = new AnyTourAndromedaPriceSupplierException($error, 'broninit');
         $facts = $generic->diagnosticFacts();
         $facts['source'] = 'andromeda_package_error';
         unset($facts['action']);
@@ -284,7 +284,7 @@ final class AnyTourAndromedaClient
             $this->sid = null;
             $this->expires = 0;
             if ($action === 'broninit') throw new AnyTourAndromedaPackageSupplierException($reply['error']);
-            throw new AnyTourAndromedaSupplierException($reply['error'], $action);
+            throw new AnyTourAndromedaPriceSupplierException($reply['error'], $action);
         }
         return $reply;
     }
