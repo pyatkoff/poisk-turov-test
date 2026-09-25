@@ -3,6 +3,7 @@ import base64, collections, datetime as dt, fcntl, hashlib, json, os, pathlib, r
 from zoneinfo import ZoneInfo
 
 OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260926-v49'
+V45_OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v45'
 V41B_OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41b'
 V41B_RESULT_SHA='a2b3538998c2742096b8655a80af2c5f3f7ea4a8cf3a7c7d81b2d9ec4d5c533e'
 V41B_RECEIPT_SHA='d27cf7686650c1c93fca01cd120cdc51e60c311fc314224bfc1a4b959a28a5f4'
