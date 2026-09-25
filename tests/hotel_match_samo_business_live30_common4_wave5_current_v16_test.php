@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_current_v16.php';
-if(SBLC4C4_OP!=='hotel-match-samo-business-live30-common4-wave5-current-1971-20260925-v16b')throw new RuntimeException('operation');
+if(SBLC4C4_OP!=='hotel-match-samo-business-live30-common4-wave5-current-1971-20260925-v16c')throw new RuntimeException('operation');
 if(SBLC4C4_SOURCE_OP!=='hotel-match-samo-business-live30-common4-wave5-recovery-acquire-1971-20260925-v15')throw new RuntimeException('source_operation');
 if(SBLC4C4_EXPECTED_EDGES!==1217||SBLC4C4_EXPECTED_CAPTURED!==508)throw new RuntimeException('counts');
 $edges=[
