@@ -119,6 +119,20 @@ jobs:
                   data=json.loads(raw)
                   if isinstance(data,dict):
                       ent['fields']={k:data[k] for k in allowed if k in data}
+                      ent['top_level_keys']=sorted(data.keys())
+                      rows=data.get('rows')
+                      if isinstance(rows,list):
+                          status_counts={}; bucket_status_counts={}; direct_vote_hist={}
+                          for row in rows:
+                              if not isinstance(row,dict): continue
+                              s=str(row.get('status','unknown')); b=str(row.get('frontier_bucket') or 'none')
+                              status_counts[s]=status_counts.get(s,0)+1
+                              bucket_status_counts.setdefault(b,{})[s]=bucket_status_counts.setdefault(b,{}).get(s,0)+1
+                              n=len(row.get('direct_votes') or {}) if isinstance(row.get('direct_votes'),dict) else 0
+                              direct_vote_hist[str(n)]=direct_vote_hist.get(str(n),0)+1
+                          ent['derived_status_counts']=status_counts
+                          ent['derived_bucket_status_counts']=bucket_status_counts
+                          ent['derived_direct_vote_histogram']=direct_vote_hist
               except Exception as e:
                   ent['parse_error']=type(e).__name__
               out[name]=ent
