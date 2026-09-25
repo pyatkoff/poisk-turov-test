@@ -206,7 +206,11 @@ test('cached rehydration compares child ages as a multiset and preserves duplica
    row.listing.tour.party={adults:2,children:3,child_ages:[6,12,6]};
    return data;
   },
-  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{offerRef:'anex_online:'+'6'.repeat(64),localId:101,searchRef:'6'.repeat(32)})}})
+  anex:async body=>{
+   const payload=directAnex(body,{offerRef:'anex_online:'+'6'.repeat(64),localId:101,searchRef:'6'.repeat(32)});
+   payload.data.hotels[0].tours[0].children=body.params.childs.length;
+   return {response:{ok:true,status:200,json:async()=>payload}};
+  }
  });
  canonicalMeals(h);
  await h.data.resumeCached(structuredClone(family),event=>h.events.push(event),[],{min:0,max:null});await flush();
