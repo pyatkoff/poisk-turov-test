@@ -3,7 +3,8 @@ import base64, collections, datetime as dt, fcntl, hashlib, json, os, pathlib, r
 from zoneinfo import ZoneInfo
 
 OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41b'
-ACCOUNT='TOURVISOR_ANEX_JWT'\nACCOUNT_LEDGER='tourvisor-anex'
+ACCOUNT='TOURVISOR_ANEX_JWT'
+ACCOUNT_LEDGER='tourvisor-anex'
 DAILY_LIMIT=3000
 CALL_CAP=500
 MAX_BATCHES=50
