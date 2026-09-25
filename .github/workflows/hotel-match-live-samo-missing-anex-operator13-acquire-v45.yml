@@ -86,7 +86,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('input/claim.json')); b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],'SECOND BOUNDED TRANCHE ONLY','remaining router batches expected=221','TOURVISOR_ANEX_JWT','tourvisor-anex','<=500 HTTP','hard max50 batches','DB/schema/mapping writes0']:
+          for x in [os.environ['OP'],'SECOND BOUNDED TRANCHE ONLY','Remaining router batches expected=221','TOURVISOR_ANEX_JWT','tourvisor-anex','<=500 HTTP','hard max50 batches','DB/schema/mapping writes0']:
               assert x in b,x
           for x in [os.environ['V41B_OP'],os.environ['V41B_RESULT_SHA'],os.environ['V41B_RECEIPT_SHA'],'exactly40 consumed batch reservations']:
               assert x in b,x
