@@ -212,13 +212,23 @@ assert.doesNotMatch(source,/function openRehydratedVariants|function chooseRehyd
 assert.match(refreshSource,/quote\.state==='flight_selection_required'.*openAndromedaFlightChoice/s,'ambiguous Andromeda flights stay in provider-specific flight selection');
 assert.match(refreshSource,/openAndromedaVerified\(o,quote\)/,'verified Andromeda quote uses the provider-verified result view');
 
+const andromedaReceiptStart=source.indexOf('function andromedaApplicationReceipt(o,quote,h)');
 const andromedaVerifiedStart=source.indexOf('function openAndromedaVerified(o,quote)');
-const andromedaVerifiedEnd=source.indexOf('\nasync function applyAndromedaFlightChoice()',andromedaVerifiedStart);
-assert.ok(andromedaVerifiedStart>=0&&andromedaVerifiedEnd>andromedaVerifiedStart,'Andromeda verified result owner exists');
-const andromedaVerifiedSource=source.slice(andromedaVerifiedStart,andromedaVerifiedEnd);
+const andromedaApplicationStart=source.indexOf('function openAndromedaApplicationPreview()');
+const andromedaVerifiedEnd=source.indexOf('\nasync function applyAndromedaFlightChoice()',andromedaApplicationStart);
+assert.ok(andromedaReceiptStart>=0&&andromedaVerifiedStart>andromedaReceiptStart&&andromedaApplicationStart>andromedaVerifiedStart&&andromedaVerifiedEnd>andromedaApplicationStart,'Andromeda verified application owners exist');
+const andromedaReceiptSource=source.slice(andromedaReceiptStart,andromedaVerifiedStart);
+assert.match(andromedaReceiptSource,/quote\?\.state!=='quote_verified'/,'application receipt requires provider verified state');
+assert.match(andromedaReceiptSource,/quote\?\.finalPriceVerified!==true/,'application receipt requires a verified final price');
+assert.match(andromedaReceiptSource,/quote\?\.flightSelectionRequired!==false/,'pending flight choice cannot enter application');
+const andromedaVerifiedSource=source.slice(andromedaVerifiedStart,andromedaApplicationStart);
 assert.match(andromedaVerifiedSource,/quote\.finalPrice/,'verified Andromeda result displays supplier-confirmed final price');
-assert.match(andromedaVerifiedSource,/Оформление заявки из Andromeda.*пока не подключено/s,'Andromeda verified result states the current no-lead boundary');
-assert.doesNotMatch(andromedaVerifiedSource,/openLeadPreview|completeTour|AnyTourPrototypeLead|leadSession/,'Andromeda verified result cannot enter the Tourvisor lead path');
+assert.match(andromedaVerifiedSource,/data-action="andromeda-application-preview"/,'verified Andromeda result exposes the preview application action');
+assert.match(andromedaVerifiedSource,/реальная отправка здесь отключена/,'verified result states the isolated preview delivery boundary');
+const andromedaApplicationSource=source.slice(andromedaApplicationStart,andromedaVerifiedEnd);
+assert.match(andromedaApplicationSource,/AnyTourPrototypeLead\.bindProviderPreview\(receipt\)/,'application form delegates contact validation to preview-only lead owner');
+assert.doesNotMatch(andromedaApplicationSource,/data\.leadSession|fetch\s*\(/,'provider preview application cannot use production lead delivery');
+assert.match(source,/case 'andromeda-application-preview':openAndromedaApplicationPreview\(\)/,'verified provider application has one explicit click action');
 
 const andromedaChoiceStart=source.indexOf('function openAndromedaFlightChoice(o,quote)');
 const andromedaChoiceEnd=source.indexOf('\nfunction openAndromedaVerified',andromedaChoiceStart);
