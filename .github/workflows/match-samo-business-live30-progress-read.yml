@@ -1,0 +1,60 @@
+name: MATCH SAMO business live30 progress read
+# snapshot refresh 3
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: ['.github/workflows/match-samo-business-live30-progress-read.yml']
+permissions: {contents: read, issues: read}
+env:
+  BASE: 96c1bfafaedadc1d829ac7f82def7d207b9f754a
+  CLAIM: '5811314782'
+  OP: hotel-match-samo-business-live30-common4-acquire-1971-20260924-v2
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-samo-business-live30-progress-read-20260924'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact read-only authority
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/match-samo-business-live30-progress-read.yml "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],'supplier HTTP0','DB/mapping writes0','does not modify']:assert x in b,x
+          PY
+      - name: Read sanitized progress
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "OP='$OP' python3 - <<'PY'
+          import json,os,pathlib
+          d=pathlib.Path.home()/'.anytoour-match/operations'/os.environ['OP']
+          assert d.is_dir()
+          http=len(list(d.glob('http-*-reserved.json')))
+          pages=len(list(d.glob('batch-*-page-*-reserved.json')))
+          batches=set()
+          for p in d.glob('batch-*-page-*-reserved.json'):
+              x=p.name.split('-')
+              if len(x)>1:batches.add(x[1])
+          out={'operation':os.environ['OP'],'login_reserved':(d/'login-reserved.json').is_file(),'login_succeeded':(d/'login-result.json').is_file(),'http_reservations':http,'batch_page_reservations':pages,'distinct_batches_started':len(batches),'result_exists':(d/'result.json').is_file(),'receipt_exists':(d/'receipt.json').is_file()}
+          if (d/'result.json').is_file():
+              r=json.loads((d/'result.json').read_text())
+              for k in ['state','planned_batch_count','completed_batch_count','batch_error_count','samo_http_calls','queried_edge_count','single_native_source_unique_count','single_native_source_collision_count']:
+                  out[k]=r.get(k)
+          print(json.dumps(out,sort_keys=True))
+          PY"
