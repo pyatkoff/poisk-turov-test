@@ -1,0 +1,125 @@
+name: HC1 exact saved hotel content apply C1
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - '.github/workflows/search3-hc1-content-apply-c1.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: anytour-canonical-catalog-operations, cancel-in-progress: false}
+env:
+  OP: search3-hc1-content-apply-20260925-c1
+  BASE: 772cef853390afde25041a7ca65d30f86f97b549
+  CHECKED: 35d55194f4b7af21c98595a1013accea983937f4
+  CLAIM: '5831888712'
+jobs:
+  apply:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.id == 226193297 && github.run_attempt == 1 &&
+      github.event.pull_request.head.ref == 'ops/search3-hc1-content-apply-20260925-c1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ env.BASE }}', path: source, persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', path: carrier, fetch-depth: 0, persist-credentials: false}
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with: {php-version: '8.3', extensions: 'mbstring', coverage: none}
+      - name: Check exact claim, source, scope and Security before any server access
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p terminal package/v2/data package/scripts/diagnostics
+          test "$(git -C carrier merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git -C carrier diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/search3-hc1-content-apply-c1.yml scripts/diagnostics/search3_hc1_content_apply_c1.php "
+          test "$(git -C source hash-object v2/data/anytour-profile-enrichment-v1.php)" = 7f25696ced6a9974492aba8d69f8c14da24f8b6e
+          test "$(git -C source hash-object v2/data/hotel-presentation-read-v1.php)" = dbb9a79b678099b6b5a5fc90fcdf4d9a16dcbec4
+          test "$(git -C source hash-object v2/data/hotel-details-v1.php)" = c300ae76b621bed8fa180811c8fad88756c34c18
+          test "$(git -C source hash-object v2/data/db-v1.php)" = c7e13f41be4a317087fc063da0db6f5dcf769e29
+          cp source/v2/data/{anytour-profile-enrichment-v1.php,hotel-presentation-read-v1.php,hotel-details-v1.php,db-v1.php} package/v2/data/
+          cp carrier/scripts/diagnostics/search3_hc1_content_apply_c1.php package/scripts/diagnostics/
+          php -l package/scripts/diagnostics/search3_hc1_content_apply_c1.php
+          php package/scripts/diagnostics/search3_hc1_content_apply_c1.php --self-test
+          python3 - <<'PY'
+          import json,os,time,urllib.request,pathlib
+          def get(path):
+              q=urllib.request.Request('https://api.github.com/repos/pyatkoff/poisk-turov-test/'+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=20) as r:return json.load(r)
+          c=get('issues/comments/'+os.environ['CLAIM'])
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],os.environ['BASE'],'18 primaryImage+18 images+12 description=48','Supplier HTTP0']:assert x in c['body'],x
+          assert get('git/ref/heads/release/search3-production-ready-v1')['object']['sha']==os.environ['BASE']
+          for rid in [36131258344,36131258273,36131258331]:
+              r=get('actions/runs/'+str(rid));assert r['head_sha']==os.environ['CHECKED'] and r['conclusion']=='success'
+          for _ in range(40):
+              rs=get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+              rs=[r for r in rs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if rs and max(rs,key=lambda r:r['id'])['status']=='completed':
+                  assert max(rs,key=lambda r:r['id'])['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_not_confirmed')
+          pathlib.Path('terminal/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'source':os.environ['BASE'],'head':os.environ['HEAD'],'scope':'18 exact profiles / 48 fields','supplierCalls':0,'state':'reserved_before_ssh'},sort_keys=True)+'\n')
+          PY
+          (cd package; sha256sum v2/data/*.php scripts/diagnostics/*.php > files.sha256)
+          tar -cf package.tar -C package v2/data scripts/diagnostics files.sha256
+      - name: Preserve durable reservation before SSH
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hc1-c1-reservation-${{ github.run_id }}', path: terminal/reservation.json, retention-days: 30, if-no-files-found: error}
+      - name: Stage privately and apply exact existing engine once
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/hc1-key"; known="$RUNNER_TEMP/hc1-known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytour-operations/$OP"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test -f \"\$HOME/www/anytoour.ru/config.php\";mkdir -p \"\$HOME/.anytour-operations\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$op/payload\""
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;cat > \"\$HOME/$op/reservation.json\"" < terminal/reservation.json
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;tar -xf - -C \"\$HOME/$op/payload\";cd \"\$HOME/$op/payload\";sha256sum -c files.sha256 >/dev/null" < package.tar
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/$op/payload\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" HC1_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d allow_url_fopen=0 scripts/diagnostics/search3_hc1_content_apply_c1.php --execute" > "$RUNNER_TEMP/hc1-private-stdout" 2> "$RUNNER_TEMP/hc1-private-stderr"
+          rc=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" > terminal/result.json 2>/dev/null
+          rr=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/receipt.json\"" > terminal/receipt.json 2>/dev/null
+          qr=$?
+          set -e
+          printf '{"sshExit":%s,"resultReadExit":%s,"receiptReadExit":%s,"noReplay":true}\n' "$rc" "$rr" "$qr" >terminal/transport.json
+          test "$rr" = 0; test "$qr" = 0
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          p=pathlib.Path('terminal/result.json');r=json.loads(p.read_text());q=json.load(open('terminal/receipt.json'))
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==q['resultSha256']
+          assert r['state']==q['state']=='committed_verified'
+          assert r['apply']['profilesUpdated']==18 and r['apply']['fieldsFilled']==48
+          assert r['apply']['fieldCounts']=={'description':12,'images':18,'primaryImage':18}
+          assert r['controlsUnchanged'] is True and r['beforeImagesPrivate'] is True and r['supplierCalls']==0
+          print(json.dumps(r,ensure_ascii=False))
+          PY
+          test "$rc" = 0
+      - name: Verify the same twenty profiles through existing HTTP contracts
+        run: |
+          set -euo pipefail
+          python3 source/scripts/diagnostics/search3_hotel_content_readback.py --legacy-ids 102,559,562,563,570,571,572,573,583,584,586,587,606,608,609,615,621,628,632,6319 > terminal/http-after.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('terminal/http-after.json'))
+          assert r['status']=='readback_complete' and len(r['rows'])==20
+          for x in r['rows']:
+              assert x['canonical']['imageReferencesPresent']
+              assert x['canonicalRevision']==(1 if x['legacyHotelId'] in [102,6319] else 2)
+              assert x['canonical']['descriptionPresent']==(x['legacyHotelId'] not in [563,573,583,584,608,615])
+          print(json.dumps({'state':'HTTP_CONTENT_VERIFIED','hotels':20,'withImages':20,'withDescription':14,'httpReads':2,'browser':'not_checked'}))
+          PY
+      - name: Preserve only sanitized terminal data, never private plans or SSH output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hc1-c1-terminal-${{ github.run_id }}', path: terminal/, retention-days: 30, if-no-files-found: warn}
