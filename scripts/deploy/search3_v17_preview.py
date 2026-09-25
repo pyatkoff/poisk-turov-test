@@ -103,10 +103,10 @@ def render_checks(root):
                        capture_output=True, text=True, timeout=30)
     need(r.returncode == 0 and 'Fatal error' not in r.stdout
          and '<meta name="robots" content="noindex, nofollow, noarchive"' in r.stdout
-         and 'Живой поиск ещё не подключён' in r.stdout
+         and ('Живой поиск ещё не подключён' in r.stdout or ('../prototype-search/data.js?v=' in r.stdout and './live-bridge.js?v=' in r.stdout))
          and re.search(r'app.js\?v=[0-9a-f]{12}', r.stdout), 'visual_render_or_boundary')
     need('live-data.js' not in r.stdout and 'src="./data.js"' not in r.stdout,
-         'visual_stage_must_be_offline')
+         'visual_must_use_reviewed_owner')
     empty.rmdir()
 
 
@@ -162,7 +162,7 @@ def live_checks(files):
         status, body = http(ROUTE + name + '?sha=' + files[name], binary=True)
         need(status == 200 and digest(body) == files[name], 'served_asset_hash')
     status, html = http(ROUTE + 'visual-search/')
-    need(status == 200 and 'Живой поиск ещё не подключён' in html
+    need(status == 200 and ('Живой поиск ещё не подключён' in html or ('../prototype-search/data.js?v=' in html and './live-bridge.js?v=' in html))
          and '<meta name="robots" content="noindex, nofollow, noarchive"' in html
          and re.search(r'app.js\?v=[0-9a-f]{12}', html), 'visual_live_entry')
     visual_assets = [name for name in files if name.startswith('visual-search/')
@@ -171,11 +171,16 @@ def live_checks(files):
     for name in visual_assets:
         status, body = http(ROUTE + name + '?sha=' + files[name], binary=True)
         need(status == 200 and digest(body) == files[name], 'visual_served_hash:' + name)
+    # Verify the canonical dependencies actually served to the new visual too.
+    for name in re.findall(r'(?:src|href)="\.\./([^"?]+\.(?:js|css))', html):
+        need(name in files and '..' not in name.split('/'), 'visual_dependency_not_in_artifact')
+        status, body = http(ROUTE + name + '?sha=' + files[name], binary=True)
+        need(status == 200 and digest(body) == files[name], 'visual_dependency_hash:' + name)
     need(http('/')[0] == 200 and http('/poisk-turov/')[0] == 200, 'production_pages_unhealthy')
     return {'routes_200': 9, 'noindex': True, 'counter': 0, 'lead_HTTP': 403,
             'LOCAL_only_data_HTTP': 403, 'supplier_searches': 0, 'real_leads': 0,
             'visual_route_200': True, 'visual_assets_verified': len(visual_assets),
-            'visual_live_connected': False}
+            'visual_live_connected': '../prototype-search/data.js?v=' in html}
 
 
 def publish():

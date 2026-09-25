@@ -1,4 +1,4 @@
-name: Update isolated local-catalog Search3 preview
+name: Update existing isolated Search3 previews
 
 on:
   pull_request:
@@ -8,6 +8,9 @@ on:
       - 'scripts/deploy/search3_local_preview_update.py'
       - 'scripts/deploy/search3_local_preview_update_remote.py'
       - 'tests/search3_local_preview_update_test.py'
+      - 'scripts/deploy/search3_v17_preview.py'
+      - 'tests/search3_next_preview_update_test.py'
+      - 'tests/search3_v17_preview_test.py'
   issue_comment:
     types: [created]
 
@@ -27,6 +30,8 @@ jobs:
       - name: Verify update and existing create-only publisher contracts
         run: |
           python3 -m py_compile scripts/deploy/search3_local_preview_update.py scripts/deploy/search3_local_preview_update_remote.py
+          python3 tests/search3_next_preview_update_test.py
+          python3 tests/search3_v17_preview_test.py
           python3 tests/search3_local_preview_update_test.py -v
           python3 tests/search3_local_preview_test.py -v
           python3 tests/search3_preview_publish_test.py -v
@@ -39,7 +44,7 @@ jobs:
       github.event_name == 'issue_comment' && github.event.issue.number == 3419 &&
       !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      startsWith(github.event.comment.body, '/update-search3-local-preview ')
+      (startsWith(github.event.comment.body, '/update-search3-local-preview ') || startsWith(github.event.comment.body, '/update-search3-next-preview '))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -60,6 +65,8 @@ jobs:
           php -r 'if (PHP_VERSION_ID < 80300 || PHP_VERSION_ID >= 80400) { fwrite(STDERR, "PHP_83_REQUIRED\n"); exit(1); } if (!extension_loaded("mbstring")) { fwrite(STDERR, "MBSTRING_REQUIRED\n"); exit(1); } echo "PHP_RUNNER_OK ".PHP_VERSION." mbstring\n";'
       - name: Offline authorization and transaction tests
         run: |
+          python3 tests/search3_next_preview_update_test.py
+          python3 tests/search3_v17_preview_test.py
           python3 tests/search3_local_preview_update_test.py
           python3 tests/search3_local_preview_test.py
           python3 tests/search3_preview_publish_test.py
@@ -97,8 +104,11 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Recheck update transaction
-        run: python3 tests/search3_local_preview_update_test.py
-      - name: Update only the existing local-catalog preview from retained bytes
+        run: |
+          python3 tests/search3_next_preview_update_test.py
+          python3 tests/search3_v17_preview_test.py
+          python3 tests/search3_local_preview_update_test.py
+      - name: Update only the selected fixed preview from retained bytes
         env:
           GH_TOKEN: ${{ github.token }}
           READY_ARTIFACT_ID: ${{ needs.prepare-local-preview-update.outputs.artifact_id }}

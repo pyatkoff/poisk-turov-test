@@ -1,4 +1,4 @@
-"""Standalone fixed-target update transaction for search3-local-candidate.
+"""Standalone fixed-target update transaction for LOCAL or next Search3 preview.
 
 The predecessor must be the exact publisher-owned, published target named in the
 request. It is retained before activation and restored byte-for-byte on rollback.
@@ -11,9 +11,21 @@ from pathlib import Path, PurePosixPath
 
 ROUTE='/_preview/search3-local-candidate/'
 NAME='search3-local-candidate'
+TARGET='local'
+NAMESPACE='search3-local'
+TRANSFORM='local-route-v1'
 REQUIRED=('index.php','search-page-v2.php','poisk-turov/index.php','assets.php','api-v2.php','lead-adapter-v2.php','lead-bridge-v1.php','lead-receiver-v1.php','lead-price-v1.php','lead-idempotency-v1.php','analytics-config.php','bundle-manifest-v1.php','config.php')
 OPTIONAL=('robots.txt','sitemap.xml','.htaccess','seo-config.php','seo-launch-slice-v1.php','_preview/search3-anex-candidate/api-andromeda-search3-preview.php','_preview/search3-anex-candidate/app/integrations/andromeda-selected-offer.php')
 INVARIANTS={'production_lead_delivery':False,'preview_metrika_counter':0,'production_document_root_bootstrap':False,'external_consultant_widget':False,'production_metrika_changes':False,'production_api_path':'/api-v2.php','preview_lead_path':ROUTE+'preview-lead-disabled.php'}
+
+def select_target(target='local'):
+    # Two reviewed fixed destinations only; caller cannot supply a filesystem path.
+    global TARGET, NAME, ROUTE, NAMESPACE, INVARIANTS, TRANSFORM
+    if target not in ('local', 'next'): raise ValueError('unknown_preview_target')
+    TARGET=target; NAMESPACE='search3-'+target; NAME=NAMESPACE+'-candidate'
+    ROUTE='/_preview/'+NAME+'/'
+    TRANSFORM=target+'-route-v1'
+    INVARIANTS={**INVARIANTS,'preview_lead_path':ROUTE+'preview-lead-disabled.php'}
 
 def need(v,r):
     if not v: raise ValueError(r)
@@ -42,21 +54,22 @@ def safe_extract(archive,target):
                 with src.extractfile(m) as inp, dest.open('xb') as out: shutil.copyfileobj(inp,out)
                 dest.chmod(0o644)
 def validate(q):
+    need(q.get('preview_target','local')==TARGET,'wrong_preview_target')
     for k in ('source_sha','source_tree','release_sha','previous_source_sha'): need(isinstance(q.get(k),str) and re.fullmatch('[0-9a-f]{40}',q[k]),'invalid_'+k)
     for k in ('artifact_id','build_run','deploy_run'): need(type(q.get(k)) is int and 0<q[k]<10**15,'invalid_'+k)
     for k in ('archive_sha256','manifest_sha256','payload_sha256','source_ZIP_sha256'): need(isinstance(q.get(k),str) and re.fullmatch('[0-9a-f]{64}',q[k]),'invalid_'+k)
     need(q.get('attempt')==1,'no_replay'); need(q.get('operation')=='update','update_operation_required'); need(q['source_sha']!=q['previous_source_sha'],'same_source_no_update'); need(type(q.get('file_count')) is int and 0<q['file_count']<10000,'invalid_file_count')
 def verify(root,q):
     validate(q); mb=(root/'control/manifest.json').read_bytes(); cb=(root/'control/payload.sha256').read_bytes(); need(digest(mb)==q['manifest_sha256'] and digest(cb)==q['payload_sha256'],'control_hash'); m=json.loads(mb)
-    need(m.get('schema_version')==1 and m.get('target')=='search3-local-preview' and m.get('route')==ROUTE and m.get('source_sha')==q['source_sha'] and m.get('source_tree_sha')==q['source_tree'],'manifest_identity'); need(m.get('invariants')==INVARIANTS,'manifest_invariants')
-    need(m.get('derived_from')=={'artifact_id':q['artifact_id'],'build_run':q['build_run'],'ZIP_sha256':q['source_ZIP_sha256'],'transform':'local-route-v1'},'derivation_identity')
+    need(m.get('schema_version')==1 and m.get('target')==NAMESPACE+'-preview' and m.get('route')==ROUTE and m.get('source_sha')==q['source_sha'] and m.get('source_tree_sha')==q['source_tree'],'manifest_identity'); need(m.get('invariants')==INVARIANTS,'manifest_invariants')
+    need(m.get('derived_from')=={'artifact_id':q['artifact_id'],'build_run':q['build_run'],'ZIP_sha256':q['source_ZIP_sha256'],'transform':TRANSFORM},'derivation_identity')
     expected={}
     for f in m['files']:
         name=str(safe_name(f['path'])); need(name not in expected and re.fullmatch('[0-9a-f]{64}',f['sha256']),'duplicate_or_bad_hash'); need((root/'payload'/name).stat().st_size==f['size'],'file_size'); expected[name]=f['sha256']
     need(len(expected)==m['file_count']==q['file_count'],'file_count'); need(inventory(root/'payload')==expected,'payload_hashes'); need(cb==''.join(f'{expected[n]}  ./{n}\n' for n in sorted(expected)).encode(),'checksums_inventory')
     need(all(p not in expected for p in ('config.php','api.php','api-v2.php','lead-adapter.php','lead-adapter-v2.php','lead-bridge-v1.php','lead-receiver-v1.php')),'protected_payload_endpoint')
     need(all(p in expected for p in ('.htaccess','preview-lead-disabled.php','search-page-v2.php','data/hotel-details-read-v1.php','data/hotel-presentation-read-v1.php','poisk-turov/index.php')),'missing_guard_or_catalog')
-    need('metrikaCounter=0' in (root/'payload/search-page-v2.php').read_text(),'counter_not_zero'); need('#^(/_preview/search3-local-candidate)(?:/|$)#' in (root/'payload/site-path-v1.php').read_text(),'wrong_route_helper'); return expected
+    need('metrikaCounter=0' in (root/'payload/search-page-v2.php').read_text(),'counter_not_zero'); need('#^(/_preview/'+NAME+')(?:/|$)#' in (root/'payload/site-path-v1.php').read_text(),'wrong_route_helper'); return expected
 def atomic_bytes(path,data):
     need(not path.is_symlink() and path.parent.is_dir() and not path.parent.is_symlink(),'metadata_link'); fd,name=tempfile.mkstemp(prefix='.'+path.name+'.',dir=path.parent)
     try:
@@ -68,12 +81,12 @@ def atomic_bytes(path,data):
 
 class Site:
     def __init__(self,root):
-        self.root=Path(root); self.parent=self.root/'_preview'; self.target=self.parent/NAME; self.owner=self.parent/'.search3-local-owner'
+        self.root=Path(root); self.parent=self.root/'_preview'; self.target=self.parent/NAME; self.owner=self.parent/('.'+NAMESPACE+'-owner')
         for p in (self.root,self.parent): need(p.is_dir() and not p.is_symlink(),'invalid_site_root')
         need(self.root.name=='anytoour.ru','wrong_project'); need(not self.target.is_symlink() and not self.owner.is_symlink(),'target_or_owner_link')
     @contextmanager
     def lock(self):
-        p=self.parent/'.search3-local-lock'; need(not (self.parent/'.search3-site-lock').exists(),'existing_preview_busy'); p.mkdir(mode=0o700)
+        p=self.parent/('.'+NAMESPACE+'-lock'); need(not any((self.parent/('.search3-'+name+'-lock')).exists() for name in ('site','local','next') if name!=TARGET),'existing_preview_busy'); p.mkdir(mode=0o700)
         try: yield
         finally: p.rmdir()
     def protected(self):
@@ -82,23 +95,24 @@ class Site:
             p=self.root/name; need(all(not self.root.joinpath(*Path(name).parts[:n]).is_symlink() for n in range(1,len(Path(name).parts)+1)),'protected_link')
             if p.exists(): need(p.is_file(),'protected_not_file'); out[name]=digest(p.read_bytes())
             else: need(name not in REQUIRED,'protected_missing'); out[name]=None
-        for name in ('search3-site-candidate','search3-candidate'):
+        for name in ('search3-site-candidate','search3-candidate','search3-anex-candidate','search3-local-candidate','search3-v17-candidate','search3-v18-candidate','search3-next-candidate'):
+            if name==NAME: continue
             p=self.parent/name; out['preview:'+name]=digest(json_bytes(inventory(p))) if p.exists() else None
         return out
     def snapshot(self):
         return {'protected':self.protected(),'target':digest(json_bytes(inventory(self.target))) if self.target.exists() else None,'owner':json.loads(self.owner.read_text()) if self.owner.exists() else None}
     def binding(self,q,remove=False):
-        name=q['name']; nonce=q['nonce']; need(re.fullmatch(r'search3-local-update-bind-[1-9][0-9]*-[0-9a-f]{24}\.txt',name) and re.fullmatch('[0-9a-f]{64}',nonce),'binding_input'); p=self.parent/name
+        name=q['name']; nonce=q['nonce']; need(re.fullmatch(NAMESPACE+r'-update-bind-[1-9][0-9]*-[0-9a-f]{24}\.txt',name) and re.fullmatch('[0-9a-f]{64}',nonce),'binding_input'); p=self.parent/name
         if remove: need(p.is_file() and not p.is_symlink() and p.read_text()==nonce,'binding_owner'); p.unlink()
         else:
             fd=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o644)
             with os.fdopen(fd,'w') as out: out.write(nonce)
         return {'status':'removed' if remove else 'bound'}
-    def receipt(self,q): return self.parent/('.search3-local-update-receipt-'+str(q['deploy_run']))
+    def receipt(self,q): return self.parent/('.'+NAMESPACE+'-update-receipt-'+str(q['deploy_run']))
     def predecessor(self,q,before=None):
         before=before or self.snapshot(); owner=before.get('owner'); need(isinstance(before.get('target'),str) and re.fullmatch('[0-9a-f]{64}',before['target']),'missing_predecessor_target'); need(isinstance(owner,dict) and owner.get('status')=='published' and owner.get('source')==q['previous_source_sha'] and type(owner.get('run')) is int and owner['run']>0 and owner.get('digest')==before['target'],'not_known_published_predecessor'); return before
     def activate_update(self,q):
-        validate(q); archive=Path(q['archive']); need(re.fullmatch(r'/tmp/search3-local-update\.[A-Za-z0-9_-]+\.tar\.gz',str(archive)),'upload_path'); need(archive.is_file() and not archive.is_symlink() and digest(archive.read_bytes())==q['archive_sha256'],'upload_digest'); stage=self.parent/('.search3-local-update-stage-'+str(q['deploy_run'])); receipt=self.receipt(q)
+        validate(q); archive=Path(q['archive']); need(re.fullmatch(r'/tmp/'+NAMESPACE+r'-update\.[A-Za-z0-9_-]+\.tar\.gz',str(archive)),'upload_path'); need(archive.is_file() and not archive.is_symlink() and digest(archive.read_bytes())==q['archive_sha256'],'upload_digest'); stage=self.parent/('.'+NAMESPACE+'-update-stage-'+str(q['deploy_run'])); receipt=self.receipt(q)
         with self.lock():
             before=self.predecessor(q,q['before']); need(self.snapshot()==before,'predecessor_changed'); need(not receipt.exists() and not receipt.is_symlink(),'previous_outcome_unknown'); receipt.mkdir(mode=0o700); atomic_bytes(receipt/'request.json',json_bytes(q)); atomic_bytes(receipt/'previous-owner.json',json_bytes(before['owner']))
             try:
@@ -122,10 +136,10 @@ class Site:
             need(not (receipt/'result.json').exists(),'already_finished'); atomic_bytes(receipt/'result.json',json_bytes(result)); return result
 
 def main():
-    need(len(sys.argv)==3 and len(sys.argv[2])<131072,'usage'); action=sys.argv[1]; q=json.loads(sys.argv[2]); site=Site(Path.home()/'www/anytoour.ru')
+    need(len(sys.argv)==3 and len(sys.argv[2])<131072,'usage'); action=sys.argv[1]; q=json.loads(sys.argv[2]); select_target(q.get('preview_target','local')); site=Site(Path.home()/'www/anytoour.ru')
     if action=='snapshot': result=site.snapshot()
     elif action in ('bind','unbind'): result=site.binding(q,action=='unbind')
-    elif action=='upload': fd,name=tempfile.mkstemp(prefix='search3-local-update.',suffix='.tar.gz',dir='/tmp'); os.close(fd); result={'archive':name}
+    elif action=='upload': fd,name=tempfile.mkstemp(prefix=NAMESPACE+'-update.',suffix='.tar.gz',dir='/tmp'); os.close(fd); result={'archive':name}
     elif action=='activate-update': result=site.activate_update(q)
     elif action in ('complete-update','rollback-update'): result=site.finish_update(q,action=='rollback-update')
     else: raise ValueError('unknown_action')
