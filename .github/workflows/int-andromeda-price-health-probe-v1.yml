@@ -9,7 +9,7 @@ on:
 permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: int-andromeda-price-health-20260925-v1, cancel-in-progress: false}
 env:
-  OP: int-andromeda-price-health-20260925-v1
+  OP: int-andromeda-price-health-20260925-v2
 jobs:
   live:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'int/andromeda-price-health-probe-20260925'
@@ -33,8 +33,9 @@ jobs:
             cat terminal/existing-state.txt
             exit 3
           fi
-          ssh "${opts[@]}" "$remote" "set -eu;umask 077;mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
           scp "${opts[@]}" scripts/diagnostics/int_andromeda_price_health_probe_v1.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php "$remote:$op/payload/app/integrations/"
           ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" INT_OPERATION_DIR=\"\$HOME/$op\" php \"\$HOME/$op/payload/scripts/diagnostics/int_andromeda_price_health_probe_v1.php\"" >terminal/stdout 2>terminal/stderr
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" >terminal/result.json
           cat terminal/result.json
