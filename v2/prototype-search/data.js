@@ -367,10 +367,11 @@
       anexLocalHotelId:hotel.local_id,anexGeneration:Number.isInteger(run?.generation)?run.generation:generation,
       anexSessionCurrent:run?.anexSessionCurrent===true};
   }
-  function directAnexWindows(p){
+  function directFirstWeekScopes(p){
     const end=plus(p.dateFrom,6)<p.dateTo?plus(p.dateFrom,6):p.dateTo;
     return providerDestinationScopes({...p,dateTo:end});
   }
+  function directAnexWindows(p){ return directFirstWeekScopes(p); }
   function rebuildDirectAnex(run){
     const windows=run.anexWindows;
     if(!(windows instanceof Map)||!windows.size)throw new Error('Invalid ANEX window state');
@@ -717,7 +718,7 @@
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');
     if(!url||!current(run)){run.sourceCounts.andromeda={status:'skipped',hotels:0,offers:0};return;}
     notify({type:'provider',provider:'andromeda',status:'loading'});if(!current(run))return;
-    const scopes=providerDestinationScopes(p);let loaded=0,failed=0;
+    const scopes=directFirstWeekScopes(p);let loaded=0,failed=0;
     for(let branchIndex=0;current(run)&&branchIndex<scopes.length;branchIndex++){
       const scope=scopes[branchIndex];
       try{
