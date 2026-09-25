@@ -488,7 +488,8 @@
       meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:text(tour.placement),
       operator:tour.operator&&typeof tour.operator==='object'?structuredClone(tour.operator):{name:text(tour.operator)||'Туроператор уточняется'},
       isCharter:flight==='charter'?true:flight==='regular'?false:undefined,cachedListing:false,selectionEnabled:false,bookingEnabled:false,
-      finalPriceVerified:false,quoteRequired:true,andromedaLocalHotelId:hotel.local_id,offer_context:structuredClone(context)};
+      finalPriceVerified:false,quoteRequired:true,andromedaLocalHotelId:hotel.local_id,offer_context:structuredClone(context),
+      andromedaSearchParams:structuredClone(p)};
     if(tour.listing_price_ref!==undefined)normalized.listing_price_ref=String(tour.listing_price_ref);
     if(tour.base_search_price&&typeof tour.base_search_price==='object')normalized.base_search_price=structuredClone(tour.base_search_price);
     if(tour.search_surcharge&&typeof tour.search_surcharge==='object')normalized.search_surcharge=structuredClone(tour.search_surcharge);
@@ -1036,8 +1037,8 @@
   function andromedaQuoteKey(context){return context?JSON.stringify(context):'';}
   function andromedaQuoteRequest(o,flightSelection=null){
     const rawOffer=o&&o.raw,ctx=andromedaContext(rawOffer?.offer_context),localId=Number(rawOffer?.andromedaLocalHotelId);
-    const quoteParams=rawOffer?.rehydrationParams&&typeof rawOffer.rehydrationParams==='object'&&!Array.isArray(rawOffer.rehydrationParams)
-      ?rawOffer.rehydrationParams:searchParams;
+    const quoteParams=rawOffer?.andromedaSearchParams&&typeof rawOffer.andromedaSearchParams==='object'&&!Array.isArray(rawOffer.andromedaSearchParams)
+      ?rawOffer.andromedaSearchParams:null;
     if(!o||o.cached||o.provider!=='andromeda'||rawOffer?.selectionEnabled!==false||rawOffer?.quoteRequired!==true
       ||!ctx||ctx.generation!==generation||ctx.offer_ref!==String(rawOffer?.offerRef||'')
       ||!Number.isSafeInteger(localId)||localId<1||!quoteParams)return null;
