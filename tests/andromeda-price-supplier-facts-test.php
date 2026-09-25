@@ -12,7 +12,7 @@ $c->login('user','password');
 try {
     $c->price(AnyTourAndromedaClient::priceProbeParams());
     throw new RuntimeException('supplier_error_not_thrown');
-} catch (AnyTourAndromedaSupplierException $e) {
+} catch (AnyTourAndromedaPriceSupplierException $e) {
     if($e->getMessage()!=='ANDROMEDA_SUPPLIER_ERROR')throw new RuntimeException('public_message');
     $f=$e->diagnosticFacts();
     if(($f['source']??null)!=='andromeda_supplier_error'||($f['action']??null)!=='price'||($f['code']??null)!=='BAD_PRICE_SCOPE'||($f['reason_category']??null)!=='price_or_fare')throw new RuntimeException('facts');
