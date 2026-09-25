@@ -1,0 +1,158 @@
+name: HC1 full saved-TV LOCAL content parity A1
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths: ['.github/workflows/search3-hc1-full-content-parity-a1.yml']
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: anytour-canonical-catalog-operations, cancel-in-progress: false}
+env:
+  OP: search3-hc1-full-content-parity-20260925-a1
+  BASE: 772cef853390afde25041a7ca65d30f86f97b549
+  CLAIM: '5834604010'
+jobs:
+  audit:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.id == 226193297 && github.run_attempt == 1 &&
+      github.event.pull_request.head.ref == 'ops/search3-hc1-full-content-parity-20260925-a1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with: {php-version: '8.3', extensions: 'mbstring', coverage: none}
+      - name: Check read-only source, exact claim and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p terminal package/v2/data package/scripts/diagnostics
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/search3-hc1-full-content-parity-a1.yml scripts/diagnostics/search3_hc1_full_content_parity_a1.php "
+          test "$(git hash-object v2/data/anytour-profile-enrichment-v1.php)" = 7f25696ced6a9974492aba8d69f8c14da24f8b6e
+          test "$(git hash-object v2/data/hotel-presentation-read-v1.php)" = dbb9a79b678099b6b5a5fc90fcdf4d9a16dcbec4
+          test "$(git hash-object v2/data/hotel-details-v1.php)" = c300ae76b621bed8fa180811c8fad88756c34c18
+          test "$(git hash-object v2/data/db-v1.php)" = c7e13f41be4a317087fc063da0db6f5dcf769e29
+          ! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|ALTER TABLE|CREATE TABLE|->apply\(|->seed\(|curl_' scripts/diagnostics/search3_hc1_full_content_parity_a1.php
+          php -l scripts/diagnostics/search3_hc1_full_content_parity_a1.php
+          php scripts/diagnostics/search3_hc1_full_content_parity_a1.php --self-test
+          python3 - <<'PY'
+          import json,os,time,urllib.request,pathlib
+          def get(path):
+              q=urllib.request.Request('https://api.github.com/repos/pyatkoff/poisk-turov-test/'+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=20) as r:return json.load(r)
+          c=get('issues/comments/'+os.environ['CLAIM'])
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],os.environ['BASE'],'READ ONLY / REPEATABLE READ','Supplier HTTP0','DB/schema/profile/mapping writes0']:assert x in c['body'],x
+          assert get('git/ref/heads/release/search3-production-ready-v1')['object']['sha']==os.environ['BASE']
+          for _ in range(40):
+              rs=get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+              rs=[r for r in rs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if rs and max(rs,key=lambda r:r['id'])['status']=='completed':
+                  assert max(rs,key=lambda r:r['id'])['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_not_confirmed')
+          pathlib.Path('terminal/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'source':os.environ['BASE'],'head':os.environ['HEAD'],'state':'reserved_before_read_only_audit','databaseWrites':0,'supplierCalls':0},sort_keys=True)+'\n')
+          PY
+          cp v2/data/{anytour-profile-enrichment-v1.php,anytour-canonical-catalog-v1.php,hotel-presentation-read-v1.php,hotel-details-v1.php,db-v1.php} package/v2/data/
+          cp scripts/diagnostics/search3_hc1_full_content_parity_a1.php package/scripts/diagnostics/
+          (cd package; sha256sum v2/data/*.php scripts/diagnostics/*.php > files.sha256)
+          tar -cf package.tar -C package v2/data scripts/diagnostics files.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hc1-parity-a1-reservation-${{ github.run_id }}', path: terminal/reservation.json, retention-days: 30}
+      - name: Read all active profiles in one consistent snapshot
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/hc1-key"; known="$RUNNER_TEMP/hc1-known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytour-operations/$OP"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test -f \"\$HOME/www/anytoour.ru/config.php\";mkdir -p \"\$HOME/.anytour-operations\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$op/payload\""
+          ssh "${opts[@]}" "$remote" "cat > \"\$HOME/$op/reservation.json\"" <terminal/reservation.json
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;tar -xf - -C \"\$HOME/$op/payload\";cd \"\$HOME/$op/payload\";sha256sum -c files.sha256 >/dev/null" <package.tar
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/$op/payload\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" HC1_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d memory_limit=384M -d max_execution_time=240 -d allow_url_fopen=0 scripts/diagnostics/search3_hc1_full_content_parity_a1.php --execute" >"$RUNNER_TEMP/hc1-private-stdout" 2>"$RUNNER_TEMP/hc1-private-stderr"
+          rc=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" >terminal/result.json 2>/dev/null; rr=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/receipt.json\"" >terminal/receipt.json 2>/dev/null; qr=$?
+          set -e
+          printf '{"sshExit":%s,"resultReadExit":%s,"receiptReadExit":%s,"noReplay":true}\n' "$rc" "$rr" "$qr" >terminal/transport.json
+          test "$rr" = 0; test "$qr" = 0
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          p=pathlib.Path('terminal/result.json');r=json.loads(p.read_text());q=json.load(open('terminal/receipt.json'))
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==q['resultSha256']
+          assert r['state']==q['state']=='completed_read_only'
+          assert r['scannedProfiles']==r['activeProfiles'] and r['completeActiveProfileScan']
+          assert r['databaseWrites']==r['supplierCalls']==0
+          print(json.dumps({k:r[k] for k in ['state','scannedProfiles','activeProfiles','scannedPairs','rawValidPairs','profilesWithAnyRecordedDifference','existingEnrichmentDropsObjects']}))
+          PY
+          test "$rc" = 0
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - hotels.jsonl samples.json" >"$RUNNER_TEMP/hc1-audit-data.tgz"
+          tar -xzf "$RUNNER_TEMP/hc1-audit-data.tgz" -C terminal
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json'))
+          for filename,key in [('hotels.jsonl','hotelRowsSha256'),('samples.json','samplesSha256')]:assert hashlib.sha256(pathlib.Path('terminal',filename).read_bytes()).hexdigest()==r[key]
+          PY
+      - name: Compare selected profiles with HTTP and capture actual served modules
+        run: |
+          python3 - <<'PY'
+          import json,hashlib,urllib.request,urllib.parse,urllib.error,pathlib
+          out=pathlib.Path('terminal');samples=json.load(open(out/'samples.json'))['samples'];assert 0<len(samples)<=20
+          host='https://anytoour.ru';base=host+'/_preview/search3-local-candidate/'
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args,**kwargs):return None
+          opener=urllib.request.build_opener(NoRedirect());report={'basis':'read_only_http_after_snapshot','supplierCalls':0,'httpAttempts':0,'profiles':[],'assets':{}}
+          def read(url):
+              report['httpAttempts']+=1
+              try:
+                  with opener.open(urllib.request.Request(url,headers={'Accept':'application/json,text/plain,*/*','User-Agent':'AnyTour-HC1-Parity-ReadOnly'}),timeout=25) as r:
+                      body=r.read(4*1024*1024+1);assert len(body)<=4*1024*1024
+                      return body,{'status':r.status,'sha256':hashlib.sha256(body).hexdigest()}
+              except urllib.error.HTTPError as e:return None,{'status':e.code,'error':'HTTPError'}
+              except Exception as e:return None,{'status':None,'error':type(e).__name__}
+          batches={}
+          for key,param,values,extra in [('canonical','anytourHotelIds[]',[s['anytourHotelId'] for s in samples],[('catalog','anytour')]),('saved','hotelIds[]',[s['legacyHotelId'] for s in samples],[])]:
+              query=urllib.parse.urlencode(extra+[(param,str(v)) for v in values]);body,meta=read(base+'data/hotel-details-read-v1.php?'+query);report[key]=meta
+              if body:
+                  try:
+                      data=json.loads(body);assert data.get('ok') is True and isinstance(data.get('items'),list)
+                      batches[key]={int(s['id']):s for s in data['items']};(out/(key+'-http.json')).write_bytes(body)
+                  except Exception as e:meta['decodeError']=type(e).__name__
+          def at(v,f):
+              for k in f.split('.'):
+                  if not isinstance(v,dict):return None
+                  v=v.get(k)
+              return v
+          def saved_profile(s):
+              p=dict(s)
+              for k in ['country','region','subRegion']:p[k]={'name':s[k]['name']} if isinstance(s.get(k),dict) and 'name' in s[k] else None
+              p['hotelInformation']={k:s.get(k) for k in ['infrastructure','services','meals','roomTypes']};return p
+          for s in samples:
+              c=batches.get('canonical',{}).get(s['anytourHotelId']);v=batches.get('saved',{}).get(s['legacyHotelId'])
+              row={'anytourHotelId':s['anytourHotelId'],'legacyHotelId':s['legacyHotelId'],'canonicalPresent':c is not None,'savedPresent':v is not None}
+              if c:
+                  row['revisionMatchesSnapshot']=c.get('revision')==s['revision'];row['canonicalDifferences']=[f for f,w in s['canonical'].items() if at(c,f)!=w]
+              if v:
+                  v=saved_profile(v);row['savedDifferences']=[f for f,w in s['saved'].items() if at(v,f)!=w and not(at(v,f) is None and w==[])]
+              report['profiles'].append(row)
+          for name,relative,source in [('canonical','search3-canonical-profiles-v1.js','v2/search3-canonical-profiles-v1.js'),('data','prototype-search/data.js','v2/prototype-search/data.js'),('app','prototype-search/app.js','v2/prototype-search/app.js'),('styles','prototype-search/styles.css','v2/prototype-search/styles.css')]:
+              body,meta=read(base+relative);report['assets'][name]=meta
+              if body:
+                  (out/('served-'+name+pathlib.Path(relative).suffix)).write_bytes(body);meta['sameAsRelease']=body==pathlib.Path(source).read_bytes();meta['releaseSha256']=hashlib.sha256(pathlib.Path(source).read_bytes()).hexdigest()
+          assert report['httpAttempts']<=6
+          (out/'http-result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(report,ensure_ascii=False))
+          PY
+      - name: Preserve safe audit outputs only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hc1-parity-a1-terminal-${{ github.run_id }}', path: terminal/, retention-days: 30, if-no-files-found: warn}
