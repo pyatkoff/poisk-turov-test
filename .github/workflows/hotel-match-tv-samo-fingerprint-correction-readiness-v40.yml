@@ -21,7 +21,7 @@ concurrency:
 env:
   OP: hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40b
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
-  CLAIM: '5838206174'
+  CLAIM: '5838213966'
   V39_OP: hotel-match-tv-samo-single-fingerprint-conflict-audit-1971-20260925-v39
   V37_OP: hotel-match-tv-samo-common4-fingerprint-join-1971-20260925-v37
 
