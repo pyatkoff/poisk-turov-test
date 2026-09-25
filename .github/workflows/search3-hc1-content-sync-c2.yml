@@ -1,0 +1,136 @@
+name: HC1 audited imported content synchronization C2
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths: ['.github/workflows/search3-hc1-content-sync-c2.yml']
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: anytour-canonical-catalog-operations, cancel-in-progress: false}
+env:
+  OP: search3-hc1-content-sync-20260925-c2
+  BASE: 00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8
+  CHECKED: f9be9298bb20d33c69117673161eba0b4e7dec15
+  CLAIM: '5835403413'
+jobs:
+  synchronize:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.id == 226193297 && github.run_attempt == 1 &&
+      github.event.pull_request.head.ref == 'ops/search3-hc1-content-sync-20260925-c2'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with: {php-version: '8.3', extensions: 'mbstring', coverage: none}
+      - name: Validate exact source, reviewed operation, claim and checks before SSH
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p terminal package/v2/data package/scripts/diagnostics
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD"|sort|tr '\n' ' ')" = ".github/workflows/search3-hc1-content-sync-c2.yml scripts/diagnostics/search3_hc1_content_sync_c2.php "
+          php -l scripts/diagnostics/search3_hc1_content_sync_c2.php
+          php scripts/diagnostics/search3_hc1_content_sync_c2.php --self-test
+          php tests/anytour-profile-content-sync-v1-test.php --self-test
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,time,urllib.request
+          pins={'anytour-profile-enrichment-v1.php':'99e83233b73aff6415d459cc61464665743b76f7',
+            'anytour-profile-content-sync-v1.php':'b5b057c9e7a320e40c5792d9943a921da679bb7b',
+            'anytour-canonical-catalog-v1.php':'dac8bcbf444f45897a9e7506ca6aee0991e4a94a',
+            'hotel-details-v1.php':'902dfcb3cbebdd17127f117d33acf4a18065979e',
+            'hotel-presentation-read-v1.php':'dbb9a79b678099b6b5a5fc90fcdf4d9a16dcbec4',
+            'db-v1.php':'c7e13f41be4a317087fc063da0db6f5dcf769e29'}
+          for name,want in pins.items():
+              b=pathlib.Path('v2/data',name).read_bytes()
+              assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==want,name
+              pathlib.Path('package/v2/data',name).write_bytes(b)
+          def get(path):
+              q=urllib.request.Request('https://api.github.com/repos/pyatkoff/poisk-turov-test/'+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=25) as r:return json.load(r)
+          c=get('issues/comments/'+os.environ['CLAIM'])
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for s in [os.environ['OP'],os.environ['BASE'],'834','54','before','Supplier HTTP0','5da05f442024ced16c15bb698b9fcdb9dcb58de36cdfe3d58e7859be42889f14']:assert s in c['body'],s
+          assert get('git/ref/heads/release/search3-production-ready-v1')['object']['sha']==os.environ['BASE']
+          for rid in [36157049276,36157049270,36157049137,36157049275,36157049407,36157049296,36157049423]:
+              r=get('actions/runs/'+str(rid));assert r['head_sha']==os.environ['CHECKED'] and r['conclusion']=='success'
+          for _ in range(50):
+              rs=get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+              rs=[r for r in rs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if rs and max(rs,key=lambda x:x['id'])['status']=='completed':
+                  assert max(rs,key=lambda x:x['id'])['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_not_confirmed')
+          pathlib.Path('terminal/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'source':os.environ['BASE'],'head':os.environ['HEAD'],'state':'reserved_before_ssh','candidateProfiles':834,'maxWrites':834,'supplierCalls':0,'noReplay':True},sort_keys=True)+'\n')
+          PY
+          cp scripts/diagnostics/search3_hc1_content_sync_c2.php package/scripts/diagnostics/
+          (cd package;sha256sum v2/data/*.php scripts/diagnostics/*.php > files.sha256)
+          tar -cf package.tar -C package v2/data scripts/diagnostics files.sha256
+      - name: Preserve durable reservation before server access
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hc1-c2-reservation-${{ github.run_id }}', path: terminal/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Synchronize exact audited profiles once, privately, through existing writer
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/hc1-key";known="$RUNNER_TEMP/hc1-known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytour-operations/$OP"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test -f \"\$HOME/www/anytoour.ru/config.php\";test -f \"\$HOME/.anytour-operations/search3-hc1-full-content-parity-20260925-a1/hotels.jsonl\";test -f \"\$HOME/.anytour-operations/search3-hc1-content-diff-refinement-20260925-a2/result.json\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$op/payload\""
+          ssh "${opts[@]}" "$remote" "cat > \"\$HOME/$op/reservation.json\"" <terminal/reservation.json
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;tar -xf - -C \"\$HOME/$op/payload\";cd \"\$HOME/$op/payload\";sha256sum -c files.sha256 >/dev/null" <package.tar
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/$op/payload\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" HC1_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d memory_limit=512M -d max_execution_time=420 -d allow_url_fopen=0 scripts/diagnostics/search3_hc1_content_sync_c2.php --execute" >"$RUNNER_TEMP/hc1-private-stdout" 2>"$RUNNER_TEMP/hc1-private-stderr"
+          rc=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" >terminal/result.json 2>/dev/null;rr=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/receipt.json\"" >terminal/receipt.json 2>/dev/null;qr=$?
+          set -e
+          printf '{"sshExit":%s,"resultReadExit":%s,"receiptReadExit":%s,"noReplay":true}\n' "$rc" "$rr" "$qr" >terminal/transport.json
+          test "$rr" = 0;test "$qr" = 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('terminal/result.json');r=json.loads(p.read_text());q=json.load(open('terminal/receipt.json'))
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==q['resultSha256']
+          print(json.dumps({k:r.get(k) for k in ['state','profilesUpdated','fieldsUpdated','errorClass','errorCode']}))
+          assert r['state']==q['state']=='completed_verified'
+          assert 0<r['profilesUpdated']<=834 and r['supplierCalls']==0 and r['controlsUnchanged']
+          assert len(r['updatedProfiles'])==r['profilesUpdated'] and r['beforeImagesPrivate']
+          PY
+          test "$rc" = 0
+      - name: Verify all changed profile content through the current Search3 HTTP reader
+        run: |
+          set -euo pipefail;umask 077
+          export HTTP_DIR="$RUNNER_TEMP/hc1-http";mkdir "$HTTP_DIR"
+          python3 - <<'PY'
+          import json,os,pathlib,urllib.request,urllib.parse,urllib.error
+          r=json.load(open('terminal/result.json'));ids=[x['anytourHotelId'] for x in r['updatedProfiles']+r['controls']];assert len(set(ids))==len(ids)<=836
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args,**kwargs):return None
+          op=urllib.request.build_opener(NoRedirect());out=pathlib.Path(os.environ['HTTP_DIR']);report=[]
+          for offset in range(0,len(ids),50):
+              query=urllib.parse.urlencode([('catalog','anytour')]+[('anytourHotelIds[]',str(i)) for i in ids[offset:offset+50]])
+              url='https://anytoour.ru/_preview/search3-local-candidate/data/hotel-details-read-v1.php?'+query
+              name='batch-'+str(offset//50+1)+'.json';meta={'file':name,'ids':ids[offset:offset+50]}
+              try:
+                  with op.open(urllib.request.Request(url,headers={'Accept':'application/json','User-Agent':'AnyTour-HC1-Content-Sync-Readback'}),timeout=30) as response:
+                      b=response.read(16*1024*1024+1);assert len(b)<=16*1024*1024
+                      meta['status']=response.status;(out/name).write_bytes(b)
+              except urllib.error.HTTPError as e:meta.update(status=e.code,error='HTTPError')
+              except Exception as e:meta.update(status=None,error=type(e).__name__)
+              report.append(meta);(out/'requests.json').write_text(json.dumps(report))
+              pathlib.Path('terminal/http-requests.json').write_text(json.dumps(report))
+              if meta.get('status')!=200:raise SystemExit('HTTP_readback_incomplete_no_write_replay')
+          PY
+          php scripts/diagnostics/search3_hc1_content_sync_c2.php --http-verify terminal/result.json "$HTTP_DIR" >terminal/http-result.json
+          cat terminal/http-result.json
+      - name: Retain only safe terminal results, never raw private profiles or config
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hc1-c2-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
