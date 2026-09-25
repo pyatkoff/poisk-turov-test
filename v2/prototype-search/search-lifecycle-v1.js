@@ -25,6 +25,8 @@
       hotelsByProvider:Object.freeze(hotelsByProvider),offersByProvider:Object.freeze(offersByProvider),providerSets:Object.freeze(providerSets)});
   };
 
+  const coverageGapMessage = 'Текущие фильтры шире уже запрошенного покрытия. Показаны только полученные предложения. Нажмите «Повторить поиск», чтобы явно запросить недостающую область.';
+
   const reduce = (response, event) => {
     if (!response || !event || typeof event !== 'object') return;
     if (event.type === 'loading') {
@@ -33,6 +35,8 @@
       response.continued = event.continued === true;
       response.cachedResume = event.cachedResume === true;
       response.canContinue = false;
+      response.coverageGap = false;
+      response.coverageCanContinue = false;
       response.union = null;
       response.message = event.cachedResume
         ? 'Восстанавливаем сохранённые предложения без нового запроса к туроператорам.'
@@ -51,13 +55,15 @@
     if (event.type === 'progress') response.message = 'Получаем предложения · ' + event.progress + '%';
     if (event.type === 'complete') {
       response.pending = false;
-      response.phase = 'complete';
-      response.canContinue = event.canContinue === true;
+      response.coverageCanContinue = event.canContinue === true;
+      response.phase = response.coverageGap === true ? 'coverage_gap' : 'complete';
+      response.canContinue = response.coverageGap === true ? false : response.coverageCanContinue;
       response.retryRead = event.retryRead === true;
       response.resultLimitReached = event.resultLimitReached === true;
       response.cachedResume = event.cachedResume === true;
       response.sources = event.sources || response.sources || {};
       response.union = unionReceipt(event.union);
+      if (response.coverageGap === true) response.message = coverageGapMessage;
     }
     if (event.type === 'error') {
       response.pending = false;
@@ -75,7 +81,7 @@
       || typeof options.prepare !== 'function'
       || typeof options.currentKey !== 'function') throw new Error('Prototype search lifecycle dependencies are unavailable.');
 
-    let generation = 0, bound = false, submitScheduledGeneration = null, scopeScheduledGeneration = null;
+    let generation = 0, bound = false, submitScheduledGeneration = null, scopeScheduledGeneration = null, activeResponse = null;
     const canSubmit = () => typeof options.canSubmit !== 'function' || options.canSubmit() !== false;
 
     const run = (runOptions = {}) => {
@@ -83,6 +89,9 @@
       if (!prepared) return false;
       const response = prepared.response;
       if (!response || typeof response !== 'object' || typeof response.key !== 'string') throw new Error('Prototype search lifecycle response is unavailable.');
+      activeResponse = response;
+      response.coverageGap = false;
+      response.coverageCanContinue = false;
       const key = response.key, runGeneration = ++generation;
       const current = () => runGeneration === generation && key === options.currentKey();
       const receive = event => {
@@ -147,8 +156,25 @@
       if (!previous) return;
       let next;
       try { next = data.supplierScope(options.supplierFilters()); } catch { return; }
-      if (!next || data.supplierScopeCovered(previous, next)) return;
-      requestSubmit();
+      if (!next) return;
+      const covered = data.supplierScopeCovered(previous, next);
+      const response = activeResponse;
+      if (!response || typeof response !== 'object') return;
+      if (covered) {
+        if (response.coverageGap !== true) return;
+        response.coverageGap = false;
+        if (response.phase === 'coverage_gap') response.phase = 'complete';
+        response.canContinue = response.coverageCanContinue === true;
+        response.message = '';
+        if (typeof options.afterEvent === 'function') options.afterEvent({type: 'coverage-covered'}, response);
+        return;
+      }
+      if (response.coverageGap !== true) response.coverageCanContinue = response.canContinue === true;
+      response.coverageGap = true;
+      response.canContinue = false;
+      response.message = coverageGapMessage;
+      if (response.pending !== true) response.phase = 'coverage_gap';
+      if (typeof options.afterEvent === 'function') options.afterEvent({type: 'coverage-gap'}, response);
     };
 
     const scheduleSupplierScope = () => {
