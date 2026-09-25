@@ -1,0 +1,41 @@
+name: MATCH wave5 v15 progress inspector
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - '.github/workflows/match-wave5-v15-progress.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read operation progress only
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p terminal
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/hotel-match-samo-business-live30-common4-wave5-recovery-acquire-1971-20260925-v15"
+          ssh "${opts[@]}" "$remote" "OP=\"\$HOME/$op\" python3 - <<'PY'
+          import os,glob,json
+          d=os.environ['OP']
+          out={'exists':os.path.isdir(d)}
+          if out['exists']:
+              out['http_reserved']=len(glob.glob(d+'/http-*-reserved.json'))
+              out['batch_page_reserved']=len(glob.glob(d+'/batch-*-page-*-reserved.json'))
+              out['evidence_pages']=len(glob.glob(d+'/evidence-private/*.json'))
+              out['login_result']=os.path.isfile(d+'/login-result.json')
+              out['result_exists']=os.path.isfile(d+'/result.json')
+              if out['result_exists']:
+                  try:
+                      r=json.load(open(d+'/result.json'));out['state']=r.get('state');out['completed_batch_count']=r.get('completed_batch_count');out['samo_http_calls']=r.get('samo_http_calls')
+                  except Exception: pass
+          print(json.dumps(out,sort_keys=True))
+          PY" | tee terminal/progress.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-wave5-v15-progress-${{ github.run_id }}', path: terminal/, retention-days: 7}
