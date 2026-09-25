@@ -1,0 +1,1 @@
+<?php declare(strict_types=1); require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_common4_retained_context_recovery_v26r.php'; if(R26_OLD_SHA!=='036b64868f17ca2b9f087e998c1064f3f6b1d312c7683bef4768e5f6338844c4')throw new RuntimeException('sha'); echo "MATCH_V26R_TEST_OK\n";
