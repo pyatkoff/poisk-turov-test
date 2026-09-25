@@ -1,9 +1,9 @@
 name: HC1 assemble reviewed hotel consumer source
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
     branches: [release/search3-production-ready-v1]
-    paths: ['.github/workflows/search3-hc1-consumer-assembly.yml']
+    paths: ['.github/workflows/search3-hc1-consumer-assembly.yml','scripts/diagnostics/search3_hc1_assemble_consumer.py']
 permissions: {contents: write, actions: read, issues: read}
 jobs:
   assemble:
