@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_common4_retained_context_current_v27.php';
-if(SBLC4C4_OP!=='hotel-match-common4-retained-context-current-1971-20260925-v27')throw new RuntimeException('operation');
+if(SBLC4C4_OP!=='hotel-match-common4-retained-context-current-1971-20260925-v27b')throw new RuntimeException('operation');
 if(SBLC4C4_SOURCE_OP!=='hotel-match-common4-retained-context-recovery-1971-20260925-v26r')throw new RuntimeException('source_operation');
 if(SBLC4C4_EXPECTED_EDGES!==1100||SBLC4C4_EXPECTED_CAPTURED!==507)throw new RuntimeException('counts');
 $edges=[
