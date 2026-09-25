@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const V40_OP='hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40';
+const V40_OP='hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40b';
 const V40_V39_OP='hotel-match-tv-samo-single-fingerprint-conflict-audit-1971-20260925-v39';
 const V40_V37_OP='hotel-match-tv-samo-common4-fingerprint-join-1971-20260925-v37';
 const V40_V37_SHA='b7ef6082b8d27ad822ddaf69dd86e9249523f859cd61ee1b547c106118ffc55a';
@@ -52,7 +52,7 @@ function v40_execute(PDO $db,string $v39Result,string $v39Receipt,string $v37Res
     $rows=[];$counts=[];
     foreach($in as$cid=>$x){$cand=v40_side($hotels[$x['candidate_local_hotel_id']],$aliases[$x['candidate_local_hotel_id']]??[]);$cur=v40_side($hotels[$x['current_local_hotel_id']],$aliases[$x['current_local_hotel_id']]??[]);$dist=v40_dist($cand['point'],$cur['point']);$best=0.0;foreach($cand['cores'] as$a)foreach($cur['cores'] as$b)$best=max($best,v40_jaccard($a,$b));$dup=$dist!==null&&$dist<=500&&$best>=0.8;
       $srows=$source[$cid]??[];$accepted=array_values(array_filter($srows,fn($z)=>($z['decision_status']??'')==='accepted'&&$z['local_hotel_id']!==null));$evOk=count($accepted)===1&&v40_evidence_ok($accepted[0]);$meta=$evOk?v40_evidence_meta($accepted[0]):[];
-      $direct=v40_v37_direct($v37,$cid,$x['candidate_local_hotel_id']);$candTv=v40_tv_native($tvBy[$x['candidate_local_hotel_id']]??[]);$curTv=v40_tv_native($tvBy[$x['current_local_hotel_id']]??[]);
+      $direct=v40_v37_direct($v37,(string)$cid,$x['candidate_local_hotel_id']);$candTv=v40_tv_native($tvBy[$x['candidate_local_hotel_id']]??[]);$curTv=v40_tv_native($tvBy[$x['current_local_hotel_id']]??[]);
       $candidateHas=false;$currentHas=false;$amb=false;foreach($direct as$ns=>$natives){foreach($natives as$n){if(in_array($n,$candTv[$ns]??[],true))$candidateHas=true;if(in_array($n,$curTv[$ns]??[],true))$currentHas=true;}if(count($natives)!==1)$amb=true;}
       $status='insufficient_evidence_hold';
       if(!$evOk)$status='current_mapping_still_supported';
