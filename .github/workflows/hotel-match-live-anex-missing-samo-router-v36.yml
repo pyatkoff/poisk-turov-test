@@ -1,0 +1,105 @@
+name: MATCH live ANEX missing SAMO router v36
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live_anex_missing_samo_router_v36.php
+      - tests/hotel_match_live_anex_missing_samo_router_v36_test.php
+      - .github/workflows/hotel-match-live-anex-missing-samo-router-v36.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-live-anex-missing-samo-router-v36, cancel-in-progress: false}
+env:
+  OP: hotel-match-live-anex-missing-samo-router-1971-20260925-v36
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5835941497'
+  FRONTIER_ARTIFACT: '10874272775'
+  FRONTIER_ARCHIVE_SHA: 56c2df24d247d64a2392d137da95daee229830f9d9b52fa842fda688d27a6e23
+  FRONTIER_RESULT_SHA: efaeb33f14a1a2aba4c207254be388e470636e2ad965b461a5a671c3bee72184
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-anex-missing-samo-router-v36-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_live_anex_missing_samo_router_v36.php
+      - run: php scripts/diagnostics/hotel_match_live_anex_missing_samo_router_v36.php --self-test
+      - run: php tests/hotel_match_live_anex_missing_samo_router_v36_test.php
+      - run: "! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\\(' scripts/diagnostics/hotel_match_live_anex_missing_samo_router_v36.php"
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-anex-missing-samo-router-v36-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate frontier claim and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/frontier terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-live-anex-missing-samo-router-v36.yml scripts/diagnostics/hotel_match_live_anex_missing_samo_router_v36.php tests/hotel_match_live_anex_missing_samo_router_v36_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],'234','source=user_search','REPEATABLE READ / READ ONLY','HTTP0']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed': assert x['conclusion']=='success';break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$FRONTIER_ARTIFACT/zip" -o input/frontier.zip
+          test "$(sha256sum input/frontier.zip|awk '{print $1}')" = "$FRONTIER_ARCHIVE_SHA"
+          unzip -q input/frontier.zip -d input/frontier
+          result="$(find input/frontier -type f -name result.json -print -quit)";receipt="$(find input/frontier -type f -name receipt.json -print -quit)"
+          python3 - "$result" "$receipt" <<'PY'
+          import json,hashlib,pathlib,sys,os
+          r=json.load(open(sys.argv[1]));q=json.load(open(sys.argv[2]))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest()==os.environ['FRONTIER_RESULT_SHA']
+          assert r['operation']=='hotel-match-business-live30-frontier-plan-1971-20260925-v33' and r['bucket_counts']['tv_anex_missing_samo']==234
+          PY
+          cp "$result" input/frontier-result.json
+      - name: Route current missing direct ANEX targets
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15);odir=".anytoour-match/operations/$OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('reservation.json').write_text(json.dumps({'operation_id':os.environ['OP'],'state':'reserved_before_db_read','source_sha':os.environ['HEAD'],'supplier_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$odir\";mkdir -p \"\$HOME/$odir/payload/scripts/diagnostics\""
+          scp "${opts[@]}" reservation.json "$remote:$odir/reservation.json"
+          scp "${opts[@]}" input/frontier-result.json "$remote:$odir/payload/frontier-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_live_anex_missing_samo_router_v36.php "$remote:$odir/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";MATCH_OPERATION_ID='$OP' MATCH_SOURCE_SHA='$HEAD' MATCH_INPUT_PATH=\"\$HOME/$odir/payload/frontier-result.json\" php \"\$HOME/$odir/payload/scripts/diagnostics/hotel_match_live_anex_missing_samo_router_v36.php\"" >terminal/stdout 2>terminal/stderr
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$odir/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$odir/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']=='completed_read_only' and q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['input_count']==234 and r['supplier_calls']==r['database_writes']==r['mapping_writes']==0
+          print(json.dumps({k:r[k] for k in ['input_count','current_samo_resolved_skip_count','current_direct_anex_lost_skip_count','routed_future_context_count','no_future_context_count','context_group_count','batch_count']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-live-samo-missing-direct-anex-router-v35-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
