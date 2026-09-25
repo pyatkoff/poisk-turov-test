@@ -11,7 +11,7 @@ permissions:
 jobs:
   visual-migration:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -20,13 +20,23 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save jsdom@26.1.0
-      - name: Full transferred UI and offline boundary
+      - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save jsdom@26.1.0 playwright@1.55.0
+      - run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install --with-deps chromium"
+      - name: Full transferred UI and isolated live integration
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
           node tests/search3-visual-migration.cjs
+          node tests/search3-visual-live-bridge.cjs
+          node tests/search3-visual-live-browser.cjs
           node tests/search3-visual-v139-search-edit-tests.cjs
           node tests/search3-visual-v120-recorded-journey-tests.cjs
           php -l v2/visual-search/index.php
           php -r '$_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php"; ob_start(); include "v2/visual-search/index.php";' | grep -Fq 'only available in its separate preview'
           php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include "v2/visual-search/index.php";' | grep -Eq 'app.js\?v=[0-9a-f]{12}'
+      - name: Retain visual bridge acceptance
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}
+          path: visual-live-evidence/
+          if-no-files-found: warn

@@ -21,7 +21,8 @@ function batch(payload,ids){
 }
 function create(refresh){
  const pathname=String(root.location&&root.location.pathname||'');
- if(pathname!==path.slice(0,-1)&&!pathname.startsWith(path))return null;
+ const visualPath='/_preview/search3-next-candidate/visual-search/';
+ if(pathname!==path.slice(0,-1)&&!pathname.startsWith(path)&&pathname!==visualPath.slice(0,-1)&&!pathname.startsWith(visualPath))return null;
  if(typeof refresh!=='function')throw new TypeError('Renderer callback required');
  let lifecycleGeneration=0;
  let epoch=0,raw=[],options={},links=new Map(),profiles=new Map(),anchors=new Map(),storedOffers=new Map(),legacyOffers=new Map(),legacyStates=new Map(),missing=new Set(),failed=new Set(),pending=new Set(),workers=new Set(),profileReads=new Map(),retryBatches=[],splitBudget=32;

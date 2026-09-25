@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "stage": "visual-migration-offline",
+  "stage": "canonical-live-integration-candidate",
   "visualVersion": 147,
   "siteCommit": "3aa4d9001f51dfd732b01194b695deabcf8e033f",
-  "functionalBase": "00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8",
+  "functionalBase": "3b460f04b4f6262147c7e44b93fe32cefcfaf03c",
   "entry": "/_preview/search3-next-candidate/visual-search/",
-  "liveConnected": false,
-  "supplierRequests": false,
+  "liveConnected": true,
+  "supplierRequests": "explicit-user-actions-only",
   "leadDelivery": false,
   "sourceFiles": {
     "app.js": "b92c07b052d0b5acc3cce076bd01d84e3b07e82809eb0b91b38d37c2c1d2613b",
@@ -38,5 +38,21 @@
     "assets/operators/anex.svg": "313d8f3f12ee7ebbb3e004d7599484d4e9f70be484e8b1e932e7a17f44bbb5dd",
     "assets/operators/coral-travel.png": "123db203f9a342717bf9bee209254f01fce1f55a0464899618c04837dcfe1955",
     "fixtures/live-search-2026-09-23.json": "00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3"
+  },
+  "liveSources": [
+    "tourvisor",
+    "anex",
+    "andromeda"
+  ],
+  "databaseUse": [
+    "calendar",
+    "history",
+    "SEO",
+    "canonical-hotel-content"
+  ],
+  "acceptanceSupplierRequests": 0,
+  "publicationStatus": "prepared-not-published",
+  "adaptedFiles": {
+    "app.js": "d970d10c7f2a34d10b1311a0b7f22e7fa34ab1ec0790e82503161986b2331b6d"
   }
 }

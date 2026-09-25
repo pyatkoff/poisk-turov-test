@@ -1,5 +1,14 @@
 # Search3 v147 — isolated visual migration
 
+## Stage 2 candidate — 2026-09-25
+
+Prepared, not yet published. Default entry reuses canonical TV + direct ANEX + SAMO/Andromeda data/lifecycle, exact-hotel calendar and canonical lead owner. It restores URL conditions without starting a supplier search. Explicit labelled snapshot/demo scenarios retain the offline graph. LOCAL offers only feed calendar/history/SEO; the canonical hotel catalogue still owns IDs, full galleries and facts.
+
+The v147 CSS, fonts, assets, photo heights and one/two-click calendar are unchanged. The app integration reads canonical meal identities, preserves dynamic search/coverage getters, stops provider status on cancellation, and uses the existing provider-specific quote/flight/current/additional-price actions. TV and verified SAMO applications are validated through the canonical payload owner with no preview POST, including the merged #3926 receipt contract at release `3b460f04`. ANEX estimates are not presented as final verified prices. Protected APIs, money, fuel, lead delivery and Metrika are unchanged.
+
+Focused acceptance uses fictional intercepted responses: shared-link bootstrap makes zero supplier requests; three providers converge on one hotel; TV exact room → second flight → 133,500.50 RUB → application validation with no send; SAMO verified receipt → 125,500 RUB application validation with no send; ANEX concrete offer and server-calculated non-final surcharge; cancel preserves results and provider failure leaves remaining offers. This is not acceptance on real current tours. Actual Safari/physical phone remains open.
+
+
 ## Published stage 1 — 2026-09-25
 
 The full v147 visual is published at https://anytoour.ru/_preview/search3-next-candidate/visual-search/ (source PR #3917, exact source `4dd5b78dab815dac199550f4bcad3047f4d850b6`, release `2583c284b2631c1cdfa94df710f71f492fe3d38f`). Create-only publication [36164769312](https://github.com/pyatkoff/poisk-turov-test/actions/runs/36164769312) succeeded. Its command is terminal/no-replay; do not recreate this route or rerun the create-only command.
