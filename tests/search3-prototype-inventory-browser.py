@@ -33,7 +33,9 @@ ANDROMEDA_SEARCH_REF = "c" * 64
 def profile(old):
     item = copy.deepcopy(FIXTURE.PROFILE)
     item.update(id=old + 400, name=f"Вымышленный отель {old}")
-    if old == 102:
+    if old == 101:
+        item['subRegion'] = {'name': 'Старое Кадрие'}
+    elif old == 102:
         item['subRegion'] = {'name': 'Сиде'}
     item['description'] = 'Техническое описание: здание и количество номеров.'
     item['place'] = 'Рядом с набережной.'
@@ -120,7 +122,7 @@ def check_width(browser, origin, width):
     page.set_default_timeout(15000)
     calls, native_calls, anex_calls, calendar_calls, observation_calls, forbidden, errors, held = [], [], [], [], [], [], [], []
     state = {"native": False, "continued": False, "hold": False, "calendar_partial": False,
-             "native_failure": False, "database_failure": False}
+             "native_failure": False, "database_failure": False, "subregion_case": False}
     page.on("pageerror", lambda error: errors.append(str(error)))
 
     def intercept(route):
@@ -146,7 +148,10 @@ def check_width(browser, origin, width):
                 reply({"ok": True, "source": "anytour-destination-identities-v1", "provider": "tourvisor", "kind": "region",
                        "parentId": 4, "items": [
                            {"id": 20, "kind": "region", "parentId": 4, "name": "Анталья", "russianName": "Анталья",
-                            "slug": "antalya", "revision": 1, "tourvisorIds": ["20"]},
+                            "slug": "antalya", "revision": 1, "tourvisorIds": ["20"], "subregions": [
+                                {"id": 2101, "kind": "subregion", "parentId": 20, "name": "Кадрие", "russianName": "Кадрие",
+                                 "slug": "kadriye", "revision": 1, "tourvisorIds": ["2101"]},
+                            ]},
                            {"id": 23, "kind": "region", "parentId": 4, "name": "Сиде", "russianName": "Сиде",
                             "slug": "side", "revision": 1, "tourvisorIds": ["23"]},
                        ]})
@@ -269,8 +274,8 @@ def check_width(browser, origin, width):
                     reply({"requestCount": 1})
             elif action == "search_results":
                 assert query.get("limit") == ["5000"], query
-                rows = [tour(101, 185451), tour(102, 508504), tour(103, 1506295)]
-                if state["continued"]:
+                rows = [tour(101, 185451)] if state["subregion_case"] else [tour(101, 185451), tour(102, 508504), tour(103, 1506295)]
+                if state["continued"] and not state["subregion_case"]:
                     rows.append(tour(110, 2100000))
                 reply(rows)
             else:
@@ -308,7 +313,7 @@ def check_width(browser, origin, width):
         assert 'Все Включено' not in meal_text and 'BB - Только завтрак' not in meal_text and 'Завтрак\n' not in meal_text
         page.locator('[data-action="close-modal"]').click()
         page.locator('#country').click()
-        assert page.locator('[data-action="destination-resort"]').count() == 2
+        assert page.locator('[data-action="destination-resort"]').count() == 3
         page.locator('[data-action="destination-resort"][data-value="Анталья"]').click()
         page.locator('[data-action="apply-destination"]').click()
         assert not any(row['action'] == 'search_start' for row in calls)
@@ -329,7 +334,7 @@ def check_width(browser, origin, width):
         page.locator('[data-action="apply-budget"]').click()
         assert "max" not in parse_qs(urlparse(page.url).query)
         page.locator('.search-submit').click()
-        count(5)
+        count(4)
         assert 'Сиде' in page.locator('#hotel-502 .hotel-location').inner_text()
         assert next(row['params'] for row in calls if row['action'] == 'search_start')['regionIds[]'] == ['20']
         assert native_calls[0]['params']['regionIds'] == ['20']
@@ -362,7 +367,7 @@ def check_width(browser, origin, width):
         page.screenshot(path=str(EVIDENCE / f"amenity-filters-{width}.png"))
         page.locator('#active-filters [data-key="amenities"][data-value="3:15"]').click()
         page.locator('#active-filters [data-key="amenities"][data-value="5:23"]').click()
-        count(5)
+        count(4)
         assert len([c for c in calls if c['action'] == 'search_start']) == 1
         assert len(native_calls) == 1
         assert len(anex_calls) == 1
@@ -377,7 +382,7 @@ def check_width(browser, origin, width):
         andromeda_offer_count = page.evaluate("""() => Search3CanonicalProfilesV1.current().read(
             Search3CanonicalProfilesV1.current().source(), {}
         ).flatMap(h => h.tours || []).filter(t => t.provider === 'andromeda').length""")
-        assert andromeda_offer_count == 1, "native + LOCAL Andromeda must dedupe by offer identity"
+        assert andromeda_offer_count == 1, "live union contains only the native Andromeda offer"
         assert len(native_calls) == 1
         assert len(anex_calls) == 1
         state["hold"] = True
@@ -401,14 +406,14 @@ def check_width(browser, origin, width):
         assert parse_qs(urlparse(page.url).query)["max"] == ["200000"]
         assert "185" in page.locator('#price-strip').inner_text()
         page.locator('#active-filters [data-key="price"]').click()
-        count(6)
+        count(5)
         assert "max" not in parse_qs(urlparse(page.url).query)
         open_filters()
         assert int(page.locator('#price-range').get_attribute('max')) >= 2100000
         field.fill('600000')
         field.press('Tab')
         apply_filters()
-        count(4)
+        count(3)
         assert parse_qs(urlparse(page.url).query)["max"] == ["600000"]
         assert len([c for c in calls if c["action"] == "search_start"]) == 1
         assert len([c for c in calls if c["action"] == "search_continue"]) == 1
@@ -425,17 +430,19 @@ def check_width(browser, origin, width):
         anex_before_reload = len(anex_calls)
         page.reload()
         page.wait_for_function("document.querySelector('#search-form').hidden === true")
-        page.locator(".hotel-card").first.wait_for()
+        page.wait_for_function("document.querySelectorAll('.hotel-card').length === 0")
+        page.wait_for_function("document.querySelector('#search-status')?.textContent.includes('Сохранённых предложений пока нет')")
         assert len([c for c in calls if c["action"] == "search_start"]) == starts_before_reload, "Reload must not replay Tourvisor"
         assert len(native_calls) == native_before_reload, "Reload must not replay direct Andromeda"
         assert len(anex_calls) == anex_before_reload, "Reload must not replay direct ANEX"
         assert page.locator(".search-submit").is_hidden(), "Restored searched URL must stay on result state"
+        assert page.locator(".hotel-card").count() == 0, "Stored DB offers never return as live inventory after reload"
         assert "600" in page.locator('#budget-label').inner_text()
         assert parse_qs(urlparse(page.url).query)["max"] == ["600000"]
         page.locator('[data-action="edit-search"]').first.click()
         page.locator(".search-submit:not([disabled])").wait_for()
         page.locator('.search-submit').click()
-        count(4)
+        count(3)
         last_start = [c for c in calls if c["action"] == "search_start"][-1]
         assert last_start["params"].get("priceTo") == ["600000"]
         assert len([c for c in calls if c["action"] == "search_start"]) == starts_before_reload + 1
@@ -473,6 +480,27 @@ def check_width(browser, origin, width):
         assert page.locator('.hotel-card').count() > 0
         assert 'Поиск завершён' not in page.locator('#search-status').inner_text()
         page.screenshot(path=str(EVIDENCE / f"partial-source-error-{width}.png"))
+
+        state['native_failure'] = False
+        state['database_failure'] = False
+        state['subregion_case'] = True
+        page.locator('[data-action="edit-search"]').first.click()
+        page.locator('#country').click()
+        page.locator('[data-action="destination-all"]').click()
+        page.locator('[data-action="destination-resort"][data-value="Кадрие"]').click()
+        page.locator('[data-action="apply-destination"]').click()
+        starts_before_subregion = len([row for row in calls if row['action'] == 'search_start'])
+        page.locator('.search-submit').click()
+        page.locator('#hotel-501').wait_for()
+        assert len([row for row in calls if row['action'] == 'search_start']) == starts_before_subregion + 1
+        scoped_start = [row for row in calls if row['action'] == 'search_start'][-1]['params']
+        assert scoped_start.get('subregionIds[]') == ['2101'], scoped_start
+        assert 'regionIds[]' not in scoped_start, scoped_start
+        assert page.locator('#hotel-501').is_visible(), 'ID-scoped hotel was re-dropped by stale display resort text'
+        assert 'Старое Кадрие' in page.locator('#hotel-501 .hotel-location').inner_text()
+        assert parse_qs(urlparse(page.url).query)['resorts'] == ['Кадрие']
+        page.screenshot(path=str(EVIDENCE / f"canonical-subregion-stale-label-{width}.png"))
+
         return {"width": width, "status": "passed", "providers": providers,
                 "calls": calls, "mocked_andromeda_requests": native_calls,
                 "mocked_anex_requests": anex_calls,

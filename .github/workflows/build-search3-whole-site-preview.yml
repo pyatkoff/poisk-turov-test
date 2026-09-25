@@ -17,6 +17,7 @@ on:
       - 'tests/search3-prototype-selected-tour-retention.cjs'
       - 'tests/search3-prototype-provider-config-v1.cjs'
       - 'tests/search3-prototype-inventory-browser.py'
+      - 'tests/search3-hotel-content-browser.py'
       - 'tests/search3_source_build_test.py'
       - 'v2/**'
       - 'tests/site-preview-path-smoke.php'
@@ -284,7 +285,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/prototype-search/app.js v2/prototype-search/data.js tests/search3-prototype-inventory-lifecycle.cjs tests/search3-prototype-selected-tour-retention.cjs tests/search3-prototype-inventory-browser.py; then
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/prototype-search/app.js v2/prototype-search/data.js v2/prototype-search/styles.css tests/search3-prototype-inventory-lifecycle.cjs tests/search3-prototype-selected-tour-retention.cjs tests/search3-prototype-inventory-browser.py tests/search3-hotel-content-browser.py; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -299,6 +300,7 @@ jobs:
         run: |
           node tests/search3-prototype-lead-bind.cjs
           python tests/search3-prototype-inventory-browser.py
+          python tests/search3-hotel-content-browser.py
           python tests/search3-prototype-contact-recovery.py
 
       - name: Retain prototype inventory browser evidence

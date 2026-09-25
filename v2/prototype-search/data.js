@@ -261,7 +261,7 @@
     const rating=Number(h.rating && typeof h.rating === 'object' ? h.rating.value : h.rating);
     const ratingScale=Number(h.rating && typeof h.rating === 'object' ? h.rating.scale : 5);
     const region=text(h.region).trim(),subRegion=text(h.subRegion).trim();
-    return {id:own,legacyIds:(h.canonicalLegacyIds || []).map(String),name:text(h.name),country:String(s.country),region,subRegion,resort:subRegion||region,stars:Number(h.category)||0,rating:rating>0&&rating<=ratingScale?rating*5/ratingScale:null,beach:null,family:null,spa:null,pool:null,amenities:amenities(h),photos:[...new Set(photos)].slice(0,12),note:text(h.description),tag:'',raw:h,offers:[]};
+    return {id:own,legacyIds:(h.canonicalLegacyIds || []).map(String),name:text(h.name),country:String(s.country),region,subRegion,resort:subRegion||region,stars:Number(h.category)||0,rating:rating>0&&rating<=ratingScale?rating*5/ratingScale:null,beach:null,family:null,spa:null,pool:null,amenities:amenities(h),photos:[...new Set(photos)],note:text(h.description),tag:'',raw:h,offers:[]};
   }
   function offer(t, h, s, index) {
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
@@ -313,32 +313,6 @@
     run.pending=false;if(run.expired)run.canContinue=false;
     notify({type:'error',message:error.message,canContinue:run.canContinue&&!run.expired,retryRead:run.resumeOnly});
   }
-  function readDatabase(run){
-    return db(run.search,run.controller.signal,run.hotelIds,run.filters).then(data=>{
-      if(!current(run)||!owner)return;
-      clearCalendarWindows();root.AnyTourLocalDbProviderV1.apply(owner,data);
-      const providerOfferCounts=data.providerOfferCounts&&typeof data.providerOfferCounts==='object'?structuredClone(data.providerOfferCounts):{};
-      const count=name=>{const value=data[name];if(!Number.isSafeInteger(value)||value<0)throw new Error('Invalid LOCAL accounting');return value;};
-      const hotels=count('hotelCount'),visibleOffers=count('offerCount'),storedOffers=count('storedOfferCount'),
-        withheldOffers=count('withheldOfferCount'),scopeFilteredOffers=count('categoryFilteredOfferCount'),
-        eligibleHotels=count('eligibleHotelCount'),omittedHotels=count('omittedHotelCount'),omittedOffers=count('omittedOfferCount');
-      const mappedOffers=storedOffers-withheldOffers;
-      if(mappedOffers<0||visibleOffers>mappedOffers||eligibleHotels<hotels||hotels+omittedHotels!==eligibleHotels
-        ||scopeFilteredOffers+omittedOffers+visibleOffers>mappedOffers)throw new Error('Invalid LOCAL accounting');
-      run.sourceCounts.database={status:'complete',hotels,offers:visibleOffers,storedOffers,receivedOffers:storedOffers,mappedOffers,
-        visibleOffers,withheldOffers,scopeFilteredOffers,eligibleHotels,omittedHotels,omittedOffers,providerOfferCounts};
-      if(current(run))notify({type:'database',...run.sourceCounts.database});
-    }).catch(error=>{
-      if(!current(run))return;
-      run.sourceCounts.database={status:'error'};
-      notify({type:'database-error',message:error.message});
-    });
-  }
-  function refreshDatabase(run){
-    // Serial snapshots cannot overwrite a later snapshot with an earlier one.
-    // Provider completion uses the same reader; no parallel store or DTO.
-    return run.database=run.database.then(()=>{if(current(run))return readDatabase(run);});
-  }
   async function digestRef(value){
     const subtle=root.crypto&&root.crypto.subtle,Encoder=root.TextEncoder||globalThis.TextEncoder;
     if(!subtle||typeof subtle.digest!=='function'||typeof Encoder!=='function')throw new Error('Offer identity digest unavailable');
@@ -367,10 +341,11 @@
       anexLocalHotelId:hotel.local_id,anexGeneration:Number.isInteger(run?.generation)?run.generation:generation,
       anexSessionCurrent:run?.anexSessionCurrent===true};
   }
-  function directAnexWindows(p){
+  function directFirstWeekScopes(p){
     const end=plus(p.dateFrom,6)<p.dateTo?plus(p.dateFrom,6):p.dateTo;
     return providerDestinationScopes({...p,dateTo:end});
   }
+  function directAnexWindows(p){ return directFirstWeekScopes(p); }
   function rebuildDirectAnex(run){
     const windows=run.anexWindows;
     if(!(windows instanceof Map)||!windows.size)throw new Error('Invalid ANEX window state');
@@ -440,14 +415,14 @@
         const result=await applyDirectAnex(run,data,windows[index],index,windows.length);if(!current(run))return;
         notify({type:'provider',provider:'anex',...result});index++;
       }
-      if(current(run))await refreshDatabase(run);
+      if(current(run))clearCalendarWindows();
     }catch(error){
       if(!current(run)||error?.name==='AbortError')return;
       const previous=run.sourceCounts.anex;
       if(previous&&Number.isInteger(previous.windowsLoaded)&&previous.windowsLoaded>0){
         run.sourceCounts.anex={...previous,status:'partial',continuationFailed:true};
         notify({type:'provider',provider:'anex',...run.sourceCounts.anex});
-        await refreshDatabase(run);
+        clearCalendarWindows();
       }
     }
   }
@@ -489,7 +464,7 @@
       run.sourceCounts.anex={...previous,status:'partial',destinationBranchFailed:true};
       notify({type:'provider',provider:'anex',...run.sourceCounts.anex});
     }
-    await refreshDatabase(run);
+    clearCalendarWindows();
   }
   async function directAndromedaOffer(hotel,tour,run,p,seen,data){
     const price=tour&&tour.price,context=tour&&tour.offer_context;
@@ -702,14 +677,14 @@
         const result=await applyDirectAndromeda(run,data,p,branchIndex,branchTotal);if(!current(run))return;
         target=data.pages_count;notify({type:'provider',provider:'andromeda',...result});page++;
       }
-      if(current(run))await refreshDatabase(run);
+      if(current(run))clearCalendarWindows();
     }catch(error){
       if(!current(run)||error?.name==='AbortError')return;
       const previous=run.sourceCounts.andromeda;
       if(previous&&Number.isInteger(previous.pagesLoaded)&&previous.pagesLoaded>0){
         run.sourceCounts.andromeda={...previous,status:'partial',continuationFailed:true};
         notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda});
-        await refreshDatabase(run);
+        clearCalendarWindows();
       }
     }
   }
@@ -717,16 +692,15 @@
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');
     if(!url||!current(run)){run.sourceCounts.andromeda={status:'skipped',hotels:0,offers:0};return;}
     notify({type:'provider',provider:'andromeda',status:'loading'});if(!current(run))return;
-    const scopes=providerDestinationScopes(p);let loaded=0,failed=0;
+    const scopes=directFirstWeekScopes(p);let loaded=0,failed=0;
     for(let branchIndex=0;current(run)&&branchIndex<scopes.length;branchIndex++){
       const scope=scopes[branchIndex];
       try{
         const data=await requestDirectAndromeda(run,scope,url.href,1);if(!data||!current(run))return;
         const result=await applyDirectAndromeda(run,data,scope,branchIndex,scopes.length);if(!current(run))return;
         loaded++;notify({type:'provider',provider:'andromeda',...result});
-        // Keep durable/cache visibility independent: autosave may land the same
-        // offer later, and the canonical SHA-256 identity collapses that duplicate.
-        await refreshDatabase(run);if(!current(run))return;
+        // Provider persistence may update calendar/SEO data, but stored offers never re-enter this live union.
+        clearCalendarWindows();if(!current(run))return;
         if(data.pages_count>1){
           notify({type:'provider',provider:'andromeda',...result,status:'loading',background:true});
           await continueDirectAndromeda(run,scope,url.href,2,data.pages_count,branchIndex,scopes.length);
@@ -753,12 +727,12 @@
       const previous=run.sourceCounts.andromeda||{hotels:0,offers:0};
       run.sourceCounts.andromeda={...previous,status:'partial',destinationBranchFailed:true};
       notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda});
-      await refreshDatabase(run);
+      clearCalendarWindows();
     }
   }
   async function settleInitialSources(run){
-    await Promise.allSettled([run.anex,run.andromeda]);if(!current(run))return false;
-    await run.database;return current(run);
+    await Promise.allSettled([run.anex,run.andromeda]);
+    return current(run);
   }
   async function pollSearch(run){
     if(!current(run))return;
@@ -778,7 +752,7 @@
         const inventory=tourvisorInventory();
         run.sourceCounts.tourvisor={status:'complete',...inventory};
         notify({type:'provider',provider:'tourvisor',...run.sourceCounts.tourvisor});
-        await refreshDatabase(run);if(!current(run))return;
+        clearCalendarWindows();if(!current(run))return;
         if(!run.continued&&!(await settleInitialSources(run)))return;
         const resultLimitReached=inventory.hotels>=5000,baseline=run.continueBaseline;
         const grew=!run.continued||!baseline||inventory.hotels>baseline.hotels||inventory.offers>baseline.offers;
@@ -797,21 +771,18 @@
     raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
     const skipped=()=>({status:'skipped',hotels:0,offers:0});
     const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),
-      controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:false,
+      controller:new AbortController(),pending:false,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:false,
       continueBaseline:null,lastProgress:-10,lastRead:0,deadline:0,
-      sourceCounts:{tourvisor:skipped(),anex:skipped(),andromeda:skipped()}};
+      sourceCounts:{tourvisor:skipped(),anex:skipped(),andromeda:skipped(),database:skipped()}};
     activeSearch=run;callback({type:'loading',cachedResume:true});if(!current(run))return false;
-    run.database=readDatabase(run);await run.database;if(!current(run))return false;
-    run.pending=false;run.canContinue=false;
-    notify({type:'complete',cachedResume:true,partial:run.sourceCounts.database?.status!=='complete',
-      canContinue:false,retryRead:false,resultLimitReached:false,sources:structuredClone(run.sourceCounts),union:canonicalUnion()});
+    notify({type:'complete',cachedResume:true,partial:false,canContinue:false,retryRead:false,resultLimitReached:false,
+      sources:structuredClone(run.sourceCounts),union:canonicalUnion()});
     return true;
   }
   async function search(s, callback, hotelIds=[], filters={}) {
     const plan=requestPlan(s,hotelIds,filters),p=plan.request,epoch=stop();currentSupplierScope=plan.scope;notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
-    const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:true,continueBaseline:null,lastProgress:-10,lastRead:0,deadline:0,sourceCounts:{}};
+    const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:true,continueBaseline:null,lastProgress:-10,lastRead:0,deadline:0,sourceCounts:{database:{status:'skipped',hotels:0,offers:0}}};
     activeSearch=run;callback({type:'loading'});if(!current(run))return;
-    run.database=readDatabase(run);
     run.andromeda=enrichAndromeda(run,p);
     run.anex=enrichAnex(run,p);
     notify({type:'provider',provider:'tourvisor',status:'loading'});if(!current(run))return;
