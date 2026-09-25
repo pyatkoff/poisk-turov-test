@@ -925,10 +925,10 @@ test('stopping on progress starts no result read or completion',async()=>{
  assert.equal(h.events.some(e=>e.type==='complete'),false);
 });
 test('stopping from a canonical render suppresses later callbacks',async()=>{
- const h=harness({onEvent:(e,data)=>{if(e.type==='results')data.stop();}});await h.start();
- const count=h.events.length;assert.ok(h.events.some(e=>e.type==='results'),'canonical render must occur before Stop');
- await flush();assert.equal(h.events.length,count,'Stop blocks every later callback regardless of earlier provider receipts');
- assert.equal(h.events.some(e=>e.type==='database'),false);
+ const h=harness({onEvent:(e,data)=>{if(e.type==='results')data.stop();}});await h.start();await h.poll();
+ const count=h.events.length;assert.ok(h.events.some(e=>e.type==='results'),'Tourvisor render must occur before Stop');
+ await flush();assert.equal(h.events.length,count,'Stop blocks every later callback after the live render');
+ assert.equal(h.events.some(e=>e.type==='complete'),false);assert.equal(h.events.some(e=>e.type==='database'),false);
 });
 // Calendar reuse is tested on the same real adapter/parser, with a controlled
 // clock and explicit stored-listing expiries. These are not live price records.
