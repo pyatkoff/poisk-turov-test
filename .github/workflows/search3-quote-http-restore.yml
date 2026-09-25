@@ -1,0 +1,69 @@
+name: Restore existing Search3 quote HTTP route
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+    paths:
+      - '.github/workflows/search3-quote-http-restore.yml'
+      - 'scripts/diagnostics/search3_quote_http_restore.py'
+      - 'tests/search3_quote_http_restore_test.py'
+permissions:
+  contents: read
+  actions: read
+  checks: read
+concurrency:
+  group: anytoour-andromeda-quote-preview-publication
+  cancel-in-progress: false
+jobs:
+  restore:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'fix/search3-quote-http-restore-20260925'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify pinned atomic repair and rollback
+        run: python3 tests/search3_quote_http_restore_test.py -v
+      - name: Require current exact-head Security and sealed inspection
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if(process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('no replay');
+            const {data:inspection}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:36177674679});
+            if(inspection.head_sha!=='7299c151994e5003c7fccbb79c0deb932f489343'||inspection.conclusion!=='success') throw new Error('inspection mismatch');
+            const {data:artifact}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10883455413});
+            if(artifact.expired||artifact.digest!=='sha256:b965126afcb723e3a87e30583a847f2586b4dea0cc1330afac844b2d0c31ea9a') throw new Error('receipt mismatch');
+            const sha=context.payload.pull_request.head.sha;
+            for(let i=0;i<24;i++) {
+              const {data:pr}=await github.rest.pulls.get({...context.repo,pull_number:context.payload.pull_request.number});
+              if(pr.head.sha!==sha||pr.state!=='open') throw new Error('source drift');
+              const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+              if(main.object.sha!=='c46124367a32e641eec213d5f73f0e8d2899cbd2') throw new Error('main drift');
+              const {data}=await github.rest.actions.listWorkflowRunsForRepo({...context.repo,head_sha:sha,event:'pull_request',per_page:100});
+              const run=data.workflow_runs.find(r=>r.path==='.github/workflows/security-guard.yml');
+              if(run?.conclusion==='success') return;
+              if(run?.status==='completed') throw new Error('Security failed');
+              await new Promise(r=>setTimeout(r,5000));
+            }
+            throw new Error('Security not confirmed');
+      - name: Restore exact prior quote permission and verify PHP guards
+        env:
+          PREVIEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          PREVIEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PREVIEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: python3 scripts/diagnostics/search3_quote_http_restore.py
+      - name: Retain sanitized terminal receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-quote-http-restore-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-quote-http-restore/result.json
+          if-no-files-found: warn
+          retention-days: 30
