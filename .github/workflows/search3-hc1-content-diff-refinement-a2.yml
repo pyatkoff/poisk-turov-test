@@ -1,0 +1,101 @@
+name: HC1 photo and coordinate parity refinement A2
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths: ['.github/workflows/search3-hc1-content-diff-refinement-a2.yml']
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: anytour-canonical-catalog-operations, cancel-in-progress: false}
+env:
+  OP: search3-hc1-content-diff-refinement-20260925-a2
+  BASE: 772cef853390afde25041a7ca65d30f86f97b549
+  CLAIM: '5834796767'
+jobs:
+  audit:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.id == 226193297 && github.run_attempt == 1 &&
+      github.event.pull_request.head.ref == 'ops/search3-hc1-content-diff-refinement-20260925-a2'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with: {php-version: '8.3', extensions: 'mbstring', coverage: none}
+      - name: Check read-only source, exact claim and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p terminal package/v2/data package/scripts/diagnostics
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/search3-hc1-content-diff-refinement-a2.yml scripts/diagnostics/search3_hc1_content_diff_refinement_a2.php "
+          test "$(git hash-object v2/data/anytour-profile-enrichment-v1.php)" = 7f25696ced6a9974492aba8d69f8c14da24f8b6e
+          test "$(git hash-object v2/data/hotel-presentation-read-v1.php)" = dbb9a79b678099b6b5a5fc90fcdf4d9a16dcbec4
+          test "$(git hash-object v2/data/hotel-details-v1.php)" = c300ae76b621bed8fa180811c8fad88756c34c18
+          test "$(git hash-object v2/data/db-v1.php)" = c7e13f41be4a317087fc063da0db6f5dcf769e29
+          ! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|ALTER TABLE|CREATE TABLE|->apply\(|->seed\(|curl_' scripts/diagnostics/search3_hc1_content_diff_refinement_a2.php
+          php -l scripts/diagnostics/search3_hc1_content_diff_refinement_a2.php
+          php scripts/diagnostics/search3_hc1_content_diff_refinement_a2.php --self-test
+          python3 - <<'PY'
+          import json,os,time,urllib.request,pathlib
+          def get(path):
+              q=urllib.request.Request('https://api.github.com/repos/pyatkoff/poisk-turov-test/'+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=20) as r:return json.load(r)
+          c=get('issues/comments/'+os.environ['CLAIM'])
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'d9ecd0f2c56f43ca33191383b71d7e722a28b56077e766fc559c4cbe498f621d','READ ONLY / REPEATABLE READ','Supplier HTTP0','DB/schema/profile/mapping writes0']:assert x in c['body'],x
+          assert get('git/ref/heads/release/search3-production-ready-v1')['object']['sha']==os.environ['BASE']
+          for _ in range(40):
+              rs=get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+              rs=[r for r in rs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if rs and max(rs,key=lambda r:r['id'])['status']=='completed':
+                  assert max(rs,key=lambda r:r['id'])['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_not_confirmed')
+          pathlib.Path('terminal/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'source':os.environ['BASE'],'head':os.environ['HEAD'],'state':'reserved_before_read_only_audit','databaseWrites':0,'supplierCalls':0},sort_keys=True)+'\n')
+          PY
+          cp v2/data/{anytour-profile-enrichment-v1.php,anytour-canonical-catalog-v1.php,hotel-presentation-read-v1.php,hotel-details-v1.php,db-v1.php} package/v2/data/
+          cp scripts/diagnostics/search3_hc1_content_diff_refinement_a2.php package/scripts/diagnostics/
+          (cd package; sha256sum v2/data/*.php scripts/diagnostics/*.php > files.sha256)
+          tar -cf package.tar -C package v2/data scripts/diagnostics files.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hc1-parity-a2-reservation-${{ github.run_id }}', path: terminal/reservation.json, retention-days: 30}
+      - name: Refine only hash-guarded A1 image and coordinate cases
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/hc1-key"; known="$RUNNER_TEMP/hc1-known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytour-operations/$OP"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test -f \"\$HOME/www/anytoour.ru/config.php\";mkdir -p \"\$HOME/.anytour-operations\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$op/payload\""
+          ssh "${opts[@]}" "$remote" "cat > \"\$HOME/$op/reservation.json\"" <terminal/reservation.json
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;tar -xf - -C \"\$HOME/$op/payload\";cd \"\$HOME/$op/payload\";sha256sum -c files.sha256 >/dev/null" <package.tar
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/$op/payload\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" HC1_OPERATION_DIR=\"\$HOME/$op\" php -d display_errors=0 -d memory_limit=384M -d max_execution_time=240 -d allow_url_fopen=0 scripts/diagnostics/search3_hc1_content_diff_refinement_a2.php --execute" >"$RUNNER_TEMP/hc1-private-stdout" 2>"$RUNNER_TEMP/hc1-private-stderr"
+          rc=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" >terminal/result.json 2>/dev/null; rr=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/receipt.json\"" >terminal/receipt.json 2>/dev/null; qr=$?
+          set -e
+          printf '{"sshExit":%s,"resultReadExit":%s,"receiptReadExit":%s,"noReplay":true}\n' "$rc" "$rr" "$qr" >terminal/transport.json
+          test "$rr" = 0; test "$qr" = 0
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          p=pathlib.Path('terminal/result.json');r=json.loads(p.read_text());q=json.load(open('terminal/receipt.json'))
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==q['resultSha256']
+          assert r['state']==q['state']=='completed_read_only'
+          assert r['checkedProfiles']+len(r['driftedProfiles'])==r['inputProfiles']<=5000
+          assert r['databaseWrites']==r['supplierCalls']==0
+          print(json.dumps({k:r[k] for k in ['state','inputProfiles','checkedProfiles','gallery','rawGalleryClipping','rawToStoredCoordinates']}))
+          PY
+          test "$rc" = 0
+      - name: Preserve safe audit outputs only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hc1-parity-a2-terminal-${{ github.run_id }}', path: terminal/, retention-days: 30, if-no-files-found: warn}
