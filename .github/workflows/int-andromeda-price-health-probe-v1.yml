@@ -7,7 +7,9 @@ on:
       - 'scripts/diagnostics/int_andromeda_price_health_probe_v1.php'
       - '.github/workflows/int-andromeda-price-health-probe-v1.yml'
 permissions: {contents: read, actions: read, issues: read}
-concurrency: {group: andromeda-supplier-slot, cancel-in-progress: false}
+concurrency:
+  group: andromeda-supplier-slot
+  cancel-in-progress: false
 jobs:
   live:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'int/andromeda-price-health-probe-20260925'
