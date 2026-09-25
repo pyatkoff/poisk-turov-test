@@ -6,6 +6,7 @@ on:
     paths:
       - 'tests/search3-hc1-full-gallery-browser.py'
       - 'patches/search3-hc1-full-gallery.patch'
+      - 'patches/search3-hc1-full-gallery-v2.json'
       - '.github/workflows/search3-hc1-full-gallery-candidate.yml'
 permissions: {contents: read}
 jobs:
@@ -26,9 +27,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git merge-base HEAD 772cef853390afde25041a7ca65d30f86f97b549)" = 772cef853390afde25041a7ca65d30f86f97b549
-          test "$(git diff --name-only 772cef853390afde25041a7ca65d30f86f97b549 HEAD | sort | tr '\n' ' ')" = '.github/workflows/search3-hc1-full-gallery-candidate.yml patches/search3-hc1-full-gallery.patch tests/search3-hc1-full-gallery-browser.py '
+          test "$(git diff --name-only 772cef853390afde25041a7ca65d30f86f97b549 HEAD | sort | tr '\n' ' ')" = '.github/workflows/search3-hc1-full-gallery-candidate.yml patches/search3-hc1-full-gallery-v2.json patches/search3-hc1-full-gallery.patch tests/search3-hc1-full-gallery-browser.py '
           python3 -m py_compile tests/search3-hc1-full-gallery-browser.py
-          git apply --check patches/search3-hc1-full-gallery.patch
       - name: Install pinned offline browser tools
         run: |
           python3 -m pip install playwright==1.57.0
@@ -45,20 +45,36 @@ jobs:
           set -e
           test "$rc" -ne 0
           grep -F 'FULL_GALLERY_TRUNCATED expected=43 actual=12' "$RUNNER_TEMP/hc1-gallery/before.log"
-      - name: Apply candidate only in disposable checkout and check actual app
+      - name: Apply exact v2 candidate only in disposable checkout and check actual app
         env:
           HC1_OUTPUT: ${{ runner.temp }}/hc1-gallery/after
         run: |
           set -euo pipefail
-          git apply patches/search3-hc1-full-gallery.patch
-          test "$(git diff --name-only | sort | tr '\n' ' ')" = 'v2/prototype-search/app.js v2/prototype-search/data.js '
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          plan=json.loads(pathlib.Path('patches/search3-hc1-full-gallery-v2.json').read_text())
+          assert {p['path'] for p in plan}=={'v2/prototype-search/app.js','v2/prototype-search/data.js','v2/prototype-search/styles.css'} and len(plan)==3
+          ready=[]
+          for row in plan:
+              path=pathlib.Path(row['path']);raw=path.read_bytes()
+              assert hashlib.sha256(raw).hexdigest()==row['beforeSha256'],row['path']
+              text=raw.decode()
+              for edit in row['replacements']:
+                  assert text.count(edit['old'])==1
+                  text=text.replace(edit['old'],edit['new'])
+              result=text.encode()
+              assert hashlib.sha256(result).hexdigest()==row['afterSha256'],row['path']
+              ready.append((path,result))
+          for path,result in ready:path.write_bytes(result)
+          PY
+          test "$(git diff --name-only | sort | tr '\n' ' ')" = 'v2/prototype-search/app.js v2/prototype-search/data.js v2/prototype-search/styles.css '
           git diff --check
           node --check v2/prototype-search/data.js
           node --check v2/prototype-search/app.js
           python3 tests/search3-hc1-full-gallery-browser.py
-          cp patches/search3-hc1-full-gallery.patch "$RUNNER_TEMP/hc1-gallery/"
-          git diff > "$RUNNER_TEMP/hc1-gallery/checked-runtime.diff"
-          sha256sum "$RUNNER_TEMP/hc1-gallery/after/result.json" > "$RUNNER_TEMP/hc1-gallery/result.sha256"
+          cp patches/search3-hc1-full-gallery-v2.json "$RUNNER_TEMP/hc1-gallery/"
+          git diff > "$RUNNER_TEMP/hc1-gallery/checked-runtime-v2.patch"
+          sha256sum "$RUNNER_TEMP/hc1-gallery/after/result.json" "$RUNNER_TEMP/hc1-gallery/checked-runtime-v2.patch" > "$RUNNER_TEMP/hc1-gallery/result.sha256"
       - name: Retain fixture-only evidence and exact patch for current writer
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
