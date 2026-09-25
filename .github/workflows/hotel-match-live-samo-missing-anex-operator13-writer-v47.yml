@@ -1,0 +1,188 @@
+name: MATCH direct ANEX writer v47
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_writer_v47.php
+      - tests/hotel_match_live_samo_missing_anex_operator13_writer_v47_test.php
+      - .github/workflows/hotel-match-live-samo-missing-anex-operator13-writer-v47.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-live-samo-missing-anex-operator13-writer-v47
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-live-samo-missing-anex-operator13-writer-1971-20260925-v47
+  BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
+  CLAIM: '5838996854'
+  AUDIT_ARTIFACT: '10885307836'
+  AUDIT_ARCHIVE_SHA: 563dc308317925640d8b979f20bb89658486345c19f04b3d2e64e46026a86d55
+  READY_DIGEST: 3093f8ad2c65b09eb8a8bd5ec6d698dae1c764affe036cfd19bcc43097d1a656
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-samo-missing-anex-operator13-writer-v47-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: php -l scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_writer_v47.php
+      - run: php scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_writer_v47.php --self-test
+      - run: php tests/hotel_match_live_samo_missing_anex_operator13_writer_v47_test.php
+      - name: Writer boundary
+        run: |
+          set -euo pipefail
+          f=scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_writer_v47.php
+          ! grep -E 'curl_|https?://' "$f"
+          grep -Fq "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE" "$f"
+          grep -Fq "INSERT INTO anex_hotel_search_mappings" "$f"
+          grep -Fq "owner_exact_operator_key_20260912_v2" "$f"
+          grep -Fq "V47_EXPECTED=17" "$f"
+          grep -Fq "3093f8ad2c65b09eb8a8bd5ec6d698dae1c764affe036cfd19bcc43097d1a656" "$f"
+          grep -Fq "pre-commit.json" "$f"
+          grep -Fq "commit-attempt.json" "$f"
+          ! grep -E 'UPDATE .* SET|DELETE FROM' "$f"
+
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-samo-missing-anex-operator13-writer-v47-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate authority, exact v46 and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input/audit terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-live-samo-missing-anex-operator13-writer-v47.yml scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_writer_v47.php tests/hotel_match_live_samo_missing_anex_operator13_writer_v47_test.php "
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'17','SERIALIZABLE','insert-only','post-COMMIT',os.environ['READY_DIGEST'],'10885307836']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$AUDIT_ARTIFACT/zip" -o input/audit.zip
+          test "$(sha256sum input/audit.zip|awk '{print $1}')" = "$AUDIT_ARCHIVE_SHA"
+          unzip -q input/audit.zip -d input/audit
+          result="$(find input/audit -type f -name result.json -print -quit)"
+          receipt="$(find input/audit -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt"
+          cp "$result" input/audit-result.json
+          python3 - "$result" "$receipt" <<'PY'
+          import json,hashlib,pathlib,sys,os
+          r=json.load(open(sys.argv[1]));q=json.load(open(sys.argv[2]));sha=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest()
+          assert q['result_sha256']==sha and q['readback_verified'] is True
+          assert r['operation']=='hotel-match-live-samo-missing-anex-operator13-current-1971-20260925-v46'
+          assert r['state']=='completed_read_only_v45_current_audit'
+          assert r['input_count']==r['unique_native_ids']==r['unique_targets']==r['writer_ready_count']==17
+          assert r['status_counts']=={'current_missing_exact_key':17}
+          assert r['anchor_state_counts']=={'canonical_anchor_ok':17}
+          assert r['writer_ready_target_digest']==os.environ['READY_DIGEST']
+          for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes']:
+              assert r[k]==0,(k,r[k])
+          assert r['safe_to_write_now'] is False
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('AUDIT_RESULT_SHA_CALC='+sha+'\n')
+          print('AUDIT_RESULT_SHA='+sha)
+          PY
+
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({
+            'operation':os.environ['OP'],'state':'reserved_before_write','expected_writes':17,'provider_http_calls':0
+          },sort_keys=True)+'\n')
+          PY
+
+      - name: Execute guarded exact writer
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
+          scp "${opts[@]}" input/reservation.json "$remote:$rel/reservation.json"
+          scp "${opts[@]}" input/audit-result.json "$remote:$rel/payload/audit-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_writer_v47.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
+
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_AUDIT_RESULT=\"\$HOME/$rel/payload/audit-result.json\" MATCH_AUDIT_SHA='$AUDIT_RESULT_SHA_CALC' MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_writer_v47.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?
+          set -e
+
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          ssh "${opts[@]}" "$remote" "test ! -f \"\$HOME/$rel/pre-commit.json\" || cat \"\$HOME/$rel/pre-commit.json\"" >terminal/pre-commit.json || true
+          ssh "${opts[@]}" "$remote" "test ! -f \"\$HOME/$rel/commit-attempt.json\" || cat \"\$HOME/$rel/commit-attempt.json\"" >terminal/commit-attempt.json || true
+
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP']
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert q['readback_verified'] is True and q['provider_accessed'] is False and q['provider_http_calls']==0
+          if r['state']=='committed_verified':
+              assert r['inserted']==r['database_writes']==r['mapping_writes']==17
+              assert r['readback_verified'] is True and r['registry_readback_verified'] is True
+              assert q['no_replay'] is True
+              assert pathlib.Path('terminal/pre-commit.json').stat().st_size>0
+              assert pathlib.Path('terminal/commit-attempt.json').stat().st_size>0
+              print(json.dumps({'state':r['state'],'inserted':r['inserted'],'mapping_digest':r['mapping_digest'],'registry_readback_verified':r['registry_readback_verified']},sort_keys=True))
+          else:
+              assert r['state'] in ['rolled_back_no_write','commit_unknown_no_replay','post_commit_verification_failed_no_replay']
+              print(json.dumps(r,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-direct-anex-writer-v47-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
