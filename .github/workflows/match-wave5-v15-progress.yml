@@ -34,7 +34,7 @@ jobs:
                       except Exception: out[name]='unreadable'
           print(json.dumps(out,sort_keys=True))
           PY
-          php -r 'require \$argv[1]; \$a=json_decode(file_get_contents(\$argv[2]),true,512,JSON_THROW_ON_ERROR); try{\$m=sbw5_manifest(\$a,0,300); echo json_encode(["manifest_ok"=>true,"total"=>\$m["total"],"slice"=>count(\$m["rows"])])."\\n";}catch(Throwable \$e){echo json_encode(["manifest_ok"=>false,"reason"=>\$e->getMessage()])."\\n"; exit(2);}' "$HOME/$op/payload/scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php" "$HOME/$op/payload/audit-result.json"
+          php -r 'require \$argv[1]; \$a=json_decode(file_get_contents(\$argv[2]),true,512,JSON_THROW_ON_ERROR); try{\$m=sbw5_manifest(\$a,0,300); echo json_encode(["manifest_ok"=>true,"total"=>\$m["total"],"slice"=>count(\$m["rows"])])."\\n";}catch(Throwable \$e){echo json_encode(["manifest_ok"=>false,"reason"=>\$e->getMessage()])."\\n"; exit(2);}' "\$HOME/$op/payload/scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php" "\$HOME/$op/payload/audit-result.json"
           " | tee terminal/progress.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with: {name: 'match-wave5-v15-progress-${{ github.run_id }}', path: terminal/, retention-days: 7}
