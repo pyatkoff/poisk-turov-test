@@ -134,7 +134,7 @@ jobs:
                           ent['derived_bucket_status_counts']=bucket_status_counts
                           ent['derived_direct_vote_histogram']=direct_vote_hist
                           projection=[]
-                          allowed_row={'status','tv_hotel_id','local_hotel_id','samo_catalog_id','catalog_id','frontier_bucket','namespace','operator_id','native_id','direct_namespace','direct_native_id','support_namespace','support_native_id'}
+                          allowed_row={'status','tv_hotel_id','local_hotel_id','candidate_local_hotel_id','samo_catalog_id','catalog_id','andromeda_catalog_id','frontier_bucket','direct_operator_count','support_operator_count','namespace','operator_id','native_id','direct_namespace','direct_native_id','support_namespace','support_native_id'}
                           row_keys=set()
                           for row in rows:
                               if not isinstance(row,dict): continue
