@@ -9,6 +9,13 @@
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
   const text = value => String(value || '').toLocaleLowerCase('ru-RU').replace(/\s+/g, ' ').trim();
+  const known = value => {
+    const normalized = text(value);
+    return normalized && !/уточняется/.test(normalized) ? normalized : '';
+  };
+  const ageMultiset = value => Array.isArray(value)
+    ? value.map(Number).filter(Number.isFinite).sort((a, b) => a - b)
+    : [];
 
   let epoch = 0, receive = null, snapshot = null, pending = null;
 
@@ -16,15 +23,14 @@
     if (!candidate || !cached || candidate.cached === true || candidate.provider !== cached.provider
       || Number(candidate.hotelId) !== Number(cached.hotelId) || candidate.day !== cached.day
       || Number(candidate.nights) !== Number(cached.nights) || Number(candidate.adults) !== Number(cached.adults)
-      || JSON.stringify(candidate.ages || []) !== JSON.stringify(cached.ages || [])) return false;
+      || JSON.stringify(ageMultiset(candidate.ages)) !== JSON.stringify(ageMultiset(cached.ages))) return false;
     if (text(candidate.operator) !== text(cached.operator)) return false;
-    const room = text(cached.room), meal = text(cached.mealRaw || cached.meal), placement = text(cached.placement);
-    if (room && !/уточняется/.test(room) && text(candidate.room) !== room) return false;
-    if (meal && !/уточняется/.test(meal)) {
-      const liveMeals = [candidate.mealRaw, candidate.meal].map(text).filter(Boolean);
-      if (!liveMeals.includes(meal)) return false;
-    }
-    if (placement && !/уточняется/.test(placement) && text(candidate.placement) !== placement) return false;
+    const room = known(cached.room), meal = known(cached.mealRaw || cached.meal), placement = known(cached.placement);
+    if (!room || !meal || !placement) return false;
+    if (text(candidate.room) !== room) return false;
+    const liveMeals = [candidate.mealRaw, candidate.meal].map(text).filter(Boolean);
+    if (!liveMeals.includes(meal)) return false;
+    if (text(candidate.placement) !== placement) return false;
     if (['regular', 'charter'].includes(cached.flight) && candidate.flight !== cached.flight) return false;
     return true;
   }
