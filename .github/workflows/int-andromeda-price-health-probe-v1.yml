@@ -28,7 +28,12 @@ jobs:
           chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
           remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
           op=".anytoour-int/operations/$OP"
-          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
+          if ssh "${opts[@]}" "$remote" "test -e \"\$HOME/$op\""; then
+            ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/$op\";printf '%s\\n' operation_exists >state.txt;find . -maxdepth 2 -type f -printf '%P\\n' | sort >files.txt;for f in result.json receipt.json http-*-reserved.json;do for p in \$f;do test -f \"\$p\" && cat \"\$p\";done;done" >terminal/existing-state.txt 2>terminal/existing-state.stderr || true
+            cat terminal/existing-state.txt
+            exit 3
+          fi
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
           scp "${opts[@]}" scripts/diagnostics/int_andromeda_price_health_probe_v1.php "$remote:$op/payload/scripts/diagnostics/"
           ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" INT_OPERATION_DIR=\"\$HOME/$op\" php \"\$HOME/$op/payload/scripts/diagnostics/int_andromeda_price_health_probe_v1.php\"" >terminal/stdout 2>terminal/stderr
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" >terminal/result.json
