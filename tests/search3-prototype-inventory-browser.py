@@ -120,7 +120,7 @@ def check_width(browser, origin, width):
     context = browser.new_context(viewport={"width": width, "height": 900})
     page = context.new_page()
     page.set_default_timeout(15000)
-    calls, native_calls, anex_calls, calendar_calls, observation_calls, forbidden, errors, held = [], [], [], [], [], [], [], []
+    calls, native_calls, anex_calls, andromeda_quote_calls, calendar_calls, observation_calls, forbidden, errors, held = [], [], [], [], [], [], [], [], []
     state = {"native": False, "continued": False, "hold": False, "calendar_partial": False,
              "native_failure": False, "database_failure": False, "subregion_case": False}
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -232,6 +232,31 @@ def check_width(browser, origin, width):
                    "withheldOfferCount": 0, "categoryFilteredOfferCount": 0,
                    "omittedHotelCount": 0, "omittedOfferCount": 0, "providerOfferCounts": provider_counts,
                    "selectionAuthority": False, "hotels": rows}})
+        elif url.path == "/_preview/search3-anex-candidate/api-andromeda-quote-preview.php" and request.method == "POST":
+            body = request.post_data_json
+            andromeda_quote_calls.append(body)
+            assert body["action"] == "quote"
+            assert body["generation"] >= 1
+            assert body["offer_context"]["provider"] == "andromeda"
+            assert body["offer_context"]["offer_ref"] == ANDROMEDA_OFFER_REF
+            assert body["listing_price_ref"] == "listing_" + "e" * 64
+            reply({"ok": True, "data": {
+                "schema_version": 1, "provider": "andromeda", "local_id": 105,
+                "selection_enabled": True, "booking_enabled": False,
+                "state": "quote_verified", "quote_state": "verified",
+                "final_price": {"amount": "305000", "currency": "RUB"},
+                "final_price_verified": True, "flight_selection_required": False,
+                "flights": [
+                    {"direction": "0", "name": "ZF 3001", "datebeg": DATE + " 09:10",
+                     "dateend": DATE + " 13:30", "class": "ECONOM",
+                     "departure": {"town": "Москва", "port": "VKO"},
+                     "arrival": {"town": "Анталья", "port": "AYT"}},
+                    {"direction": "1", "name": "ZF 3002", "datebeg": "2026-10-08 15:20",
+                     "dateend": "2026-10-08 19:40", "class": "ECONOM",
+                     "departure": {"town": "Анталья", "port": "AYT"},
+                     "arrival": {"town": "Москва", "port": "VKO"}},
+                ],
+            }})
         elif url.path == "/_preview/search3-anex-candidate/api-andromeda-search3-preview.php" and request.method == "POST":
             body = request.post_data_json
             native_calls.append(body)
@@ -383,6 +408,28 @@ def check_width(browser, origin, width):
             Search3CanonicalProfilesV1.current().source(), {}
         ).flatMap(h => h.tours || []).filter(t => t.provider === 'andromeda').length""")
         assert andromeda_offer_count == 1, "live union contains only the native Andromeda offer"
+        assert page.locator('#hotel-505').count() == 1, "native Andromeda hotel is rendered"
+        page.locator('#hotel-505 [data-action="offer"]').click()
+        page.locator('[data-action="refresh-hotel"]').wait_for()
+        page.locator('[data-action="refresh-hotel"]').click()
+        page.locator('[data-action="andromeda-application-preview"]').wait_for()
+        assert len(andromeda_quote_calls) == 1, "verified Andromeda quote uses one provider request"
+        verified_text = page.locator('#modal').inner_text().replace('\u00a0', ' ')
+        assert '305 000' in verified_text and 'ZF 3001' in verified_text and 'ZF 3002' in verified_text
+        page.locator('[data-action="andromeda-application-preview"]').click()
+        form = page.locator('#prototype-lead-form')
+        form.wait_for()
+        form.locator('[name="phone"]').fill('+7 999 111-22-33')
+        form.locator('[name="consent"]').check()
+        page.locator('[type="submit"][form="prototype-lead-form"]').click()
+        page.wait_for_function("document.querySelector('#prototype-lead-form')?.dataset.checked === '1'")
+        status = form.locator('.lead-message').inner_text()
+        assert 'Заявка не отправлена' in status and '305' in status
+        assert len(andromeda_quote_calls) == 1, "application preview never requotes the provider"
+        assert not forbidden, forbidden
+        page.locator('#modal-back').click()
+        page.locator('[data-action="andromeda-application-preview"]').wait_for()
+        page.locator('[data-action="close-modal"]').first.click()
         assert len(native_calls) == 1
         assert len(anex_calls) == 1
         state["hold"] = True
