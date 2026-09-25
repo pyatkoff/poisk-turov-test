@@ -94,8 +94,8 @@ function v37_index_tv(array $edges,array $frontier):array{
 function v37_group_samo(array $edges):array{
     $out=[];$byNs=[];foreach($edges as $e){$cid=$e['catalog_id'];$ns=$e['namespace'];$native=$e['native_id'];$out[$cid][$ns][$native][]=$e;$byNs[$ns][$ns.'|'.$native]=true;}return ['catalogs'=>$out,'by_namespace'=>$byNs];
 }
-function v37_support_vote(string $samoNs,string $tvNs,string $native,array $tvIndex):array{
-    $ids=array_keys($tvIndex[$tvNs.'|'.$native]??[]);sort($ids,SORT_NUMERIC);return $ids;
+function v37_support_vote(string $samoNs,string $tvNs,mixed $native,array $tvIndex):array{
+    $native=(string)$native;$ids=array_keys($tvIndex[$tvNs.'|'.$native]??[]);sort($ids,SORT_NUMERIC);return $ids;
 }
 function v37_candidate_rows(array $samo,array $tvIndex,array $frontier,array $currentCatalogBySource,array $currentCatalogByTarget,array $active):array{
     $rows=[];$preStrongByTarget=[];$classCounts=[];$bucketCounts=[];$namespaceShared=['operator_315'=>0,'operator_342'=>0,'bgoperator_to_operator_115'=>0,'anex_to_operator_5'=>0];
@@ -104,10 +104,10 @@ function v37_candidate_rows(array $samo,array $tvIndex,array $frontier,array $cu
         foreach(V37_DIRECT as $ns=>$op){
             $natives=array_keys($nsMap[$ns]??[]);sort($natives,SORT_NATURAL);
             if(count($natives)>1){$directNsCollision[$ns]=$natives;continue;}
-            if(count($natives)===1){$native=$natives[0];$targets=array_keys($tvIndex[$ns.'|'.$native]??[]);sort($targets,SORT_NUMERIC);if(count($targets)===1){$tv=(int)$targets[0];$directVotes[$ns]=$tv;$namespaceShared[$ns]++;$ev=$nsMap[$ns][$native];$directEvidence[$ns]=['native_id'=>$native,'tv_hotel_id'=>$tv,'source_edges'=>array_map(fn($x)=>['operation'=>$x['source_operation'],'result_sha256'=>$x['source_result_sha256'],'edge_sha256'=>$x['source_edge_sha256']],$ev)];}elseif(count($targets)>1)$directEvidence[$ns]=['native_id'=>$native,'ambiguous_tv_hotel_ids'=>$targets];}
+            if(count($natives)===1){$native=(string)$natives[0];$targets=array_keys($tvIndex[$ns.'|'.$native]??[]);sort($targets,SORT_NUMERIC);if(count($targets)===1){$tv=(int)$targets[0];$directVotes[$ns]=$tv;$namespaceShared[$ns]++;$ev=$nsMap[$ns][$native];$directEvidence[$ns]=['native_id'=>$native,'tv_hotel_id'=>$tv,'source_edges'=>array_map(fn($x)=>['operation'=>$x['source_operation'],'result_sha256'=>$x['source_result_sha256'],'edge_sha256'=>$x['source_edge_sha256']],$ev)];}elseif(count($targets)>1)$directEvidence[$ns]=['native_id'=>$native,'ambiguous_tv_hotel_ids'=>$targets];}
         }
         $supportSpecs=[['samo'=>'operator_115','tv'=>'bgoperator','name'=>'bgoperator_to_operator_115'],['samo'=>'operator_5','tv'=>'anex','name'=>'anex_to_operator_5']];
-        foreach($supportSpecs as $sp){$natives=array_keys($nsMap[$sp['samo']]??[]);sort($natives,SORT_NATURAL);if(count($natives)===1){$native=$natives[0];$targets=v37_support_vote($sp['samo'],$sp['tv'],$native,$tvIndex);if(count($targets)===1){$support[$sp['name']]=['native_id'=>$native,'tv_hotel_id'=>(int)$targets[0]];$namespaceShared[$sp['name']]++;}}}
+        foreach($supportSpecs as $sp){$natives=array_keys($nsMap[$sp['samo']]??[]);sort($natives,SORT_NATURAL);if(count($natives)===1){$native=(string)$natives[0];$targets=v37_support_vote($sp['samo'],$sp['tv'],$native,$tvIndex);if(count($targets)===1){$support[$sp['name']]=['native_id'=>$native,'tv_hotel_id'=>(int)$targets[0]];$namespaceShared[$sp['name']]++;}}}
         $votes=array_values($directVotes);$uniq=array_values(array_unique($votes));sort($uniq,SORT_NUMERIC);
         $status='no_direct_shared_fingerprint';$tv=null;
         if($directNsCollision)$status='hold_samo_namespace_collision';
