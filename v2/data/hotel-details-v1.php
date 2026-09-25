@@ -75,14 +75,15 @@ function v2_hotel_detail_https_url(mixed $value): ?string
     return $url;
 }
 
-function v2_hotel_detail_images(array $hotel): array
+function v2_hotel_detail_images(array $hotel, ?int $limit = 100): array
 {
+    if ($limit !== null && $limit < 1) throw new InvalidArgumentException('Invalid image limit');
     $out = [];
     foreach ((array)($hotel['images'] ?? []) as $raw) {
         $url = v2_hotel_detail_https_url($raw);
         if ($url === null) continue;
         $out[$url] = true;
-        if (count($out) >= 100) break;
+        if ($limit !== null && count($out) >= $limit) break;
     }
     return array_keys($out);
 }
