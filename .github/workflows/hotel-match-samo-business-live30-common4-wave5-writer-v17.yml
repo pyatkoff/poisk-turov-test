@@ -93,7 +93,12 @@ jobs:
           import json,os,pathlib
           pathlib.Path('input/reservation-w1.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_write','expected_writes':300,'write_offset':0,'audit_operation':os.environ['AUDIT_OP'],'provider_http_calls':0},sort_keys=True)+'\n')
           PY
-          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
+          if ssh "${opts[@]}" "$remote" "test -e \"\$HOME/$op\""; then
+            ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/$op\";find . -maxdepth 3 -type f -printf '%P\\n' | sort;for f in reservation.json pre-commit.json commit-attempt.json result.json receipt.json;do if test -f \"\$f\";then echo \"---\$f---\";cat \"\$f\";fi;done" >terminal/w1/existing-state.txt 2>terminal/w1/existing-state.stderr || true
+            cat terminal/w1/existing-state.txt
+            exit 3
+          fi
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
           scp "${opts[@]}" input/reservation-w1.json "$remote:$op/reservation.json"
           scp "${opts[@]}" input/audit-result.json "$remote:$op/payload/audit-result.json"
           scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php "$remote:$op/payload/scripts/diagnostics/"
