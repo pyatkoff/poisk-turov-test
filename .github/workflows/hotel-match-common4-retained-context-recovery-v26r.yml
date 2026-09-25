@@ -1,0 +1,67 @@
+name: MATCH COMMON4 v26 supplier-free recovery
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_common4_retained_context_recovery_v26r.php'
+      - 'tests/hotel_match_common4_retained_context_recovery_v26r_test.php'
+      - '.github/workflows/hotel-match-common4-retained-context-recovery-v26r.yml'
+permissions: {contents: read, actions: read, issues: read}
+env:
+  OP: hotel-match-common4-retained-context-recovery-1971-20260925-v26r
+  CLAIM: '5831155656'
+  POST_ARTIFACT: '10859521211'
+  POST_ARCHIVE_SHA: 73a9bc1abae746c93945b65daa54ba335cdf29e85a7391f8ae06b320616b9371
+jobs:
+  recover:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-retained-context-recovery-v26r-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_common4_retained_context_recovery_v26r.php
+      - run: php tests/hotel_match_common4_retained_context_recovery_v26r_test.php
+      - name: Verify claim and fetch postwrite
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input terminal
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],'exclusive_create','provider/Tourvisor/SAMO/ANEX/Andromeda HTTP0']: assert x in b,x
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$POST_ARTIFACT/zip" -o input/post.zip
+          test "$(sha256sum input/post.zip|awk '{print $1}')" = "$POST_ARCHIVE_SHA"
+          unzip -q input/post.zip -d input/post
+          result="$(find input/post -type f -name result.json -print -quit)";test -n "$result";cp "$result" input/post-result.json
+      - name: Recover sealed v26 evidence without provider access
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP";old=".anytoour-match/operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26"
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";test -d \"\$HOME/$old\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
+          scp "${opts[@]}" input/post-result.json "$remote:$op/post-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_common4_retained_context_recovery_v26r.php "$remote:$op/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_OLD_DIR=\"\$HOME/$old\" MATCH_POST_RESULT=\"\$HOME/$op/post-result.json\" php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_common4_retained_context_recovery_v26r.php\"" >terminal/stdout 2>terminal/stderr
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('terminal/result.json'))
+          assert r['state']=='completed_supplier_free_v26_salvage'
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          print(json.dumps({k:r[k] for k in ['state','target_edge_count','pages_count','pages_drained','price_rows_seen','provider_http_reservations_observed','edge_state_counts','single_native_source_collision_count']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-v26r-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
