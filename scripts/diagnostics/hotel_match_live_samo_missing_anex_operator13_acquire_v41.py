@@ -2,8 +2,8 @@
 import base64, collections, datetime as dt, fcntl, hashlib, json, os, pathlib, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 from zoneinfo import ZoneInfo
 
-OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41'
-ACCOUNT='TOURVISOR_ANEX_JWT'
+OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41b'
+ACCOUNT='TOURVISOR_ANEX_JWT'\nACCOUNT_LEDGER='tourvisor-anex'
 DAILY_LIMIT=3000
 CALL_CAP=500
 MAX_BATCHES=50
@@ -144,20 +144,22 @@ class Provider:
     def __init__(self,root,opdir):
         day=dt.datetime.now(ZoneInfo('Europe/Moscow')).date().isoformat()
         if day!=EXPECTED_DAY:raise RuntimeError('provider_day_changed')
-        q=pathlib.Path(os.environ['HOME'])/'.anytour-match/provider-quotas'
-        self.day=q/f'tourvisor-test-{day}.json';self.op=q/f'tourvisor-{OP}.json';self.dir=opdir;self.day_value=day
-        self.used=0;self.last=0;self.counts=collections.Counter()
-        if not self.day.is_file():raise RuntimeError('daily_ledger_missing')
+        q=pathlib.Path(os.environ['HOME'])/'.anytour-match/provider-quotas';q.mkdir(parents=True,exist_ok=True)
+        self.day=q/f'{ACCOUNT_LEDGER}-{day}.json';self.op=q/f'{ACCOUNT_LEDGER}-{OP}.json';self.dir=opdir;self.day_value=day
+        self.used=0;self.tariff_used=0;self.last=0;self.counts=collections.Counter()
+        if not self.day.exists():
+            try:save(self.day,{'provider':'tourvisor-anex','provider_day':day,'owner_daily_limit':DAILY_LIMIT,'tariff_search_units':0,'physical_http_attempts':0,'baseline_status':'separate_match_account','operations':{}})
+            except FileExistsError:pass
         with open(self.day,'r+b') as f:
             fcntl.flock(f,fcntl.LOCK_EX);d=json.load(f)
             if d.get('provider_day')!=day:raise RuntimeError('provider_day_ledger_mismatch')
-            self.last=max(int(d.get('accounted_requests',0)),int(d.get('known_prior_attempt_floor',0))+int(d.get('match_new_attempts',0)))
-            limit=min(DAILY_LIMIT,int(d.get('owner_daily_limit',DAILY_LIMIT)))
-            if self.last>=limit:raise RuntimeError('daily_budget_guard')
-        save(self.op,{'operation':OP,'status':'reserved_before_provider_access','used':0,'operation_cap':CALL_CAP,'provider_day':day,'tourvisor_account':ACCOUNT})
-        save(opdir/'quota-reservation.json',{'operation':OP,'accounted_before_local_ledger':self.last,'cap':CALL_CAP,'limit':DAILY_LIMIT,'provider_day':day,'tourvisor_account':ACCOUNT})
-        php='require $argv[1];$v=defined("TOURVISOR_ANEX_JWT")?TOURVISOR_ANEX_JWT:getenv("TOURVISOR_ANEX_JWT");fwrite(STDOUT,(string)$v);'
-        cp=subprocess.run(['php','-r',php,'--',str(root/'config.php')],capture_output=True,check=True,timeout=20)
+            self.last=int(d.get('tariff_search_units',0))
+            if self.last>=DAILY_LIMIT:raise RuntimeError('daily_budget_guard')
+        save(self.op,{'operation':OP,'status':'reserved_before_provider_access','used':0,'tariff_used':0,'operation_cap':CALL_CAP,'provider_day':day,'account':ACCOUNT})
+        save(opdir/'quota-reservation.json',{'operation':OP,'tariff_units_before_local_ledger':self.last,'cap':CALL_CAP,'limit':DAILY_LIMIT,'provider_day':day,'account':ACCOUNT})
+        php='require $argv[1];$a=defined("TOURVISOR_ANEX_JWT")?TOURVISOR_ANEX_JWT:getenv("TOURVISOR_ANEX_JWT");$b=defined("TOURVISOR_JWT")?TOURVISOR_JWT:getenv("TOURVISOR_JWT");if(!$a||$a===$b){fwrite(STDERR,"tourvisor_account_guard");exit(42);}fwrite(STDOUT,(string)$a);'
+        cp=subprocess.run(['php','-r',php,'--',str(root/'config.php')],capture_output=True,timeout=20)
+        if cp.returncode!=0:raise RuntimeError('tourvisor_anex_account_guard')
         self.token=cp.stdout.decode().strip()
         if not self.token or '\n' in self.token:raise RuntimeError('tourvisor_anex_token_invalid')
         self.open=urllib.request.build_opener(NoRedirect())
@@ -169,15 +171,15 @@ class Provider:
         if day!=self.day_value:raise RuntimeError('provider_day_changed')
         with open(self.day,'r+b') as df,open(self.op,'r+b') as of:
             fcntl.flock(df,fcntl.LOCK_EX);fcntl.flock(of,fcntl.LOCK_EX)
-            d,o=self._read(df),self._read(of);used=int(o.get('used',0))
-            charged=max(int(d.get('accounted_requests',0)),int(d.get('known_prior_attempt_floor',0))+int(d.get('match_new_attempts',0)))
-            limit=min(DAILY_LIMIT,int(d.get('owner_daily_limit',DAILY_LIMIT)))
-            if charged>=limit or used>=CALL_CAP:raise RuntimeError('quota_exhausted')
-            d['match_new_attempts']=int(d.get('match_new_attempts',0))+1;d['accounted_requests']=charged+1;d.setdefault('operations',{})[OP]=used+1
-            o.update(status='provider_accessed',used=used+1,last_action=action)
-            self._write(df,d);self._write(of,o);self.used=used+1;self.last=charged+1
+            d,o=self._read(df),self._read(of);used=int(o.get('used',0));tariff_used=int(o.get('tariff_used',0))
+            charged=int(d.get('tariff_search_units',0));tariff_charge=1 if action in ('search_start','search_continue','flights_actualization') else 0
+            if charged+tariff_charge>DAILY_LIMIT or used>=CALL_CAP:raise RuntimeError('quota_exhausted')
+            d['physical_http_attempts']=int(d.get('physical_http_attempts',0))+1;d['tariff_search_units']=charged+tariff_charge
+            d.setdefault('operations',{})[OP]={'physical_http_attempts':used+1,'tariff_search_units':tariff_used+tariff_charge}
+            o.update(status='provider_accessed',used=used+1,tariff_used=tariff_used+tariff_charge,last_action=action)
+            self._write(df,d);self._write(of,o);self.used=used+1;self.tariff_used=tariff_used+tariff_charge;self.last=charged+tariff_charge
         self.counts[action]+=1
-        save(self.dir/f'request-{self.used:04d}.json',{'call':self.used,'action':action,'path':path,'params':params,'accounted_local_ledger':self.last})
+        save(self.dir/f'request-{self.used:04d}.json',{'call':self.used,'action':action,'path':path,'params':params,'tariff_units_local_ledger':self.last})
         pairs=[(k,str(z).lower() if isinstance(z,bool) else str(z)) for k,v in params.items() for z in (v if isinstance(v,list) else [v])]
         url=BASE+path+('?' + urllib.parse.urlencode(pairs) if pairs else '')
         req=urllib.request.Request(url,headers={'Authorization':'Bearer '+self.token,'Accept':'application/json'})
@@ -280,7 +282,7 @@ def execute(root,opdir,router_path,source_sha):
     out={'operation':OP,'state':state,'reason':reason,'source_sha':source_sha,'router_operation':router['operation_id'],'tourvisor_account':ACCOUNT,
          'router_input_count':777,'router_routeable_count':659,'selected_batch_count':len(batches),'selected_hotel_count':len(active),'selected_worst_case_http':scope['worst_case_http'],
          'completed_batches':len(done),'returned_edge_count':len(edges),'captured_single_native_count':captured,
-         'provider_calls':provider.used if provider else 0,'physical_http_attempts':provider.used if provider else 0,'daily_tariff_units_after_local_ledger':provider.last if provider else None,
+         'provider_calls':provider.used if provider else 0,'physical_http_attempts':provider.used if provider else 0,'daily_tariff_units_after_local_ledger':provider.last if provider else None,'operation_tariff_units':provider.tariff_used if provider else 0,
          'call_counts':dict(provider.counts) if provider else {},'edge_state_counts':dict(states),'link_state_counts':dict(links),'edges':edges,'batches':done,
          'skipped_current_anex_count':len(skipped_anex),'skipped_current_samo_count':len(skipped_samo),'skipped_inactive_count':len(skipped_inactive),
          'continue_calls':0,'dates_calls':0,'database_writes':0,'mapping_writes':0,'safe_to_write_now':False}
