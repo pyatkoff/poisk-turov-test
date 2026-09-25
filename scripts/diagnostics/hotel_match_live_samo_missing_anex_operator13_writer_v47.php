@@ -122,7 +122,7 @@ function v47_write(PDO $db,array $manifest,string $sourceSha,string $auditSha,st
     }
 }
 function v47_self_test():void{
-    $a=['operation'=>V47_AUDIT_OP,'state'=>'completed_read_only_v45_current_audit','input_count'=>16,'writer_ready_count'=>16,'writer_ready_target_digest'=>V47_READY_DIGEST,'provider_http_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false,'rows'=>[]];
+    $a=['operation'=>V47_AUDIT_OP,'state'=>'completed_read_only_v45_current_audit','input_count'=>17,'writer_ready_count'=>17,'writer_ready_target_digest'=>V47_READY_DIGEST,'provider_http_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false,'rows'=>[]];
     for($i=0;$i<17;$i++){$tv=100+$i;$id=(string)(5000+$i);$anchor=['supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>(string)(900+$i),'local_hotel_id'=>$tv,'decision_status'=>'accepted','catalog_sha256'=>str_repeat('a',64),'evidence_sha256'=>str_repeat('b',64)];$a['rows'][]=['writer_ready'=>true,'status'=>'current_missing_exact_key','anchor_state'=>'canonical_anchor_ok','anex_hotel_id'=>$id,'tv_hotel_id'=>$tv,'operator_id'=>13,'namespace'=>'anex','source_result_sha256'=>str_repeat('c',64),'search_id_sha256'=>str_repeat('d',64),'tour_id_sha256'=>str_repeat('e',64),'operator_link_sha256'=>str_repeat('f',64),'catalog_hotel'=>['id'=>$tv,'name'=>'H','country_id'=>4,'country_name'=>'Turkey','region_id'=>1,'region_name'=>'R','subregion_id'=>null,'subregion_name'=>'','category'=>'5','is_active'=>1],'anchors'=>[$anchor],'unanimous_catalog_sha256'=>str_repeat('a',64)];}
     v47_need(count(v47_manifest($a))===17,'manifest');
 }
