@@ -1,0 +1,59 @@
+name: Read Search3 provider HTTP boundary
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+    paths:
+      - '.github/workflows/search3-provider-http-boundary-read.yml'
+      - 'scripts/diagnostics/search3_provider_http_boundary_read.py'
+permissions:
+  contents: read
+  actions: read
+  checks: read
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'ops/search3-provider-boundary-20260925'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Check fixed read-only source
+        run: python3 scripts/diagnostics/search3_provider_http_boundary_read.py --check
+      - name: Require current exact-head Security success
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if(process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('no replay');
+            const sha=context.payload.pull_request.head.sha;
+            for(let i=0;i<24;i++) {
+              const {data:pr}=await github.rest.pulls.get({...context.repo,pull_number:context.payload.pull_request.number});
+              if(pr.head.sha!==sha||pr.state!=='open') throw new Error('source drift');
+              const {data}=await github.rest.actions.listWorkflowRunsForRepo({...context.repo,head_sha:sha,event:'pull_request',per_page:100});
+              const run=data.workflow_runs.find(r=>r.path==='.github/workflows/security-guard.yml');
+              if(run?.conclusion==='success') return;
+              if(run?.status==='completed') throw new Error('Security failed');
+              await new Promise(r=>setTimeout(r,5000));
+            }
+            throw new Error('Security not confirmed');
+      - name: Read fixed preview and invalid-request guards
+        env:
+          PREVIEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          PREVIEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PREVIEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: python3 scripts/diagnostics/search3_provider_http_boundary_read.py
+      - name: Retain sanitized read-only receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-provider-boundary-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-provider-boundary/result.json
+          if-no-files-found: warn
+          retention-days: 30
