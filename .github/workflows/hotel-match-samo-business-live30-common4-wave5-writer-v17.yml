@@ -98,7 +98,7 @@ jobs:
           scp "${opts[@]}" input/audit-result.json "$remote:$op/payload/audit-result.json"
           scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php "$remote:$op/payload/scripts/diagnostics/"
           set +e
-          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA='$asha' MATCH_SOURCE_SHA='$HEAD' MATCH_WRITER_OPERATION='$OP' MATCH_EXPECTED_WRITES=300 MATCH_WRITE_OFFSET=0 php \"\$HOME/$op/payload/$(basename scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php)\" --execute" >terminal/w1/remote.stdout 2>terminal/w1/remote.stderr
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA='$asha' MATCH_SOURCE_SHA='$HEAD' MATCH_WRITER_OPERATION='$OP' MATCH_EXPECTED_WRITES=300 MATCH_WRITE_OFFSET=0 php \"\$HOME/$op/payload/scripts/diagnostics/$(basename scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php)\" --execute" >terminal/w1/remote.stdout 2>terminal/w1/remote.stderr
           status=$?
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json pre-commit.json commit-attempt.json result.json receipt.json" >terminal/w1/server.tgz
           set -e
@@ -133,7 +133,7 @@ jobs:
           scp "${opts[@]}" input/audit-result.json "$remote:$op/payload/audit-result.json"
           scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php "$remote:$op/payload/scripts/diagnostics/"
           set +e
-          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA='$asha' MATCH_SOURCE_SHA='$HEAD' MATCH_WRITER_OPERATION='$OP' MATCH_EXPECTED_WRITES=199 MATCH_WRITE_OFFSET=300 php \"\$HOME/$op/payload/$(basename scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php)\" --execute" >terminal/w2/remote.stdout 2>terminal/w2/remote.stderr
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA='$asha' MATCH_SOURCE_SHA='$HEAD' MATCH_WRITER_OPERATION='$OP' MATCH_EXPECTED_WRITES=199 MATCH_WRITE_OFFSET=300 php \"\$HOME/$op/payload/scripts/diagnostics/$(basename scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php)\" --execute" >terminal/w2/remote.stdout 2>terminal/w2/remote.stderr
           status=$?
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json pre-commit.json commit-attempt.json result.json receipt.json" >terminal/w2/server.tgz
           set -e
