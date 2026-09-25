@@ -519,6 +519,45 @@ test('first search sends accepted native resort IDs and preserves exact multi-st
  assert.deepEqual(Array.from(h.dbBodies[0].regionIds),['22','23']);assert.equal(h.dbBodies[0].hotelCategory,'');
  assert.throws(()=>h.data.params(trip,[],{resorts:['Неизвестный']}),/справочника/);
 });
+test('mixed region and subregion OR is split only for native providers and unioned',async()=>{
+ const destinations=(action,p)=>action==='regions'?[
+  {id:21,kind:'region',parentId:Number(p.countryId),name:'Белек',russianName:'Белек',slug:'belek',revision:1,tourvisorIds:['21'],subregions:[
+   {id:2101,kind:'subregion',parentId:21,name:'Кадрие',russianName:'Кадрие',slug:'kadriye',revision:1,tourvisorIds:['2101']}
+  ]}
+ ]:undefined;
+ const h=harness({
+  destinations,database:(i,p)=>snapshot(p,[]),
+  anex:async body=>{
+   const region=body.params.regionIds.length>0;
+   return {response:{ok:true,json:async()=>directAnex(body,{
+    offerRef:'anex_online:'+(region?'3':'4').repeat(64),localId:region?301:302,searchRef:(region?'5':'6').repeat(32)
+   })}};
+  },
+  native:async body=>{
+   const region=body.params.regionIds.length>0;
+   return {response:{ok:true,json:async()=>directAndromeda(body,{
+    offerRef:'offer_'+(region?'7':'8').repeat(64),localId:region?401:402,searchRef:(region?'9':'a').repeat(64)
+   })}};
+  }
+ });
+ await h.data.regions('4');
+ await h.start({resorts:['Белек','Кадрие'],min:0,max:null});await h.poll();await flush();
+ const tv=h.calls.find(call=>call.action==='search_start').params;
+ assert.deepEqual(Array.from(tv.regionIds),['21']);assert.deepEqual(Array.from(tv.subregionIds),['2101'],'Tourvisor keeps canonical mixed OR');
+ assert.deepEqual(Array.from(h.dbBodies[0].regionIds),['21']);assert.deepEqual(Array.from(h.dbBodies[0].subregionIds),['2101'],'LOCAL keeps canonical mixed OR');
+ assert.equal(h.anexCalls.length,2,'ANEX receives one first-week request per destination branch');
+ assert.deepEqual(h.anexCalls.map(call=>[Array.from(call.params.regionIds),Array.from(call.params.subregionIds)]),[
+  [['21'],[]],[[],['2101']]
+ ]);
+ assert.equal(h.nativeCalls.length,2,'Andromeda receives one request per destination branch');
+ assert.deepEqual(h.nativeCalls.map(call=>[Array.from(call.params.regionIds),Array.from(call.params.subregionIds)]),[
+  [['21'],[]],[[],['2101']]
+ ]);
+ const complete=h.events.filter(event=>event.type==='complete').at(-1);assert.ok(complete);
+ assert.equal(complete.sources.anex.status,'complete');assert.equal(complete.sources.anex.windowsTotal,2);
+ assert.equal(complete.sources.andromeda.status,'complete');assert.equal(complete.sources.andromeda.branchesTotal,2);
+ assert.equal(complete.union.offersByProvider.anex,2);assert.equal(complete.union.offersByProvider.andromeda,2);
+});
 test('foreign and ambiguous resort catalogue does not silently drop a selected condition',async()=>{
  const h=harness({destinations:(action)=>action==='regions'?[
   {id:203,kind:'region',parentId:99,name:'Сиде',russianName:'Сиде',slug:'side',revision:1,tourvisorIds:['23']}
