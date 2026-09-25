@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const V39_OP='hotel-match-samo-registry-current-bridge-audit-1971-20260925-v39';
+const V39_OP='hotel-match-samo-registry-current-bridge-audit-1971-20260925-v39r2';
 const V39_V38_OP='hotel-match-samo-registry-consensus-1971-20260925-v38';
 const V39_V38_SHA='fcb21a9ac50d3b1777db003f28d555d106ec8a81';
 const V39_FRONTIER_OP='hotel-match-business-live30-frontier-plan-1971-20260925-v33';
