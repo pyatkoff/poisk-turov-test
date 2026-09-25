@@ -55,13 +55,14 @@ function rehydrationStay(row,kind,canonical,raw){
  }
  return raw?{basis:'raw',value:raw}:null;
 }
-function rehydrationDescriptor(row,hotelId,tour,operatorName,localMeal,localRoom,meal,room){
+function rehydrationDescriptor(row,hotelId,tour,operatorName,localMeal,localRoom,meal,room,placement){
  const legacyHotelId=positiveId(row.legacyHotelId),party=rehydrationParty(tour.party);
- if(!legacyHotelId||!party||!operatorName)return null;
+ if(!legacyHotelId||!party||!operatorName||!placement)return null;
  const mealKey=rehydrationStay(row,'meal',localMeal,meal),roomKey=rehydrationStay(row,'room',localRoom,room);
  if(mealKey===undefined||roomKey===undefined)return null;
  return{schema_version:1,provider:row.provider,anytour_hotel_id:Number(hotelId),legacy_hotel_id:Number(legacyHotelId),
-  checkin:String(tour.checkin),nights:tour.nights,party,operator:{name:operatorName},meal:mealKey,room:roomKey};
+  checkin:String(tour.checkin),nights:tour.nights,party,operator:{name:operatorName},meal:mealKey,room:roomKey,
+  placement:{basis:'raw',value:placement}};
 }
 function offerTour(row,hotelId){
  const listing=listingOf(row);if(!listing)return null;
@@ -69,7 +70,7 @@ function offerTour(row,hotelId){
  const price=amount(listing.listingPrice);if(!/^\d{4}-\d{2}-\d{2}$/.test(String(tour.checkin||''))||!Number.isInteger(tour.nights)||tour.nights<1||tour.nights>60)return null;
  const localMeal=canonicalStay(row,hotelId,'meal'),localRoom=canonicalStay(row,hotelId,'room');
  const meal=safeText(tour.meal&&tour.meal.raw,160),room=safeText(tour.room&&tour.room.raw,300),placement=safeText(tour.placement&&tour.placement.raw,160),operatorName=safeText(operator.canonical_name||operator.raw,180),party=tour.party||{};
- const rehydration=rehydrationDescriptor(row,hotelId,tour,operatorName,localMeal,localRoom,meal,room);
+ const rehydration=rehydrationDescriptor(row,hotelId,tour,operatorName,localMeal,localRoom,meal,room,placement);
  return{...(searchMealPlan(row,hotelId,localMeal)?{searchMealPlan:searchMealPlan(row,hotelId,localMeal)}:{}),...(localMeal||localRoom?{localStay:{source:'anytour-hotel-stay-v2',meal:localMeal,room:localRoom}}:{}),...(rehydration?{rehydration}:{}),id:'cached:'+row.provider+':'+identity.offer_ref_digest,provider:row.provider,cachedListing:true,offerIdentityDigest:identity.offer_ref_digest,searchIdentityDigest:identity.search_ref_digest,selectionEnabled:false,quoteRequired:true,listingPriceState,finalPriceReady:listing.listingPriceReady,priceNeedsConfirmation:listingPriceState==='search_price_confirmation_required',price,currency:'RUB',date:String(tour.checkin),nights:tour.nights,meal:{name:meal},roomType:room,placement,operator:{name:operatorName},adults:Number.isInteger(party.adults)?party.adults:undefined,childs:Number.isInteger(party.children)?party.children:undefined};
 }
 function parse(data){
