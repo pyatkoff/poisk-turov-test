@@ -33,4 +33,4 @@ function main():void{
   $d=r35_json($dir.'/result.json',$out);r35_json($dir.'/receipt.json',['operation_id'=>R35_OP,'source_sha'=>$sha,'state'=>$out['state'],'result_sha256'=>$d,'readback_verified'=>true,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]);if($out['state']!=='completed_read_only')exit(2);
 }
 function selftest():void{r35_req(count(r35_chunks([3,1,1,2],2))===2,'chunks');echo "LIVE_SAMO_MISSING_DIRECT_ANEX_ROUTER_V35_OK\n";}
-if(($argv[1]??'')==='--self-test'){selftest();exit(0);}main();
+if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){if(($argv[1]??'')==='--self-test'){selftest();exit(0);}main();}
