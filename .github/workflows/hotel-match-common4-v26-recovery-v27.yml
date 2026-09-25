@@ -10,10 +10,10 @@ on:
 permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-common4-v26-recovery-1971-20260925-v27, cancel-in-progress: false}
 env:
-  OP: hotel-match-common4-retained-context-v26-recovery-1971-20260925-v27
+  OP: hotel-match-common4-retained-context-v26-recovery-1971-20260925-v27b
   TARGET_OP: hotel-match-common4-retained-context-acquire-1971-20260925-v26
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
-  CLAIM: '5831207996'
+  CLAIM: '5831239347'
   TARGET_RESULT_SHA: 036b64868f17ca2b9f087e998c1064f3f6b1d312c7683bef4768e5f6338844c4
 jobs:
   focused:
@@ -86,7 +86,7 @@ jobs:
           import json,hashlib,pathlib
           r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
           assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
-          assert r['operation']=='hotel-match-common4-retained-context-v26-recovery-1971-20260925-v27'
+          assert r['operation']=='hotel-match-common4-retained-context-v26-recovery-1971-20260925-v27b'
           assert r['state']=='completed_supplier_free_v26_recovery'
           assert r['target_operation']=='hotel-match-common4-retained-context-acquire-1971-20260925-v26'
           assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
