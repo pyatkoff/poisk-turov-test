@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive"><meta name="theme-color" content="#2743CB">
+  <meta name="description" content="AnyTour Search3 v147: проверка перенесённого интерфейса на сохранённых и учебных данных.">
+  <title>AnyTour — найдите свой отдых</title>
+  <link rel="icon" href="./assets/favicon.png" type="image/png"><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./mobile-controls-v1.css">
+  <script src="./fixture-data.js" defer></script>
+  <script src="./local-db-parser.js" defer></script>
+  <script src="./recorded-data.js" defer></script>
+  <script src="./search-lifecycle-v1.js" defer></script>
+  <script src="./flight-picker-v18.js" defer></script>
+  <script src="./preview-lead.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+<a href="#results" class="skip">Перейти к результатам</a>
+<header class="header"><div class="wrap header-inner">
+  <a class="brand" href="#search" aria-label="AnyTour — начало"><img class="brand-logo" src="./assets/anytour-logo.svg" alt="AnyTour" width="224" height="61"></a>
+  <nav aria-label="Основная навигация"><a class="nav-current" href="#search">Подбор тура</a><button data-action="favorites" class="nav-btn" id="favorites-nav" hidden aria-hidden="true" tabindex="-1"></button><button data-action="compare" class="nav-btn" id="compare-nav" hidden aria-hidden="true" tabindex="-1"></button><button data-action="selected-tour" class="nav-btn" id="selected-tour-nav" hidden aria-hidden="true" tabindex="-1"></button></nav>
+  <span class="private-badge"><span class="status-dot"></span> Версия для проверки</span>
+</div></header>
+<div id="compact-search" class="compact-search" hidden><div class="wrap"><a class="compact-brand" href="#search" data-action="top" aria-label="AnyTour — изменить поиск"><img src="./assets/anytour-logo.svg" alt="AnyTour" width="224" height="61"></a><button class="icon-button selected-tour-shortcut" data-action="selected-tour" aria-label="Открыть мой выбранный тур" hidden><span data-icon="suitcase"></span></button><div class="compact-route-block"><strong id="compact-route"></strong><span id="compact-details"></span></div><button class="secondary" data-action="top" aria-label="Изменить поиск"><span data-icon="sliders"></span><span>Изменить поиск</span></button></div><div class="compact-refinements" role="group" aria-label="Уточнить найденные туры"><button type="button" id="compact-category" data-action="category-filters" aria-haspopup="dialog"><span>Категория</span><span aria-hidden="true">⌄</span></button><button type="button" id="compact-meal" data-action="meals" aria-haspopup="dialog"><span>Питание</span><span aria-hidden="true">⌄</span></button><button type="button" id="compact-budget" data-action="budget" aria-haspopup="dialog"><span>Бюджет</span><span aria-hidden="true">⌄</span></button></div></div>
+<main>
+<section class="search-section" id="search" aria-labelledby="page-title"><div class="wrap">
+  <div class="intro"><h1 id="page-title">Куда отправимся?</h1><button type="button" class="text-button more-filters" data-action="filters"><span data-icon="sliders"></span> Все фильтры <span id="filter-count"></span></button></div>
+  <div id="applied-search" class="applied-search" hidden></div>
+  <form id="search-form" class="search-box">
+    <div class="search-primary">
+      <label class="search-field"><span class="field-label">Откуда</span><span class="field-control"><span data-icon="plane"></span><select id="origin" aria-label="Город вылета"><option>Москва</option><option>Санкт-Петербург</option><option>Казань</option></select></span></label>
+      <button type="button" class="search-field field-button destination-field" id="country" data-action="destination" aria-label="Направление"><span class="field-label">Куда</span><span class="field-control"><span data-icon="pin"></span><span id="destination-label">Турция</span><span class="chevron">⌄</span></span></button>
+      <button type="button" class="search-field field-button" data-action="dates"><span class="field-label">Даты вылета</span><span class="field-control"><span data-icon="calendar"></span><span id="dates-label"></span><span class="chevron">⌄</span></span></button>
+      <button type="button" class="search-field field-button" data-action="nights"><span class="field-label">Ночей</span><span class="field-control"><span data-icon="moon"></span><span id="nights-label"></span><span class="chevron">⌄</span></span></button>
+      <button type="button" class="search-field field-button" data-action="guests"><span class="field-label">Туристы</span><span class="field-control"><span data-icon="users"></span><span id="guests-label"></span><span class="chevron">⌄</span></span></button>
+
+    </div>
+    <div class="search-secondary">
+      <fieldset class="quick-category"><legend>Категория отеля</legend><div id="quick-stars" class="quick-stars" aria-label="Категория отеля"><button type="button" data-action="any-stars" aria-pressed="true">Любая</button><button type="button" data-action="star" data-value="2" aria-pressed="false">2 ★</button><button type="button" data-action="star" data-value="3" aria-pressed="false">3 ★</button><button type="button" data-action="star" data-value="4" aria-pressed="false">4 ★</button><button type="button" data-action="star" data-value="5" aria-pressed="false">5 ★</button></div></fieldset>
+      <button type="button" class="quick-field" id="quick-meal" data-action="meals"><span>Питание</span><strong id="meal-label">Любое</strong><span class="chevron">⌄</span></button>
+      <button type="button" class="quick-field" id="quick-budget" data-action="budget"><span>Бюджет за всех</span><strong id="budget-label">Без ограничений</strong><span class="chevron">⌄</span></button>
+    </div>
+    <p id="search-edit-note" class="search-edit-note" hidden>Все изменения применятся после поиска. Отмена вернёт прежние условия и результаты.</p><div class="search-actions"><button type="button" class="text-button" id="search-return" data-action="cancel-search-edit" hidden>Отменить</button><button type="submit" class="primary search-submit"><span data-icon="search"></span> Найти туры</button></div>
+  </form>
+  <details class="demo-note preview-disclosure"><summary>Прототип · цены требуют проверки</summary><p>Сохранённая выдача и демонстрационные сценарии. Живой поиск ещё не подключён. Заявки и оплата отключены.</p></details>
+</div></section>
+<section class="results-section wrap" id="results" aria-labelledby="results-title" tabindex="-1">
+  <div class="results-heading"><div><div class="breadcrumb" id="route-label"></div><h2 id="results-title">Ваш следующий отдых</h2><p id="results-summary" class="muted" aria-live="polite"></p></div><div class="heading-label"><span data-icon="shield"></span><span>Цена за всех туристов<br><strong>уточняется при выборе</strong></span></div></div>
+  <div class="results-layout">
+    <aside id="filter-panel" class="filter-panel" aria-label="Фильтры отелей"><div class="filter-top"><h3>Фильтры</h3><button class="text-button" data-action="reset">Сбросить</button><button class="icon-button mobile-close" data-action="close-filters" aria-label="Закрыть фильтры"><span data-icon="x"></span></button><label class="filter-section-nav"><span class="sr-only">Перейти к разделу фильтров</span><select id="filter-section-jump"><option value="">К разделу фильтров…</option></select></label></div><div class="drawer-overview"><p id="drawer-context"></p><p id="filter-preview-count" aria-live="polite"></p><div id="drawer-selected"></div><div id="drawer-recovery" role="region" aria-label="Как вернуть отели в выдачу" tabindex="-1"></div></div><div id="filters"></div><div class="mobile-filter-footer"><button class="secondary" data-action="close-filters">Отмена</button><button class="primary" data-action="apply-filters" id="apply-filters">Показать отели</button></div></aside>
+    <div class="results-main">
+      <div id="search-status" class="search-status" role="status" aria-live="polite" hidden></div>
+      <div class="calendar-card" id="price-calendar"><button class="calendar-preview-toggle" data-action="toggle-price-preview" aria-expanded="false" aria-controls="calendar-preview"><span data-icon="calendar"></span><strong>Календарь цен</strong><span class="calendar-preview-label">Показать</span><span aria-hidden="true">⌄</span></button><div id="calendar-preview"><div class="calendar-heading"><h3><span data-icon="calendar"></span> Календарь цен</h3><button class="text-button" data-action="calendar">Выбрать даты <span>↗</span></button></div><p id="calendar-caption" class="calendar-caption"></p><div class="price-strip" id="price-strip"></div><div class="calendar-foot"><span><i class="legend-dot"></i> Минимальная цена среди этих дат</span><button class="text-button" data-action="clear-date" id="clear-date" hidden>Все даты</button></div></div></div>
+      <div class="results-toolbar"><button class="secondary drawer-trigger" data-action="filters"><span data-icon="sliders"></span> Фильтры <span id="drawer-filter-count"></span></button><div class="quick-chips"><button data-action="favorites" class="chip saved-shortcut" id="favorites-results" hidden aria-hidden="true" tabindex="-1"><span data-icon="heart"></span> Избранное <span id="favorites-results-count"></span></button><button data-action="preset" data-preset="beach" class="chip" id="beach-chip"><span data-icon="waves"></span> Первая линия</button><button data-action="preset" data-preset="rating" class="chip" id="rating-chip"><span>Рейтинг 4,5+</span><small id="rating-chip-count"></small></button><button data-action="preset" data-preset="family" class="chip" id="family-chip"><span data-icon="users"></span> Для семьи</button></div><label class="sort-label"><span class="sr-only">Сортировать</span><select id="sort"><option value="recommended">Рекомендуемые</option><option value="price">Сначала дешевле</option><option value="rating">По рейтингу</option></select></label></div>
+      <div id="active-filters" class="active-filters"></div><div id="cards" class="cards"></div>
+      <div id="search-more" class="search-status" hidden></div>
+    </div>
+  </div>
+</section>
+</main>
+<details class="prototype-tools wrap"><summary><strong id="prototype-version">Прототип v137</strong><span>Настройки и сценарии</span></summary><div class="prototype-lab" aria-label="Сценарии прототипа"><div><strong>Прототип v137</strong><span id="fixture-description">Сохранённая выдача от 23.09.2026 и обозначенные демосценарии.</span></div><label>Сценарий<select id="fixture-scenario"><option value="snapshot">Большая выдача · реальный пример</option><option value="flights">24 пары рейсов · демо</option><option value="mixed">Разные отели и номера · демо</option><option value="family">Семья: дети 0 и 8 лет · демо</option><option value="incomplete">Неполные данные · демо</option><option value="price-change">Цена изменилась · демо</option><option value="unavailable">Тур исчез · демо</option><option value="expired">Срок тура истёк · демо</option><option value="flight-error">Ошибка загрузки рейсов · демо</option><option value="empty">Ничего не найдено · демо</option></select></label><label>Загрузить запись тура<input id="recording-file" type="file" accept=".json,application/json"></label><span id="recording-status" role="status">Файл AnyTour с выдачей, ценой и рейсами. Только в этой вкладке, без отправки на сервер.</span></div></details>
+<footer class="footer"><div class="wrap footer-inner"><a class="brand footer-brand" href="#search" aria-label="AnyTour — к поиску"><img class="brand-logo" src="./assets/anytour-logo.svg" alt="AnyTour" width="224" height="61"></a><p>Отдых начинается с хорошего выбора.</p><button class="text-button" data-action="about">О прототипе</button><span>Search3 · v137 · 25.09.2026</span></div></footer>
+<div class="mobile-bottom" aria-label="Управление поиском"><label class="mobile-sort" for="mobile-sort"><span data-icon="sort"></span><span id="mobile-sort-label">Сортировка</span><select id="mobile-sort" aria-label="Сортировать отели"><option value="recommended">Рекомендуемые</option><option value="price">Сначала дешевле</option><option value="rating">По рейтингу</option></select></label><button data-action="filters"><span data-icon="sliders"></span> Фильтры <span id="mobile-count"></span></button><button data-action="calendar"><span data-icon="calendar"></span><span class="mobile-nav-label">Даты и цены</span></button><button data-action="top"><span data-icon="search"></span><span class="mobile-nav-label">Поиск</span></button><button class="selected-tour-shortcut" data-action="selected-tour" hidden><span data-icon="suitcase"></span><span class="mobile-nav-label">Мой тур</span></button></div>
+<div id="compare-tray" class="compare-tray" hidden></div>
+<div id="filter-backdrop" class="filter-backdrop" hidden></div>
+<dialog id="modal" aria-labelledby="modal-title"><div class="modal-header"><button id="modal-back" class="icon-button" data-action="modal-back" aria-label="Назад к предыдущему шагу" hidden><span data-icon="back"></span><span id="modal-back-label">Назад</span></button><div><p id="modal-kicker" class="eyebrow"></p><h2 id="modal-title" tabindex="-1"></h2></div><button class="icon-button" data-action="close-modal" aria-label="Закрыть окно"><span data-icon="x"></span></button></div><div id="modal-body"></div><div id="modal-footer" hidden></div></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+<noscript><div class="noscript">Для интерактивного поиска включите JavaScript.</div></noscript>
+</body></html>

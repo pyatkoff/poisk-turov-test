@@ -1,0 +1,136 @@
+/* Search3 prototype: keep native mobile controls readable and easy to tap. */
+@media (max-width:760px) {
+  .sort-label select,
+  .offer-list-toolbar select,
+  .offer-controls select {
+    font-size:16px;
+    min-height:44px;
+  }
+
+  .offer-list-toolbar {
+    font-size:16px;
+  }
+
+  .search-secondary label,
+  .search-secondary select,
+  .search-secondary .more-filters {
+    min-height:44px;
+  }
+
+  .search-secondary select {
+    font-size:16px;
+  }
+
+  .quick-category legend,
+  .quick-field > span:first-child,
+  .intro .more-filters {
+    font-size:14px;
+  }
+
+  .intro .more-filters {
+    min-height:44px;
+  }
+
+  .drawer-trigger,
+  .quick-chips .chip,
+  .active-filter,
+  .hotel-links .text-button,
+  .compare-btn,
+  .hotel-more .text-button,
+  .offer-price .primary,
+  .compare-tray > .primary,
+  .calendar-heading .text-button,
+  .calendar-foot .text-button,
+  .destination-selection button,
+  .flex-dates button,
+  .filter-panel .check-row,
+  .filter-panel .star-options button,
+  .filter-top .text-button {
+    min-height:44px;
+  }
+
+  .applied-search > .secondary,
+  .compact-search .secondary {
+    width:44px;
+    min-width:44px;
+    min-height:44px;
+  }
+
+  .filter-top .mobile-close,
+  .favorite-button,
+  .card-photo-arrow,
+  .compare-tray .icon-button,
+  .modal-header .icon-button,
+  #modal-back,
+  .counter button,
+  .favorite-item .icon-button,
+  .compare-hotel-card .compare-remove {
+    width:44px;
+    min-width:44px;
+    height:44px;
+    min-height:44px;
+  }
+
+  .header .brand-logo {
+    width:clamp(136px,38vw,148px);
+  }
+
+  .header .nav-btn {
+    min-width:44px;
+  }
+
+  .filter-panel.open .filter-top {
+    padding-top:calc(18px + env(safe-area-inset-top));
+  }
+
+  .compare-tray {
+    bottom:calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .toast {
+    bottom:calc(84px + env(safe-area-inset-bottom));
+  }
+
+  body:has(.compare-tray:not([hidden])) .toast {
+    bottom:calc(155px + env(safe-area-inset-bottom));
+  }
+
+  .hotel-image-wrap {
+    aspect-ratio:3 / 2;
+  }
+
+  .hotel-detail-photos {
+    grid-template-rows:108px 108px;
+  }
+}
+
+/* Keep the full destination catalogue reachable without pushing resorts below dozens of country rows. */
+@media (max-width:760px) {
+  .destination-countries {
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scroll-snap-type:x proximity;
+    scrollbar-width:thin;
+    padding-bottom:5px;
+  }
+
+  .destination-countries button {
+    flex:0 0 auto;
+    min-width:104px;
+    white-space:nowrap;
+    scroll-snap-align:start;
+  }
+}
+
+/* The shared comparison toggle also emits a text label for saved-list buttons.
+   Photo overlays remain icon-only; their explicit accessible name and pressed
+   state are unchanged. Do not suppress labels on full-width .compare-btn. */
+.compare-photo-button {
+  font-size:0;
+  line-height:0;
+}
+
+.compare-photo-button svg {
+  flex-shrink:0;
+}

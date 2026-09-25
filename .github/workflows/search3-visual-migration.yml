@@ -1,0 +1,32 @@
+name: Search3 full visual migration
+on:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'v2/visual-search/**'
+      - 'tests/search3-visual-*.cjs'
+      - '.github/workflows/search3-visual-migration.yml'
+permissions:
+  contents: read
+jobs:
+  visual-migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save jsdom@26.1.0
+      - name: Full transferred UI and offline boundary
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
+          node tests/search3-visual-migration.cjs
+          node tests/search3-visual-v139-search-edit-tests.cjs
+          node tests/search3-visual-v120-recorded-journey-tests.cjs
+          php -l v2/visual-search/index.php
+          php -r '$_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php"; ob_start(); include "v2/visual-search/index.php";' | grep -Fq 'only available in its separate preview'
+          php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include "v2/visual-search/index.php";' | grep -Eq 'app.js\?v=[0-9a-f]{12}'
