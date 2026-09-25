@@ -11,10 +11,10 @@ permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-common4-retained-context-writer-v28, cancel-in-progress: false}
 env:
   AUDIT_OP: hotel-match-common4-retained-context-current-1971-20260925-v27b
-  W1: hotel-match-common4-retained-context-writer-1971-20260925-v28-w1
-  W2: hotel-match-common4-retained-context-writer-1971-20260925-v28-w2
+  W1: hotel-match-common4-retained-context-writer-1971-20260925-v28-w1b
+  W2: hotel-match-common4-retained-context-writer-1971-20260925-v28-w2b
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
-  CLAIM: '5833427803'
+  CLAIM: '5833566969'
   AUDIT_ARTIFACT: '10860722022'
   AUDIT_ARCHIVE_SHA: 31bef387fdec27226477b8895b0f2d44eb5213998cd23266332b968e9d49dcb1
   AUDIT_RESULT_SHA: 684765a0614e180b67bd74b182a70c7d061a46c6306465b9c06d8195b5bdd344
@@ -50,7 +50,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['W1'],os.environ['W2'],'494 writer_ready','300 + 194','provider0','SERIALIZABLE insert-only']: assert x in b,x
+          for x in [os.environ['W1'],os.environ['W2'],'300, offset0, operator_315','194, offset300, operator_315','provider0','SERIALIZABLE insert-only']: assert x in b,x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
               q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
