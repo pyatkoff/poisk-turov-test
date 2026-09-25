@@ -24,7 +24,15 @@ jobs:
         run: |
           set -euo pipefail
           python -m py_compile carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py
-          test "$(git -C carrier diff --name-only 00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8 HEAD | sort | tr '\n' ' ')" = '.github/workflows/search3-hc1-consumer-assembly.yml scripts/diagnostics/search3_hc1_assemble_consumer.py '
+          origin=00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8
+          common=$(git -C carrier merge-base "$origin" HEAD)
+          test "$common" = "$origin"
+          git -C carrier diff --name-only "$common" HEAD > "$RUNNER_TEMP/hc1-scope.txt"
+          python - <<'PY'
+          import os,pathlib
+          names=pathlib.Path(os.environ['RUNNER_TEMP'],'hc1-scope.txt').read_text().splitlines()
+          assert sorted(names)==['.github/workflows/search3-hc1-consumer-assembly.yml','scripts/diagnostics/search3_hc1_assemble_consumer.py'],names
+          PY
           python - <<'PY'
           import json,os,time,urllib.request
           root='https://api.github.com/repos/pyatkoff/poisk-turov-test/'
@@ -43,12 +51,20 @@ jobs:
               time.sleep(2)
           else:raise SystemExit('security_not_confirmed')
           PY
-      - name: Assemble source Git objects, without changing any branch
+      - name: Assemble source objects; workflow changes stay in the review artifact
         working-directory: work
         env:
           GH_TOKEN: '${{ github.token }}'
           HC1_ASSEMBLY_OUTPUT: '${{ runner.temp }}/hc1-consumer-source'
-        run: python ../carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          code=Path('../carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py').read_text()
+          old="    for path,text in files.items():\n        blob=api('POST','git/blobs'"
+          new="    for path,text in files.items():\n        if path.startswith('.github/workflows/'):\n            continue  # A separate connector write carries the reviewed CI edit.\n        blob=api('POST','git/blobs'"
+          assert code.count(old)==1
+          exec(compile(code.replace(old,new,1),'<reviewed-hc1-source-assembly>','exec'),{'__name__':'__main__'})
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
