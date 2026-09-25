@@ -1,0 +1,122 @@
+name: HC1 installed content adapter and media D1
+on:
+  pull_request:
+    types: [opened]
+    branches: [release/search3-production-ready-v1]
+    paths: ['.github/workflows/search3-hc1-content-browser-d1.yml']
+permissions: {contents: read, actions: read, issues: read}
+jobs:
+  read-only-browser:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.event.pull_request.head.repo.full_name == github.repository && github.run_attempt == 1 &&
+      github.event.pull_request.head.ref == 'ops/search3-hc1-content-browser-20260925-d1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Check exact authorization and terminal C1 before read-only acceptance
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import os,json,time,urllib.request
+          def get(path):
+              q=urllib.request.Request('https://api.github.com/repos/pyatkoff/poisk-turov-test/'+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(q,timeout=20) as r:return json.load(r)
+          c=get('issues/comments/5832003263');assert c['user']['id']==226193297 and c['issue_url'].endswith('/issues/3419')
+          assert 'ops/search3-hc1-content-browser-20260925-d1' in c['body']
+          assert get('actions/runs/36132035917')['conclusion']=='success'
+          for _ in range(40):
+              rs=get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+              rs=[r for r in rs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if rs and max(rs,key=lambda r:r['id'])['status']=='completed':
+                  assert max(rs,key=lambda r:r['id'])['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_unconfirmed')
+          PY
+      - name: Install existing pinned browser test version
+        run: |
+          python3 -m pip install playwright==1.57.0
+          python3 -m playwright install --with-deps chromium
+      - name: Read real profiles and installed modules, then verify adapter and photo decoding
+        run: |
+          mkdir -p evidence
+          python3 - <<'PY'
+          import asyncio,json,hashlib,pathlib
+          from urllib.parse import urlencode,urlsplit,parse_qs
+          from playwright.async_api import async_playwright
+          BASE='https://anytoour.ru/_preview/search3-local-candidate/'
+          IDS=list(range(4349,4367))
+          async def main():
+              async with async_playwright() as p:
+                  api=await p.request.new_context()
+                  async def read(url):
+                      r=await api.get(url,timeout=20000,max_redirects=0)
+                      assert r.status==200,(urlsplit(url).path,r.status)
+                      b=await r.body();assert len(b)<4*1024*1024;return b
+                  raw=await read(BASE+'data/hotel-details-read-v1.php?'+urlencode([('catalog','anytour')]+[('anytourHotelIds[]',i) for i in IDS]))
+                  catalog=json.loads(raw)
+                  assert catalog['ok'] is True and catalog['source']=='anytour-canonical-catalog'
+                  assert catalog['requestedAnyTourIds']==IDS and catalog['missingAnyTourIds']==[]
+                  profiles={x['id']:x for x in catalog['items']}
+                  assert sorted(profiles)==IDS and all(x['revision']==2 for x in profiles.values())
+                  scripts={}
+                  for name in ['search3-canonical-profiles-v1.js','prototype-search/data.js']:
+                      scripts[name]=await read(BASE+name)
+                  browser=await p.chromium.launch()
+                  page=await browser.new_page(viewport={'width':390,'height':844})
+                  replayed=[];media=[];blocked=[]
+                  allowed=set()
+                  for row in profiles.values():
+                      for value in [row.get('primaryImage'),*(row.get('images') or [])]:
+                          if isinstance(value,str):
+                              u=urlsplit(value)
+                              if u.scheme=='https' and not u.username and (u.hostname=='tourvisor.ru' or (u.hostname or '').endswith('.tourvisor.ru') or u.hostname=='anytoour.ru'):
+                                  allowed.add(value)
+                  async def route(r):
+                      u=urlsplit(r.request.url)
+                      if r.request.is_navigation_request():
+                          await r.fulfill(content_type='text/html',body='<html lang="ru"><meta charset="utf-8"><title>HC-1 content test</title><body><h1>HC-1: проверка контента, не экран поиска</h1><main id="content"></main></body></html>');return
+                      if u.path.endswith('/data/hotel-details-read-v1.php') and u.hostname=='anytoour.ru':
+                          query=parse_qs(u.query);key=int(query.get('anytourHotelId',['0'])[0]);assert key in profiles and query.get('catalog')==['anytour']
+                          replayed.append(key)
+                          await r.fulfill(content_type='application/json',body=json.dumps({'ok':True,'catalog':'anytour','source':'anytour-canonical-catalog','item':profiles[key]}));return
+                      if r.request.resource_type=='image' and r.request.url in allowed:
+                          media.append(r.request.url);await r.continue_();return
+                      blocked.append({'path':u.path,'type':r.request.resource_type,'host':u.hostname});await r.abort()
+                  await page.route('**/*',route)
+                  await page.goto(BASE+'prototype-search/')
+                  await page.evaluate('window.V2Runtime={}')
+                  for body in scripts.values():await page.add_script_tag(content=body.decode())
+                  models=await page.evaluate('(ids)=>window.AnyTourPrototypeData.savedHotels(ids,{country:"content-test-only"})',IDS)
+                  assert sorted(x['id'] for x in models)==IDS
+                  report=[]
+                  for x in models:
+                      own=profiles[x['id']]
+                      assert x['note']==(own.get('description') or '') and x['photos'] and x['offers']==[]
+                      report.append({'id':x['id'],'name':x['name'],'photosInModel':len(x['photos']),'descriptionCharacters':len(x['note']),'mainPhotoAllowed':x['photos'][0] in allowed})
+                  await page.add_style_tag(content='body{font:16px Arial;margin:16px}h1{font-size:20px}main{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}article{border:1px solid;padding:12px}img{width:100%;height:150px;object-fit:cover}p{font-size:13px}')
+                  photos=await page.evaluate('''async rows=>{
+                    const root=document.querySelector('#content');
+                    return await Promise.all(rows.map(h=>new Promise(resolve=>{
+                      const a=document.createElement('article'),title=document.createElement('h2'),img=document.createElement('img'),text=document.createElement('p');
+                      title.textContent=h.name;text.textContent=h.note.replace(/<[^>]*>/g,' ').slice(0,180)||'Описание отсутствует';img.alt=h.name;
+                      a.append(title,img,text);root.append(a);let finished=false;
+                      const done=ok=>{if(finished)return;finished=true;clearTimeout(timer);resolve({id:h.id,loaded:ok,width:img.naturalWidth,height:img.naturalHeight});};
+                      const timer=setTimeout(()=>done(false),15000);img.onload=()=>done(img.naturalWidth>0);img.onerror=()=>done(false);img.src=h.photos[0];
+                    })));
+                  }''',models)
+                  for x in report:x.update(next(v for v in photos if v['id']==x['id']))
+                  for width in [390,1440]:
+                      await page.set_viewport_size({'width':width,'height':844 if width==390 else 900})
+                      await page.screenshot(path=f'evidence/content-diagnostic-{width}.png',full_page=True)
+                  result={'operation':'search3-hc1-content-browser-20260925-d1','state':'adapter_media_checked','basis':'real_current_profiles_replayed_through_currently_served_modules_in_isolated_test_document','profiles':report,'httpSourceReads':3,'replayedProfileReads':len(replayed),'mediaHttpAttempts':len(media),'imagesLoaded':sum(x['loaded'] for x in report),'blocked':blocked,'supplierApiCalls':0,'databaseWrites':0,'actualSearchUiJourney':'not_checked','physicalSafari':'not_checked','scriptSha256':{name:hashlib.sha256(body).hexdigest() for name,body in scripts.items()}}
+                  pathlib.Path('evidence/result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+                  print(json.dumps({k:v for k,v in result.items() if k!='scriptSha256'},ensure_ascii=False))
+                  await browser.close();await api.dispose()
+                  assert result['imagesLoaded']==18,'Some photos did not decode; preserve specific rows and do not mutate catalogue'
+          asyncio.run(main())
+          PY
+      - name: Retain bounded content evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hc1-d1-browser-${{ github.run_id }}', path: evidence/, retention-days: 30, if-no-files-found: warn}
