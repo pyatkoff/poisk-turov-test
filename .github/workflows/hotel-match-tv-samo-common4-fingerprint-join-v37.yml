@@ -46,7 +46,7 @@ jobs:
 
   live:
     needs: focused
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/tv-samo-common4-fingerprint-v37-20260925'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/tv-samo-common4-fingerprint-v37-20260925' && github.event.pull_request.head.sha == 'fb968e6d81b41c5ff208f8281db0e026b1c787c5'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
