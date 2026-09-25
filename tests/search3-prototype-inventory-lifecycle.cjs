@@ -558,6 +558,33 @@ test('mixed region and subregion OR is split only for native providers and union
  assert.equal(complete.sources.andromeda.status,'complete');assert.equal(complete.sources.andromeda.branchesTotal,2);
  assert.equal(complete.union.offersByProvider.anex,2);assert.equal(complete.union.offersByProvider.andromeda,2);
 });
+test('mixed direct ANEX keeps a valid sibling branch when the first branch fails',async()=>{
+ const destinations=(action,p)=>action==='regions'?[
+  {id:21,kind:'region',parentId:Number(p.countryId),name:'Белек',russianName:'Белек',slug:'belek',revision:1,tourvisorIds:['21'],subregions:[
+   {id:2101,kind:'subregion',parentId:21,name:'Кадрие',russianName:'Кадрие',slug:'kadriye',revision:1,tourvisorIds:['2101']}
+  ]}
+ ]:undefined;
+ const h=harness({
+  destinations,database:(i,p)=>snapshot(p,[]),
+  anex:async body=>{
+   if(body.params.regionIds.length)return {response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}};
+   return {response:{ok:true,json:async()=>directAnex(body,{offerRef:'anex_online:'+'f'.repeat(64),localId:302,searchRef:'e'.repeat(32)})}};
+  }
+ });
+ await h.data.regions('4');
+ await h.start({resorts:['Белек','Кадрие'],min:0,max:null});await h.poll();await flush();
+ assert.equal(h.anexCalls.length,2,'both mixed destination branches are attempted');
+ assert.deepEqual(h.anexCalls.map(call=>[Array.from(call.params.regionIds),Array.from(call.params.subregionIds)]),[
+  [['21'],[]],[[],['2101']]
+ ]);
+ const final=h.events.filter(event=>event.type==='complete').at(-1);assert.ok(final);
+ assert.equal(final.sources.anex.status,'partial');
+ assert.equal(final.sources.anex.destinationBranchFailed,true);
+ assert.equal(final.sources.anex.windowsLoaded,1);
+ assert.equal(final.sources.anex.windowsTotal,2);
+ assert.equal(final.sources.anex.offers,1);
+ assert.equal(final.union.offersByProvider.anex,1,'valid sibling ANEX branch survives');
+});
 test('mixed Andromeda keeps a valid sibling branch when the first branch is malformed',async()=>{
  const destinations=(action,p)=>action==='regions'?[
   {id:21,kind:'region',parentId:Number(p.countryId),name:'Белек',russianName:'Белек',slug:'belek',revision:1,tourvisorIds:['21'],subregions:[
