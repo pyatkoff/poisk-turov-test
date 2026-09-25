@@ -1,0 +1,73 @@
+<?php
+declare(strict_types=1);
+
+const V40_OP='hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40b';
+const V40_V39_OP='hotel-match-tv-samo-single-fingerprint-conflict-audit-1971-20260925-v39';
+const V40_V37_OP='hotel-match-tv-samo-common4-fingerprint-join-1971-20260925-v37';
+const V40_V37_SHA='b7ef6082b8d27ad822ddaf69dd86e9249523f859cd61ee1b547c106118ffc55a';
+const V40_NS_OP=['operator_315'=>25,'operator_342'=>43];
+
+function v40_need(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
+function v40_json(mixed $v):string{return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
+function v40_load(string $p):array{$v=json_decode((string)file_get_contents($p),true,512,JSON_THROW_ON_ERROR);v40_need(is_array($v),'json_shape');return$v;}
+function v40_save(string $p,array $v):string{$raw=v40_json($v)."\n";$f=@fopen($p,'x+b');v40_need($f!==false,'exclusive_create');try{v40_need(fwrite($f,$raw)===strlen($raw)&&fflush($f),'write');if(function_exists('fsync'))v40_need(fsync($f),'sync');}finally{fclose($f);}return hash('sha256',$raw);}
+function v40_query(PDO $db,string $sql,array $args=[]):array{$st=$db->prepare($sql);$st->execute(array_values($args));return$st->fetchAll(PDO::FETCH_ASSOC)?:[];}
+function v40_sha(mixed $v):bool{return is_string($v)&&preg_match('/^[0-9a-f]{64}$/D',$v)===1;}
+function v40_norm(mixed $v):string{$s=mb_strtolower(trim((string)$v),'UTF-8');$s=str_replace('ё','е',$s);$s=preg_replace('/[^\p{L}\p{N}]+/u',' ',$s)??$s;return trim(preg_replace('/\s+/u',' ',$s)??$s);}
+function v40_core(mixed $v):array{$drop=['hotel'=>1,'hotels'=>1,'otel'=>1,'отель'=>1,'отели'=>1,'resort'=>1,'resorts'=>1,'spa'=>1,'the'=>1,'and'=>1,'by'=>1,'adults'=>1,'adult'=>1,'only'=>1,'16'=>1,'18'=>1,'ex'=>1,'former'=>1,'wb'=>1,'travel'=>1,'резорт'=>1,'ресорт'=>1,'спа'=>1];$out=[];foreach(preg_split('/\s+/u',v40_norm($v),-1,PREG_SPLIT_NO_EMPTY)?:[] as$x)if(!isset($drop[$x]))$out[$x]=true;$a=array_keys($out);sort($a,SORT_STRING);return$a;}
+function v40_jaccard(array $a,array $b):float{$u=array_unique(array_merge($a,$b));return$u?count(array_intersect($a,$b))/count($u):0.0;}
+function v40_point(array $r):?array{if(!is_numeric($r['latitude']??null)||!is_numeric($r['longitude']??null))return null;$a=(float)$r['latitude'];$b=(float)$r['longitude'];return(abs($a)<=90&&abs($b)<=180&&($a!=0.0||$b!=0.0))?[$a,$b]:null;}
+function v40_dist(?array $a,?array $b):?float{if($a===null||$b===null)return null;[$lat1,$lon1]=$a;[$lat2,$lon2]=$b;$p1=deg2rad($lat1);$p2=deg2rad($lat2);$dp=$p2-$p1;$dl=deg2rad($lon2-$lon1);$x=sin($dp/2)**2+cos($p1)*cos($p2)*sin($dl/2)**2;return 6371000*2*asin(min(1,sqrt($x)));}
+function v40_evidence_ok(array $r):bool{if(($r['decision_status']??'')!=='accepted')return false;$raw=(string)($r['evidence_json']??'');$eh=(string)($r['evidence_sha256']??'');$ch=(string)($r['catalog_sha256']??'');return v40_sha($eh)&&v40_sha($ch)&&hash('sha256',$raw)===$eh;}
+function v40_meta_walk(mixed $node,array &$out,int $d=0):void{if($d>12||!is_array($node))return;foreach($node as$k=>$v){$lk=mb_strtolower((string)$k,'UTF-8');if(!is_array($v)&&preg_match('/(?:method|source|operation|reason|confidence|namespace|operator|match)/',$lk)&&!preg_match('/(?:token|secret|password|auth|cookie|session|url|link|query)/',$lk)){$s=trim((string)$v);if($s!==''&&strlen($s)<=180)$out[$lk][$s]=true;}if(is_array($v))v40_meta_walk($v,$out,$d+1);}}
+function v40_evidence_meta(array $r):array{$raw=(string)($r['evidence_json']??'');$v=json_decode($raw,true);$out=[];if(is_array($v))v40_meta_walk($v,$out);foreach($out as$k=>$set)$out[$k]=array_slice(array_keys($set),0,20);ksort($out);return$out;}
+function v40_direct_walk(mixed $node,?string $ns,array &$out,int $d=0):void{
+  if($d>12||!is_array($node))return;
+  if(!array_is_list($node)){
+    $n=(string)($node['namespace']??$node['supplier_namespace']??$ns??'');if(isset(V40_NS_OP[$n]))$ns=$n;
+    $ids=[];foreach(['native_id','external_hotel_id'] as$k)if(preg_match('/^[1-9][0-9]{0,21}$/D',(string)($node[$k]??'')))$ids[]=(string)$node[$k];
+    if(is_array($node['positive_native_candidates']??null))foreach($node['positive_native_candidates'] as$id)if(preg_match('/^[1-9][0-9]{0,21}$/D',(string)$id))$ids[]=(string)$id;
+    if($ns!==null&&isset(V40_NS_OP[$ns]))foreach(array_unique($ids) as$id)$out[$ns][$id]=true;
+  }
+  foreach($node as$k=>$v)if(is_array($v)){ $childNs=(is_string($k)&&isset(V40_NS_OP[$k]))?$k:$ns; v40_direct_walk($v,$childNs,$out,$d+1); }
+}
+function v40_v37_direct(array $v37,string $cid,int $candidate):array{foreach($v37['rows']??[] as$r){if(!is_array($r))continue;if((string)($r['andromeda_catalog_id']??'')!==$cid||(int)($r['candidate_local_hotel_id']??0)!==$candidate)continue;$out=[];v40_direct_walk($r['direct']??[] ,null,$out);foreach($out as$ns=>$set)$out[$ns]=array_map('strval',array_keys($set));return$out;}return[];}
+function v40_tv_native(array $rows):array{$out=[];$keys=['hotel','hotels','hotelid','hotel_id','hotelcode','hotel_code','hotellist','hotelkey','hotel_key'];foreach($rows as$r){$op=(int)$r['operator_id'];$ns=array_search($op,V40_NS_OP,true);if($ns===false)continue;$q=(string)($r['operator_link_query']??'');if($q==='')continue;parse_str($q,$p);foreach($p as$k=>$v){if(!in_array(mb_strtolower((string)$k,'UTF-8'),$keys,true))continue;foreach(is_array($v)?$v:[$v] as$x)if(preg_match('/^[1-9][0-9]{0,21}$/D',trim((string)$x)))$out[$ns][trim((string)$x)]=true;}}foreach($out as$ns=>$set)$out[$ns]=array_map('strval',array_keys($set));return$out;}
+function v40_side(array $h,array $aliases):array{$all=array_merge([(string)$h['name']],$aliases);$cores=[];foreach($all as$n){$c=v40_core($n);if($c)$cores[implode(' ',$c)]=$c;}return['id'=>(int)$h['id'],'name'=>(string)$h['name'],'country'=>(string)$h['country_name'],'region'=>(string)$h['region_name'],'subregion'=>(string)$h['subregion_name'],'point'=>v40_point($h),'cores'=>$cores];}
+function v40_execute(PDO $db,string $v39Result,string $v39Receipt,string $v37Result,string $sourceSha):array{
+  $raw=(string)file_get_contents($v39Result);$v39sha=hash('sha256',$raw);$r=json_decode($raw,true,512,JSON_THROW_ON_ERROR);$q=v40_load($v39Receipt);
+  v40_need(is_array($r)&&($r['operation']??'')===V40_V39_OP&&($r['state']??'')==='completed_read_only_single_fingerprint_conflict_audit','v39_state');v40_need(($q['result_sha256']??'')===$v39sha&&($q['readback_verified']??false)===true,'v39_receipt');
+  $v37raw=(string)file_get_contents($v37Result);v40_need(hash('sha256',$v37raw)===V40_V37_SHA,'v37_hash');$v37=json_decode($v37raw,true,512,JSON_THROW_ON_ERROR);v40_need(is_array($v37)&&($v37['operation']??'')===V40_V37_OP,'v37_state');
+  $in=[];foreach($r['rows']??[] as$x)if(is_array($x)&&($x['status']??'')==='fingerprint_candidate_supported'){$cid=(string)$x['andromeda_catalog_id'];$cand=(int)$x['candidate_local_hotel_id'];$cur=array_map('intval',$x['current_accepted_local_ids']??[]);v40_need($cid!==''&&$cand>0&&count($cur)===1,'input_row');$in[$cid]=['andromeda_catalog_id'=>$cid,'candidate_local_hotel_id'=>$cand,'current_local_hotel_id'=>$cur[0]];}
+  v40_need(count($in)===4,'input_count');
+  $ids=[];foreach($in as$x){$ids[$x['candidate_local_hotel_id']]=true;$ids[$x['current_local_hotel_id']]=true;}$ids=array_keys($ids);sort($ids,SORT_NUMERIC);$ph=implode(',',array_fill(0,count($ids),'?'));
+  $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+  try{
+    $hotels=[];foreach(v40_query($db,"SELECT h.id,h.name,h.country_name,h.region_name,h.subregion_name,h.is_active,COALESCE(d.latitude,h.latitude) latitude,COALESCE(d.longitude,h.longitude) longitude FROM catalog_hotels h LEFT JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE h.id IN ($ph)",$ids) as$h)$hotels[(int)$h['id']]=$h;
+    $aliases=[];foreach(v40_query($db,"SELECT hotel_id,alias,normalized_alias FROM hotel_aliases WHERE hotel_id IN ($ph) ORDER BY hotel_id,id",$ids) as$a){$id=(int)$a['hotel_id'];foreach([$a['alias'],$a['normalized_alias']] as$n)if(trim((string)$n)!=='')$aliases[$id][]=(string)$n;}
+    $ident=v40_query($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,catalog_sha256,evidence_sha256,evidence_json FROM andromeda_hotel_identities WHERE local_hotel_id IN ($ph) OR (supplier_namespace='andromeda_catalog' AND external_hotel_id IN (".implode(',',array_fill(0,count($in),'?')).")) ORDER BY supplier_namespace,external_hotel_id,local_hotel_id",array_merge($ids,array_keys($in)));
+    $source=[];$lanes=[];foreach($ident as$z){$ns=(string)$z['supplier_namespace'];$cid=(string)$z['external_hotel_id'];if($ns==='andromeda_catalog'&&isset($in[$cid]))$source[$cid][]=$z;if(($z['decision_status']??'')==='accepted'&&$z['local_hotel_id']!==null&&in_array($ns,['operator_5','operator_115','operator_315','operator_342'],true))$lanes[(int)$z['local_hotel_id']][$ns][]=(string)$z['external_hotel_id'];}
+    $cut=gmdate('Y-m-d H:i:s',time()-30*86400);$tv=v40_query($db,"SELECT hotel_id,operator_id,operator_link_query,last_seen_at FROM tour_operator_identity_observations WHERE hotel_id IN ($ph) AND operator_id IN (25,43) AND last_seen_at>=? ORDER BY hotel_id,operator_id,last_seen_at DESC",array_merge($ids,[$cut]));$tvBy=[];foreach($tv as$z)$tvBy[(int)$z['hotel_id']][]=$z;
+    $db->rollBack();
+    $rows=[];$counts=[];
+    foreach($in as$cid=>$x){$cand=v40_side($hotels[$x['candidate_local_hotel_id']],$aliases[$x['candidate_local_hotel_id']]??[]);$cur=v40_side($hotels[$x['current_local_hotel_id']],$aliases[$x['current_local_hotel_id']]??[]);$dist=v40_dist($cand['point'],$cur['point']);$best=0.0;foreach($cand['cores'] as$a)foreach($cur['cores'] as$b)$best=max($best,v40_jaccard($a,$b));$dup=$dist!==null&&$dist<=500&&$best>=0.8;
+      $srows=$source[$cid]??[];$accepted=array_values(array_filter($srows,fn($z)=>($z['decision_status']??'')==='accepted'&&$z['local_hotel_id']!==null));$evOk=count($accepted)===1&&v40_evidence_ok($accepted[0]);$meta=$evOk?v40_evidence_meta($accepted[0]):[];
+      $direct=v40_v37_direct($v37,(string)$cid,$x['candidate_local_hotel_id']);$candTv=v40_tv_native($tvBy[$x['candidate_local_hotel_id']]??[]);$curTv=v40_tv_native($tvBy[$x['current_local_hotel_id']]??[]);
+      $candidateHas=false;$currentHas=false;$amb=false;foreach($direct as$ns=>$natives){foreach($natives as$n){if(in_array($n,$candTv[$ns]??[],true))$candidateHas=true;if(in_array($n,$curTv[$ns]??[],true))$currentHas=true;}if(count($natives)!==1)$amb=true;}
+      $status='insufficient_evidence_hold';
+      if(!$evOk)$status='current_mapping_still_supported';
+      elseif($amb)$status='conflicting_operator_identity_hold';
+      elseif($currentHas&&$candidateHas)$status='duplicate_local_hold';
+      elseif($dup)$status='duplicate_local_hold';
+      elseif($currentHas&&!$candidateHas)$status='current_mapping_still_supported';
+      elseif($candidateHas&&!$currentHas)$status='correction_ready';
+      elseif($direct!==[]&&!$currentHas)$status='correction_ready';
+      $counts[$status]=($counts[$status]??0)+1;
+      $rows[]=$x+['status'=>$status,'accepted_evidence_hash_valid'=>$evOk,'accepted_evidence_meta'=>$meta,'candidate'=>array_diff_key($cand,['point'=>1,'cores'=>1]),'current'=>array_diff_key($cur,['point'=>1,'cores'=>1]),'candidate_current_distance_m'=>$dist===null?null:round($dist,1),'candidate_current_name_jaccard'=>round($best,3),'likely_duplicate_local_cards'=>$dup,'v37_direct_fingerprints'=>$direct,'candidate_tv_native'=>$candTv,'current_tv_native'=>$curTv,'candidate_has_v37_direct'=>$candidateHas,'current_has_v37_direct'=>$currentHas,'candidate_operator_lanes'=>$lanes[$x['candidate_local_hotel_id']]??[],'current_operator_lanes'=>$lanes[$x['current_local_hotel_id']]??[],'safe_to_write_now'=>false];
+    }
+    ksort($counts);usort($rows,fn($a,$b)=>[$a['status'],$a['andromeda_catalog_id']]<=>[$b['status'],$b['andromeda_catalog_id']]);
+    return['operation'=>V40_OP,'state'=>'completed_read_only_fingerprint_correction_readiness','generated_at_utc'=>gmdate('c'),'source_sha'=>$sourceSha,'v39_result_sha256'=>$v39sha,'input_count'=>4,'status_counts'=>$counts,'correction_ready_count'=>(int)($counts['correction_ready']??0),'rows'=>$rows,'provider_http_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
+  }catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}
+}
+function v40_self_test():void{v40_need(round(v40_jaccard(['a','b'],['a','b']),3)===1.0,'jaccard');v40_need(v40_core('WB TRAVEL ANITA MATIATE')===['anita','matiate'],'core');$out=[];v40_direct_walk(['operator_315'=>['native_id'=>'123']],null,$out);v40_need(($out['operator_315']['123']??false)===true,'direct');}
+if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){if(in_array('--self-test',$argv??[],true)){v40_self_test();echo"MATCH_TV_SAMO_FINGERPRINT_CORRECTION_READINESS_V40_SELFTEST_OK\n";exit;}v40_need(($argv[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$v39=(string)getenv('MATCH_V39_RESULT');$v39r=(string)getenv('MATCH_V39_RECEIPT');$v37=(string)getenv('MATCH_V37_RESULT');$sha=(string)getenv('MATCH_SOURCE_SHA');v40_need(is_dir($root)&&is_dir($dir)&&basename($dir)===V40_OP&&is_file($v39)&&is_file($v39r)&&is_file($v37)&&preg_match('/^[0-9a-f]{40}$/D',$sha)===1,'runtime_scope');$res=v40_load($dir.'/reservation.json');v40_need(($res['operation']??'')===V40_OP,'reservation');require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');try{$r=v40_execute(v2_data_db(),$v39,$v39r,$v37,$sha);$h=v40_save($dir.'/result.json',$r);v40_save($dir.'/receipt.json',['operation'=>V40_OP,'state'=>$r['state'],'result_sha256'=>$h,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$h,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);echo v40_json(['state'=>$r['state'],'status_counts'=>$r['status_counts'],'correction_ready_count'=>$r['correction_ready_count'],'rows'=>$r['rows']])."\n";}catch(Throwable$e){$f=['operation'=>V40_OP,'state'=>'failed_read_only_fingerprint_correction_readiness','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',mb_substr($e->getMessage(),0,160,'UTF-8')),'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0];$h=v40_save($dir.'/result.json',$f);v40_save($dir.'/receipt.json',['operation'=>V40_OP,'state'=>$f['state'],'result_sha256'=>$h,'readback_verified'=>true,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);fwrite(STDERR,$f['reason']."\n");exit(2);}}
