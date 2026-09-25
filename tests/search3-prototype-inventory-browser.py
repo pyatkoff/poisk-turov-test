@@ -329,7 +329,7 @@ def check_width(browser, origin, width):
         page.locator('[data-action="apply-budget"]').click()
         assert "max" not in parse_qs(urlparse(page.url).query)
         page.locator('.search-submit').click()
-        count(5)
+        count(4)
         assert 'Сиде' in page.locator('#hotel-502 .hotel-location').inner_text()
         assert next(row['params'] for row in calls if row['action'] == 'search_start')['regionIds[]'] == ['20']
         assert native_calls[0]['params']['regionIds'] == ['20']
@@ -362,7 +362,7 @@ def check_width(browser, origin, width):
         page.screenshot(path=str(EVIDENCE / f"amenity-filters-{width}.png"))
         page.locator('#active-filters [data-key="amenities"][data-value="3:15"]').click()
         page.locator('#active-filters [data-key="amenities"][data-value="5:23"]').click()
-        count(5)
+        count(4)
         assert len([c for c in calls if c['action'] == 'search_start']) == 1
         assert len(native_calls) == 1
         assert len(anex_calls) == 1
@@ -377,7 +377,7 @@ def check_width(browser, origin, width):
         andromeda_offer_count = page.evaluate("""() => Search3CanonicalProfilesV1.current().read(
             Search3CanonicalProfilesV1.current().source(), {}
         ).flatMap(h => h.tours || []).filter(t => t.provider === 'andromeda').length""")
-        assert andromeda_offer_count == 1, "native + LOCAL Andromeda must dedupe by offer identity"
+        assert andromeda_offer_count == 1, "live union contains only the native Andromeda offer"
         assert len(native_calls) == 1
         assert len(anex_calls) == 1
         state["hold"] = True
@@ -401,14 +401,14 @@ def check_width(browser, origin, width):
         assert parse_qs(urlparse(page.url).query)["max"] == ["200000"]
         assert "185" in page.locator('#price-strip').inner_text()
         page.locator('#active-filters [data-key="price"]').click()
-        count(6)
+        count(5)
         assert "max" not in parse_qs(urlparse(page.url).query)
         open_filters()
         assert int(page.locator('#price-range').get_attribute('max')) >= 2100000
         field.fill('600000')
         field.press('Tab')
         apply_filters()
-        count(4)
+        count(3)
         assert parse_qs(urlparse(page.url).query)["max"] == ["600000"]
         assert len([c for c in calls if c["action"] == "search_start"]) == 1
         assert len([c for c in calls if c["action"] == "search_continue"]) == 1
@@ -425,17 +425,19 @@ def check_width(browser, origin, width):
         anex_before_reload = len(anex_calls)
         page.reload()
         page.wait_for_function("document.querySelector('#search-form').hidden === true")
-        page.locator(".hotel-card").first.wait_for()
+        page.wait_for_function("document.querySelectorAll('.hotel-card').length === 0")
+        page.wait_for_function("document.querySelector('#search-status')?.textContent.includes('Сохранённых предложений пока нет')")
         assert len([c for c in calls if c["action"] == "search_start"]) == starts_before_reload, "Reload must not replay Tourvisor"
         assert len(native_calls) == native_before_reload, "Reload must not replay direct Andromeda"
         assert len(anex_calls) == anex_before_reload, "Reload must not replay direct ANEX"
         assert page.locator(".search-submit").is_hidden(), "Restored searched URL must stay on result state"
+        assert page.locator(".hotel-card").count() == 0, "Stored DB offers never return as live inventory after reload"
         assert "600" in page.locator('#budget-label').inner_text()
         assert parse_qs(urlparse(page.url).query)["max"] == ["600000"]
         page.locator('[data-action="edit-search"]').first.click()
         page.locator(".search-submit:not([disabled])").wait_for()
         page.locator('.search-submit').click()
-        count(4)
+        count(3)
         last_start = [c for c in calls if c["action"] == "search_start"][-1]
         assert last_start["params"].get("priceTo") == ["600000"]
         assert len([c for c in calls if c["action"] == "search_start"]) == starts_before_reload + 1
