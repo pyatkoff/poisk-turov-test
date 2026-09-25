@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import urllib.request
 
-BASE = '00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8'
+BASE = '2583c284b2631c1cdfa94df710f71f492fe3d38f'
 PARENT = '2a9efb9bebaa662467ae4dcad1c84ce426fdbd04'
 APP = '9a4cb4f812f0eb03056ae1a639887f00c29980b4'
 GALLERY = 'c905a9b38e50c771a475768103afabe97e98abe0'
@@ -16,7 +16,7 @@ OUT = Path(os.environ.get('HC1_ASSEMBLY_OUTPUT', '/tmp/hc1-consumer-source'))
 
 
 def git(*args):
-    return subprocess.check_output(['git', *args]).decode('utf-8')
+    return subprocess.check_output(['git', *args]).decode('utf-8').replace('\r\n', '\n')
 
 
 def source(ref, path):
@@ -74,10 +74,16 @@ OPEN = r'''function openHotelDetails(id){
 
 
 def assemble():
-    files = {p:source(PARENT,p) for p in ['v2/prototype-search/data.js','v2/prototype-search/styles.css','.github/workflows/build-search3-whole-site-preview.yml']}
+    files = {p:source(PARENT,p) for p in [
+        'v2/prototype-search/data.js','v2/prototype-search/styles.css',
+        'v2/prototype-search/search-lifecycle-v1.js',
+        'tests/search3-prototype-search-lifecycle-v1.cjs',
+        'tests/search3-prototype-inventory-lifecycle.cjs',
+        '.github/workflows/build-search3-whole-site-preview.yml']}
+    changed=git('diff','--name-only','00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8',BASE).splitlines()
+    assert changed==['v2/visual-search/index.php'], changed
     files['v2/prototype-search/app.js'] = source(APP,'v2/prototype-search/app.js')
     assert 'supplierAlreadyScopedResorts' in files['v2/prototype-search/app.js']
-    # Apply only the reviewed six substitutions to current owners, never whole old files.
     manifest=json.loads(source(GALLERY,'patches/search3-hc1-full-gallery-v2.json'))
     for entry in manifest:
         for change in entry['replacements']:
@@ -87,7 +93,6 @@ def assemble():
     app=app[:a]+FACTS+app[b:]
     a=app.index('function openHotelDetails(');b=app.index('function renderResults(',a)
     app=app[:a]+OPEN+app[b:]
-    # Conditions-only resume no longer implies a failed LOCAL inventory read.
     app=app.replace('Сохранённых предложений пока нет','Условия сохранены. Запустите новый поиск')
     files['v2/prototype-search/app.js']=app
     css=files['v2/prototype-search/styles.css']
@@ -99,7 +104,7 @@ def assemble():
     test=source(GALLERY,'tests/search3-hc1-full-gallery-browser.py')
     test=replace(test,"'hc1-gallery-evidence'","'local-db-price-evidence/hotel-content'")
     test=test.replace('43','240').replace('(101,240),(102,1),(103,0)','(101,240),(102,1),(103,0),(104,2)')
-    test=test.replace('count==240','count==240').replace('value="42"','value="239"').replace('/photo-101-42.svg','/photo-101-239.svg')
+    test=test.replace('value="42"','value="239"').replace('/photo-101-42.svg','/photo-101-239.svg')
     test=replace(test,"document.querySelectorAll('.hotel-card').length===3","document.querySelectorAll('.hotel-card').length===4")
     needle='    profiles[old] = p\n'
     test=replace(test,needle,needle+'''
@@ -142,11 +147,10 @@ profiles[103].update(description='',rating=None)
             assert sum(photo_geometry['children'])>=photo_geometry['width']-10, photo_geometry
             page.locator('#modal [data-action="close-modal"]').click()
         checks['oneTwoAndEmptyHotelDetails']=True
-        # Accept a newer canonical profile without changing live offer identity/terms.
         profiles[101]['revision']+=1
         profiles[101]['description']='Новое описание. '+('Подробная информация об отеле. '*30)+'Последняя строка описания.'
         before_calls=len(api_calls)
-        awaitless=page.evaluate("""async () => {await Search3CanonicalProfilesV1.current().readProfile(1); Search3CanonicalProfilesV1.current().refresh();}""")
+        page.evaluate("""async () => {await Search3CanonicalProfilesV1.current().readProfile(1); Search3CanonicalProfilesV1.current().refresh();}""")
         card.locator('[data-action="hotel-details"]').click()
         assert page.locator('[data-hotel-description="summary"]').is_visible()
         page.locator('summary').filter(has_text='Полное описание').click()
@@ -159,7 +163,6 @@ profiles[103].update(description='',rating=None)
         assert len(api_calls)==before_calls, 'Hotel content refresh started supplier/quote work'
         assert not errors and not forbidden
         checks['newProfileRevisionKeepsOffersAndGallery']=True''')
-    # Each browser context starts with the same input, not state from prior width.
     test=replace(test,"    ctx = browser.new_context", "    profiles[101]['description']='Описание фиктивного отеля 101.'\n    ctx = browser.new_context")
     files[NEW_TEST]=test
     workflow=files['.github/workflows/build-search3-whole-site-preview.yml']
@@ -167,7 +170,6 @@ profiles[103].update(description='',rating=None)
     workflow=replace(workflow,'tests/search3-prototype-inventory-browser.py; then','tests/search3-prototype-inventory-browser.py tests/search3-hotel-content-browser.py v2/prototype-search/styles.css; then')
     workflow=replace(workflow,'          python tests/search3-prototype-contact-recovery.py','          python tests/search3-prototype-contact-recovery.py\n          python tests/search3-hotel-content-browser.py')
     files['.github/workflows/build-search3-whole-site-preview.yml']=workflow
-    # Architecture-only expectation wording follows the same existing state.
     p='tests/search3-prototype-inventory-browser.py'
     files[p]=replace(source(PARENT,p),'Сохранённых предложений пока нет','Условия сохранены. Запустите новый поиск')
     return files
@@ -183,7 +185,6 @@ def main():
         subprocess.run(['node','--check',path],check=True)
     subprocess.run(['python3','-m','py_compile',NEW_TEST],check=True)
     subprocess.run(['git','diff','--check'],check=True)
-    # Write Git objects only. The connector reviews the artifact and creates the NEW ref.
     token=os.environ['GH_TOKEN']
     def api(method,path,payload=None):
         request=urllib.request.Request('https://api.github.com/repos/'+REPO+'/'+path,
@@ -191,16 +192,16 @@ def main():
             headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},method=method)
         with urllib.request.urlopen(request,timeout=30) as response:return json.load(response)
     assert api('GET','git/ref/heads/release/search3-production-ready-v1')['object']['sha']==BASE
-    parent=api('GET','git/commits/'+PARENT)
+    parent=api('GET','git/commits/'+BASE)
     tree=[]
     for path,text in files.items():
         blob=api('POST','git/blobs',{'encoding':'utf-8','content':text})
-        expected=hashlib.sha1(f'blob {len(text.encode())}\\0'.replace('\\0','\0').encode()+text.encode()).hexdigest()
+        expected=hashlib.sha1(b'blob '+str(len(text.encode())).encode()+b'\0'+text.encode()).hexdigest()
         assert blob['sha']==expected, path
         tree.append({'path':path,'mode':'100644','type':'blob','sha':blob['sha']})
     t=api('POST','git/trees',{'base_tree':parent['tree']['sha'],'tree':tree})
-    commit=api('POST','git/commits',{'message':'Search3: full canonical hotel content and galleries with live-only integration','tree':t['sha'],'parents':[PARENT]})
-    result={'state':'source_objects_created_no_ref_changed','parent':PARENT,'base':BASE,'commit':commit['sha'],'tree':t['sha'],
+    commit=api('POST','git/commits',{'message':'Search3: full canonical hotel content and galleries with live-only integration','tree':t['sha'],'parents':[BASE]})
+    result={'state':'source_objects_created_no_ref_changed','parent':BASE,'donor':PARENT,'base':BASE,'commit':commit['sha'],'tree':t['sha'],
             'files':[{'path':p,'sha256':hashlib.sha256(s.encode()).hexdigest()} for p,s in files.items()],
             'supplierCalls':0,'databaseWrites':0,'refWrites':0,'deploy':False}
     (OUT/'result.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))
