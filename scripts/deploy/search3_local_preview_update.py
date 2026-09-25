@@ -1,8 +1,8 @@
-"""Owner-authenticated update of the existing isolated local-catalog Search3 preview.
+"""Owner-authenticated update of the existing isolated LOCAL or next Search3 preview.
 
 This is deliberately separate from the create-only publisher. It reuses the checked
 artifact derivation but requires an exact published predecessor and retains its bytes
-for rollback. The route is fixed; no production path can be supplied by the command.
+for rollback. Both routes are fixed; no production path can be supplied by the command.
 """
 from __future__ import annotations
 import json
@@ -20,6 +20,14 @@ from search3_local_preview import derive, render_checks, live_checks, REPO, RELE
 from search3_local_preview_update_remote import inventory, json_bytes, need
 
 PREFIX = '/update-search3-local-preview '
+NEXT_PREFIX = '/update-search3-next-preview '
+
+def target_functions(q):
+    if q.get('preview_target') == 'next':
+        import search3_v17_preview as target
+        return target.derive, target.render_checks, target.live_checks
+    return derive, render_checks, live_checks
+
 
 
 def checked_request(event, env):
@@ -34,12 +42,13 @@ def checked_request(event, env):
     need(issue.get('number') == 3419 and 'pull_request' not in issue, 'coordination_only')
     need(c.get('user', {}).get('id') == 226193297 and c.get('author_association') == 'OWNER', 'comment_owner')
     body = c.get('body', '')
-    need(isinstance(body, str) and body.startswith(PREFIX) and '\n' not in body and '\r' not in body, 'command_syntax')
-    parts = body[len(PREFIX):].split(' ')
+    prefix = NEXT_PREFIX if isinstance(body,str) and body.startswith(NEXT_PREFIX) else PREFIX
+    need(isinstance(body, str) and body.startswith(prefix) and '\n' not in body and '\r' not in body, 'command_syntax')
+    parts = body[len(prefix):].split(' ')
     need(len(parts) == 5 and all(re.fullmatch('[0-9a-f]{40}', x) for x in (parts[0], parts[1], parts[4]))
          and all(re.fullmatch('[1-9][0-9]{0,14}', x) for x in parts[2:4]), 'exact_pins')
     need(parts[0] != parts[4], 'same_source_no_update')
-    return {'source_sha': parts[0], 'release_sha': parts[1], 'build_run': int(parts[2]),
+    return {**({'preview_target':'next'} if prefix==NEXT_PREFIX else {}), 'source_sha': parts[0], 'release_sha': parts[1], 'build_run': int(parts[2]),
             'artifact_id': int(parts[3]), 'previous_source_sha': parts[4],
             'deploy_run': int(env['GITHUB_RUN_ID']), 'attempt': 1, 'operation': 'update'}
 
@@ -57,12 +66,13 @@ def authorized():
 def prepare():
     from search3_preview_publish import prepare_zip
     q, api, tree, zip_hash = authorized()
+    derive_target, render_target, live_target = target_functions(q)
     work = Path(os.environ['RUNNER_TEMP']) / 'search3-local-update-prepare'; work.mkdir(mode=0o700)
     original = work / 'original'
     prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
-    ready, archive = derive(original / 'release', work / 'derived', q, zip_hash)
+    ready, archive = derive_target(original / 'release', work / 'derived', q, zip_hash)
     ready['previous_source_sha'] = q['previous_source_sha']; ready['operation'] = 'update'
-    render_checks(work / 'derived')
+    render_target(work / 'derived')
     retained = work / 'retained'; retained.mkdir()
     (retained / 'local-preview.tar.gz').write_bytes(archive)
     (retained / 'request.json').write_bytes(json_bytes(ready))
@@ -97,10 +107,11 @@ def canonical_live_checks():
 def publish():
     from search3_preview_publish import prepare_zip, command, http
     q, api, tree, zip_hash = authorized()
+    derive_target, render_target, live_target = target_functions(q)
     work = Path(os.environ['RUNNER_TEMP']) / 'search3-local-update-publish'; work.mkdir(mode=0o700)
     original = work / 'original'
     prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
-    expected_q, archive = derive(original / 'release', work / 'expected', q, zip_hash)
+    expected_q, archive = derive_target(original / 'release', work / 'expected', q, zip_hash)
     expected_q['previous_source_sha'] = q['previous_source_sha']; expected_q['operation'] = 'update'
 
     artifact_id = os.environ['READY_ARTIFACT_ID']
@@ -118,7 +129,9 @@ def publish():
 
     q = expected_q; (work / 'local-preview.tar.gz').write_bytes(archive)
     files = inventory(work / 'expected/payload')
-    evidence = {'route': '/_preview/search3-local-candidate/', 'source_sha': q['source_sha'],
+    route = '/_preview/search3-next-candidate/' if q.get('preview_target')=='next' else '/_preview/search3-local-candidate/'
+    namespace = 'search3-next' if q.get('preview_target')=='next' else 'search3-local'
+    evidence = {'route': route, 'source_sha': q['source_sha'],
                 'previous_source_sha': q['previous_source_sha'], 'release_sha': q['release_sha'],
                 'source_artifact': q['artifact_id'], 'derived_artifact': int(artifact_id),
                 'status': 'checked_update_not_published'}
@@ -140,9 +153,10 @@ def publish():
                 '-o', 'GlobalKnownHostsFile=/dev/null', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15']
         source = Path(__file__).with_name('search3_local_preview_update_remote.py').read_bytes()
         def remote(action, request):
+            if q.get('preview_target')=='next': request={**request,'preview_target':'next'}
             shell = 'python3 - ' + shlex.quote(action) + ' ' + shlex.quote(json.dumps(request, separators=(',', ':')))
             return json.loads(command(['ssh', *opts, user + '@' + host, shell], source, 180))
-        binding = {'name': f"search3-local-update-bind-{q['deploy_run']}-{secrets.token_hex(12)}.txt", 'nonce': secrets.token_hex(32)}
+        binding = {'name': f"{namespace}-update-bind-{q['deploy_run']}-{secrets.token_hex(12)}.txt", 'nonce': secrets.token_hex(32)}
         remote('bind', binding)
         try:
             status, text = http('/_preview/' + binding['name'])
@@ -157,10 +171,11 @@ def publish():
         need(api.get('/git/ref/heads/' + RELEASE)['object']['sha'] == q['release_sha'], 'release_changed_before_activation')
         need(api.get('/git/ref/heads/main')['object']['sha'] == os.environ['GITHUB_SHA'], 'main_changed_before_activation')
         q['archive'] = remote('upload', {})['archive']
-        need(re.fullmatch(r'/tmp/search3-local-update\.[A-Za-z0-9_-]+\.tar\.gz', q['archive']), 'remote_upload_path')
+        need(re.fullmatch(r'/tmp/'+namespace+r'-update\.[A-Za-z0-9_-]+\.tar\.gz', q['archive']), 'remote_upload_path')
         command(['scp', *opts, str(work / 'local-preview.tar.gz'), user + '@' + host + ':' + q['archive']])
         attempted = True; evidence['activation'] = remote('activate-update', q)
-        evidence.update(live_checks(files)); evidence.update(canonical_live_checks())
+        evidence.update(live_target(files))
+        if q.get('preview_target')!='next': evidence.update(canonical_live_checks())
         evidence['completion'] = remote('complete-update', q)
         evidence.update(status='published_update', production_unchanged=True, existing_preview_unchanged=True,
                         predecessor_retained=True)

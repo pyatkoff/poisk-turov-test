@@ -19,6 +19,7 @@ class LiveReadback(unittest.TestCase):
         assets = {name: b'checked asset' for name in (
             'search3-results-filters-v1.css', 'search3-results-filters-v1.js', 'site-header-v2.css')}
         assets.update({'visual-search/asset-' + str(i) + '.js': b'visual asset' for i in range(29)})
+        assets['prototype-search/data.js'] = b'canonical data owner'
         files = {name: remote.digest(body) for name, body in assets.items()}
         html = ('<meta name="robots" content="noindex,follow,max-image-preview:large' +
             ' id="tourSearch" metrikaCounter:0 leadApi:"' + pub.ROUTE + 'preview-lead-disabled.php"')
@@ -42,6 +43,18 @@ class LiveReadback(unittest.TestCase):
             self.assertIn(canonical, [call.args[0] for call in request.call_args_list])
             self.assertNotIn(pub.ROUTE + 'data/hotel-details-read-v1.php',
                 [call.args[0] for call in request.call_args_list])
+            responses[pub.ROUTE+'visual-search/'] = (200,
+                '<meta name="robots" content="noindex, nofollow, noarchive" '
+                'app.js?v=0123456789ab '
+                '<script src="../prototype-search/data.js?v=0123456789ab"></script>'
+                '<script src="./live-bridge.js?v=0123456789ab"></script>')
+            self.assertTrue(pub.live_checks(files)['visual_live_connected'])
+            self.assertIn(pub.ROUTE+'prototype-search/data.js?sha='+files['prototype-search/data.js'],
+                [call.args[0] for call in request.call_args_list])
+            assets['prototype-search/data.js'] = b'foreign dependency'
+            with self.assertRaisesRegex(ValueError,'visual_dependency_hash'):
+                pub.live_checks(files)
+            assets['prototype-search/data.js'] = b'canonical data owner'
             for response in [(200, '{"ok":true}'), (403, '{"ok":false,"error":"unrelated"}')]:
                 responses[canonical] = response
                 with self.subTest(response=response), self.assertRaisesRegex(ValueError, 'LOCAL_only_data_boundary'):
