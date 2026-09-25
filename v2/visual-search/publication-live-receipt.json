@@ -1,0 +1,128 @@
+{
+  "LOCAL_only_data_HTTP": 403,
+  "activation": {
+    "files": 832,
+    "predecessor_retained": true,
+    "status": "activated"
+  },
+  "completion": {
+    "existing_preview_unchanged": true,
+    "previous_source_sha": "4dd5b78dab815dac199550f4bcad3047f4d850b6",
+    "production_unchanged": true,
+    "rollback_retained": true,
+    "route": "/_preview/search3-next-candidate/",
+    "source_sha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
+    "status": "published"
+  },
+  "counter": 0,
+  "derived_artifact": 10879644819,
+  "existing_preview_unchanged": true,
+  "lead_HTTP": 403,
+  "noindex": true,
+  "predecessor_retained": true,
+  "previous_source_sha": "4dd5b78dab815dac199550f4bcad3047f4d850b6",
+  "production_unchanged": true,
+  "real_leads": 0,
+  "release_sha": "b4223e76ad716d354201a3c5f534db062f570aa7",
+  "route": "/_preview/search3-next-candidate/",
+  "routes_200": 9,
+  "source_artifact": 10879469411,
+  "source_sha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
+  "status": "published_update",
+  "supplier_searches": 0,
+  "visual_assets_verified": 35,
+  "visual_live_connected": true,
+  "visual_route_200": true,
+  "deploy_run": 36171039351,
+  "receipt_artifact": 10880480140,
+  "receipt_zip_sha256": "6a488599fb3b8541844f2da15f4949f4d5637883665a3aced9d53beecf1477c9",
+  "source_pr": 3928,
+  "control_pr": 3932,
+  "public_browser_acceptance": {
+    "status": "bootstrap-and-db-calendar-passed",
+    "checked_at": "2026-09-25T18:20:00Z",
+    "browser": "Chromium desktop, cloud browser",
+    "entry": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/",
+    "checks": [
+      "Form initialized with canonical departure/country catalogues; search enabled.",
+      "Turkey resorts loaded; Antalya selection shown in calendar.",
+      "October and November 2026 DB observations loaded for Moscow, Antalya, 7 nights, 2 adults.",
+      "Selected 9–15 October historical calendar minimum displayed as 108130 RUB, explicitly previously found.",
+      "No live search submitted; no application sent."
+    ],
+    "supplier_searches": 0,
+    "real_leads": 0,
+    "screenshot": "../../docs/qa/anytour-next-live-calendar-20260925.jpg",
+    "limitations": [
+      "Actual current supplier tour-to-application acceptance is pending.",
+      "Physical phone and Safari acceptance is pending.",
+      "Direct catalogue-tab reload was blocked by browser protocol policy; no retry or bypass. The ordinary application UI loaded the catalogue successfully."
+    ]
+  },
+  "destination_dependency": {
+    "source_pr": 3933,
+    "source_sha": "04f4ca155f9c2fb77f684dcb2cdd71d0a5ba31fa",
+    "release_sha": "33a7bd49979efe7f9d537310c10e4a2628cc70c6",
+    "deploy_run": 36172310619,
+    "receipt_artifact": 10881066944,
+    "receipt_zip_sha256": "3813979952a3d1c256bcfa70d078bbd492c1ef6b90c4a51e2eeba0c62f91b096",
+    "receipt": {
+      "activation": {
+        "files": 832,
+        "predecessor_retained": true,
+        "status": "activated"
+      },
+      "canonical_HTTP": 200,
+      "canonical_images": 48,
+      "canonical_legacy_102_anytour": 1,
+      "canonical_profile_name": "AKASSIA SWISS RESORT",
+      "completion": {
+        "existing_preview_unchanged": true,
+        "previous_source_sha": "d66ffed52218ee7c80d579714945ff01f1f8e279",
+        "production_unchanged": true,
+        "rollback_retained": true,
+        "route": "/_preview/search3-local-candidate/",
+        "source_sha": "04f4ca155f9c2fb77f684dcb2cdd71d0a5ba31fa",
+        "status": "published"
+      },
+      "counter": 0,
+      "derived_artifact": 10881101842,
+      "existing_preview_unchanged": true,
+      "lead_HTTP": 403,
+      "legacy_route_catalog_module": false,
+      "local_batch_HTTP": 200,
+      "local_profiles_returned": 2,
+      "new_route_catalog_module": true,
+      "noindex": true,
+      "predecessor_retained": true,
+      "previous_source_sha": "d66ffed52218ee7c80d579714945ff01f1f8e279",
+      "production_unchanged": true,
+      "real_leads": 0,
+      "release_sha": "33a7bd49979efe7f9d537310c10e4a2628cc70c6",
+      "route": "/_preview/search3-local-candidate/",
+      "routes_200": 9,
+      "source_artifact": 10880336039,
+      "source_sha": "04f4ca155f9c2fb77f684dcb2cdd71d0a5ba31fa",
+      "status": "published_update",
+      "supplier_searches": 0
+    }
+  },
+  "fixture_browser_acceptance": {
+    "run": 36170655203,
+    "artifact": 10879694386,
+    "zip_sha256": "6082de3c173a97d8a2824c2eabb92301b588f427bdf73401e408088c74f7b2a5",
+    "widths": [
+      390,
+      768,
+      1280
+    ],
+    "data": "fictional intercepted responses",
+    "journeys": [
+      "three sources to one canonical hotel",
+      "TV exact room, alternate flight, 133500.50 RUB application validation",
+      "SAMO verified receipt, 125500 RUB application validation"
+    ],
+    "real_leads": 0,
+    "supplier_searches": 0
+  }
+}

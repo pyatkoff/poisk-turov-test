@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "stage": "canonical-live-integration-candidate",
+  "stage": "canonical-live-integration-published",
   "visualVersion": 147,
   "siteCommit": "3aa4d9001f51dfd732b01194b695deabcf8e033f",
   "functionalBase": "3b460f04b4f6262147c7e44b93fe32cefcfaf03c",
@@ -51,8 +51,19 @@
     "canonical-hotel-content"
   ],
   "acceptanceSupplierRequests": 0,
-  "publicationStatus": "prepared-not-published",
+  "publicationStatus": "published-bootstrap-calendar-verified",
   "adaptedFiles": {
     "app.js": "d970d10c7f2a34d10b1311a0b7f22e7fa34ab1ec0790e82503161986b2331b6d"
+  },
+  "publication": {
+    "sourceSha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
+    "releaseSha": "b4223e76ad716d354201a3c5f534db062f570aa7",
+    "deployRun": 36171039351,
+    "canonicalDestinationSourceSha": "04f4ca155f9c2fb77f684dcb2cdd71d0a5ba31fa",
+    "canonicalDestinationDeployRun": 36172310619,
+    "receipt": "publication-live-receipt.json",
+    "productionChanged": false,
+    "realTourAcceptance": false,
+    "physicalSafariAcceptance": false
   }
 }
