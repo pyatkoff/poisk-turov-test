@@ -13,7 +13,7 @@ const clone = value => JSON.parse(JSON.stringify(value));
 
 function cached(key = 'cached') {
   return {key, hotelId: 101, day: '2026-10-15', nights: 7, adults: 2, ages: [6], provider: 'anex',
-    operator: 'ANEX', room: 'Deluxe', meal: 'Всё включено', mealRaw: 'AI', flight: 'charter', cached: true};
+    operator: 'ANEX', room: 'Deluxe', placement: 'DBL', meal: 'Всё включено', mealRaw: 'AI', flight: 'charter', cached: true};
 }
 function fresh(key = 'fresh', overrides = {}) { return {...cached(key), cached: false, ...overrides}; }
 function union(row = cached()) {
@@ -122,6 +122,51 @@ test('changed variants wait for the explicit same-provider choice before replaci
   assert.equal(replacement.rehydrationRetention, true);
   assert.deepEqual(replacement.hotels[0].offers.map(row => row.key).sort(), ['b', 'other']);
   assert.equal(h.listeners.click.capture, true, 'replacement lands before the existing app click handler continues verification');
+});
+
+test('child age order is treated as a multiset without losing duplicate ages', async () => {
+  const reordered = fresh('reordered', {ages: [6, 6, 12]});
+  const h = harness({state: 'current', offers: [reordered]}), seen = [];
+  const stored = {...cached(), ages: [12, 6, 6]};
+  h.data.search({}, event => seen.push(clone(event)));
+  h.emit({type: 'results', hotels: union(stored)});
+  await h.data.rehydrateCached(stored);
+  assert.equal(seen.length, 2);
+  assert.equal(seen.at(-1).hotels[0].offers.some(row => row.key === 'reordered'), true);
+});
+
+test('unknown essential stay identity never acts as an exact-match wildcard', async () => {
+  const stored = {...cached(), placement: ''};
+  const h = harness({state: 'current', offers: [fresh('candidate')]}), seen = [];
+  h.data.search({}, event => seen.push(clone(event)));
+  h.emit({type: 'results', hotels: union(stored)});
+  await h.data.rehydrateCached(stored);
+  assert.equal(seen.length, 1, 'incomplete cached identity must require explicit selection');
+  assert.equal(seen[0].hotels[0].offers[0].key, 'cached');
+});
+
+test('placement mismatch remains an explicit alternative instead of replacing the cached row', async () => {
+  const h = harness({state: 'current', offers: [{...fresh('changed-placement'), placement: 'SGL'}]}), seen = [];
+  h.data.search({}, event => seen.push(clone(event)));
+  h.emit({type: 'results', hotels: union()});
+  await h.data.rehydrateCached(cached());
+  assert.equal(seen.length, 1, 'placement change must not silently publish a replacement');
+  assert.equal(seen[0].hotels[0].offers[0].key, 'cached');
+});
+
+test('multiple semantic matches require an explicit choice instead of taking the first match', async () => {
+  const a = fresh('same-a'), b = fresh('same-b');
+  const h = harness({state: 'current', offers: [a, b]}), seen = [];
+  h.data.search({}, event => seen.push(clone(event)));
+  h.emit({type: 'results', hotels: union()});
+  await h.data.rehydrateCached(cached());
+  assert.equal(seen.length, 1, 'ambiguous exact matches must not replace before user choice');
+  assert.equal(seen[0].hotels[0].offers[0].key, 'cached');
+  const target = {dataset: {key: 'same-b'}, closest(selector) { return selector === '[data-action="rehydrated-offer"]' ? this : null; }};
+  h.listeners.click.fn({target});
+  const replacement = seen.at(-1);
+  assert.equal(replacement.rehydrationRetention, true);
+  assert.deepEqual(replacement.hotels[0].offers.map(row => row.key).sort(), ['other', 'same-b']);
 });
 
 test('semantic mismatch does not silently replace the cached selection', async () => {
