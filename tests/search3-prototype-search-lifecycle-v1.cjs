@@ -148,18 +148,42 @@ function harness({reject=false,hidden=false,covered=true,previous={kind:'previou
   assert.equal(h.failures[0].response.pending,false);assert.equal(h.failures[0].response.phase,'error');assert.equal(h.failures[0].response.message,'synthetic search failure');
  }
  {
-  const h=harness({hidden:true,covered:false});h.lifecycle.bind();
+  const h=harness({hidden:true,covered:false});h.lifecycle.bind();h.lifecycle.run({});
+  const send=h.calls[0].callback;
+  send({type:'complete',canContinue:true,retryRead:false,resultLimitReached:false,sources:{tourvisor:{status:'complete'}}});
   h.eventListeners.click[0]({});
   h.filters={stars:[4],max:900000};
   await flush();
-  assert.equal(h.requests,1,'widened result scope must use canonical requestSubmit path');
+  assert.equal(h.requests,0,'widened local filter scope must never auto-submit a supplier search');
+  assert.equal(h.calls.length,1,'scope inspection must not start another data.search call');
   assert.deepEqual(h.scopeCalls[0],{stars:[4],max:900000},'scope inspection must read applied state after the click handler finishes');
-  assert.equal(h.calls.length,1,'requestSubmit must re-enter the same lifecycle search path');
+  const gap=h.events.at(-1);
+  assert.equal(gap.type,'coverage-gap');
+  assert.equal(gap.response.coverageGap,true);
+  assert.equal(gap.response.phase,'coverage_gap');
+  assert.equal(gap.response.pending,false);
+  assert.equal(gap.response.canContinue,false,'coverage gap must not reuse provider continuation as an expansion action');
+  assert.match(gap.response.message,/Повторить поиск/);
+  h.submitListeners[0]({preventDefault(){}});
+  assert.equal(h.calls.length,2,'an explicit submit still starts a new canonical search');
  }
  {
-  const h=harness({hidden:true,covered:true});h.lifecycle.bind();await h.fire('change');
+  let covered=false;
+  const h=harness({hidden:true,covered:()=>covered});h.lifecycle.bind();h.lifecycle.run({});
+  const send=h.calls[0].callback;
+  send({type:'complete',canContinue:true,retryRead:false,resultLimitReached:false,sources:{tourvisor:{status:'complete'}}});
+  await h.fire('change');
+  assert.equal(h.requests,0,'uncovered widening stays local until the user explicitly retries');
+  assert.equal(h.events.at(-1).response.phase,'coverage_gap');
+  covered=true;
+  await h.fire('change');
   assert.equal(h.requests,0,'covered narrowing stays local');
-  assert.equal(h.scopeCalls.length,1);
+  assert.equal(h.scopeCalls.length,2);
+  const restored=h.events.at(-1);
+  assert.equal(restored.type,'coverage-covered');
+  assert.equal(restored.response.coverageGap,false);
+  assert.equal(restored.response.phase,'complete');
+  assert.equal(restored.response.canContinue,true,'previous provider continuation state is restored after scope is covered again');
  }
  {
   const h=harness({hidden:false,covered:false});h.lifecycle.bind();await h.fire('click');
@@ -171,9 +195,14 @@ function harness({reject=false,hidden=false,covered=true,previous={kind:'previou
   assert.equal(h.requests,0,'without an actual prior supplier scope lifecycle does not invent one');
  }
  {
-  const h=harness({hidden:true,covered:false,submitEnabled:false});h.lifecycle.bind();await h.fire('change');
-  assert.equal(h.requests,0,'disabled canonical submit fails closed');
-  h.enabled=true;await h.fire('change');assert.equal(h.requests,1,'same widening refreshes once submit becomes available');
+  const h=harness({hidden:true,covered:false,submitEnabled:false});h.lifecycle.bind();h.lifecycle.run({});
+  const send=h.calls[0].callback;
+  send({type:'complete',canContinue:false,retryRead:false,resultLimitReached:false,sources:{tourvisor:{status:'complete'}}});
+  await h.fire('change');
+  assert.equal(h.requests,0,'coverage inspection never bypasses disabled canonical submit');
+  h.enabled=true;await h.fire('change');
+  assert.equal(h.requests,0,'re-enabling submit does not silently convert the same coverage gap into a supplier call');
+  assert.equal(h.events.at(-1).response.coverageGap,true);
  }
  {
   const h=harness({hidden:true,covered:false});h.lifecycle.bind();await h.fire('input');
