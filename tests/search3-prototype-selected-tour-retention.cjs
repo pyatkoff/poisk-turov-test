@@ -206,17 +206,9 @@ assert.match(source,/case 'anex-additional-prices':applyAnexAdditionalPrices\(\)
 assert.match(refreshSource,/o\.provider==='andromeda'.*o\.raw\?\.quoteRequired===true/s,'Andromeda quote-required offer owns a same-provider verification branch');
 assert.match(refreshSource,/await data\.verifyAndromeda\(o\)/,'Andromeda verification calls the dedicated same-provider quote owner');
 assert.ok(refreshSource.indexOf('verifyAndromeda(o)')<refreshSource.lastIndexOf('genericExactRefresh(o,h)'),'Andromeda same-provider quote runs before final generic cross-provider fallback');
-assert.match(refreshSource,/o\.cached&&\['anex','andromeda'\]\.includes\(o\.provider\)&&o\.raw\?\.rehydration/,'cached ANEX/Andromeda offers enter silent same-provider rehydration first');
-assert.match(refreshSource,/await data\.rehydrateCached\(o\)/,'cached offer delegates fresh provider search to the data owner');
-assert.match(refreshSource,/offers\.find\(item=>sameRehydratedTour\(item,o\)\)/,'fresh provider results require a strict semantic match before replacing the cached selection');
-assert.ok(refreshSource.indexOf('rehydrateCached(o)')<refreshSource.indexOf('genericExactRefresh(o,h)'),'cached same-provider rehydration runs before the visible generic fallback');
-assert.doesNotMatch(refreshSource.slice(0,refreshSource.indexOf('genericExactRefresh(o,h)')),/closeModal\(\)|runSearch\(/,'silent provider rehydration keeps the selected-tour UI in place');
-const rehydratedVariantsStart=source.indexOf('function openRehydratedVariants(cached,offers)');
-const rehydratedVariantsEnd=source.indexOf('\nfunction chooseRehydratedOffer',rehydratedVariantsStart);
-assert.ok(rehydratedVariantsStart>=0&&rehydratedVariantsEnd>rehydratedVariantsStart,'same-provider current variants have an in-place UI owner');
-const rehydratedVariantsSource=source.slice(rehydratedVariantsStart,rehydratedVariantsEnd);
-assert.match(rehydratedVariantsSource,/только свежие предложения того же поставщика/,'changed cached offer shows same-provider variants rather than silently substituting another tour');
-assert.match(source,/case 'rehydrated-offer':chooseRehydratedOffer\(b\.dataset\.key\)/,'same-provider variant selection has one explicit continuation action');
+assert.doesNotMatch(refreshSource,/rehydrateCached|raw\?\.rehydration|sameRehydratedTour/,'stored LOCAL offer rehydration is retired from stale-tour refresh');
+assert.match(refreshSource,/genericExactRefresh\(o,h\);/,'stale or saved selections retain the explicit fresh live-search fallback');
+assert.doesNotMatch(source,/function openRehydratedVariants|function chooseRehydratedOffer|case 'rehydrated-offer'/,'retired cached-provider variant UI cannot reappear');
 assert.match(refreshSource,/quote\.state==='flight_selection_required'.*openAndromedaFlightChoice/s,'ambiguous Andromeda flights stay in provider-specific flight selection');
 assert.match(refreshSource,/openAndromedaVerified\(o,quote\)/,'verified Andromeda quote uses the provider-verified result view');
 
