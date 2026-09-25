@@ -179,57 +179,6 @@ function canonicalMeals(h){
   {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']});
  h.data.catalog.mealPlanAvailable=true;
 }
-test('cached ANEX rehydrates with a fresh same-provider search identity and never sends stale refs',async()=>{
- const staleOffer=hash('anex'),staleSearch=hash('search-anex');
- const h=harness({
-  database:async(_n,p)=>rehydratableSnapshot(p,'anex'),
-  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{offerRef:'anex_online:'+'9'.repeat(64),localId:101,searchRef:'f'.repeat(32)})}})
- });
- canonicalMeals(h);await h.resume();
- const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
- assert.ok(cached?.cached);assert.ok(cached.raw?.rehydration,'LOCAL cached offer carries durable descriptor');
- const result=await h.data.rehydrateCached(cached);
- assert.equal(result.state,'current');assert.equal(result.provider,'anex');assert.equal(result.hotelId,501);assert.equal(result.offers.length,1);
- const current=result.offers[0];assert.equal(current.cached,false);assert.equal(current.provider,'anex');assert.equal(current.raw.anexSessionCurrent,true);
- assert.equal(current.raw.searchRef,'f'.repeat(32));assert.equal(current.raw.offerRef,'anex_online:'+'9'.repeat(64));
- assert.equal(h.anexCalls.length,1);assert.equal(h.anexCalls[0].action,'search');
- const sent=JSON.stringify(h.anexCalls[0]);assert.equal(sent.includes(staleOffer),false);assert.equal(sent.includes(staleSearch),false);
- assert.equal(h.anexCalls[0].params.dateFrom,trip.from);assert.equal(h.anexCalls[0].params.dateTo,trip.from);
- assert.equal(h.anexCalls[0].params.nightsFrom,7);assert.equal(h.anexCalls[0].params.nightsTo,7);
- assert.deepEqual(Array.from(h.anexCalls[0].params.hotelIds||[]),['101']);
-});
-test('cached Andromeda rehydrates in the same provider and retains exact scope for quote follow-up',async()=>{
- const h=harness({
-  database:async(_n,p)=>rehydratableSnapshot(p,'andromeda'),
-  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body,{localId:101,offerRef:'offer_'+'8'.repeat(64),searchRef:'7'.repeat(64)})}}),
-  andromedaQuote:async body=>{
-   assert.equal(body.params.dateFrom,trip.from);assert.equal(body.params.dateTo,trip.from);
-   assert.equal(body.params.nightsFrom,7);assert.equal(body.params.nightsTo,7);
-   assert.deepEqual(Array.from(body.params.hotelIds||[]),['101']);
-   return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified()})}};
-  }
- });
- canonicalMeals(h);await h.resume();
- const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');
- assert.ok(cached?.cached);assert.ok(cached.raw?.rehydration);
- const result=await h.data.rehydrateCached(cached);
- assert.equal(result.state,'current');assert.equal(result.offers.length,1);
- const current=result.offers[0];assert.equal(current.cached,false);assert.equal(current.provider,'andromeda');
- assert.equal(current.raw.offerRef,'offer_'+'8'.repeat(64));assert.ok(current.raw.rehydrationParams);
- const quote=await h.data.verifyAndromeda(current);
- assert.equal(quote.state,'quote_verified');assert.equal(h.andromedaQuoteCalls.length,1);
-});
-test('cached same-provider rehydration returns empty without falling through to another provider',async()=>{
- const h=harness({
-  database:async(_n,p)=>rehydratableSnapshot(p,'anex'),
-  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{empty:true})}})
- });
- canonicalMeals(h);await h.resume();
- const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
- const result=await h.data.rehydrateCached(cached);
- assert.equal(result.state,'empty');assert.equal(result.provider,'anex');assert.equal(result.offers.length,0);
- assert.equal(h.nativeCalls.length,0);assert.equal(h.calls.length,0,'rehydration does not start Tourvisor');
-});
 test('init loads canonical meal authority through the exposed LOCAL reader action',async()=>{
  const h=harness({api:(action)=>{
   if(action==='meals')return [{id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'}];
@@ -458,40 +407,7 @@ test('direct ANEX group verification fails closed when exact group identity is n
  verification=true;await assert.rejects(h.data.expandAnexGroup(offer),/предложение ANEX изменилось/);
  assert.equal(h.anexCalls.at(-1).action,'search');assert.equal(h.anexCalls.some(call=>call.action==='expand'),false);
 });
-test('LOCAL source accounting preserves backend losses and malformed counts fail closed',async()=>{
- const h=harness({database:(i,p)=>({...snapshot(p,['andromeda','anex']),
-  storedOfferCount:8,withheldOfferCount:2,categoryFilteredOfferCount:3,eligibleHotelCount:2,
-  hotelCount:1,omittedHotelCount:1,omittedOfferCount:1,offerCount:2,providerOfferCounts:{andromeda:1,anex:1}
- })});
- await h.start();await h.poll();
- const dbEvent=h.events.filter(e=>e.type==='database').at(-1);
- assert.deepEqual(JSON.parse(JSON.stringify(dbEvent)),{type:'database',status:'complete',hotels:1,offers:2,storedOffers:8,receivedOffers:8,mappedOffers:6,
-  visibleOffers:2,withheldOffers:2,scopeFilteredOffers:3,eligibleHotels:2,omittedHotels:1,omittedOffers:1,
-  providerOfferCounts:{andromeda:1,anex:1}});
- const final=h.events.filter(e=>e.type==='complete').at(-1);
- assert.equal(final.sources.database.receivedOffers,8);assert.equal(final.sources.database.mappedOffers,6);
- assert.equal(final.sources.database.withheldOffers,2);assert.equal(final.sources.database.scopeFilteredOffers,3);
- assert.equal(final.sources.database.eligibleHotels,2);assert.equal(final.sources.database.omittedHotels,1);
- assert.equal(final.sources.database.omittedOffers,1);assert.equal(final.sources.database.visibleOffers,2);
-
- const bad=harness({database:(i,p)=>({...snapshot(p),withheldOfferCount:'1'})});
- await bad.start();await bad.poll();
- assert.ok(bad.events.some(e=>e.type==='database-error'&&/Invalid LOCAL accounting/.test(e.message)));
- const badFinal=bad.events.filter(e=>e.type==='complete').at(-1);
- assert.deepEqual(badFinal.sources.database,{status:'error'});
-});
-test('direct ANEX and LOCAL dedupe the same normalized ANEX offer identity',async()=>{
- const offerRef='anex_online:'+'b'.repeat(64);
- const h=harness({anex:async()=>undefined,database:(i,p)=>{
-  const row=snapshot(p,['anex']);row.hotels[0].offers[0].listing.identity.offer_ref_digest=hash(offerRef);return row;
- }});
- await h.start();await h.poll();
- const hotel=h.latest()[0],anexOffers=hotel.offers.filter(o=>o.provider==='anex');
- assert.equal(anexOffers.length,1,'same direct+stored ANEX offer must not duplicate inside canonical hotel');
- const final=h.events.filter(e=>e.type==='complete').at(-1);
- assert.equal(final.union.hotelsByProvider.anex,1);assert.equal(final.union.offersByProvider.anex,1);
-});
-test('direct ANEX failure preserves Tourvisor and LOCAL inventory',async()=>{
+test('direct ANEX failure preserves Tourvisor inventory',async()=>{
  const h=harness({anex:async()=>({response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}})});
  await h.start();await h.poll();assert.ok(h.latest().length);assert.ok(h.providers().includes('tourvisor'));
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='error'));
@@ -516,7 +432,7 @@ test('first search sends accepted native resort IDs and preserves exact multi-st
  assert.equal(h.destinationCalls.filter(c=>c.action==='regions').length,1);
  const p=h.calls.find(c=>c.action==='search_start').params;
  assert.deepEqual(Array.from(p.regionIds),['22','23']);assert.equal(p.hotelCategory,'');
- assert.deepEqual(Array.from(h.dbBodies[0].regionIds),['22','23']);assert.equal(h.dbBodies[0].hotelCategory,'');
+ assert.equal(h.dbBodies.length,0,'live search does not query stored LOCAL offers');
  assert.throws(()=>h.data.params(trip,[],{resorts:['Неизвестный']}),/справочника/);
 });
 test('mixed region and subregion OR is split only for native providers and unioned',async()=>{
@@ -544,7 +460,7 @@ test('mixed region and subregion OR is split only for native providers and union
  await h.start({resorts:['Белек','Кадрие'],min:0,max:null});await h.poll();await flush();
  const tv=h.calls.find(call=>call.action==='search_start').params;
  assert.deepEqual(Array.from(tv.regionIds),['21']);assert.deepEqual(Array.from(tv.subregionIds),['2101'],'Tourvisor keeps canonical mixed OR');
- assert.deepEqual(Array.from(h.dbBodies[0].regionIds),['21']);assert.deepEqual(Array.from(h.dbBodies[0].subregionIds),['2101'],'LOCAL keeps canonical mixed OR');
+ assert.equal(h.dbBodies.length,0,'mixed live supplier scope does not query LOCAL offers');
  assert.equal(h.anexCalls.length,2,'ANEX receives one first-week request per destination branch');
  assert.deepEqual(h.anexCalls.map(call=>[Array.from(call.params.regionIds),Array.from(call.params.subregionIds)]),[
   [['21'],[]],[[],['2101']]
@@ -696,49 +612,38 @@ test('unlimited and explicit premium budgets use the exact request',async()=>{
  for(const max of [600000,1500000,25000000])assert.equal(h.data.params(trip,[],{min:0,max}).priceTo,String(max));
  assert.equal(h.data.params(trip,[],{min:0,max:0}).priceTo,'0');
 });
-test('initial three-provider DB inventory survives TV and completion reread',async()=>{
- const h=harness({database:(i,p)=>snapshot(p,['tourvisor','anex','andromeda'])});await h.start();await h.poll();
- assert.deepEqual(h.providers(),['andromeda','anex','tourvisor']);assert.equal(h.dbBodies.length,2);
- assert.ok(h.latest()[0].offers.every(o=>o.total>=1500000));
- assert.equal(h.events.at(-1).type,'complete');
- assert.ok(h.events.some(e=>e.type==='complete'&&e.canContinue));
-});
-test('cached URL resume reads LOCAL only and never starts supplier searches',async()=>{
+test('live search uses only Tourvisor ANEX and Andromeda while LOCAL stays calendar-only',async()=>{
  const h=harness({
   database:(i,p)=>snapshot(p,['tourvisor','anex','andromeda']),
+  anex:async body=>({response:{ok:true,json:async()=>directAnex(body,{offerRef:'anex_online:'+'7'.repeat(64),localId:301,searchRef:'7'.repeat(32)})}}),
+  native:async body=>({response:{ok:true,json:async()=>directAndromeda(body,{offerRef:'offer_'+'8'.repeat(64),localId:302,searchRef:'8'.repeat(64)})}})
+ });
+ await h.start();await h.poll();await flush();
+ assert.equal(h.dbBodies.length,0,'stored offers are not read during live search');
+ assert.deepEqual(h.providers(),['andromeda','anex','tourvisor']);
+ const complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
+ assert.equal(complete.sources.database.status,'skipped');
+ assert.equal(complete.union.offersByProvider['local-db'],undefined);
+ const before=h.dbBodies.length;
+ const calendar=await h.data.calendar(trip,trip.from,trip.from,new AbortController().signal,{});
+ assert.equal(h.dbBodies.length,before+1,'calendar still reads LOCAL stored offers');
+ assert.ok(calendar.length,'calendar can still use stored data');
+});
+
+test('cached URL resume restores conditions only and requires an explicit live search',async()=>{
+ const h=harness({
+  database:()=>assert.fail('cached resume must not read LOCAL offers'),
   native:async()=>assert.fail('cached resume must not call Andromeda'),
   anex:async()=>assert.fail('cached resume must not call ANEX')
  });
  await h.resume();
- assert.equal(h.dbBodies.length,1,'cached resume performs one LOCAL read');
- assert.equal(h.calls.length,0,'cached resume must not call Tourvisor runtime APIs');
- assert.equal(h.nativeCalls.length,0,'cached resume must not call Andromeda');
- assert.equal(h.anexCalls.length,0,'cached resume must not call ANEX');
- assert.equal(h.searchId,0,'cached resume never creates a supplier search id');
- assert.deepEqual(h.providers(),['andromeda','anex','tourvisor'],'cached LOCAL inventory keeps its provider provenance');
- assert.ok(h.events.some(e=>e.type==='loading'&&e.cachedResume===true),'cached resume is explicitly labelled');
- const complete=h.events.filter(e=>e.type==='complete').at(-1);
- assert.ok(complete,'cached resume reaches a terminal state');
- assert.equal(complete.cachedResume,true);assert.equal(complete.canContinue,false);
- for(const provider of ['tourvisor','anex','andromeda']){
-  assert.equal(complete.sources[provider].status,'skipped',provider+' is explicitly skipped during cached resume');
-  assert.equal(complete.sources[provider].offers,0);
- }
- assert.equal(complete.sources.database.status,'complete');
+ assert.equal(h.dbBodies.length,0);assert.equal(h.calls.length,0);assert.equal(h.nativeCalls.length,0);assert.equal(h.anexCalls.length,0);
+ assert.equal(h.latest().length,0,'cached resume does not expose stored tours as live inventory');
+ const complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
+ assert.equal(complete.cachedResume,true);assert.equal(complete.canContinue,false);assert.equal(complete.sources.database.status,'skipped');
+ assert.deepEqual(JSON.parse(JSON.stringify(complete.union)),{hotels:0,offers:0,hotelsByProvider:{},offersByProvider:{},providerSets:{}});
 });
-test('cached URL resume fails closed to LOCAL without supplier fallback',async()=>{
- const h=harness({
-  database:()=>{throw new Error('synthetic LOCAL failure');},
-  native:async()=>assert.fail('LOCAL failure must not fall back to Andromeda'),
-  anex:async()=>assert.fail('LOCAL failure must not fall back to ANEX')
- });
- await h.resume();
- assert.equal(h.calls.length,0);assert.equal(h.nativeCalls.length,0);assert.equal(h.anexCalls.length,0);
- assert.ok(h.events.some(e=>e.type==='database-error'),'LOCAL failure is surfaced');
- const complete=h.events.filter(e=>e.type==='complete').at(-1);
- assert.equal(complete.cachedResume,true);assert.equal(complete.sources.database.status,'error');
- assert.equal(complete.canContinue,false,'cached failure requires an explicit fresh retry');
-});
+
 test('direct ANEX initial search is limited to the first seven days of a wider user range',async()=>{
  const search={...trip,to:'2026-10-19'};
  const h=harness({
@@ -768,7 +673,7 @@ test('direct Andromeda initial search is limited to the first seven days of a wi
  assert.deepEqual([h.nativeCalls[0].params.dateFrom,h.nativeCalls[0].params.dateTo],['2026-09-29','2026-10-05']);
  const tv=h.calls.find(call=>call.action==='search_start');
  assert.ok(tv);assert.deepEqual([tv.params.dateFrom,tv.params.dateTo],['2026-09-29','2026-10-19'],'Tourvisor keeps the full user date range');
- assert.equal(h.dbBodies[0].dateFrom,'2026-09-29');assert.equal(h.dbBodies[0].dateTo,'2026-10-19','LOCAL keeps the full user date range');
+ assert.equal(h.dbBodies.length,0,'live search never reads LOCAL offers for the wide user range');
  const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.pagesLoaded===1).at(-1);
  assert.ok(receipt);assert.equal(receipt.status,'complete');assert.equal(receipt.dateFrom,'2026-09-29');assert.equal(receipt.dateTo,'2026-10-05');
 });
@@ -796,24 +701,6 @@ test('direct ANEX keeps a shorter user range unchanged',async()=>{
  assert.equal(h.anexCalls.length,1);
  assert.deepEqual([h.anexCalls[0].params.dateFrom,h.anexCalls[0].params.dateTo],[search.from,search.to]);
 });
-test('offers stored during a search are loaded without another search start',async()=>{
- const h=harness({database:(i,p)=>snapshot(p,i===1?['tourvisor']:['tourvisor','anex','andromeda'])});
- await h.start();assert.deepEqual(h.providers(),['tourvisor']);await h.poll();assert.deepEqual(h.providers(),['andromeda','anex','tourvisor']);
- assert.equal(h.calls.filter(c=>c.action==='search_start').length,1);
-});
-test('one user search invokes Andromeda autosave once and rereads LOCAL after it completes',async()=>{
- let saved=false;const gate=defer();
- const h=harness({
-  native:async body=>{await gate.promise;saved=true;return {response:{ok:true,json:async()=>directAndromeda(body)}};},
-  database:(i,p)=>snapshot(p,saved?['tourvisor','andromeda']:['tourvisor'])
- });
- await h.start();assert.equal(h.nativeCalls.length,1);assert.equal(h.nativeCalls[0].generation,1);assert.equal(h.nativeCalls[0].page,1);
- assert.deepEqual(Object.keys(h.nativeCalls[0]).sort(),['generation','page','params']);
- assert.equal(JSON.stringify(h.nativeCalls[0].params),JSON.stringify(h.data.params(trip)));
- const completing=h.poll();await flush();assert.deepEqual(h.providers(),['tourvisor']);assert.equal(h.events.some(e=>e.type==='complete'),false);
- gate.resolve();await completing;await flush();assert.equal(h.nativeCalls.length,1);assert.deepEqual(h.providers(),['andromeda','tourvisor']);
- assert.equal(h.dbBodies.length,3);assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='complete'));assert.equal(h.events.at(-1).type,'complete');
-});
 test('remaining Andromeda pages join the first union before overall completion',async()=>{
  const page2=defer(),ref=page=>'offer_'+String(page).repeat(64);
  const h=harness({
@@ -838,7 +725,7 @@ test('remaining Andromeda pages join the first union before overall completion',
  const complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
  assert.equal(complete.sources.andromeda.status,'complete');assert.equal(complete.sources.andromeda.pagesLoaded,3);assert.equal(complete.sources.andromeda.pagesTotal,3);
  assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda').length,3,'all mapped Andromeda pages join the first completed union');
- assert.ok(h.dbBodies.length>=4,'completed initial pagination performs serial LOCAL readback before first complete');
+ assert.equal(h.dbBodies.length,0,'Andromeda pagination never rereads stored offers into the live union');
 });
 test('late Andromeda page failure makes the first union partial while preserving accepted pages',async()=>{
  const ref=page=>'offer_'+String(page).repeat(64);
@@ -873,26 +760,15 @@ test('stop aborts a pending Andromeda first-union continuation before another pa
  assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2],'stopped generation must never request page 3');
  assert.equal(h.events.length,before,'stopped generation must ignore the late Andromeda page');
 });
-test('native Andromeda offers are visible even when LOCAL reread fails',async()=>{
- const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),database:async()=>{throw new Error('fictional LOCAL outage');}});
- await h.start();await waitFor(()=>h.providers().includes('andromeda'),'successful native Andromeda must become visible without autosave readback');
- assert.ok(h.providers().includes('andromeda'),'successful native Andromeda must not wait for autosave readback');
+test('native Andromeda offers are visible without any LOCAL live read',async()=>{
+ const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),database:async()=>assert.fail('live search must not read LOCAL offers')});
+ await h.start();await waitFor(()=>h.providers().includes('andromeda'),'successful native Andromeda must become visible directly');
+ assert.ok(h.providers().includes('andromeda'));
  await h.poll();assert.deepEqual(h.providers(),['andromeda','tourvisor']);
- assert.ok(h.events.some(e=>e.type==='database-error'));
+ assert.equal(h.dbBodies.length,0);
  const final=h.events.filter(e=>e.type==='complete').at(-1);
  assert.equal(final.sources.andromeda.status,'complete');assert.equal(final.sources.andromeda.hotels,1);assert.equal(final.sources.andromeda.offers,1);
  assert.equal(final.union.hotelsByProvider.andromeda,1);assert.equal(final.union.offersByProvider.andromeda,1);
-});
-test('native Andromeda and LOCAL autosave dedupe the same offer identity',async()=>{
- const offerRef='offer_'+'d'.repeat(64);
- const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body,{offerRef})}}),database:(i,p)=>{
-  const row=snapshot(p,['andromeda']);row.hotels[0].offers[0].listing.identity.offer_ref_digest=hash(offerRef);return row;
- }});
- await h.start();await h.poll();
- const offers=h.latest()[0].offers.filter(o=>o.provider==='andromeda');
- assert.equal(offers.length,1,'same native+stored Andromeda offer must collapse by canonical digest');
- const final=h.events.filter(e=>e.type==='complete').at(-1);
- assert.equal(final.union.offersByProvider.andromeda,1);
 });
 test('direct Andromeda verification uses exact same-provider quote without Tourvisor fallback',async()=>{
  const h=harness({
@@ -971,43 +847,20 @@ test('Andromeda quote response fails closed on price, identity and flight-ref co
   await assert.rejects(h.data.verifyAndromeda(offer),/некорректное подтверждение/);
  }
 });
-test('Andromeda failure is isolated from TV and LOCAL inventory',async()=>{
+test('Andromeda failure is isolated from Tourvisor inventory',async()=>{
  const h=harness({native:async()=>({response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}})});
  await h.start();await flush();await h.poll();assert.ok(h.latest().length);
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='error'));
  assert.ok(h.events.some(e=>e.type==='complete'));assert.equal(h.nativeCalls.length,1);
 });
-test('stopped generation ignores a late Andromeda completion and does not reread LOCAL',async()=>{
+test('stopped generation ignores a late Andromeda completion without DB live reads',async()=>{
  const gate=defer();const h=harness({native:async body=>{await gate.promise;return {response:{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:body.generation,hotels:[]}})}};}});
- await h.start();assert.equal(h.nativeCalls.length,1);const before=h.dbBodies.length;h.data.stop();gate.resolve();await flush();
- assert.equal(h.dbBodies.length,before);assert.equal(h.events.some(e=>e.type==='provider'&&e.status==='complete'),false);
+ await h.start();assert.equal(h.nativeCalls.length,1);assert.equal(h.dbBodies.length,0);h.data.stop();gate.resolve();await flush();
+ assert.equal(h.dbBodies.length,0);assert.equal(h.events.some(e=>e.type==='provider'&&e.status==='complete'),false);
 });
 test('127 hotels are requested and retained, not the former 100',async()=>{
  const h=harness({api:action=>action==='search_results'?live(127):undefined});await h.start();await h.poll();
  assert.equal(h.calls.find(c=>c.action==='search_results').params.limit,5000);assert.equal(h.latest().length,127);
-});
-test('failed DB refresh retains valid native rows and does not create authority',async()=>{
- const h=harness({database:(i,p)=>{if(i===2)throw Error('fixture DB unavailable');return snapshot(p,['anex','andromeda']);}});
- await h.start();await h.poll();assert.deepEqual(h.providers(),['andromeda','anex','tourvisor']);
- assert.ok(h.events.some(e=>e.type==='database-error'));
- for(const o of h.latest()[0].offers.filter(o=>o.cached))await assert.rejects(h.data.quote(o),/обновите/);
-});
-test('valid empty DB refresh clears DB rows, unlike a read failure',async()=>{
- const h=harness({database:(i,p)=>snapshot(p,i===1?['anex','andromeda']:[])});await h.start();await h.poll();
- assert.deepEqual(h.providers(),['tourvisor']);
-});
-test('late initial read finishes before the completion snapshot',async()=>{
- const pending=defer();const h=harness({database:(i,p)=>i===1?pending.promise:snapshot(p,['andromeda'])});
- await h.start();const completing=h.poll();await flush();assert.equal(h.dbBodies.length,1);assert.equal(h.events.some(e=>e.type==='complete'),false);
- pending.resolve(snapshot(h.dbBodies[0],['anex']));await completing;await flush();assert.equal(h.dbBodies.length,2);assert.deepEqual(h.providers(),['andromeda','tourvisor']);assert.equal(h.events.at(-1).type,'complete');
-});
-test('stop rejects a late initial snapshot and never schedules its follow-up',async()=>{
- const pending=defer();const h=harness({database:()=>pending.promise});await h.start();const completing=h.poll();await flush();h.data.stop();const count=h.events.length;
- pending.resolve(snapshot(h.dbBodies[0],['anex']));await completing;await flush();assert.equal(h.events.length,count);assert.equal(h.dbBodies.length,1);assert.equal(await h.data.continueSearch(),false);
-});
-test('stop rejects a late completion snapshot',async()=>{
- const pending=defer();const h=harness({database:(i,p)=>i===2?pending.promise:snapshot(p)});await h.start();const completing=h.poll();await flush();assert.equal(h.dbBodies.length,2);h.data.stop();const count=h.events.length;
- pending.resolve(snapshot(h.dbBodies[1],['andromeda']));await completing;await flush();assert.equal(h.events.length,count);
 });
 test('continuation stops after a completed read adds no Tourvisor inventory',async()=>{
  const h=harness();await h.start();await h.poll();
@@ -1041,7 +894,7 @@ test('continuation keeps search identity and synchronously rejects double click'
  const pending=defer();const h=harness({api:action=>action==='search_continue'?pending.promise:undefined});await h.start();await h.poll();
  const first=h.data.continueSearch();assert.equal(await h.data.continueSearch(),false);pending.resolve({requestCount:1});await first;await flush();
  assert.equal(h.calls.filter(c=>c.action==='search_continue').length,1);assert.equal(h.calls.filter(c=>c.action==='search_start').length,1);assert.equal(h.searchId,9001);
- assert.equal(h.dbBodies.length,3);assert.ok(h.events.some(e=>e.type==='loading'&&e.continued));
+ assert.equal(h.dbBodies.length,0,'Tourvisor continuation never rereads LOCAL live offers');assert.ok(h.events.some(e=>e.type==='loading'&&e.continued));
 });
 test('uncertain continuation response retries reads, not the supplier continuation',async()=>{
  const h=harness({api:action=>{if(action==='search_continue')throw Error('fixture response lost');}});await h.start();await h.poll();
@@ -1068,7 +921,7 @@ test('stopping synchronously on loading starts no requests',async()=>{
 });
 test('stopping on progress starts no result read or completion',async()=>{
  const h=harness({onEvent:(e,data)=>{if(e.type==='progress')data.stop();}});await h.start();await h.poll();
- assert.equal(h.calls.filter(c=>c.action==='search_results').length,0);assert.equal(h.dbBodies.length,1);
+ assert.equal(h.calls.filter(c=>c.action==='search_results').length,0);assert.equal(h.dbBodies.length,0);
  assert.equal(h.events.some(e=>e.type==='complete'),false);
 });
 test('stopping from a canonical render suppresses later callbacks',async()=>{
@@ -1183,44 +1036,4 @@ function cachedProviderSnapshot(params,provider,operatorName){
  row.listing.operator={raw:operatorName,canonical_name:operatorName};
  return data;
 }
-test('cached ANEX rehydration performs a fresh exact same-provider search without stale supplier refs',async()=>{
- const staleOffer=hash('stale-anex-offer'),staleSearch=hash('stale-anex-search');
- const h=harness({
-  database:(i,p)=>{const data=cachedProviderSnapshot(p,'anex','ANEX');data.hotels[0].offers[0].listing.identity.offer_ref_digest=staleOffer;data.hotels[0].offers[0].listing.identity.search_ref_digest=staleSearch;return data;},
-  anex:async body=>({response:{ok:true,status:200,json:async()=>directAnex(body,{localId:101,searchRef:'f'.repeat(32),offerRef:'anex_online:'+'9'.repeat(64)})}})
- });
- canonicalMeals(h);await h.resume();
- const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');assert.ok(cached?.cached);assert.ok(cached.raw.rehydration);
- const result=await h.data.rehydrateCached(cached);
- assert.equal(result.state,'current');assert.equal(result.provider,'anex');assert.equal(result.hotelId,501);assert.equal(result.offers.length,1);
- const request=h.anexCalls.at(-1);assert.equal(request.action,'search');assert.equal(request.params.dateFrom,trip.from);assert.equal(request.params.dateTo,trip.from);
- assert.equal(request.params.nightsFrom,7);assert.equal(request.params.nightsTo,7);assert.deepEqual(request.params.hotelIds,['101']);
- const sent=JSON.stringify(request);assert.equal(sent.includes(staleOffer),false);assert.equal(sent.includes(staleSearch),false,'cached supplier session identity is never replayed');
- const live=result.offers[0];assert.equal(live.cached,false);assert.equal(live.provider,'anex');assert.equal(live.raw.anexSessionCurrent,true);assert.equal(live.raw.anexLocalHotelId,101);
-});
-test('cached Andromeda rehydration carries its fresh exact scope into quote verification',async()=>{
- const h=harness({
-  database:(i,p)=>cachedProviderSnapshot(p,'andromeda','FUN&SUN'),
-  native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body,{localId:101,offerRef:'offer_'+'8'.repeat(64),searchRef:'7'.repeat(64)})}}),
-  andromedaQuote:async body=>({response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101,'1499000')})}})
- });
- canonicalMeals(h);await h.resume();
- const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='andromeda');assert.ok(cached?.cached);assert.ok(cached.raw.rehydration);
- const result=await h.data.rehydrateCached(cached);assert.equal(result.state,'current');assert.equal(result.offers.length,1);
- const live=result.offers[0];assert.equal(live.cached,false);assert.equal(live.provider,'andromeda');
- assert.equal(h.nativeCalls.length,1);assert.equal(h.nativeCalls[0].params.dateFrom,trip.from);assert.equal(h.nativeCalls[0].params.dateTo,trip.from);assert.deepEqual(h.nativeCalls[0].params.hotelIds,['101']);
- const quote=await h.data.verifyAndromeda(live);assert.equal(quote.state,'quote_verified');assert.equal(h.andromedaQuoteCalls.length,1);
- assert.deepEqual(h.andromedaQuoteCalls[0].params,h.nativeCalls[0].params,'quote uses the exact fresh scope that created the rehydrated offer context');
-});
-test('Stop aborts pending cached same-provider rehydration and stale response cannot become current',async()=>{
- const gate=defer();let signal=null;
- const h=harness({
-  database:(i,p)=>cachedProviderSnapshot(p,'anex','ANEX'),
-  anex:async(body,s)=>{signal=s;await gate.promise;return {response:{ok:true,status:200,json:async()=>directAnex(body,{localId:101})}};}
- });
- canonicalMeals(h);await h.resume();const cached=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
- const pending=h.data.rehydrateCached(cached);await waitFor(()=>signal!==null,'pending cached rehydration required');assert.equal(signal.aborted,false);
- h.data.stop();assert.equal(signal.aborted,true);gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
- assert.equal(h.anexCalls.filter(call=>call.action==='search').length,1,'stale cached rehydration is never replayed');
-});
 (async()=>{for(const [name,fn]of tests){await fn();console.log('PASS',name);}console.log('SEARCH3_PROTOTYPE_INVENTORY_LIFECYCLE_OK',tests.length);})().catch(error=>{console.error(error);process.exitCode=1;});
