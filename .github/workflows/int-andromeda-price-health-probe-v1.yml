@@ -4,10 +4,13 @@ on:
     types: [opened, synchronize]
     branches: [feature/anex-search-adapter-20260907]
     paths:
-      - 'scripts/diagnostics/int_andromeda_price_health_probe_v1.php'
-      - '.github/workflows/int-andromeda-price-health-probe-v1.yml'
+      - 'scripts/diagnostics/hotel_match_samo_business_live30_common4_acquire_v3_wave5.php'
+      - 'tests/hotel_match_samo_business_live30_common4_acquire_v3_wave5_test.php'
+      - '.github/workflows/hotel-match-samo-business-live30-common4-acquire-v3-wave5.yml'
 permissions: {contents: read, actions: read, issues: read}
-concurrency: {group: andromeda-supplier-slot, cancel-in-progress: false}
+concurrency: {group: int-andromeda-price-health-20260925-v1, cancel-in-progress: false}
+env:
+  OP: int-andromeda-price-health-20260925-v1
 jobs:
   live:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'int/andromeda-price-health-probe-20260925'
@@ -18,17 +21,14 @@ jobs:
         with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
       - run: php -l scripts/diagnostics/int_andromeda_price_health_probe_v1.php
       - name: Run bounded live probe
-        env:
-          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
-          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
-          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
         run: |
-          set -euo pipefail; umask 077; mkdir -p terminal
-          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
-          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
-          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
-          remote="$USER@$HOST"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
-          op=".anytoour-int/operations/int-andromeda-price-health-20260925-v1"
+          set -euo pipefail;umask 077;mkdir -p terminal
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-int/operations/$OP"
           ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
           scp "${opts[@]}" scripts/diagnostics/int_andromeda_price_health_probe_v1.php "$remote:$op/payload/scripts/diagnostics/"
           ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" INT_OPERATION_DIR=\"\$HOME/$op\" php \"\$HOME/$op/payload/scripts/diagnostics/int_andromeda_price_health_probe_v1.php\"" >terminal/stdout 2>terminal/stderr
@@ -36,4 +36,4 @@ jobs:
           cat terminal/result.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        with: {name: int-andromeda-price-health-probe-${{ github.run_id }}, path: terminal/, retention-days: 30}
+        with: {name: 'int-andromeda-price-health-probe-${{ github.run_id }}', path: terminal/, retention-days: 30}
