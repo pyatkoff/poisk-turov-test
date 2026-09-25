@@ -6,13 +6,17 @@
  * It may fill missing canonical hotel-presentation fields, but never overwrites an
  * existing non-empty AnyTour value. Room/meal concepts and traits are intentionally
  * outside this contract: those are hotel-scoped product dictionaries handled by a
- * separate reviewed layer.
+ * separate reviewed layer. The explicit syncImported mode instead synchronizes
+ * supported hotel CONTENT after proving import origin and source freshness; it
+ * never modifies offer dictionaries. Its policy is in the adjacent trait.
  */
 declare(strict_types=1);
 require_once __DIR__ . '/hotel-presentation-read-v1.php';
+require_once __DIR__ . '/anytour-profile-content-sync-v1.php';
 
 final class AnyTourProfileEnrichmentV1
 {
+    use AnyTourProfileContentSyncV1;
     public const MAX_BATCH = 250;
     public const LOCAL_ALIAS_NAMESPACE = 'anytour_local_id';
     public const LOCAL_ALIAS_ACQUIRED_VIA = 'canonical_local_alias_v1';
@@ -31,10 +35,13 @@ final class AnyTourProfileEnrichmentV1
     public function __construct(private PDO $pdo) {}
 
     /** Opt-in HC-1 scope; null alone retains the original all-field demand queue. */
-    private static function contentScope(?array $targets, int $limit): ?array
+    private static function contentScope(?array $targets, int $limit, bool $syncImported = false): ?array
     {
-        if ($targets === null) return null;
-        if (!array_is_list($targets) || $targets === [] || count($targets) > 20 || count($targets) !== $limit) {
+        if ($targets === null) {
+            if ($syncImported) throw new InvalidArgumentException('ANYTOUR_PROFILE_ENRICH_SYNC_REQUIRES_SCOPE');
+            return null;
+        }
+        if (!array_is_list($targets) || $targets === [] || count($targets) > ($syncImported ? self::MAX_BATCH : 20) || count($targets) !== $limit) {
             throw new InvalidArgumentException('ANYTOUR_PROFILE_ENRICH_CONTENT_SCOPE');
         }
         $scope = []; $localIds = [];
@@ -50,7 +57,7 @@ final class AnyTourProfileEnrichmentV1
             }
             $fields = [];
             foreach ($target['fields'] as $field) {
-                if (!is_string($field) || !in_array($field, ['description','primaryImage','images'], true)
+                if (!is_string($field) || !in_array($field, $syncImported ? self::SYNC_FIELDS : ['description','primaryImage','images'], true)
                     || isset($fields[$field])) {
                     throw new InvalidArgumentException('ANYTOUR_PROFILE_ENRICH_CONTENT_SCOPE_FIELD');
                 }
@@ -280,11 +287,11 @@ final class AnyTourProfileEnrichmentV1
         return $conflicts;
     }
 
-    private static function applyPatch(array $profile, array $patch): array
+    private static function applyPatch(array $profile, array $patch, bool $syncImported = false): array
     {
         foreach ($patch as $field => $value) {
-            if (!in_array($field, self::TARGET_FIELDS, true)) throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_PATCH_FIELD');
-            if (!self::missing(self::ownValue($profile, $field))) throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_OVERWRITE_GUARD');
+            if (!in_array($field, $syncImported ? self::SYNC_FIELDS : self::TARGET_FIELDS, true)) throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_PATCH_FIELD');
+            if (!$syncImported && !self::missing(self::ownValue($profile, $field))) throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_OVERWRITE_GUARD');
             if (str_starts_with($field, 'hotelInformation.')) {
                 $key = substr($field, strlen('hotelInformation.'));
                 if (!is_array($profile['hotelInformation'] ?? null)) $profile['hotelInformation'] = [];
@@ -418,10 +425,10 @@ final class AnyTourProfileEnrichmentV1
         return $core;
     }
 
-    public function plan(mixed $requestedLimit, mixed $demandThrough, ?array $contentScope = null): array
+    public function plan(mixed $requestedLimit, mixed $demandThrough, ?array $contentScope = null, bool $syncImported = false): array
     {
         $limit = self::limit($requestedLimit);
-        $scope = self::contentScope($contentScope, $limit);
+        $scope = self::contentScope($contentScope, $limit, $syncImported);
         $through = self::utc($demandThrough);
         $this->assertSchema();
         if ($this->pdo->inTransaction()) throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_CALLER_TRANSACTION');
@@ -429,7 +436,7 @@ final class AnyTourProfileEnrichmentV1
         $this->pdo->exec('SET TRANSACTION READ ONLY');
         $this->pdo->beginTransaction();
         try {
-            $snapshot = $this->snapshot($limit, $through, $scope);
+            $snapshot = $syncImported ? $this->syncSnapshot($limit, $through, $scope) : $this->snapshot($limit, $through, $scope);
             $this->pdo->commit();
         } catch (Throwable $error) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
@@ -438,11 +445,11 @@ final class AnyTourProfileEnrichmentV1
         return ['status'=>'prepared_read_only','writes'=>0,'supplierCalls'=>0] + $snapshot;
     }
 
-    public function apply(string $operation, mixed $requestedLimit, mixed $demandThrough, string $expectedPlanSha256, ?array $contentScope = null): array
+    public function apply(string $operation, mixed $requestedLimit, mixed $demandThrough, string $expectedPlanSha256, ?array $contentScope = null, bool $syncImported = false): array
     {
         $operation = self::operation($operation);
         $limit = self::limit($requestedLimit);
-        $scope = self::contentScope($contentScope, $limit);
+        $scope = self::contentScope($contentScope, $limit, $syncImported);
         $through = self::utc($demandThrough);
         if (!preg_match('/\A[a-f0-9]{64}\z/D', $expectedPlanSha256)) {
             throw new InvalidArgumentException('ANYTOUR_PROFILE_ENRICH_PLAN_SHA');
@@ -453,8 +460,10 @@ final class AnyTourProfileEnrichmentV1
         $this->pdo->exec('SET TRANSACTION READ WRITE');
         $this->pdo->beginTransaction();
         $expected = [];
+        $provenanceNamespace = $syncImported ? self::SYNC_NAMESPACE : self::PROVENANCE_NAMESPACE;
+        $provenanceVia = $syncImported ? self::SYNC_ACQUIRED_VIA : self::PROVENANCE_ACQUIRED_VIA;
         try {
-            $snapshot = $this->snapshot($limit, $through, $scope);
+            $snapshot = $syncImported ? $this->syncSnapshot($limit, $through, $scope) : $this->snapshot($limit, $through, $scope);
             if (!hash_equals($expectedPlanSha256, $snapshot['planSha256'])) {
                 throw new DomainException('ANYTOUR_PROFILE_ENRICH_PLAN_DRIFT');
             }
@@ -486,7 +495,7 @@ final class AnyTourProfileEnrichmentV1
                     throw new DomainException('ANYTOUR_PROFILE_ENRICH_PROFILE_DRIFT');
                 }
                 $profile = self::decodeProfile($row);
-                $nextProfile = self::applyPatch($profile, $item['patch']);
+                $nextProfile = self::applyPatch($profile, $item['patch'], $syncImported);
                 $nextJson = self::json($nextProfile);
                 $nextSha = hash('sha256', $nextJson);
                 $nextRevision = (int)$row['revision'] + 1;
@@ -515,10 +524,20 @@ final class AnyTourProfileEnrichmentV1
                     'room_meal_fields_excluded'=>true,
                     'traits_excluded'=>true,
                 ];
+                if ($syncImported) {
+                    $provenance['content_policy'] = 'sync_imported_retained_tv_v1';
+                    $provenance['source_kind'] = 'retained_full_tourvisor_card';
+                    $provenance['source_raw_sha256'] = $item['sourceRawSha256'];
+                    $provenance['import_proof'] = $item['importProof'];
+                    $provenance['fields_updated'] = $fields;
+                    unset($provenance['fields_filled']);
+                    $provenance['room_meal_fields_excluded'] = false;
+                    $provenance['offer_dictionaries_unchanged'] = true;
+                }
                 $provenanceJson = self::json($provenance);
                 $externalKey = $ownId . ':' . $nextRevision;
                 $insertProvenance->execute([
-                    self::PROVENANCE_NAMESPACE,$externalKey,$ownId,self::PROVENANCE_ACQUIRED_VIA,
+                    $provenanceNamespace,$externalKey,$ownId,$provenanceVia,
                     $provenanceJson,hash('sha256',$provenanceJson),
                 ]);
                 if ($insertProvenance->rowCount() !== 1) throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_PROVENANCE');
@@ -545,10 +564,10 @@ final class AnyTourProfileEnrichmentV1
                 || !hash_equals((string)$hotel['profile_sha256'], hash('sha256', (string)$hotel['profile_json']))) {
                 throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_POSTCOMMIT_PROFILE');
             }
-            $sourceRead->execute([self::PROVENANCE_NAMESPACE,$want['externalKey']]);
+            $sourceRead->execute([$provenanceNamespace,$want['externalKey']]);
             $source = $sourceRead->fetch(PDO::FETCH_ASSOC);
             if (!is_array($source) || (int)$source['anytour_hotel_id'] !== $ownId
-                || ($source['acquired_via'] ?? null) !== self::PROVENANCE_ACQUIRED_VIA
+                || ($source['acquired_via'] ?? null) !== $provenanceVia
                 || !hash_equals($want['provenanceSha256'], (string)$source['source_sha256'])
                 || !hash_equals((string)$source['source_sha256'], hash('sha256', (string)$source['source_json']))) {
                 throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_POSTCOMMIT_PROVENANCE');

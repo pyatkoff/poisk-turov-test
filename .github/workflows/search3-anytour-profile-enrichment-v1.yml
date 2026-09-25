@@ -6,6 +6,9 @@ on:
       - release/search3-production-ready-v1
     paths:
       - 'v2/data/anytour-profile-enrichment-v1.php'
+      - 'v2/data/anytour-profile-content-sync-v1.php'
+      - 'v2/data/hotel-details-v1.php'
+      - 'tests/anytour-profile-content-sync-v1-test.php'
       - 'tests/anytour-profile-enrichment-v1-test.php'
       - 'tests/anytour-profile-enrichment-content-scope-test.php'
       - '.github/workflows/search3-anytour-profile-enrichment-v1.yml'
@@ -14,6 +17,9 @@ on:
       - local/2690-profile-fill-missing-enrichment-v1
     paths:
       - 'v2/data/anytour-profile-enrichment-v1.php'
+      - 'v2/data/anytour-profile-content-sync-v1.php'
+      - 'v2/data/hotel-details-v1.php'
+      - 'tests/anytour-profile-content-sync-v1-test.php'
       - 'tests/anytour-profile-enrichment-v1-test.php'
       - 'tests/anytour-profile-enrichment-content-scope-test.php'
       - '.github/workflows/search3-anytour-profile-enrichment-v1.yml'
@@ -54,8 +60,12 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/data/anytour-profile-enrichment-v1.php
+          php -l v2/data/anytour-profile-content-sync-v1.php
+          php -l v2/data/hotel-details-v1.php
+          php -l tests/anytour-profile-content-sync-v1-test.php
           php -l tests/anytour-profile-enrichment-v1-test.php
           php -l tests/anytour-profile-enrichment-content-scope-test.php
+          php tests/anytour-profile-content-sync-v1-test.php --self-test
           grep -Fq "PROVENANCE_NAMESPACE = 'profile_enrichment:legacy_saved_v1'" v2/data/anytour-profile-enrichment-v1.php
           grep -Fq "'roomMealFieldsExcluded'=>true" v2/data/anytour-profile-enrichment-v1.php
           grep -Fq "'traitsExcluded'=>true" v2/data/anytour-profile-enrichment-v1.php
@@ -67,3 +77,23 @@ jobs:
           ANYTOUR_PROFILE_ENRICH_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_profile_enrich_fixture;charset=utf8mb4'
           ANYTOUR_PROFILE_ENRICH_TEST_PASSWORD: fixture-only-password
         run: php tests/anytour-profile-enrichment-content-scope-test.php
+      - name: Synchronize imported content and preserve manual edits on disposable MySQL
+        env:
+          ANYTOUR_PROFILE_ENRICH_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_profile_enrich_fixture;charset=utf8mb4'
+          ANYTOUR_PROFILE_ENRICH_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour-profile-content-sync-v1-test.php
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'hc1-content-sync-tested-source-${{ github.run_id }}'
+          retention-days: 30
+          path: |
+            v2/data/anytour-profile-enrichment-v1.php
+            v2/data/anytour-profile-content-sync-v1.php
+            v2/data/anytour-canonical-catalog-v1.php
+            v2/data/hotel-details-v1.php
+            v2/data/hotel-presentation-read-v1.php
+            v2/data/db-v1.php
+            tests/anytour-profile-content-sync-v1-test.php
+            tests/anytour-profile-enrichment-v1-test.php
+            tests/anytour-profile-enrichment-content-scope-test.php
