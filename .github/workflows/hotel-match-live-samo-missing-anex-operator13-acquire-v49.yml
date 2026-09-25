@@ -165,7 +165,7 @@ jobs:
             'operation':os.environ['OP'],'state':'reserved_before_provider_access','source_sha':os.environ['HEAD'],
             'router_artifact':int(os.environ['ROUTER_ARTIFACT']),'router_result_sha256':hashlib.sha256(router.read_bytes()).hexdigest(),
             'predecessor_operations':[os.environ['V41B_OP'],os.environ['V45_OP']],
-            'v45_result_sha256':os.environ['V45_RESULT_SHA_CALC'],'v45_receipt_sha256':os.environ['V45_RECEIPT_SHA_CALC'],
+            'v45_result_sha256':hashlib.sha256(pathlib.Path('input/v45-result.json').read_bytes()).hexdigest(),'v45_receipt_sha256':hashlib.sha256(pathlib.Path('input/v45-receipt.json').read_bytes()).hexdigest(),
             'tourvisor_account':'TOURVISOR_ANEX_JWT','daily_limit':3000,'operation_call_cap':500,'max_batches':50,
             'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'database_writes':0,'mapping_writes':0
           },sort_keys=True)+'\n')
