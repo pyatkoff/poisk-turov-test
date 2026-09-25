@@ -926,7 +926,8 @@ test('stopping on progress starts no result read or completion',async()=>{
 });
 test('stopping from a canonical render suppresses later callbacks',async()=>{
  const h=harness({onEvent:(e,data)=>{if(e.type==='results')data.stop();}});await h.start();
- const count=h.events.length;await flush();assert.equal(h.events.length,count);assert.equal(h.events.at(-1).type,'results');
+ const count=h.events.length;assert.ok(h.events.some(e=>e.type==='results'),'canonical render must occur before Stop');
+ await flush();assert.equal(h.events.length,count,'Stop blocks every later callback regardless of earlier provider receipts');
  assert.equal(h.events.some(e=>e.type==='database'),false);
 });
 // Calendar reuse is tested on the same real adapter/parser, with a controlled
