@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once dirname(__DIR__,2).'/app/integrations/andromeda-client.php';
 require_once dirname(__DIR__,2).'/app/integrations/andromeda-transport.php';
-const OP='int-andromeda-price-health-20260925-v1';
+const OP='int-andromeda-price-health-20260925-v2';
 function savej($p,$v){$r=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";if(file_put_contents($p,$r,LOCK_EX)!==strlen($r))throw new RuntimeException('write');}
 $root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('INT_OPERATION_DIR');if(!is_dir($root)||!is_dir($dir)||basename($dir)!==OP)throw new RuntimeException('scope');
 $cfg=null;foreach([$root.'/_preview/search3-anex-candidate/.andromeda-private.php',$root.'/v2/.andromeda-private.php'] as $p){if(is_file($p)&&!is_link($p)){ $x=require$p;if(is_array($x)&&($x['enabled']??false)===true){$cfg=$x;break;}}}if(!$cfg)throw new RuntimeException('config');
