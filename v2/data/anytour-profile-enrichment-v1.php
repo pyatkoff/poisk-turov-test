@@ -30,6 +30,40 @@ final class AnyTourProfileEnrichmentV1
 
     public function __construct(private PDO $pdo) {}
 
+    /** Opt-in HC-1 scope; null alone retains the original all-field demand queue. */
+    private static function contentScope(?array $targets, int $limit): ?array
+    {
+        if ($targets === null) return null;
+        if (!array_is_list($targets) || $targets === [] || count($targets) > 20 || count($targets) !== $limit) {
+            throw new InvalidArgumentException('ANYTOUR_PROFILE_ENRICH_CONTENT_SCOPE');
+        }
+        $scope = []; $localIds = [];
+        foreach ($targets as $target) {
+            if (!is_array($target) || !self::exactKeys($target, ['anytourHotelId','localHotelId','fields'])
+                || !is_array($target['fields']) || !array_is_list($target['fields']) || $target['fields'] === []) {
+                throw new InvalidArgumentException('ANYTOUR_PROFILE_ENRICH_CONTENT_SCOPE');
+            }
+            $own = self::positiveInt($target['anytourHotelId']);
+            $local = self::positiveInt($target['localHotelId']);
+            if (isset($scope[$own]) || isset($localIds[$local])) {
+                throw new InvalidArgumentException('ANYTOUR_PROFILE_ENRICH_CONTENT_SCOPE_DUPLICATE');
+            }
+            $fields = [];
+            foreach ($target['fields'] as $field) {
+                if (!is_string($field) || !in_array($field, ['description','primaryImage','images'], true)
+                    || isset($fields[$field])) {
+                    throw new InvalidArgumentException('ANYTOUR_PROFILE_ENRICH_CONTENT_SCOPE_FIELD');
+                }
+                $fields[$field] = true;
+            }
+            $names = array_keys($fields); sort($names, SORT_STRING);
+            $scope[$own] = ['anytourHotelId'=>$own,'localHotelId'=>$local,'fields'=>$names];
+            $localIds[$local] = true;
+        }
+        ksort($scope, SORT_NUMERIC);
+        return $scope;
+    }
+
     private static function exactKeys(array $value, array $expected): bool
     {
         return count($value) === count($expected)
@@ -267,8 +301,10 @@ final class AnyTourProfileEnrichmentV1
      * recent observation, then canonical ID. `through` freezes the demand boundary so
      * a live search arriving between plan and apply cannot silently change the batch.
      */
-    private function rankedRows(string $through): array
+    private function rankedRows(string $through, ?array $scope = null): array
     {
+        // IDs were strictly validated as positive integers; never interpolate caller text.
+        $scopeSql = $scope === null ? '' : ' AND h.id IN (' . implode(',', array_keys($scope)) . ')';
         $sql = "SELECT h.id AS anytour_hotel_id,h.profile_json,h.profile_sha256,h.revision,
                        CAST(s.external_key AS CHAR) AS local_id,s.acquired_via AS alias_acquired_via,
                        s.source_json AS alias_source_json,s.source_sha256 AS alias_source_sha256,
@@ -281,16 +317,23 @@ final class AnyTourProfileEnrichmentV1
                            COUNT(*) AS observation_count,MAX(observed_at) AS last_seen_at
                     FROM tour_price_observations WHERE observed_at<=:through GROUP BY hotel_id
                 ) d ON d.hotel_id=CAST(s.external_key AS UNSIGNED)
-                WHERE h.is_active=1
+                WHERE h.is_active=1{$scopeSql}
                 ORDER BY user_search_count DESC,observation_count DESC,
                          (d.last_seen_at IS NULL) ASC,d.last_seen_at DESC,h.id ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['through'=>$through]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if ($scope !== null && count($rows) !== count($scope)) {
+            throw new DomainException('ANYTOUR_PROFILE_ENRICH_SCOPE_IDENTITY');
+        }
         if (count($rows) < 1 || count($rows) > 250000) throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_COHORT_BOUND');
         $seenOwn = [];
         foreach ($rows as $row) {
             $alias = self::decodeAlias($row);
+            if ($scope !== null && (!isset($scope[$alias['ownId']])
+                || $scope[$alias['ownId']]['localHotelId'] !== $alias['localId'])) {
+                throw new DomainException('ANYTOUR_PROFILE_ENRICH_SCOPE_IDENTITY');
+            }
             if (isset($seenOwn[$alias['ownId']])) throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_DUPLICATE_ALIAS_TARGET');
             $seenOwn[$alias['ownId']] = true;
             self::decodeProfile($row);
@@ -299,9 +342,9 @@ final class AnyTourProfileEnrichmentV1
         return $rows;
     }
 
-    private function snapshot(int $limit, string $through): array
+    private function snapshot(int $limit, string $through, ?array $scope = null): array
     {
-        $rows = $this->rankedRows($through);
+        $rows = $this->rankedRows($through, $scope);
         $selected = [];
         $scanned = 0;
         $fillableProfiles = 0;
@@ -321,6 +364,11 @@ final class AnyTourProfileEnrichmentV1
                 $facts = self::sourceFacts($source);
                 $patch = self::patch($profile, $facts);
                 $conflicts = self::preservedConflicts($profile, $facts);
+                if ($scope !== null) {
+                    $allowed = $scope[$alias['ownId']]['fields'];
+                    $patch = array_intersect_key($patch, array_fill_keys($allowed, true));
+                    $conflicts = array_values(array_intersect($conflicts, $allowed));
+                }
                 foreach ($conflicts as $field) $preservedConflictCounts[$field] = ($preservedConflictCounts[$field] ?? 0) + 1;
                 if ($patch === []) continue;
                 ++$fillableProfiles;
@@ -343,6 +391,13 @@ final class AnyTourProfileEnrichmentV1
                         'lastSeenAt'=>$row['demand_last_seen_at'] === null ? null : (string)$row['demand_last_seen_at'],
                     ],
                 ];
+                if ($scope !== null) {
+                    // The private plan is also the exact before-image for a guarded rollback.
+                    // Neither raw profile nor description/image URLs belong in a public receipt.
+                    $last = count($selected) - 1;
+                    $selected[$last]['expectedAliasSha256'] = (string)$row['alias_source_sha256'];
+                    $selected[$last]['beforeProfileJson'] = (string)$row['profile_json'];
+                }
                 if (count($selected) >= $limit) break;
             }
         }
@@ -358,13 +413,15 @@ final class AnyTourProfileEnrichmentV1
             'roomMealFieldsExcluded'=>true,
             'traitsExcluded'=>true,
         ];
+        if ($scope !== null) $core['contentScope'] = array_values($scope);
         $core['planSha256'] = hash('sha256', self::json($core));
         return $core;
     }
 
-    public function plan(mixed $requestedLimit, mixed $demandThrough): array
+    public function plan(mixed $requestedLimit, mixed $demandThrough, ?array $contentScope = null): array
     {
         $limit = self::limit($requestedLimit);
+        $scope = self::contentScope($contentScope, $limit);
         $through = self::utc($demandThrough);
         $this->assertSchema();
         if ($this->pdo->inTransaction()) throw new RuntimeException('ANYTOUR_PROFILE_ENRICH_CALLER_TRANSACTION');
@@ -372,7 +429,7 @@ final class AnyTourProfileEnrichmentV1
         $this->pdo->exec('SET TRANSACTION READ ONLY');
         $this->pdo->beginTransaction();
         try {
-            $snapshot = $this->snapshot($limit, $through);
+            $snapshot = $this->snapshot($limit, $through, $scope);
             $this->pdo->commit();
         } catch (Throwable $error) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
@@ -381,10 +438,11 @@ final class AnyTourProfileEnrichmentV1
         return ['status'=>'prepared_read_only','writes'=>0,'supplierCalls'=>0] + $snapshot;
     }
 
-    public function apply(string $operation, mixed $requestedLimit, mixed $demandThrough, string $expectedPlanSha256): array
+    public function apply(string $operation, mixed $requestedLimit, mixed $demandThrough, string $expectedPlanSha256, ?array $contentScope = null): array
     {
         $operation = self::operation($operation);
         $limit = self::limit($requestedLimit);
+        $scope = self::contentScope($contentScope, $limit);
         $through = self::utc($demandThrough);
         if (!preg_match('/\A[a-f0-9]{64}\z/D', $expectedPlanSha256)) {
             throw new InvalidArgumentException('ANYTOUR_PROFILE_ENRICH_PLAN_SHA');
@@ -396,7 +454,7 @@ final class AnyTourProfileEnrichmentV1
         $this->pdo->beginTransaction();
         $expected = [];
         try {
-            $snapshot = $this->snapshot($limit, $through);
+            $snapshot = $this->snapshot($limit, $through, $scope);
             if (!hash_equals($expectedPlanSha256, $snapshot['planSha256'])) {
                 throw new DomainException('ANYTOUR_PROFILE_ENRICH_PLAN_DRIFT');
             }
