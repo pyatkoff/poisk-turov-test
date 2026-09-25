@@ -19,9 +19,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  OP: hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40
+  OP: hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40b
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
-  CLAIM: '5838138358'
+  CLAIM: '5838206174'
   V39_OP: hotel-match-tv-samo-single-fingerprint-conflict-audit-1971-20260925-v39
   V37_OP: hotel-match-tv-samo-common4-fingerprint-join-1971-20260925-v37
 
@@ -122,7 +122,7 @@ jobs:
           python3 - <<'PY'
           import json,hashlib,pathlib
           r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
-          assert r['operation']=='hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40'
+          assert r['operation']=='hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40b'
           assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
           assert q['readback_verified'] is True
           if r['state']=='completed_read_only_fingerprint_correction_readiness':
