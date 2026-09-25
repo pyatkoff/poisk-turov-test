@@ -3,6 +3,12 @@
 // parser; every HTTP/rt.api response is controlled. No supplier or database I/O.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),crypto=require('node:crypto');
 const rootDir=path.resolve(__dirname,'..');
+const prototypeDataSource=fs.readFileSync(path.join(rootDir,'v2/prototype-search/data.js'),'utf8');
+const prototypeAppSource=fs.readFileSync(path.join(rootDir,'v2/prototype-search/app.js'),'utf8');
+assert.doesNotMatch(prototypeDataSource,/\b(?:rehydrateCached|cachedRehydration|rehydrateAnexCached|rehydrateAndromedaCached)\b/,
+ 'LOCAL cached-offer rehydration must stay retired from the live data adapter');
+assert.doesNotMatch(prototypeAppSource,/rehydrated-offer|rehydrationDraft|data\.rehydrateCached/,
+ 'LOCAL cached-offer rehydration UI must stay retired');
 const trip={origin:'Москва',country:'4',from:'2026-09-29',to:'2026-10-05',minNights:7,maxNights:7,adults:2,ages:[]};
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 const profile=id=>({id:Number(id)+400,catalog:'anytour',revision:1,name:'FICTIONAL HOTEL '+id,category:5,country:{id:4,name:'Турция'},images:[]});
