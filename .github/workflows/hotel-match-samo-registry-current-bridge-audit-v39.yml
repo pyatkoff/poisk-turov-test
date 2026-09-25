@@ -1,0 +1,176 @@
+name: MATCH SAMO CURRENT bridge audit v39
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_samo_registry_current_bridge_audit_v39.php'
+      - 'tests/hotel_match_samo_registry_current_bridge_audit_v39_test.php'
+      - 'scripts/deploy/hotel_match_v39_readonly_runner.py'
+      - 'scripts/deploy/hotel_match_v39_readonly_runner_entry.py'
+      - '.github/workflows/hotel-match-samo-registry-current-bridge-audit-v39.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-registry-current-bridge-audit-v39, cancel-in-progress: false}
+env:
+  OP: hotel-match-samo-registry-current-bridge-audit-1971-20260925-v39
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5836339223'
+  PIN: '5836347538'
+  TRANSPORT: '5836427908'
+  ENTRY: '5836448018'
+  V38_ARTIFACT: '10877086151'
+  V38_ARCHIVE_SHA: 38e40c861917e6c2e5e84b6a2f0948d1336ef7a18d7ce420586fb243ed14920b
+  V38_SOURCE_SHA: fcb21a9ac50d3b1777db003f28d555d106ec8a81
+  FRONTIER_ARTIFACT: '10874272775'
+  FRONTIER_ARCHIVE_SHA: 56c2df24d247d64a2392d137da95daee229830f9d9b52fa842fda688d27a6e23
+  FRONTIER_RESULT_SHA: efaeb33f14a1a2aba4c207254be388e470636e2ad965b461a5a671c3bee72184
+  FRONTIER_TARGET_SHA: 5001297e29a920acc2d565e45fec0e4d0a5b2244e0ba60a860941be882ad1c77
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-registry-current-bridge-audit-v39-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_samo_registry_current_bridge_audit_v39.php
+      - run: php scripts/diagnostics/hotel_match_samo_registry_current_bridge_audit_v39.php --self-test
+      - run: php tests/hotel_match_samo_registry_current_bridge_audit_v39_test.php
+      - run: python3 -m py_compile scripts/deploy/hotel_match_v39_readonly_runner.py scripts/deploy/hotel_match_v39_readonly_runner_entry.py
+      - name: Read-only boundary
+        run: |
+          set -euo pipefail
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_samo_registry_current_bridge_audit_v39.php
+          ! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|provider|Tourvisor|Andromeda|ANEX' scripts/deploy/hotel_match_v39_readonly_runner_entry.py
+
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-registry-current-bridge-audit-v39-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate authority and immutable inputs
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input/v38 input/frontier terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-samo-registry-current-bridge-audit-v39.yml scripts/deploy/hotel_match_v39_readonly_runner.py scripts/deploy/hotel_match_v39_readonly_runner_entry.py scripts/diagnostics/hotel_match_samo_registry_current_bridge_audit_v39.php tests/hotel_match_samo_registry_current_bridge_audit_v39_test.php "
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
+          for id in "$CLAIM" "$PIN" "$TRANSPORT" "$ENTRY"; do gh api "repos/$GITHUB_REPOSITORY/issues/comments/$id" >"input/comment-$id.json"; done
+          python3 - <<'PY'
+          import json,os
+          ids=[os.environ['CLAIM'],os.environ['PIN'],os.environ['TRANSPORT'],os.environ['ENTRY']]
+          rows=[json.load(open('input/comment-'+i+'.json')) for i in ids]
+          for c in rows:
+              assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+              assert c['issue_url'].endswith('/issues/3419')
+          b=rows[0]['body']; p=rows[1]['body']; t=rows[2]['body']; e=rows[3]['body']
+          for x in [os.environ['OP'],'551','REPEATABLE READ / READ ONLY','HTTP0','safe_to_write_now=false','andromeda_catalog']:
+              assert x in b,x
+          for x in ['10877086151',os.environ['V38_SOURCE_SHA'],os.environ['V38_ARCHIVE_SHA']]:
+              assert x in p,x
+          assert 'hotel_match_v39_readonly_runner.py' in t
+          assert 'hotel_match_v39_readonly_runner_entry.py' in e
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$V38_ARTIFACT/zip" -o input/v38.zip
+          test "$(sha256sum input/v38.zip|awk '{print $1}')" = "$V38_ARCHIVE_SHA"
+          unzip -q input/v38.zip -d input/v38
+          vr="$(find input/v38 -type f -name result.json -print -quit)"; vq="$(find input/v38 -type f -name receipt.json -print -quit)"
+          test -n "$vr"; test -n "$vq"; cp "$vr" input/v38-result.json
+          python3 - "$vr" "$vq" <<'PY'
+          import json,hashlib,pathlib,sys,os
+          r=json.load(open(sys.argv[1])); q=json.load(open(sys.argv[2]))
+          sha=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest()
+          assert sha==q['result_sha256'] and q['readback_verified'] is True
+          assert r['operation']=='hotel-match-samo-registry-consensus-1971-20260925-v38'
+          assert r['state']=='completed_read_only_samo_registry_consensus'
+          assert r['source_sha']==os.environ['V38_SOURCE_SHA']
+          assert r['frontier_total']==1737 and r['frontier_target_sha256']==os.environ['FRONTIER_TARGET_SHA']
+          assert r['consensus_distribution']==[62,707,449,99,3] and r['registry_2plus_review_count']==551
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False
+          pathlib.Path('input/v38-result.sha').write_text(sha+'\n')
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$FRONTIER_ARTIFACT/zip" -o input/frontier.zip
+          test "$(sha256sum input/frontier.zip|awk '{print $1}')" = "$FRONTIER_ARCHIVE_SHA"
+          unzip -q input/frontier.zip -d input/frontier
+          fr="$(find input/frontier -type f -name result.json -print -quit)"; fq="$(find input/frontier -type f -name receipt.json -print -quit)"
+          test -n "$fr"; test -n "$fq"; cp "$fr" input/frontier-result.json
+          python3 - "$fr" "$fq" <<'PY'
+          import json,hashlib,pathlib,sys,os
+          r=json.load(open(sys.argv[1])); q=json.load(open(sys.argv[2]))
+          sha=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest()
+          assert sha==os.environ['FRONTIER_RESULT_SHA']==q['result_sha256']
+          assert r['operation']=='hotel-match-business-live30-frontier-plan-1971-20260925-v33'
+          assert r['state']=='completed_read_only_business_live30_frontier_plan'
+          assert r['non_full_triple_total']==1737 and r['target_set_sha256']==os.environ['FRONTIER_TARGET_SHA']
+          assert r['bucket_counts']=={'tv_samo_missing_anex':777,'tv_anex_missing_samo':234,'tv_only_missing_both':726}
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          PY
+          python3 - <<'PY'
+          import json,os,pathlib,datetime
+          pathlib.Path('input/reservation.json').write_text(json.dumps({
+            'operation':os.environ['OP'],'state':'reserved_before_read_only_audit',
+            'provider_http_calls':0,'database_writes':0,'mapping_writes':0,
+            'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()
+          },sort_keys=True)+'\n')
+          PY
+          echo "MATCH_V39_V38_RESULT_SHA=$(cat input/v38-result.sha)" >> "$GITHUB_ENV"
+      - name: Require Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion']; break
+              time.sleep(4)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Execute CURRENT structural bridge audit
+        env:
+          MATCH_V39_OPERATION: '${{ env.OP }}'
+          MATCH_V39_SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+          MATCH_V39_FRONTIER_RESULT_SHA: '${{ env.FRONTIER_RESULT_SHA }}'
+          MATCH_V39_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          MATCH_V39_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          MATCH_V39_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          python3 scripts/deploy/hotel_match_v39_readonly_runner_entry.py --source-root . --input-dir input --terminal-dir terminal
+          rm -rf terminal/.transport
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json')); q=json.load(open('terminal/receipt.json'))
+          assert r['state']==q['state']=='completed_read_only_samo_registry_current_bridge_audit'
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert q['readback_verified'] is True and r['safe_to_write_now'] is False
+          assert r['input_multi_operator_count']==551 and r['frontier_total']==1737
+          for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes']:
+              assert r[k]==0,k
+          print(json.dumps({
+            'candidate_status_counts':r['candidate_status_counts'],
+            'deterministic_current_missing_count':r['deterministic_current_missing_count'],
+            'deterministic_by_operator_count':r['deterministic_by_operator_count'],
+            'deterministic_by_v33_bucket':r['deterministic_by_v33_bucket'],
+          },ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-samo-registry-current-bridge-v39-${{ github.run_id }}
+          path: |
+            terminal/reservation.json
+            terminal/result.json
+            terminal/receipt.json
+            terminal/remote.stdout
+            terminal/remote.stderr
+          retention-days: 90
+          if-no-files-found: warn
