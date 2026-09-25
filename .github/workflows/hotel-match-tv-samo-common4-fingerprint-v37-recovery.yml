@@ -108,7 +108,7 @@ jobs:
             'shared_fingerprint_counts','status_counts','bucket_status_counts','strong_candidate_count',
             'single_direct_review_count','support_only_review_count','provider_http_calls','tourvisor_calls',
             'samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes','safe_to_write_now',
-            'result_sha256','readback_verified','provider_accessed'
+            'result_sha256','readback_verified','provider_accessed','candidate_status_counts','conflict_or_hold_count','lift_potential_by_v33_bucket','shared_direct_fingerprints','shared_support_fingerprints','strong_current_missing_count','tv_fingerprint_count','samo_fingerprint_count','tv_semantic_edges','samo_semantic_edges','operation_scan'
           }
           for name in ['result.json','receipt.json']:
               p=os.path.join(root,name)
