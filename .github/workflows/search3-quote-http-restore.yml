@@ -40,6 +40,10 @@ jobs:
             if(inspection.head_sha!=='7299c151994e5003c7fccbb79c0deb932f489343'||inspection.conclusion!=='success') throw new Error('inspection mismatch');
             const {data:artifact}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10883455413});
             if(artifact.expired||artifact.digest!=='sha256:b965126afcb723e3a87e30583a847f2586b4dea0cc1330afac844b2d0c31ea9a') throw new Error('receipt mismatch');
+            const {data:prior}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:36178473555});
+            if(prior.head_sha!=='866b058ed62f7d2b9e8539557b70f4b6955ab4b1'||prior.status!=='completed'||prior.conclusion!=='failure') throw new Error('prior operation not terminal');
+            const {data:rollback}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10882469826});
+            if(rollback.expired||rollback.digest!=='sha256:ea5f28123011a75389be7f2b29a97762e33a9dd1b0f0a941b9160c5dc890f2ad') throw new Error('rollback receipt mismatch');
             const sha=context.payload.pull_request.head.sha;
             for(let i=0;i<24;i++) {
               const {data:pr}=await github.rest.pulls.get({...context.repo,pull_number:context.payload.pull_request.number});

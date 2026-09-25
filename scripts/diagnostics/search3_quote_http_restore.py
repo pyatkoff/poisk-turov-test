@@ -15,7 +15,8 @@ PINS={'api-anex-search3-preview.php':'75a4168920ba4ea4ca043516d5979a05acf2be2a27
  'api-andromeda-search3-preview.php':'47d41972b275913a48b8ac95101f928deb9d504cf1354ea86019f3463f076c6b',
  'api-andromeda-quote-preview.php':'54bbab700a6507cd116744140b3bf8f4d1e05b9d549c4479ab98687d86eb6118',
  'anex-preview-manifest.json':'d2c8cb504b2d02f2dd9c0504ce5e1a05a9c4321d5438f7425990cd038577ec18'}
-OP='search3-quote-http-restore-20260925-v1'
+PRIOR_OP='search3-quote-http-restore-20260925-v1'
+OP='search3-quote-http-restore-20260925-v2'
 RULE=b'\n# Restore the existing selected-tour quote route (#1717).\n<FilesMatch "^api-andromeda-quote-preview\\.php$">\n  Require expr "%{REQUEST_URI} == \'/_preview/search3-anex-candidate/api-andromeda-quote-preview.php\'"\n</FilesMatch>\n'
 def sha(b):return hashlib.sha256(b).hexdigest()
 def read(path,limit=3000000):
@@ -44,6 +45,12 @@ def repair(root,private,action):
         operation=private/OP
         if action=='apply':
             assert sha(current)==BEFORE and b'api-andromeda-quote-preview' not in current,'predecessor_changed'
+            prior=private/PRIOR_OP
+            rollback=json.loads(read(prior/'rollback-result.json',65536))
+            assert rollback=={'status':'rolled_back','restored_sha256':BEFORE},'prior_not_rolled_back'
+            assert read(prior/'before.htaccess',65536)==current,'prior_before_changed'
+            applied=json.loads(read(prior/'applied.json',65536))
+            assert applied['status']=='applied' and applied['before_sha256']==BEFORE and applied['after_sha256']==sha(current+RULE),'prior_result_changed'
             assert not operation.exists() and not operation.is_symlink(),'no_replay'
             before_witness=witnesses(root)
             candidate=current+RULE
@@ -83,7 +90,7 @@ def command(args,data=None):
     return p.stdout
 
 
-def http(path,method='GET',headers=None):
+def http_probe(path,method='GET',headers=None):
     c=http.client.HTTPSConnection('anytoour.ru',timeout=20)
     try:
         c.request(method,'/_preview/search3-anex-candidate/'+path,body=None if method=='GET' else b'',headers=headers or {})
@@ -129,7 +136,7 @@ def main():
                 ('app/integrations/andromeda-selected-quote.php','GET',{},403,None),
                 ('.andromeda-private.php','GET',{},403,None)]
             for path,method,headers,status,error in checks:
-                row=http(path,method,headers);result['checks'].append(row);save()
+                row=http_probe(path,method,headers);result['checks'].append(row);save()
                 assert row['status']==status and row['error']==error,'HTTP boundary failed'
             result['status']='verified';save()
         except Exception:
