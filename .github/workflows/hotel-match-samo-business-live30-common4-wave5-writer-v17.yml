@@ -11,10 +11,10 @@ permissions: {contents: read, actions: read, issues: read}
 concurrency: {group: hotel-match-samo-business-live30-common4-wave5-writer-v17, cancel-in-progress: false}
 env:
   AUDIT_OP: hotel-match-samo-business-live30-common4-wave5-current-1971-20260925-v16c
-  W1: hotel-match-samo-business-live30-common4-wave5-writer-1971-20260925-v17-w1b
-  W2: hotel-match-samo-business-live30-common4-wave5-writer-1971-20260925-v17-w2b
+  W1: hotel-match-samo-business-live30-common4-wave5-writer-1971-20260925-v17-w1c
+  W2: hotel-match-samo-business-live30-common4-wave5-writer-1971-20260925-v17-w2c
   BASE: c3b28595541ecb85286227aa146d70329bf324f3
-  CLAIM: '5829712940'
+  CLAIM: '5830072377'
   AUDIT_ARTIFACT: '10854607010'
   AUDIT_ARCHIVE_SHA: 1d4a1f66015990e09945a414c70beb2ae619d26c63663bf43ee8f478e1f8122e
   AUDIT_RESULT_SHA: 1791594e468c29a433c2a3263bf29ade2d34dbb3311e060c2c0071b28b5cf8f8
@@ -103,7 +103,7 @@ jobs:
           scp "${opts[@]}" input/audit-result.json "$remote:$op/payload/audit-result.json"
           scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php "$remote:$op/payload/scripts/diagnostics/"
           set +e
-          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA='$asha' MATCH_SOURCE_SHA='$HEAD' MATCH_WRITER_OPERATION='$OP' MATCH_EXPECTED_WRITES=300 MATCH_WRITE_OFFSET=0 php \"\$HOME/$op/payload/scripts/diagnostics/$(basename scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php)\" --execute" >terminal/w1/remote.stdout 2>terminal/w1/remote.stderr
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA='$asha' MATCH_SOURCE_SHA='$HEAD' MATCH_WRITER_OPERATION='$OP' MATCH_EXPECTED_WRITES=300 MATCH_WRITE_OFFSET=0 php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php\" --execute" >terminal/w1/remote.stdout 2>terminal/w1/remote.stderr
           status=$?
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json pre-commit.json commit-attempt.json result.json receipt.json" >terminal/w1/server.tgz
           set -e
@@ -138,7 +138,7 @@ jobs:
           scp "${opts[@]}" input/audit-result.json "$remote:$op/payload/audit-result.json"
           scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php "$remote:$op/payload/scripts/diagnostics/"
           set +e
-          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA='$asha' MATCH_SOURCE_SHA='$HEAD' MATCH_WRITER_OPERATION='$OP' MATCH_EXPECTED_WRITES=199 MATCH_WRITE_OFFSET=300 php \"\$HOME/$op/payload/scripts/diagnostics/$(basename scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php)\" --execute" >terminal/w2/remote.stdout 2>terminal/w2/remote.stderr
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_AUDIT_RESULT=\"\$HOME/$op/payload/audit-result.json\" MATCH_AUDIT_SHA='$asha' MATCH_SOURCE_SHA='$HEAD' MATCH_WRITER_OPERATION='$OP' MATCH_EXPECTED_WRITES=199 MATCH_WRITE_OFFSET=300 php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_writer_v17.php\" --execute" >terminal/w2/remote.stdout 2>terminal/w2/remote.stderr
           status=$?
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json pre-commit.json commit-attempt.json result.json receipt.json" >terminal/w2/server.tgz
           set -e
