@@ -31,7 +31,7 @@ jobs:
           import json,os
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          for x in [os.environ['OP'],'exclusive_create','provider/Tourvisor/SAMO/ANEX/Andromeda HTTP0']: assert x in b,x
+          for x in [os.environ['OP'],'exclusive_create','Provider/Tourvisor/SAMO/ANEX/Andromeda HTTP0']: assert x in b,x
           PY
           curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$POST_ARTIFACT/zip" -o input/post.zip
           test "$(sha256sum input/post.zip|awk '{print $1}')" = "$POST_ARCHIVE_SHA"
