@@ -1,7 +1,7 @@
 name: INT Andromeda PRICE health probe
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, ready_for_review]
     branches: [feature/anex-search-adapter-20260907]
     paths:
       - 'scripts/diagnostics/int_andromeda_price_health_probe_v1.php'
