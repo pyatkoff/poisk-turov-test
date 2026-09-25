@@ -18,11 +18,13 @@ class LiveReadback(unittest.TestCase):
     def test_local_boundary_uses_canonical_query_and_rejects_exposure(self):
         assets = {name: b'checked asset' for name in (
             'search3-results-filters-v1.css', 'search3-results-filters-v1.js', 'site-header-v2.css')}
+        assets.update({'visual-search/asset-' + str(i) + '.js': b'visual asset' for i in range(29)})
         files = {name: remote.digest(body) for name, body in assets.items()}
         html = ('<meta name="robots" content="noindex,follow,max-image-preview:large' +
             ' id="tourSearch" metrikaCounter:0 leadApi:"' + pub.ROUTE + 'preview-lead-disabled.php"')
         canonical = pub.ROUTE + 'data/hotel-details-read-v1.php?catalog=anytour&anytourHotelId=1'
         responses = {
+            pub.ROUTE + 'visual-search/': (200, '<meta name="robots" content="noindex, nofollow, noarchive" Живой поиск ещё не подключён app.js?v=0123456789ab'),
             pub.ROUTE + 'data/hotel-details-read-v1.php': (400, '{"ok":false,"error":"Invalid hotel id"}'),
             canonical: (403, '{"ok":false,"error":"Canonical catalogue is isolated to local preview"}'),
             pub.ROUTE + 'data/search3-local-results-read-v1.php':
@@ -80,6 +82,8 @@ class Contracts(unittest.TestCase):
         (site_root/'_preview/search3-site-candidate/keep.txt').write_text('existing preview')
         (site_root/'_preview/search3-v17-candidate').mkdir()
         (site_root/'_preview/search3-v17-candidate/keep.txt').write_text('accepted v17 unchanged')
+        (site_root/'_preview/search3-v18-candidate').mkdir()
+        (site_root/'_preview/search3-v18-candidate/keep.txt').write_text('existing v18 unchanged')
         for name in remote.REQUIRED:
             p=site_root/name; p.parent.mkdir(parents=True,exist_ok=True); p.write_text('protected:'+name)
         self.site=remote.Site(site_root)
@@ -90,15 +94,16 @@ class Contracts(unittest.TestCase):
         self.tmp.cleanup()
 
     def staged(self):
-        fd,name=tempfile.mkstemp(prefix='search3-v18.',suffix='.tar.gz',dir='/tmp')
+        fd,name=tempfile.mkstemp(prefix='search3-next.',suffix='.tar.gz',dir='/tmp')
         import os
         os.close(fd); self.upload=Path(name); self.upload.write_bytes(self.archive)
         return {**self.q,'archive':name,'before':self.site.snapshot()}
 
     def test_owner_command(self):
         q=pub.checked_request(self.event,self.env)
-        self.assertEqual(remote.ROUTE,'/_preview/search3-v18-candidate/');
+        self.assertEqual(remote.ROUTE,'/_preview/search3-next-candidate/');
         self.assertIn('preview:search3-v17-candidate',self.site.protected());
+        self.assertIn('preview:search3-v18-candidate',self.site.protected());
         self.assertEqual(q['source_sha'],'a'*40); self.assertEqual(q['artifact_id'],123)
 
     def test_wrong_environment_denied(self):
@@ -116,6 +121,7 @@ class Contracts(unittest.TestCase):
     def test_command_syntax_and_no_arbitrary_target(self):
         good=self.event['comment']['body']
         for body in [good+'\n',good+' /poisk-turov/',good.replace(pub.PREFIX,'/publish-search3-preview '),
+                     good.replace(pub.PREFIX,'/create-search3-v18-preview '),
                      good.replace(' 456 ',' 0 '),good+';id',good.replace('a'*40,'main'),good.replace(' 456 ','  456 ')]:
             event=copy.deepcopy(self.event); event['comment']['body']=body
             with self.subTest(body=body),self.assertRaises(ValueError): pub.checked_request(event,self.env)
@@ -195,12 +201,12 @@ class Contracts(unittest.TestCase):
         self.assertTrue(self.site.target.exists())
 
     def test_existing_locks_not_stolen(self):
-        q=self.staged(); (self.site.parent/'.search3-v18-lock').mkdir()
+        q=self.staged(); (self.site.parent/'.search3-next-lock').mkdir()
         with self.assertRaises(FileExistsError): self.site.activate(q)
-        self.assertTrue((self.site.parent/'.search3-v18-lock').is_dir())
+        self.assertTrue((self.site.parent/'.search3-next-lock').is_dir())
 
     def test_binding_exact_nonce_only(self):
-        q={'name':'search3-v18-bind-789-'+'e'*24+'.txt','nonce':'f'*64}
+        q={'name':'search3-next-bind-789-'+'e'*24+'.txt','nonce':'f'*64}
         self.site.binding(q)
         with self.assertRaises(ValueError): self.site.binding({**q,'nonce':'0'*64},True)
         self.site.binding(q,True)
