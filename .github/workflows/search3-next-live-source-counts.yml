@@ -18,6 +18,7 @@ jobs:
   live-source-counts:
     if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,8 +33,6 @@ jobs:
           npx playwright install --with-deps chromium >/dev/null
       - name: Run one bounded NEXT live search
         run: |
-    timeout-minutes: 12
-
           set -euo pipefail
           mkdir -p search3-next-live-source-counts
           cat > /tmp/search3-next-live-source-counts.cjs <<'JS'
