@@ -1,0 +1,79 @@
+{
+  "date": "2026-09-26",
+  "preview": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/",
+  "source": "98b0c0d10047c079ddad1871d4ec12c6b3fc6af1",
+  "sourcePr": 3957,
+  "release": "5bcc2c22bfc111926bbe1f7564dabdb4aae5a0f9",
+  "publication": {
+    "run": 36229544250,
+    "artifact": 10902092571,
+    "digest": "749cac7dc2ced57549dc5311a9fa849e10c83a411034a18df6427a099d5f6e4a",
+    "files": 833,
+    "visualAssets": 36,
+    "status": "published",
+    "productionUnchanged": true,
+    "siblingPreviewsUnchanged": true,
+    "leadHttp": 403
+  },
+  "offline": {
+    "inventoryChecks": 68,
+    "chromiumWidths": [
+      390,
+      768,
+      1280
+    ],
+    "buildRun": 36229348445,
+    "visualRun": 36229348395,
+    "noRepeatQuote": true,
+    "flightFailureRecovery": true,
+    "realSuppliers": false
+  },
+  "hostedAcceptance": {
+    "searchStarts": 1,
+    "search": {
+      "origin": "Москва",
+      "country": "Турция",
+      "from": "2026-10-10",
+      "to": "2026-10-16",
+      "nights": 7,
+      "adults": 2,
+      "ages": []
+    },
+    "samоQuoteRequests": 1,
+    "offer": {
+      "hotel": "ADORA HOTEL",
+      "operator": "Интурист",
+      "room": "Standard",
+      "meal": "Завтраки",
+      "date": "2026-10-16",
+      "nights": 7,
+      "listingRub": 88568,
+      "offerRef": "offer_2a2dd0dbbbcc6800248f9794f3cb932fdf38122be93f21e3e6b9b23b006c6661"
+    },
+    "firstFailure": {
+      "time": "2026-09-26T08:26:16.709Z",
+      "httpStatus": 502,
+      "code": "quote_unconfirmed",
+      "failureCategory": "supplier_rejected",
+      "underlyingReason": "not_retained",
+      "internalStage": "unknown"
+    },
+    "recovery": "unconfirmed listing price; one return to same hotel alternatives; no Retry CTA",
+    "searchStopped": true,
+    "retainedHotels": 1079,
+    "retainedOffers": 2003,
+    "marketComplete": false,
+    "representativeSample": {
+      "total": 24,
+      "andromeda": 18,
+      "tourvisor": 6,
+      "directAnexAcceptance": false
+    },
+    "repeatQuote": 0,
+    "leadSubmitted": 0,
+    "physicalSafari": false,
+    "screenshot": "anytour-next-samo-recovery-20260926.jpg"
+  },
+  "coordinationComment": 5844609817,
+  "next": "Inspect supplier error contract/retained evidence before another separately scoped supplier test; never replay the failed offer."
+}
