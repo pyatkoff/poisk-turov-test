@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_current_v50.php';
 
 function v50t(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
-v50t(V50_OP==='hotel-match-live-samo-missing-anex-operator13-current-1971-20260925-v50','op');
+v50t(V50_OP==='hotel-match-live-samo-missing-anex-operator13-current-1971-20260926-v50','op');
 v50t(V50_SOURCE_OP==='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260926-v49','source');
 v50t(V50_EXPECTED_SINGLE===12,'count');
 
