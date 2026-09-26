@@ -268,34 +268,49 @@ function amenityFilterGroups(hs,f){
  const groups=new Map();for(const fact of facts.values()){if(!groups.has(fact.groupId))groups.set(fact.groupId,{name:fact.group,items:[]});groups.get(fact.groupId).items.push(fact);}
  return [...groups.values()].map(group=>`<div class="filter-group"><h4>${esc(group.name)}</h4>${group.items.map(a=>{const selected=(f.amenities||[]).includes(a.key),keys=[...new Set([...(f.amenities||[]),a.key])],count=countMatchingHotels({...editingFilterModel(),filters:{...f,amenities:keys}});return `<label class="check-row"><input type="checkbox" data-filter="amenities" value="${esc(a.key)}" ${selected?'checked':''}><span>${esc(a.label)}</span><small aria-label="${hotelCountText(count)}">${count}</small></label>`;}).join('')}</div>`).join('');
 }
-const plainHotelText=value=>data.text(value).replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
+// Source HTML remains inert; only its readable text is rendered into Search3.
+function hotelContentText(value){
+ if(typeof value!=='string'&&typeof value!=='number')return '';
+ const template=document.createElement('template');template.innerHTML=String(value);
+ template.content.querySelectorAll('script,style,iframe,object,embed,svg,math,template').forEach(node=>node.remove());
+ template.content.querySelectorAll('br').forEach(node=>node.replaceWith('\n'));
+ template.content.querySelectorAll('p,div,li,ul,ol,tr,h1,h2,h3,h4,section').forEach(node=>node.append('\n'));
+ return (template.content.textContent||'').split('\n').map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
+}
+const plainHotelText=value=>hotelContentText(value).replace(/\s+/g,' ').trim();
+const hotelTextHTML=value=>esc(value).replace(/\n/g,'<br>');
+function hotelDescription(h){
+ const text=hotelContentText(h.note);if(!text)return '';
+ if(text.length<=460)return `<p class="hotel-detail-copy" data-hotel-description="full">${hotelTextHTML(text)}</p>`;
+ const summary=text.slice(0,420).replace(/\s+\S*$/,'');
+ return `<p class="hotel-detail-copy" data-hotel-description="summary">${esc(summary)}…</p><details class="search-response-details hotel-content-more hotel-description-more"><summary>Полное описание</summary><p class="hotel-detail-copy" data-hotel-description="full">${hotelTextHTML(text)}</p></details>`;
+}
 function hotelHighlights(h){
  const priority=[3,1,5,8,2],facts=[...(h.amenities||[])].sort((a,b)=>priority.indexOf(a.groupId)-priority.indexOf(b.groupId));
  if(facts.length)return [...new Set(facts.map(a=>a.label))].slice(0,4).join(' · ');
  const place=plainHotelText(h.raw?.place);return place.length>160?place.slice(0,157).replace(/\s+\S*$/,'')+'…':place;
 }
 function hotelSectionText(value){
- if(Array.isArray(value))return [...new Set(value.map(hotelSectionText).filter(Boolean))].join(' · ');
+ if(Array.isArray(value))return [...new Set(value.map(hotelSectionText).filter(Boolean))].join('\n');
  if(value&&typeof value==='object'){
   const parts=['description','name','text','list','value']
    .filter(key=>Object.prototype.hasOwnProperty.call(value,key))
    .map(key=>hotelSectionText(value[key])).filter(Boolean);
-  return [...new Set(parts)].join(' · ');
+  return [...new Set(parts)].join('\n');
  }
- return plainHotelText(value);
+ return hotelContentText(value);
 }
-function hotelDetailFacts(h){
+function hotelDetailFacts(h,full=false){
  const info=h.raw?.hotelInformation||{},services=info.services||h.raw?.services||{},infrastructure=info.infrastructure||h.raw?.infrastructure||{};
- const sections=[
-  ['Адрес',h.raw?.address],['Расположение',h.raw?.place],
-  ['Пляж',infrastructure.beach],['Территория',infrastructure.territory],
-  ['Услуги в отеле',services.available],['В номере',services.inRoom],
-  ['Для детей',services.child],['Развлечения',services.animation],
-  ['Бесплатные услуги',services.free],['Платные услуги',services.servicesPay],
-  ['Питание в отеле',info.meals],['Номера отеля',info.roomTypes],
-  ['Год постройки',h.raw?.build],['Ремонт',h.raw?.repair],['Площадь территории',h.raw?.square]
- ];
- return sections.map(([label,value])=>{const text=hotelSectionText(value);return text?`<h3 class="detail-section-title">${label}</h3><p class="hotel-detail-copy">${esc(text)}</p>`:'';}).join('');
+ const sections=full?[
+  ['address','Адрес',h.raw?.address],['services.available','Услуги в отеле',services.available],
+  ['services.inRoom','В номере',services.inRoom],['services.animation','Развлечения',services.animation],
+  ['services.free','Бесплатные услуги',services.free],['services.servicesPay','Платные услуги',services.servicesPay],
+  ['meals','Питание в отеле',info.meals||h.raw?.meals],['roomTypes','Номера отеля',info.roomTypes||h.raw?.roomTypes],
+  ['build','Год постройки',h.raw?.build],['repair','Ремонт',h.raw?.repair],['square','Площадь территории',h.raw?.square]
+ ]:[['place','Расположение',h.raw?.place],['infrastructure.beach','Пляж',infrastructure.beach],
+    ['infrastructure.territory','Территория',infrastructure.territory],['services.child','Для детей',services.child]];
+ return sections.map(([key,label,value])=>{const text=hotelSectionText(value);return text?`<section data-hotel-field="${key}"><h3 class="detail-section-title">${label}</h3><p class="hotel-detail-copy">${hotelTextHTML(text)}</p></section>`:'';}).join('');
 }
 function updateFacetCounts(){const model=editingFilterModel();$$('[data-filter],[data-filter-bool]').forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),label=input.closest('.check-row')?.querySelector('small');if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}});}
 function budgetScale(f){
@@ -367,7 +382,16 @@ function cardHTML({hotel:h,offers}){const o=offers[0],opened=state.openHotel===h
  <div class="hotel-info"><div class="hotel-info-top"><div>${popularityBadge?`<span class="hotel-popularity-badge" title="Входит в TOP500 продаваемых отелей">${esc(popularityBadge)}</span>`:'' }<div class="hotel-stars" aria-label="${h.stars} звёзд">${'★'.repeat(h.stars)}</div><h3><button data-action="hotel-details" data-id="${h.id}">${esc(h.name)}${icon('arrow')}</button></h3><div class="hotel-location">${icon('pin')} ${esc(h.resort)}, ${esc(countryNames[h.country]||'')}</div></div><div class="rating-block"><strong>${ratingText(h)}<small>/ 5</small></strong><span>${h.rating===null?'Нет оценки':ratingValue(h)>=4.5?'Отлично':'Оценка гостей'}</span><small>Оценка гостей</small></div></div><div class="hotel-facts"><span>${esc(hotelHighlights(h))}</span></div></div></div>
  ${minimumOfferSummary(o)}<div class="hotel-price"><div class="starting-price"><span>За ${guestsText(o)} · весь тур</span><strong><small>от </small>${money(o.total)}</strong></div><span class="fuel-note">${icon('info')} ${priceNote(o)}</span><button class="primary" data-action="all-offers" data-id="${h.id}">Выбрать тур ${icon('arrow')}</button><span class="hotel-offer-count">${offers.length} ${offers.length%10===1&&offers.length%100!==11?'вариант тура':offers.length%10>=2&&offers.length%10<=4&&(offers.length%100<12||offers.length%100>14)?'варианта тура':'вариантов тура'}</span></div><div class="hotel-more"><button class="text-button" data-action="toggle-offers" data-id="${h.id}" aria-expanded="${opened}" aria-controls="offers-${h.id}">${opened?'Скрыть варианты':offers.length===1?'Показать вариант тура':'Показать варианты туров'} <span class="rotate-arrow ${opened?'up':''}">⌄</span></button></div>
  <div class="offers" id="offers-${h.id}" ${opened?'':'hidden'}><div class="offers-header"><strong>Выберите подходящий вариант</strong><small>Цена предложения за ${guestsText()}</small></div>${offers.slice(0,3).map(o=>offerHTML(h,o)).join('')}${offers.length>3?`<button class="text-button" data-action="all-offers" data-id="${h.id}">Все ${offers.length} вариантов ${icon('arrow')}</button>`:''}</div></article>`;}
-function openHotelDetails(id){const h=hotels.find(h=>h.id===id);if(!h)return;const offers=hotelOffers(h);showModal('hotel-details',h.name,`${esc(h.resort)} · ${h.stars?h.stars+' ★':'Категория не указана'}`,`<div class="hotel-detail-photos">${h.photos.slice(0,3).map((p,i)=>`<button data-action="hotel-gallery" data-id="${h.id}" data-value="${i}" aria-label="Открыть фото ${i+1}"><img src="${esc(p)}" alt="Фото отеля"></button>`).join('')}</div><div class="hotel-detail-heading"><h3>Об отеле</h3><span class="detail-rating">${ratingText(h)} / 5</span></div><p class="hotel-detail-copy">${esc(h.note.replace(/<[^>]*>/g,' '))||'Описание пока не заполнено.'}</p>${hotelDetailFacts(h)}<h3 class="detail-section-title">Номера в найденных турах</h3><div class="room-options">${[...new Set(offers.map(o=>o.room))].map(room=>`<div><strong>${esc(room)}</strong></div>`).join('')}</div>`,true);if(offers.length){$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total"><span>Туры за ${guestsText()}</span><strong>от ${money(offers[0].total)}</strong></div><button class="primary" data-action="all-offers" data-id="${id}">Выбрать тур ${icon('arrow')}</button>`;}}
+function openHotelDetails(id){
+ const h=hotels.find(h=>h.id===id);if(!h)return;
+ const offers=hotelOffers(h),photos=h.photos.slice(0,3),fullFacts=hotelDetailFacts(h,true);
+ const photoBlock=photos.length?`<div class="hotel-detail-photos" data-photo-count="${photos.length}">${photos.map((p,i)=>`<button data-action="hotel-gallery" data-id="${h.id}" data-value="${i}" aria-label="Открыть фото ${i+1}"><img src="${esc(p)}" alt="Фото отеля ${esc(h.name)}" loading="lazy"></button>`).join('')}</div>`:'<p class="hotel-detail-copy">Фото пока нет</p>';
+ const rating=Number.isFinite(h.rating)?`<span class="detail-rating">${ratingText(h)} / 5</span>`:'';
+ const rooms=offers.length?`<h3 class="detail-section-title">Номера в найденных турах</h3><div class="room-options">${[...new Set(offers.map(o=>o.room))].map(room=>`<div><strong>${esc(room)}</strong></div>`).join('')}</div>`:'';
+ const reference=fullFacts?`<details class="search-response-details hotel-content-more" data-hotel-reference><summary>Все сведения об отеле</summary><p class="hotel-detail-copy">Справочная информация об отеле. Номер и питание выбранного тура указаны в конкретном предложении.</p>${fullFacts}</details>`:'';
+ showModal('hotel-details',h.name,`${esc(h.resort)} · ${h.stars?h.stars+' ★':'Категория не указана'}`,`${photoBlock}<div class="hotel-detail-heading"><h3>Об отеле</h3>${rating}</div>${hotelDescription(h)}${hotelDetailFacts(h)}${rooms}${reference}`,true);
+ if(offers.length){$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total"><span>Туры за ${guestsText()}</span><strong>от ${money(offers[0].total)}</strong></div><button class="primary" data-action="all-offers" data-id="${id}">Выбрать тур ${icon('arrow')}</button>`;}
+}
 function renderResults(options={}){
  if(searchResponse.key&&searchResponse.key!==searchKey(state.search)){clearSearchTimers();searchResponse={key:searchKey(state.search),phase:'complete',operators:[...operators],pending:false};}
  const items=results(),total=items.reduce((s,r)=>s+r.offers.length,0),pristine=!state.hasSearched&&!state.onlyFavorites;
