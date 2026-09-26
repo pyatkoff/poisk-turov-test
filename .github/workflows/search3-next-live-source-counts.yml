@@ -1,17 +1,29 @@
 name: Search3 NEXT live source counts
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - '.github/workflows/search3-next-live-source-counts.yml'
+      - 'scripts/diagnostics/search3_next_live_source_counts_gate.py'
+      - 'tests/search3_next_live_source_counts_gate_test.py'
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
+  issues: read
 
 jobs:
   live-source-counts:
+    if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: release/search3-production-ready-v1
+      - name: Authorize exact owner SEARCH acceptance command
+        run: python3 -B scripts/diagnostics/search3_next_live_source_counts_gate.py
       - name: Install Chromium
         run: |
           set -euo pipefail
@@ -20,6 +32,8 @@ jobs:
           npx playwright install --with-deps chromium >/dev/null
       - name: Run one bounded NEXT live search
         run: |
+    timeout-minutes: 12
+
           set -euo pipefail
           mkdir -p search3-next-live-source-counts
           cat > /tmp/search3-next-live-source-counts.cjs <<'JS'
