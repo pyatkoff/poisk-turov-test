@@ -1,7 +1,7 @@
 """Authorize one fresh direct-ANEX Search3 probe."""
 import json, os, sys, urllib.request
 from pathlib import Path
-COMMAND='/search3-direct-anex-live-probe-v2'
+COMMAND='/search3-direct-anex-live-probe-v3'
 REPOSITORY='pyatkoff/poisk-turov-test'
 OWNER=226193297
 def authorize(event,env):
