@@ -174,9 +174,9 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     if($mode==='--self-test'){
         hmams_need(hmams_operator_namespace(18)==='bgoperator'&&hmams_operator_namespace(25)==='operator_315'&&hmams_operator_namespace(43)==='operator_342','bindings');
         $bg=hmams_parse_link(['operator_id'=>18,'operator_link'=>'https://www.bgoperator.ru/x?F4=12345','operator_link_host'=>'www.bgoperator.ru','operator_link_query'=>'F4=12345']);
-        hmams_need(($bg['state']??'')==='single_native_candidate'&&($bg['candidates'][0]??'')==='12345','bg_f4');
+        hmams_need(($bg['state']??'')==='single_native_candidate'&&(string)($bg['candidates'][0]??'')==='12345','bg_f4');
         $fs=hmams_parse_link(['operator_id'=>25,'operator_link'=>'https://example.test/x?hotelCode=4567','operator_link_host'=>'example.test','operator_link_query'=>'hotelCode=4567']);
-        hmams_need(($fs['state']??'')==='single_native_candidate'&&($fs['candidates'][0]??'')==='4567','hotel_code');
+        hmams_need(($fs['state']??'')==='single_native_candidate'&&(string)($fs['candidates'][0]??'')==='4567','hotel_code');
         $bad=hmams_parse_link(['operator_id'=>43,'operator_link'=>'https://example.test/x?session=123&hotelId=4567','operator_link_host'=>'example.test','operator_link_query'=>'session=123&hotelId=4567']);
         hmams_need(($bad['state']??'')==='secret_bearing_link','secret');
         hmams_need(!hmams_lane_needs_fresh(['state'=>'no_saved_native','accepted_external_ids'=>['1']]),'accepted_lane');
