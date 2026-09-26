@@ -1,0 +1,48 @@
+name: Search3 direct ANEX live probe
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/search3-direct-anex-live-probe.yml'
+      - 'scripts/diagnostics/search3_direct_anex_live_probe*.py'
+      - 'tests/search3_direct_anex_live_probe_test.py'
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: read
+jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tests/search3_direct_anex_live_probe_test.py
+  probe:
+    if: >-
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event.issue.number == 3419 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.body == '/search3-direct-anex-live-probe-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Authorize fresh one-shot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/diagnostics/search3_direct_anex_live_probe_gate.py
+      - name: Run one direct ANEX Search3 POST
+        run: python3 scripts/diagnostics/search3_direct_anex_live_probe.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: search3-direct-anex-live-probe-${{ github.run_id }}
+          path: search3-direct-anex-live-probe/result.json
+          if-no-files-found: warn
+          retention-days: 14
