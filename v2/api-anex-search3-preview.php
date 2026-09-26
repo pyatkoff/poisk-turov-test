@@ -386,8 +386,170 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
         $state = ['generation' => $request['generation'], 'params' => $params, 'gateway' => $session,
             'expansions' => [], 'additional_prices' => []];
         $data['search_ref'] = $searchRef;
+        if (!$backgroundCollection) {
+            $continuation = anytour_anex_search3_continuation_metadata($state);
+            if ($continuation !== null) $data['continuation'] = $continuation;
+        }
     }
     return $data;
+}
+
+/** Export only the checked page counter, never the private supplier cursor. */
+function anytour_anex_search3_continuation_metadata(array $state): ?array
+{
+    $cursor = $state['gateway']['search']['pagination'] ?? null;
+    if (!is_array($cursor) || !is_int($cursor['pages_read'] ?? null)
+        || $cursor['pages_read'] < 1 || $cursor['pages_read'] > 12
+        || !in_array($cursor['state'] ?? null, ['available', 'exhausted', 'blocked', 'limit'], true)
+        || ($cursor['state'] === 'available' && $cursor['pages_read'] >= 12)
+        || ($cursor['state'] === 'limit' && $cursor['pages_read'] !== 12)
+        || !is_array($cursor['page_digests'] ?? null) || !array_is_list($cursor['page_digests'])
+        || count($cursor['page_digests']) !== $cursor['pages_read']) return null;
+    $seen = [];
+    foreach ($cursor['page_digests'] as $digest) {
+        if (!is_string($digest) || !preg_match('/\A[a-f0-9]{64}\z/D', $digest) || isset($seen[$digest])) return null;
+        $seen[$digest] = true;
+    }
+    $stateName = $cursor['state'];
+    $next = $cursor['pages_read'] + 1;
+    if ($stateName === 'available' && array_key_exists($next, $state['continuation_attempts'] ?? [])) $stateName = 'blocked';
+    return ['state' => $stateName, 'pages_read' => $cursor['pages_read'],
+        'next_page' => $stateName === 'available' ? $next : null];
+}
+
+/** One public next-page transaction. The caller owns the existing PHP session lock. */
+function anytour_anex_search3_continue(array $request, array &$state, callable $resolver, callable $clientFactory,
+    callable $metadataReader, ?callable $clock = null, ?callable $checkpoint = null): array
+{
+    $keys = ['action', 'generation', 'search_ref', 'page'];
+    if (count($request) !== count($keys) || array_diff($keys, array_keys($request))
+        || ($request['action'] ?? null) !== 'continue'
+        || !is_int($request['generation'] ?? null) || $request['generation'] < 1 || $request['generation'] > 2147483647
+        || !is_string($request['search_ref'] ?? null) || !preg_match('/\A[a-f0-9]{32}\z/D', $request['search_ref'])
+        || !is_int($request['page'] ?? null) || $request['page'] < 2 || $request['page'] > 12) {
+        throw new InvalidArgumentException('ANEX_INVALID_REQUEST');
+    }
+    $clock = $clock ?? static function (): int { return time(); };
+    $now = $clock();
+    if (!is_int($now) || $now < 1) throw new RuntimeException('ANEX_CLOCK_ERROR');
+    if (!anytour_anex_search3_current($state, $now)
+        || ($state['generation'] ?? null) !== $request['generation']
+        || ($state['gateway']['saved_offers']['search_ref'] ?? null) !== $request['search_ref']) {
+        throw new InvalidArgumentException('ANEX_SESSION_REQUIRED');
+    }
+    $cursor = anytour_anex_search3_continuation_metadata($state);
+    if ($cursor === null || $cursor['state'] !== 'available' || $cursor['next_page'] !== $request['page']) {
+        throw new InvalidArgumentException('ANEX_CONTINUATION_UNAVAILABLE');
+    }
+    if ($checkpoint === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');
+    $before = $state;
+    $page = $request['page'];
+    // A restored session containing this marker cannot issue the same page, even
+    // if the PHP worker dies before the gateway has had time to block its cursor.
+    $state['continuation_attempts'][$page] = 'reserved';
+    $checkpoint($state);
+    if (($state['generation'] ?? null) !== $before['generation']
+        || ($state['gateway'] ?? null) !== $before['gateway']
+        || ($state['params'] ?? null) !== $before['params']
+        || ($state['continuation_attempts'][$page] ?? null) !== 'reserved') {
+        throw new InvalidArgumentException('ANEX_SESSION_CHANGED');
+    }
+    try {
+        if (!anytour_anex_search3_current($state, $clock())) throw new RuntimeException('ANEX_SESSION_EXPIRED');
+        $gateway = new AnyTourAnexPreviewGateway($clientFactory, $resolver, [], $clock);
+        $result = $gateway->handle(['action' => 'continue', 'search_ref' => $request['search_ref'], 'page' => $page], $state['gateway']);
+        if (!anytour_anex_search3_current($state, $clock())) throw new RuntimeException('ANEX_SESSION_EXPIRED');
+        $saved = $state['gateway']['saved_offers'];
+        if (($result['search_ref'] ?? null) !== $request['search_ref'] || ($result['page'] ?? null) !== $page
+            || ($result['pages_read'] ?? null) !== 1 || ($result['first_page_only'] ?? null) !== false
+            || !is_array($result['offers'] ?? null) || count($result['offers']) > 300
+            || $saved['created_at'] !== $before['gateway']['saved_offers']['created_at']
+            || $saved['expires_at'] !== $before['gateway']['saved_offers']['expires_at']) {
+            throw new RuntimeException('ANEX_INVALID_PUBLIC_RESULT');
+        }
+        foreach ($before['gateway']['saved_offers']['offers'] as $key => $entry) {
+            if (($saved['offers'][$key] ?? null) !== $entry) throw new RuntimeException('ANEX_INVALID_PUBLIC_RESULT');
+        }
+        $metadata = $metadataReader($result['offers']);
+        $hotels = anytour_anex_search3_project($result['offers'], $metadata, $state['params'], $request['search_ref']);
+        if (!anytour_anex_search3_current($state, $clock())) throw new RuntimeException('ANEX_SESSION_EXPIRED');
+        $state['continuation_attempts'][$page] = 'complete';
+        $next = anytour_anex_search3_continuation_metadata($state);
+        if ($next === null || $next['pages_read'] !== $page) throw new RuntimeException('ANEX_INVALID_PUBLIC_RESULT');
+        $criteria = $before['gateway']['search']['context'];
+        $data = ['provider' => 'anex', 'generation' => $request['generation'], 'search_ref' => $request['search_ref'],
+            'date_range' => ['from' => $criteria['checkin_begin'], 'to' => $criteria['checkin_end']],
+            'hotels' => $hotels, 'page' => $page, 'pages_read' => 1, 'first_page_only' => false,
+            'external_search_pending' => ($result['external_search_pending'] ?? false) === true,
+            'continuation' => $next];
+    } catch (Throwable $error) {
+        // Keep spent gateway/session rate counters, but restore all earlier offer
+        // evidence if the new page or its projection could not be accepted.
+        $state['gateway']['search'] = $before['gateway']['search'];
+        $state['gateway']['search']['pagination']['state'] = 'blocked';
+        $state['gateway']['saved_offers'] = $before['gateway']['saved_offers'];
+        $state['continuation_attempts'][$page] = 'blocked';
+        $checkpoint($state);
+        throw $error;
+    }
+    // Do not publish a success to the browser before the completed state is durable.
+    // A session-change failure here must not roll back a concurrent newer search.
+    $checkpoint($state);
+    return $data;
+}
+
+/** Keep the original follow-up alias, backed by at most four current branches. */
+function anytour_anex_search3_retain_context(array &$session, int $now): void
+{
+    $state = $session['offer_context'] ?? null;
+    if (!is_array($state) || !anytour_anex_search3_current($state, $now)) return;
+    $ref = $state['gateway']['saved_offers']['search_ref'] ?? null;
+    if (!is_string($ref) || !preg_match('/\A[a-f0-9]{32}\z/D', $ref)
+        || ($session['anex_context_generation'] ?? null) !== ($state['generation'] ?? null)) return;
+    if (!is_array($session['anex_offer_contexts'] ?? null)) $session['anex_offer_contexts'] = [];
+    if (!isset($session['anex_offer_contexts'][$ref]) && count($session['anex_offer_contexts']) >= 4) {
+        throw new RuntimeException('ANEX_RATE_LIMIT');
+    }
+    $session['anex_offer_contexts'][$ref] = $state;
+    unset($session['offer_context']);
+    $session['offer_context'] =& $session['anex_offer_contexts'][$ref];
+}
+
+/** Route by both browser generation and server reference; never borrow another branch. */
+function anytour_anex_search3_select_context(array $request, array &$session, int $now): void
+{
+    $generation = $request['generation'] ?? null;
+    if (!is_int($generation) || $generation < 1 || $generation > 2147483647) {
+        throw new InvalidArgumentException('ANEX_INVALID_REQUEST');
+    }
+    if (!is_array($session['anex_offer_contexts'] ?? null)) $session['anex_offer_contexts'] = [];
+    // Import the one legacy context without granting it a guessed page cursor.
+    if (!isset($session['anex_context_generation']) && is_int($session['offer_context']['generation'] ?? null)) {
+        $session['anex_context_generation'] = $session['offer_context']['generation'];
+    }
+    foreach ($session['anex_offer_contexts'] as $ref => $state) {
+        if (!is_array($state) || !anytour_anex_search3_current($state, $now)
+            || ($state['generation'] ?? null) !== ($session['anex_context_generation'] ?? null)) unset($session['anex_offer_contexts'][$ref]);
+    }
+    anytour_anex_search3_retain_context($session, $now);
+    if (($request['action'] ?? 'search') === 'search') {
+        if (($session['anex_context_generation'] ?? null) !== $generation) {
+            $session['anex_offer_contexts'] = [];
+            $session['anex_context_generation'] = $generation;
+        }
+        // No silent eviction of a still-valid branch and no fifth supplier search.
+        if (count($session['anex_offer_contexts']) >= 4) throw new RuntimeException('ANEX_RATE_LIMIT');
+        unset($session['offer_context']);
+        $session['offer_context'] = [];
+        return;
+    }
+    $ref = $request['search_ref'] ?? null;
+    unset($session['offer_context']);
+    $session['offer_context'] = [];
+    if (($session['anex_context_generation'] ?? null) !== $generation || !is_string($ref)
+        || !preg_match('/\A[a-f0-9]{32}\z/D', $ref) || !isset($session['anex_offer_contexts'][$ref])) return;
+    unset($session['offer_context']);
+    $session['offer_context'] =& $session['anex_offer_contexts'][$ref];
 }
 
 function anytour_anex_search3_current(array $state, int $now): bool
@@ -761,9 +923,17 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
 function anytour_anex_search3_checkpoint(array &$state): void
 {
     $expected = $state;
+    $ref = $state['gateway']['saved_offers']['search_ref'] ?? null;
+    $retained = is_string($ref) && isset($_SESSION['anex_offer_contexts'][$ref]);
+    if ($retained) $_SESSION['anex_offer_contexts'][$ref] = $expected;
     if (!session_write_close() || !session_start()) throw new RuntimeException('ANEX_SESSION_UNAVAILABLE');
-    if (($_SESSION['offer_context'] ?? null) !== $expected) throw new InvalidArgumentException('ANEX_SESSION_CHANGED');
+    if (($_SESSION['offer_context'] ?? null) !== $expected
+        || ($retained && (($_SESSION['anex_offer_contexts'][$ref] ?? null) !== $expected
+            || ($_SESSION['anex_context_generation'] ?? null) !== $expected['generation']))) {
+        throw new InvalidArgumentException('ANEX_SESSION_CHANGED');
+    }
     $_SESSION['offer_context'] =& $state;
+    if ($retained) $_SESSION['anex_offer_contexts'][$ref] =& $state;
 }
 
 function anytour_anex_search3_out(array $data, int $status): void
@@ -814,8 +984,8 @@ function anytour_anex_search3_http(): void
     if (!session_start()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
     try {
         $action = $request['action'] ?? 'search';
-        if (!in_array($action, ['search', 'offer', 'expand', 'additional_prices', 'additional_prices_batch'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
-        if ($action === 'search' || !is_array($_SESSION['offer_context'] ?? null)) $_SESSION['offer_context'] = [];
+        if (!in_array($action, ['search', 'continue', 'offer', 'expand', 'additional_prices', 'additional_prices_batch'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
+        anytour_anex_search3_select_context($request, $_SESSION, time());
         if (!is_array($_SESSION['dictionaries'] ?? null)) $_SESSION['dictionaries'] = [];
         $app = is_file(__DIR__ . '/app/integrations/anex-search.php') ? __DIR__ . '/app/integrations' : __DIR__ . '/../app/integrations';
         require_once $app . '/anex-initial-week-gate.php';
@@ -870,6 +1040,11 @@ function anytour_anex_search3_http(): void
                 $data = anytour_anex_search3_run($request, $pdo, $clientFactory(),
                     $_SESSION['dictionaries'], $diagnostics, $observer, $_SESSION['offer_context'], $operatorScope);
             }
+        } elseif ($action === 'continue') {
+            $data = anytour_anex_search3_continue($request, $_SESSION['offer_context'],
+                AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver(), $clientFactory,
+                static function (array $offers) use ($pdo): array { return anytour_anex_search3_metadata($pdo, $offers); },
+                null, 'anytour_anex_search3_checkpoint');
         } elseif ($action === 'additional_prices_batch') {
             $data = anytour_anex_search3_additional_batch($request, $_SESSION['offer_context'],
                 AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver(),
@@ -881,6 +1056,7 @@ function anytour_anex_search3_http(): void
                 static function (array $offers) use ($pdo): array { return anytour_anex_search3_metadata($pdo, $offers); },
                 null, 'anytour_anex_search3_checkpoint', $additionalFactory);
         }
+        anytour_anex_search3_retain_context($_SESSION, time());
         if (in_array($action, ['search', 'expand'], true)) {
             anytour_anex_program_observation_runtime($pdo, $_SESSION['offer_context']);
         }
