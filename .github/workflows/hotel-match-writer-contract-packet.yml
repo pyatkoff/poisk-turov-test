@@ -1,0 +1,60 @@
+name: MATCH identity writer source contract
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-writer-contract-packet.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4000 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/live234-v65-current-audit-v66-20260926'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export tracked contract files without executing repository code
+        env:
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          git merge-base --is-ancestor cd9b5503678cc3c426f491181f0cc5c0cf745ef7 HEAD
+          python3 - <<'PY'
+          import hashlib,json,pathlib,subprocess,tarfile
+          root=pathlib.Path('.')
+          tracked=subprocess.check_output(['git','ls-files','-z']).decode().split('\0')
+          files=[]
+          keys=(b'andromeda_hotel_identities',b'v66_',b'AnyTourMatchAnexEffectiveCoverage',b'AnyTourAnexSearchMappingRegistry')
+          explicit={'ARCHITECTURE.md','TESTING.md','TEST_MATRIX.md','AUTOPILOT.md','AUTOPILOT_STATE.json','AGENTS.md','docs/project/hotel-matching-autopilot.md','docs/project/anytour-development.md','.github/workflows/hotel-match-live234-v65-current-audit-v66.yml'}
+          for name in tracked:
+              p=root/name
+              if not name or not p.is_file() or p.is_symlink(): continue
+              if p.stat().st_size>2097152: continue
+              if p.suffix not in ('.php','.sql','.md','.yml','.json','.py'): continue
+              raw=p.read_bytes()
+              if name in explicit or p.name=='AGENTS.md' or any(k in raw for k in keys):
+                  files.append(name)
+          files=sorted(files)
+          assert files and len(files)<1200
+          out=pathlib.Path('contract-packet');out.mkdir()
+          with tarfile.open(out/'tracked-contract.tar.gz','w:gz') as tar:
+              for name in files: tar.add(name,arcname=name,recursive=False)
+          manifest={'source_sha':subprocess.check_output(['git','rev-parse','HEAD']).decode().strip(),'files':[{ 'path':n,'sha256':hashlib.sha256(pathlib.Path(n).read_bytes()).hexdigest()} for n in files],'database_reads':0,'database_writes':0,'provider_http_calls':0}
+          (out/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
+          print('MATCH tracked contract files:',len(files))
+          for n in files: print(n)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-identity-writer-contract-${{ github.run_id }}
+          path: contract-packet/
+          retention-days: 7
+          if-no-files-found: error
