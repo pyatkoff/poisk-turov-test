@@ -1,15 +1,12 @@
-name: HC1 assemble reviewed hotel consumer source
+name: HC1 verify published hotel consumer
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [synchronize]
     branches: [release/search3-production-ready-v1]
-    paths:
-      - '.github/workflows/search3-hc1-consumer-assembly.yml'
-      - 'scripts/diagnostics/search3_hc1_finish_consumer.py'
-      - 'patches/search3-hc1-hotel-content-browser.py'
-permissions: {contents: write, actions: read, issues: read}
+    paths: ['.github/workflows/search3-hc1-consumer-assembly.yml']
+permissions: {contents: read, actions: read, issues: read}
 jobs:
-  assemble:
+  verify:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
@@ -17,25 +14,27 @@ jobs:
       github.run_attempt == 1 && github.head_ref == 'ops/search3-hc1-consumer-assembly-20260925'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    env:
-      HC1_ASSEMBLY_OUTPUT: /tmp/hc1-consumer-final
-      HC1_OUTPUT: /tmp/hc1-consumer-final/browser
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with: {ref: '${{ github.event.pull_request.head.sha }}', path: carrier, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with: {ref: '27ded93a212229d11d478c43e5efb3fc4478703d', path: work, fetch-depth: 1, persist-credentials: false}
-      - name: Verify current claim and exact carrier Security result
+        with: {ref: 'e47c6d023a8ab74b273a19a18a7ff250f2487847', fetch-depth: 1, persist-credentials: false}
+      - name: Verify exact publisher and carrier Security before hosted readback
         env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
         run: |
           python - <<'PY'
           import json,os,time,urllib.request
           def get(path):
               q=urllib.request.Request('https://api.github.com/repos/pyatkoff/poisk-turov-test/'+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
-              with urllib.request.urlopen(q,timeout=20) as r:return json.load(r)
-          c=get('issues/comments/5844474343')
+              with urllib.request.urlopen(q,timeout=20) as response:return json.load(response)
+          c=get('issues/comments/5844673757')
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/3419')
-          assert 'HC-1' in c['body'] and 'app.js' in c['body'] and '27ded93a' in c['body']
+          assert c['body']=='/update-search3-local-preview e47c6d023a8ab74b273a19a18a7ff250f2487847 da54f7910b48c7a730c63f0f2aeb88329482a937 36230215521 10901913913 04f4ca155f9c2fb77f684dcb2cdd71d0a5ba31fa'
+          for _ in range(60):
+              run=get('actions/runs/36230446619')
+              assert run['head_sha']=='c46124367a32e641eec213d5f73f0e8d2899cbd2' and run['event']=='issue_comment' and run['run_attempt']==1
+              if run['status']=='completed':
+                  assert run['conclusion']=='success';break
+              time.sleep(2)
+          else:raise SystemExit('publisher_not_complete')
           for _ in range(45):
               runs=[r for r in get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs'] if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
               if runs and max(runs,key=lambda r:r['id'])['status']=='completed':
@@ -43,24 +42,19 @@ jobs:
               time.sleep(2)
           else:raise SystemExit('security_not_confirmed')
           PY
-      - name: Apply three exact changes to current source, not old donors
-        working-directory: work
-        run: python ../carrier/scripts/diagnostics/search3_hc1_finish_consumer.py
-      - name: Install the existing pinned browser tools
+      - name: Install existing pinned browser tools
         run: |
           python -m pip install playwright==1.57.0
           python -m playwright install --with-deps chromium
-      - name: Actual Search3 content and exact-offer browser acceptance
-        working-directory: work
+      - name: Verify installed app data styles and hosted Search3 interactions
+        env:
+          HC1_PUBLIC_READBACK: '1'
+          HC1_OUTPUT: /tmp/hc1-hosted-evidence
         run: python tests/search3-hotel-content-browser.py
-      - name: Retain checked source objects without updating any branch
-        working-directory: work
-        env: {GH_TOKEN: '${{ github.token }}'}
-        run: python ../carrier/scripts/diagnostics/search3_hc1_finish_consumer.py --objects
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: hc1-consumer-final-${{ github.run_id }}
-          path: /tmp/hc1-consumer-final/
+          name: hc1-hosted-consumer-${{ github.run_id }}
+          path: /tmp/hc1-hosted-evidence/
           if-no-files-found: error
           retention-days: 30
