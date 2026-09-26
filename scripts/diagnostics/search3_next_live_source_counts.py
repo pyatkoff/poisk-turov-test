@@ -163,7 +163,7 @@ def main():
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block')
         try:
-            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v11' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1': raise RuntimeError('live_authorization_missing')
+            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v12' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1': raise RuntimeError('live_authorization_missing')
             for name, expected in EXPECTED.items():
                 response = context.request.get(ORIGIN + BASE + name, timeout=30000, max_redirects=0)
                 digest = hashlib.sha256(response.body()).hexdigest()
