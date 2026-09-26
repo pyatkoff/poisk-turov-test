@@ -1,0 +1,194 @@
+name: MATCH live234 secondary canonical consensus v64c
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live234_secondary_canonical_consensus_v64.php
+      - tests/hotel_match_live234_secondary_canonical_consensus_v64_test.php
+      - .github/workflows/hotel-match-live234-secondary-canonical-consensus-v64.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-live234-secondary-canonical-consensus-v64c
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64c
+  BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
+  CLAIM: '5847396105'
+  CLAIM_AMEND: '5847407386'
+  SOURCE_ARTIFACT: '10907946061'
+  SOURCE_ZIP_SHA: 0c26f52918f3cd9bdf1c6e55cae63b7428f46902e7558f5b48c3884cf4aefd44
+  SOURCE_RESULT_SHA: dc4ad9e16b5f800a363f406965e318b6eb69bdb2ea77eb0b856cfe4c010fce9c
+  SOURCE_RECEIPT_SHA: e7d3f1f72c55ee65d1612bf8fffbfc5f26475be657f7ff8bf4903c7ec46a5618
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live234-secondary-canonical-consensus-v64-20260926'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: php -l scripts/diagnostics/hotel_match_live234_secondary_canonical_consensus_v64.php
+      - run: php scripts/diagnostics/hotel_match_live234_secondary_canonical_consensus_v64.php --self-test
+      - run: php tests/hotel_match_live234_secondary_canonical_consensus_v64_test.php
+      - name: Read-only boundary
+        run: |
+          set -euo pipefail
+          f=scripts/diagnostics/hotel_match_live234_secondary_canonical_consensus_v64.php
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' "$f"
+          grep -Fq "V64_SOURCE_EDGES=48" "$f"
+          grep -Fq "V64_SOURCE_TARGETS=41" "$f"
+          grep -Fq "'bgoperator'=>'operator_115'" "$f"
+          grep -Fq "strict_cross_source_2plus_current_missing" "$f"
+          grep -Fq "REPEATABLE READ" "$f"
+
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live234-secondary-canonical-consensus-v64-20260926'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate authority, sealed v63 and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input/source terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-live234-secondary-canonical-consensus-v64.yml scripts/diagnostics/hotel_match_live234_secondary_canonical_consensus_v64.php tests/hotel_match_live234_secondary_canonical_consensus_v64_test.php "
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM_AMEND" >input/claim-amend.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));a=json.load(open('input/claim-amend.json'));b=c['body']
+          for x in (c,a):
+              assert x['user']['id']==226193297 and x['author_association']=='OWNER' and x['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'exact48','<=5000','operator_115','operator_315','operator_342','2.5M','HTTP0','safe_to_write_now=false']:
+              assert x.lower() in b.lower(),x
+          assert 'v64c-specific' in a['body'] and 'Same v64c operation remains uncreated/unconsumed' in a['body']
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT/zip" -o input/source.zip
+          test "$(sha256sum input/source.zip|awk '{print $1}')" = "$SOURCE_ZIP_SHA"
+          unzip -q input/source.zip -d input/source
+          result="$(find input/source -type f -name result.json -print -quit)"
+          receipt="$(find input/source -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt"
+          cp "$result" input/source-result.json
+          python3 - "$result" "$receipt" <<'PY'
+          import json,hashlib,pathlib,sys,os
+          r=json.load(open(sys.argv[1]));q=json.load(open(sys.argv[2]))
+          rsha=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest()
+          qsha=hashlib.sha256(pathlib.Path(sys.argv[2]).read_bytes()).hexdigest()
+          assert rsha==os.environ['SOURCE_RESULT_SHA']
+          assert qsha==os.environ['SOURCE_RECEIPT_SHA']
+          assert q['result_sha256']==rsha and q['readback_verified'] is True
+          assert r['operation']=='hotel-match-live234-sealed-secondary-salvage-1971-20260926-v63'
+          assert r['state']=='completed_server_read_only_sealed_secondary_salvage'
+          assert r['current_membership_edges']==r['detail_verified_single_native_count']==48
+          assert r['detail_verified_ambiguous_count']==0
+          assert r['single_native_namespace_counts']=={'bgoperator':39,'operator_315':2,'operator_342':7}
+          for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_reads','database_writes','mapping_writes','server_mutation']:
+              assert r[k]==0,(k,r[k])
+          PY
+
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({
+            'operation':os.environ['OP'],'state':'reserved_before_db_read',
+            'source_result_sha256':os.environ['SOURCE_RESULT_SHA'],
+            'provider_http_calls':0,'database_writes':0,'mapping_writes':0
+          },sort_keys=True)+'\n')
+          PY
+
+      - name: Execute supplier-free canonical consensus
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/input\""
+          scp "${opts[@]}" input/reservation.json "$remote:$rel/reservation.json"
+          scp "${opts[@]}" input/source-result.json "$remote:$rel/input/source-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_live234_secondary_canonical_consensus_v64.php "$remote:$rel/payload/scripts/diagnostics/"
+
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_OPERATIONS_ROOT=\"\$HOME/.anytoour-match/operations\" MATCH_SOURCE_RESULT=\"\$HOME/$rel/input/source-result.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_live234_secondary_canonical_consensus_v64.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP']
+          assert r['state']=='completed_read_only_live234_secondary_canonical_consensus'
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert q['readback_verified'] is True
+          assert r['input_edge_count']==48 and r['input_target_count']==41
+          assert r['input_target_lane_histogram']=={'1':35,'2':5,'3':1}
+          for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes']:
+              assert r[k]==0,(k,r[k])
+          assert r['safe_to_write_now'] is False
+          print(json.dumps({
+            'operation_scan':r['operation_scan'],
+            'samo_source_count':r['samo_source_count'],
+            'samo_semantic_edges':r['samo_semantic_edges'],
+            'consensus_distribution':r['consensus_distribution'],
+            'candidate_status_counts':r['candidate_status_counts'],
+            'strict_current_missing_count':r['strict_current_missing_count'],
+            'rows':[
+              {k:x.get(k) for k in ['andromeda_catalog_id','candidate_local_hotel_id','consensus_operator_count','tv_proof_operator_count','status']}
+              for x in r.get('rows',[])
+            ]
+          },ensure_ascii=False,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-live234-secondary-canonical-consensus-v64-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
