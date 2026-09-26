@@ -1,0 +1,147 @@
+name: MATCH sealed live234 secondary salvage v63
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live234_sealed_secondary_salvage_v63.py
+      - tests/hotel_match_live234_sealed_secondary_salvage_v63_test.py
+      - .github/workflows/hotel-match-live234-sealed-secondary-salvage-v63.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+env:
+  OP: hotel-match-live234-sealed-secondary-salvage-1971-20260926-v63
+  BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
+  CLAIM: '5846809664'
+  CURRENT_ARTIFACT: '10907252023'
+  CURRENT_ARTIFACT_SHA: bb0ef243b0d940d856abbfc195ca0e37b3b08336ee5e555e455f995cfb9f8d68
+  CURRENT_RESULT_SHA: cd9b6f18c049af27501b40d5490536f31d9b5fa595f3d4d7864a4a7f04587a58
+  CURRENT_RECEIPT_SHA: 1ed149e43bad6a7689fc3d17d074d5cdebdd97b452ae1751f20a029fdebcdf67
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live234-sealed-secondary-salvage-v63-20260926'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 -m py_compile scripts/diagnostics/hotel_match_live234_sealed_secondary_salvage_v63.py
+      - run: python3 scripts/diagnostics/hotel_match_live234_sealed_secondary_salvage_v63.py --self-test
+      - run: python3 tests/hotel_match_live234_sealed_secondary_salvage_v63_test.py
+      - name: Read-only boundary
+        run: |
+          set -euo pipefail
+          f=scripts/diagnostics/hotel_match_live234_sealed_secondary_salvage_v63.py
+          ! grep -E 'urllib|requests|curl|subprocess|INSERT INTO|UPDATE .* SET|DELETE FROM' "$f"
+          grep -Fq "server_mutation':0" "$f"
+          grep -Fq "database_reads':0" "$f"
+          grep -Fq "hotel-match-live234-tv-secondary-1971-20260923-o0-n78-v1" "$f"
+
+  audit:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live234-sealed-secondary-salvage-v63-20260926'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate authority, CURRENT234 and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input/current terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-live234-sealed-secondary-salvage-v63.yml scripts/diagnostics/hotel_match_live234_sealed_secondary_salvage_v63.py tests/hotel_match_live234_sealed_secondary_salvage_v63_test.py "
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = "$expected"
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'server-read-only','three historical deterministic child dirs','no provider','no DB reads/writes','234 ID membership']:
+              assert x.lower() in b.lower(),x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$CURRENT_ARTIFACT/zip" -o input/current.zip
+          test "$(sha256sum input/current.zip|awk '{print $1}')" = "$CURRENT_ARTIFACT_SHA"
+          unzip -q input/current.zip -d input/current
+          result="$(find input/current -type f -name result.json -print -quit)"
+          receipt="$(find input/current -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt"
+          test "$(sha256sum "$result"|awk '{print $1}')" = "$CURRENT_RESULT_SHA"
+          test "$(sha256sum "$receipt"|awk '{print $1}')" = "$CURRENT_RECEIPT_SHA"
+          python3 - "$result" "$receipt" <<'PY'
+          import json,sys,pathlib
+          r=json.load(open(sys.argv[1]));q=json.load(open(sys.argv[2]))
+          assert r['operation']=='hotel-match-live-anex-missing-samo-router-refresh-1971-20260926-v36r'
+          assert r['state']=='completed_read_only_v36_current_refresh' and r['input_count']==234
+          assert r['still_tv_anex_missing_samo_count']==234
+          assert len(r['still_missing_samo_ids'])==234 and len(set(r['still_missing_samo_ids']))==234
+          assert q['result_sha256']=='cd9b6f18c049af27501b40d5490536f31d9b5fa595f3d4d7864a4a7f04587a58' and q['readback_verified'] is True
+          pathlib.Path('input/current-ids.json').write_text(json.dumps(sorted(r['still_missing_samo_ids']),separators=(',',':')))
+          PY
+
+      - name: Read exact sealed children without server mutation
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          current="$(cat input/current-ids.json)"
+          base64 <scripts/diagnostics/hotel_match_live234_sealed_secondary_salvage_v63.py | ssh "${opts[@]}" "$remote" "MATCH_CURRENT_IDS_JSON='$current' base64 -d | MATCH_CURRENT_IDS_JSON='$current' python3 - --execute \"\$HOME/.anytoour-match/operations\"" >terminal/result.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          p=pathlib.Path('terminal/result.json');r=json.load(open(p))
+          assert r['operation']=='hotel-match-live234-sealed-secondary-salvage-1971-20260926-v63'
+          assert r['state']=='completed_server_read_only_sealed_secondary_salvage'
+          assert r['current_membership_count']==234
+          for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_reads','database_writes','mapping_writes','server_mutation']:
+              assert r[k]==0,(k,r[k])
+          assert r['safe_to_write_now'] is False
+          print(json.dumps({k:r[k] for k in ['current_membership_edges','detail_verified_single_native_count','detail_verified_ambiguous_count','single_native_namespace_counts','children']},ensure_ascii=False,sort_keys=True))
+          pathlib.Path('terminal/receipt.json').write_text(json.dumps({
+            'operation':r['operation'],'state':r['state'],'result_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+            'readback_verified':True,'provider_http_calls':0,'database_reads':0,'database_writes':0,'mapping_writes':0,'server_mutation':0
+          },sort_keys=True,separators=(',',':'))+'\n')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-live234-sealed-secondary-salvage-v63-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
