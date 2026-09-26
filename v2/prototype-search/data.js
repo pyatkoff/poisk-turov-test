@@ -298,6 +298,7 @@
   }
   async function searchError(run,error){
     if(!current(run))return;
+    if(run.continued&&!(await settleContinuedSources(run)))return;
     // An expired supplier search cannot be continued. A lost response is not
     // evidence that search_continue failed: subsequent recovery only reads it.
     if(error?.status===404||error?.status===410)run.expired=true;
@@ -364,20 +365,45 @@
     }
     owner.refresh();
     const total=run.anexWindowsTotal||order.length,contiguous=order.every((value,index)=>value===index);
-    const status=contiguous&&order.length===total?'complete':'partial',first=windows.get(order[0]),last=windows.get(order[order.length-1]);
+    const continuationFailed=[...windows.values()].some(window=>window.continuationFailed===true);
+    const incompletePages=[...windows.values()].some(window=>window.continuation&&window.continuation.state!=='exhausted');
+    const status=contiguous&&order.length===total&&!continuationFailed&&!incompletePages?'complete':'partial',first=windows.get(order[0]),last=windows.get(order[order.length-1]);
     run.sourceCounts.anex={status,hotels:visibleHotels.size,offers:seenOffers.size,receivedHotels:receivedHotels.size,receivedOffers,
       mappedHotels:receivedHotels.size,mappedOffers,visibleHotels:visibleHotels.size,visibleOffers:seenOffers.size,
       scopeFilteredOffers,deduplicatedOffers,windowsLoaded:order.length,windowsTotal:total,dateFrom:first.dateFrom,dateTo:last.dateTo};
+    if(continuationFailed)run.sourceCounts.anex.continuationFailed=true;
+    if(!contiguous||order.length!==total)run.sourceCounts.anex.destinationBranchFailed=true;
     return run.sourceCounts.anex;
   }
-  async function applyDirectAnex(run,data,p,index,total){
-    const emptyExcluded=Array.isArray(data?.hotels)&&data.hotels.length===0&&Number(data.pages_read)===0&&data.search_ref===undefined;
+  function anexPageContinuation(data,page){
+    const value=data?.continuation;
+    if(!value||typeof value!=='object'||Array.isArray(value)
+      ||Object.keys(value).sort().join(',')!=='next_page,pages_read,state'
+      ||value.pages_read!==page||!Number.isInteger(page)||page<1||page>12
+      ||data.pages_read!==1||data.first_page_only!==(page===1)||page>1&&data.page!==page
+      ||!['available','exhausted','blocked','limit'].includes(value.state))return null;
+    if(value.state==='available'?(page>=12||value.next_page!==page+1):value.next_page!==null)return null;
+    if(value.state==='limit'&&page!==12)return null;
+    return Object.freeze({state:value.state,pages_read:page,next_page:value.next_page});
+  }
+  function anexContinuationAvailable(run){
+    return current(run)&&run.anexWindows instanceof Map&&[...run.anexWindows.values()].some(window=>
+      window.continuationFailed!==true&&!window.requestedPage&&window.continuation?.state==='available'
+      &&window.continuation.pages_read===window.pagesRead&&window.continuation.next_page===window.pagesRead+1
+      &&window.pagesRead<12);
+  }
+  async function applyDirectAnex(run,data,p,index,total,page=1){
+    const emptyExcluded=page===1&&Array.isArray(data?.hotels)&&data.hotels.length===0&&Number(data.pages_read)===0&&data.search_ref===undefined;
     if(!data||data.provider!=='anex'||data.generation!==run.generation||!Array.isArray(data.hotels)||data.hotels.length>300
       ||!data.date_range||data.date_range.from!==p.dateFrom||data.date_range.to!==p.dateTo
       ||!Number.isInteger(index)||index<0||!Number.isInteger(total)||total<1||index>=total
+      ||!Number.isInteger(page)||page<1||page>12
       ||(!emptyExcluded&&(typeof data.search_ref!=='string'||!(/^[a-f0-9]{32}$/).test(data.search_ref))))throw new Error('Invalid ANEX search response');
-    const windows=run.anexWindows||(run.anexWindows=new Map());
-    if(windows.has(index))throw new Error('Invalid ANEX window sequence');
+    const windows=run.anexWindows||(run.anexWindows=new Map()),previous=windows.get(index);
+    const continuation=emptyExcluded?null:anexPageContinuation(data,page);
+    if(page===1?!!previous:(!previous||previous.pagesRead!==page-1||previous.searchRef!==data.search_ref
+      ||previous.continuation?.next_page!==page||previous.requestedPage!==page||!continuation
+      ||data.page!==page||data.pages_read!==1||data.first_page_only!==false||run.anexWindowsTotal!==total))throw new Error('Invalid ANEX page sequence');
     const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let receivedOffers=0;
     for(const hotel of data.hotels){
       if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||seenHotels.has(hotel.local_id)
@@ -391,12 +417,53 @@
       }
     }
     if(receivedOffers>300)throw new Error('Invalid ANEX result size');
+    // Existing first-page cap is retained; each explicit page has the same cap.
     const priorOffers=[...windows.values()].reduce((sum,window)=>sum+window.receivedOffers,0);
-    if(priorOffers+receivedOffers>1200)throw new Error('Invalid ANEX result size');
-    windows.set(index,{prepared,hotelIds:[...seenHotels],receivedOffers,mappedOffers:receivedOffers,
-      scopeFilteredOffers:Math.max(0,receivedOffers-prepared.length),dateFrom:data.date_range.from,dateTo:data.date_range.to});
+    const initialOffers=[...windows.values()].reduce((sum,window)=>sum+(window.initialReceivedOffers??window.receivedOffers),0);
+    if((page===1&&initialOffers+receivedOffers>1200)||priorOffers+receivedOffers>1200*12
+      ||(previous?.receivedOffers||0)+receivedOffers>300*12)throw new Error('Invalid ANEX result size');
+    // No asynchronous digest from an old generation may mutate the current union.
+    if(!current(run))return null;
+    windows.set(index,{prepared:previous?[...previous.prepared,...prepared]:prepared,
+      hotelIds:[...new Set([...(previous?.hotelIds||[]),...seenHotels])],
+      receivedOffers:(previous?.receivedOffers||0)+receivedOffers,mappedOffers:(previous?.mappedOffers||0)+receivedOffers,
+      scopeFilteredOffers:(previous?.scopeFilteredOffers||0)+Math.max(0,receivedOffers-prepared.length),
+      initialReceivedOffers:previous?previous.initialReceivedOffers:receivedOffers,
+      dateFrom:data.date_range.from,dateTo:data.date_range.to,params:structuredClone(p),searchRef:data.search_ref,
+      pagesRead:page,continuation,requestedPage:null,
+      // Legacy endpoints without metadata remain usable, but never gain a guessed cursor.
+      continuationFailed:data.continuation!==undefined&&!continuation});
     run.anexWindowsTotal=total;
     return rebuildDirectAnex(run);
+  }
+  async function continueAnexPages(run,url){
+    if(!current(run)||!(run.anexWindows instanceof Map))return;
+    notify({type:'provider',provider:'anex',status:'loading',continued:true});
+    const order=[...run.anexWindows.keys()].sort((a,b)=>a-b);
+    for(const index of order){
+      if(!current(run))return;
+      const window=run.anexWindows.get(index),page=window.continuation?.next_page;
+      if(window.continuationFailed===true||window.requestedPage||window.continuation?.state!=='available'
+        ||!Number.isInteger(page)||page!==window.pagesRead+1||page>12)continue;
+      // Browser-local reservation only. Durable no-replay remains the server's responsibility.
+      window.requestedPage=page;
+      try{
+        const response=await fetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,
+          headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
+          body:JSON.stringify({action:'continue',generation:run.generation,search_ref:window.searchRef,page})});
+        const payload=await response.json().catch(()=>null);
+        if(!current(run))return;
+        if(!response.ok||payload?.ok!==true)throw new Error('ANEX continuation unavailable');
+        await applyDirectAnex(run,payload.data,window.params,index,run.anexWindowsTotal,page);
+      }catch(error){
+        if(!current(run))return;
+        window.continuationFailed=true;
+      }
+    }
+    if(!current(run))return;
+    const result=rebuildDirectAnex(run);
+    notify({type:'provider',provider:'anex',...result,continued:true});
+    clearCalendarWindows();
   }
   async function requestDirectAnex(run,p,url){
     const response=await fetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,
@@ -695,6 +762,12 @@
     await Promise.allSettled([run.anex,run.andromeda]);
     return current(run);
   }
+  async function settleContinuedSources(run){
+    await Promise.allSettled([run.andromedaContinuation,run.anexContinuation]);
+    if(!current(run))return false;
+    run.andromedaContinuation=null;run.anexContinuation=null;
+    return true;
+  }
   async function pollSearch(run){
     if(!current(run))return;
     try{
@@ -715,9 +788,7 @@
         notify({type:'provider',provider:'tourvisor',...run.sourceCounts.tourvisor});
         clearCalendarWindows();if(!current(run))return;
         if(!run.continued&&!(await settleInitialSources(run)))return;
-        if(run.continued&&run.andromedaContinuation){
-          await run.andromedaContinuation;run.andromedaContinuation=null;if(!current(run))return;
-        }
+        if(run.continued&&!(await settleContinuedSources(run)))return;
         const resultLimitReached=inventory.hotels>=5000,tvBaseline=run.continueBaselineTourvisor,baseline=run.continueBaseline;
         const tvGrew=!run.continued||!tvBaseline||inventory.hotels>tvBaseline.hotels||inventory.offers>tvBaseline.offers;
         const union=canonicalUnion(),after={hotels:union.hotels,offers:union.offers};
@@ -727,7 +798,7 @@
         const growthBefore=tvBaseline||baseline,growthAfter=tvBaseline?inventory:after,growthGrew=tvBaseline?tvGrew:unionGrew;
         run.tvCanContinue=!resultLimitReached&&(!run.continued||tvGrew);
         run.andromedaCanContinue=andromedaContinuationAvailable(run);
-        run.pending=false;run.resumeOnly=false;run.canContinue=run.tvCanContinue||run.andromedaCanContinue;
+        run.pending=false;run.resumeOnly=false;run.canContinue=run.tvCanContinue||run.andromedaCanContinue||anexContinuationAvailable(run);
         notify({type:'complete',canContinue:run.canContinue,continued:run.continued,resultLimitReached,
           continuationGrowth:run.continued&&growthBefore?{before:structuredClone(growthBefore),after:structuredClone(growthAfter),grew:growthGrew}:null,
           sources:structuredClone(run.sourceCounts),union});return;
@@ -768,8 +839,8 @@
   async function continueSearch(){
     const run=activeSearch;
     if(!run||!current(run)||run.pending||!run.searchId||run.expired||!run.canContinue)return false;
-    const tvCan=run.tvCanContinue!==false,andromedaCan=andromedaContinuationAvailable(run);
-    if(!tvCan&&!andromedaCan)return false;
+    const tvCan=run.tvCanContinue!==false,andromedaCan=andromedaContinuationAvailable(run),anexCan=anexContinuationAvailable(run);
+    if(!tvCan&&!andromedaCan&&!anexCan)return false;
     // Lock before the first await: double clicks never spend a second request.
     run.pending=true;run.continued=true;run.lastProgress=-10;run.lastRead=0;run.deadline=Date.now()+75000;
     const retryRead=run.resumeOnly&&tvCan;
@@ -783,17 +854,23 @@
       const andromedaUrl=andromedaCan
         ?nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php')
         :null;
+      const anexUrl=anexCan
+        ?nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php')
+        :null;
+      if(!retryRead){
+        if(andromedaUrl)run.andromedaContinuation=continueDirectAndromeda(run,andromedaUrl.href);
+        if(anexUrl)run.anexContinuation=continueAnexPages(run,anexUrl.href);
+      }
       if(tvCan){
         if(!retryRead){await rt.api('search_continue',{searchId:run.searchId});if(!current(run))return false;}
-        if(andromedaCan&&!retryRead&&andromedaUrl)run.andromedaContinuation=continueDirectAndromeda(run,andromedaUrl.href);
         await pollSearch(run);return current(run);
       }
-      if(andromedaCan&&andromedaUrl)await continueDirectAndromeda(run,andromedaUrl.href);
+      if(!(await settleContinuedSources(run)))return false;
       if(!current(run))return false;
       const baseline=run.continueBaseline,union=canonicalUnion(),after={hotels:union.hotels,offers:union.offers};
       const grew=!baseline||after.hotels>baseline.hotels||after.offers>baseline.offers;
       run.andromedaCanContinue=andromedaContinuationAvailable(run);run.pending=false;run.resumeOnly=false;
-      run.canContinue=run.andromedaCanContinue;
+      run.canContinue=run.andromedaCanContinue||anexContinuationAvailable(run);
       notify({type:'complete',canContinue:run.canContinue,continued:true,resultLimitReached:false,
         continuationGrowth:baseline?{before:structuredClone(baseline),after:structuredClone(after),grew}:null,
         sources:structuredClone(run.sourceCounts),union});
