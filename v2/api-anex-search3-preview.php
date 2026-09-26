@@ -951,6 +951,31 @@ function anytour_anex_search3_retryable_initial_price_502(Throwable $error, arra
         && (int) ($last['curl_errno'] ?? 0) === 0;
 }
 
+/** Fixed failure codes only: no exception text, URLs, credentials or offer references. */
+function anytour_anex_search3_continue_failure(Throwable $error, array $last): array
+{
+    $allowed = ['ANEX_HTTP_ERROR', 'ANEX_TRANSPORT_ERROR', 'ANEX_SUPPLIER_ERROR',
+        'ANEX_INVALID_RESPONSE', 'ANEX_RESPONSE_TOO_LARGE', 'ANEX_INVALID_PRICES',
+        'ANEX_REPEATED_PRICE_PAGE', 'ANEX_INVALID_PUBLIC_RESULT', 'ANEX_REQUEST_LIMIT',
+        'ANEX_SESSION_UNAVAILABLE', 'ANEX_SESSION_EXPIRED', 'ANEX_CLOCK_ERROR',
+        'ANEX_RESERVATION_REQUIRED', 'ANEX_RATE_LIMIT', 'ANEX_CLIENT_UNAVAILABLE',
+        'ANEX_INVALID_PARAMS', 'ANEX_SESSION_OFFER_LIMIT', 'ANEX_SEARCH_NOT_STARTED'];
+    $code = in_array($error->getMessage(), $allowed, true) ? $error->getMessage()
+        : ($error instanceof PDOException ? 'ANEX_DATABASE_ERROR'
+            : ($error instanceof TypeError ? 'ANEX_TYPE_ERROR' : 'ANEX_INTERNAL_ERROR'));
+    $safe = ['X-AnyTour-Anex-Failure' => $code];
+    if (($last['action'] ?? null) === 'SearchTour_PRICES') {
+        foreach (['http_status' => ['X-AnyTour-Anex-Upstream-Status', 599],
+            'supplier_code' => ['X-AnyTour-Anex-Supplier-Code', 99999],
+            'curl_errno' => ['X-AnyTour-Anex-Transport-Code', 999]] as $key => [$header, $max]) {
+            if (is_int($last[$key] ?? null) && $last[$key] >= 0 && $last[$key] <= $max) {
+                $safe[$header] = (string) $last[$key];
+            }
+        }
+    }
+    return $safe;
+}
+
 function anytour_anex_search3_http(): void
 {
     header('Content-Type: application/json; charset=utf-8');
@@ -1070,6 +1095,11 @@ function anytour_anex_search3_http(): void
         session_write_close();
         $last = isset($additionalClient) ? $additionalClient->lastRequestDiagnostics()
             : (isset($client) ? $client->lastRequestDiagnostics() : []);
+        if (($action ?? null) === 'continue') {
+            foreach (anytour_anex_search3_continue_failure($error, $last) as $name => $value) {
+                header($name . ': ' . $value);
+            }
+        }
         if ($error->getMessage() === 'ANEX_RATE_LIMIT' || ($last['http_status'] ?? null) === 429) {
             header('Retry-After: 60');
             anytour_anex_search3_out(['ok' => false, 'error' => 'rate_limited'], 429);

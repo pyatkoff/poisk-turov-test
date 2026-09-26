@@ -8,6 +8,7 @@ on:
       - 'v2/api-anex-search3-preview.php'
       - 'tests/anex-search3-foreground-page-test.php'
       - 'tests/anex-search3-http-continuation-test.php'
+      - 'tests/anex-search3-continue-failure-test.php'
       - '.github/workflows/anex-search3-foreground-page.yml'
 permissions:
   contents: read
@@ -29,6 +30,7 @@ jobs:
           php -l tests/anex-search3-http-continuation-test.php
           php tests/anex-search3-foreground-page-test.php
           php tests/anex-search3-http-continuation-test.php
+          php tests/anex-search3-continue-failure-test.php
           php tests/anex-search-smoke.php
           php tests/anex-search3-preview-smoke.php
       - name: Retain checked changed runtime files only
