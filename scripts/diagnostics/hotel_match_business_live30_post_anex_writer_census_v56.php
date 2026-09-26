@@ -3,8 +3,8 @@ declare(strict_types=1);
 require_once __DIR__.'/hotel_match_anex_effective_coverage.php';
 
 const V56_OP='hotel-match-business-live30-post-anex-writer-census-1971-20260926-v56';
-const V56_V51_OP='hotel-match-live-samo-missing-anex-operator13-writer-1971-20260926-v55';
-const V56_V51_DIGEST='79dfa2123f09d9ed0156b29251a06907598037634fc6fd094c8d99581434665c';
+const V56_V55_OP='hotel-match-live-samo-missing-anex-operator13-writer-1971-20260926-v55';
+const V56_V55_DIGEST='79dfa2123f09d9ed0156b29251a06907598037634fc6fd094c8d99581434665c';
 const V56_EXPECTED=2;
 const V56_BASELINE=['tv_live30_total'=>4399,'full_triple_total'=>2707,'tv_samo_missing_anex'=>732,'tv_anex_missing_samo'=>234,'tv_only_missing_both'=>726];
 
@@ -16,14 +16,14 @@ function v56_query(PDO $db,string $sql,array $args=[]):array{$st=$db->prepare($s
 function v56_excluded(string $c):bool{return preg_match('/^(?:россия|абхазия|russia|russian federation|abkhazia)$/iu',trim($c))===1;}
 function v56_bucket(bool $s,bool $a):string{return $s?($a?'full_triple':'tv_samo_missing_anex'):($a?'tv_anex_missing_samo':'tv_only_missing_both');}
 
-function v56_verify_v51(string $resultPath,string $receiptPath):array{
+function v56_verify_v55(string $resultPath,string $receiptPath):array{
     v56_need(is_file($resultPath)&&!is_link($resultPath)&&is_file($receiptPath)&&!is_link($receiptPath),'v55_files');
     $raw=(string)file_get_contents($resultPath);$sha=hash('sha256',$raw);$r=json_decode($raw,true,256,JSON_THROW_ON_ERROR);$q=v56_load($receiptPath);
     v56_need(($q['result_sha256']??'')===$sha&&($q['readback_verified']??false)===true,'v55_receipt');
-    v56_need(($r['operation']??'')===V56_V51_OP&&($r['state']??'')==='committed_verified','v55_state');
+    v56_need(($r['operation']??'')===V56_V55_OP&&($r['state']??'')==='committed_verified','v55_state');
     v56_need((int)($r['inserted']??0)===V56_EXPECTED&&(int)($r['database_writes']??0)===V56_EXPECTED&&(int)($r['mapping_writes']??0)===V56_EXPECTED,'v55_counts');
     v56_need(($r['registry_readback_verified']??false)===true&&($r['readback_verified']??false)===true,'v55_readback');
-    v56_need(($r['mapping_digest']??'')===V56_V51_DIGEST,'v55_digest');
+    v56_need(($r['mapping_digest']??'')===V56_V55_DIGEST,'v55_digest');
     v56_need((int)($r['provider_http_calls']??-1)===0&&($q['provider_accessed']??true)===false,'v55_provider');
     $targets=[];foreach($r['rows']??[] as$x){if(!is_array($x))continue;$id=(int)($x['catalog_hotel_id']??0);if($id>0)$targets[$id]=true;}
     v56_need(count($targets)===V56_EXPECTED,'v55_targets');
@@ -48,12 +48,12 @@ function v56_execute(PDO $db,array $v55,string $sourceSha):array{
 }
 function v56_self_test():void{
     v56_need(v56_bucket(true,true)==='full_triple','full');v56_need(v56_bucket(true,false)==='tv_samo_missing_anex','samo');v56_need(v56_bucket(false,true)==='tv_anex_missing_samo','anex');v56_need(v56_bucket(false,false)==='tv_only_missing_both','both');
-    v56_need(V56_BASELINE['full_triple_total']===2695&&V56_BASELINE['tv_samo_missing_anex']===744,'baseline');
+    v56_need(V56_BASELINE['full_triple_total']===2707&&V56_BASELINE['tv_samo_missing_anex']===732,'baseline');
 }
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     if(in_array('--self-test',$argv??[],true)){v56_self_test();echo"MATCH_POST_ANEX_WRITER_CENSUS_V56_SELFTEST_OK\n";exit;}
     v56_need(($argv[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$vr=(string)getenv('MATCH_V55_RESULT');$vq=(string)getenv('MATCH_V55_RECEIPT');$sha=(string)getenv('MATCH_SOURCE_SHA');
     v56_need(is_dir($root)&&is_dir($dir)&&basename($dir)===V56_OP&&preg_match('/^[0-9a-f]{40}$/D',$sha)===1,'scope');$res=v56_load($dir.'/reservation.json');v56_need(($res['operation']??'')===V56_OP,'reservation');
-    try{$v55=v56_verify_v51($vr,$vq);require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$r=v56_execute(v2_data_db(),$v55,$sha);$h=v56_save($dir.'/result.json',$r);v56_save($dir.'/receipt.json',['operation'=>V56_OP,'state'=>$r['state'],'result_sha256'=>$h,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$h,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);echo v56_json(['state'=>$r['state'],'current'=>$r['current'],'delta_vs_v52b'=>$r['delta_vs_v52b'],'v55_targets_full_triple'=>$r['v55_targets_full_triple'],'v55_target_states'=>$r['v55_target_states']])."\n";}
+    try{$v55=v56_verify_v55($vr,$vq);require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$r=v56_execute(v2_data_db(),$v55,$sha);$h=v56_save($dir.'/result.json',$r);v56_save($dir.'/receipt.json',['operation'=>V56_OP,'state'=>$r['state'],'result_sha256'=>$h,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$h,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);echo v56_json(['state'=>$r['state'],'current'=>$r['current'],'delta_vs_v52b'=>$r['delta_vs_v52b'],'v55_targets_full_triple'=>$r['v55_targets_full_triple'],'v55_target_states'=>$r['v55_target_states']])."\n";}
     catch(Throwable$e){$f=['operation'=>V56_OP,'state'=>'failed_read_only_post_anex_writer_census','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',mb_substr($e->getMessage(),0,160,'UTF-8')),'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0];$h=v56_save($dir.'/result.json',$f);v56_save($dir.'/receipt.json',['operation'=>V56_OP,'state'=>$f['state'],'result_sha256'=>$h,'readback_verified'=>true,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);fwrite(STDERR,$f['reason']."\n");exit(2);}
 }
