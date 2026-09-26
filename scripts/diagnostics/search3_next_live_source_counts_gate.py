@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import urllib.request
 
-COMMAND = '/search3-next-live-source-counts-v9'
+COMMAND = '/search3-next-live-source-counts-v10'
 REPOSITORY = 'pyatkoff/poisk-turov-test'
 OWNER = 226193297
 
@@ -41,7 +41,7 @@ def main():
         else: return 'comment_limit'
         if found != [event['comment']['id']]: return 'duplicate_command'
     except Exception: return 'authorization_read_failed'
-    print('SEARCH3_NEXT_COUNTS_AUTHORIZED_V8')
+    print('SEARCH3_NEXT_COUNTS_AUTHORIZED_V10')
     return None
 
 if __name__ == '__main__':
