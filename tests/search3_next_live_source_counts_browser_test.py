@@ -8,7 +8,7 @@ import os
 ROOT=Path(__file__).resolve().parents[1]
 SPEC=importlib.util.spec_from_file_location('runner',ROOT/'scripts/diagnostics/search3_next_live_source_counts.py')
 m=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(m)
-PARAMS=dict(departureId='1',countryId='4',dateFrom='2026-10-10',dateTo='2026-10-16',nightsFrom=7,nightsTo=7,adults=2,childs=[])
+PARAMS=dict(departureId='1',countryId='4',dateFrom='2026-10-01',dateTo='2026-10-07',nightsFrom=7,nightsTo=7,adults=2,childs=[])
 
 class TransportTests(unittest.TestCase):
     def test_no_boot_search_and_one_explicit_start(self):
