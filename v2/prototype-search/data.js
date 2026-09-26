@@ -582,48 +582,79 @@
     if(!response.ok||payload?.ok!==true)throw new Error('Andromeda search unavailable');
     return data;
   }
-  async function continueDirectAndromeda(run,p,url,startPage,pagesTotal,branchIndex=0,branchTotal=1){
-    let page=startPage,target=pagesTotal;
-    try{
-      while(current(run)&&page<=target){
-        const data=await requestDirectAndromeda(run,p,url,page);if(!data||!current(run))return;
-        const result=await applyDirectAndromeda(run,data,p,branchIndex,branchTotal);if(!current(run))return;
-        target=data.pages_count;notify({type:'provider',provider:'andromeda',...result});page++;
-      }
-      if(current(run))clearCalendarWindows();
-    }catch(error){
-      if(!current(run)||error?.name==='AbortError')return;
-      const previous=run.sourceCounts.andromeda;
-      if(previous&&Number.isInteger(previous.pagesLoaded)&&previous.pagesLoaded>0){
-        run.sourceCounts.andromeda={...previous,status:'partial',continuationFailed:true};
-        notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda});
-        clearCalendarWindows();
+  function andromedaContinuationAvailable(run){
+    const branches=run.andromedaBranches;
+    if(!(branches instanceof Map)||!branches.size)return false;
+    for(const branch of branches.values()){
+      if(!branch||branch.continuationFailed===true||!(branch.pages instanceof Map)||!branch.pages.size
+        ||!Number.isInteger(branch.pagesTotal)||branch.pagesTotal<1)continue;
+      const order=[...branch.pages.keys()].sort((a,b)=>a-b);
+      if(order.every((page,index)=>page===index+1)&&order[order.length-1]<branch.pagesTotal)return true;
+    }
+    return false;
+  }
+  function andromedaProviderStatus(run,failed=false){
+    if(failed)return 'partial';
+    return andromedaContinuationAvailable(run)?'ready':'complete';
+  }
+  async function continueDirectAndromeda(run,url){
+    const branches=run.andromedaBranches;
+    if(!(branches instanceof Map)||!branches.size||!current(run))return {loaded:0,failed:0,canContinue:false};
+    const branchOrder=[...branches.keys()].sort((a,b)=>a-b);
+    let loaded=0,failed=0;
+    notify({type:'provider',provider:'andromeda',status:'loading',continued:true});
+    for(const branchIndex of branchOrder){
+      if(!current(run))return {loaded,failed,canContinue:false};
+      const branch=branches.get(branchIndex);
+      if(!branch||branch.continuationFailed===true||!(branch.pages instanceof Map)||!branch.pages.size
+        ||!Number.isInteger(branch.pagesTotal)||branch.pagesTotal<1)continue;
+      const order=[...branch.pages.keys()].sort((a,b)=>a-b);
+      if(!order.every((page,index)=>page===index+1))continue;
+      const page=order[order.length-1]+1;
+      if(page>branch.pagesTotal)continue;
+      try{
+        const data=await requestDirectAndromeda(run,branch.params,url,page);if(!data||!current(run))return {loaded,failed,canContinue:false};
+        await applyDirectAndromeda(run,data,branch.params,branchIndex,run.andromedaBranchesTotal||branchOrder.length);if(!current(run))return {loaded,failed,canContinue:false};
+        loaded++;
+      }catch(error){
+        if(!current(run)||error?.name==='AbortError')return {loaded,failed,canContinue:false};
+        branch.continuationFailed=true;failed++;
+        const previous=run.sourceCounts.andromeda;
+        if(previous&&Number.isInteger(previous.pagesLoaded)&&previous.pagesLoaded>0){
+          run.sourceCounts.andromeda={...previous,status:'partial',continuationFailed:true};
+        }
       }
     }
+    if(!current(run))return {loaded,failed,canContinue:false};
+    const previous=run.sourceCounts.andromeda||{status:'partial',hotels:0,offers:0};
+    run.andromedaCanContinue=andromedaContinuationAvailable(run);
+    const failedEver=failed>0||previous.continuationFailed===true;
+    const providerStatus=andromedaProviderStatus(run,failedEver);
+    run.sourceCounts.andromeda={...previous,status:providerStatus==='complete'?'complete':'partial'};
+    if(failedEver)run.sourceCounts.andromeda.continuationFailed=true;
+    notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda,status:providerStatus,continued:true});
+    clearCalendarWindows();
+    return {loaded,failed,canContinue:run.andromedaCanContinue};
   }
   async function enrichAndromeda(run,p){
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');
-    if(!url||!current(run)){run.sourceCounts.andromeda={status:'skipped',hotels:0,offers:0};return;}
+    if(!url||!current(run)){run.sourceCounts.andromeda={status:'skipped',hotels:0,offers:0};run.andromedaCanContinue=false;return;}
     notify({type:'provider',provider:'andromeda',status:'loading'});if(!current(run))return;
     const scopes=directFirstWeekScopes(p);let loaded=0,failed=0;
     for(let branchIndex=0;current(run)&&branchIndex<scopes.length;branchIndex++){
       const scope=scopes[branchIndex];
       try{
         const data=await requestDirectAndromeda(run,scope,url.href,1);if(!data||!current(run))return;
-        const result=await applyDirectAndromeda(run,data,scope,branchIndex,scopes.length);if(!current(run))return;
-        loaded++;notify({type:'provider',provider:'andromeda',...result});
+        await applyDirectAndromeda(run,data,scope,branchIndex,scopes.length);if(!current(run))return;
+        loaded++;
         // Provider persistence may update calendar/SEO data, but stored offers never re-enter this live union.
-        clearCalendarWindows();if(!current(run))return;
-        if(data.pages_count>1){
-          notify({type:'provider',provider:'andromeda',...result,status:'loading',background:true});
-          await continueDirectAndromeda(run,scope,url.href,2,data.pages_count,branchIndex,scopes.length);
-        }
+        clearCalendarWindows();
       }catch(error){
         if(!current(run)||error?.name==='AbortError')return;
         failed++;
         if(scopes.length===1){
           owner.clearOffers('direct-andromeda');owner.refresh();
-          run.sourceCounts.andromeda={status:'error',hotels:0,offers:0};
+          run.sourceCounts.andromeda={status:'error',hotels:0,offers:0};run.andromedaCanContinue=false;
           notify({type:'provider',provider:'andromeda',status:'error'});return;
         }
         const failedBranch=run.andromedaBranches?.get(branchIndex);
@@ -633,15 +664,20 @@
     if(!current(run))return;
     if(!loaded){
       owner.clearOffers('direct-andromeda');owner.refresh();
-      run.sourceCounts.andromeda={status:'error',hotels:0,offers:0};
+      run.sourceCounts.andromeda={status:'error',hotels:0,offers:0};run.andromedaCanContinue=false;
       notify({type:'provider',provider:'andromeda',status:'error'});return;
     }
+    const previous=run.sourceCounts.andromeda||{hotels:0,offers:0};
+    run.andromedaCanContinue=andromedaContinuationAvailable(run);
     if(failed){
-      const previous=run.sourceCounts.andromeda||{hotels:0,offers:0};
       run.sourceCounts.andromeda={...previous,status:'partial',destinationBranchFailed:true};
-      notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda});
-      clearCalendarWindows();
+      notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda,status:'partial'});
+    }else{
+      const providerStatus=andromedaProviderStatus(run,false);
+      run.sourceCounts.andromeda={...previous,status:providerStatus==='complete'?'complete':'partial'};
+      notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda,status:providerStatus});
     }
+    clearCalendarWindows();
   }
   async function settleInitialSources(run){
     await Promise.allSettled([run.anex,run.andromeda]);
@@ -667,12 +703,18 @@
         notify({type:'provider',provider:'tourvisor',...run.sourceCounts.tourvisor});
         clearCalendarWindows();if(!current(run))return;
         if(!run.continued&&!(await settleInitialSources(run)))return;
-        const resultLimitReached=inventory.hotels>=5000,baseline=run.continueBaseline;
-        const grew=!run.continued||!baseline||inventory.hotels>baseline.hotels||inventory.offers>baseline.offers;
-        run.pending=false;run.resumeOnly=false;run.canContinue=!resultLimitReached&&(!run.continued||grew);
+        if(run.continued&&run.andromedaContinuation){
+          await run.andromedaContinuation;run.andromedaContinuation=null;if(!current(run))return;
+        }
+        const resultLimitReached=inventory.hotels>=5000,tvBaseline=run.continueBaselineTourvisor,baseline=run.continueBaseline;
+        const tvGrew=!run.continued||!tvBaseline||inventory.hotels>tvBaseline.hotels||inventory.offers>tvBaseline.offers;
+        const union=canonicalUnion(),grew=!run.continued||!baseline||union.hotels>baseline.hotels||union.offers>baseline.offers;
+        run.tvCanContinue=!resultLimitReached&&(!run.continued||tvGrew);
+        run.andromedaCanContinue=andromedaContinuationAvailable(run);
+        run.pending=false;run.resumeOnly=false;run.canContinue=run.tvCanContinue||run.andromedaCanContinue;
         notify({type:'complete',canContinue:run.canContinue,continued:run.continued,resultLimitReached,
-          continuationGrowth:run.continued&&baseline?{before:structuredClone(baseline),after:structuredClone(inventory),grew}:null,
-          sources:structuredClone(run.sourceCounts),union:canonicalUnion()});return;
+          continuationGrowth:run.continued&&baseline?{before:structuredClone(baseline),after:structuredClone(union),grew}:null,
+          sources:structuredClone(run.sourceCounts),union});return;
       }
       if(run.deadline&&Date.now()>=run.deadline)throw new Error('Продолжение поиска ещё не завершено. Проверьте результат повторно.');
       timer=setTimeout(()=>pollSearch(run),2500);
@@ -710,13 +752,35 @@
   async function continueSearch(){
     const run=activeSearch;
     if(!run||!current(run)||run.pending||!run.searchId||run.expired||!run.canContinue)return false;
+    const tvCan=run.tvCanContinue!==false,andromedaCan=andromedaContinuationAvailable(run);
+    if(!tvCan&&!andromedaCan)return false;
     // Lock before the first await: double clicks never spend a second request.
     run.pending=true;run.continued=true;run.lastProgress=-10;run.lastRead=0;run.deadline=Date.now()+75000;
-    const retryRead=run.resumeOnly;if(!retryRead)run.continueBaseline=tourvisorInventory();run.resumeOnly=true;
+    const retryRead=run.resumeOnly&&tvCan;
+    if(!retryRead){
+      run.continueBaseline=canonicalUnion();
+      run.continueBaselineTourvisor=tourvisorInventory();
+    }
+    run.resumeOnly=tvCan;
     notify({type:'loading',continued:true,retryRead});if(!current(run))return false;
     try{
-      if(!retryRead){await rt.api('search_continue',{searchId:run.searchId});if(!current(run))return false;}
-      await pollSearch(run);return current(run);
+      const andromedaUrl=andromedaCan
+        ?nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi,'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php')
+        :null;
+      if(tvCan){
+        if(!retryRead){await rt.api('search_continue',{searchId:run.searchId});if(!current(run))return false;}
+        if(andromedaCan&&!retryRead&&andromedaUrl)run.andromedaContinuation=continueDirectAndromeda(run,andromedaUrl.href);
+        await pollSearch(run);return current(run);
+      }
+      if(andromedaCan&&andromedaUrl)await continueDirectAndromeda(run,andromedaUrl.href);
+      if(!current(run))return false;
+      const baseline=run.continueBaseline,union=canonicalUnion(),grew=!baseline||union.hotels>baseline.hotels||union.offers>baseline.offers;
+      run.andromedaCanContinue=andromedaContinuationAvailable(run);run.pending=false;run.resumeOnly=false;
+      run.canContinue=run.andromedaCanContinue;
+      notify({type:'complete',canContinue:run.canContinue,continued:true,resultLimitReached:false,
+        continuationGrowth:baseline?{before:structuredClone(baseline),after:structuredClone(union),grew}:null,
+        sources:structuredClone(run.sourceCounts),union});
+      return current(run);
     }catch(error){await searchError(run,error);return false;}
   }
   function clearCalendarWindows(){calendarWindows.clear();calendarWindowBytes=0;calendarVersion++;}
