@@ -203,6 +203,7 @@ final class AnyTourAnexPreviewGateway
             $session['request_count'] = 0;
         }
         if (!isset($session['burst_started_at']) || !is_int($session['burst_started_at'])
+            || $session['burst_started_at'] > $now
             || $session['burst_started_at'] + self::BURST_WINDOW_SECONDS <= $now) {
             $session['burst_started_at'] = $now;
             $session['burst_request_count'] = 0;
