@@ -41,7 +41,7 @@ function v66_save(string $path, array $value): string {
     v66_need($file !== false, 'exclusive_create');
     try {
         v66_need(fwrite($file, $raw) === strlen($raw) && fflush($file), 'file_write');
-        if (function_exists('fsync')) v66_need(fsync($file), 'file_sync');
+        if (function_exists('fsync')) v66_need(fsync($file),'file_sync');
     } finally { fclose($file); }
     return hash('sha256', $raw);
 }
@@ -103,6 +103,94 @@ function v66_source(array $source): array {
     v66_need(count($selected) === 49 && count($catalogTargets) === 48, 'exact_strict_scope');
     return compact('selected', 'catalogTargets', 'nativeCatalog', 'catalogNatives');
 }
+/**
+ * Pure bulk preparation from already sealed local evidence; no execution route.
+ * The existing CLI still consumes its historical exact49 contract unchanged.
+ * This pin identifies an evidence file, NOT a server or write authorization.
+ */
+const V66_BULK_PLAN_SHA = '048523ef5a1d8440e39c6341afb531db6346b8786a63312c6328d70f2c1f70b8';
+function v66_prepare_bulk(string $sourceRaw, string $planRaw): array {
+    v66_need(strlen($sourceRaw) <= 8388608 && strlen($planRaw) <= 8388608, 'bulk_input_cap');
+    v66_need(hash_equals(V66_SOURCE_SHA, hash('sha256', $sourceRaw)), 'bulk_source_hash');
+    v66_need(hash_equals(V66_BULK_PLAN_SHA, hash('sha256', $planRaw)), 'bulk_plan_hash');
+    $source=json_decode($sourceRaw, true, 128, JSON_THROW_ON_ERROR);
+    $plan=json_decode($planRaw, true, 128, JSON_THROW_ON_ERROR);
+    $legacy=v66_source($source); // Validate immutable acquisition, not select bulk work.
+    v66_need(($plan['schema'] ?? '')==='match_retained175_tv_segment_union_v2', 'bulk_schema');
+    v66_need(($plan['required_exact_operator_lanes'] ?? null)===1 && ($plan['second_operator_required'] ?? null)===false, 'bulk_one_operator');
+    v66_need(($plan['safe_to_write_now'] ?? null)===false && ($plan['current_validation_performed'] ?? null)===false, 'bulk_not_acceptance');
+    $byPair=[];
+    foreach ($source['dossiers'] as $dossier) foreach ($dossier['candidates'] as $candidate) {
+        $key=v66_id($dossier['local_hotel_id']).'|'.v66_id($candidate['catalog_id']);
+        v66_need(!isset($byPair[$key]), 'bulk_duplicate_source_pair');
+        $byPair[$key]=['dossier'=>$dossier,'candidate'=>$candidate,
+            'dossier_sha256'=>hash('sha256',v66_json($dossier)),
+            'candidate_sha256'=>hash('sha256',v66_json($candidate))];
+    }
+    v66_need(count($byPair)===($plan['candidate_pairs_reviewed'] ?? null), 'bulk_pair_count');
+    $selected=[]; $catalogTargets=[]; $ordinary=[]; $historical=[]; $omitted=[];
+    $inputResults=[];
+    foreach ($plan['input_hashes'] as $pin) $inputResults[$pin['result_sha256'] ?? $pin[1]]=true;
+    foreach ($plan['candidates'] as $row) {
+        $local=(int)v66_id($row['local_hotel_id']); $catalog=v66_id($row['andromeda_catalog_id']);
+        $entry=$byPair[$local.'|'.$catalog] ?? null;
+        v66_need($entry!==null && !isset($selected[$local]), 'bulk_pair_membership');
+        v66_need($row['hotel_name']===$entry['dossier']['hotel_name'] && $row['candidate_names']===$entry['candidate']['names'], 'bulk_name_binding');
+        v66_need($row['safe_to_write_now']===false && is_array($row['historical_review_reasons']), 'bulk_row_state');
+        $proofs=[];
+        foreach ($row['proven_lanes'] as $proof) {
+            $ns=$proof['namespace']; $native=v66_id($proof['native_id']);
+            // These two exact cross-provider namespace contracts are already proven.
+            v66_need(in_array($ns,['operator_315','operator_342'],true) && !isset($proofs[$ns]), 'bulk_proof_namespace');
+            v66_need(v66_ids($entry['candidate']['lanes'][$ns]['native_ids'])===[$native], 'bulk_native_binding');
+            v66_need(is_array($proof['evidence']) && $proof['evidence']!==[], 'bulk_proof_missing');
+            foreach ($proof['evidence'] as $evidence) {
+                v66_need(isset($inputResults[$evidence['archive_result_sha256'] ?? '']), 'bulk_proof_input');
+                v66_need(preg_match('~^/(rows|single_native_edges)/(0|[1-9][0-9]*)$~D', $evidence['row_path'] ?? '')===1, 'bulk_proof_path');
+                foreach (['row_canonical_sha256','tv_child_result_sha256','tv_link_sha256','tv_tour_sha256'] as $field)
+                    v66_need(v66_hash($evidence[$field] ?? ''), 'bulk_proof_hash');
+            }
+            $proofs[$ns]=$proof;
+        }
+        v66_need(count($proofs)>=1 && count($proofs)===$row['independent_tv_lane_count'], 'bulk_proof_count');
+        $entry['retained_plan_sha256']=V66_BULK_PLAN_SHA;
+        $entry['retained_proofs']=$proofs;
+        $entry['historical_review_reasons']=$row['historical_review_reasons'];
+        $selected[$local]=$entry; $catalogTargets[$catalog][$local]=true;
+        if ($row['historical_review_reasons']!==[]) $historical[]=$local;
+        else {
+            $ordinary[]=$local;
+            if (!isset($legacy['selected'][$local])) $omitted[]=$local;
+        }
+    }
+    v66_need(count($selected)===$plan['proven_candidate_hotels'], 'bulk_selected_count');
+    foreach ([$ordinary,$historical,$omitted] as $list) v66_need(count($list)===count(array_unique($list)), 'bulk_duplicate_group');
+    sort($ordinary,SORT_NUMERIC); sort($historical,SORT_NUMERIC); sort($omitted,SORT_NUMERIC);
+    return ['selected'=>$selected,'catalogTargets'=>$catalogTargets,
+        'nativeCatalog'=>$legacy['nativeCatalog'],'catalogNatives'=>$legacy['catalogNatives'],
+        'input_dossiers'=>count($source['dossiers']),'candidate_pairs_examined'=>count($byPair),
+        'ordinary_review_ids'=>$ordinary,'historical_review_ids'=>$historical,
+        'ordinary_ids_outside_legacy49'=>$omitted,'required_exact_operator_lanes'=>1,
+        'source_result_sha256'=>V66_SOURCE_SHA,'retained_plan_sha256'=>V66_BULK_PLAN_SHA,
+        'execution_authorized'=>false,'safe_to_write_now'=>false];
+}
+
+/** Pure contract evaluation against a supplied snapshot; never opens a DB. */
+function v66_assess_bulk(string $sourceRaw, string $planRaw, array $current): array {
+    $input=v66_prepare_bulk($sourceRaw,$planRaw); $rows=[]; $counts=[];
+    foreach ($input['selected'] as $local=>$entry) {
+        $row=v66_classify((int)$local,$entry,$input,$current,true); $rows[]=$row;
+        $counts[$row['status']]=($counts[$row['status']] ?? 0)+1;
+    }
+    ksort($counts);
+    return ['mode'=>'pure_supplied_snapshot_evaluation_not_execution','rows'=>$rows,'status_counts'=>$counts,
+        'input_dossiers'=>$input['input_dossiers'],'candidate_pairs_examined'=>$input['candidate_pairs_examined'],
+        'ordinary_ids_outside_legacy49'=>$input['ordinary_ids_outside_legacy49'],
+        'retained_plan_sha256'=>V66_BULK_PLAN_SHA,'database_reads'=>0,'database_writes'=>0,
+        'provider_http_calls'=>0,'mapping_writes'=>0,'current_validation_performed'=>false,
+        'execution_authorized'=>false,'safe_to_write_now'=>false];
+}
+
 function v66_query(PDO $db, string $sql, array $args = []): array {
     $statement = $db->prepare($sql); v66_need($statement !== false, 'query_prepare');
     v66_need($statement->execute(array_values($args)), 'query_execute');
@@ -155,8 +243,10 @@ function v66_current(PDO $db, array $selected): array {
         return $indexes+compact('hotels','live','manual','anex')+['registry_rows_read'=>count($rows)];
     } catch (Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
 }
-function v66_classify(int $local, array $entry, array $input, array $current): array {
-    $d=$entry['dossier']; $c=$entry['candidate']; $catalog=v66_id($c['catalog_id']); $reasons=[]; $lanes=[]; $matched=0;
+function v66_classify(int $local, array $entry, array $input, array $current, bool $useRetained = false): array {
+    $d=$entry['dossier']; $c=$entry['candidate']; $catalog=v66_id($c['catalog_id']); $reasons=[]; $lanes=[]; $matched=0; $retainedMatched=0;
+    $hasRetained=$useRetained && ($entry['retained_plan_sha256'] ?? '')===V66_BULK_PLAN_SHA;
+    if ($hasRetained) foreach ($entry['historical_review_reasons'] as $reason) $reasons[]='retained_history:'.$reason;
     $hotel=$current['hotels'][$local] ?? null;
     if (!$hotel || (int)$hotel['is_active'] !== 1 || v66_excluded((string)$hotel['country_name'])) $reasons[]='target_inactive_or_excluded';
     if (!isset($current['live'][$local])) $reasons[]='target_not_tv_live30';
@@ -194,18 +284,24 @@ function v66_classify(int $local, array $entry, array $input, array $current): a
                 elseif (count($targets)>1) $state='registry_target_collision';
                 elseif (count($targets)===1) $state=(int)array_key_first($targets)===$local?'registry_matches_target':'registry_other_target';
                 if ($state==='registry_matches_target') $matched++;
+                elseif ($state==='registry_missing' && $hasRetained && isset($entry['retained_proofs'][$ns])) {
+                    v66_need(v66_id($entry['retained_proofs'][$ns]['native_id'])===$native, 'retained_native_drift');
+                    $state='retained_exact_proof_matches_target'; $retainedMatched++;
+                }
                 elseif ($state!=='registry_missing') $reasons[]=$ns.':'.$state;
             }
         }
         $lanes[$ns]=['state'=>$state,'native_ids'=>$ids,'registry_target_ids'=>array_map('intval',array_keys($targets)),'registry_evidence'=>$evidence];
+        if ($hasRetained && isset($entry['retained_proofs'][$ns])) $lanes[$ns]['retained_evidence']=$entry['retained_proofs'][$ns]['evidence'];
     }
     // One proven same-operator identity is sufficient; contradictory lanes still veto.
-    if ($matched < 1) $reasons[]='no_proven_cross_source_lane';
+    if ($matched + $retainedMatched < 1) $reasons[]='no_proven_cross_source_lane';
     $reasons=array_values(array_unique($reasons)); sort($reasons, SORT_STRING);
     $status=$reasons!==[]?'hold':($same?'already_resolved_same':'ready_for_guarded_writer');
     return ['local_hotel_id'=>$local,'andromeda_catalog_id'=>$catalog,'hotel_name'=>$d['hotel_name'],
             'candidate_names'=>$c['names'],'retrieval'=>$c['retrieval'],'geo_relation'=>$c['geo_relation'],
             'observed_operator_lanes'=>$c['lane_count'],'current_cross_source_lanes'=>$matched,
+            'retained_cross_source_lanes'=>$retainedMatched,'proven_cross_source_lanes'=>$matched+$retainedMatched,
             'direct_anex_support'=>v66_support($direct,$c['lanes']['operator_5']['native_ids']),
             'status'=>$status,'reasons'=>$reasons,'lanes'=>$lanes,
             'v65_dossier_sha256'=>$entry['dossier_sha256'],'v65_candidate_sha256'=>$entry['candidate_sha256'],
