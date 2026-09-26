@@ -744,6 +744,7 @@ test('Andromeda first page is immediately usable and later pages require explici
  complete=h.events.filter(e=>e.type==='complete').at(-1);assert.equal(complete.canContinue,false);
  assert.equal(complete.sources.andromeda.status,'complete');assert.equal(complete.sources.andromeda.pagesLoaded,3);assert.equal(complete.sources.andromeda.pagesTotal,3);
  assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda').length,3);
+ assert.equal(h.anexCalls.length,1,'Continue never replays direct ANEX initial inventory');
  assert.equal(h.calls.filter(c=>c.action==='search_continue').length,1,'Tourvisor continuation stops independently after it adds no inventory');
  assert.equal(h.dbBodies.length,0,'Andromeda continuation never rereads stored offers into the live union');
 });
