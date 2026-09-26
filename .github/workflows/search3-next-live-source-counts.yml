@@ -2,78 +2,72 @@ name: Search3 NEXT live source counts
 
 on:
   pull_request:
-    branches: [release/search3-production-ready-v1]
+    branches: [main]
     paths:
       - '.github/workflows/search3-next-live-source-counts.yml'
-      - 'scripts/diagnostics/search3_next_live_source_counts_gate.py'
-      - 'tests/search3_next_live_source_counts_gate_test.py'
+      - 'scripts/diagnostics/search3_next_live_source_counts*.py'
+      - 'tests/search3_next_live_source_counts*_test.py'
   issue_comment:
     types: [created]
 
 permissions:
   contents: read
-  issues: read
 
 jobs:
-  live-source-counts:
-    if: github.event_name == 'issue_comment'
+  acceptance-contract:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 6
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: main
-      - name: Authorize exact owner SEARCH acceptance command
-        run: python3 -B scripts/diagnostics/search3_next_live_source_counts_gate.py
-      - name: Checkout Search3 release after authorization
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Install fixed browser test dependency
         run: |
-          set -euo pipefail
-          git fetch --depth=1 origin release/search3-production-ready-v1
-          git checkout --detach FETCH_HEAD
-      - name: Install Chromium
+          python3 -m pip install playwright==1.55.0
+          python3 -m playwright install --with-deps chromium
+      - name: Offline owner, budget, redaction and actual browser-click tests
+        run: python3 -m unittest discover -s tests -p 'search3_next_live_source_counts*_test.py' -v
+
+  live-source-counts:
+    if: >-
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event.issue.number == 3419 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.body == '/search3-next-live-source-counts-v8'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: read
+    concurrency:
+      group: search3-next-live-source-counts
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Authorize one fresh owner command from the same trusted commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/diagnostics/search3_next_live_source_counts_gate.py
+      - name: Install fixed browser dependency
         run: |
-          set -euo pipefail
-          npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0 >/dev/null
-          npx playwright install --with-deps chromium >/dev/null
-      - name: Run one bounded NEXT live search
-        run: |
-          set -euo pipefail
-          mkdir -p search3-next-live-source-counts
-          cat > search3-next-live-source-counts.cjs <<'JS'
-          const {chromium}=require('playwright'),fs=require('fs');
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const context=await browser.newContext({viewport:{width:1280,height:900}});
-            await context.route(/https?:\/\/mc\.yandex\.(ru|com)\//,r=>r.abort());
-            const page=await context.newPage();
-            const net=[];
-            page.on('console',m=>{const s=m.text(); if(/provider|anex|andromeda|tourvisor|search/i.test(s)) console.log('BROWSER',s.slice(0,500));});
-            page.on('response',async r=>{const u=r.url();if(!/api-v2\.php|api-anex-search3-preview\.php|api-andromeda-search3-preview\.php/.test(u))return;let safe={url:new URL(u).pathname,status:r.status()};try{const j=await r.json();safe.ok=j&&j.ok;safe.provider=j?.data?.provider||j?.provider||null;safe.errorCategory=j?.error?.category||j?.data?.error_category||j?.category||null;safe.hotelCount=Array.isArray(j?.data?.hotels)?j.data.hotels.length:null;safe.offerCount=j?.data?.offer_count??j?.data?.received_offers??null;}catch{}net.push(safe);console.log('SEARCH3_NET',JSON.stringify(safe));});
-            const u=new URL('https://anytoour.ru/_preview/search3-next-candidate/visual-search/');
-            Object.entries({origin:'Москва',country:'4',from:'2026-10-10',to:'2026-10-16',minNights:'7',maxNights:'7',adults:'2',ages:'',searched:'1'}).forEach(([k,v])=>u.searchParams.set(k,v));
-            const res=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
-            if(!res||res.status()!==200)throw new Error('NEXT_HTTP_'+(res&&res.status()));
-            await page.waitForTimeout(60000);
-            const state=await page.evaluate(()=>{
-              const items=(window.V2Results&&window.V2Results.state&&window.V2Results.state.items)||[];
-              const offers={tourvisor:0,anex:0,andromeda:0},hotels={tourvisor:new Set(),anex:new Set(),andromeda:new Set()};
-              for(const h of items) for(const t of (h.tours||[])){const p=String(t.provider||'tourvisor').toLowerCase();if(!(p in offers))continue;offers[p]++;hotels[p].add(String(h.id));}
-              return {hotelCards:document.querySelectorAll('.hotel-card').length,hotels:{tourvisor:hotels.tourvisor.size,anex:hotels.anex.size,andromeda:hotels.andromeda.size},offers};
-            });
-            state.network=net;fs.writeFileSync('search3-next-live-source-counts/result.json',JSON.stringify(state,null,2));
-            console.log('SEARCH3_NEXT_SOURCE_COUNTS',JSON.stringify(state));
-            if(state.offers.tourvisor<1)throw new Error('TOURVISOR_EMPTY');
-            if(state.offers.anex<1)throw new Error('DIRECT_ANEX_EMPTY');
-            if(state.offers.andromeda<1)throw new Error('ANDROMEDA_EMPTY');
-            await browser.close();
-          })().catch(e=>{console.error(e);process.exit(1)});
-          JS
-          node search3-next-live-source-counts.cjs
-      - uses: actions/upload-artifact@v4
+          python3 -m pip install playwright==1.55.0
+          python3 -m playwright install --with-deps chromium
+      - name: Verify NEXT bytes then click Find once and observe canonical results
+        env:
+          SEARCH3_NEXT_LIVE_ALLOWED: v8
+        run: python3 scripts/diagnostics/search3_next_live_source_counts.py
+      - name: Retain aggregate counts and screenshots only
         if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: search3-next-live-source-counts
-          path: search3-next-live-source-counts/result.json
+          name: search3-next-live-source-counts-${{ github.run_id }}
+          path: search3-next-live-source-counts/
           if-no-files-found: warn
           retention-days: 7
