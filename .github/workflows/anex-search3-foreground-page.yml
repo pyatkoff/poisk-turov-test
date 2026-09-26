@@ -5,7 +5,9 @@ on:
     paths:
       - 'app/integrations/anex-search.php'
       - 'app/integrations/anex-preview-gateway.php'
+      - 'v2/api-anex-search3-preview.php'
       - 'tests/anex-search3-foreground-page-test.php'
+      - 'tests/anex-search3-http-continuation-test.php'
       - '.github/workflows/anex-search3-foreground-page.yml'
 permissions:
   contents: read
@@ -23,14 +25,17 @@ jobs:
           set -euo pipefail
           php -l app/integrations/anex-search.php
           php -l app/integrations/anex-preview-gateway.php
+          php -l v2/api-anex-search3-preview.php
+          php -l tests/anex-search3-http-continuation-test.php
           php tests/anex-search3-foreground-page-test.php
+          php tests/anex-search3-http-continuation-test.php
           php tests/anex-search-smoke.php
           php tests/anex-search3-preview-smoke.php
       - name: Retain checked changed runtime files only
         run: |
           mkdir -p checked-anex-first-page
-          cp app/integrations/anex-search.php app/integrations/anex-preview-gateway.php checked-anex-first-page/
-          (cd checked-anex-first-page && sha256sum anex-search.php anex-preview-gateway.php > SHA256SUMS)
+          cp app/integrations/anex-search.php app/integrations/anex-preview-gateway.php v2/api-anex-search3-preview.php checked-anex-first-page/
+          (cd checked-anex-first-page && sha256sum anex-search.php anex-preview-gateway.php api-anex-search3-preview.php > SHA256SUMS)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: anex-foreground-page-${{ github.event.pull_request.head.sha }}
