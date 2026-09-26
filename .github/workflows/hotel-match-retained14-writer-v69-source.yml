@@ -1,0 +1,72 @@
+name: MATCH retained14 writer source checks
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - scripts/diagnostics/hotel_match_retained14_writer_v69.php
+      - tests/hotel_match_retained14_writer_v69_test.php
+      - .github/workflows/hotel-match-retained14-writer-v69-source.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/retained14-guarded-writer-v69-20260927'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Retrieve immutable evidence only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir input
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10909959597/zip" -o input/source.zip
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10915714601/zip" -o input/audit.zip
+          python3 - <<'PY'
+          import hashlib, pathlib, zipfile
+          def extract(archive, archive_sha, members):
+              raw=pathlib.Path(archive).read_bytes()
+              assert hashlib.sha256(raw).hexdigest()==archive_sha, 'archive_hash'
+              with zipfile.ZipFile(archive) as z:
+                  for name, target, sha in members:
+                      found=[i for i in z.infolist() if pathlib.PurePosixPath(i.filename).name==name]
+                      assert len(found)==1 and found[0].file_size<=8388608, 'archive_member'
+                      data=z.read(found[0]); assert hashlib.sha256(data).hexdigest()==sha, 'member_hash'
+                      pathlib.Path('input/'+target).write_bytes(data)
+          extract('input/source.zip','033d372e5aeb4d495b9fe542c148c2d4eb080889b5eb5ca08a5642837e2dbaf8',[
+              ('result.json','source-result.json','42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810')])
+          extract('input/audit.zip','f4da8ad7c4e0ac513c2bdd83e96ddb5899c753b26fa12003eb2c28a08a138054',[
+              ('result.json','audit-result.json','0b592a30a5c301d9631433042c5239baf9cc7f7f427cac5895c9de9300ed4eb9'),
+              ('receipt.json','audit-receipt.json','636f24b549f4e7aa96c5d3d0e151fe167e37d793f01cf4afbe4b12fb03be3ad3'),
+              ('retained-plan.json','retained-plan.json','048523ef5a1d8440e39c6341afb531db6346b8786a63312c6328d70f2c1f70b8')])
+          PY
+      - name: Validate real evidence and CURRENT guard regressions
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_retained14_writer_v69.php
+          php -l tests/hotel_match_retained14_writer_v69_test.php
+          php tests/hotel_match_retained14_writer_v69_test.php input/audit-result.json input/audit-receipt.json input/source-result.json input/retained-plan.json | tee input/v69-tests.json
+          php tests/hotel_match_live234_v65_current_audit_v66_test.php input/source-result.json input/retained-plan.json | tee input/v66-tests.txt
+          mkdir -p checked-source/scripts/diagnostics checked-source/app/integrations checked-source/tests
+          cp scripts/diagnostics/hotel_match_retained14_writer_v69.php scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php scripts/diagnostics/hotel_match_anex_effective_coverage.php checked-source/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php checked-source/app/integrations/
+          cp tests/hotel_match_retained14_writer_v69_test.php checked-source/tests/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-retained14-source-checks-${{ github.run_id }}
+          path: |
+            input/v69-tests.json
+            input/v66-tests.txt
+            checked-source/
+          retention-days: 14
+          if-no-files-found: warn
