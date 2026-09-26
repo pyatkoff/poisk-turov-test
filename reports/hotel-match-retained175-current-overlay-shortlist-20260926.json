@@ -1,0 +1,53 @@
+{
+  "auto_write_veto": [
+    {"andromeda_catalog_id":"2000062991","classification":"accepted_other_target_conflict","hold_reasons":["historical_current_accepted_other_target_conflict"],"local_hotel_id":125},
+    {"andromeda_catalog_id":"2000090573","classification":"accepted_other_target_conflict","hold_reasons":["historical_current_accepted_other_target_conflict"],"local_hotel_id":466},
+    {"andromeda_catalog_id":"2000059367","classification":"historical_hold","hold_reasons":["historical_current_historical_hold"],"local_hotel_id":474},
+    {"andromeda_catalog_id":"2000028206","classification":"accepted_other_target_conflict","hold_reasons":["historical_current_accepted_other_target_conflict","historical_nonmoscow_source_accepted_other_target"],"local_hotel_id":1181},
+    {"andromeda_catalog_id":"2000035724","classification":"accepted_other_target_conflict","hold_reasons":["historical_current_accepted_other_target_conflict"],"local_hotel_id":1299},
+    {"andromeda_catalog_id":"5257","classification":"accepted_other_target_conflict","hold_reasons":["historical_current_accepted_other_target_conflict"],"local_hotel_id":1540},
+    {"andromeda_catalog_id":"2000098682","classification":"protected_conflict","hold_reasons":["historical_current_protected_conflict"],"local_hotel_id":22622},
+    {"andromeda_catalog_id":"2000106034","classification":"accepted_other_target_conflict","hold_reasons":["historical_current_accepted_other_target_conflict"],"local_hotel_id":65341},
+    {"andromeda_catalog_id":"131606","classification":"accepted_other_target_conflict","hold_reasons":["historical_current_accepted_other_target_conflict"],"local_hotel_id":103125},
+    {"andromeda_catalog_id":"269426","classification":"current_candidate_pending_or_unassigned","hold_reasons":["historical_nonmoscow_category_mismatch"],"local_hotel_id":108356}
+  ],
+  "auto_write_veto_count": 10,
+  "classification_counts": {"accepted_other_target_conflict":7,"current_candidate_pending_or_unassigned":2,"historical_hold":1,"protected_conflict":1,"samo_identity_missing_current":8},
+  "database_reads": 0,
+  "database_writes": 0,
+  "explicit_historical_vetoes_outside_pair_overlay": [
+    {"andromeda_catalog_id":"2000123210","local_hotel_id":1299,"reason":"historical_canonical_category_discrepancy"},
+    {"andromeda_catalog_id":"2000113715","distance_m":11523423,"local_hotel_id":148230,"reason":"historical_direct_anex_coordinate_conflict_gt5km"}
+  ],
+  "fresh_current_validation_performed": false,
+  "historical_current_pair_overlap_count": 19,
+  "input_count": 175,
+  "input_pins": {
+    "anex_details_zip_sha256":"b847b82f3a6ce6feb4110d42d12396631179dd0e5e4ce7bf9d48da55f0df651b",
+    "canonical_current_zip_sha256":"35e79211da22b9d8f9a417d6ee4c27954d03e83ef89e471b3762fef8969e7aea",
+    "direct27_current_zip_sha256":"c55fe548c7d223462f5c251137559108765eb4b877ff47a26371e90aac5aaf5f",
+    "nonmoscow_current_zip_sha256":"a2d52ac15855dcdc3291adb634a807af1a9f01dd51a1f8075e60afb3a2b77f60",
+    "retained_report_sha256":"01ef024f859be9464a12ffcdd196d8b12450d2980d4184c2a056548e578d738d",
+    "v65_zip_sha256":"033d372e5aeb4d495b9fe542c148c2d4eb080889b5eb5ca08a5642837e2dbaf8"
+  },
+  "mapping_writes": 0,
+  "mode": "offline_history_only",
+  "priority_fresh_current_review": [
+    {"andromeda_catalog_id":"141649","candidate_names":["Tianze Beach Resort"],"historical_current_classification":"samo_identity_missing_current","hotel_name":"TIANZE BEACH","local_hotel_id":3111,"normalized_direct_anex_support_not_authority":"support_equal","v65_lane_count":3},
+    {"andromeda_catalog_id":"2000087342","candidate_names":["Borg El Arab"],"historical_current_classification":"current_candidate_pending_or_unassigned","hotel_name":"BORG EL ARAB BEACH RESORT","local_hotel_id":76753,"normalized_direct_anex_support_not_authority":"support_equal","v65_lane_count":3},
+    {"andromeda_catalog_id":"2000106853","candidate_names":["Paxton Vacances Hotels & Resorts Sanya"],"historical_current_classification":"samo_identity_missing_current","hotel_name":"PAXTON VACANCES HOTEL & RESORTS SANYA","local_hotel_id":119844,"normalized_direct_anex_support_not_authority":"support_equal","v65_lane_count":3}
+  ],
+  "priority_fresh_current_review_count": 3,
+  "provider_http_calls": 0,
+  "safe_to_write_now": false,
+  "schema": "match_retained175_current_overlay_shortlist_v1",
+  "secondary_fresh_current_review": [
+    {"andromeda_catalog_id":"116809","candidate_names":["Jianguo Garden Hotel"],"historical_current_classification":"samo_identity_missing_current","hotel_name":"JIANGUO GARDEN HOTEL","local_hotel_id":8339,"normalized_direct_anex_support_not_authority":"support_equal","v65_lane_count":1},
+    {"andromeda_catalog_id":"337848","candidate_names":["Gloria Hotel & Suites"],"historical_current_classification":"samo_identity_missing_current","hotel_name":"GLORIA HOTEL & SUITES","local_hotel_id":60965,"normalized_direct_anex_support_not_authority":"none","v65_lane_count":0},
+    {"andromeda_catalog_id":"2000090012","candidate_names":["Radisson Beijing Daxing Airport"],"historical_current_classification":"samo_identity_missing_current","hotel_name":"RADISSON HOTEL BEIJING DAXING AIRPORT","local_hotel_id":119842,"normalized_direct_anex_support_not_authority":"support_collision","v65_lane_count":1},
+    {"andromeda_catalog_id":"2000121663","candidate_names":["Home2 Suites by Hilton Beijing West Railway Station"],"historical_current_classification":"samo_identity_missing_current","hotel_name":"HOME2 SUITES BY HILTON BEIJING WEST RAILWAY STATION","local_hotel_id":138585,"normalized_direct_anex_support_not_authority":"support_equal","v65_lane_count":1},
+    {"andromeda_catalog_id":"2000121662","candidate_names":["Holiday Inn Express Beijing Conference Center"],"historical_current_classification":"samo_identity_missing_current","hotel_name":"HOLIDAY INN EXPRESS BEIJING CONFERENCE CENTER BY IHG","local_hotel_id":141010,"normalized_direct_anex_support_not_authority":"support_equal","v65_lane_count":1},
+    {"andromeda_catalog_id":"2000057685","candidate_names":["Citadines Beijing Gongti Apartments (Citadines Ritan Beijing)","Citadines"],"historical_current_classification":"samo_identity_missing_current","hotel_name":"CITADINES BEIJING GONGTI APARTMENTS","local_hotel_id":156432,"normalized_direct_anex_support_not_authority":"support_equal","v65_lane_count":1}
+  ],
+  "secondary_fresh_current_review_count": 6
+}
