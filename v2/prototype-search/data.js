@@ -708,12 +708,13 @@
         }
         const resultLimitReached=inventory.hotels>=5000,tvBaseline=run.continueBaselineTourvisor,baseline=run.continueBaseline;
         const tvGrew=!run.continued||!tvBaseline||inventory.hotels>tvBaseline.hotels||inventory.offers>tvBaseline.offers;
-        const union=canonicalUnion(),grew=!run.continued||!baseline||union.hotels>baseline.hotels||union.offers>baseline.offers;
+        const union=canonicalUnion(),after={hotels:union.hotels,offers:union.offers};
+        const grew=!run.continued||!baseline||after.hotels>baseline.hotels||after.offers>baseline.offers;
         run.tvCanContinue=!resultLimitReached&&(!run.continued||tvGrew);
         run.andromedaCanContinue=andromedaContinuationAvailable(run);
         run.pending=false;run.resumeOnly=false;run.canContinue=run.tvCanContinue||run.andromedaCanContinue;
         notify({type:'complete',canContinue:run.canContinue,continued:run.continued,resultLimitReached,
-          continuationGrowth:run.continued&&baseline?{before:structuredClone(baseline),after:structuredClone(union),grew}:null,
+          continuationGrowth:run.continued&&baseline?{before:structuredClone(baseline),after:structuredClone(after),grew}:null,
           sources:structuredClone(run.sourceCounts),union});return;
       }
       if(run.deadline&&Date.now()>=run.deadline)throw new Error('Продолжение поиска ещё не завершено. Проверьте результат повторно.');
@@ -758,7 +759,7 @@
     run.pending=true;run.continued=true;run.lastProgress=-10;run.lastRead=0;run.deadline=Date.now()+75000;
     const retryRead=run.resumeOnly&&tvCan;
     if(!retryRead){
-      run.continueBaseline=canonicalUnion();
+      const union=canonicalUnion();run.continueBaseline={hotels:union.hotels,offers:union.offers};
       run.continueBaselineTourvisor=tourvisorInventory();
     }
     run.resumeOnly=tvCan;
@@ -774,11 +775,12 @@
       }
       if(andromedaCan&&andromedaUrl)await continueDirectAndromeda(run,andromedaUrl.href);
       if(!current(run))return false;
-      const baseline=run.continueBaseline,union=canonicalUnion(),grew=!baseline||union.hotels>baseline.hotels||union.offers>baseline.offers;
+      const baseline=run.continueBaseline,union=canonicalUnion(),after={hotels:union.hotels,offers:union.offers};
+      const grew=!baseline||after.hotels>baseline.hotels||after.offers>baseline.offers;
       run.andromedaCanContinue=andromedaContinuationAvailable(run);run.pending=false;run.resumeOnly=false;
       run.canContinue=run.andromedaCanContinue;
       notify({type:'complete',canContinue:run.canContinue,continued:true,resultLimitReached:false,
-        continuationGrowth:baseline?{before:structuredClone(baseline),after:structuredClone(union),grew}:null,
+        continuationGrowth:baseline?{before:structuredClone(baseline),after:structuredClone(after),grew}:null,
         sources:structuredClone(run.sourceCounts),union});
       return current(run);
     }catch(error){await searchError(run,error);return false;}
