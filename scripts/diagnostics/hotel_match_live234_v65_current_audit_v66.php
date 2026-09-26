@@ -199,7 +199,8 @@ function v66_classify(int $local, array $entry, array $input, array $current): a
         }
         $lanes[$ns]=['state'=>$state,'native_ids'=>$ids,'registry_target_ids'=>array_map('intval',array_keys($targets)),'registry_evidence'=>$evidence];
     }
-    if ($matched < 2) $reasons[]='fewer_than_two_cross_source_lanes';
+    // One proven same-operator identity is sufficient; contradictory lanes still veto.
+    if ($matched < 1) $reasons[]='no_proven_cross_source_lane';
     $reasons=array_values(array_unique($reasons)); sort($reasons, SORT_STRING);
     $status=$reasons!==[]?'hold':($same?'already_resolved_same':'ready_for_guarded_writer');
     return ['local_hotel_id'=>$local,'andromeda_catalog_id'=>$catalog,'hotel_name'=>$d['hotel_name'],
