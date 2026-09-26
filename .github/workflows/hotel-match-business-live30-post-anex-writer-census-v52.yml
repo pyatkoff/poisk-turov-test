@@ -19,9 +19,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  OP: hotel-match-business-live30-post-anex-writer-census-1971-20260926-v52
+  OP: hotel-match-business-live30-post-anex-writer-census-1971-20260926-v52b
   BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
-  CLAIM: '5844533035'
+  CLAIM: '5844563942'
   V51_OP: hotel-match-live-samo-missing-anex-operator13-writer-1971-20260926-v51
   V51_DIGEST: 1fb6c78eb31808f9c0d466317c5c247740be4d4ca91d7f0f4488eaf2c89f1f41
 
@@ -118,7 +118,7 @@ jobs:
           r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
           assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
           assert q['readback_verified'] is True
-          assert r['operation']=='hotel-match-business-live30-post-anex-writer-census-1971-20260926-v52'
+          assert r['operation']=='hotel-match-business-live30-post-anex-writer-census-1971-20260926-v52b'
           assert r['state']=='completed_read_only_post_anex_writer_census'
           assert r['v51_target_count']==12
           for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes']:
