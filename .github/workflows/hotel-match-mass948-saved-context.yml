@@ -1,0 +1,166 @@
+name: MATCH all948 retained evidence context
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [match/live234-v65-current-audit-v66-20260926]
+    paths:
+      - .github/workflows/hotel-match-mass948-saved-context.yml
+      - scripts/diagnostics/hotel_match_mass948_saved_context_v1.php
+      - tests/hotel_match_mass948_saved_context_test.php
+permissions:
+  contents: read
+  actions: read
+  issues: read
+concurrency:
+  group: hotel-match-mass948-saved-context-1971-20260927-v1
+  cancel-in-progress: false
+env:
+  OP: hotel-match-mass948-saved-context-1971-20260927-v1
+  BASE: 0557a419395399cb69f9f027978676bc9e3ae0e8
+  RESERVATION: match-mass948-saved-context-v1-reservation
+jobs:
+  context:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/mass948-retained-proof-20260927'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bind exact narrow source, owner consent and green Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input terminal reservation package/scripts/diagnostics package/app/integrations
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          git merge-base --is-ancestor "$BASE" HEAD
+          printf '%s\n' .github/workflows/hotel-match-mass948-saved-context.yml scripts/diagnostics/hotel_match_mass948_saved_context_v1.php tests/hotel_match_mass948_saved_context_test.php >input/expected-paths
+          git diff --name-only "$BASE" HEAD >input/changed-paths
+          diff -u input/expected-paths input/changed-paths
+          test "$(git hash-object scripts/diagnostics/hotel_match_mass948_saved_context_v1.php)" = c50831961072f1b73d389fbd1ecc154aa8fba438
+          test "$(git hash-object tests/hotel_match_mass948_saved_context_test.php)" = 0b1afbf544b02416ca765d041f4b36e8fac48235
+          test "$(git hash-object scripts/diagnostics/hotel_match_anex_effective_coverage.php)" = 1b5190727690f50a4cdd606c48afa575978ec48e
+          test "$(git hash-object scripts/diagnostics/hotel_match_live_samo_anchor_anex_bridge_v1.php)" = 85e45b206a9dc03c4f29d49f5b47f9ddd09a551d
+          test "$(git hash-object scripts/diagnostics/hotel_match_live_samo_missing_anex_saved_direct_v1.php)" = ac823cb238446c1b612da250edaf0d690af0ebef
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/5850009886" >input/consent.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/consent.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for phrase in ('owner explicitly replied «Разрешаю»','fresh CURRENT validation','NOT permission to disable security gates'): assert phrase in c['body']
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              checks=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if checks:
+                  check=max(checks,key=lambda r:r['id'])
+                  if check['status']=='completed':
+                      assert check['conclusion']=='success','security_not_success';break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Bind fresh census and test complete948 package before server access
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 120 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10917671953/zip" -o input/census.zip
+          python3 - <<'PY'
+          import hashlib,json,pathlib,zipfile,collections
+          raw=pathlib.Path('input/census.zip').read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='1c2d7bf37a4c40d3a27607313ae14a5c987c2c145ff91c114773decc64c30fe5'
+          pins={'result.json':'411596e321ba5f128335a29d10181688dacd5e34eee5e7cefdd4436b26d468b2','receipt.json':'39816d0cd8ea3017b9d7bcd77d7c9d15d3ccee044cfdc79fd70d49a31b06dbab'};data={}
+          with zipfile.ZipFile('input/census.zip') as z:
+              for name,pin in pins.items():
+                  members=[i for i in z.infolist() if pathlib.PurePosixPath(i.filename).name==name]
+                  assert len(members)==1 and members[0].file_size<=134217728
+                  raw=z.read(members[0]);assert hashlib.sha256(raw).hexdigest()==pin;data[name]=json.loads(raw)
+          r=data['result.json'];q=data['receipt.json']
+          assert r['state']=='completed_read_only_full_queue' and q['result_sha256']==pins['result.json'] and q['readback_verified'] is True
+          rows=[x for x in r['remaining_queues']['live_30d']['rows'] if x['needs_samo']!=x['needs_anex']]
+          assert len(rows)==len({x['tv_hotel_id']for x in rows})==948
+          assert sum(x['needs_samo'] for x in rows)==220 and sum(x['needs_anex'] for x in rows)==728
+          m={'census_result_sha256':pins['result.json'],'rows':rows}
+          pathlib.Path('package/manifest.json').write_text(json.dumps(m,ensure_ascii=False)+'\n')
+          PY
+          php -l scripts/diagnostics/hotel_match_mass948_saved_context_v1.php
+          php tests/hotel_match_mass948_saved_context_test.php | tee terminal/source-tests.log
+          cp scripts/diagnostics/hotel_match_mass948_saved_context_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php scripts/diagnostics/hotel_match_live_samo_anchor_anex_bridge_v1.php scripts/diagnostics/hotel_match_live_samo_missing_anex_saved_direct_v1.php package/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php package/app/integrations/
+          php -r 'require "package/scripts/diagnostics/hotel_match_mass948_saved_context_v1.php"; $m=json_decode(file_get_contents("package/manifest.json"),true,64,JSON_THROW_ON_ERROR); m948_need(count(m948_manifest($m))===948,"package_scope"); echo "PACKAGE_948_OK\n";'
+          (cd package && find . -type f -print0 | sort -z | xargs -0 sha256sum) >input/package-sha256.txt
+      - name: Reserve distinct zero-provider read-only operation once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$RESERVATION&per_page=100" >input/reservations.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          assert json.load(open('input/reservations.json'))['total_count']==0,'terminal_no_replay'
+          r={'operation':os.environ['OP'],'state':'reserved_before_db_read','source_sha':os.environ['HEAD'],'run_id':int(os.environ['RUN_ID']),'owner_consent_comment':5850009886,'scope_count':948,'database_writes':0,'mapping_writes':0,'provider_http_calls':0,'no_replay':True}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ env.RESERVATION }}
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Read all948 current identities and saved hotel metadata without suppliers
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/match948-key"; known="$RUNNER_TEMP/match948-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' >"$key"; else printf '%s' "$KEY" | base64 --decode >"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST" >"$known" 2>/dev/null
+          remote="$USER@$HOST"; rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir \"\$HOME/$rel\"; mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
+          scp "${opts[@]}" reservation/reservation.json input/package-sha256.txt "$remote:$rel/"
+          scp "${opts[@]}" package/manifest.json "$remote:$rel/payload/"
+          scp "${opts[@]}" package/scripts/diagnostics/*.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" package/app/integrations/*.php "$remote:$rel/payload/app/integrations/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$rel/payload\" && sha256sum --check ../package-sha256.txt" >terminal/package-verified.txt
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=768M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_mass948_saved_context_v1.php\" --execute" >terminal/summary.log 2>input/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          set -e
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          raw=pathlib.Path('terminal/result.json').read_bytes();r=json.loads(raw);q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
+          assert q['result_sha256']==hashlib.sha256(raw).hexdigest() and q['readback_verified'] is True
+          for o in (r,q):
+              assert o['no_replay'] is True
+              for k in ('database_writes','mapping_writes','provider_http_calls'): assert o[k]==0
+          print(json.dumps({'state':r['state'],'scope_rows':len(r.get('context',{}).get('rows',[])),'drift':r.get('context',{}).get('scope_drift_ids'),'catalog_rows':len(r.get('cached_catalog',{}).get('hotel_rows',[])),'error_code':r.get('error_code')},ensure_ascii=False))
+          assert r['state']=='completed_read_only_mass948_context'
+          rows=r['context']['rows'];assert len(rows)==len({x['tv_hotel_id']for x in rows})==948
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-mass948-saved-context-v1-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error

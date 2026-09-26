@@ -1,0 +1,34 @@
+{
+  "schema": "match948_retained_pass_v1",
+  "generated_at_utc": "2026-09-26T23:28:19.870383+00:00",
+  "state": "completed_bounded_retained_pass_no_new_acceptance",
+  "matching_complete": false,
+  "new_accepted_mappings": 0,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "new_provider_http_calls": 0,
+  "scope": {"total": 948, "missing_samo": 220, "missing_anex": 728, "scope_drift": 0},
+  "classification": {"exact_operator_signal_held": 17, "no_sufficient_proof_in_consumed_inputs": 931, "writer_ready": 0},
+  "split": {"SAMO": {"held": 16, "no_sufficient_proof": 204}, "ANEX": {"held": 1, "no_sufficient_proof": 727}},
+  "held_local_ids": [125,466,474,1181,1299,1540,55945,56479,57552,63524,65714,76753,103125,116886,121109,124758,148230],
+  "historical_full_triple_census": {"full_triple":2725,"tv_live30":4399,"remaining":1674,"generated_at_utc":"2026-09-26T22:50:27+00:00","not_a_new_census":true},
+  "inputs": {
+    "context": {"run_id":36278673722,"job_id":108506217584,"artifact_id":10917808046,"source_sha":"a49469c88836a3ef49323a74734cc13868b1b6ef","result_sha256":"292c8f40d5bc9164e638246fdafa7b5f7113646c1c1597edee9a89b9c1a62851","receipt_sha256":"1043840e4e74f4cbeed1d63b4c35b046a9af381fc2573687c85d217f50c4d596"},
+    "retained_files": {"run_id":36279183596,"job_id":108507632285,"artifact_id":10918272317,"source_sha":"c9439ec247565fe2b2550cdb1c216ab0ddad459b","result_sha256":"1531b8bdb096c3158502b950e863665bd02321374900908498699935922383e9","receipt_sha256":"56f286b6e408dc52362dcbc6be794ee20027a6fbac1bf159bf6f0abad5b1ce00"},
+    "first450": {"artifact_id":10857072001,"result_sha256":"43a71d55d649ccbece446e3a8a36fc6df59e141215c1de6085b0821c23642545"},
+    "c0c30": {"artifact_id":10775291892,"result_sha256":"bec4c11bcb9099a0e8ad61c1d0afce81236e73ab96e8137057e38828765502a2"},
+    "v65": {"result_sha256":"42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810"}
+  },
+  "retained_scan": {"tv_raw_verified_edges":1123,"additional_canonical_audit_rows":296,"cached_hotel_rows":4164,"unique_cached_hotel_ids":4163,"cached_files":2,"saved_offer_rows":129736,"saved_page_files":3227,"unique_saved_hotel_projections":2504},
+  "boundaries": {"all_prior14_excluded":true,"all_prior15_hold_preserved":true,"same_numeric_cross_namespace_id_is_not_authority":true,"all_supplier_archives_exhausted":false,"no_sufficient_proof_is_not_global_absence":true,"merge":false,"deploy":false,"public_search_changed":false,"prices_or_fuel_changed":false,"leads_or_metrika_changed":false,"background_execution":false},
+  "known_extraction_limits": [
+    "Original context cache projection omitted all.payload.HOTELS and countries/*.json; corrected by the distinct terminal file-only supplement, not a replay.",
+    "12 legacy raw operations were excluded by the new reader account-label check, not proven wrong-account acquisition. Eight of those were recovered independently via hash-pinned first450 and c0/c30 canonical audit artifacts. Remaining TV942 and legacy-o0 raw inputs are not claimed consumed. One additional o450 directory lacked terminal files.",
+    "SAMO v1/v2 terminal inputs contain no usable captured single-native edges in this projection. Later v3 waves, broad-recovery and follow-up SAMO artifacts are not all consumed here.",
+    "Saved-offer projections do not contain an independent operator-to-catalog bridge and must not authorize acceptance from an already mapped local ID.",
+    "Only two cached country files were present in this private cache. No claim of a complete global SAMO dictionary."
+  ],
+  "next_safe_step": "Consume the later pinned SAMO v3/broad-recovery terminal artifacts and remaining historical TV942 proof archives; join them to this complete948 queue. Do not start another census or paid supplier replay merely because this bounded proof set has no new writer-ready pair. Only a separate exact sealed append-only operation with fresh transactional guards and post-COMMIT readback may accept new pairs.",
+  "partition_reproduction": "Use the948 unique rows in context result292c8f40d5bc9164e638246fdafa7b5f7113646c1c1597edee9a89b9c1a62851. The17 held_local_ids form the held partition; all other931 belong to no_sufficient_proof_in_consumed_inputs. No deletions from the remaining MATCH queue.",
+  "full_user_report_sha256": "bbb69ed3de34f0e5ed0c31a0ea5a605e5314d73b5fb0822f4f3e34338b123631"
+}
