@@ -725,6 +725,7 @@ test('Andromeda first page is immediately usable and later pages require explici
  const ref=page=>'offer_'+String(page).repeat(64);
  const h=harness({
   native:async body=>({response:{ok:true,json:async()=>directAndromeda(body,{offerRef:ref(body.page),localId:200+body.page,pagesCount:3,status:'complete'})}}),
+  anex:async body=>({response:{ok:true,json:async()=>directAnex(body,{offerRef:'anex_online:'+'6'.repeat(64),localId:306,searchRef:'6'.repeat(32)})}}),
   database:(i,p)=>snapshot(p,[])
  });
  await h.start();await flush();
