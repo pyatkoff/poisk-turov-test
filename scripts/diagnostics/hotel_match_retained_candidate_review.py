@@ -35,6 +35,15 @@ TAIL_CHILDREN = {
     "hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1": "11408e926160b87a10ffdf04ebb56106f17fb7efc30f95611033a5cb427dc794",
     "hotel-match-live30-common4-continuation-resume-1971-20260924-r2-n138-v1": "8e42b3e76cdef4075f09c9f8da68a8dd3881b93a263b094c88b74cc69b25ce3d",
 }
+TV_EARLY_PIN = (
+    "e18f9c668ca1b1745713acf738483005d4b26e41b98a877065c6d62bc84b4d9d",
+    "0d6c09a008710f3727c9904086f579122e492afc87eba4924d0356975568503c",
+    "60f6e6feff3940e264d595077cee7c3099c4065cd792f269d33ece2c62005eb3",
+)
+EARLY_CHILDREN = {
+    "hotel-match-live30-common4-continuation-acquire-1971-20260923-c35-n100-v1": "b68accef8caadc3e49acb87a542ef41700ade8c924d936c036597cab1bcc7538",
+    "hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1": "9abce890e0bbf83a36c20bd745822e2a3740970df75f07176cb3d882b11c25fd",
+}
 HISTORY_SHA = "e3f1da655f53910bf890050fd5517ead500759f05454361190b56c9550f6d1a8"
 CHILD_HASHES = {
     "hotel-match-live234-tv-secondary-1971-20260923-o0-n78-v1": "fb8cb7d6acbcc921aa1d6f8a1399190e4b0fb2e418d23c9ac0c84c6e470c20e4",
@@ -78,7 +87,7 @@ def load_archive(path: Path, kind: str) -> dict:
     require(not path.is_symlink() and path.is_file(), "input_file")
     require(path.stat().st_size <= 2 * 1024 * 1024, "zip_cap")
     raw = path.read_bytes()
-    pin = TV_TAIL_PIN if kind == "tv_tail" else PINS[kind]
+    pin = {**PINS, "tv_tail": TV_TAIL_PIN, "tv_early": TV_EARLY_PIN}[kind]
     require(hashlib.sha256(raw).hexdigest() == pin[0], "zip_hash")
     with zipfile.ZipFile(path) as archive:
         values = []
@@ -93,7 +102,7 @@ def load_archive(path: Path, kind: str) -> dict:
     require(result["operation"] == receipt["operation"], "operation_binding")
     require(result["state"] == receipt["state"], "state_binding")
     require(result["mapping_writes"] == result["database_writes"] == 0, "source_writes")
-    if kind in ("tv", "samo", "tv_tail"):
+    if kind in ("tv", "samo", "tv_tail", "tv_early"):
         require(receipt.get("readback_verified") is True, "source_readback")
     return result
 
@@ -221,21 +230,26 @@ def load_history(path: Path) -> dict:
     return result
 
 
-def tail_edges(tail: dict) -> list[dict]:
+def tail_edges(tail: dict, *, early: bool = False) -> list[dict]:
     """Read the retained audit, not its server.tgz or historical write readiness."""
-    require(tail.get("operation") == "hotel-match-common4-mass-current-1971-20260924-v14",
+    version, count, searched = ("v13", 359, 399) if early else ("v14", 764, 899)
+    head = ("2bc75df7a66553f5660d4bb654c4ac4f3078ef22" if early
+            else "9ae5c99716b5997c3d2a9080d6175cff868e2a1e")
+    children_pin = EARLY_CHILDREN if early else TAIL_CHILDREN
+    result_pin = TV_EARLY_PIN[1] if early else TV_TAIL_PIN[1]
+    require(tail.get("operation") == "hotel-match-common4-mass-current-1971-20260924-" + version,
             "tail_operation")
     require(tail.get("state") == "completed_read_only_mass_current", "tail_state")
-    require(tail.get("source_sha") == "9ae5c99716b5997c3d2a9080d6175cff868e2a1e", "tail_source")
-    require(tail.get("input_single_native_edges") == len(tail.get("rows", [])) == 764,
+    require(tail.get("source_sha") == head, "tail_source")
+    require(tail.get("input_single_native_edges") == len(tail.get("rows", [])) == count,
             "tail_count")
-    require(tail.get("searched_hotels") == 899, "tail_scope")
+    require(tail.get("searched_hotels") == searched, "tail_scope")
     for key in ("database_writes", "mapping_writes", "provider_http_calls", "supplier_calls"):
         require(type(tail.get(key)) is int and tail[key] == 0, "tail_zero_" + key)
     require(tail.get("safe_to_write_now") is False, "tail_safety")
     children = tail.get("children", [])
     require(len(children) == 2 and {c["operation"]: c["result_sha256"] for c in children}
-            == TAIL_CHILDREN, "tail_children")
+            == children_pin, "tail_children")
     out = []
     namespaces = {13: "anex", 18: "bgoperator", **BRIDGES}
     for index, row in enumerate(tail["rows"]):
@@ -243,7 +257,7 @@ def tail_edges(tail: dict) -> list[dict]:
         require(type(operator) is int and namespaces.get(operator) == row["supplier_namespace"],
                 "tail_namespace")
         require(row["kind"] == ("anex" if operator == 13 else "identity"), "tail_kind")
-        require(TAIL_CHILDREN.get(row["source_operation"]) == row["source_result_sha256"],
+        require(children_pin.get(row["source_operation"]) == row["source_result_sha256"],
                 "tail_child_hash")
         for key in ("operator_link_sha256", "tour_id_sha256", "search_id_sha256"):
             require(isinstance(row.get(key), str) and re.fullmatch(r"[0-9a-f]{64}", row[key])
@@ -255,7 +269,7 @@ def tail_edges(tail: dict) -> list[dict]:
                     "operator_link_sha256": row["operator_link_sha256"],
                     "tour_id_sha256": row["tour_id_sha256"],
                     "source_result_sha256": row["source_result_sha256"],
-                    "provenance": {"archive_result_sha256": TV_TAIL_PIN[1],
+                    "provenance": {"archive_result_sha256": result_pin,
                                    "row_path": "/rows/" + str(index),
                                    "row_canonical_sha256": digest(row)}})
     return out
@@ -307,12 +321,14 @@ def expanded_proofs(local: int, candidate: dict, edges: list, indexes: tuple) ->
     return result
 
 
-def analyse_expanded(tv: dict, samo: dict, bg: dict, tail: dict, history: dict) -> dict:
+def analyse_expanded(tv: dict, samo: dict, bg: dict, tail: dict, history: dict,
+                     early: dict | None = None) -> dict:
     baseline = analyse(tv, samo, bg)
     extra = tail_edges(tail)
+    early_rows = tail_edges(early, early=True) if early is not None else []
     edges = [{**e, "provenance": {"archive_result_sha256": PINS["tv"][1],
               "row_path": "/single_native_edges/" + str(i), "row_canonical_sha256": digest(e)}}
-             for i, e in enumerate(tv["single_native_edges"])] + extra
+             for i, e in enumerate(tv["single_native_edges"])] + extra + early_rows
     dossiers = samo["dossiers"]
     indexes = expanded_indexes(edges, dossiers)
     risks, anchors = defaultdict(set), defaultdict(set)
@@ -322,6 +338,11 @@ def analyse_expanded(tv: dict, samo: dict, bg: dict, tail: dict, history: dict) 
         for anchor in row.get("anchors", []):
             if anchor.get("supplier_namespace") == "andromeda_catalog" and anchor.get("decision_status") == "accepted":
                 anchors[identifier(anchor["external_hotel_id"])].add(int(identifier(anchor["local_hotel_id"])))
+    early_anchors = defaultdict(set)
+    for row in (early or {}).get("rows", []):
+        for anchor in row.get("anchors", []):
+            if anchor.get("supplier_namespace") == "andromeda_catalog" and anchor.get("decision_status") == "accepted":
+                early_anchors[identifier(anchor["external_hotel_id"])].add(int(identifier(anchor["local_hotel_id"])))
     for collision in baseline["strict_candidate_catalog_collisions"]:
         for local in collision["local_hotel_ids"]:
             risks[(local, collision["catalog_id"])].add("v65_selected_catalog_multiple_targets")
@@ -337,6 +358,8 @@ def analyse_expanded(tv: dict, samo: dict, bg: dict, tail: dict, history: dict) 
             reasons = set(risks[(local, catalog)])
             if anchors[catalog] - {local}:
                 reasons.add("tail_historical_source_other_target")
+            if early_anchors[catalog] - {local}:
+                reasons.add("early_historical_source_other_target")
             rows.append({"local_hotel_id": local, "hotel_name": dossier["hotel_name"],
                          "andromeda_catalog_id": catalog, "candidate_names": candidate["names"],
                          "original_status": dossier["status"], "independent_tv_lane_count": len(proof),
@@ -349,7 +372,7 @@ def analyse_expanded(tv: dict, samo: dict, bg: dict, tail: dict, history: dict) 
     current = {r["local_hotel_id"] for r in rows}
     scope = {d["local_hotel_id"] for d in dossiers}
     overlaps = [e for e in extra if e["tv_hotel_id"] in scope]
-    return {"schema": "match_retained175_expanded_tv_v1", "mode": "offline_evidence_only_not_acceptance",
+    result = {"schema": "match_retained175_expanded_tv_v1", "mode": "offline_evidence_only_not_acceptance",
             "input_count": 175, "candidate_pairs_reviewed": sum(len(d["candidates"]) for d in dossiers),
             "input_hashes_zip_result_receipt": {**PINS, "tv_tail": TV_TAIL_PIN},
             "history_summary_sha256": HISTORY_SHA, "historical_risks_preserved_not_cleared": True,
@@ -365,6 +388,25 @@ def analyse_expanded(tv: dict, samo: dict, bg: dict, tail: dict, history: dict) 
             "zero_proof_means": "no_proof_in_these_archives_not_global_absence",
             "provider_http_calls": 0, "database_reads": 0, "database_writes": 0, "mapping_writes": 0,
             "accepted_mapping_count": 0, "safe_to_write_now": False, "current_validation_performed": False}
+    if early is not None:
+        before = analyse_expanded(tv, samo, bg, tail, history)
+        previous_rows = {r["local_hotel_id"]: r for r in before["candidates_with_proven_tv_lanes"]}
+        previous_hotels = set(previous_rows)
+        early_overlap = [e for e in early_rows if e["tv_hotel_id"] in scope]
+        result.update({
+            "schema": "match_retained175_early_tv_v1",
+            "input_hashes_zip_result_receipt": {**result["input_hashes_zip_result_receipt"], "tv_early": TV_EARLY_PIN},
+            "early_input_rows": len(early_rows),
+            "early_overlap_rows": len(early_overlap),
+            "early_overlap_hotels": len({e["tv_hotel_id"] for e in early_overlap}),
+            "before_early_proven_candidate_hotels": len(previous_hotels),
+            "new_candidate_hotels_from_early": sorted(current - previous_hotels),
+            "lost_candidate_hotels_after_early_collision_check": sorted(previous_hotels - current),
+            "new_two_lane_candidate_hotels": sorted({r["local_hotel_id"] for r in rows
+                if r["independent_tv_lane_count"] >= 2 and previous_rows.get(r["local_hotel_id"], {}).get("independent_tv_lane_count", 0) < 2}),
+            "scope_limit": "v63 plus retained r1/r2 and c35/c135; not the full TV catalogue or a fresh DB snapshot",
+        })
+    return result
 
 
 def main() -> None:
@@ -372,12 +414,16 @@ def main() -> None:
     for field in ("tv", "samo", "bg", "output"):
         parser.add_argument("--" + field, required=True, type=Path)
     parser.add_argument("--tv-tail", type=Path)
+    parser.add_argument("--tv-early", type=Path)
     parser.add_argument("--history-summary", type=Path)
     args = parser.parse_args()
     if bool(args.tv_tail) != bool(args.history_summary):
         parser.error("--tv-tail and --history-summary must be supplied together")
+    if args.tv_early and not args.tv_tail:
+        parser.error("--tv-early requires --tv-tail and --history-summary")
     inputs = [load_archive(getattr(args, key), key) for key in ("tv", "samo", "bg")]
-    result = (analyse_expanded(*inputs, load_archive(args.tv_tail, "tv_tail"), load_history(args.history_summary))
+    result = (analyse_expanded(*inputs, load_archive(args.tv_tail, "tv_tail"), load_history(args.history_summary),
+                                 load_archive(args.tv_early, "tv_early") if args.tv_early else None)
               if args.tv_tail else analyse(*inputs))
     # Never overwrite a prior report or follow an output symlink.
     with args.output.open("x", encoding="utf-8") as output:
