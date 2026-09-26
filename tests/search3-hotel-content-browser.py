@@ -3,6 +3,7 @@
 HC-1: canonical content, full galleries and exact offers. All transport is intercepted.
 """
 import copy
+import hashlib
 import importlib.util
 import json
 import os
@@ -10,6 +11,7 @@ from pathlib import Path
 import threading
 from urllib.parse import parse_qs, urlencode, urlparse
 from http.server import ThreadingHTTPServer
+from urllib.request import Request, urlopen
 from playwright.sync_api import sync_playwright
 
 spec = importlib.util.spec_from_file_location('contact_fixture', Path(__file__).with_name('search3-prototype-contact-recovery.py'))
@@ -40,14 +42,37 @@ profiles[101]['hotelInformation'] = {
     'roomTypes': [{'name': 'Standard 30 м²'}, {'description': 'Family 45 м²'}]}
 profiles[103].update(description='', rating=None, category=None)
 INITIAL_PROFILES = copy.deepcopy(profiles)
+PUBLIC = os.environ.get('HC1_PUBLIC_READBACK') == '1'
+PUBLIC_ORIGIN = 'https://anytoour.ru'
+STATIC_SUFFIXES = ('.js','.css','.svg','.png','.jpg','.jpeg','.webp','.woff','.woff2','.ico')
+
+
+def verify_public_source():
+    """Three fixed static GETs; no catalogue, search, quote, contact or SSH access."""
+    result = {}
+    for name in ('app.js','data.js','styles.css'):
+        local = (fx.ROOT / 'prototype-search' / name).read_bytes()
+        expected = hashlib.sha256(local).hexdigest()
+        url = PUBLIC_ORIGIN + fx.BASE + 'prototype-search/' + name + '?hc1=' + expected[:12]
+        with urlopen(Request(url, headers={'Cache-Control':'no-cache'}), timeout=30) as response:
+            assert response.status == 200 and response.url.startswith(PUBLIC_ORIGIN + fx.BASE)
+            actual = hashlib.sha256(response.read()).hexdigest()
+        assert actual == expected, ('installed source mismatch', name, actual, expected)
+        result[name] = actual
+    return result
 
 
 def check(browser, origin, width):
     profiles.clear(); profiles.update(copy.deepcopy(INITIAL_PROFILES))
+    if PUBLIC:
+        for profile in profiles.values():
+            profile['images'] = [origin+fx.BASE+urlparse(url).path.lstrip('/') for url in profile['images']]
+            if profile.get('primaryImage'):
+                profile['primaryImage'] = origin+fx.BASE+urlparse(profile['primaryImage']).path.lstrip('/')
     ctx = browser.new_context(viewport={'width':width,'height':900},service_workers='block')
     page = ctx.new_page()
     page.set_default_timeout(10000)
-    api_calls, forbidden, errors = [], [], []
+    api_calls, provider_calls, forbidden, errors = [], [], [], []
     page.on('pageerror', lambda e: errors.append(str(e)))
     def intercept(route):
         req = route.request
@@ -55,7 +80,7 @@ def check(browser, origin, width):
         q = parse_qs(u.query)
         def reply(value, status=200):
             route.fulfill(status=status,content_type='application/json',body=json.dumps(value,ensure_ascii=False))
-        if u.hostname in ('127.0.0.1','localhost') and u.path.startswith('/photo-'):
+        if (u.hostname in ('127.0.0.1','localhost') and u.path.startswith('/photo-')) or (PUBLIC and req.url.startswith(origin+fx.BASE+'photo-')):
             route.fulfill(content_type='image/svg+xml',body=fx.PHOTO)
         elif u.path == '/data/departures-v1.php':
             reply({'ok':True,'items':[{'id':1,'name':'Москва'}]})
@@ -85,13 +110,16 @@ def check(browser, origin, width):
                 reply({'ok':False},503)
         elif u.path.endswith('/api-anex-search3-preview.php'):
             b=req.post_data_json
+            provider_calls.append(('anex',b.get('action','search')))
             reply({'ok':True,'data':{'provider':'anex','generation':b['generation'],'date_range':{'from':b['params']['dateFrom'],'to':b['params']['dateTo']},'search_ref':'d'*32,'external_search_pending':False,'pages_read':1,'first_page_only':True,'hotels':[]}})
         elif u.path.endswith('/api-andromeda-search3-preview.php'):
             b=req.post_data_json
+            provider_calls.append(('andromeda',b.get('action','search')))
             reply({'ok':True,'data':{'provider':'andromeda','generation':b['generation'],'hotels':[]}})
         elif u.path=='/api-v2.php':
             a=q.get('action',[''])[0]
             api_calls.append(a)
+            provider_calls.append(('tourvisor',a))
             if a=='meals': reply([{'id':7,'name':'AI'}])
             elif a=='search_start': reply({'searchId':123})
             elif a=='search_status': reply({'progress':100,'status':'complete'})
@@ -99,7 +127,7 @@ def check(browser, origin, width):
                 reply([{'id':i,'provider':'tourvisor','tours':[{**fx.TOUR,'id':f'gallery-{i}','price':100000+i,'selectionEnabled':False}]} for i in profiles])
             else:
                 forbidden.append(a); route.abort()
-        elif req.method=='GET' and req.url.startswith(origin+fx.BASE):
+        elif req.method=='GET' and req.url.startswith(origin+fx.BASE) and (u.path==fx.BASE+'prototype-search/' or u.path.endswith(STATIC_SUFFIXES)):
             route.continue_()
         else:
             forbidden.append(u.path); route.abort()
@@ -124,7 +152,9 @@ def check(browser, origin, width):
         geometry.append(metrics)
     try:
         query=urlencode({'origin':'Москва','country':4,'from':fx.DATE,'to':fx.DATE,'minNights':7,'maxNights':7,'adults':2,'ages':''})
-        page.goto(origin+fx.BASE+'prototype-search/?'+query)
+        response=page.goto(origin+fx.BASE+'prototype-search/?'+query)
+        assert response and response.status==200
+        page.locator('.demo-note').evaluate("node=>node.textContent='Проверка HC-1: вымышленные предложения. Поставщики и отправка отключены.'")
         page.locator('.search-submit:not([disabled])').click()
         page.wait_for_function("document.querySelectorAll('.hotel-card').length===4")
         card=page.locator('#hotel-1')
@@ -185,13 +215,14 @@ def check(browser, origin, width):
         offer=card.locator('.offer').first
         before=offer.inner_text()
         before_calls=len(api_calls)
+        before_providers=list(provider_calls)
         offer.locator('[data-action="offer"]').click()
         assert page.locator('.tour-hero h3').inner_text()==profiles[101]['name']
         page.locator('#modal [data-action="close-modal"]').click()
         assert offer.inner_text()==before and card.locator('.hotel-image').get_attribute('src')==current
         page.locator('#sort').select_option('price')
         assert card.locator('.hotel-image').get_attribute('src')==current
-        assert len(api_calls)==before_calls and not forbidden and not errors
+        assert len(api_calls)==before_calls and provider_calls==before_providers and not forbidden and not errors
         checks['descriptionOfferReturnSortNoNewApi']=True
         page.locator('#hotel-2 [data-action="gallery"]').click()
         assert page.locator('.gallery-thumbs button').count()==1
@@ -226,6 +257,7 @@ def check(browser, origin, width):
             '<img src="https://invalid.example/forbidden" onerror="window.HC1_INJECTED=true">')
         profiles[101]['hotelInformation']['services']['available'].append({'text':'Новая услуга'})
         before_refresh=len(api_calls)
+        before_refresh_providers=list(provider_calls)
         page.evaluate("""async () => {const owner=Search3CanonicalProfilesV1.current(); await owner.readProfile(1); owner.refresh();}""")
         card.locator('[data-action="hotel-details"]').click()
         assert 'Новое описание & факты.' in page.locator('[data-hotel-description="summary"]').inner_text()
@@ -244,23 +276,31 @@ def check(browser, origin, width):
         assert page.locator('.gallery-thumbs button').count()==240
         assert page.locator('#gallery-image').get_attribute('src')==current
         page.locator('#modal [data-action="close-modal"]').click()
-        assert len(api_calls)==before_refresh and not errors and not forbidden
+        assert len(api_calls)==before_refresh and provider_calls==before_refresh_providers and not errors and not forbidden
+        assert api_calls.count('search_start')==1
+        assert sum(p=='anex' for p,_ in provider_calls)<=1
+        assert sum(p=='andromeda' for p,_ in provider_calls)<=1
+        checks['allProviderTransportsUnchangedByHotelActions']=True
         checks['newProfileKeepsOfferGalleryAndSort']=True
         checks['completeSafeDescription']=True
         page.screenshot(path=str(OUT/f'cards-return-{width}.png'))
-        return {'width':width,'status':'passed','checks':checks,'geometry':geometry,'externalCalls':0,'fictionalApiCalls':api_calls}
+        return {'width':width,'status':'passed','checks':checks,'geometry':geometry,'externalCalls':0,'fictionalApiCalls':api_calls,'fictionalProviderCalls':provider_calls}
     finally:
         ctx.close()
 
 
-server=ThreadingHTTPServer(('127.0.0.1',0),fx.StaticFiles)
-threading.Thread(target=server.serve_forever,daemon=True).start()
+server=None
+source_pins=verify_public_source() if PUBLIC else {}
+if not PUBLIC:
+    server=ThreadingHTTPServer(('127.0.0.1',0),fx.StaticFiles)
+    threading.Thread(target=server.serve_forever,daemon=True).start()
+origin=PUBLIC_ORIGIN if PUBLIC else f'http://127.0.0.1:{server.server_port}'
 try:
     with sync_playwright() as pw:
         browser=pw.chromium.launch(**({'executable_path':os.environ['CHROMIUM_PATH']} if os.environ.get('CHROMIUM_PATH') else {}))
-        results=[check(browser,f'http://127.0.0.1:{server.server_port}',w) for w in (390,768,1440)]
+        results=[check(browser,origin,w) for w in (390,768,1440)]
         browser.close()
-    (OUT/'result.json').write_text(json.dumps({'basis':'actual_app_fictional_transport','results':results,'liveAccepted':False},ensure_ascii=False,indent=2))
+    (OUT/'result.json').write_text(json.dumps({'basis':'hosted_static_fictional_transport' if PUBLIC else 'actual_app_fictional_transport','results':results,'installedSource':source_pins,'liveAccepted':False},ensure_ascii=False,indent=2))
     print('HC1_FULL_GALLERY_BROWSER_OK widths=390,768,1440 fixtures=240,1,0,2 supplier0 lead0')
 finally:
-    server.shutdown()
+    if server: server.shutdown()
