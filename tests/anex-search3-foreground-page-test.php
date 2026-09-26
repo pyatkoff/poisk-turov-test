@@ -18,7 +18,7 @@ function fg_client(array &$calls, int $failPage = 0): AnyTourAnexClient {
         fg_check(($params['action'] ?? '') === 'SearchTour_PRICES', 'unexpected_action');
         $page = (int) ($params['PRICEPAGE'] ?? 0); $calls[] = $page;
         fg_check($page >= 1 && $page <= 2, 'unexpected_page');
-        if ($page === $failPage) return ['status' => 200, 'body' => json_encode(['error' => 3])];
+        if ($page === $failPage) return ['status' => 200, 'body' => json_encode(['error' => 101])];
         $rows = [];
         for ($i = 0; $i < ($page === 1 ? 300 : 2); ++$i) {
             $rows[] = ['id' => 'foreground-page-' . $page . '-' . $i, 'hotelKey' => 469,
