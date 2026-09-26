@@ -47,7 +47,7 @@ jobs:
           grep -Fq "V54_EXPECTED_SINGLE=2" "$f"
           grep -Fq "hold_target_effective_anex_other" "$f"
           grep -Fq "AnyTourMatchAnexEffectiveCoverage::fromPdo" "$f"
-          grep -Fq "completed_read_only_v49_current_audit" "$f"
+          grep -Fq "completed_read_only_v53_current_audit" "$f"
 
   live:
     needs: focused
