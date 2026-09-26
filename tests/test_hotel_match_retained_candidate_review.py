@@ -108,5 +108,104 @@ class ReviewTests(unittest.TestCase):
             M.validate_tv(altered)
 
 
+
+class ExpandedReviewTests(unittest.TestCase):
+    def fixture(self):
+        c = candidate(); c["lanes"]["operator_315"]["native_ids"] = [20]
+        e = edge(); e["provenance"] = {"row_path": "/rows/0", "row_canonical_sha256": "d"*64,
+                                     "archive_result_sha256": "e"*64}
+        return c, e, [{"candidates": [c]}]
+
+    def test_two_natives_for_one_tv_target_are_ambiguous(self):
+        c, e, ds = self.fixture()
+        second = copy.deepcopy(e); second["positive_native_candidates"] = [21]
+        es = [e, second]
+        self.assertEqual(M.expanded_proofs(7, c, es, M.expanded_indexes(es, ds)), [])
+
+    def test_one_native_at_two_tv_targets_rejected(self):
+        c, e, ds = self.fixture(); other = copy.deepcopy(e); other["tv_hotel_id"] = 8
+        es = [e, other]
+        self.assertEqual(M.expanded_proofs(7, c, es, M.expanded_indexes(es, ds)), [])
+
+    def test_one_catalog_with_conflicting_native_rows_rejected(self):
+        c, e, ds = self.fixture(); other = copy.deepcopy(c)
+        other["lanes"]["operator_315"]["native_ids"] = [21]
+        ds[0]["candidates"].append(other)
+        self.assertEqual(M.expanded_proofs(7, c, [e], M.expanded_indexes([e], ds)), [])
+
+    def test_one_native_at_two_catalogs_rejected(self):
+        c, e, ds = self.fixture(); other = copy.deepcopy(c); other["catalog_id"] = "100"
+        ds[0]["candidates"].append(other)
+        self.assertEqual(M.expanded_proofs(7, c, [e], M.expanded_indexes([e], ds)), [])
+
+    def test_repeated_archive_proof_not_extra_operator(self):
+        c, e, ds = self.fixture(); es = [e, copy.deepcopy(e)]
+        proof = M.expanded_proofs(7, c, es, M.expanded_indexes(es, ds))
+        self.assertEqual(len(proof), 1); self.assertEqual(len(proof[0]["evidence"]), 1)
+
+    def test_same_numeric_id_in_other_namespace_is_not_proof(self):
+        c, e, ds = self.fixture(); e["operator_id"] = 13
+        self.assertEqual(M.expanded_proofs(7, c, [e], M.expanded_indexes([e], ds)), [])
+
+    def test_wrong_tail_archive_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p = Path(folder)/"tail.zip"; p.write_bytes(b"untrusted")
+            with self.assertRaisesRegex(ValueError, "zip_hash"):
+                M.load_archive(p, "tv_tail")
+
+    def test_unpinned_history_and_symlinks_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p = Path(folder)/"history.json"; p.write_text("{}")
+            with self.assertRaisesRegex(ValueError, "history_hash"):
+                M.load_history(p)
+            link = Path(folder)/"link.json"; link.symlink_to(p)
+            with self.assertRaisesRegex(ValueError, "history_file"):
+                M.load_history(link)
+
+    @unittest.skipUnless(os.environ.get("MATCH_RETAINED_DIR"), "pinned ZIP fixtures")
+    def test_real_expanded_provenance_counts_and_old_report_unchanged(self):
+        import hashlib
+        root = Path(os.environ["MATCH_RETAINED_DIR"])
+        tv = M.load_archive(root/"match_v63_secondary.zip", "tv")
+        samo = M.load_archive(root/"match_v65_result.zip", "samo")
+        bg = M.load_archive(root/"match_bg_dictionary_v5.zip", "bg")
+        tail = M.load_archive(root/"match_common4_tail_v15.zip", "tv_tail")
+        history = M.load_history(PATH.parents[2]/"reports/hotel-match-retained175-history-mass-20260926.json")
+        baseline = M.analyse(tv, samo, bg)
+        raw = (json.dumps(baseline, ensure_ascii=False, sort_keys=True, indent=2)+"\n").encode()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), "01ef024f859be9464a12ffcdd196d8b12450d2980d4184c2a056548e578d738d")
+        report = M.analyse_expanded(tv, samo, bg, tail, history)
+        self.assertEqual((report["tv_input_rows"],report["tv_unique_edges"],report["tv_unique_hotels_with_evidence"]),(812,801,559))
+        self.assertEqual((report["tail_overlap_rows"],report["tail_overlap_hotels"]),(59,45))
+        self.assertEqual(report["expanded_proven_candidate_hotels"], 13)
+        self.assertEqual(len(report["new_candidate_hotels_with_exact_proof"]), 10)
+        buckets = report["dossier_ids_by_exact_independent_tv_lane_count"]
+        self.assertEqual({k:len(v) for k,v in buckets.items()}, {"0":162,"1":10,"2":3})
+        self.assertEqual(buckets["2"], [1540,113617,121109])
+        rows = {r["local_hotel_id"]:r for r in report["candidates_with_proven_tv_lanes"]}
+        self.assertIn("historical_source_accepted_other_target", rows[1540]["historical_review_reasons"])
+        self.assertIn("historical_source_pending", rows[76753]["historical_review_reasons"])
+        for key in ("provider_http_calls","database_reads","database_writes","mapping_writes","accepted_mapping_count"):
+            self.assertEqual(report[key], 0)
+        self.assertFalse(report["current_validation_performed"])
+        for row in rows.values():
+            self.assertFalse(row["safe_to_write_now"])
+            for lane in row["proven_lanes"]:
+                self.assertIn(lane["namespace"], M.BRIDGES.values())
+                for provenance in lane["evidence"]:
+                    document = tv if provenance["archive_result_sha256"] == M.PINS["tv"][1] else tail
+                    node = document
+                    for part in provenance["row_path"].strip("/").split("/"):
+                        node = node[int(part)] if isinstance(node, list) else node[part]
+                    self.assertEqual(M.digest(node), provenance["row_canonical_sha256"])
+        # Pinned source permits neither silent child substitution nor namespace inference.
+        altered = copy.deepcopy(tail); altered["rows"][0]["source_result_sha256"] = "0"*64
+        with self.assertRaisesRegex(ValueError, "tail_child_hash"): M.tail_edges(altered)
+        altered = copy.deepcopy(tail); altered["rows"][0]["operator_id"] = True
+        with self.assertRaisesRegex(ValueError, "tail_namespace"): M.tail_edges(altered)
+        altered = copy.deepcopy(tail); altered["children"][1] = altered["children"][0]
+        with self.assertRaisesRegex(ValueError, "tail_children"): M.tail_edges(altered)
+
+
 if __name__ == '__main__':
     unittest.main()
