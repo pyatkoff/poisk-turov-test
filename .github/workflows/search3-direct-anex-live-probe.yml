@@ -25,7 +25,7 @@ jobs:
       github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
       github.event.issue.number == 3419 && !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
-      github.event.comment.body == '/search3-direct-anex-live-probe-v1'
+      github.event.comment.body == '/search3-direct-anex-live-probe-v2'
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
