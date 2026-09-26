@@ -21,10 +21,11 @@ final class AnyTourAnexSearch
         $this->sensitive = $sensitive;
     }
 
-    public function search(array $criteria): array
+    public function search(array $criteria, int $maxPages = 12): array
     {
         // A failed replacement search must never leave selectable stale offers.
         $this->offers = $this->params = $this->context = [];
+        if (!in_array($maxPages, [1, 12], true)) throw new InvalidArgumentException('ANEX_INVALID_PAGE_LIMIT');
         $params = $this->buildParams($criteria);
         // Validate the normalizer's full context before making a network request.
         anytour_anex_normalize_prices(['prices' => []], $criteria, $this->resolver, $this->sensitive);
@@ -33,7 +34,7 @@ final class AnyTourAnexSearch
         $seenPages = [];
         $seenOffers = [];
         $pagesRead = 0;
-        for ($page = 1; $page <= 12; ++$page) {
+        for ($page = 1; $page <= $maxPages; ++$page) {
             $pageParams = $params;
             $pageParams['PRICEPAGE'] = $page;
             $data = $this->client->request('SearchTour_PRICES', $pageParams);
