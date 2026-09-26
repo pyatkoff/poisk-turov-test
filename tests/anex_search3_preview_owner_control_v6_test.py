@@ -12,7 +12,7 @@ TREE='f5fad654455605f70a331dad5c99cda47a83889c'
 BLOB='d840b13db9dcc496cf18183c216730fc7b9a86bf'
 RUN_IDS={'35273070654','35273070649','35273070655','35273070679','35273070678','35273070636'}
 
-def event(body=gate.COMMAND,issue=2530,login='pyatkoff',user_id=226193297,action='created',pr=False):
+def event(body=gate.COMMAND,issue=3419,login='pyatkoff',user_id=226193297,action='created',pr=False):
     i={'number':issue}
     if pr:i['pull_request']={}
     return {'action':action,'issue':i,'comment':{'body':body,'user':{'login':login,'id':user_id}}}
