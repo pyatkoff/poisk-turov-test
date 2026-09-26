@@ -16,11 +16,12 @@ const server=http.createServer((req,res)=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{for(const width of [390,768,1280]){
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());
    if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
-   try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
+   try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
   });
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}));
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
@@ -59,7 +60,31 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
   await page.screenshot({path:path.join(evidence,`samo-application-${width}.png`)});
   assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth),false);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,local_application:true,supplier_requests:0,lead_requests:0});await context.close();
+  for(const flightChoice of [false,true]){
+   await page.locator('[data-action="close-modal"]').click();
+   transport.state.samoFailure='supplier_auth';transport.state.samoFlightChoice=flightChoice;
+   await page.locator('#applied-search [data-action="edit-search"]').click();await page.locator('.search-submit').click();
+   await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('3 варианта'));
+   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
+   const chooseSamo=async()=>{const offer=page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').first();if(!await offer.isVisible())await offer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();await offer.click();};
+   const quoteCount=()=>transport.calls.filter(c=>c.url.endsWith('/api-andromeda-quote-preview.php')).length;
+   await chooseSamo();const before=quoteCount();await page.locator('[data-action="refresh-hotel"]').click();
+   if(flightChoice)await page.locator('[data-action="apply-andromeda-flights"]').click();
+   await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+   assert.match(await page.locator('#modal-footer').textContent(),/Цена из выдачи · не подтверждена/);
+   assert.equal(await page.locator('[data-action="refresh-hotel"]').count(),0);
+   assert.equal(quoteCount(),before+(flightChoice?2:1));
+   await page.locator('#modal-footer').scrollIntoViewIfNeeded();
+   await page.screenshot({path:path.join(evidence,`samo-${flightChoice?'flight':'quote'}-recovery-${width}.png`)});
+   assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth),false);
+   await page.locator('#modal-footer [data-action="all-offers"]').click();await chooseSamo();
+   await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+   assert.equal(quoteCount(),before+(flightChoice?2:1),'reopening does not call the supplier');
+  }
+  const failures=await page.evaluate(()=>window.quoteFailures);
+  assert.equal(failures.length,2);assert(failures.every(f=>f.httpStatus===502&&f.failureCategory==='supplier_auth'));
+  assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,local_application:true,supplier_requests:0,lead_requests:0});await context.close();
  }}finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

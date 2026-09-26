@@ -9,7 +9,7 @@ const segment=(number,returning)=>({company:{name:'Тестовая авиако
 const flights=[{isDefault:true,price:{value:120000},fuelCharge:0,forward:[segment('TEST101',false)],backward:[segment('TEST102',true)]},{price:{value:133500.5},fuelCharge:0,forward:[segment('TEST201',false)],backward:[segment('TEST202',true)]}];
 const searchRef='a'.repeat(32),offerRef='anex_online:'+'b'.repeat(64),andromedaRef='offer_'+'d'.repeat(64);
 function fixture({tvFuel=0}={}){
- const calls=[],state={hold:false,failAnex:false,extended:false};
+ const calls=[],state={hold:false,failAnex:false,extended:false,samoFailure:null,samoFlightChoice:false};
  const json=async(url,options={})=>{
   const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},q=u.searchParams,action=q.get('action')||body.action;
   calls.push({url:u.pathname,action,body,query:Object.fromEntries(q)});
@@ -33,7 +33,12 @@ function fixture({tvFuel=0}={}){
    return {ok:true,data:{generation:body.generation,provider:'anex',date_range:{from:body.params.dateFrom,to:body.params.dateTo},search_ref:searchRef,external_search_pending:false,pages_read:1,first_page_only:true,hotels:[h]}};
   }
   if(u.pathname.endsWith('/api-andromeda-search3-preview.php'))return {ok:true,data:{provider:'andromeda',generation:body.generation,date_range:{from:body.params.dateFrom,to:body.params.dateTo},grouped:true,first_page_only:false,page:1,pages_count:1,external_search_pending:false,search_ref:'c'.repeat(64),status:'complete',received_offers:1,mapped_offers:1,selection_enabled:false,hotels:[{local_id:101,mapping_status:'resolved',tours:[{provider:'andromeda',price:{amount:'119000',currency:'RUB'},checkin:day,nights:7,adults:2,children:0,meal:'AI',room:'SAMO STANDARD',placement:'DBL',operator:{name:'FUN&SUN'},offer_ref:andromedaRef,offer_context:{provider:'andromeda',search_ref:'c'.repeat(64),generation:body.generation,page:1,offer_ref:andromedaRef},listing_price_ref:'listing_'+'e'.repeat(64),selection_enabled:false}]}]}};
-  if(u.pathname.endsWith('/api-andromeda-quote-preview.php'))return {ok:true,data:{schema_version:1,provider:'andromeda',local_id:101,selection_enabled:true,booking_enabled:false,state:'quote_verified',quote_state:'verified',final_price:{amount:'125500',currency:'RUB'},final_price_verified:true,flight_selection_required:false,flights:[{direction:'0',name:'TEST SAMO OUT',datebeg:day,class:'ECONOM',departure:{town:'Москва',port:'SVO'},arrival:{town:'Анталья',port:'AYT'}},{direction:'1',name:'TEST SAMO BACK',datebeg:back,class:'ECONOM',departure:{town:'Анталья',port:'AYT'},arrival:{town:'Москва',port:'SVO'}}]}};
+  if(u.pathname.endsWith('/api-andromeda-quote-preview.php')){
+   if(state.samoFailure&&(!state.samoFlightChoice||action==='quote_select_flights'))return {ok:false,error:'supplier_unavailable',failure_category:state.samoFailure};
+   const result={ok:true,data:{schema_version:1,provider:'andromeda',local_id:101,selection_enabled:true,booking_enabled:false,state:'quote_verified',quote_state:'verified',final_price:{amount:'125500',currency:'RUB'},final_price_verified:true,flight_selection_required:false,flights:[{direction:'0',name:'TEST SAMO OUT',datebeg:day,class:'ECONOM',departure:{town:'Москва',port:'SVO'},arrival:{town:'Анталья',port:'AYT'}},{direction:'1',name:'TEST SAMO BACK',datebeg:back,class:'ECONOM',departure:{town:'Анталья',port:'AYT'},arrival:{town:'Москва',port:'SVO'}}]}};
+   if(state.samoFlightChoice&&action==='quote')Object.assign(result.data,{state:'flight_selection_required',quote_state:'unverified',final_price:null,final_price_verified:false,flight_selection_required:true,flights:result.data.flights.map((f,i)=>({...f,flight_ref:'flight_'+String(i+1).repeat(32)}))});
+   return result;
+  }
   if(u.pathname==='/api-v2.php'){
    if(action==='meals')return [{id:7,name:'AI'},{id:3,name:'BB'}];
    if(action==='search_start')return {searchId:123};
