@@ -37,7 +37,7 @@ jobs:
       github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
       github.event.issue.number == 3419 && !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
-      github.event.comment.body == '/search3-next-live-source-counts-v11'
+      github.event.comment.body == '/search3-next-live-source-counts-v12'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:
@@ -61,7 +61,7 @@ jobs:
           python3 -m playwright install --with-deps chromium
       - name: Verify NEXT bytes then click Find once and observe canonical results
         env:
-          SEARCH3_NEXT_LIVE_ALLOWED: v11
+          SEARCH3_NEXT_LIVE_ALLOWED: v12
         run: python3 scripts/diagnostics/search3_next_live_source_counts.py
       - name: Retain aggregate counts and screenshots only
         if: always()
