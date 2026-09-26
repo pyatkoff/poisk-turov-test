@@ -78,7 +78,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],'exact2','10901602946',os.environ['SOURCE_ARCHIVE_SHA'],'REPEATABLE READ / READ ONLY','writer_ready']:
+          for x in [os.environ['OP'],'exact2','10901602946',os.environ['SOURCE_ARCHIVE_SHA'],'REPEATABLE READ/READ ONLY','writer_ready']:
               assert x in b,x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
@@ -169,7 +169,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-v45-anex-current-v54-${{ github.run_id }}
+          name: match-v53-anex-current-v54-${{ github.run_id }}
           path: terminal/
           retention-days: 90
           if-no-files-found: error
