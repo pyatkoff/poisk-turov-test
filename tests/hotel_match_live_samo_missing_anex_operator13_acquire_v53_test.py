@@ -16,4 +16,5 @@ x=m.link_projection({'operatorLink':'https://evil.example/x?HOTELLIST=5844'})
 assert x['link_state']=='invalid_origin'
 assert m.batch_signature('ctx',[3,1,2])=='ctx|1,2,3'
 assert callable(m.load_consumed_v49)
+assert callable(m.run_batch) and callable(m.execute) and m.Provider is not None
 print('MATCH_V53_TEST_OK')
