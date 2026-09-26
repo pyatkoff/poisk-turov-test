@@ -1,0 +1,175 @@
+name: MATCH retained14 guarded acceptance
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: [.github/workflows/hotel-match-retained14-writer-v69.yml]
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: hotel-match-retained14-writer-v69
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-retained14-writer-1971-20260927-v69
+  PREPARED_HEAD: 540ee81caa9c464c62a0d0722f6ed40bf11f3fa6
+  CLAIM: '5850388984'
+
+jobs:
+  accept:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4010 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/retained14-guarded-writer-v69-20260927'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify unchanged writer, coordination and current-head CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$PREPARED_HEAD")" = "$PREPARED_HEAD"
+          test "$(git diff --name-only "$PREPARED_HEAD" HEAD)" = .github/workflows/hotel-match-retained14-writer-v69.yml
+          test "$(git hash-object scripts/diagnostics/hotel_match_retained14_writer_v69.php)" = a06008248e08c1927220365961068248e43075d5
+          test "$(git hash-object tests/hotel_match_retained14_writer_v69_test.php)" = 95e8dac2090511d5003d50b8d9e0f57e4ac243d7
+          php -r 'require $argv[1]; v67_package_check();' scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/5850009886" > input/original-consent.json
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          c=json.load(open('input/claim.json')); a=json.load(open('input/original-consent.json'))
+          for item in (c,a):
+              assert item['user']['id']==226193297 and item['author_association']=='OWNER'
+              assert item['issue_url'].endswith('/issues/3419')
+          assert 'retained14 writer' in c['body'] and 'Давай дальше' in c['body']
+          assert 'owner explicitly replied «Разрешаю»' in a['body'] and 'NOT permission to disable security gates' in a['body']
+          def get(path):
+              req=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as response: return json.load(response)
+          previous=get('/actions/runs/36276133565')
+          assert previous['head_sha']==os.environ['PREPARED_HEAD'] and previous['status']=='completed' and previous['conclusion']=='success'
+          required={'Security guard','MATCH retained14 writer source checks'}
+          for _ in range(80):
+              runs=get('/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']; latest={}
+              for run in runs:
+                  name=run['name']
+                  if name in required and run['head_sha']==os.environ['HEAD'] and (name not in latest or run['id']>latest[name]['id']): latest[name]=run
+              if set(latest)==required and all(r['status']=='completed' for r in latest.values()):
+                  assert all(r['conclusion']=='success' for r in latest.values()), 'current_checks_not_green'
+                  break
+              time.sleep(3)
+          else: raise SystemExit('current_checks_timeout')
+          pr=get('/pulls/4010'); assert pr['state']=='open' and pr['head']['sha']==os.environ['HEAD'] and pr['head']['repo']['full_name']==os.environ['GITHUB_REPOSITORY']
+          PY
+      - name: Retrieve sealed inputs and repeat source checks without provider access
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10909959597/zip" -o input/source.zip
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10915714601/zip" -o input/audit.zip
+          python3 - <<'PY'
+          import hashlib,pathlib,zipfile
+          def extract(path,sha,members):
+              assert hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()==sha
+              with zipfile.ZipFile(path) as z:
+                  for name,target,pin in members:
+                      found=[i for i in z.infolist() if pathlib.PurePosixPath(i.filename).name==name]
+                      assert len(found)==1 and found[0].file_size<=8388608
+                      raw=z.read(found[0]); assert hashlib.sha256(raw).hexdigest()==pin
+                      pathlib.Path('input/'+target).write_bytes(raw)
+          extract('input/source.zip','033d372e5aeb4d495b9fe542c148c2d4eb080889b5eb5ca08a5642837e2dbaf8',[
+              ('result.json','source-result.json','42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810')])
+          extract('input/audit.zip','f4da8ad7c4e0ac513c2bdd83e96ddb5899c753b26fa12003eb2c28a08a138054',[
+              ('result.json','audit-result.json','0b592a30a5c301d9631433042c5239baf9cc7f7f427cac5895c9de9300ed4eb9'),
+              ('receipt.json','audit-receipt.json','636f24b549f4e7aa96c5d3d0e151fe167e37d793f01cf4afbe4b12fb03be3ad3'),
+              ('retained-plan.json','retained-plan.json','048523ef5a1d8440e39c6341afb531db6346b8786a63312c6328d70f2c1f70b8')])
+          PY
+          php tests/hotel_match_retained14_writer_v69_test.php input/audit-result.json input/audit-receipt.json input/source-result.json input/retained-plan.json
+          mkdir -p package/scripts/diagnostics package/app/integrations
+          cp scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php scripts/diagnostics/hotel_match_anex_effective_coverage.php scripts/diagnostics/hotel_match_retained14_writer_v69.php package/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php package/app/integrations/
+          php -r 'require $argv[1]; v67_package_check();' package/scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php
+      - name: Reserve before server or database access
+        env:
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          record={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_write','scope':'retained14_insert_only','audit_result_sha256':'0b592a30a5c301d9631433042c5239baf9cc7f7f427cac5895c9de9300ed4eb9','source_result_sha256':'42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810','retained_plan_sha256':'048523ef5a1d8440e39c6341afb531db6346b8786a63312c6328d70f2c1f70b8','expected_writes':14,'hold_untouched':15,'journal_claim':int(os.environ['CLAIM']),'provider_http_calls':0,'no_replay':True}
+          with open('reservation/reservation.json','x') as f:
+              json.dump(record,f,sort_keys=True); f.write('\n'); f.flush(); os.fsync(f.fileno())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-retained14-writer-v69-reservation-${{ github.run_id }}
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute once in an exclusive private directory and retrieve terminal receipt
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/match-v69-key"; known="$RUNNER_TEMP/match-v69-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' >"$key"; else printf '%s' "$KEY" | base64 --decode >"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST" >"$known" 2>/dev/null
+          remote="$USER@$HOST"; rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir \"\$HOME/$rel\"; mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$rel/reservation.json"
+          scp "${opts[@]}" input/source-result.json input/audit-result.json input/audit-receipt.json input/retained-plan.json "$remote:$rel/payload/"
+          scp "${opts[@]}" package/scripts/diagnostics/*.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" package/app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_RESULT=\"\$HOME/$rel/payload/source-result.json\" MATCH_AUDIT_RESULT=\"\$HOME/$rel/payload/audit-result.json\" MATCH_AUDIT_RECEIPT=\"\$HOME/$rel/payload/audit-receipt.json\" MATCH_RETAINED_PLAN=\"\$HOME/$rel/payload/retained-plan.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_retained14_writer_v69.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          r=json.load(open('terminal/result.json')); q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert q['result_file_verified'] is True and q['no_replay'] is True
+          assert r['provider_http_calls']==q['provider_http_calls']==0
+          print(json.dumps({k:v for k,v in r.items() if k!='rows'},ensure_ascii=False,sort_keys=True))
+          if r['state']=='committed_readback_verified':
+              assert r['database_writes']==r['mapping_writes']==q['database_writes']==q['mapping_writes']==14
+              assert r['readback_verified'] is True and q['database_readback_verified'] is True
+              assert r['preexisting_identities_unchanged'] is True and r['hold_untouched']==15
+              expected={int(x['local_hotel_id']):str(x['andromeda_catalog_id']) for x in json.load(open('input/audit-result.json'))['rows'] if x['status']=='ready_for_guarded_writer'}
+              assert len(r['rows'])==14 and {int(x['local_hotel_id']):str(x['external_hotel_id']) for x in r['rows']}==expected
+              assert all(x['supplier_namespace']=='andromeda_catalog' and x['decision_status']=='accepted' for x in r['rows'])
+          else: raise SystemExit('writer_not_verified_do_not_replay')
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-retained14-writer-v69-terminal-${{ github.run_id }}
+          path: |
+            terminal/result.json
+            terminal/receipt.json
+          retention-days: 90
+          if-no-files-found: warn
