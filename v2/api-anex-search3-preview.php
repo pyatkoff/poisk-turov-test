@@ -773,6 +773,14 @@ function anytour_anex_search3_out(array $data, int $status): void
     exit;
 }
 
+function anytour_anex_search3_retryable_initial_price_502(Throwable $error, array $last): bool
+{
+    return $error->getMessage() === 'ANEX_HTTP_ERROR'
+        && ($last['action'] ?? null) === 'SearchTour_PRICES'
+        && ($last['http_status'] ?? null) === 502
+        && (int) ($last['curl_errno'] ?? 0) === 0;
+}
+
 function anytour_anex_search3_http(): void
 {
     header('Content-Type: application/json; charset=utf-8');
@@ -852,8 +860,16 @@ function anytour_anex_search3_http(): void
                 return AnyTourAnexSearchObservations::record($pdo, $offers, $context);
             };
             $operatorScope = anytour_anex_search3_operator_scope($pdo, $request['params']['operatorIds'] ?? []);
-            $data = anytour_anex_search3_run($request, $pdo, $operatorScope === 'exclude' ? null : $clientFactory(),
-                $_SESSION['dictionaries'], $diagnostics, $observer, $_SESSION['offer_context'], $operatorScope);
+            try {
+                $data = anytour_anex_search3_run($request, $pdo, $operatorScope === 'exclude' ? null : $clientFactory(),
+                    $_SESSION['dictionaries'], $diagnostics, $observer, $_SESSION['offer_context'], $operatorScope);
+            } catch (RuntimeException $error) {
+                $last = isset($client) ? $client->lastRequestDiagnostics() : [];
+                if ($operatorScope === 'exclude' || !anytour_anex_search3_retryable_initial_price_502($error, $last)) throw $error;
+                $_SESSION['offer_context'] = [];
+                $data = anytour_anex_search3_run($request, $pdo, $clientFactory(),
+                    $_SESSION['dictionaries'], $diagnostics, $observer, $_SESSION['offer_context'], $operatorScope);
+            }
         } elseif ($action === 'additional_prices_batch') {
             $data = anytour_anex_search3_additional_batch($request, $_SESSION['offer_context'],
                 AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver(),
