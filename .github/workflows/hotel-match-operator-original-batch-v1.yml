@@ -1,0 +1,81 @@
+name: MATCH operator original bulk price v3
+on:
+  push:
+    branches: [match/price-hotels-original-1971-20260914]
+    paths: [.github/workflows/hotel-match-operator-original-batch-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-operator-original-1971, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-operator-original-batch-1971-20260915-v3
+jobs:
+  collect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Offline extraction and immutable source checks
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_operator_original_batch.php
+          php tests/hotel_match_operator_original_test.php
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_original_batch.php)" = b0b2f9930363ad9a32dd4906bcc38a771bf2e3e4
+          test "$(git hash-object app/integrations/andromeda-client.php)" = 7f2a444904e25f8abf1b50b70879b1650984800c
+          test "$(git hash-object app/integrations/andromeda-transport.php)" = 162e33d3f1997ec7e73e1ef276c586d4732f8957
+      - name: Restore only hash-pinned completed artifacts without supplier requests
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import hashlib,io,os,pathlib,subprocess,zipfile
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'source';root.mkdir()
+          inputs=[('current',10369717804,'bfeaaf709464101e883ad92620a4d74cdabdd1fbcd1f55b707a5f43e1c8bef4d','server/result.json'),('egypt',10113498830,'8d82b5b2e4db23c8af691e98d63e0c2c40df99a5822cb27494971879ef92cb63','all.json'),('turkey',10118184869,'b03e15604fb3a3035efeab97a7099aaafca76ee6ae9a70513cbf176bc70dc49a','capture.json'),('saved',10109677472,'0a31817b0032c2bf4fedf2c827a4450e2b5a71333facf2a1aec95af0f6ff7aff','price.json'),('barcelo',10369008837,'6fca5684069fbc7e5bb09bea11073e5eaa3d29385ec1173e0d2061b69a8518d6','result.json'),('previous',10370118140,'03f897d267d9db5a7cc7957835fe27a1f6d2cfdb0386ddfb308fad852527d832','result.json')]
+          for name,aid,digest,member in inputs:
+            p=subprocess.run(['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/artifacts/{aid}/zip'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=90)
+            assert hashlib.sha256(p.stdout).hexdigest()==digest
+            with zipfile.ZipFile(io.BytesIO(p.stdout)) as z:
+              assert z.getinfo(member).file_size<30*1024*1024
+              dest=root/name/member;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(z.read(member))
+          PY
+          php scripts/diagnostics/hotel_match_operator_original_batch.php plan "$RUNNER_TEMP/source" > "$RUNNER_TEMP/plan.json"
+      - name: Persist operation and exact target plan before supplier access
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP']);p=root/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          plan=(root/'plan.json').read_bytes();d=json.loads(plan)
+          assert d['target_count']==385 and d['target_operator_count']==1540 and d['query_count']==55
+          (p/'reserved-plan.json').write_bytes(plan)
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_supplier_access','plan_sha256':hashlib.sha256(plan).hexdigest(),'max_price_calls':120,'targets':385,'operators':[5,315,342,115],'database_writes':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-operator-original-batch-v3-reservation
+          path: |
+            ${{ runner.temp }}/hotel-match-operator-original-batch-1971-20260915-v3/reservation.json
+            ${{ runner.temp }}/hotel-match-operator-original-batch-1971-20260915-v3/reserved-plan.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Collect original hotel keys only through hotel-filtered price
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: php scripts/diagnostics/hotel_match_operator_original_batch.php run "$RUNNER_TEMP/source" "$RUNNER_TEMP/$OPERATION_ID"
+      - name: Independent completed result readback
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];raw=(p/'result.json').read_bytes();r=json.loads(raw);receipt=json.loads((p/'receipt.json').read_text())
+          assert receipt['result_sha256']==hashlib.sha256(raw).hexdigest() and receipt['readback_verified']
+          assert all(x['source_sha']==os.environ['GITHUB_SHA'] and x['operation_id']==os.environ['OPERATION_ID'] for x in (r,receipt))
+          assert r['state']=='completed' and r['database_writes']==r['all_calls']==r['booking_calls']==r['tourvisor_calls']==0
+          print(json.dumps({'unique_pairs':r['unique_pair_count'],'supplier_calls':r['supplier_calls'],'result_sha256':receipt['result_sha256']}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-operator-original-batch-v3-result
+          path: ${{ runner.temp }}/hotel-match-operator-original-batch-1971-20260915-v3/
+          if-no-files-found: warn
+          retention-days: 90

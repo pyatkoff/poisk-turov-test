@@ -1,0 +1,68 @@
+name: MATCH targeted price HOTELS original v1
+on:
+  push:
+    branches: [match/price-hotels-original-1971-20260914]
+    paths: [.github/workflows/hotel-match-price-hotels-original-v1.yml]
+permissions: {contents: read}
+concurrency: {group: match-price-hotels-original-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-price-hotels-original-1971-20260914-v1
+jobs:
+  targeted-price:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Offline checks and unchanged supplier client
+        run: |
+          set -euo pipefail
+          test "$(git hash-object app/integrations/andromeda-client.php)" = 7f2a444904e25f8abf1b50b70879b1650984800c
+          test "$(git hash-object app/integrations/andromeda-transport.php)" = 162e33d3f1997ec7e73e1ef276c586d4732f8957
+          php -l scripts/diagnostics/hotel_match_price_hotels_original.php
+          php scripts/diagnostics/hotel_match_price_hotels_original.php --self-test
+          php -r 'require "app/integrations/andromeda-client.php"; require "scripts/diagnostics/hotel_match_price_hotels_original.php"; AnyTourAndromedaClient::validatePriceParams(mpo_params()); if(!extension_loaded("curl")) exit(2);'
+      - name: Reserve exact operation before credentials and supplier access
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          p.mkdir(mode=0o700)
+          params=json.loads(subprocess.check_output(['php','scripts/diagnostics/hotel_match_price_hotels_original.php','--params']))
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_supplier_access','params':params,'max_supplier_requests':2,'allowed_actions':['login','price'],'database_access':False,'mapping_writes':0,'no_replay':True}
+          with (p/'reservation.json').open('x') as f:
+              json.dump(r,f,ensure_ascii=False,indent=2);f.write('\n');f.flush();os.fsync(f.fileno())
+          assert json.loads((p/'reservation.json').read_text())==r
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-price-hotels-original-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-price-hotels-original-1971-20260914-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: One selected-hotel price call and original block capture
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: php scripts/diagnostics/hotel_match_price_hotels_original.php "$RUNNER_TEMP/$OPERATION_ID"
+      - name: Independent result and receipt readback
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          if not (p/'result.json').exists():raise SystemExit('NO_RESULT_DO_NOT_REPLAY')
+          r=json.loads((p/'result.json').read_text());c=json.loads((p/'receipt.json').read_text());v=json.loads((p/'reservation.json').read_text())
+          h=hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert all(x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] for x in (r,c,v))
+          assert c['result_sha256']==h and c['readback_verified'] and r['supplier_calls']<=2 and r['mapping_writes']==0
+          print(json.dumps({'state':r['state'],'action':r['action'],'hotel':r['params']['HOTELS'],'rows':r.get('inspection',{}).get('returned_rows'),'original_hotel_keys':r.get('inspection',{}).get('observed_original_hotel_keys'),'result_sha256':h,'receipt_verified':True}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-price-hotels-original-v1-result
+          path: ${{ runner.temp }}/hotel-match-price-hotels-original-1971-20260914-v1/
+          if-no-files-found: warn
+          retention-days: 90

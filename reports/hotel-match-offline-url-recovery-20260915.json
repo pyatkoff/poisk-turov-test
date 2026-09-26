@@ -1,0 +1,257 @@
+{
+  "acceptance": "No mapping writes or acceptance authority. Existing holds/current guards remain unchanged.",
+  "actual_andromeda_hotelUrl_recovered": 0,
+  "actual_tv_hotelDescriptionLink_recovered": 0,
+  "claim": 5672904241,
+  "db_reads": 0,
+  "full_evidence_sha256": "9a603117edd563da6885ba37168d7a787c718ff10a347aa0033ba97c1dfbb6b3",
+  "issue": 1971,
+  "mapping_writes": 0,
+  "mode": "offline_only_no_new_source_reads",
+  "physical_live_source_rows": 187,
+  "pr": 2469,
+  "route_counts": {
+    "andromeda": {
+      "captured_card_hotelcode_confirmed": 5,
+      "no_captured_page": 39,
+      "no_retained_anex_original": 41,
+      "seed_url_without_hotelcode_proof": 5
+    },
+    "anex": {
+      "captured_card_hotelcode_confirmed": 37,
+      "no_captured_page": 43,
+      "seed_url_without_hotelcode_proof": 17
+    }
+  },
+  "safety": "Blocked server tasks are not retried, delegated, repackaged or executed. This report only processes already uploaded files.",
+  "schema": "match-offline-url-recovery-summary/1",
+  "source_page_count": 96,
+  "source_pages_with_captured_hotelcode": 57,
+  "source_snapshot_at": "2026-09-14T23:51:02.458018+00:00",
+  "sources": {
+    "handles": {
+      "archive": "match-saved-handles-v3-34911950420.zip",
+      "archive_sha256": "fcc05c91dbbf207bc60fd2e112fef270c28f3986b11ef89424d842bbcb9c5698",
+      "no_replay": true,
+      "operation_id": "hotel-match-saved-tv-tour-handles-1971-20260915-v3",
+      "result_sha256": "8537f074b5c4c01a9e1ffbf08602e9cc3f9b8a64a7c35b38e4989f4b9b79ad99"
+    },
+    "original": {
+      "archive": "match-operator-original-batch-v2-34900396467.zip",
+      "archive_sha256": "886eb380318fbf7699a49541662544bf5ae9624a865247a77a8a46bda88e1431",
+      "no_replay": true,
+      "operation_id": "hotel-match-operator-original-batch-1971-20260915-v2",
+      "result_sha256": "f379062abd43c36e6feb792f8e0313466ddd579a1959cfe814e90b863a43968e"
+    },
+    "pages": {
+      "archive": "match-anex-rendered-v8-evidence.zip",
+      "archive_sha256": "77d2d3a61c956bff3024bab8e46ffb701564c8cee75bf55a553826bc1404bd1a",
+      "no_replay": true,
+      "operation_id": "hotel-match-anex-rendered-hotelcode-full-current-1971-20260914-v8",
+      "result_sha256": "ac82276384a6f27b154cb3be72551f4a507dbd85b182c45d88279e6e94b35a79"
+    },
+    "queue": {
+      "archive": "match-current-v8-34910651032.zip",
+      "archive_sha256": "6e4124958df93b2fa35c22765bce4fbdd486c2a4ed9b53738ebf8b0f728aa255",
+      "no_replay": true,
+      "operation_id": "hotel-match-manual-live-queue-1971-20260914-v8",
+      "result_sha256": "52acba203042e86a1650ece5b0ae079dac6cfb49f25b5bc6747cdaefd316b09d"
+    }
+  },
+  "supplier_calls": 0,
+  "tests": {
+    "current_andromeda_to_anex_page": 5,
+    "current_anex_verified": 37,
+    "exact_archive_and_receipt_hashes": 4,
+    "full_source_key_coverage": 187,
+    "photo_vs_hotel_namespace_checks": 6
+  },
+  "verified_current_anex_rows_with_saved_tour_handles": 11,
+  "source_raw_json_sha256": "bbecc61902e750aa448c650675b7ca553d817a7b25143d343d5e397712af5b80",
+  "confirmed_page_columns": [
+    "anex_hotel_id",
+    "page_url"
+  ],
+  "confirmed_pages": [
+    [
+      "16330",
+      "https://www.anextour.ru/tours/turkey/mira-beach-resort-bodrum"
+    ],
+    [
+      "23894",
+      "https://www.anextour.ru/tours/turkey/greenport-hotel"
+    ],
+    [
+      "28882",
+      "https://www.anextour.ru/tours/turkey/malkoc-hotel"
+    ],
+    [
+      "32783",
+      "https://www.anextour.ru/tours/turkey/aspen-hotell"
+    ],
+    [
+      "28396",
+      "https://www.anextour.ru/tours/egypt/pickalbatros-laguna-vista-resort"
+    ],
+    [
+      "36906",
+      "https://www.anextour.ru/tours/egypt/family-star"
+    ],
+    [
+      "780",
+      "https://www.anextour.ru/tours/egypt/steigenberger-golf-resort-el-gouna"
+    ],
+    [
+      "37719",
+      "https://www.anextour.ru/tours/egypt/posh-club-by-sunrise-diamond-beach-resort-grand-select"
+    ],
+    [
+      "1771",
+      "https://www.anextour.ru/tours/egypt/domina-coral-bay-prestige-pool-sharm-el-sheikh"
+    ],
+    [
+      "1655",
+      "https://www.anextour.ru/tours/egypt/swissotel-resort-el-quseir"
+    ],
+    [
+      "37012",
+      "https://www.anextour.ru/tours/egypt/pickalbatros-villaggio-resort-portofino"
+    ],
+    [
+      "37885",
+      "https://www.anextour.ru/tours/turkey/isolina-hotel"
+    ],
+    [
+      "1772",
+      "https://www.anextour.ru/tours/egypt/domina-coral-bay-prestige-sea-sharm-el-sheikh"
+    ],
+    [
+      "835",
+      "https://www.anextour.ru/tours/egypt/shams-alam-beach-resort-marsa-alam"
+    ],
+    [
+      "4131",
+      "https://www.anextour.ru/tours/egypt/the-three-corners-fayrouz-plaza-marsa-alam"
+    ],
+    [
+      "1328",
+      "https://www.anextour.ru/tours/egypt/arabia-azur-hurghada"
+    ],
+    [
+      "5215",
+      "https://www.anextour.ru/tours/egypt/aurora-oriental-resort-sharm-el-sheikh"
+    ],
+    [
+      "29446",
+      "https://www.anextour.ru/tours/turkey/prestige-hotel"
+    ],
+    [
+      "32355",
+      "https://www.anextour.ru/tours/turkey/the-meretto-hotel-istanbul"
+    ],
+    [
+      "30424",
+      "https://www.anextour.ru/tours/turkey/sarnic-hotel"
+    ],
+    [
+      "28933",
+      "https://www.anextour.ru/tours/turkey/darkhill-hotel"
+    ],
+    [
+      "1769",
+      "https://www.anextour.ru/tours/egypt/domina-coral-bay-king-s-lake-sharm-el-sheikh"
+    ],
+    [
+      "15072",
+      "https://www.anextour.ru/tours/turkey/sunis-hotel-su"
+    ],
+    [
+      "29036",
+      "https://www.anextour.ru/tours/turkey/delta-hotel-istanbul"
+    ],
+    [
+      "8537",
+      "https://www.anextour.ru/tours/turkey/vonresort-golden-beach"
+    ],
+    [
+      "8538",
+      "https://www.anextour.ru/tours/turkey/vonresort-golden-coast"
+    ],
+    [
+      "8319",
+      "https://www.anextour.ru/tours/turkey/club-hotel-sidelya"
+    ],
+    [
+      "21696",
+      "https://www.anextour.ru/tours/turkey/cesars-side"
+    ],
+    [
+      "27777",
+      "https://www.anextour.ru/tours/turkey/orient-express-hotel"
+    ],
+    [
+      "14812",
+      "https://www.anextour.ru/tours/turkey/innvista-hotel-belek"
+    ],
+    [
+      "29430",
+      "https://www.anextour.ru/tours/turkey/the-galataport-hotel"
+    ],
+    [
+      "20470",
+      "https://www.anextour.ru/tours/turkey/side-lowe-hotel"
+    ],
+    [
+      "8460",
+      "https://www.anextour.ru/tours/turkey/side-breeze-hotel"
+    ],
+    [
+      "15046",
+      "https://www.anextour.ru/tours/turkey/adalya-artside-hotel"
+    ],
+    [
+      "11241",
+      "https://www.anextour.ru/tours/turkey/timo-resort-hotel"
+    ],
+    [
+      "37344",
+      "https://www.anextour.ru/tours/turkey/gold-island-selected"
+    ],
+    [
+      "34858",
+      "https://www.anextour.ru/tours/turkey/apella-hotel"
+    ]
+  ],
+  "andromeda_to_confirmed_page_columns": [
+    "andromeda_id",
+    "anex_hotel_id",
+    "page_url"
+  ],
+  "andromeda_to_confirmed_page": [
+    [
+      "2000067227",
+      "23894",
+      "https://www.anextour.ru/tours/turkey/greenport-hotel"
+    ],
+    [
+      "2000049726",
+      "28882",
+      "https://www.anextour.ru/tours/turkey/malkoc-hotel"
+    ],
+    [
+      "379202",
+      "8418",
+      "https://www.anextour.ru/tours/turkey/seagull-hotel"
+    ],
+    [
+      "2000117376",
+      "29036",
+      "https://www.anextour.ru/tours/turkey/delta-hotel-istanbul"
+    ],
+    [
+      "444805",
+      "14812",
+      "https://www.anextour.ru/tours/turkey/innvista-hotel-belek"
+    ]
+  ]
+}
