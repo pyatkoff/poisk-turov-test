@@ -1,0 +1,206 @@
+name: MATCH ANEX HTTP400 route-class audit v58
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_direct_anex_http400_route_class_audit_v58.py
+      - tests/hotel_match_direct_anex_http400_route_class_audit_v58_test.py
+      - .github/workflows/hotel-match-direct-anex-http400-route-class-audit-v58.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+env:
+  OP: hotel-match-direct-anex-http400-route-class-audit-1971-20260926-v58
+  BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
+  CLAIM: '5844984815'
+  ROUTER_ARTIFACT: '10878842741'
+  ROUTER_ZIP_SHA: d91ea08b0e6d30e883a7575d1b43afc81440ce26e1d75dd6f4f5aafd8aa72433
+  V53_ARTIFACT: '10901602946'
+  V53_ZIP_SHA: 784b719b3e7d09872a827b5f3aadc3cc51d68ea20ce045afb3cd6fe97bb6fe66
+  V53_RESULT_SHA: ef37e3380401bacdfe6ff16edeb445a103ec248594ed5cacafc0071b0fca5ec4
+  V53_RECEIPT_SHA: ae64c83c79ff0c4e4002500fc668cc666ba1e5e1b9cc3af665ad575935846701
+  V57_ARTIFACT: '10903400303'
+  V57_ZIP_SHA: c5d67f3b0238a9b716a1635764d5912707b987bec8ebe2817722b1f49d93135c
+  V57_RESULT_SHA: 3034f56a4c0c73d6792778bc77c516745e879600a18adb380e0f0ffc8101c80e
+  V57_RECEIPT_SHA: 8bceb1f759a989d5c2c2d932f4deee2ecdaba52abcfbe79de89104746ec0248f
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/direct-anex-http400-route-class-v58-20260926'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 -m py_compile scripts/diagnostics/hotel_match_direct_anex_http400_route_class_audit_v58.py
+      - run: python3 scripts/diagnostics/hotel_match_direct_anex_http400_route_class_audit_v58.py --self-test
+      - run: python3 tests/hotel_match_direct_anex_http400_route_class_audit_v58_test.py
+      - run: |
+          set -euo pipefail
+          f=scripts/diagnostics/hotel_match_direct_anex_http400_route_class_audit_v58.py
+          ! grep -E 'urllib|requests|curl|INSERT INTO|UPDATE .* SET|DELETE FROM' "$f"
+          grep -Fq "EXPECTED_UNION=172" "$f"
+          grep -Fq "EXPECTED_UNTOUCHED=89" "$f"
+
+  audit:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/direct-anex-http400-route-class-v58-20260926'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate authority, artifacts and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input/router input/v53 input/v57 terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-direct-anex-http400-route-class-audit-v58.yml scripts/diagnostics/hotel_match_direct_anex_http400_route_class_audit_v58.py tests/hotel_match_direct_anex_http400_route_class_audit_v58_test.py "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'172','89','server mutation0','DB reads0/writes0','HTTP400']:
+              assert x.lower() in b.lower(),x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success'; break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ROUTER_ARTIFACT/zip" -o input/router.zip
+          test "$(sha256sum input/router.zip|awk '{print $1}')" = "$ROUTER_ZIP_SHA"
+          python3 - <<'PY'
+          import zipfile,json,pathlib
+          hits=[]
+          with zipfile.ZipFile('input/router.zip') as z:
+              for i in z.infolist():
+                  if i.is_dir() or not i.filename.endswith('result.json'): continue
+                  raw=z.read(i)
+                  try:x=json.loads(raw)
+                  except Exception:continue
+                  if x.get('operation_id')=='hotel-match-live-samo-missing-direct-anex-router-1971-20260925-v35':hits.append(raw)
+          assert len(hits)==1
+          pathlib.Path('input/router-result.json').write_bytes(hits[0])
+          PY
+
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$V53_ARTIFACT/zip" -o input/v53.zip
+          test "$(sha256sum input/v53.zip|awk '{print $1}')" = "$V53_ZIP_SHA"
+          VNAME=v53 RSHA="$V53_RESULT_SHA" QSHA="$V53_RECEIPT_SHA" python3 - <<'PY'
+          import zipfile,json,hashlib,pathlib,os
+          k=os.environ['VNAME'];rp=[];qp=[]
+          with zipfile.ZipFile(f'input/{k}.zip') as z:
+              for i in z.infolist():
+                  if i.is_dir():continue
+                  raw=z.read(i)
+                  if i.filename.endswith('result.json'):rp.append(raw)
+                  if i.filename.endswith('receipt.json'):qp.append(raw)
+          assert len(rp)==len(qp)==1
+          assert hashlib.sha256(rp[0]).hexdigest()==os.environ['RSHA']
+          assert hashlib.sha256(qp[0]).hexdigest()==os.environ['QSHA']
+          pathlib.Path(f'input/{k}/result.json').write_bytes(rp[0]);pathlib.Path(f'input/{k}/receipt.json').write_bytes(qp[0])
+          PY
+
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$V57_ARTIFACT/zip" -o input/v57.zip
+          test "$(sha256sum input/v57.zip|awk '{print $1}')" = "$V57_ZIP_SHA"
+          VNAME=v57 RSHA="$V57_RESULT_SHA" QSHA="$V57_RECEIPT_SHA" python3 - <<'PY'
+          import zipfile,json,hashlib,pathlib,os
+          k=os.environ['VNAME'];rp=[];qp=[]
+          with zipfile.ZipFile(f'input/{k}.zip') as z:
+              for i in z.infolist():
+                  if i.is_dir():continue
+                  raw=z.read(i)
+                  if i.filename.endswith('result.json'):rp.append(raw)
+                  if i.filename.endswith('receipt.json'):qp.append(raw)
+          assert len(rp)==len(qp)==1
+          assert hashlib.sha256(rp[0]).hexdigest()==os.environ['RSHA']
+          assert hashlib.sha256(qp[0]).hexdigest()==os.environ['QSHA']
+          pathlib.Path(f'input/{k}/result.json').write_bytes(rp[0]);pathlib.Path(f'input/{k}/receipt.json').write_bytes(qp[0])
+          PY
+
+      - name: Read exact server reservation projections
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          cat >terminal/read.py <<'PY'
+          import hashlib,json,pathlib,sys
+          root=pathlib.Path(sys.argv[1])
+          specs=[
+           ('hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41b',40,None,None),
+           ('hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v45',50,None,None),
+           ('hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260926-v49',50,None,None),
+           ('hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260926-v53',31,sys.argv[2],sys.argv[3]),
+           ('hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260926-v57',1,sys.argv[4],sys.argv[5]),
+          ]
+          out=[]
+          for op,n,rsha,qsha in specs:
+              d=root/op
+              assert d.is_dir() and not d.is_symlink()
+              if rsha:
+                  assert hashlib.sha256((d/'result.json').read_bytes()).hexdigest()==rsha
+                  assert hashlib.sha256((d/'receipt.json').read_bytes()).hexdigest()==qsha
+              files=sorted(d.glob('batch-*-reservation.json'))
+              assert len(files)==n,(op,len(files),n)
+              for p in files:
+                  assert p.is_file() and not p.is_symlink()
+                  x=json.loads(p.read_text())
+                  out.append({'operation':op,'batch':int(x['batch']),'context_key':str(x['context_key']),
+                              'hotel_ids':sorted(int(v) for v in x['hotel_ids']),'state':str(x['state'])})
+          print(json.dumps(out,sort_keys=True,separators=(',',':')))
+          PY
+          base64 <terminal/read.py | ssh "${opts[@]}" "$remote" "base64 -d | python3 - \"\$HOME/.anytoour-match/operations\" '$V53_RESULT_SHA' '$V53_RECEIPT_SHA' '$V57_RESULT_SHA' '$V57_RECEIPT_SHA'" >terminal/reservation-projection.json
+
+      - name: Classify failed route contexts
+        run: |
+          set -euo pipefail
+          python3 scripts/diagnostics/hotel_match_direct_anex_http400_route_class_audit_v58.py --execute input/router-result.json terminal/reservation-projection.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['state']=='completed_read_only_route_class_audit'
+          assert r['consumed_union_count']==172 and r['untouched_count']==89
+          assert r['reservation_counts']=={'v41b':40,'v45':50,'v49':50,'v53':31,'v57':1}
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          for k in ['provider_http_calls','database_reads','database_writes','mapping_writes','server_mutation']:assert r[k]==0
+          print(json.dumps({k:r[k] for k in ['classification','failed_shared_features','untouched_distribution','consumed_union_count','untouched_count']},ensure_ascii=False,sort_keys=True))
+          print(json.dumps({'v53_tail':r['v53_last_successful_reservations'],'v53_failed':r['v53_failed_reservation'],'v57_failed':r['v57_failed_reservation']},ensure_ascii=False,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-direct-anex-http400-route-class-v58-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
