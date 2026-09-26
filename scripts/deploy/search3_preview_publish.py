@@ -115,7 +115,9 @@ def verify_provenance(api, q, control_sha):
     need(checks.get('total_count', 0) <= 100, 'check_pagination_required')
     latest = {}
     for c in checks['check_runs']:
-        latest.setdefault(c['name'], c)
+        previous = latest.get(c['name'])
+        if previous is None or (c.get('started_at') or '') > (previous.get('started_at') or ''):
+            latest[c['name']] = c
     need({'guard', 'build-preview-artifact'} <= latest.keys(), 'required_checks_missing')
     for name, c in latest.items():
         need(c['head_sha'] == q['source_sha'] and c['status'] == 'completed'
