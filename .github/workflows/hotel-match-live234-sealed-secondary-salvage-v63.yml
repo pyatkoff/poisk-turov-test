@@ -75,7 +75,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],'server-read-only','three historical deterministic child dirs','no provider','no DB reads/writes','234 ID membership']:
+          for x in [os.environ['OP'],'server-read-only','hotel-match-live234-tv-secondary-1971-20260923-o0-n78-v1','hotel-match-live234-tv-secondary-1971-20260923-o78-n78-v1','hotel-match-live234-tv-secondary-1971-20260923-o156-n78-v1','no provider','no DB reads/writes','234 ID membership']:
               assert x.lower() in b.lower(),x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
