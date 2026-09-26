@@ -44,7 +44,7 @@ jobs:
           set -euo pipefail
           f=scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_current_v60.php
           ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' "$f"
-          grep -Fq "V60_EXPECTED_SINGLE=12" "$f"
+          grep -Fq "V60_EXPECTED_SINGLE=2" "$f"
           grep -Fq "hold_target_effective_anex_other" "$f"
           grep -Fq "AnyTourMatchAnexEffectiveCoverage::fromPdo" "$f"
           grep -Fq "completed_read_only_v59_current_audit" "$f"
