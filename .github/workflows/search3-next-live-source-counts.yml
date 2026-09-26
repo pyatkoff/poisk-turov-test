@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p search3-next-live-source-counts
-          cat > /tmp/search3-next-live-source-counts.cjs <<'JS'
+          cat > search3-next-live-source-counts.cjs <<'JS'
           const {chromium}=require('playwright'),fs=require('fs');
           (async()=>{
             const browser=await chromium.launch({headless:true});
@@ -69,7 +69,7 @@ jobs:
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/search3-next-live-source-counts.cjs
+          node search3-next-live-source-counts.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

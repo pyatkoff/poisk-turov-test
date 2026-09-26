@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json,os,sys
 from pathlib import Path
-COMMAND="/search3-next-live-source-counts-v4"
+COMMAND="/search3-next-live-source-counts-v5"
 def authorize(event,env):
     if env.get("GITHUB_EVENT_NAME")!="issue_comment": return False,"wrong_event"
     if env.get("GITHUB_RUN_ATTEMPT")!="1": return False,"rerun_forbidden"
