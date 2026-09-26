@@ -773,6 +773,27 @@ function anytour_anex_search3_out(array $data, int $status): void
     exit;
 }
 
+function anytour_anex_search3_failure_diagnostics(Throwable $error, array $last, bool $retryAttempted): array
+{
+    $classes = [
+        'ANEX_HTTP_ERROR' => 'http_error',
+        'ANEX_INVALID_RESPONSE' => 'invalid_response',
+        'ANEX_SUPPLIER_ERROR' => 'supplier_error',
+        'ANEX_TRANSPORT_ERROR' => 'transport_error',
+        'ANEX_RESPONSE_TOO_LARGE' => 'response_too_large',
+        'ANEX_REQUEST_LIMIT' => 'request_limit',
+        'ANEX_SEARCH_PAGINATION_LIMIT' => 'pagination_limit',
+        'ANEX_INVALID_PRICES' => 'invalid_prices',
+    ];
+    $facts = ['failure_class' => $classes[$error->getMessage()] ?? 'other', 'retry_attempted' => $retryAttempted];
+    $actions = ['SearchTour_PRICES', 'SearchTour_TOWNFROMS', 'SearchTour_STATES', 'SearchTour_CURRENCIES'];
+    if (is_string($last['action'] ?? null) && in_array($last['action'], $actions, true)) $facts['action'] = $last['action'];
+    if (is_int($last['http_status'] ?? null) && $last['http_status'] >= 100 && $last['http_status'] <= 599) $facts['http_status'] = $last['http_status'];
+    if (is_int($last['curl_errno'] ?? null) && $last['curl_errno'] >= 0 && $last['curl_errno'] <= 999) $facts['curl_errno'] = $last['curl_errno'];
+    if (is_int($last['supplier_code'] ?? null) && $last['supplier_code'] >= 0 && $last['supplier_code'] <= 99999) $facts['supplier_code'] = $last['supplier_code'];
+    return $facts;
+}
+
 function anytour_anex_search3_retryable_initial_price_502(Throwable $error, array $last): bool
 {
     return $error->getMessage() === 'ANEX_HTTP_ERROR'
@@ -849,6 +870,7 @@ function anytour_anex_search3_http(): void
         };
         $pdo = v2_data_db();
         if ($action === 'search') {
+            $_SESSION['anex_initial_price_502_retry_attempted'] = false;
             if (!is_array($_SESSION['anex_initial_week_gate'] ?? null)) $_SESSION['anex_initial_week_gate'] = [];
             $initialWeekGate = anytour_anex_initial_week_gate($_SESSION['anex_initial_week_gate'], $request);
             if (!$initialWeekGate['allowed']) {
@@ -867,6 +889,7 @@ function anytour_anex_search3_http(): void
                 $last = isset($client) ? $client->lastRequestDiagnostics() : [];
                 if ($operatorScope === 'exclude' || !anytour_anex_search3_retryable_initial_price_502($error, $last)) throw $error;
                 $_SESSION['offer_context'] = [];
+                $_SESSION['anex_initial_price_502_retry_attempted'] = true;
                 $data = anytour_anex_search3_run($request, $pdo, $clientFactory(),
                     $_SESSION['dictionaries'], $diagnostics, $observer, $_SESSION['offer_context'], $operatorScope);
             }
@@ -903,7 +926,10 @@ function anytour_anex_search3_http(): void
         }
         $code = ($last['supplier_code'] ?? null) === 101 ? 'supplier_conditions_rejected'
             : (($last['curl_errno'] ?? null) === 28 ? 'supplier_timeout' : 'supplier_unavailable');
-        anytour_anex_search3_out(['ok' => false, 'error' => $code], $code === 'supplier_conditions_rejected' ? 422 : 502);
+        $retryAttempted = !empty($_SESSION['anex_initial_price_502_retry_attempted']);
+        anytour_anex_search3_out(['ok' => false, 'error' => $code,
+            'diagnostic' => anytour_anex_search3_failure_diagnostics($error, $last, $retryAttempted)],
+            $code === 'supplier_conditions_rejected' ? 422 : 502);
     }
 }
 
