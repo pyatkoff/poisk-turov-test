@@ -1,5 +1,11 @@
 # Search3 v147 — isolated visual migration
 
+## SAMO quote recovery — 2026-09-26
+
+Current-search SAMO verification retains the first pending, confirmed or failed attempt. Reopening the offer reuses that outcome; after flight confirmation it retains the flight outcome. An unconfirmed attempt returns to other offers with the listing price explicitly unconfirmed. It cannot silently submit the same quote again. A new explicit search invalidates previous receipts. Browser-local failure events retain only fixed public status/category codes, without response text, identities or private state.
+
+Focused fixtures cover duplicate selection, reopening, terminal HTTP/network/invalid responses, changed search, flight continuation and safe recovery at mobile/tablet/desktop widths. No supplier request is required for these checks. The last real SAMO acceptance remains UNKNOWN/unconfirmed; this recovery does not establish supplier readiness. Actual cause, direct ANEX acceptance and physical Safari remain open. Latest exact preview publication receipts are tracked in coordination #3419; previous publication records below are retained history.
+
 ## Published stage 2 — 2026-09-25
 
 Published at https://anytoour.ru/_preview/search3-next-candidate/visual-search/ (use the plain entry for live mode; `?scenario=snapshot` explicitly stays historical). Default entry reuses canonical TV + direct ANEX + SAMO/Andromeda data/lifecycle, exact-hotel calendar and canonical lead owner. It restores URL conditions without starting a supplier search. Explicit labelled snapshot/demo scenarios retain the offline graph. LOCAL offers only feed calendar/history/SEO; the canonical hotel catalogue still owns IDs, full galleries and facts.

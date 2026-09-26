@@ -12,7 +12,8 @@ w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.C
 w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
 w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
 w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
-w.fetch=async(url,options={})=>new Response(JSON.stringify(await transport.json(url,options)),{status:200,headers:{'Content-Type':'application/json'}});
+w.fetch=async(url,options={})=>{const value=await transport.json(url,options);return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
+const quoteFailures=[];w.addEventListener('anytour:quote-failure',e=>quoteFailures.push(e.detail));
 for(const file of scripts)w.eval(source(file));
 const settle=async()=>{await new Promise(resolve=>setTimeout(resolve,120));};
 const wait=async(fn)=>{for(let i=0;i<40;i++){if(fn())return;await settle();}throw Error('Timed out: '+q('#cards').textContent+' / '+q('#modal-body').textContent);};
@@ -55,6 +56,26 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  transport.state.failAnex=true;click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('2 варианта'));assert.match(q('#search-status').textContent,/Получены не все предложения/);
  assert.doesNotMatch(q('#search-status').textContent,/Получаем предложения|100%/,'terminal partial search must not reuse a loading message');
  assert.match(q('#search-status').textContent,/найденные туры доступны для выбора/);
+ // A failed current SAMO quote has one safe exit and cannot be repeated by reopening.
+ const quoteCount=()=>transport.calls.filter(c=>c.url.endsWith('/api-andromeda-quote-preview.php')).length;
+ for(const flightChoice of [false,true]){
+  transport.state.samoFailure='supplier_auth';transport.state.samoFlightChoice=flightChoice;
+  click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>!q('[data-action="stop-search"]')&&q('#results-summary').textContent.includes('2 варианта'));
+  click('[data-action="all-offers"][data-id="501"]');
+  const chooseSamo=()=>[...d.querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('andromeda%3A')).click();
+  chooseSamo();await settle();const before=quoteCount();click('[data-action="refresh-hotel"]');
+  if(flightChoice){await wait(()=>q('[data-action="apply-andromeda-flights"]'));click('[data-action="apply-andromeda-flights"]');}
+  await wait(()=>q('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+  assert.match(q('#modal-footer').textContent,/Цена из выдачи · не подтверждена/);
+  assert.match(q('#modal-footer').textContent,/Выбрать другой тур/);assert(!q('[data-action="refresh-hotel"]'));
+  assert.equal(quoteCount(),before+(flightChoice?2:1));
+  assert.equal(quoteFailures.at(-1).failureCategory,'supplier_auth');assert.equal(quoteFailures.at(-1).httpStatus,502);
+  click('#modal-footer [data-action="all-offers"]');chooseSamo();await settle();
+  assert.match(q('#modal-body .error-text').textContent,/Подтверждение тура не получено/);
+  assert.equal(quoteCount(),before+(flightChoice?2:1),'reopening must never resubmit a sealed attempt');
+  click('[data-action="close-modal"]');await settle();
+ }
+ assert.equal(quoteFailures.length,2,'only the first failure emits a local diagnostic');
  const url=w.location.href;w.history.replaceState(null,'','/poisk-turov/');assert.equal(w.Search3CanonicalProfilesV1.create(()=>{}),null,'production consumer stays denied');w.history.replaceState(null,'',url);
  assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);
  console.log('PASS live bridge: explicit search only; three canonical sources → one hotel; current TV quote/flights/exact-price application dry-run; SAMO verified receipt; ANEX concrete + non-final surcharge; no live HTTP');

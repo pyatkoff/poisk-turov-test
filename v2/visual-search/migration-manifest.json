@@ -53,7 +53,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "published-bootstrap-calendar-verified",
   "adaptedFiles": {
-    "app.js": "799488f0131341700e76aeedbe99feec2e001621d1403489ef7c73f240f0ac9c"
+    "app.js": "c19a8e032f62d38c8a520229a65ea2ee7164f9b71bc69199602e578f2198cc08"
   },
   "publication": {
     "sourceSha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
@@ -65,5 +65,12 @@
     "productionChanged": false,
     "realTourAcceptance": false,
     "physicalSafariAcceptance": false
+  },
+  "quoteRecovery": {
+    "date": "2026-09-26",
+    "scope": "SAMO current-search initial quote and flight confirmation",
+    "noAutomaticReplay": true,
+    "safeBrowserFailureClassification": true,
+    "realSupplierAcceptance": false
   }
 }

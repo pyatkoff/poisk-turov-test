@@ -6,7 +6,7 @@
   const catalog = { departures: [], countries: [], meals: [], mealPlans: [], mealPlanRevision: null, mealPlanAvailable: false, regions: {} };
   const regionRequests=new Map();
   const quoteReceipts = new WeakMap();
-  const andromedaQuoteChoices=new Map();
+  const andromedaQuoteChoices=new Map(),andromedaQuoteAttempts=new Map();
   const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
@@ -293,7 +293,7 @@
   function stop(){
     clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
-    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();
+    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();
     return generation;
   }
   async function searchError(run,error){
@@ -1100,25 +1100,69 @@
     return Object.freeze({state:pending?'flight_selection_required':'quote_verified',finalPrice,finalPriceVerified:verified,
       flightSelectionRequired:pending,flights:Object.freeze(flights)});
   }
+  function hasAndromedaQuoteAttempt(o){const prepared=andromedaQuoteRequest(o);return !!prepared&&andromedaQuoteAttempts.has(prepared.key);}
+  function andromedaQuoteFailure(status=0,payload=null,kind=''){
+    const allowed=['supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal'];
+    const category=kind|| (status===429?'limit':status===422?'unavailable':status===403?'access':status===400?'invalid_request':allowed.includes(payload?.failure_category)?payload.failure_category:'internal');
+    const message=category==='limit'?'Сейчас проверка этого поставщика недоступна. Выберите другое предложение или вернитесь позже.':
+      category==='unavailable'?'Не удалось подтвердить этот тур. Выберите другое предложение.':
+      category==='access'?'Проверка этого тура временно недоступна.':
+      category==='invalid_request'?'Условия этого предложения не удалось проверить.':
+      category==='invalid_response'?'Andromeda вернул некорректное подтверждение. Цена и наличие пока неизвестны.':
+      category==='stale'?'Условия поиска изменились. Выберите тур заново.':
+      'Подтверждение тура не получено. Цена и наличие пока неизвестны.';
+    return Object.assign(new Error(message),{code:category==='unavailable'?'offer_unavailable':'quote_unconfirmed',retryable:false,
+      httpStatus:Number.isInteger(status)&&status>=0&&status<=599?status:0,failureCategory:category});
+  }
   async function verifyAndromeda(o,flightSelection=null){
-    const prepared=andromedaQuoteRequest(o,flightSelection);
+    const base=andromedaQuoteRequest(o);
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaQuoteApi,'/_preview/search3-anex-candidate/api-andromeda-quote-preview.php');
-    if(!prepared||!url)throw new Error('Предложение Andromeda устарело. Повторите поиск.');
-    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
-    const epoch=generation,timeout=setTimeout(()=>controller.abort(),45000);
-    try{
-      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
-        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(prepared.body)});
-      const payload=await response.json().catch(()=>null);
-      if(controller.signal.aborted||epoch!==generation||!andromedaQuoteRequest(o,flightSelection))throw new Error('Условия поиска изменились. Выберите тур заново.');
-      if(!response.ok||payload?.ok!==true||!payload.data){
-        if(flightSelection)andromedaQuoteChoices.delete(prepared.key);
-        throw new Error(response.status===429?'Лимит проверки Andromeda временно исчерпан.':'Andromeda не смог подтвердить выбранное предложение.');
+    if(!base||!url)throw Object.assign(new Error('Предложение Andromeda устарело. Повторите поиск.'),{code:'offer_expired',retryable:false});
+    const retained=andromedaQuoteAttempts.get(base.key),phase=flightSelection?'continuation':'initial';
+    // Once flights were submitted, reopening must retain that outcome, not restart the initial choice.
+    const previous=flightSelection?retained?.continuation:retained?.continuation||retained?.initial;
+    if(previous){
+      if(flightSelection){
+        const expected=previous.selection;
+        if(Object.keys(flightSelection).sort().join(',')!=='outbound_ref,provider,return_ref'
+          ||Object.keys(expected).some(key=>expected[key]!==flightSelection[key]))throw andromedaQuoteFailure(0,null,'unavailable');
       }
-      const quote=normalizeAndromedaQuote(payload.data,prepared.localId);if(!quote){if(flightSelection)andromedaQuoteChoices.delete(prepared.key);throw new Error('Andromeda вернул некорректное подтверждение.');}
-      if(quote.flightSelectionRequired)andromedaQuoteChoices.set(prepared.key,quote);else andromedaQuoteChoices.delete(prepared.key);
-      return quote;
-    }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
+      return previous.promise;
+    }
+    const prepared=flightSelection?andromedaQuoteRequest(o,flightSelection):base;
+    if(!prepared)throw Object.assign(new Error('Предложение Andromeda устарело. Повторите поиск.'),{code:'offer_expired',retryable:false});
+    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    const epoch=generation;let timedOut=false;
+    const timeout=setTimeout(()=>{timedOut=true;controller.abort();},45000);
+    const attempts=retained||{},attempt={selection:flightSelection?structuredClone(flightSelection):null};
+    attempts[phase]=attempt;andromedaQuoteAttempts.set(base.key,attempts);
+    attempt.promise=(async()=>{
+      let status=0;
+      try{
+        const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+          headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(prepared.body)});
+        status=response.status;
+        const payload=await response.json().catch(()=>null);
+        if(controller.signal.aborted||epoch!==generation||!andromedaQuoteRequest(o,flightSelection))throw andromedaQuoteFailure(status,null,timedOut?'timeout':'stale');
+        if(!response.ok||payload?.ok!==true||!payload.data)throw andromedaQuoteFailure(status,payload);
+        const quote=normalizeAndromedaQuote(payload.data,prepared.localId);
+        if(!quote)throw andromedaQuoteFailure(status,null,'invalid_response');
+        if(quote.flightSelectionRequired)andromedaQuoteChoices.set(prepared.key,quote);else andromedaQuoteChoices.delete(prepared.key);
+        return quote;
+      }catch(error){
+        if(flightSelection)andromedaQuoteChoices.delete(prepared.key);
+        const failure=error?.retryable===false?error:andromedaQuoteFailure(status,null,epoch!==generation?'stale':timedOut?'timeout':'network');
+        // Browser-local diagnostics contain fixed public classifications only, never response text or identities.
+        if(epoch===generation){
+          const detail=Object.freeze({provider:'andromeda',action:prepared.body.action,code:failure.code,
+            httpStatus:failure.httpStatus,failureCategory:failure.failureCategory});
+          root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+          if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
+        }
+        throw failure;
+      }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
+    })();
+    return attempt.promise;
   }
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
@@ -1154,5 +1198,5 @@
   }
   function variantPrice(t,v){return amount(v?.price);}
   function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAndromeda,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);

@@ -833,8 +833,59 @@ test('Andromeda flight choice continuation accepts only retained outbound and re
  assert.equal(continuation.action,'quote_select_flights');
  assert.deepEqual(JSON.parse(JSON.stringify(continuation.flight_selection)),{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)});
  assert.equal(verified.state,'quote_verified');assert.equal(verified.finalPrice.amount,'1512345');
- await assert.rejects(h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)}),/устарело/);
+ assert.equal(await h.data.verifyAndromeda(offer,{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)}),verified,'completed continuation reuses the receipt');
+ assert.equal(await h.data.verifyAndromeda(offer),verified,'reopening retains the confirmed flight choice');
  assert.equal(h.andromedaQuoteCalls.length,2,'verified continuation cannot be replayed from cleared retained refs');
+});
+test('Andromeda retains one attempt per offer and one flight continuation',async()=>{
+ const gate=defer();
+ const h=harness({native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+  andromedaQuote:async body=>{await gate.promise;return {response:{ok:true,status:200,json:async()=>({ok:true,data:andromedaVerified(101)})}};}});
+ await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='andromeda');
+ const first=h.data.verifyAndromeda(offer),second=h.data.verifyAndromeda(offer);
+ // Attach rejection handlers before settling to report a duplicate abort as an assertion.
+ const both=Promise.allSettled([first,second]);await flush();const requests=h.andromedaQuoteCalls.length;
+ gate.resolve();const results=await both;
+ assert.equal(requests,1,'double selection must share the first request');
+ assert.ok(results.every(r=>r.status==='fulfilled'));
+ assert.equal(results[0].value,results[1].value);
+ assert.equal(await h.data.verifyAndromeda(offer),results[0].value,'reopening a confirmed offer reuses its exact receipt');
+ assert.equal(h.andromedaQuoteCalls.length,1);
+});
+test('Andromeda first failure stays terminal and retains only safe diagnostic fields',async()=>{
+ for(const failure of [
+  {status:502,payload:{ok:false,error:'supplier_unavailable',failure_category:'supplier_auth'},category:'supplier_auth'},
+  {status:422,payload:{ok:false,error:'quote_not_available'},category:'unavailable'},
+  {status:429,payload:{ok:false,error:'monthly_quota_exhausted'},category:'limit'},
+  {status:403,payload:{ok:false,error:'forbidden'},category:'access'},
+  {status:502,payload:{ok:false,error:'private sid secret',failure_category:'private sid secret',message:'private sid secret'},category:'internal'},
+  {status:0,category:'network'},
+  {status:200,payload:{ok:true,data:{...andromedaVerified(101),final_price_verified:false}},category:'invalid_response'}
+ ]){
+  const h=harness({native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+   andromedaQuote:async()=>{if(!failure.status)throw Error('private sid secret');return {response:{ok:failure.status===200,status:failure.status,json:async()=>failure.payload}};}});
+  await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='andromeda');
+  const first=await h.data.verifyAndromeda(offer).catch(e=>e),again=await h.data.verifyAndromeda(offer).catch(e=>e);
+  assert.equal(h.andromedaQuoteCalls.length,1,'uncertain/failed quote must not be replayed');assert.equal(first,again);
+  assert.equal(first.retryable,false);assert.equal(first.httpStatus,failure.status);assert.equal(first.failureCategory,failure.category);
+  assert.doesNotMatch(first.message+JSON.stringify(first),/private|secret|sid/);
+  assert(h.providers().includes('tourvisor'),'one failed quote must not remove other providers');
+  await h.start();await h.poll();const fresh=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='andromeda');
+  await h.data.verifyAndromeda(fresh).catch(()=>{});assert.equal(h.andromedaQuoteCalls.length,2,'only an explicit new search owns a new attempt');
+  await assert.rejects(h.data.verifyAndromeda(offer),/устарело/);assert.equal(h.andromedaQuoteCalls.length,2);
+ }
+});
+test('failed flight confirmation cannot be restarted by reopening the offer or changing flights',async()=>{
+ const h=harness({native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+  andromedaQuote:async body=>({response:body.action==='quote'?{ok:true,status:200,json:async()=>({ok:true,data:andromedaChoice(101)})}:{ok:false,status:502,json:async()=>({ok:false,error:'supplier_unavailable',failure_category:'quote_state'})}})});
+ await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='andromeda');
+ await h.data.verifyAndromeda(offer);
+ const selection={provider:'andromeda',outbound_ref:'flight_'+'1'.repeat(32),return_ref:'flight_'+'3'.repeat(32)};
+ const error=await h.data.verifyAndromeda(offer,selection).catch(e=>e);
+ assert.equal(error.failureCategory,'quote_state');
+ assert.equal(await h.data.verifyAndromeda(offer).catch(e=>e),error,'offer reopening retains continuation failure');
+ await assert.rejects(h.data.verifyAndromeda(offer,{...selection,outbound_ref:'flight_'+'2'.repeat(32)}));
+ assert.equal(h.andromedaQuoteCalls.length,2,'no second supplier continuation');
 });
 test('Stop aborts pending Andromeda quote and stale result cannot be accepted',async()=>{
  const gate=defer();let quoteSignal=null;
