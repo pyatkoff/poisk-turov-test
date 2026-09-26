@@ -60,7 +60,9 @@ final class AnyTourAnexPreviewGateway
             // A failed replacement search invalidates earlier supplier references.
             unset($session['search'], $session['saved_offers']);
             $search = $this->newSearch();
-            $result = $search->search($request['criteria']);
+            // Foreground retains at most 300 offers: do not drain collector pages
+            // before returning that first page. Explicit background mode keeps 12.
+            $result = $search->search($request['criteria'], $this->enforcePreviewRateLimit ? 1 : 12);
             $session['search'] = $search->snapshot();
             $session['saved_offers'] = [
                 'search_ref' => bin2hex(random_bytes(16)),
@@ -201,7 +203,6 @@ final class AnyTourAnexPreviewGateway
             $session['request_count'] = 0;
         }
         if (!isset($session['burst_started_at']) || !is_int($session['burst_started_at'])
-            || $session['burst_started_at'] > $now
             || $session['burst_started_at'] + self::BURST_WINDOW_SECONDS <= $now) {
             $session['burst_started_at'] = $now;
             $session['burst_request_count'] = 0;
