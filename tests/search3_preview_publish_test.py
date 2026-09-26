@@ -353,4 +353,9 @@ class Provenance(unittest.TestCase):
             with self.subTest(mode=mode),self.assertRaises(ValueError):publish.verify_provenance(api,fixture()[0],'d'*40)
 
 
+    def test_latest_check_per_name_wins(self):
+        source = Path('scripts/deploy/search3_preview_publish.py').read_text()
+        self.assertIn("previous = latest.get(c['name'])", source)
+        self.assertIn("(c.get('started_at') or '') > (previous.get('started_at') or '')", source)
+
 if __name__=='__main__':unittest.main()
