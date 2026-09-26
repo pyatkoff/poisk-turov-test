@@ -721,33 +721,33 @@ test('direct ANEX keeps a shorter user range unchanged',async()=>{
  assert.equal(h.anexCalls.length,1);
  assert.deepEqual([h.anexCalls[0].params.dateFrom,h.anexCalls[0].params.dateTo],[search.from,search.to]);
 });
-test('remaining Andromeda pages join the first union before overall completion',async()=>{
- const page2=defer(),ref=page=>'offer_'+String(page).repeat(64);
+test('Andromeda first page is immediately usable and later pages require explicit continuation',async()=>{
+ const ref=page=>'offer_'+String(page).repeat(64);
  const h=harness({
-  native:async body=>{
-   if(body.page===2)await page2.promise;
-   return {response:{ok:true,json:async()=>directAndromeda(body,{offerRef:ref(body.page),localId:200+body.page,pagesCount:3,status:'complete'})}};
-  },
+  native:async body=>({response:{ok:true,json:async()=>directAndromeda(body,{offerRef:ref(body.page),localId:200+body.page,pagesCount:3,status:'complete'})}}),
   database:(i,p)=>snapshot(p,[])
  });
  await h.start();await flush();
- await waitFor(()=>h.nativeCalls.length===2,'Andromeda page 2 must start while Tourvisor is still running');
- assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2]);
- const andromedaLoading=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.status==='loading'&&e.background===true).at(-1);
- assert.ok(andromedaLoading,'in-progress Andromeda pagination remains visible as background loading');
- assert.equal(andromedaLoading.pagesLoaded,1);assert.equal(andromedaLoading.pagesTotal,3);assert.equal(andromedaLoading.offers,1);
- const completing=h.poll();await flush();
- assert.equal(h.events.some(e=>e.type==='complete'),false,'first overall completion waits for terminal Andromeda pagination');
- page2.resolve();await completing;await flush();
- assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2,3]);
- const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.pagesLoaded===3).at(-1);
- assert.equal(receipt.status,'complete');assert.equal(receipt.pagesTotal,3);assert.equal(receipt.offers,3);
- const complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1],'initial search must not drain Andromeda continuation pages');
+ await h.poll();await flush();
+ let complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
+ const ready=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda').at(-1);
+ assert.equal(ready.status,'ready');assert.equal(ready.pagesLoaded,1);assert.equal(ready.pagesTotal,3);assert.equal(ready.offers,1);
+ assert.equal(complete.sources.andromeda.status,'partial');assert.equal(complete.sources.andromeda.pagesLoaded,1);assert.equal(complete.canContinue,true);
+ assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda').length,1,'first page is selectable before continuation');
+ await h.data.continueSearch();await flush();
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2],'one Continue click loads exactly one next Andromeda page per branch');
+ complete=h.events.filter(e=>e.type==='complete').at(-1);assert.equal(complete.canContinue,true);
+ assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda').length,2);
+ await h.data.continueSearch();await flush();
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2,3],'second Continue click loads the next page, never a background drain');
+ complete=h.events.filter(e=>e.type==='complete').at(-1);assert.equal(complete.canContinue,false);
  assert.equal(complete.sources.andromeda.status,'complete');assert.equal(complete.sources.andromeda.pagesLoaded,3);assert.equal(complete.sources.andromeda.pagesTotal,3);
- assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda').length,3,'all mapped Andromeda pages join the first completed union');
- assert.equal(h.dbBodies.length,0,'Andromeda pagination never rereads stored offers into the live union');
+ assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(offer=>offer.provider==='andromeda').length,3);
+ assert.equal(h.calls.filter(c=>c.action==='search_continue').length,1,'Tourvisor continuation stops independently after it adds no inventory');
+ assert.equal(h.dbBodies.length,0,'Andromeda continuation never rereads stored offers into the live union');
 });
-test('late Andromeda page failure makes the first union partial while preserving accepted pages',async()=>{
+test('Andromeda continuation failure happens only after the button and preserves accepted first-page offers',async()=>{
  const ref=page=>'offer_'+String(page).repeat(64);
  const h=harness({
   native:async body=>body.page===1
@@ -755,17 +755,21 @@ test('late Andromeda page failure makes the first union partial while preserving
    :{response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}},
   database:(i,p)=>snapshot(p,[])
  });
- await h.start();await flush();
- await waitFor(()=>h.events.some(e=>e.type==='provider'&&e.provider==='andromeda'&&e.continuationFailed===true),'late page failure must produce a partial retained receipt');
- await h.poll();
+ await h.start();await flush();assert.deepEqual(h.nativeCalls.map(call=>call.page),[1]);
+ await h.poll();await flush();
+ const initial=h.events.filter(e=>e.type==='complete').at(-1);assert.equal(initial.canContinue,true);
+ assert.ok(h.latest().flatMap(hotel=>hotel.offers).some(offer=>offer.provider==='andromeda'));
+ await h.data.continueSearch();await flush();
  const receipt=h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda'&&e.continuationFailed===true).at(-1);
  assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2]);assert.equal(receipt.status,'partial');
  assert.equal(receipt.pagesLoaded,1);assert.equal(receipt.pagesTotal,3);assert.equal(receipt.offers,1);
- assert.ok(h.latest().flatMap(hotel=>hotel.offers).some(offer=>offer.provider==='andromeda'),'a late page failure must not clear the accepted first page');
+ assert.ok(h.latest().flatMap(hotel=>hotel.offers).some(offer=>offer.provider==='andromeda'),'failed continuation must not clear the accepted first page');
  const complete=h.events.filter(e=>e.type==='complete').at(-1);assert.ok(complete);
- assert.equal(complete.sources.andromeda.status,'partial');assert.equal(complete.sources.andromeda.continuationFailed,true,'first completion discloses retained partial Andromeda coverage');
+ assert.equal(complete.sources.andromeda.status,'partial');assert.equal(complete.sources.andromeda.continuationFailed,true);
+ assert.equal(complete.canContinue,false,'failed branch is terminal for this search and is not replayed');
+ assert.equal(await h.data.continueSearch(),false);assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2]);
 });
-test('stop aborts a pending Andromeda first-union continuation before another page is applied',async()=>{
+test('stop aborts a pending explicit Andromeda continuation before another page is applied',async()=>{
  const page2=defer(),ref=page=>'offer_'+String(page).repeat(64);
  const h=harness({
   native:async body=>{
@@ -774,11 +778,12 @@ test('stop aborts a pending Andromeda first-union continuation before another pa
   },
   database:(i,p)=>snapshot(p,[])
  });
- await h.start();await flush();
- await waitFor(()=>h.nativeCalls.length===2,'Andromeda page 2 must already be pending before Tourvisor completion');
- const before=h.events.length;h.data.stop();page2.resolve();await flush();
+ await h.start();await flush();await h.poll();await flush();
+ assert.deepEqual(h.nativeCalls.map(call=>call.page),[1],'page 2 must not start before Continue');
+ const pending=h.data.continueSearch();await waitFor(()=>h.nativeCalls.length===2,'explicit Continue must start page 2');
+ const before=h.events.length;h.data.stop();page2.resolve();await pending;await flush();
  assert.deepEqual(h.nativeCalls.map(call=>call.page),[1,2],'stopped generation must never request page 3');
- assert.equal(h.events.length,before,'stopped generation must ignore the late Andromeda page');
+ assert.equal(h.events.length,before,'stopped generation must ignore the late continuation page');
 });
 test('native Andromeda offers are visible without any LOCAL live read',async()=>{
  const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),database:async()=>assert.fail('live search must not read LOCAL offers')});
