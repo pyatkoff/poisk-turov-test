@@ -1,0 +1,17 @@
+name: ANEX Search3 preview safe failure diagnostics
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'v2/api-anex-search3-preview.php'
+      - 'tests/anex-search3-preview-safe-failure-diagnostics-test.php'
+permissions:
+  contents: read
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          php -l v2/api-anex-search3-preview.php
+          php tests/anex-search3-preview-safe-failure-diagnostics-test.php
