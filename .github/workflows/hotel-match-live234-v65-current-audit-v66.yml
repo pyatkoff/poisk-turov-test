@@ -1,4 +1,4 @@
-name: MATCH v65 CURRENT read-only audit v66
+name: MATCH v65 CURRENT dependency-complete audit v67
 
 'on':
   pull_request:
@@ -16,9 +16,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  OP: hotel-match-live234-v65-current-audit-1971-20260926-v66
-  PREPARED_HEAD: 55caae97b228899592874340753fb493ff3b27e6
+  OP: hotel-match-live234-v65-current-package-1971-20260927-v67
+  PREPARED_HEAD: 5dada7cd3392afa0ae35c9f2920cfbc29d8eba92
   OWNER_CONSENT: '5850009886'
+  PRIOR_ARTIFACT: '10915364613'
+  PRIOR_ARCHIVE_SHA: 0d9deaff9dfccb216f6a00d7d0bb7982abe54e17cf9b281644298775f27f5b7b
   SOURCE_ARTIFACT: '10909959597'
   SOURCE_ARCHIVE_SHA: 033d372e5aeb4d495b9fe542c148c2d4eb080889b5eb5ca08a5642837e2dbaf8
   SOURCE_RESULT_SHA: 42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810
@@ -45,9 +47,10 @@ jobs:
           mkdir -p input reservation terminal
           test "$(git rev-parse HEAD)" = "$HEAD"
           test "$(git merge-base HEAD "$PREPARED_HEAD")" = "$PREPARED_HEAD"
-          test "$(git diff --name-only "$PREPARED_HEAD" HEAD)" = '.github/workflows/hotel-match-live234-v65-current-audit-v66.yml'
+          test "$(git diff --name-only "$PREPARED_HEAD" HEAD)" = "$(printf '%s\n' .github/workflows/hotel-match-live234-v65-current-audit-v66.yml scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php)"
           test "$(git hash-object scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php)" = 9aaae6deab79fdbf26e116eabc02c5b9fc2fd7c0
           test "$(git hash-object tests/hotel_match_live234_v65_current_audit_v66_test.php)" = d308d3b3ac6e38b9045b60c68d30902e0f098d5f
+          test "$(git hash-object scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php)" = 2f66a227705ef372055a34b73f328b77cbd2de44
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$OWNER_CONSENT" >input/consent.json
           python3 - <<'PY'
           import json, os, time, urllib.request
@@ -92,6 +95,52 @@ jobs:
           PY
           php -l scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php
           php tests/hotel_match_live234_v65_current_audit_v66_test.php input/source-result.json
+      - name: Verify terminal predecessor and regression-test the complete package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$PRIOR_ARTIFACT/zip" -o input/prior.zip
+          test "$(sha256sum input/prior.zip | awk '{print $1}')" = "$PRIOR_ARCHIVE_SHA"
+          python3 - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          with zipfile.ZipFile('input/prior.zip') as z:
+              for name in ('result.json','receipt.json'):
+                  members=[i for i in z.infolist() if pathlib.PurePosixPath(i.filename).name==name]
+                  assert len(members)==1 and members[0].file_size<=8388608
+                  pathlib.Path('input/prior-'+name).write_bytes(z.read(members[0]))
+          raw=pathlib.Path('input/prior-result.json').read_bytes()
+          sha=hashlib.sha256(raw).hexdigest()
+          assert sha=='76657ef9ccd625823baf2157f727ef152be259b2c9355039427d58fa5a6e4922'
+          p=json.loads(raw); q=json.load(open('input/prior-receipt.json'))
+          assert p['operation']==q['operation']=='hotel-match-live234-v65-current-audit-1971-20260926-v66'
+          assert p['state']=='failed_read_only_v65_current_audit' and p['reason']=='audit_failed'
+          assert q['result_sha256']==sha and q['readback_verified'] is True and q['no_replay'] is True
+          for obj in (p,q):
+              for key in ('database_reads','database_writes','mapping_writes','provider_http_calls'): assert obj[key]==0
+          PY
+          mkdir -p package/scripts/diagnostics package/app/integrations
+          cp scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php scripts/diagnostics/hotel_match_anex_effective_coverage.php package/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php package/app/integrations/
+          php -l package/scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php
+          php -r 'require $argv[1]; v67_package_check(); echo "COMPLETE_PACKAGE_LOAD_OK\n";' package/scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php
+          mv package/app/integrations/anex-search-mapping-registry.php input/registry.php
+          set +e
+          php -d display_errors=0 -r 'try {require $argv[1];} catch (Error $e) {exit(42);} exit(1);' package/scripts/diagnostics/hotel_match_anex_effective_coverage.php 2>/dev/null
+          oldrc=$?
+          php -r 'require $argv[1]; try {v67_package_check();} catch (RuntimeException $e) {exit($e->getMessage()==="package_dependency_missing"?42:1);} exit(1);' package/scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php
+          guardrc=$?
+          set -e
+          test "$oldrc" -eq 42; test "$guardrc" -eq 42
+          cp input/registry.php package/app/integrations/anex-search-mapping-registry.php
+          printf '\n' >> package/app/integrations/anex-search-mapping-registry.php
+          set +e
+          php -r 'require $argv[1]; try {v67_package_check();} catch (RuntimeException $e) {exit($e->getMessage()==="package_dependency_drift"?42:1);} exit(1);' package/scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php
+          driftrc=$?
+          set -e
+          test "$driftrc" -eq 42
+          cp input/registry.php package/app/integrations/anex-search-mapping-registry.php
+          php -r 'require $argv[1]; v67_package_check(); echo "PACKAGE_REGRESSIONS_4_PASS\n";' package/scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php
       - name: Reserve exact original49 read-only operation once
         env:
           GH_TOKEN: ${{ github.token }}
@@ -99,7 +148,7 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=match-v66-reservation&per_page=100" >input/prior-reservations.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=match-v67-reservation&per_page=100" >input/prior-reservations.json
           python3 - <<'PY'
           import json,os,pathlib
           assert json.load(open('input/prior-reservations.json'))['total_count']==0,'prior_reservation_no_replay'
@@ -112,11 +161,11 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-v66-reservation
+          name: match-v67-reservation
           path: reservation/reservation.json
           retention-days: 90
           if-no-files-found: error
-      - name: Execute unchanged read-only audit in isolated operation directory
+      - name: Execute dependency-complete read-only package in a new exclusive directory
         env:
           KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -125,19 +174,20 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          key="$RUNNER_TEMP/match-v66-key"; known="$RUNNER_TEMP/match-v66-known"
+          key="$RUNNER_TEMP/match-v67-key"; known="$RUNNER_TEMP/match-v67-known"
           trap 'rm -f "$key" "$known"' EXIT
           if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' >"$key"; else printf '%s' "$KEY" | base64 --decode >"$key"; fi
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
           ssh-keyscan -T15 -t ed25519 "$HOST" >"$known" 2>/dev/null
           remote="$USER@$HOST"; rel=".anytoour-match/operations/$OP"
           opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
-          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir \"\$HOME/$rel\"; mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\""
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir \"\$HOME/$rel\"; mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\"; mkdir -p \"\$HOME/$rel/payload/app/integrations\""
           scp "${opts[@]}" reservation/reservation.json "$remote:$rel/reservation.json"
-          scp "${opts[@]}" input/source-result.json input/source-receipt.json "$remote:$rel/payload/"
-          scp "${opts[@]}" scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" input/source-result.json input/source-receipt.json input/prior-result.json input/prior-receipt.json "$remote:$rel/payload/"
+          scp "${opts[@]}" package/scripts/diagnostics/*.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" package/app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
           set +e
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_RESULT=\"\$HOME/$rel/payload/source-result.json\" MATCH_SOURCE_RECEIPT=\"\$HOME/$rel/payload/source-receipt.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_RESULT=\"\$HOME/$rel/payload/source-result.json\" MATCH_SOURCE_RECEIPT=\"\$HOME/$rel/payload/source-receipt.json\" MATCH_PRIOR_RESULT=\"\$HOME/$rel/payload/prior-result.json\" MATCH_PRIOR_RECEIPT=\"\$HOME/$rel/payload/prior-receipt.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_live234_v65_current_package_v67.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
           rc=$?
           set -e
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
@@ -151,15 +201,15 @@ jobs:
           for obj in (r,q):
               for key in ('database_writes','mapping_writes','provider_http_calls'): assert obj[key]==0,(key,obj[key])
           assert r['safe_to_write_now'] is False
-          if r['state']=='completed_read_only_v65_current_audit':
+          if r['state']=='completed_read_only_v65_current_package':
               assert r['input_strict_count']==49 and r['input_catalog_count']==48 and len(r['rows'])==49
-          print(json.dumps({k:r.get(k) for k in ('state','reason','input_strict_count','status_counts','reason_counts')},ensure_ascii=False,sort_keys=True))
+          print(json.dumps({k:r.get(k) for k in ('state','reason','failure_stage','error_class','input_strict_count','status_counts','reason_counts')},ensure_ascii=False,sort_keys=True))
           PY
           test "$rc" -eq 0
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-live234-v65-current-audit-v66-${{ github.run_id }}
+          name: match-live234-v65-current-package-v67-${{ github.run_id }}
           path: |
             terminal/result.json
             terminal/receipt.json
