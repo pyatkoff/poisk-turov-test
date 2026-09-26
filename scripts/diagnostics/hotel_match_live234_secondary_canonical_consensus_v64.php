@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const V64_OP='hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64';
+const V64_OP='hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64b';
 const V64_SOURCE_OP='hotel-match-live234-sealed-secondary-salvage-1971-20260926-v63';
 const V64_SOURCE_SHA='dc4ad9e16b5f800a363f406965e318b6eb69bdb2ea77eb0b856cfe4c010fce9c';
 const V64_SOURCE_EDGES=48;
@@ -11,6 +11,11 @@ const V64_TV_BRIDGE=['bgoperator'=>'operator_115','operator_315'=>'operator_315'
 const V64_MAX_DIRS=5000;
 const V64_MAX_RESULT_BYTES=67108864;
 const V64_NODE_CAP=2500000;
+const V64_SOURCE_CHILD_HASHES=[
+    'hotel-match-live234-tv-secondary-1971-20260923-o0-n78-v1'=>'fb8cb7d6acbcc921aa1d6f8a1399190e4b0fb2e418d23c9ac0c84c6e470c20e4',
+    'hotel-match-live234-tv-secondary-1971-20260923-o78-n78-v1'=>'28f9dae4037d5e296751616d8cdb7ae753382d215ee628d2a3d1c4c29a935988',
+    'hotel-match-live234-tv-secondary-1971-20260923-o156-n78-v1'=>'0b396a1132ab21a1a7ad21eb777be988a8d1fbd432912b3bef19b45940dcc4de',
+];
 
 function v64_need(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
 function v64_json(mixed $v):string{return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
@@ -46,9 +51,12 @@ function v64_source_edges(array $src):array{
         $op=(int)($e['operator_id']??0);$expect=['bgoperator'=>18,'operator_315'=>25,'operator_342'=>43][$rawNs]??0;v64_need($op===$expect,'source_operator');
         $k=$ns.'|'.$native.'|'.$tv;
         if(isset($proof[$k]))continue;
+        $child=(string)($e['source_child']??'');$childSha=(string)($e['source_result_sha256']??'');
+        v64_need(isset(V64_SOURCE_CHILD_HASHES[$child])&&V64_SOURCE_CHILD_HASHES[$child]===$childSha,'source_child_hash');
         $row=['target'=>$tv,'namespace'=>$ns,'native_id'=>$native,'source_raw_namespace'=>$rawNs,'source_operator_id'=>$op,'source_edge_index'=>$i,
-            'search_id_sha256'=>(string)($e['search_id_sha256']??''),'tour_id_sha256'=>(string)($e['tour_id_sha256']??''),'operator_link_sha256'=>(string)($e['operator_link_sha256']??'')];
-        foreach(['search_id_sha256','tour_id_sha256','operator_link_sha256'] as$f)v64_need(v64_sha($row[$f]),'source_hash_'.$f);
+            'source_child'=>$child,'source_result_sha256'=>$childSha,
+            'tour_id_sha256'=>(string)($e['tour_id_sha256']??''),'operator_link_sha256'=>(string)($e['operator_link_sha256']??'')];
+        foreach(['tour_id_sha256','operator_link_sha256'] as$f)v64_need(v64_sha($row[$f]),'source_hash_'.$f);
         $proof[$k]=$row;$bySource[$ns.'|'.$native][$tv]=true;$byTarget[$tv][$ns][$native]=true;$targets[$tv]=true;
     }
     v64_need(count($proof)===V64_SOURCE_EDGES&&count($targets)===V64_SOURCE_TARGETS,'source_exact_scope');
