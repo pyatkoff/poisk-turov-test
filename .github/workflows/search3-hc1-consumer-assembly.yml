@@ -3,97 +3,64 @@ on:
   pull_request:
     types: [opened, synchronize]
     branches: [release/search3-production-ready-v1]
-    paths: ['.github/workflows/search3-hc1-consumer-assembly.yml','scripts/diagnostics/search3_hc1_assemble_consumer.py']
+    paths:
+      - '.github/workflows/search3-hc1-consumer-assembly.yml'
+      - 'scripts/diagnostics/search3_hc1_finish_consumer.py'
+      - 'patches/search3-hc1-hotel-content-browser.py'
 permissions: {contents: write, actions: read, issues: read}
 jobs:
   assemble:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.id == 226193297 && github.run_attempt == 1 &&
-      github.head_ref == 'ops/search3-hc1-consumer-assembly-20260925'
+      github.event.pull_request.user.id == 226193297 && github.event.pull_request.number == 3920 &&
+      github.run_attempt == 1 && github.head_ref == 'ops/search3-hc1-consumer-assembly-20260925'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
+    env:
+      HC1_ASSEMBLY_OUTPUT: '${{ runner.temp }}/hc1-consumer-final'
+      HC1_OUTPUT: '${{ runner.temp }}/hc1-consumer-final/browser'
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with: {ref: '${{ github.event.pull_request.head.sha }}', path: carrier, fetch-depth: 0, persist-credentials: false}
+        with: {ref: '${{ github.event.pull_request.head.sha }}', path: carrier, fetch-depth: 1, persist-credentials: false}
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with: {ref: '2a9efb9bebaa662467ae4dcad1c84ce426fdbd04', path: work, fetch-depth: 0, persist-credentials: false}
-      - name: Verify scope, claim and exact green inputs
+        with: {ref: '27ded93a212229d11d478c43e5efb3fc4478703d', path: work, fetch-depth: 1, persist-credentials: false}
+      - name: Verify current claim and exact carrier Security result
         env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
         run: |
-          set -euo pipefail
           python - <<'PY'
-          import json,os,time,urllib.request,subprocess
-          paths=subprocess.check_output(['git','-C','carrier','diff','--name-only','00a553e5a4c2ef34d06bf5303e4ec8e4af49dbe8','HEAD']).decode().splitlines()
-          assert sorted(paths)==['.github/workflows/search3-hc1-consumer-assembly.yml','scripts/diagnostics/search3_hc1_assemble_consumer.py'],paths
-          root='https://api.github.com/repos/pyatkoff/poisk-turov-test/'
+          import json,os,time,urllib.request
           def get(path):
-              req=urllib.request.Request(root+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
-              with urllib.request.urlopen(req,timeout=20) as r:return json.load(r)
-          c=get('issues/comments/5836203623');assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/3419') and 'app.js' in c['body']
-          for run,sha in [(36163725958,'2a9efb9bebaa662467ae4dcad1c84ce426fdbd04'),(36163726154,'2a9efb9bebaa662467ae4dcad1c84ce426fdbd04'),(36112796833,'9a4cb4f812f0eb03056ae1a639887f00c29980b4'),(36143904360,'c905a9b38e50c771a475768103afabe97e98abe0')]:
-              r=get('actions/runs/'+str(run));assert r['head_sha']==sha and r['conclusion']=='success'
-          for _ in range(30):
-              rs=[r for r in get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs'] if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
-              if rs and max(rs,key=lambda r:r['id'])['status']=='completed':
-                  assert max(rs,key=lambda r:r['id'])['conclusion']=='success';break
+              q=urllib.request.Request('https://api.github.com/repos/pyatkoff/poisk-turov-test/'+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=20) as r:return json.load(r)
+          c=get('issues/comments/5844474343')
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/3419')
+          assert 'HC-1' in c['body'] and 'app.js' in c['body'] and '27ded93a' in c['body']
+          for _ in range(45):
+              runs=[r for r in get('actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs'] if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if runs and max(runs,key=lambda r:r['id'])['status']=='completed':
+                  assert max(runs,key=lambda r:r['id'])['conclusion']=='success';break
               time.sleep(2)
           else:raise SystemExit('security_not_confirmed')
           PY
-      - name: Assemble checked inputs without ref or live writes
+      - name: Apply three exact changes to current source, not old donors
         working-directory: work
-        env:
-          GH_TOKEN: '${{ github.token }}'
-          HC1_ASSEMBLY_OUTPUT: '${{ runner.temp }}/hc1-consumer-source'
+        run: python ../carrier/scripts/diagnostics/search3_hc1_finish_consumer.py
+      - name: Install the existing pinned browser tools
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import os,re,subprocess,json,hashlib,urllib.request
-          out=Path(os.environ['HC1_ASSEMBLY_OUTPUT']);out.mkdir(parents=True,exist_ok=True)
-          code=Path('../carrier/scripts/diagnostics/search3_hc1_assemble_consumer.py').read_text()
-          (out/'assembly-source.py').write_text(code)
-          subprocess.run(['git','archive','--format=tar','-o',str(out/'source-tree.tar'),'HEAD'],check=True)
-          scope={'__name__':'hc1_assembly'};exec(compile(code,'hc1_assembly','exec'),scope)
-          original=scope['source']
-          def normalized_source(ref,path):
-              text=original(ref,path)
-              if path.endswith('.py'):text='\n'.join(text.splitlines())+'\n'
-              if path=='tests/search3-hc1-full-gallery-browser.py':
-                  (out/'donor-gallery-test.py').write_text(text)
-                  text,n=re.subn(r'(?m)^[ \t]+profiles\[old\][ \t]*=[ \t]*p[ \t]*$', '    profiles[old] = p', text);assert n==1
-                  text,n=re.subn(r"ids\s*=\s*list\(map\(int,\s*q\['legacyHotelIds\[\]'\]\)\)", "ids = list(map(int,q['legacyHotelIds[]']))",text);assert n==1
-              target=out/'inputs'/ref/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(text)
-              return text
-          scope['source']=normalized_source
-          files=scope['assemble']()
-          for path,text in files.items():
-              target=Path(path);target.parent.mkdir(parents=True,exist_ok=True);target.write_text(text)
-              target=out/'files'/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(text)
-          for p in ['v2/prototype-search/app.js','v2/prototype-search/data.js']:subprocess.run(['node','--check',p],check=True)
-          subprocess.run(['python3','-m','py_compile',scope['NEW_TEST']],check=True)
-          subprocess.run(['git','diff','--check'],check=True)
-          base=scope['BASE'];token=os.environ['GH_TOKEN']
-          def api(method,path,payload=None):
-              request=urllib.request.Request('https://api.github.com/repos/pyatkoff/poisk-turov-test/'+path,data=json.dumps(payload).encode() if payload is not None else None,headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},method=method)
-              with urllib.request.urlopen(request,timeout=30) as response:return json.load(response)
-          assert api('GET','git/ref/heads/release/search3-production-ready-v1')['object']['sha']==base
-          parent=api('GET','git/commits/'+base);tree=[]
-          for path,text in files.items():
-              if path.startswith('.github/workflows/'):continue
-              blob=api('POST','git/blobs',{'encoding':'utf-8','content':text})
-              assert blob['sha']==hashlib.sha1(b'blob '+str(len(text.encode())).encode()+b'\0'+text.encode()).hexdigest()
-              tree.append({'path':path,'mode':'100644','type':'blob','sha':blob['sha']})
-          created=api('POST','git/trees',{'base_tree':parent['tree']['sha'],'tree':tree})
-          commit=api('POST','git/commits',{'message':'Search3: complete canonical hotel facts and galleries; preserve live-only search','tree':created['sha'],'parents':[base]})
-          result={'state':'source_objects_created_no_ref_changed','base':base,'commit':commit['sha'],'tree':created['sha'],'files':[{'path':p,'sha256':hashlib.sha256(s.encode()).hexdigest()} for p,s in files.items()],'supplierCalls':0,'databaseWrites':0,'refWrites':0,'deploy':False}
-          (out/'result.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))
-          PY
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: Actual Search3 content and exact-offer browser acceptance
+        working-directory: work
+        run: python tests/search3-hotel-content-browser.py
+      - name: Retain checked source objects without updating any branch
+        working-directory: work
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: python ../carrier/scripts/diagnostics/search3_hc1_finish_consumer.py --objects
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: hc1-consumer-source-${{ github.run_id }}
-          path: '${{ runner.temp }}/hc1-consumer-source/'
+          name: hc1-consumer-final-${{ github.run_id }}
+          path: '${{ runner.temp }}/hc1-consumer-final/'
           if-no-files-found: error
-          include-hidden-files: true
           retention-days: 30
