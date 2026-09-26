@@ -213,7 +213,7 @@ def current_scope(root,ids):
     code=r'''
 $root=$argv[1];$ids=json_decode(base64_decode($argv[2]),true);$helper=$argv[3];
 if(!is_array($ids)||!$ids||!is_file($helper)){fwrite(STDERR,"ids_or_helper\n");exit(2);}
-require_once $root.(is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php');
+require_once (is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php');
 require_once $helper;
 $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
 try{
