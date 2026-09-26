@@ -29,7 +29,12 @@ function hc_fixture(string $mode = 'success'): array {
         if ($facts->params === null) $facts->params = $p;
         hc_check($p === $facts->params, 'supplier_criteria_changed');
         if ($page > 1) hc_check($facts->reserved, 'supplier_before_checkpoint');
-        if ($page === 2 && $mode === 'supplier') return ['status' => 200, 'body' => '{"error":3}'];
+        if ($page === 1 && $mode === 'initial_code') return ['status' => 200, 'body' => '{"error":3}'];
+        if ($page === 2 && $mode === 'end_code') return ['status' => 200, 'body' => '{"error":3}'];
+        if ($page === 2 && $mode === 'end_code_nested') return ['status' => 200, 'body' => '{"SearchTour_PRICES":{"error":3}}'];
+        if ($page === 2 && $mode === 'supplier') return ['status' => 200, 'body' => '{"error":101}'];
+        if ($page === 2 && $mode === 'http') return ['status' => 502, 'body' => '{"error":3}'];
+        if ($page === 2 && $mode === 'string_code') return ['status' => 200, 'body' => '{"error":"3"}'];
         if ($page === 2 && $mode === 'transport') throw new RuntimeException('private_fixture_message');
         $n = $page === 1 ? 300 : ($mode === 'empty' ? 0 : 2);
         $rows = [];
@@ -60,7 +65,9 @@ function hc_fixture(string $mode = 'success'): array {
     };
     return [$state, $request, $facts, $resolver, $factory, $clock, $checkpoint];
 }
-foreach (['success', 'empty', 'duplicate'] as $mode) {
+// Code 3 is special only after a successful first page, never during initial search.
+hc_error(static function (): void { hc_fixture('initial_code'); }, 'ANEX_SUPPLIER_ERROR');
+foreach (['success', 'empty', 'duplicate', 'end_code', 'end_code_nested'] as $mode) {
     [$state, $request, $facts, $resolver, $factory, $clock, $persist] = hc_fixture($mode); $before = $state;
     hc_check(anytour_anex_search3_continuation_metadata($state) === ['state' => 'available', 'pages_read' => 1, 'next_page' => 2], 'initial_metadata');
     $reply = anytour_anex_search3_continue($request, $state, $resolver, $factory, 'hc_metadata', $clock, $persist);
@@ -70,7 +77,8 @@ foreach (['success', 'empty', 'duplicate'] as $mode) {
     hc_check($reply['date_range'] === ['from' => '2026-10-10', 'to' => '2026-10-16'], 'first_week_preserved');
     hc_check($reply['continuation'] === ['state' => 'exhausted', 'pages_read' => 2, 'next_page' => null], 'completion_metadata');
     $count = array_sum(array_map(static fn(array $h): int => count($h['tours']), $reply['hotels']));
-    hc_check($count === ($mode === 'empty' ? 0 : ($mode === 'duplicate' ? 1 : 2)), 'only_new_page_projected');
+    $empty = in_array($mode, ['empty', 'end_code', 'end_code_nested'], true);
+    hc_check($count === ($empty ? 0 : ($mode === 'duplicate' ? 1 : 2)), 'only_new_page_projected');
     hc_check($state['gateway']['saved_offers']['expires_at'] === $before['gateway']['saved_offers']['expires_at'], 'ttl_not_extended');
     foreach ($before['gateway']['saved_offers']['offers'] as $key => $entry) hc_check($state['gateway']['saved_offers']['offers'][$key] === $entry, 'old_offer_changed');
     hc_check(count($facts->persisted) === 2 && end($facts->persisted) === $state, 'success_durable_before_reply');
@@ -78,9 +86,14 @@ foreach (['success', 'empty', 'duplicate'] as $mode) {
     hc_error(static function () use (&$state, $request, $resolver, $factory, $clock, $persist): void {
         anytour_anex_search3_continue($request, $state, $resolver, $factory, 'hc_metadata', $clock, $persist);
     }, 'ANEX_CONTINUATION_UNAVAILABLE');
+    // Exhaustion survives serialization and cannot grant another supplier page.
+    $state = unserialize(serialize($state)); $next = array_replace($request, ['page' => 3]);
+    hc_error(static function () use (&$state, $next, $resolver, $factory, $clock, $persist): void {
+        anytour_anex_search3_continue($next, $state, $resolver, $factory, 'hc_metadata', $clock, $persist);
+    }, 'ANEX_CONTINUATION_UNAVAILABLE');
     hc_check($facts->calls === [1, 2], 'completed_page_replayed');
 }
-foreach (['supplier' => 'ANEX_SUPPLIER_ERROR', 'transport' => 'ANEX_TRANSPORT_ERROR', 'projection' => 'fixture_projection_failed'] as $mode => $code) {
+foreach (['supplier' => 'ANEX_SUPPLIER_ERROR', 'string_code' => 'ANEX_SUPPLIER_ERROR', 'http' => 'ANEX_HTTP_ERROR', 'transport' => 'ANEX_TRANSPORT_ERROR', 'projection' => 'fixture_projection_failed'] as $mode => $code) {
     [$state, $request, $facts, $resolver, $factory, $clock, $persist] = hc_fixture($mode); $before = $state;
     $reader = $mode === 'projection' ? static function (array $offers): array { throw new RuntimeException('fixture_projection_failed'); } : 'hc_metadata';
     hc_error(static function () use (&$state, $request, $resolver, $factory, $clock, $persist, $reader): void {
