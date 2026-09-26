@@ -593,8 +593,18 @@
     }
     return false;
   }
+  function andromedaCoverageFailures(run){
+    const branches=run.andromedaBranches;
+    if(!(branches instanceof Map)||!branches.size)return {destinationBranchFailed:true,continuationFailed:false,partialPages:false};
+    const order=[...branches.keys()].sort((a,b)=>a-b),expected=run.andromedaBranchesTotal;
+    const destinationBranchFailed=!Number.isInteger(expected)||expected<1||order.length!==expected||!order.every((value,index)=>value===index);
+    const continuationFailed=[...branches.values()].some(branch=>branch.continuationFailed===true);
+    const partialPages=[...branches.values()].some(branch=>!(branch.pages instanceof Map)||!branch.pages.size||[...branch.pages.values()].some(page=>page.status!=='complete'));
+    return {destinationBranchFailed,continuationFailed,partialPages};
+  }
   function andromedaProviderStatus(run,failed=false){
-    if(failed)return 'partial';
+    const coverage=andromedaCoverageFailures(run);
+    if(failed||coverage.destinationBranchFailed||coverage.continuationFailed||coverage.partialPages)return 'partial';
     return andromedaContinuationAvailable(run)?'ready':'complete';
   }
   async function continueDirectAndromeda(run,url){
@@ -628,10 +638,12 @@
     if(!current(run))return {loaded,failed,canContinue:false};
     const previous=run.sourceCounts.andromeda||{status:'partial',hotels:0,offers:0};
     run.andromedaCanContinue=andromedaContinuationAvailable(run);
-    const failedEver=failed>0||previous.continuationFailed===true;
+    const coverage=andromedaCoverageFailures(run);
+    const failedEver=failed>0||coverage.continuationFailed;
     const providerStatus=andromedaProviderStatus(run,failedEver);
     run.sourceCounts.andromeda={...previous,status:providerStatus==='complete'?'complete':'partial'};
     if(failedEver)run.sourceCounts.andromeda.continuationFailed=true;
+    if(coverage.destinationBranchFailed)run.sourceCounts.andromeda.destinationBranchFailed=true;
     notify({type:'provider',provider:'andromeda',...run.sourceCounts.andromeda,status:providerStatus,continued:true});
     clearCalendarWindows();
     return {loaded,failed,canContinue:run.andromedaCanContinue};
