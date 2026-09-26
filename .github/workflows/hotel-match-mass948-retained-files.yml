@@ -1,0 +1,152 @@
+name: MATCH all948 retained file supplement
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [match/live234-v65-current-audit-v66-20260926]
+    paths: [.github/workflows/hotel-match-mass948-retained-files.yml, scripts/diagnostics/hotel_match_mass948_retained_files_v1.php]
+permissions:
+  contents: read
+  actions: read
+  issues: read
+concurrency:
+  group: hotel-match-mass948-retained-files-1971-20260927-v1
+  cancel-in-progress: false
+env:
+  OP: hotel-match-mass948-retained-files-1971-20260927-v1
+  BASE: a49469c88836a3ef49323a74734cc13868b1b6ef
+  RESERVATION: match-mass948-retained-files-v1-reservation
+jobs:
+  files:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4013 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/mass948-retained-proof-20260927'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Exact source, existing owner consent and successful Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input terminal reservation package/scripts/diagnostics
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          git merge-base --is-ancestor "$BASE" HEAD
+          printf '%s\n' .github/workflows/hotel-match-mass948-retained-files.yml scripts/diagnostics/hotel_match_mass948_retained_files_v1.php >input/expected
+          git diff --name-only "$BASE" HEAD >input/actual
+          diff -u input/expected input/actual
+          test "$(git hash-object scripts/diagnostics/hotel_match_mass948_retained_files_v1.php)" = 5049c06eb79bb7ec897b65bbbf20b15ea411d7d5
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/5850009886" >input/consent.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/consent.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for phrase in ('owner explicitly replied «Разрешаю»','fresh CURRENT validation','NOT permission to disable security gates'): assert phrase in c['body']
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              checks=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if checks:
+                  check=max(checks,key=lambda r:r['id'])
+                  if check['status']=='completed':
+                      assert check['conclusion']=='success','security_not_success';break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Bind terminal948 input and run pure file tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 120 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10917808046/zip" -o input/context.zip
+          python3 - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          raw=pathlib.Path('input/context.zip').read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='c753a6f349df7ac3832387fb820481e4066b1e6616b97b14343ae0e9b5ee5853'
+          pins={'result.json':'292c8f40d5bc9164e638246fdafa7b5f7113646c1c1597edee9a89b9c1a62851','receipt.json':'1043840e4e74f4cbeed1d63b4c35b046a9af381fc2573687c85d217f50c4d596'};data={}
+          with zipfile.ZipFile('input/context.zip') as z:
+              for name,pin in pins.items():
+                  members=[i for i in z.infolist() if pathlib.PurePosixPath(i.filename).name==name]
+                  assert len(members)==1 and members[0].file_size<=83886080
+                  raw=z.read(members[0]);assert hashlib.sha256(raw).hexdigest()==pin;data[name]=json.loads(raw)
+                  if name=='result.json': pathlib.Path('package/prior-context.json').write_bytes(raw)
+          r=data['result.json'];q=data['receipt.json']
+          assert r['state']=='completed_read_only_mass948_context' and q['result_sha256']==pins['result.json'] and q['readback_verified'] is True
+          rows=r['context']['rows'];assert len(rows)==len({x['tv_hotel_id']for x in rows})==948
+          assert r['database_writes']==r['mapping_writes']==r['provider_http_calls']==0 and r['no_replay'] is True
+          PY
+          php -l scripts/diagnostics/hotel_match_mass948_retained_files_v1.php
+          php scripts/diagnostics/hotel_match_mass948_retained_files_v1.php --self-test | tee terminal/source-tests.log
+          cp scripts/diagnostics/hotel_match_mass948_retained_files_v1.php package/scripts/diagnostics/
+          (cd package && find . -type f -print0 | sort -z | xargs -0 sha256sum) >input/package-sha256.txt
+      - name: Reserve distinct file-only operation once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$RESERVATION&per_page=100" >input/reservations.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          assert json.load(open('input/reservations.json'))['total_count']==0,'terminal_no_replay'
+          r={'operation':os.environ['OP'],'state':'reserved_before_file_read','source_sha':os.environ['HEAD'],'run_id':int(os.environ['RUN_ID']),'owner_consent_comment':5850009886,'db_access':False,'database_writes':0,'mapping_writes':0,'provider_http_calls':0,'no_replay':True}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ env.RESERVATION }}
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Read retained operator receipts and cached HOTELS, no PDO or providers
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/match948-files-key"; known="$RUNNER_TEMP/match948-files-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' >"$key"; else printf '%s' "$KEY" | base64 --decode >"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST" >"$known" 2>/dev/null
+          remote="$USER@$HOST"; rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir \"\$HOME/$rel\"; mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\""
+          scp "${opts[@]}" reservation/reservation.json input/package-sha256.txt "$remote:$rel/"
+          scp "${opts[@]}" package/prior-context.json "$remote:$rel/payload/"
+          scp "${opts[@]}" package/scripts/diagnostics/*.php "$remote:$rel/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$rel/payload\" && sha256sum --check ../package-sha256.txt" >terminal/package-verified.txt
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=768M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_mass948_retained_files_v1.php\" --execute" >terminal/summary.log 2>input/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          set -e
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          raw=pathlib.Path('terminal/result.json').read_bytes();r=json.loads(raw);q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
+          assert q['result_sha256']==hashlib.sha256(raw).hexdigest() and q['readback_verified'] is True
+          for o in (r,q):
+              assert o['no_replay'] is True and o['db_access'] is False
+              for k in ('database_writes','mapping_writes','provider_http_calls'): assert o[k]==0
+          print(json.dumps({'state':r['state'],'scope':r['scope_count'],'catalog_rows':len(r.get('catalog',{}).get('rows',[])),'tv_edges':len(r.get('retained',{}).get('tv_edges',[])),'samo_edges':len(r.get('retained',{}).get('samo_edges',[])),'error_code':r.get('error_code')},ensure_ascii=False))
+          assert r['state']=='completed_read_only_mass948_retained_files'
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-mass948-retained-files-v1-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
