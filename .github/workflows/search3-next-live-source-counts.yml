@@ -22,9 +22,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: release/search3-production-ready-v1
+          ref: main
       - name: Authorize exact owner SEARCH acceptance command
         run: python3 -B scripts/diagnostics/search3_next_live_source_counts_gate.py
+      - name: Checkout Search3 release after authorization
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin release/search3-production-ready-v1
+          git checkout --detach FETCH_HEAD
       - name: Install Chromium
         run: |
           set -euo pipefail
