@@ -14,7 +14,7 @@ ORIGIN = 'https://anytoour.ru'
 BASE = '/_preview/search3-next-candidate/'
 ANEX = '/_preview/search3-anex-candidate/'
 PROVIDERS = ('tourvisor', 'anex', 'andromeda')
-TRIP = dict(origin='Москва', country='4', **{'from': '2026-10-10', 'to': '2026-10-16'}, minNights='7', maxNights='7', adults='2', ages='')
+TRIP = dict(origin='Москва', country='4', **{'from': '2026-10-01', 'to': '2026-10-07'}, minNights='7', maxNights='7', adults='2', ages='')
 EXPECTED = {
     'visual-search/app.js': 'ff2adf47bf9f03e808b339d2c7d9ecf9f2b447e42fbf083328fa6858310b8359',
     'prototype-search/data.js': '73fa30a1a3b064ff5adb88ca564fb859ae062fdfda29dd259db6437663cf9228',
@@ -163,7 +163,7 @@ def main():
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block')
         try:
-            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v12' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1': raise RuntimeError('live_authorization_missing')
+            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v13' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1': raise RuntimeError('live_authorization_missing')
             for name, expected in EXPECTED.items():
                 response = context.request.get(ORIGIN + BASE + name, timeout=30000, max_redirects=0)
                 digest = hashlib.sha256(response.body()).hexdigest()
