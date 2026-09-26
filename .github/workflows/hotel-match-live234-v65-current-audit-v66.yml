@@ -1,0 +1,167 @@
+name: MATCH v65 CURRENT read-only audit v66
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-live234-v65-current-audit-v66.yml]
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-live234-v65-current-audit-v66
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-live234-v65-current-audit-1971-20260926-v66
+  PREPARED_HEAD: 55caae97b228899592874340753fb493ff3b27e6
+  OWNER_CONSENT: '5850009886'
+  SOURCE_ARTIFACT: '10909959597'
+  SOURCE_ARCHIVE_SHA: 033d372e5aeb4d495b9fe542c148c2d4eb080889b5eb5ca08a5642837e2dbaf8
+  SOURCE_RESULT_SHA: 42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810
+  SOURCE_RECEIPT_SHA: 46792a26c166c597602814afc217e08e07709d2ed3aa6941ab291a418e28c626
+
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4000 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/live234-v65-current-audit-v66-20260926'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify unchanged audited source and explicit owner consent
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$PREPARED_HEAD")" = "$PREPARED_HEAD"
+          test "$(git diff --name-only "$PREPARED_HEAD" HEAD)" = '.github/workflows/hotel-match-live234-v65-current-audit-v66.yml'
+          test "$(git hash-object scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php)" = 9aaae6deab79fdbf26e116eabc02c5b9fc2fd7c0
+          test "$(git hash-object tests/hotel_match_live234_v65_current_audit_v66_test.php)" = d308d3b3ac6e38b9045b60c68d30902e0f098d5f
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$OWNER_CONSENT" >input/consent.json
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          c=json.load(open('input/consent.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/3419')
+          assert 'owner explicitly replied «Разрешаю»' in c['body']
+          assert 'fresh CURRENT validation' in c['body']
+          assert 'NOT permission to disable security gates' in c['body']
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              checks=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if checks:
+                  check=max(checks,key=lambda r:r['id'])
+                  if check['status']=='completed':
+                      assert check['conclusion']=='success','security_not_success'; break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Read sealed v65 evidence without replay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT/zip" -o input/source.zip
+          test "$(sha256sum input/source.zip | awk '{print $1}')" = "$SOURCE_ARCHIVE_SHA"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile
+          with zipfile.ZipFile('input/source.zip') as z:
+              for filename,pin in [('result.json','SOURCE_RESULT_SHA'),('receipt.json','SOURCE_RECEIPT_SHA')]:
+                  matches=[i for i in z.infolist() if pathlib.PurePosixPath(i.filename).name==filename]
+                  assert len(matches)==1 and matches[0].file_size<=8388608,'source_member'
+                  raw=z.read(matches[0]); assert hashlib.sha256(raw).hexdigest()==os.environ[pin],'source_hash'
+                  pathlib.Path('input/source-'+filename).write_bytes(raw)
+          r=json.load(open('input/source-result.json')); q=json.load(open('input/source-receipt.json'))
+          assert r['operation']==q['operation']=='hotel-match-live234-andromeda-context-acquire-1971-20260926-v65'
+          assert r['state']=='completed_read_only' and q['readback_verified'] is True and q['no_replay'] is True
+          assert q['result_sha256']==os.environ['SOURCE_RESULT_SHA']
+          assert r['database_writes']==r['mapping_writes']==0
+          PY
+          php -l scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php
+          php tests/hotel_match_live234_v65_current_audit_v66_test.php input/source-result.json
+      - name: Reserve exact original49 read-only operation once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=match-v66-reservation&per_page=100" >input/prior-reservations.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          assert json.load(open('input/prior-reservations.json'))['total_count']==0,'prior_reservation_no_replay'
+          result={'operation':os.environ['OP'],'state':'reserved_before_db_read','source_sha':os.environ['HEAD'],
+                  'source_result_sha256':os.environ['SOURCE_RESULT_SHA'],'source_receipt_sha256':os.environ['SOURCE_RECEIPT_SHA'],
+                  'owner_consent_comment':int(os.environ['OWNER_CONSENT']),'run_id':int(os.environ['RUN_ID']),
+                  'scope':'original49_only_not_bulk29','expected_targets':49,'expected_catalogs':48,
+                  'database_writes':0,'mapping_writes':0,'provider_http_calls':0,'no_replay':True}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(result,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-v66-reservation
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute unchanged read-only audit in isolated operation directory
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/match-v66-key"; known="$RUNNER_TEMP/match-v66-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' >"$key"; else printf '%s' "$KEY" | base64 --decode >"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST" >"$known" 2>/dev/null
+          remote="$USER@$HOST"; rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir \"\$HOME/$rel\"; mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$rel/reservation.json"
+          scp "${opts[@]}" input/source-result.json input/source-receipt.json "$remote:$rel/payload/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_RESULT=\"\$HOME/$rel/payload/source-result.json\" MATCH_SOURCE_RECEIPT=\"\$HOME/$rel/payload/source-receipt.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          r=json.load(open('terminal/result.json')); q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==os.environ['HEAD']
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert q['readback_verified'] is True and q['no_replay'] is True
+          for obj in (r,q):
+              for key in ('database_writes','mapping_writes','provider_http_calls'): assert obj[key]==0,(key,obj[key])
+          assert r['safe_to_write_now'] is False
+          if r['state']=='completed_read_only_v65_current_audit':
+              assert r['input_strict_count']==49 and r['input_catalog_count']==48 and len(r['rows'])==49
+          print(json.dumps({k:r.get(k) for k in ('state','reason','input_strict_count','status_counts','reason_counts')},ensure_ascii=False,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-live234-v65-current-audit-v66-${{ github.run_id }}
+          path: |
+            terminal/result.json
+            terminal/receipt.json
+          retention-days: 90
+          if-no-files-found: warn
