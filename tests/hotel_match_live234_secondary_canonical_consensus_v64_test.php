@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_live234_secondary_canonical_consensus_v64.php';
 
 function v64t(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
-v64t(V64_OP==='hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64b','op');
+v64t(V64_OP==='hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64c','op');
 v64t(V64_SOURCE_OP==='hotel-match-live234-sealed-secondary-salvage-1971-20260926-v63','source');
 v64t(V64_SOURCE_SHA==='dc4ad9e16b5f800a363f406965e318b6eb69bdb2ea77eb0b856cfe4c010fce9c','source_sha');
 v64t(V64_TV_BRIDGE===['bgoperator'=>'operator_115','operator_315'=>'operator_315','operator_342'=>'operator_342'],'bridge');\v64t(count(V64_SOURCE_CHILD_HASHES)===3,'children');
