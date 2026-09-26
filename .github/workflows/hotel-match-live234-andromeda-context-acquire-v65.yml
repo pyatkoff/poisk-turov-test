@@ -1,0 +1,226 @@
+name: MATCH live234 Andromeda context acquisition v65
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_andromeda_name_geo_helper_v65.php
+      - scripts/diagnostics/hotel_match_live234_andromeda_context_acquire_v65.php
+      - tests/hotel_match_live234_andromeda_context_acquire_v65_test.php
+      - .github/workflows/hotel-match-live234-andromeda-context-acquire-v65.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-live234-andromeda-context-acquire-v65
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-live234-andromeda-context-acquire-1971-20260926-v65
+  BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
+  CLAIM: '5847507841'
+  LANE_AMEND: '5837028527'
+  SOURCE_ARTIFACT: '10907252023'
+  SOURCE_ARCHIVE_SHA: bb0ef243b0d940d856abbfc195ca0e37b3b08336ee5e555e455f995cfb9f8d68
+  SOURCE_RESULT_SHA: cd9b6f18c049af27501b40d5490536f31d9b5fa595f3d4d7864a4a7f04587a58
+  SOURCE_RECEIPT_SHA: 1ed149e43bad6a7689fc3d17d074d5cdebdd97b452ae1751f20a029fdebcdf67
+  SOURCE_HEAD: 16cad5eb6dbc970a7a3502d8cdd9a2ebcccc95e6
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live234-andromeda-context-acquire-v65-20260926'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: php -l scripts/diagnostics/hotel_match_andromeda_name_geo_helper_v65.php
+      - run: php -l scripts/diagnostics/hotel_match_live234_andromeda_context_acquire_v65.php
+      - run: php scripts/diagnostics/hotel_match_live234_andromeda_context_acquire_v65.php --self-test
+      - run: php tests/hotel_match_live234_andromeda_context_acquire_v65_test.php
+      - name: Guard acquisition boundary
+        run: |
+          set -euo pipefail
+          f=scripts/diagnostics/hotel_match_live234_andromeda_context_acquire_v65.php
+          ! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' "$f"
+          grep -Fq "V65_HTTP_CAP=1600" "$f"
+          grep -Fq "V65_PRICE_CAP=1400" "$f"
+          grep -Fq "V65_PAGE_CAP=5" "$f"
+          grep -Fq "V65_MONTHLY_LIMIT=5000000" "$f"
+          grep -Fq "count($x)>12" "$f"
+          grep -Fq "strlen(implode(',',$x))>300" "$f"
+          grep -Fq "strict_multi_lane_candidate" "$f"
+          grep -Fq "support_equal" "$f"
+          grep -Fq "safe_to_write_now'=>false" "$f"
+
+  acquire:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live234-andromeda-context-acquire-v65-20260926'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate authority, v36r and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input/source reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          expected=".github/workflows/hotel-match-live234-andromeda-context-acquire-v65.yml scripts/diagnostics/hotel_match_andromeda_name_geo_helper_v65.php scripts/diagnostics/hotel_match_live234_andromeda_context_acquire_v65.php tests/hotel_match_live234_andromeda_context_acquire_v65_test.php "
+          test "$actual" = "$expected"
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'exact176','100-batch','HTTP<=1600','price calls<=1400','max12','support-only','DB/schema/mapping writes0','safe_to_write_now=false']:
+              assert x.lower() in b.lower(),x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT/zip" -o input/source.zip
+          test "$(sha256sum input/source.zip|awk '{print $1}')" = "$SOURCE_ARCHIVE_SHA"
+          unzip -q input/source.zip -d input/source
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          results=[];receipts=[]
+          for p in pathlib.Path('input/source').rglob('*.json'):
+              raw=p.read_bytes()
+              try:x=json.loads(raw)
+              except Exception:continue
+              if p.name=='result.json' and x.get('operation')=='hotel-match-live-anex-missing-samo-router-refresh-1971-20260926-v36r':results.append((raw,x))
+              if p.name=='receipt.json' and x.get('operation')=='hotel-match-live-anex-missing-samo-router-refresh-1971-20260926-v36r':receipts.append((raw,x))
+          assert len(results)==len(receipts)==1
+          rr,r=results[0];qr,q=receipts[0]
+          assert hashlib.sha256(rr).hexdigest()==os.environ['SOURCE_RESULT_SHA']
+          assert hashlib.sha256(qr).hexdigest()==os.environ['SOURCE_RECEIPT_SHA']
+          assert q['result_sha256']==os.environ['SOURCE_RESULT_SHA'] and q['readback_verified'] is True
+          assert r['state']=='completed_read_only_v36_current_refresh'
+          assert r['source_sha']==os.environ['SOURCE_HEAD']
+          assert r['input_count']==r['still_tv_anex_missing_samo_count']==234
+          assert r['future_context_count']==176 and r['stale_only_count']==37 and r['no_future_context_count']==21 and r['batch_count']==100
+          for k in ['provider_http_calls','tourvisor_calls','samo_calls','andromeda_calls','anex_calls','database_writes','mapping_writes']:assert r[k]==0,(k,r[k])
+          assert r['safe_to_write_now'] is False
+          pathlib.Path('input/source-result.json').write_bytes(rr)
+          PY
+
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps({
+            'operation':os.environ['OP'],'state':'reserved_before_provider','source_result_sha256':os.environ['SOURCE_RESULT_SHA'],
+            'expected_future_targets':176,'expected_router_batches':100,'provider':'andromeda','http_cap':1600,'price_cap':1400,
+            'database_writes':0,'mapping_writes':0
+          },sort_keys=True)+'\n')
+          PY
+
+      - name: Require clear supplier lane
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$LANE_AMEND" >input/lane.json
+          python3 - <<'PY'
+          import json,os,urllib.request,datetime
+          claim=json.load(open('input/lane.json'));body=claim['body']
+          assert claim['user']['id']==226193297 and claim['author_association']=='OWNER'
+          assert 'within the last 2 hours' in body and 'in_progress' in body
+          now=datetime.datetime.now(datetime.timezone.utc);bad=[]
+          for status in ('in_progress','queued'):
+              u=f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs?status={status}&per_page=100"
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:rows=json.load(f)['workflow_runs']
+              for r in rows:
+                  if str(r['id'])==os.environ['RUN_ID']:continue
+                  n=(r.get('name') or '').lower()
+                  if not any(k in n for k in ('match','int server','andromeda','anex','tourvisor')):continue
+                  if status=='queued':
+                      created=datetime.datetime.fromisoformat(r['created_at'].replace('Z','+00:00'))
+                      if (now-created).total_seconds()>7200:continue
+                  bad.append((r['id'],r.get('name'),status))
+          print(json.dumps({'blocking':bad},ensure_ascii=False))
+          assert not bad,bad
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-v65-reservation-${{ github.run_id }}
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Execute mass Andromeda evidence acquisition
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$rel/reservation.json"
+          scp "${opts[@]}" input/source-result.json "$remote:$rel/payload/source-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_andromeda_name_geo_helper_v65.php scripts/diagnostics/hotel_match_live234_andromeda_context_acquire_v65.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_RESULT=\"\$HOME/$rel/payload/source-result.json\" MATCH_SOURCE_RESULT_SHA='$SOURCE_RESULT_SHA' MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_live234_andromeda_context_acquire_v65.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP']
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert q['readback_verified'] is True
+          assert r['state'] in ('completed_read_only','completed_read_only_partial','terminal_failed_no_replay','failed_before_provider_access')
+          assert r.get('provider_http_calls',0)<=1600 and r.get('price_calls',0)<=1400
+          for k in ['database_writes','mapping_writes']:assert r.get(k,0)==0,(k,r.get(k))
+          assert r['safe_to_write_now'] is False
+          if r['state'] in ('completed_read_only','completed_read_only_partial'):
+              assert r['input_future_count']==176
+              assert r['current_active_count']<=176
+          print(json.dumps({k:r.get(k) for k in ['state','reason','input_future_count','current_active_count','current_skip_counts','provider_http_calls','price_calls','task_count','completed_task_count','task_error_count','strict_multi_lane_candidate_count','review_count','hold_count']},ensure_ascii=False,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-live234-andromeda-context-v65-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
