@@ -83,7 +83,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],'12','SERIALIZABLE','insert-only','after COMMIT',os.environ['READY_DIGEST'],'10902350667']:
+          for x in [os.environ['OP'],'12','SERIALIZABLE','insert-only','post-COMMIT',os.environ['READY_DIGEST'],'10902350667']:
               assert x in b,x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
