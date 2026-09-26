@@ -48,7 +48,7 @@ jobs:
           grep -Fq "INSERT INTO anex_hotel_search_mappings" "$f"
           grep -Fq "owner_exact_operator_key_20260912_v2" "$f"
           grep -Fq "V61_EXPECTED=2" "$f"
-          grep -Fq "4e73b6a5d7bbb5491ab11b19edb86999b1ad45ca20130abbc15549fc2fcda8d1" "$f"
+          grep -Fq "5d01d83631fe9d10b518ac0be1955fd665426fc0d1858674b9d0720c1f71a7ca" "$f"
           grep -Fq "pre-commit.json" "$f"
           grep -Fq "commit-attempt.json" "$f"
           ! grep -E 'UPDATE .* SET|DELETE FROM' "$f"
