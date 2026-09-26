@@ -111,7 +111,8 @@ def compose(tv: dict, samo: dict, bg: dict, tail: dict, early: dict, history: di
             reasons = set(risks[(local, catalog)])
             if anchors[catalog] - {local}:
                 reasons.add("segment_historical_source_other_target")
-            disposition = "historical_review" if reasons else ("two_operator_current_review" if len(proof) >= 2 else "one_operator_current_review")
+            # One exact operator is sufficient; lane count does not split the queue.
+            disposition = "historical_review" if reasons else "current_review"
             rows.append({"local_hotel_id": local, "hotel_name": dossier["hotel_name"], "andromeda_catalog_id": catalog,
                          "candidate_names": candidate["names"], "independent_tv_lane_count": len(proof),
                          "proven_lanes": proof, "historical_review_reasons": sorted(reasons), "disposition": disposition,
@@ -119,7 +120,7 @@ def compose(tv: dict, samo: dict, bg: dict, tail: dict, early: dict, history: di
                          "original_status": dossier["status"], "safe_to_write_now": False})
         buckets[str(best)].append(local)
     current = {r["local_hotel_id"] for r in rows}
-    return {"schema": "match_retained175_tv_segment_union_v1", "mode": "offline_evidence_only_not_acceptance",
+    return {"schema": "match_retained175_tv_segment_union_v2", "mode": "offline_evidence_only_not_acceptance",
             "input_count": len(scope), "candidate_pairs_reviewed": sum(len(d["candidates"]) for d in samo["dossiers"]),
             "input_hashes": {**before["input_hashes_zip_result_receipt"], **{k: {f: v[f] for f in ("artifact_id", "zip_sha256", "result_sha256", "receipt_sha256")} for k, v in SEGMENTS.items()}},
             "history_summary_sha256": core.HISTORY_SHA, "segment_counts": segment_counts,
@@ -130,6 +131,7 @@ def compose(tv: dict, samo: dict, bg: dict, tail: dict, early: dict, history: di
             "independent_operator_distribution": {k: len(v) for k, v in sorted(buckets.items())},
             "dossier_ids_by_exact_independent_tv_lane_count": {k: sorted(v) for k, v in sorted(buckets.items())},
             "review_disposition_counts": dict(sorted(Counter(r["disposition"] for r in rows).items())),
+            "required_exact_operator_lanes": 1, "second_operator_required": False,
             "candidates": rows, "current_validation_performed": False, "safe_to_write_now": False,
             "provider_http_calls": 0, "database_reads": 0, "database_writes": 0, "mapping_writes": 0,
             "accepted_mapping_count": 0, "zero_proof_means": "no_proof_in_these_archives_not_global_absence",
