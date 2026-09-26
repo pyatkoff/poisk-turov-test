@@ -207,5 +207,132 @@ class ExpandedReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "tail_children"): M.tail_edges(altered)
 
 
+
+@unittest.skipUnless(os.environ.get("MATCH_RETAINED_DIR"), "pinned ZIP fixtures")
+class EarlyReviewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        root = Path(os.environ["MATCH_RETAINED_DIR"])
+        cls.tv = M.load_archive(root/"match_v63_secondary.zip", "tv")
+        cls.samo = M.load_archive(root/"match_v65_result.zip", "samo")
+        cls.bg = M.load_archive(root/"match_bg_dictionary_v5.zip", "bg")
+        cls.tail = M.load_archive(root/"match_common4_tail_v15.zip", "tv_tail")
+        cls.early = M.load_archive(root/"match_tv_c35_c135.zip", "tv_early")
+        cls.history = M.load_history(PATH.parents[2]/"reports/hotel-match-retained175-history-mass-20260926.json")
+        cls.report = M.analyse_expanded(cls.tv, cls.samo, cls.bg, cls.tail, cls.history, cls.early)
+
+    def test_full_scope_and_increment(self):
+        r = self.report
+        self.assertEqual((r["input_count"], r["candidate_pairs_reviewed"]), (175, 161))
+        self.assertEqual((r["tv_input_rows"], r["tv_unique_edges"], r["tv_unique_hotels_with_evidence"]), (1171, 1153, 800))
+        self.assertEqual((r["early_input_rows"], r["early_overlap_rows"], r["early_overlap_hotels"]), (359, 31, 20))
+        self.assertEqual((r["before_early_proven_candidate_hotels"], r["expanded_proven_candidate_hotels"]), (13, 26))
+        self.assertEqual(r["new_candidate_hotels_from_early"], [11742,11748,11771,11773,57552,60000,63524,64351,64355,64722,71376,117800,119844])
+        self.assertEqual(r["lost_candidate_hotels_after_early_collision_check"], [])
+        buckets = r["dossier_ids_by_exact_independent_tv_lane_count"]
+        self.assertEqual({k: len(v) for k,v in buckets.items()}, {"0":149,"1":20,"2":6})
+        flat = [v for values in buckets.values() for v in values]
+        self.assertEqual(len(flat), len(set(flat)))
+        self.assertEqual(set(flat), {d["local_hotel_id"] for d in self.samo["dossiers"]})
+
+    def test_three_new_two_operator_candidates(self):
+        self.assertEqual(self.report["new_two_lane_candidate_hotels"], [11742,11748,11773])
+        rows = {r["local_hotel_id"]: r for r in self.report["candidates_with_proven_tv_lanes"]}
+        for local, catalog, natives in [(11742,"183505",("303225","2532")),
+                                        (11748,"191231",("306944","2541")),
+                                        (11773,"364934",("306998","2535"))]:
+            r = rows[local]
+            self.assertEqual(r["andromeda_catalog_id"], catalog)
+            self.assertEqual({x["namespace"]:x["native_id"] for x in r["proven_lanes"]}, dict(zip(("operator_315","operator_342"), natives)))
+            self.assertFalse(r["safe_to_write_now"])
+
+    def test_tail_only_output_remains_byte_identical(self):
+        import hashlib
+        r = M.analyse_expanded(self.tv, self.samo, self.bg, self.tail, self.history)
+        raw = (json.dumps(r, ensure_ascii=False, sort_keys=True, indent=2)+"\n").encode()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), "d04df3f221f39dd50b4f2d67fff25684e55b8323f4d1034eb70539fd2fa737da")
+
+    def test_all_proofs_dereference_to_exact_retained_rows(self):
+        docs = {M.PINS["tv"][1]: self.tv, M.TV_TAIL_PIN[1]: self.tail, M.TV_EARLY_PIN[1]: self.early}
+        for row in self.report["candidates_with_proven_tv_lanes"]:
+            for lane in row["proven_lanes"]:
+                for evidence in lane["evidence"]:
+                    node = docs[evidence["archive_result_sha256"]]
+                    for part in evidence["row_path"].strip("/").split("/"):
+                        node = node[int(part)] if isinstance(node, list) else node[part]
+                    self.assertEqual(M.digest(node), evidence["row_canonical_sha256"])
+                    self.assertEqual(node["tv_hotel_id"], row["local_hotel_id"])
+                    self.assertEqual(M.BRIDGES.get(node["operator_id"]), lane["namespace"])
+                    self.assertEqual(node["operator_link_sha256"], evidence["tv_link_sha256"])
+                    self.assertEqual(node["tour_id_sha256"], evidence["tv_tour_sha256"])
+                    self.assertEqual(node["source_result_sha256"], evidence["tv_child_result_sha256"])
+                    native = (node["positive_native_candidates"][0] if "positive_native_candidates" in node else node["external_hotel_id"])
+                    self.assertEqual(str(native), lane["native_id"])
+
+    def test_no_earlier_risk_or_current_gate_is_cleared(self):
+        before = M.analyse_expanded(self.tv, self.samo, self.bg, self.tail, self.history)
+        after = {(r["local_hotel_id"], r["andromeda_catalog_id"]):r for r in self.report["candidates_with_proven_tv_lanes"]}
+        for old in before["candidates_with_proven_tv_lanes"]:
+            new = after[(old["local_hotel_id"], old["andromeda_catalog_id"])]
+            self.assertTrue(set(old["historical_review_reasons"]) <= set(new["historical_review_reasons"]))
+        for field in ("provider_http_calls","database_reads","database_writes","mapping_writes","accepted_mapping_count"):
+            self.assertEqual(self.report[field], 0)
+        self.assertFalse(self.report["current_validation_performed"])
+        self.assertFalse(self.report["safe_to_write_now"])
+
+    def test_wrong_early_archive_and_symlink_fail_closed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p = Path(folder)/"early.zip"; p.write_bytes(b"wrong")
+            with self.assertRaisesRegex(ValueError, "zip_hash"): M.load_archive(p, "tv_early")
+            link = Path(folder)/"symlink.zip"; link.symlink_to(p)
+            with self.assertRaisesRegex(ValueError, "input_file"): M.load_archive(link, "tv_early")
+
+    def test_early_operation_shape_and_zero_boundaries(self):
+        for field, value, code in [("operation","wrong","tail_operation"), ("source_sha","0"*40,"tail_source"),
+                                    ("input_single_native_edges",358,"tail_count"), ("searched_hotels",400,"tail_scope"),
+                                    ("provider_http_calls",1,"tail_zero"), ("mapping_writes",1,"tail_zero"),
+                                    ("safe_to_write_now",True,"tail_safety")]:
+            with self.subTest(field=field):
+                changed = copy.deepcopy(self.early); changed[field] = value
+                with self.assertRaisesRegex(ValueError, code): M.tail_edges(changed, early=True)
+
+    def test_early_child_and_namespace_integrity(self):
+        changed = copy.deepcopy(self.early); changed["children"][1] = changed["children"][0]
+        with self.assertRaisesRegex(ValueError,"tail_children"): M.tail_edges(changed, early=True)
+        for field, value, code in [("source_result_sha256","0"*64,"tail_child_hash"),
+                                  ("operator_id",True,"tail_namespace"), ("external_hotel_id",True,"id_type"),
+                                  ("operator_link_sha256","invalid","tail_edge_hash"), ("safe_to_write_now",True,"tail_edge_safety")]:
+            with self.subTest(field=field):
+                changed = copy.deepcopy(self.early); changed["rows"][0][field] = value
+                with self.assertRaisesRegex(ValueError,code): M.tail_edges(changed, early=True)
+
+    def test_new_data_can_remove_a_false_proof_on_collision(self):
+        es = M.tail_edges(self.early, early=True) + M.tail_edges(self.tail)
+        dossier = next(d for d in self.samo["dossiers"] if d["local_hotel_id"] == 11742)
+        ca = next(c for c in dossier["candidates"] if c["catalog_id"] == "183505")
+        edge = next(e for e in es if e["tv_hotel_id"] == 11742 and e["operator_id"] == 25)
+        other = copy.deepcopy(edge); other["tv_hotel_id"] = 999999
+        out = M.expanded_proofs(11742,ca,es+[other],M.expanded_indexes(es+[other],self.samo["dossiers"]))
+        self.assertNotIn("operator_315", {x["namespace"] for x in out})
+
+    def test_repeated_record_is_not_a_new_lane(self):
+        es = M.tail_edges(self.early, early=True)
+        dossier = next(d for d in self.samo["dossiers"] if d["local_hotel_id"] == 11742)
+        ca = next(c for c in dossier["candidates"] if c["catalog_id"] == "183505")
+        a = M.expanded_proofs(11742,ca,es,M.expanded_indexes(es,self.samo["dossiers"]))
+        b = M.expanded_proofs(11742,ca,es+copy.deepcopy(es),M.expanded_indexes(es+es,self.samo["dossiers"]))
+        self.assertEqual(a,b)
+
+    def test_early_historical_other_owner_veto_is_carried(self):
+        changed = copy.deepcopy(self.early)
+        changed["rows"][0]["anchors"] = [{"supplier_namespace":"andromeda_catalog",
+            "decision_status":"accepted", "external_hotel_id":"183505", "local_hotel_id":999999}]
+        # Pure-function negative fixture, never a pinned-file validation bypass.
+        out = M.analyse_expanded(self.tv,self.samo,self.bg,self.tail,self.history,changed)
+        row = next(r for r in out["candidates_with_proven_tv_lanes"] if r["local_hotel_id"]==11742)
+        self.assertIn("early_historical_source_other_target",row["historical_review_reasons"])
+        self.assertFalse(row["safe_to_write_now"])
+
+
 if __name__ == '__main__':
     unittest.main()
