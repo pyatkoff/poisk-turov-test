@@ -205,10 +205,11 @@ jobs:
           assert hashlib.sha256(rraw).hexdigest()==os.environ['V58_RESULT_SHA']
           assert hashlib.sha256(qraw).hexdigest()==os.environ['V58_RECEIPT_SHA']
           assert q['result_sha256']==os.environ['V58_RESULT_SHA']
-          assert r['state']=='completed_read_only_http400_route_class_audit'
+          assert r['state']=='completed_read_only_route_class_audit'
           assert r['reservation_counts']=={'v41b':40,'v45':50,'v49':50,'v53':31,'v57':1}
-          assert r['consumed_signature_count']==172 and r['untouched_count']==89
-          assert r['stale_untouched_count']==1
+          assert r['consumed_union_count']==172 and r['untouched_count']==89
+          stale=[x for x in (r.get('untouched_rows') or []) if isinstance(x,dict) and isinstance(x.get('context'),dict) and x['context'].get('parse_ok') and str(x['context'].get('departure_date',''))<'2026-09-26']
+          assert len(stale)==1 and stale[0].get('hotel_ids')==[21683],stale
           PY
 
           python3 - <<'PY'
