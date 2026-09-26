@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      HC1_ASSEMBLY_OUTPUT: '${{ runner.temp }}/hc1-consumer-final'
-      HC1_OUTPUT: '${{ runner.temp }}/hc1-consumer-final/browser'
+      HC1_ASSEMBLY_OUTPUT: /tmp/hc1-consumer-final
+      HC1_OUTPUT: /tmp/hc1-consumer-final/browser
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: '${{ github.event.pull_request.head.sha }}', path: carrier, fetch-depth: 1, persist-credentials: false}
@@ -61,6 +61,6 @@ jobs:
         if: always()
         with:
           name: hc1-consumer-final-${{ github.run_id }}
-          path: '${{ runner.temp }}/hc1-consumer-final/'
+          path: /tmp/hc1-consumer-final/
           if-no-files-found: error
           retention-days: 30
