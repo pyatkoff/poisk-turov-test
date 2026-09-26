@@ -58,7 +58,7 @@ class ContinuationGuards(unittest.TestCase):
         self.assertTrue(guard.allow(url, 'GET'))
         self.assertFalse(guard.allow(url, 'GET'))
 
-    def test_retention_observer_checks_prices_without_exporting_ids(self):
+    def test_retention_uses_canonical_key_total_not_supplier_id_price(self):
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -68,18 +68,25 @@ class ContinuationGuards(unittest.TestCase):
             page.evaluate('''() => {
                 window.AnyTourPrototypeSearchLifecycleV1={create(options){window.send=e=>options.afterEvent(e,{});return {};}};
                 window.AnyTourPrototypeSearchLifecycleV1.create({});
-                window.rows=[{id:'private-hotel',offers:[{id:'private-offer',provider:'anex',price:100}]}];
+                window.rows=[{id:'private-hotel',offers:[
+                  {key:'anex%3Aprivate-a',provider:'anex',total:100},
+                  {key:'anex%3Aprivate-b',provider:'anex',total:150}
+                ]}];
                 window.send({type:'results',hotels:window.rows});
             }''')
-            self.assertEqual(page.evaluate('window.__nextContinue.capture()'), {'offers': 1, 'unique': 1})
-            page.evaluate("window.rows[0].offers.push({id:'private-new',provider:'anex',price:200});window.send({type:'results',hotels:window.rows});")
+            self.assertEqual(page.evaluate('window.__nextContinue.capture()'), {'offers': 2, 'unique': 2})
+            page.evaluate("window.rows[0].offers.push({key:'anex%3Aprivate-new',provider:'anex',total:200});window.send({type:'results',hotels:window.rows});")
             result = page.evaluate('window.__nextContinue.compare()')
             self.assertEqual(result['added']['anex'], 1)
             self.assertEqual(result['missing'], 0)
             self.assertEqual(result['changed'], 0)
+            self.assertTrue(result['identityUnique'])
             self.assertNotIn('private-', json.dumps(result))
-            page.evaluate('window.rows[0].offers[0].price=101')
+            page.evaluate('window.rows[0].offers[0].total=101')
             self.assertEqual(page.evaluate('window.__nextContinue.compare()')['changed'], 1)
+            page.evaluate('window.rows[0].offers.pop();delete window.rows[0].offers[0].key')
+            with self.assertRaisesRegex(Exception, 'canonical_offer_shape'):
+                page.evaluate('window.__nextContinue.compare()')
             browser.close()
 
 if __name__ == '__main__':
