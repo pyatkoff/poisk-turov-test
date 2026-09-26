@@ -10,7 +10,7 @@ v51t(V51_CLASS==='exact_operator_key','class');
 v51t(V51_READY_DIGEST==='f83eb148936eef2fd7c703439579c7afc98dbccf379ca1cc23d92dbfcefe9dbc','digest');
 
 $a=[
- 'operation'=>V51_AUDIT_OP,'state'=>'completed_read_only_v45_current_audit',
+ 'operation'=>V51_AUDIT_OP,'state'=>'completed_read_only_v49_current_audit',
  'input_count'=>12,'writer_ready_count'=>12,'writer_ready_target_digest'=>V51_READY_DIGEST,
  'provider_http_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'anex_calls'=>0,'andromeda_calls'=>0,
  'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false,'source_sha'=>str_repeat('1',40),
