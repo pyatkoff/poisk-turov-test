@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/hotel_match_anex_effective_coverage.php';
 
-const V52_OP='hotel-match-business-live30-post-anex-writer-census-1971-20260926-v52';
+const V52_OP='hotel-match-business-live30-post-anex-writer-census-1971-20260926-v52b';
 const V52_V51_OP='hotel-match-live-samo-missing-anex-operator13-writer-1971-20260926-v51';
 const V52_V51_DIGEST='1fb6c78eb31808f9c0d466317c5c247740be4d4ca91d7f0f4488eaf2c89f1f41';
 const V52_EXPECTED=12;
@@ -52,7 +52,7 @@ function v52_self_test():void{
 }
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     if(in_array('--self-test',$argv??[],true)){v52_self_test();echo"MATCH_POST_ANEX_WRITER_CENSUS_V52_SELFTEST_OK\n";exit;}
-    v52_need(($argv[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$vr=(string)getenv('MATCH_V47_RESULT');$vq=(string)getenv('MATCH_V47_RECEIPT');$sha=(string)getenv('MATCH_SOURCE_SHA');
+    v52_need(($argv[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$vr=(string)getenv('MATCH_V51_RESULT');$vq=(string)getenv('MATCH_V51_RECEIPT');$sha=(string)getenv('MATCH_SOURCE_SHA');
     v52_need(is_dir($root)&&is_dir($dir)&&basename($dir)===V52_OP&&preg_match('/^[0-9a-f]{40}$/D',$sha)===1,'scope');$res=v52_load($dir.'/reservation.json');v52_need(($res['operation']??'')===V52_OP,'reservation');
     try{$v51=v52_verify_v51($vr,$vq);require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$r=v52_execute(v2_data_db(),$v51,$sha);$h=v52_save($dir.'/result.json',$r);v52_save($dir.'/receipt.json',['operation'=>V52_OP,'state'=>$r['state'],'result_sha256'=>$h,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$h,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);echo v52_json(['state'=>$r['state'],'current'=>$r['current'],'delta_vs_v48'=>$r['delta_vs_v48'],'v51_targets_full_triple'=>$r['v51_targets_full_triple'],'v51_target_states'=>$r['v51_target_states']])."\n";}
     catch(Throwable$e){$f=['operation'=>V52_OP,'state'=>'failed_read_only_post_anex_writer_census','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',mb_substr($e->getMessage(),0,160,'UTF-8')),'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0];$h=v52_save($dir.'/result.json',$f);v52_save($dir.'/receipt.json',['operation'=>V52_OP,'state'=>$f['state'],'result_sha256'=>$h,'readback_verified'=>true,'provider_accessed'=>false,'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0]);fwrite(STDERR,$f['reason']."\n");exit(2);}
