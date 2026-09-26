@@ -8,7 +8,7 @@ COMMAND = "/publish-anex-search3-preview-2530-v7"
 REPOSITORY = "pyatkoff/poisk-turov-test"
 OWNER_LOGIN = "pyatkoff"
 OWNER_ID = 226193297
-ISSUE_NUMBER = 2530
+ISSUE_NUMBER = 3419
 MAIN_REF = "refs/heads/main"
 
 
