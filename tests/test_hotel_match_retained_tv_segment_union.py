@@ -63,16 +63,33 @@ class RealSegmentTests(unittest.TestCase):
         r = self.report
         self.assertEqual(r['new_candidate_ids'], [466, 474, 1181])
         self.assertEqual(r['lost_candidate_ids'], [])
-        self.assertEqual(r['review_disposition_counts'], {'historical_review': 8, 'one_operator_current_review': 16, 'two_operator_current_review': 5})
+        self.assertEqual(r['review_disposition_counts'], {'current_review': 21, 'historical_review': 8})
         for row in r['candidates']:
             if row['local_hotel_id'] in r['new_candidate_ids']:
                 self.assertEqual(row['disposition'], 'historical_review')
                 self.assertIn('historical_source_accepted_other_target', row['historical_review_reasons'])
 
-    def test_priority_keeps_sural_out(self):
-        ids = {r['local_hotel_id'] for r in self.report['candidates'] if r['disposition'] == 'two_operator_current_review'}
-        self.assertEqual(ids, {11742, 11748, 11773, 113617, 121109})
-        self.assertNotIn(1540, ids)
+    def test_one_operator_is_in_same_bulk_queue(self):
+        rows = [r for r in self.report['candidates'] if r['disposition'] == 'current_review']
+        self.assertEqual(len(rows), 21)
+        self.assertEqual(self.report['required_exact_operator_lanes'], 1)
+        self.assertFalse(self.report['second_operator_required'])
+        single = {r['local_hotel_id'] for r in rows if r['independent_tv_lane_count'] == 1}
+        self.assertEqual(single, {11771,27691,45455,55945,56479,57552,60000,63524,
+                                 64351,64355,64722,65714,71376,116886,117800,119844})
+        double = {r['local_hotel_id'] for r in rows if r['independent_tv_lane_count'] == 2}
+        self.assertEqual(double, {11742,11748,11773,113617,121109})
+        self.assertNotIn(1540, single | double)
+
+    def test_bulk_queue_does_not_lose_proven_rows_or_history(self):
+        rows = self.report['candidates']
+        keys = {(r['local_hotel_id'],r['andromeda_catalog_id']) for r in rows}
+        self.assertEqual(len(keys), len(rows))
+        self.assertEqual(len(keys), 29)
+        for row in rows:
+            self.assertGreaterEqual(row['independent_tv_lane_count'], 1)
+            self.assertEqual(row['disposition'], 'historical_review' if row['historical_review_reasons'] else 'current_review')
+            self.assertFalse(row['safe_to_write_now'])
 
     def test_no_new_acceptance_or_current_claim(self):
         r = self.report
