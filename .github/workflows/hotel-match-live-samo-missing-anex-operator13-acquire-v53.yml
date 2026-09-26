@@ -22,6 +22,7 @@ env:
   OP: hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260926-v53
   BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
   CLAIM: '5844587736'
+  CLAIM_AMEND: '5844637510'
   LANE_AMEND: '5837028527'
   ROUTER_ARTIFACT: '10878842741'
   ROUTER_ARTIFACT_SHA: d91ea08b0e6d30e883a7575d1b43afc81440ce26e1d75dd6f4f5aafd8aa72433
@@ -95,10 +96,12 @@ jobs:
           test "$actual" = ".github/workflows/hotel-match-live-samo-missing-anex-operator13-acquire-v53.yml scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v53.py tests/hotel_match_live_samo_missing_anex_operator13_acquire_v53_test.py "
 
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM_AMEND" >input/claim-amend.json
           python3 - <<'PY'
           import json,os,time,urllib.request
-          c=json.load(open('input/claim.json'));b=c['body']
-          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          c=json.load(open('input/claim.json'));a=json.load(open('input/claim-amend.json'));b=c['body']+'\n'+a['body']
+          for x in (c,a):
+              assert x['user']['id']==226193297 and x['author_association']=='OWNER' and x['issue_url'].endswith('/issues/3419')
           for x in [os.environ['OP'],'MASS provider operation','140','121','CALL_CAP=1000','TOURVISOR_ANEX_JWT','tourvisor-anex','daily tariff limit3000','DB/schema/mapping writes0']:
               assert x in b,x
           for x in [os.environ['V41B_OP'],os.environ['V45_OP'],os.environ['V49_OP'],'2707','732','12/12']:
