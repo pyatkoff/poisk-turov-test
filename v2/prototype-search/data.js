@@ -709,12 +709,15 @@
         const resultLimitReached=inventory.hotels>=5000,tvBaseline=run.continueBaselineTourvisor,baseline=run.continueBaseline;
         const tvGrew=!run.continued||!tvBaseline||inventory.hotels>tvBaseline.hotels||inventory.offers>tvBaseline.offers;
         const union=canonicalUnion(),after={hotels:union.hotels,offers:union.offers};
-        const grew=!run.continued||!baseline||after.hotels>baseline.hotels||after.offers>baseline.offers;
+        const unionGrew=!run.continued||!baseline||after.hotels>baseline.hotels||after.offers>baseline.offers;
+        // Preserve the established Tourvisor continuation receipt. Provider-union
+        // growth is used only when Continue has no Tourvisor continuation to report.
+        const growthBefore=tvBaseline||baseline,growthAfter=tvBaseline?inventory:after,growthGrew=tvBaseline?tvGrew:unionGrew;
         run.tvCanContinue=!resultLimitReached&&(!run.continued||tvGrew);
         run.andromedaCanContinue=andromedaContinuationAvailable(run);
         run.pending=false;run.resumeOnly=false;run.canContinue=run.tvCanContinue||run.andromedaCanContinue;
         notify({type:'complete',canContinue:run.canContinue,continued:run.continued,resultLimitReached,
-          continuationGrowth:run.continued&&baseline?{before:structuredClone(baseline),after:structuredClone(after),grew}:null,
+          continuationGrowth:run.continued&&growthBefore?{before:structuredClone(growthBefore),after:structuredClone(growthAfter),grew:growthGrew}:null,
           sources:structuredClone(run.sourceCounts),union});return;
       }
       if(run.deadline&&Date.now()>=run.deadline)throw new Error('Продолжение поиска ещё не завершено. Проверьте результат повторно.');
