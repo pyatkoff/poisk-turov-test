@@ -58,6 +58,30 @@ class ContinuationGuards(unittest.TestCase):
         self.assertTrue(guard.allow(url, 'GET'))
         self.assertFalse(guard.allow(url, 'GET'))
 
+    def test_exhaustion_requires_accepted_empty_terminal_page(self):
+        body = json.dumps(dict(action='continue', generation=1, search_ref=REF, page=2))
+        valid = dict(provider='anex', generation=1, search_ref=REF, page=2, pages_read=1,
+            first_page_only=False, hotels=[], external_search_pending=False,
+            continuation={'state': 'exhausted', 'pages_read': 2, 'next_page': None})
+        for change, status, ok, exhausted in [({}, 200, True, True),
+            ({}, 502, False, False), ({'search_ref': 'b' * 32}, 200, True, False),
+            ({'page': 3}, 200, True, False), ({'hotels': [{}]}, 200, True, False),
+            ({'external_search_pending': True}, 200, True, False),
+            ({'continuation': {'state': 'blocked', 'pages_read': 2, 'next_page': None}}, 200, True, False),
+            ({'continuation': {'state': 'available', 'pages_read': 2, 'next_page': 3}}, 200, True, False)]:
+            guard = ready(); guard.continuing = True
+            self.assertTrue(guard.allow(ANEX, 'POST', body))
+            guard.observe(ANEX, status, body, {'ok': ok, 'data': dict(valid, **change)})
+            self.assertEqual(guard.anex_exhausted, exhausted)
+            self.assertEqual(guard.accepts_result(0), exhausted)
+            self.assertFalse(guard.accepts_result(None))
+            self.assertFalse(guard.accepts_result(-1))
+        guard = ready(); guard.continuing = True
+        self.assertTrue(guard.allow(ANEX, 'POST', body))
+        guard.observe(ANEX, 200, body, {'ok': True, 'data': dict(valid, hotels=[{}])})
+        self.assertTrue(guard.accepts_result(1))
+        self.assertFalse(guard.accepts_result(0))
+
     def test_failure_headers_retain_only_fixed_codes(self):
         self.assertEqual(m.safe_failure_headers({'x-anytour-anex-failure': 'ANEX_HTTP_ERROR',
             'x-anytour-anex-upstream-status': '502', 'set-cookie': 'private', 'url': 'private'}),

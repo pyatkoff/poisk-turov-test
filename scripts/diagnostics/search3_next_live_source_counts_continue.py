@@ -53,6 +53,7 @@ class ContinueGuard(base.Guard):
         self.continues = dict.fromkeys(base.PROVIDERS, 0)
         self.ticket = None
         self.anex_accepted = False
+        self.anex_exhausted = False
 
     def allow(self, url, method, raw_body=None):
         parsed = urlparse(url)
@@ -96,6 +97,12 @@ class ContinueGuard(base.Guard):
                 self.ticket = (generation, ref, 2)
         elif request.get('action') == 'continue' and self.continues['anex'] == 1:
             self.anex_accepted = self.ticket == (generation, ref, data.get('page')) and data.get('pages_read') == 1 and data.get('first_page_only') is False
+            self.anex_exhausted = (self.anex_accepted and data.get('hotels') == []
+                and data.get('external_search_pending') is False
+                and data.get('continuation') == {'state': 'exhausted', 'pages_read': 2, 'next_page': None})
+
+    def accepts_result(self, added):
+        return self.anex_accepted and type(added) is int and (added > 0 or (added == 0 and self.anex_exhausted))
 
 
 def safe_failure_headers(headers):
@@ -146,7 +153,7 @@ def main():
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block')
         try:
-            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v15' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
+            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v16' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
                 raise RuntimeError('live_authorization_missing')
             for name, expected in EXPECTED.items():
                 response = context.request.get(base.ORIGIN + base.BASE + name, timeout=30000, max_redirects=0)
@@ -197,7 +204,7 @@ def main():
             state = continuation.get('state', {})
             good = initial.get('submits') == 1 and all(counts.get(provider, 0) > 0 for provider in base.PROVIDERS)
             good = good and continuation.get('clicked') and state.get('complete') and state.get('submits') == 1 and guard.anex_accepted
-            good = good and retained.get('identityUnique') and retained.get('missing') == 0 and retained.get('changed') == 0 and retained.get('added', {}).get('anex', 0) > 0
+            good = good and retained.get('identityUnique') and retained.get('missing') == 0 and retained.get('changed') == 0 and guard.accepts_result(retained.get('added', {}).get('anex'))
             good = good and not guard.denied and not result.get('pageErrorCount', 0) and not any(row['overflow'] for row in result['widths'])
             result['status'] = 'passed' if good else 'incomplete'
         except Exception as error:
@@ -208,6 +215,7 @@ def main():
             result['calls'] = dict(guard.calls)
             result['continueCalls'] = dict(guard.continues)
             result['anexPageAccepted'] = guard.anex_accepted
+            result['anexContinuationExhausted'] = guard.anex_exhausted
             result['blocked'] = guard.denied[:20]
             browser.close()
             (out / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
