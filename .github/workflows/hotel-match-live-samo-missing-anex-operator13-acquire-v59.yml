@@ -108,7 +108,7 @@ jobs:
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
           for x in [os.environ['OP'],'mass successor','172','89','max88','CALL_CAP1000','TOURVISOR_ANEX_JWT','daily tariff hard limit3000','DB/schema/mapping writes0']:
               assert x.lower() in b.lower(),x
-          for x in [os.environ['V53_OP'],os.environ['V57_OP'],'2026-09-25','21683','expected provider-eligible <=88']:
+          for x in ['v41b/v45/v49/v53/v57','2026-09-25','21683','expected provider-eligible <=88']:
               assert x.lower() in b.lower(),x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
