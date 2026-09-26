@@ -47,21 +47,21 @@ jobs:
             const context=await browser.newContext({viewport:{width:1280,height:900}});
             await context.route(/https?:\/\/mc\.yandex\.(ru|com)\//,r=>r.abort());
             const page=await context.newPage();
-            const seen={tourvisor:null,anex:null,andromeda:null};
-            page.on('console',m=>{const s=m.text(); if(/provider|anex|andromeda|tourvisor/i.test(s)) console.log('BROWSER',s.slice(0,500));});
+            const net=[];
+            page.on('console',m=>{const s=m.text(); if(/provider|anex|andromeda|tourvisor|search/i.test(s)) console.log('BROWSER',s.slice(0,500));});
+            page.on('response',async r=>{const u=r.url();if(!/api-v2\.php|api-anex-search3-preview\.php|api-andromeda-search3-preview\.php/.test(u))return;let safe={url:new URL(u).pathname,status:r.status()};try{const j=await r.json();safe.ok=j&&j.ok;safe.provider=j?.data?.provider||j?.provider||null;safe.errorCategory=j?.error?.category||j?.data?.error_category||j?.category||null;safe.hotelCount=Array.isArray(j?.data?.hotels)?j.data.hotels.length:null;safe.offerCount=j?.data?.offer_count??j?.data?.received_offers??null;}catch{}net.push(safe);console.log('SEARCH3_NET',JSON.stringify(safe));});
             const u=new URL('https://anytoour.ru/_preview/search3-next-candidate/visual-search/');
             Object.entries({origin:'Москва',country:'4',from:'2026-10-10',to:'2026-10-16',minNights:'7',maxNights:'7',adults:'2',ages:'',searched:'1'}).forEach(([k,v])=>u.searchParams.set(k,v));
             const res=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
             if(!res||res.status()!==200)throw new Error('NEXT_HTTP_'+(res&&res.status()));
-            await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length>0,{timeout:120000});
-            await page.waitForTimeout(45000);
+            await page.waitForTimeout(60000);
             const state=await page.evaluate(()=>{
               const items=(window.V2Results&&window.V2Results.state&&window.V2Results.state.items)||[];
               const offers={tourvisor:0,anex:0,andromeda:0},hotels={tourvisor:new Set(),anex:new Set(),andromeda:new Set()};
               for(const h of items) for(const t of (h.tours||[])){const p=String(t.provider||'tourvisor').toLowerCase();if(!(p in offers))continue;offers[p]++;hotels[p].add(String(h.id));}
               return {hotelCards:document.querySelectorAll('.hotel-card').length,hotels:{tourvisor:hotels.tourvisor.size,anex:hotels.anex.size,andromeda:hotels.andromeda.size},offers};
             });
-            fs.writeFileSync('search3-next-live-source-counts/result.json',JSON.stringify(state,null,2));
+            state.network=net;fs.writeFileSync('search3-next-live-source-counts/result.json',JSON.stringify(state,null,2));
             console.log('SEARCH3_NEXT_SOURCE_COUNTS',JSON.stringify(state));
             if(state.offers.tourvisor<1)throw new Error('TOURVISOR_EMPTY');
             if(state.offers.anex<1)throw new Error('DIRECT_ANEX_EMPTY');
