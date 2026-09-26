@@ -90,7 +90,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],'exact176','batch_count100','HTTP<=1600','price calls<=1400','max12','SUPPORT ONLY','DB/schema/mapping writes0','safe_to_write_now=false']:
+          for x in [os.environ['OP'],'exact176','batch_count100','HTTP<=1600','price calls<=1400','max12','SUPPORT ONLY','Database/schema/mapping writes0','safe_to_write_now=false']:
               assert x.lower() in b.lower(),x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
