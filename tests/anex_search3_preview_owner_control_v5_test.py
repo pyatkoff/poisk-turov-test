@@ -10,7 +10,7 @@ SOURCE='8ccf1174c1277e6128258de33d403b52faddf7e2'
 FIX='df839684e66ed0a00734d1d6c555e4d6941b4c3a'
 CHECK_IDS={'105341515847','105341515773','105341515707','105341515008','105341514098','105341513675'}
 
-def event(body=gate.COMMAND,issue=2530,login='pyatkoff',user_id=226193297,action='created',pr=False):
+def event(body=gate.COMMAND,issue=3419,login='pyatkoff',user_id=226193297,action='created',pr=False):
     i={'number':issue}
     if pr:i['pull_request']={}
     return {'action':action,'issue':i,'comment':{'body':body,'user':{'login':login,'id':user_id}}}
