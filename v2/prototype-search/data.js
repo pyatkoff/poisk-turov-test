@@ -1153,9 +1153,11 @@
         if(flightSelection)andromedaQuoteChoices.delete(prepared.key);
         const failure=error?.retryable===false?error:andromedaQuoteFailure(status,null,epoch!==generation?'stale':timedOut?'timeout':'network');
         // Browser-local diagnostics contain fixed public classifications only, never response text or identities.
-        if(epoch===generation&&typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function'){
-          root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail:Object.freeze({provider:'andromeda',action:prepared.body.action,
-            code:failure.code,httpStatus:failure.httpStatus,failureCategory:failure.failureCategory})}));
+        if(epoch===generation){
+          const detail=Object.freeze({provider:'andromeda',action:prepared.body.action,code:failure.code,
+            httpStatus:failure.httpStatus,failureCategory:failure.failureCategory});
+          root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+          if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
         }
         throw failure;
       }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
