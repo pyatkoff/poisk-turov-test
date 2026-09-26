@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  OP: hotel-match-live-samo-missing-anex-operator13-writer-1971-20260925-v51
+  OP: hotel-match-live-samo-missing-anex-operator13-writer-1971-20260926-v51
   BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
   CLAIM: '5844499815'
   AUDIT_ARTIFACT: '10902350667'
@@ -28,7 +28,7 @@ env:
 
 jobs:
   focused:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-samo-missing-anex-operator13-writer-v51-20260925'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-samo-missing-anex-operator13-writer-v51-20260926'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -48,14 +48,14 @@ jobs:
           grep -Fq "INSERT INTO anex_hotel_search_mappings" "$f"
           grep -Fq "owner_exact_operator_key_20260912_v2" "$f"
           grep -Fq "V51_EXPECTED=12" "$f"
-          grep -Fq "3093f8ad2c65b09eb8a8bd5ec6d698dae1c764affe036cfd19bcc43097d1a656" "$f"
+          grep -Fq "f83eb148936eef2fd7c703439579c7afc98dbccf379ca1cc23d92dbfcefe9dbc" "$f"
           grep -Fq "pre-commit.json" "$f"
           grep -Fq "commit-attempt.json" "$f"
           ! grep -E 'UPDATE .* SET|DELETE FROM' "$f"
 
   live:
     needs: focused
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-samo-missing-anex-operator13-writer-v51-20260925'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-samo-missing-anex-operator13-writer-v51-20260926'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -112,8 +112,8 @@ jobs:
           assert r['operation']=='hotel-match-live-samo-missing-anex-operator13-current-1971-20260926-v50'
           assert r['state']=='completed_read_only_v49_current_audit'
           assert r['input_count']==r['unique_native_ids']==r['unique_targets']==r['writer_ready_count']==12
-          assert r['status_counts']=={'current_missing_exact_key':17}
-          assert r['anchor_state_counts']=={'canonical_anchor_ok':17}
+          assert r['status_counts']=={'current_missing_exact_key':12}
+          assert r['anchor_state_counts']=={'canonical_anchor_ok':12}
           assert r['writer_ready_target_digest']==os.environ['READY_DIGEST']
           for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes']:
               assert r[k]==0,(k,r[k])
