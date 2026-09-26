@@ -1,4 +1,4 @@
-name: MATCH live234 secondary canonical consensus v64b
+name: MATCH live234 secondary canonical consensus v64c
 
 'on':
   pull_request:
@@ -15,13 +15,13 @@ permissions:
   issues: read
 
 concurrency:
-  group: hotel-match-live234-secondary-canonical-consensus-v64b
+  group: hotel-match-live234-secondary-canonical-consensus-v64c
   cancel-in-progress: false
 
 env:
-  OP: hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64b
+  OP: hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64c
   BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
-  CLAIM: '5847344337'
+  CLAIM: '5847396105'
   SOURCE_ARTIFACT: '10907946061'
   SOURCE_ZIP_SHA: 0c26f52918f3cd9bdf1c6e55cae63b7428f46902e7558f5b48c3884cf4aefd44
   SOURCE_RESULT_SHA: dc4ad9e16b5f800a363f406965e318b6eb69bdb2ea77eb0b856cfe4c010fce9c
