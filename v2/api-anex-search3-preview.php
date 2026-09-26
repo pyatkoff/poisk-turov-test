@@ -34,7 +34,6 @@ function anytour_anex_search3_dictionary_id(array $rows, array $names): int
     foreach (array_slice($rows, 0, 10000) as $row) {
         if (!is_array($row) || !preg_match('/\A[1-9][0-9]{0,7}\z/D', (string) ($row['id'] ?? ''))) continue;
         foreach (['name', 'nameAlt', 'alias', 'currencyISO'] as $key) {
-            if (is_string($row[$key] ?? null) && in_array($row[$key], [], true)) continue;
             if (is_string($row[$key] ?? null) && in_array(anytour_anex_search3_name($row[$key]), $names, true)) {
                 $matches[(int) $row['id']] = true;
             }
