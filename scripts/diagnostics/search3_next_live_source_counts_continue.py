@@ -24,8 +24,10 @@ RETENTION_OBSERVER = r"""(() => {
  const snapshot=()=>{
   const offers=new Map();let total=0;
   for(const h of rows)for(const o of h.offers||[]){
-   total++;const key=JSON.stringify([h.id,o.provider,o.id]);
-   offers.set(key,{price:JSON.stringify(o.price),provider:o.provider});
+   // data.js project()/offer() publishes key and total, not raw supplier id/price.
+   if(typeof o.key!=='string'||!o.key||!Number.isFinite(o.total)||o.total<=0)throw new Error('canonical_offer_shape');
+   total++;const key=JSON.stringify([h.id,o.provider,o.key]);
+   offers.set(key,{price:JSON.stringify(o.total),provider:o.provider});
   }
   return {offers,total};
  };
@@ -102,7 +104,7 @@ def continue_once(page, guard):
         return {'clicked': False, 'reason': 'anex_continuation_not_available'}
     captured = page.evaluate('window.__nextContinue.capture()')
     if not captured['offers'] or captured['offers'] != captured['unique']:
-        return {'clicked': False, 'reason': 'initial_offer_identity_unavailable'}
+        return {'clicked': False, 'reason': 'initial_offer_identity_unavailable', 'captured': captured}
     guard.continuing = True
     button.click(timeout=10000)
     try:
@@ -122,7 +124,7 @@ def main():
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block')
         try:
-            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v13' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
+            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v14' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
                 raise RuntimeError('live_authorization_missing')
             for name, expected in EXPECTED.items():
                 response = context.request.get(base.ORIGIN + base.BASE + name, timeout=30000, max_redirects=0)
