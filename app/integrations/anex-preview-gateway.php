@@ -194,7 +194,7 @@ final class AnyTourAnexPreviewGateway
         if (!is_array($reference) || ($offer['offer_key'] ?? null) !== $request['offer_key']
             || ($reference['kind'] ?? null) !== ($offer['kind'] ?? null)
             || ($reference['hotel_external_id'] ?? null) !== ($offer['hotel']['external_id'] ?? null)
-            || !is_int($entry['observed_at']) || $entry['observed_at'] < $saved['created_at']
+            || !is_int($entry['observed_at'] ?? null) || $entry['observed_at'] < $saved['created_at']
             || $entry['observed_at'] > $now) {
             throw new InvalidArgumentException('ANEX_INVALID_SESSION');
         }
