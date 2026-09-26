@@ -3,7 +3,10 @@ import base64, collections, datetime as dt, fcntl, hashlib, json, os, pathlib, r
 from zoneinfo import ZoneInfo
 
 OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260926-v53'
-V45_OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v45'\nV49_OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260926-v49'\nV49_RESULT_SHA='ee1f6765456940c6b665a3111cdb8b7f2e3dba2ec70e0d7981fe601e759c203a'\nV49_RECEIPT_SHA='2a7dee34887519bd75eaededbe4df3114228ac6efddd168b550faf5e015aafbe'
+V45_OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v45'
+V49_OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260926-v49'
+V49_RESULT_SHA='ee1f6765456940c6b665a3111cdb8b7f2e3dba2ec70e0d7981fe601e759c203a'
+V49_RECEIPT_SHA='2a7dee34887519bd75eaededbe4df3114228ac6efddd168b550faf5e015aafbe'
 V41B_OP='hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41b'
 V41B_RESULT_SHA='a2b3538998c2742096b8655a80af2c5f3f7ea4a8cf3a7c7d81b2d9ec4d5c533e'
 V41B_RECEIPT_SHA='d27cf7686650c1c93fca01cd120cdc51e60c311fc314224bfc1a4b959a28a5f4'
