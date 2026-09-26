@@ -58,6 +58,17 @@ class ContinuationGuards(unittest.TestCase):
         self.assertTrue(guard.allow(url, 'GET'))
         self.assertFalse(guard.allow(url, 'GET'))
 
+    def test_failure_headers_retain_only_fixed_codes(self):
+        self.assertEqual(m.safe_failure_headers({'x-anytour-anex-failure': 'ANEX_HTTP_ERROR',
+            'x-anytour-anex-upstream-status': '502', 'set-cookie': 'private', 'url': 'private'}),
+            {'failureCode': 'ANEX_HTTP_ERROR', 'upstreamStatus': 502})
+        self.assertEqual(m.safe_failure_headers({'x-anytour-anex-failure': 'ANEX_INVALID_PUBLIC_RESULT',
+            'x-anytour-anex-upstream-status': '200', 'x-anytour-anex-supplier-code': '3'}),
+            {'failureCode': 'ANEX_INVALID_PUBLIC_RESULT', 'upstreamStatus': 200, 'supplierCode': 3})
+        self.assertEqual(m.safe_failure_headers({'x-anytour-anex-failure': 'private',
+            'x-anytour-anex-upstream-status': '200\r\nprivate',
+            'x-anytour-anex-supplier-code': '100000', 'x-anytour-anex-transport-code': '-1'}), {})
+
     def test_retention_uses_canonical_key_total_not_supplier_id_price(self):
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:

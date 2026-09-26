@@ -98,6 +98,28 @@ class ContinueGuard(base.Guard):
             self.anex_accepted = self.ticket == (generation, ref, data.get('page')) and data.get('pages_read') == 1 and data.get('first_page_only') is False
 
 
+def safe_failure_headers(headers):
+    """Retain fixed classifications only; never cookies, arbitrary text or identifiers."""
+    allowed = set(('ANEX_HTTP_ERROR ANEX_TRANSPORT_ERROR ANEX_SUPPLIER_ERROR '
+        'ANEX_INVALID_RESPONSE ANEX_RESPONSE_TOO_LARGE ANEX_INVALID_PRICES '
+        'ANEX_REPEATED_PRICE_PAGE ANEX_INVALID_PUBLIC_RESULT ANEX_REQUEST_LIMIT '
+        'ANEX_SESSION_UNAVAILABLE ANEX_SESSION_EXPIRED ANEX_CLOCK_ERROR '
+        'ANEX_RESERVATION_REQUIRED ANEX_RATE_LIMIT ANEX_CLIENT_UNAVAILABLE '
+        'ANEX_INVALID_PARAMS ANEX_SESSION_OFFER_LIMIT ANEX_SEARCH_NOT_STARTED '
+        'ANEX_DATABASE_ERROR ANEX_TYPE_ERROR ANEX_INTERNAL_ERROR').split())
+    safe = {}
+    code = headers.get('x-anytour-anex-failure')
+    if isinstance(code, str) and code in allowed:
+        safe['failureCode'] = code
+    for name, key, maximum in [('x-anytour-anex-upstream-status', 'upstreamStatus', 599),
+        ('x-anytour-anex-supplier-code', 'supplierCode', 99999),
+        ('x-anytour-anex-transport-code', 'transportCode', 999)]:
+        value = headers.get(name)
+        if isinstance(value, str) and re.fullmatch(r'[0-9]{1,5}', value) and int(value) <= maximum:
+            safe[key] = int(value)
+    return safe
+
+
 def continue_once(page, guard):
     button = page.locator('[data-action="continue-search"]')
     if guard.ticket is None or button.count() != 1 or not button.is_visible():
@@ -124,7 +146,7 @@ def main():
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block')
         try:
-            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v14' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
+            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v15' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
                 raise RuntimeError('live_authorization_missing')
             for name, expected in EXPECTED.items():
                 response = context.request.get(base.ORIGIN + base.BASE + name, timeout=30000, max_redirects=0)
@@ -152,6 +174,9 @@ def main():
                 guard.observe(r.url, r.status, r.request.post_data, value)
                 row = base.safe_response(r.url, r.status, r.request.post_data, value)
                 if row is not None and len(result['network']) < 150:
+                    if urlparse(r.url).path == base.ANEX + 'api-anex-search3-preview.php' and guard.body(r.request.post_data).get('action') == 'continue':
+                        row['action'] = 'continue'
+                        row.update(safe_failure_headers(r.headers))
                     result['network'].append(row)
             page.on('response', observe)
             result['status'] = 'running'
