@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const V64_OP='hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64b';
+const V64_OP='hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64c';
 const V64_SOURCE_OP='hotel-match-live234-sealed-secondary-salvage-1971-20260926-v63';
 const V64_SOURCE_SHA='dc4ad9e16b5f800a363f406965e318b6eb69bdb2ea77eb0b856cfe4c010fce9c';
 const V64_SOURCE_EDGES=48;
@@ -85,8 +85,19 @@ function v64_collect_samo(mixed $node,string $op,string $rsha,array &$out,int &$
 }
 function v64_scan(string $root):array{
     v64_need(is_dir($root)&&!is_link($root),'ops_root');$dirs=[];foreach(new DirectoryIterator($root)as$e){if($e->isDot()||$e->isLink()||!$e->isDir())continue;$dirs[]=$e->getPathname();}
-    sort($dirs,SORT_STRING);v64_need(count($dirs)<=V64_MAX_DIRS,'dir_cap');$edges=[];$stats=['operation_dirs'=>count($dirs),'result_files'=>0,'parsed_results'=>0,'skipped_large'=>0,'visited_nodes'=>0];
-    foreach($dirs as$d){if(basename($d)===V64_OP)continue;$p=$d.'/result.json';if(!is_file($p)||is_link($p))continue;$stats['result_files']++;$z=filesize($p);if($z===false||$z<2)continue;if($z>V64_MAX_RESULT_BYTES){$stats['skipped_large']++;continue;}$raw=(string)file_get_contents($p);$rsha=hash('sha256',$raw);try{$r=json_decode($raw,true,512,JSON_THROW_ON_ERROR);}catch(Throwable){continue;}if(!is_array($r))continue;$stats['parsed_results']++;$op=(string)($r['operation']??basename($d));v64_collect_samo($r,$op,$rsha,$edges,$stats['visited_nodes']);}
+    sort($dirs,SORT_STRING);v64_need(count($dirs)<=V64_MAX_DIRS,'dir_cap');$edges=[];$stats=['operation_dirs'=>count($dirs),'result_files'=>0,'prefilter_relevant_files'=>0,'prefilter_skipped_files'=>0,'parsed_results'=>0,'skipped_large'=>0,'visited_nodes'=>0];
+    foreach($dirs as$d){
+        if(basename($d)===V64_OP)continue;$p=$d.'/result.json';if(!is_file($p)||is_link($p))continue;$stats['result_files']++;
+        $z=filesize($p);if($z===false||$z<2)continue;if($z>V64_MAX_RESULT_BYTES){$stats['skipped_large']++;continue;}
+        $raw=(string)file_get_contents($p);
+        $hasCatalog=str_contains($raw,'"catalog_id"')||str_contains($raw,'"andromeda_catalog_id"');
+        $hasNamespace=str_contains($raw,'"operator_115"')||str_contains($raw,'"operator_315"')||str_contains($raw,'"operator_342"');
+        if(!$hasCatalog||!$hasNamespace){$stats['prefilter_skipped_files']++;continue;}
+        $stats['prefilter_relevant_files']++;$rsha=hash('sha256',$raw);
+        try{$r=json_decode($raw,true,512,JSON_THROW_ON_ERROR);}catch(Throwable){continue;}
+        if(!is_array($r))continue;$stats['parsed_results']++;$op=(string)($r['operation']??basename($d));
+        v64_collect_samo($r,$op,$rsha,$edges,$stats['visited_nodes']);
+    }
     $rows=[];foreach($edges as$r){$r['evidence']=array_values($r['evidence']);$rows[]=$r;}
     return['edges'=>$rows,'stats'=>$stats];
 }
