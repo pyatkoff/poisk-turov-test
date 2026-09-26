@@ -48,7 +48,7 @@ function v62_execute(PDO $db,array $v61,string $sourceSha):array{
 }
 function v62_self_test():void{
     v62_need(v62_bucket(true,true)==='full_triple','full');v62_need(v62_bucket(true,false)==='tv_samo_missing_anex','samo');v62_need(v62_bucket(false,true)==='tv_anex_missing_samo','anex');v62_need(v62_bucket(false,false)==='tv_only_missing_both','both');
-    v62_need(V62_BASELINE['full_triple_total']===2707&&V62_BASELINE['tv_samo_missing_anex']===732,'baseline');
+    v62_need(V62_BASELINE['full_triple_total']===2709&&V62_BASELINE['tv_samo_missing_anex']===730,'baseline');
 }
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     if(in_array('--self-test',$argv??[],true)){v62_self_test();echo"MATCH_POST_ANEX_WRITER_CENSUS_V62_SELFTEST_OK\n";exit;}
