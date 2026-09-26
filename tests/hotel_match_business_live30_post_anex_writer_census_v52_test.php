@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_business_live30_post_anex_writer_census_v52.php';
 function v52t(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
-v52t(V52_OP==='hotel-match-business-live30-post-anex-writer-census-1971-20260926-v52','op');
+v52t(V52_OP==='hotel-match-business-live30-post-anex-writer-census-1971-20260926-v52b','op');
 v52t(V52_V51_OP==='hotel-match-live-samo-missing-anex-operator13-writer-1971-20260926-v51','v47');
 v52t(V52_V51_DIGEST==='1fb6c78eb31808f9c0d466317c5c247740be4d4ca91d7f0f4488eaf2c89f1f41','digest');
 v52t(V52_EXPECTED===12,'expected');
