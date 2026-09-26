@@ -14,6 +14,7 @@ on:
       - 'tests/search3-presentation-scope.test.cjs'
       - 'tests/search3-tourvisor-results-limit.php'
       - 'tests/search3-prototype-inventory-lifecycle.cjs'
+      - 'tests/search3-prototype-continuation-coverage.cjs'
       - 'tests/search3-prototype-selected-tour-retention.cjs'
       - 'tests/search3-prototype-provider-config-v1.cjs'
       - 'tests/search3-prototype-inventory-browser.py'
@@ -99,6 +100,7 @@ jobs:
           node tests/search3-honest-results-controls.cjs
           php tests/search3-tourvisor-results-limit.php
           node tests/search3-prototype-inventory-lifecycle.cjs
+          node tests/search3-prototype-continuation-coverage.cjs
           node tests/search3-prototype-selected-tour-retention.cjs
           node tests/search3-prototype-provider-application-preview.cjs
           node tests/search3-prototype-provider-config-v1.cjs
