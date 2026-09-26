@@ -13,6 +13,7 @@ final class AnyTourAnexSearch
     private $context = [];
     private $params = [];
     private $offers = [];
+    private ?array $pagination = null;
 
     public function __construct(AnyTourAnexClient $client, ?callable $resolver = null, array $sensitive = [])
     {
@@ -25,6 +26,7 @@ final class AnyTourAnexSearch
     {
         // A failed replacement search must never leave selectable stale offers.
         $this->offers = $this->params = $this->context = [];
+        $this->pagination = null;
         if (!in_array($maxPages, [1, 12], true)) throw new InvalidArgumentException('ANEX_INVALID_PAGE_LIMIT');
         $params = $this->buildParams($criteria);
         // Validate the normalizer's full context before making a network request.
@@ -82,7 +84,97 @@ final class AnyTourAnexSearch
         $combined['first_page_only'] = $pagesRead === 1;
         $this->params = $params;
         $this->context = $criteria;
+        // Only a foreground first page creates manual continuation authority.
+        // Background collectors and legacy snapshots must not acquire a cursor.
+        if ($maxPages === 1) {
+            $this->pagination = ['pages_read' => 1,
+                'state' => count($rows) >= 300 ? 'available' : 'exhausted',
+                'page_digests' => array_keys($seenPages)];
+            $combined['continuation'] = $this->continuationStatus();
+        }
         return $combined;
+    }
+
+    /** Safe metadata only; a short page ends this search, not the whole market. */
+    public function continuationStatus(): array
+    {
+        $state = $this->pagination['state'] ?? 'unsupported';
+        $loaded = $this->pagination['pages_read'] ?? 0;
+        return ['state' => $state, 'pages_read' => $loaded,
+            'next_page' => $state === 'available' ? $loaded + 1 : null];
+    }
+
+    /** One explicit next page in the exact retained criteria; never restart page 1. */
+    public function continuePage(int $expectedPage): array
+    {
+        $status = $this->continuationStatus();
+        if ($this->context === [] || $status['state'] !== 'available'
+            || $expectedPage !== $status['next_page']) {
+            throw new InvalidArgumentException('ANEX_CONTINUATION_UNAVAILABLE');
+        }
+        // Reserve before transport. An error leaves the cursor blocked and every
+        // previously accepted offer intact, including after snapshot/restore.
+        $this->pagination['state'] = 'blocked';
+        $previousOffers = $this->offers;
+        try {
+            $params = $this->params;
+            $params['PRICEPAGE'] = $expectedPage;
+            $data = $this->client->request('SearchTour_PRICES', $params);
+            $rows = self::rawPriceRows($data);
+            $digest = hash('sha256', json_encode($rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+            if (in_array($digest, $this->pagination['page_digests'], true)) {
+                throw new RuntimeException('ANEX_REPEATED_PRICE_PAGE');
+            }
+            $result = anytour_anex_normalize_prices($data, $this->context, $this->resolver, $this->sensitive);
+            $hotelIds = isset($this->context['hotel_ids']) ? array_map('strval', $this->context['hotel_ids']) : null;
+            $accepted = [];
+            $seen = [];
+            $result['deduplicated_count'] = 0;
+            foreach ($result['offers'] as $offer) {
+                if ($hotelIds !== null && !in_array($offer['hotel']['external_id'], $hotelIds, true)) {
+                    $result['rejected_count']++;
+                    continue;
+                }
+                $key = $offer['offer_key'];
+                if (isset($this->offers[$key]) || isset($seen[$key])) {
+                    $result['deduplicated_count']++;
+                    continue;
+                }
+                $seen[$key] = true;
+                $accepted[] = $offer;
+            }
+            $this->remember($accepted, $this->freightRefsBySupplierOffer($data));
+            $this->pagination['pages_read'] = $expectedPage;
+            $this->pagination['page_digests'][] = $digest;
+            $this->pagination['state'] = count($rows) < 300 ? 'exhausted'
+                : ($expectedPage === 12 ? 'limit' : 'available');
+            $result['offers'] = $accepted;
+            $result['page'] = $expectedPage;
+            $result['pages_read'] = 1;
+            $result['first_page_only'] = false;
+            $result['continuation'] = $this->continuationStatus();
+            return $result;
+        } catch (Throwable $error) {
+            $this->offers = $previousOffers;
+            throw $error;
+        }
+    }
+
+    private static function validPagination($value): bool
+    {
+        if (!is_array($value) || !self::exactKeys($value, ['pages_read', 'state', 'page_digests'])
+            || !is_int($value['pages_read']) || $value['pages_read'] < 1 || $value['pages_read'] > 12
+            || !in_array($value['state'], ['available', 'exhausted', 'blocked', 'limit'], true)
+            || ($value['state'] === 'available' && $value['pages_read'] >= 12)
+            || ($value['state'] === 'limit' && $value['pages_read'] !== 12)
+            || !is_array($value['page_digests']) || !array_is_list($value['page_digests'])
+            || count($value['page_digests']) !== $value['pages_read']) return false;
+        $seen = [];
+        foreach ($value['page_digests'] as $digest) {
+            if (!is_string($digest) || !preg_match('/\A[a-f0-9]{64}\z/D', $digest) || isset($seen[$digest])) return false;
+            $seen[$digest] = true;
+        }
+        return true;
     }
 
     private static function rawPriceRows(array $payload): array
@@ -113,14 +205,21 @@ final class AnyTourAnexSearch
                 'supplier_freight_refs' => $offer['supplier_freight_refs'] ?? [],
             ];
         }
-        return ['schema_version' => 1, 'context' => $this->context, 'offers' => $offers];
+        $snapshot = ['schema_version' => 1, 'context' => $this->context, 'offers' => $offers];
+        if ($this->pagination !== null) $snapshot['pagination'] = $this->pagination;
+        return $snapshot;
     }
 
     /** Restore a server-owned snapshot without serializing the token-bearing client. */
     public function restore(array $snapshot): void
     {
         $this->offers = $this->params = $this->context = [];
-        if (!self::exactKeys($snapshot, ['schema_version', 'context', 'offers'])
+        $this->pagination = null;
+        $hasPagination = array_key_exists('pagination', $snapshot);
+        $keys = ['schema_version', 'context', 'offers'];
+        if ($hasPagination) $keys[] = 'pagination';
+        if (!self::exactKeys($snapshot, $keys)
+            || ($hasPagination && !self::validPagination($snapshot['pagination']))
             || $snapshot['schema_version'] !== 1 || !is_array($snapshot['context'])
             || !is_array($snapshot['offers']) || count($snapshot['offers']) > 4800
             || ($snapshot['offers'] !== []
@@ -164,6 +263,7 @@ final class AnyTourAnexSearch
         $this->params = $params;
         $this->context = $snapshot['context'];
         $this->offers = $offers;
+        $this->pagination = $hasPagination ? $snapshot['pagination'] : null;
     }
 
     private function buildParams(array $criteria): array

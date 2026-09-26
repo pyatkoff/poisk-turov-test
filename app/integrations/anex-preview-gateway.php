@@ -43,11 +43,12 @@ final class AnyTourAnexPreviewGateway
         }
         $this->prepareSession($session, $now);
         $action = $request['action'] ?? null;
-        if (!is_string($action) || !in_array($action, ['search', 'expand', 'flights', 'offer'], true)) {
+        if (!is_string($action) || !in_array($action, ['search', 'continue', 'expand', 'flights', 'offer'], true)) {
             throw new InvalidArgumentException('ANEX_INVALID_ACTION');
         }
         // Saved reads never instantiate the token-bearing client or fetch details.
         if ($action === 'offer') return $this->savedOffer($request, $session, $now);
+        if ($action === 'continue') return $this->continuePage($request, $session, $now);
         // Browser/preview traffic keeps its conservative per-session cap. Explicit
         // server-side background collectors may disable only this UI-facing cap;
         // AnyTourAnexClient still enforces shared supplier pacing/cooldown.
@@ -95,6 +96,49 @@ final class AnyTourAnexPreviewGateway
             $public['search_ref'] = $session['saved_offers']['search_ref'];
         }
         return $public;
+    }
+
+    /** Caller must serialize/persist the session, as for the existing search path. */
+    private function continuePage(array $request, array &$session, int $now): array
+    {
+        if (!self::exactKeys($request, ['action', 'search_ref', 'page'])
+            || !is_string($request['search_ref']) || !preg_match('/\A[a-f0-9]{32}\z/D', $request['search_ref'])
+            || !is_int($request['page']) || $request['page'] < 2 || $request['page'] > 12) {
+            throw new InvalidArgumentException('ANEX_INVALID_REQUEST');
+        }
+        $saved = $session['saved_offers'] ?? null;
+        $snapshot = $session['search'] ?? null;
+        if (!is_array($saved) || !is_array($snapshot)
+            || !is_int($saved['created_at'] ?? null) || !is_int($saved['expires_at'] ?? null)
+            || $saved['expires_at'] !== $saved['created_at'] + self::SESSION_TTL
+            || $now < $saved['created_at'] || $now >= $saved['expires_at']
+            || ($saved['search_ref'] ?? null) !== $request['search_ref']) {
+            throw new InvalidArgumentException('ANEX_SESSION_REQUIRED');
+        }
+        $cursor = $snapshot['pagination'] ?? null;
+        if (!is_array($cursor) || ($cursor['state'] ?? null) !== 'available'
+            || !is_int($cursor['pages_read'] ?? null) || $request['page'] !== $cursor['pages_read'] + 1) {
+            throw new InvalidArgumentException('ANEX_CONTINUATION_UNAVAILABLE');
+        }
+        if ($this->enforcePreviewRateLimit) $this->consumeRequest($session);
+        $search = $this->newSearch();
+        $search->restore($snapshot);
+        // Reserve in the caller-owned session before the first supplier request.
+        // Never erase saved offers if page 2+ fails or the response is unknown.
+        $session['search']['pagination']['state'] = 'blocked';
+        try {
+            $result = $search->continuePage($request['page']);
+            $session['search'] = $search->snapshot();
+            $this->rememberOffers($result, $session, $now);
+            $public = $this->publicResult($result);
+            $public['search_ref'] = $saved['search_ref'];
+            return $public;
+        } catch (Throwable $error) {
+            $session['search'] = $snapshot;
+            $session['search']['pagination']['state'] = 'blocked';
+            $session['saved_offers'] = $saved;
+            throw $error;
+        }
     }
 
     /** Reuse the existing session; retain no more facts than its known offer set. */
