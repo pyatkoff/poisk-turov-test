@@ -21,7 +21,7 @@ concurrency:
 
 env:
   OP: hotel-match-live234-andromeda-context-acquire-1971-20260926-v65
-  BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
+  BASE: 93ce2190a444a7b4aa2920a013f14c8b2f64e79c
   CLAIM: '5847507841'
   LANE_AMEND: '5837028527'
   SOURCE_ARTIFACT: '10907252023'
@@ -90,7 +90,7 @@ jobs:
           import json,os,time,urllib.request
           c=json.load(open('input/claim.json'));b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],'exact176','100-batch','HTTP<=1600','price calls<=1400','max12','support-only','DB/schema/mapping writes0','safe_to_write_now=false']:
+          for x in [os.environ['OP'],'exact176','batch_count100','HTTP<=1600','price calls<=1400','max12','SUPPORT ONLY','DB/schema/mapping writes0','safe_to_write_now=false']:
               assert x.lower() in b.lower(),x
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
