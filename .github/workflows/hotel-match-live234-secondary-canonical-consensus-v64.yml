@@ -21,7 +21,8 @@ concurrency:
 env:
   OP: hotel-match-live234-sealed-secondary-canonical-consensus-1971-20260926-v64c
   BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
-  CLAIM: '5847407386'
+  CLAIM: '5847396105'
+  CLAIM_AMEND: '5847407386'
   SOURCE_ARTIFACT: '10907946061'
   SOURCE_ZIP_SHA: 0c26f52918f3cd9bdf1c6e55cae63b7428f46902e7558f5b48c3884cf4aefd44
   SOURCE_RESULT_SHA: dc4ad9e16b5f800a363f406965e318b6eb69bdb2ea77eb0b856cfe4c010fce9c
@@ -76,12 +77,15 @@ jobs:
           test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
 
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM_AMEND" >input/claim-amend.json
           python3 - <<'PY'
           import json,os,time,urllib.request
-          c=json.load(open('input/claim.json'));b=c['body']
-          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          c=json.load(open('input/claim.json'));a=json.load(open('input/claim-amend.json'));b=c['body']
+          for x in (c,a):
+              assert x['user']['id']==226193297 and x['author_association']=='OWNER' and x['issue_url'].endswith('/issues/3419')
           for x in [os.environ['OP'],'exact48','<=5000','operator_115','operator_315','operator_342','2.5M','HTTP0','safe_to_write_now=false']:
               assert x.lower() in b.lower(),x
+          assert 'v64c-specific' in a['body'] and 'Same v64c operation remains uncreated/unconsumed' in a['body']
           u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(120):
               q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
