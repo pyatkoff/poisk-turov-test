@@ -119,7 +119,20 @@ final class AnyTourAnexSearch
         try {
             $params = $this->params;
             $params['PRICEPAGE'] = $expectedPage;
-            $data = $this->client->request('SearchTour_PRICES', $params);
+            try {
+                $data = $this->client->request('SearchTour_PRICES', $params);
+            } catch (RuntimeException $error) {
+                $last = $this->client->lastRequestDiagnostics();
+                // SAMO SearchTour_PRICES code 3: no additional data. Only an
+                // explicit next page may interpret this successful-HTTP reply as EOF.
+                // https://dokuwiki.samo.ru/doku.php?id=onlinest:api:searchtour:prices
+                if ($error->getMessage() !== 'ANEX_SUPPLIER_ERROR'
+                    || ($last['action'] ?? null) !== 'SearchTour_PRICES'
+                    || ($last['http_status'] ?? null) !== 200
+                    || ($last['supplier_code'] ?? null) !== 3
+                    || ($last['curl_errno'] ?? 0) !== 0) throw $error;
+                $data = ['prices' => []];
+            }
             $rows = self::rawPriceRows($data);
             $digest = hash('sha256', json_encode($rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
             if (in_array($digest, $this->pagination['page_digests'], true)) {
