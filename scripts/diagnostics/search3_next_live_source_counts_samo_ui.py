@@ -17,8 +17,8 @@ from urllib.parse import urlparse
 _spec = importlib.util.spec_from_file_location('next_initial_base', Path(__file__).with_name('search3_next_live_source_counts.py'))
 base = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(base)
-SOURCE = '7cd20c1b6faf3e0be00a0539a54fd625a304f018'
-EXPECTED = dict(base.EXPECTED, **{'prototype-search/data.js': 'd29d892d52e12b23dd7610c82357b030dc2a3697b39f15e2b5e562032663d83e'})
+SOURCE = '4311d1a37366d983f9e6524a40bc52bb8cf6e51b'
+EXPECTED = dict(base.EXPECTED, **{'prototype-search/data.js': '527c95397713605d5adb9548bcb823bc2cb78833ebdf801514ddc8253b54e01e'})
 EXPECTED.update({
     'prototype-search/lead.js': '539aa347823aa6c847d3501cde2976cef201d7e1b58ef8310d8aaee59f379a8d',
     'tour-controller-v4.js': '616f914ff2f3b3b18f230b5780eed454dcaa8d30c8fc9974e735c89c0e18704f',
