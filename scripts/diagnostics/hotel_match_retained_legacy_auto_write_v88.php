@@ -13,7 +13,7 @@ function v88_legacy_auto(array $r,array $hotel,string $cat):bool{
   $e=json_decode((string)$r['evidence_json'],true);if(!is_array($e))return false;
   $allowed=['candidate_ids','geography','operation_id','reason','source','target_name'];
   if(array_diff(array_keys($e),$allowed)||array_diff($allowed,array_keys($e)))return false;
-  if(($e['candidate_ids']??null)!==[]||($e['target_name']??'x')!==null||($e['reason']??'')!=='no_unique_name')return false;
+  if(($e['candidate_ids']??null)!==[]||!array_key_exists('target_name',$e)||$e['target_name']!==null||($e['reason']??'')!=='no_unique_name')return false;
   if(($e['operation_id']??'')!=='andromeda-1759-country6-20260910-v1')return false;
   if(($e['geography']['status']??'')!=='unknown'||count($e['geography']??[])!==1)return false;
   $s=$e['source']??null;if(!is_array($s)||(string)($s['id']??'')!==$cat)return false;
@@ -30,7 +30,7 @@ function v88_prepare(string $ops,string $payload):array{
   foreach($packet['candidate_pairs'] as $p){
     $id=(int)$p['local_hotel_id'];if(!isset(V88_PAIRS[$id])||$p['kind']!=='SAMO')continue;
     v88_need(V88_PAIRS[$id]===(string)$p['catalog_id'],'scope_pair');
-    $a=$audit[$id]??null;v88_need(is_array($a)&&($a['source_row']['decision_status']??'')==='pending'&&($a['source_row']['local_hotel_id']??'x')===null,'audit_pending');
+    $a=$audit[$id]??null;v88_need(is_array($a)&&($a['source_row']['decision_status']??'')==='pending'&&array_key_exists('local_hotel_id',$a['source_row'])&&$a['source_row']['local_hotel_id']===null,'audit_pending');
     $pr=$p['proofs'][0];$ns=(string)$pr['namespace'];$native=(string)$pr['native_id'];
     $edge=v86_tv_edge($ops,$packet,$pr['tv_proofs'][0],$id,$ns,$native);
     $raw=v86_samo_raw($ops,$p,(string)$p['catalog_id'],$ns,$native);
