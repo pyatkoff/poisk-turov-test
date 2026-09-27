@@ -10,7 +10,7 @@ concurrency:
   group: hotel-match-samo31-reconcile-v72
   cancel-in-progress: false
 env:
-  OP: hotel-match-post-samo23-census-1971-20260927-v73c
+  OP: hotel-match-current15-samo82-anex-1971-20260927-v74b
 jobs:
   reconcile:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017
@@ -27,7 +27,7 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail; mkdir terminal
-          php -l scripts/diagnostics/hotel_match_post_samo23_census_v73.php
+          php -l scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php
           python3 - <<'PY'
           import json,os,time,urllib.request
           url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
@@ -52,16 +52,16 @@ jobs:
           if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
           chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
           remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
-          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
-          scp "${opts[@]}" scripts/diagnostics/hotel_match_post_samo23_census_v73.php scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php "$remote:$rel/payload/scripts/diagnostics/"\n          scp "${opts[@]}" reports/hotel-match-retained-anex82-v74.json "$remote:$rel/payload/hotel-match-retained-anex82-v74.json"
           scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/anex-search-mapping-registry.php"
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_post_samo23_census_v73.php\" --execute"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_ANEX82=\"\$HOME/$rel/payload/hotel-match-retained-anex82-v74.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php\" --execute"
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
           python3 - <<'PY'
           import json
-          r=json.load(open('terminal/result.json'));assert r['state']=='completed_read_only_post_samo23_census' and r['database_writes']==0
-          print(r['counts'],r['remaining_count'])
+          r=json.load(open('terminal/result.json'));assert r['state']=='completed_read_only_current' and r['database_writes']==0 and len(r['samo_rows'])==15 and len(r['anex_rows'])==82
+          print(r['samo_counts'],r['anex_counts'])
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
