@@ -32,7 +32,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
   let releaseSamoSearch;transport.state.samoSearchGate=new Promise(resolve=>releaseSamoSearch=resolve);
   await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
-  await page.locator('#applied-search [data-action="filters"]').click();
+  await page.locator('[data-action="filters"]:visible').first().click();
   const hotelEditor=page.locator('#hotel-query');await hotelEditor.fill('Вымышленный');
   await hotelEditor.evaluate(el=>{el.setSelectionRange(3,8);window.activeHotelEditor=el;});
   releaseSamoSearch();transport.state.samoSearchGate=null;
