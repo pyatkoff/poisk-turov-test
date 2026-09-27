@@ -3,7 +3,7 @@ name: Inspect terminal Andromeda v6 quote checkpoint
 on:
   pull_request:
     paths:
-      - '.github/workflows/andromeda-v6-terminal-readback.yml'
+      - '.github/workflows/andromeda-v5-terminal-readback.yml'
   issue_comment:
     types: [created]
 
@@ -29,7 +29,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          text = Path('.github/workflows/andromeda-v6-terminal-readback.yml').read_text()
+          text = Path('.github/workflows/andromeda-v5-terminal-readback.yml').read_text()
           required = [
               "github.event.issue.number == 3419",
               "github.event.comment.body == '/inspect-andromeda-surcharge-e2e-3419-v6'",
