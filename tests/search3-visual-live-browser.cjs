@@ -51,10 +51,17 @@ const server=http.createServer((req,res)=>{
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
   await page.screenshot({path:path.join(evidence,`application-${width}.png`)});
+  await page.locator('#modal-back').click();assert.match((await page.locator('#detail-total').textContent()).replace(/\s/g,''),/133500/);
   await page.locator('[data-action="close-modal"]').click();await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
+  transport.state.samoFlightChoice=true;
   const samoOffer=page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').first();
   if(!await samoOffer.isVisible())await samoOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
-  await samoOffer.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="andromeda-application-preview"]').click();
+  await samoOffer.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="apply-andromeda-flights"]').click();
+  await page.locator('[data-action="andromeda-application-preview"]').waitFor();const beforeSamoReturn=transport.calls.length;
+  await page.locator('#modal-back').click();assert.equal(await page.locator('[data-action="refresh-hotel"]').isEnabled(),true);
+  await page.screenshot({path:path.join(evidence,`samo-return-${width}.png`)});
+  await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="andromeda-application-preview"]').click();
+  assert.equal(transport.calls.length,beforeSamoReturn);transport.state.samoFlightChoice=false;
   assert((await page.locator('#modal-body').textContent()).includes('SAMO STANDARD'));
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
@@ -70,6 +77,15 @@ const server=http.createServer((req,res)=>{
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('требует подтверждения'));
   assert.equal(transport.calls.length,callsBeforeAnexApplication,'ANEX application preview adds no provider request');
+  await page.locator('#modal-footer [data-action="all-offers"]').click();
+  const retainedAnex=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();
+  if(!await retainedAnex.isVisible())await retainedAnex.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
+  await retainedAnex.click();assert.equal(await page.locator('#modal-title').textContent(),'Доплаты ANEX рассчитаны');
+  assert.match((await page.locator('#modal-body').textContent()).replace(/\s/g,''),/123000/);
+  await page.locator('[data-action="anex-application-preview"]').click();await page.locator('#modal-back').click();
+  await page.locator('[data-action="anex-application-preview"]').click();assert.equal(transport.calls.length,callsBeforeAnexApplication);
+  await page.screenshot({path:path.join(evidence,`anex-return-${width}.png`)});
+
   assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth),false);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   for(const flightChoice of [false,true]){
    await page.locator('[data-action="close-modal"]').click();
@@ -95,7 +111,7 @@ const server=http.createServer((req,res)=>{
   const failures=await page.evaluate(()=>window.quoteFailures);
   assert.equal(failures.length,2);assert(failures.every(f=>f.httpStatus===502&&f.failureCategory==='supplier_auth'));
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,local_application:true,supplier_requests:0,lead_requests:0});await context.close();
+  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,anex_estimate_retained:true,local_application:true,supplier_requests:0,lead_requests:0});await context.close();
  }}finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
  await require('./search3-visual-large-flight-choices.cjs')();
