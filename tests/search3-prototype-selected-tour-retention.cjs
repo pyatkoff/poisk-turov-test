@@ -262,6 +262,12 @@ assert.match(urlStateSource,/state\.filters\.stars=.*n>=1&&n<=5/s,
   'all supported hotel categories round-trip through the URL');
 assert.match(source,/const starFilterValues=.*\[1,2,3,4,5\].*selected\.includes\(value\).*h\.stars===value/s,
   'main category facet exposes selected and currently returned categories from one to five stars');
+assert.match(source,/function mealFilterValues\(hs,selected=\[\]\).*offerMealPlanIds.*Object\.entries\(mealNames\).*offerMealPlanIds\.has\(id\).*selected/s,
+  'main meal facet derives canonical labels from meal plans present in loaded offers and keeps a selected value removable');
+const mealFacetStart=source.indexOf('function mealFilterValues('),mealFacetEnd=source.indexOf('\nconst flightFilterValues',mealFacetStart);
+const mealFilterValues=new Function('mealNames',`${source.slice(mealFacetStart,mealFacetEnd)};return mealFilterValues;`)({AI:7,HB:5,RO:1});
+assert.deepEqual(mealFilterValues([{offers:[{mealPlanId:7},{mealPlanId:999}]}],['HB']),['HB','AI'],
+  'meal facet keeps the selected canonical label and adds only canonical meal plans present in loaded offers');
 assert.match(source,/const flightFilterValues=.*\['regular','charter','unknown'\].*selected\.includes\(value\).*o\.flight===value/s,
   'main flight facet exposes selected and currently returned supported flight states');
 const mainFilterSource=source.slice(source.indexOf('function renderFilters()'),source.indexOf('\nfunction loadResultCalendar()'));
@@ -269,6 +275,10 @@ assert.match(mainFilterSource,/<h4>Перелёт<\/h4>.*checkRows\('flight',fli
   'main filter drawer exposes the existing flight restriction');
 assert.match(mainFilterSource,/<h4>Категория отеля<\/h4>.*starOptions\.map/s,
   'main filter drawer renders the complete result-derived category facet');
+assert.match(mainFilterSource,/<h4>Питание<\/h4>.*checkRows\('meals',mealOptions\.map/s,
+  'main filter drawer renders only the result-derived canonical meal facet');
+assert.doesNotMatch(mainFilterSource,/checkRows\('meals',\[\.\.\.new Set\(\[\.\.\.Object\.keys\(mealNames\)/s,
+  'main result facet never offers the entire global meal catalogue as if it were present in loaded results');
 const filterChipSource=source.slice(source.indexOf('function filterChipData('),source.indexOf('\nfunction removeModelFilter'));
 assert.match(filterChipSource,/key==='flight'\?flightLabel\(\{flight:value\}\)/,
   'active flight chips keep unknown distinct from a regular flight');
