@@ -282,6 +282,9 @@ assert.doesNotMatch(mainFilterSource,/checkRows\('meals',\[\.\.\.new Set\(\[\.\.
 const filterChipSource=source.slice(source.indexOf('function filterChipData('),source.indexOf('\nfunction removeModelFilter'));
 assert.match(filterChipSource,/key==='flight'\?flightLabel\(\{flight:value\}\)/,
   'active flight chips keep unknown distinct from a regular flight');
+const recoverySource=source.slice(source.indexOf('function recoverySuggestions('),source.indexOf('\nfunction recoveryHTML'));
+assert.match(recoverySource,/\['amenities','Без фильтра по удобствам отеля'\]/,
+  'zero-result recovery can remove amenity restrictions without resetting unrelated conditions');
 for(const key of ['beach','rating','family','spa'])assert.match(urlStateSource,new RegExp("p\\.get\\(k\\)==='1'"),key+' boolean filters use the canonical URL flag parser');
 assert.match(urlStateSource,/state\.onlyFavorites=p\.get\('favorites'\)==='1'/,'favorites-only mode round-trips through the URL');
 assert.match(urlStateSource,/history\[push\?'pushState':'replaceState'\]/,'URL owner can distinguish fresh search history from local replacements');
