@@ -819,7 +819,7 @@ function showModal(type,title,kicker,body,wide=false){
 }
 function closeModal({fromHistory=false}={}){
  selectionGeneration++;calendarRequest?.abort();calendarObserver?.disconnect();hotelRoomObserver?.disconnect();hotelRoomObserver=null;cancelDestinationLookup();
- const m=$('#modal');if(!m.open)return;window.AnyTourPrototypeLead.reset();
+ const m=$('#modal');if(!m.open)return;
  leaveUIHistory(fromHistory);cancelVerification();modalType='';modalHistory.length=0;m.close();document.body.style.overflow=$('#filter-panel').classList.contains('open')?'hidden':'';restorePageReturn();
 }
 function modalBack(){
@@ -1036,7 +1036,7 @@ function flightSummaryHTML(o){
  return `<section class="tour-section flight-summary"><div class="tour-section-heading"><h3>${icon('plane')} Перелёт</h3>${action}</div>${content}</section>`;
 }
 async function openOffer(key,restored=null,chooseFlight=false){
- const initial=restored||offerFromKey(key);if(!initial)return;if(selectedOffer?.key!==key)window.AnyTourPrototypeLead.reset();
+ const initial=restored||offerFromKey(key);if(!initial)return;
  andromedaApplicationDraft=null;const run=++selectionGeneration;selectedOffer={...initial};if(restoreProviderView(initial))return;renderRealOffer();
  if(needsRefresh(initial)){
   if(initial.provider==='andromeda'&&data.hasAndromedaQuoteAttempt?.(initial))await refreshHotel(initial.hotelId);

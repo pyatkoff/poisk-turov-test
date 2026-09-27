@@ -81,7 +81,7 @@ const server=http.createServer((req,res)=>{
   assert.match((await page.locator('#modal-body .tour-fuel-disclosure').textContent()).replace(/\s/g,''),/20686₽/);
   assert.match(await page.locator('#modal-footer').textContent(),/Цена предложения · сборы уточняются/);
   await page.screenshot({path:path.join(evidence,`application-fuel-${width}.png`)});
-  await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
+  await page.locator('[name="name"]').fill('Тестовый турист');await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="comment"]').fill('Тестовый комментарий');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
   await page.screenshot({path:path.join(evidence,`application-${width}.png`)});
   await page.locator('#modal-back').click();assert.match((await page.locator('#detail-total').textContent()).replace(/\s/g,''),/133500/);
@@ -96,6 +96,10 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="andromeda-application-preview"]').click();
   assert.equal(transport.calls.length,beforeSamoReturn);transport.state.samoFlightChoice=false;
   assert((await page.locator('#modal-body').textContent()).includes('SAMO STANDARD'));
+  assert.equal(await page.locator('[name="name"]').inputValue(),'Тестовый турист');
+  assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 999 123-45-67');
+  assert.equal(await page.locator('[name="comment"]').inputValue(),'Тестовый комментарий');
+  assert.equal(await page.locator('[name="consent"]').isChecked(),false);
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
   await page.screenshot({path:path.join(evidence,`samo-application-${width}.png`)});
@@ -180,7 +184,7 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('1 вариант'));
   assert.equal(await facetEditor.inputValue(),'');assert.equal(transport.calls.filter(c=>c.action==='search_start').length,facetStarts+1);
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
+  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }}finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
  await require('./search3-visual-large-flight-choices.cjs')();
