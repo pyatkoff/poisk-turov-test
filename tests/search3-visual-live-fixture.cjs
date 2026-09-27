@@ -9,12 +9,16 @@ const segment=(number,returning)=>({company:{name:'Тестовая авиако
 const flights=[{isDefault:true,price:{value:120000},fuelCharge:0,forward:[segment('TEST101',false)],backward:[segment('TEST102',true)]},{price:{value:133500.5},fuelCharge:0,forward:[segment('TEST201',false)],backward:[segment('TEST202',true)]}];
 const searchRef='a'.repeat(32),offerRef='anex_online:'+'b'.repeat(64),andromedaRef='offer_'+'d'.repeat(64);
 function fixture({tvFuel=0,anexZeroSurcharge=false}={}){
- const calls=[],state={hold:false,failAnex:false,extended:false,samoFailure:null,samoFlightChoice:false};
+ const calls=[],state={hold:false,failAnex:false,extended:false,samoFailure:null,samoFlightChoice:false,countriesFailure:'',countryGates:{},regionsGate:null};
  const json=async(url,options={})=>{
   const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},q=u.searchParams,action=q.get('action')||body.action;
   calls.push({url:u.pathname,action,body,query:Object.fromEntries(q)});
-  if(u.pathname==='/data/departures-v1.php')return {ok:true,items:[{id:1,name:'Москва'}]};
-  if(u.pathname.endsWith('/search3-destination-read-v1.php'))return {ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',kind:action==='countries'?'country':'region',...(action==='regions'?{parentId:4}:{}),items:action==='countries'?[{id:4,kind:'country',parentId:null,name:'Турция',slug:'turkey',revision:1,tourvisorIds:['4']}]:[{id:21,kind:'region',parentId:4,name:'Белек',slug:'belek',revision:1,tourvisorIds:['21']}]};
+  if(u.pathname==='/data/departures-v1.php')return {ok:true,items:[{id:1,name:'Москва'},{id:2,name:'Казань'},{id:3,name:'Екатеринбург'}]};
+  if(u.pathname.endsWith('/search3-destination-read-v1.php')){
+   const departure=q.get('departureId')||String(body.departureId||''),fail=action==='countries'&&state.countriesFailure===departure,gate=action==='countries'?state.countryGates[departure]:state.regionsGate;
+   if(gate)await gate;if(fail)return {ok:false,error:'Fictional country catalogue unavailable'};
+   return {ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',kind:action==='countries'?'country':'region',...(action==='regions'?{parentId:4}:{}),items:action==='countries'?[{id:4,kind:'country',parentId:null,name:'Турция',slug:'turkey',revision:1,tourvisorIds:['4']}]:[{id:21,kind:'region',parentId:4,name:'Белек',slug:'belek',revision:1,tourvisorIds:['21']}]};
+  }
   if(u.pathname.endsWith('/hotel-details-read-v1.php')){const ids=q.getAll('legacyHotelIds[]');return {ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:[profile],links:ids.map(id=>({legacyHotelId:id,anytourHotelId:501}))};}
   if(u.pathname.endsWith('/search3-local-results-read-v1.php')){
    if(action==='meal_catalog')return {ok:true,data:{source:'anytour-search-meal-v1',provider:'tourvisor',scopeKey:'global',available:true,revision:'a'.repeat(64),plans:[{id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:['7']},{id:2,code:'breakfast',nameRu:'Завтраки',nativeIds:['3']}]}};

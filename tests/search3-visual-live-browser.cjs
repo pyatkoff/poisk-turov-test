@@ -34,6 +34,20 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('.hotel-card').count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(evidence,`results-${width}.png`)});
+  const cardsBeforeDeparture=await page.locator('#cards').innerHTML(),urlBeforeDeparture=page.url(),startsBeforeDeparture=transport.calls.filter(c=>c.action==='search_start').length;
+  await page.locator('#applied-search [data-action="edit-search"]').click();transport.state.countriesFailure='2';await page.locator('#origin').selectOption('Казань');
+  await page.locator('#catalog-error [data-action="retry-countries"]').waitFor();assert(await page.locator('.search-submit').isDisabled());
+  await page.screenshot({path:path.join(evidence,`departure-error-${width}.png`)});
+  await page.locator('[data-action="destination"]').click();assert(await page.locator('[data-action="apply-destination"]').isDisabled());await page.locator('[data-action="close-modal"]').click();
+  transport.state.countriesFailure='';await page.locator('#catalog-error [data-action="retry-countries"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  await page.locator('#origin').selectOption('Екатеринбург');await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  await page.locator('#search-form [data-action="dates"]').click();assert.match(await page.locator('.calendar-context').textContent(),/Екатеринбург/);
+  await page.waitForFunction(()=>document.querySelector('#date-calendar').textContent.includes('97,5'));
+  await page.screenshot({path:path.join(evidence,`departure-calendar-${width}.png`)});
+  await page.locator('[data-action="close-modal"]').click();await page.locator('#search-return').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  assert.equal(await page.locator('#origin').inputValue(),'Москва');assert.equal(await page.locator('#cards').innerHTML(),cardsBeforeDeparture);assert.equal(page.url(),urlBeforeDeparture);
+  assert.equal(transport.calls.filter(c=>c.action==='search_start').length,startsBeforeDeparture,'departure recovery never starts a supplier search');
+
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   assert((await page.locator('#modal-body').textContent()).includes('Тестовая улица'));
   assert(await page.evaluate(()=>!!(document.querySelector('#hotel-services-heading').compareDocumentPosition(document.querySelector('#hotel-rooms-heading')) & Node.DOCUMENT_POSITION_FOLLOWING)));
@@ -111,7 +125,7 @@ const server=http.createServer((req,res)=>{
   const failures=await page.evaluate(()=>window.quoteFailures);
   assert.equal(failures.length,2);assert(failures.every(f=>f.httpStatus===502&&f.failureCategory==='supplier_auth'));
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,anex_estimate_retained:true,local_application:true,supplier_requests:0,lead_requests:0});await context.close();
+  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,anex_estimate_retained:true,local_application:true,supplier_requests:0,lead_requests:0});await context.close();
  }}finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
  await require('./search3-visual-large-flight-choices.cjs')();
