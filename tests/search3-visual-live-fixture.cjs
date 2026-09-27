@@ -16,7 +16,7 @@ function fixture({tvFuel=0,anexZeroSurcharge=false}={}){
   if(u.pathname==='/data/departures-v1.php')return {ok:true,items:[{id:1,name:'Москва'},{id:2,name:'Казань'},{id:3,name:'Екатеринбург'}]};
   if(u.pathname.endsWith('/search3-destination-read-v1.php')){
    const departure=q.get('departureId')||String(body.departureId||''),fail=action==='countries'&&state.countriesFailure===departure,gate=action==='countries'?state.countryGates[departure]:state.regionsGate;
-   if(gate)await gate;if(fail)throw Error('Fictional country catalogue unavailable');
+   if(gate)await gate;if(fail)return {ok:false,error:'Fictional country catalogue unavailable'};
    return {ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',kind:action==='countries'?'country':'region',...(action==='regions'?{parentId:4}:{}),items:action==='countries'?[{id:4,kind:'country',parentId:null,name:'Турция',slug:'turkey',revision:1,tourvisorIds:['4']}]:[{id:21,kind:'region',parentId:4,name:'Белек',slug:'belek',revision:1,tourvisorIds:['21']}]};
   }
   if(u.pathname.endsWith('/hotel-details-read-v1.php')){const ids=q.getAll('legacyHotelIds[]');return {ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:[profile],links:ids.map(id=>({legacyHotelId:id,anytourHotelId:501}))};}

@@ -1724,6 +1724,7 @@ async function loadCountries(origin){
   if(run!==catalogLoadGeneration||draft.origin!==origin)return;
   catalogError='Не удалось загрузить направления для города «'+origin+'». Выберите другой город или повторите загрузку.';updateSearchUI();
   if(modalType==='destination')renderDestination();
+  if(modalType==='dates')loadCalendarPrices();
  }
 }
 async function restoreSavedHotels(){

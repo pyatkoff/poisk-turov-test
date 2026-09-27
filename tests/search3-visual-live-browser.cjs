@@ -39,7 +39,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('#catalog-error [data-action="retry-countries"]').waitFor();assert(await page.locator('.search-submit').isDisabled());
   await page.screenshot({path:path.join(evidence,`departure-error-${width}.png`)});
   await page.locator('[data-action="destination"]').click();assert(await page.locator('[data-action="apply-destination"]').isDisabled());await page.locator('[data-action="close-modal"]').click();
-  transport.state.countriesFailure='';await page.locator('[data-action="retry-countries"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  transport.state.countriesFailure='';await page.locator('#catalog-error [data-action="retry-countries"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   await page.locator('#origin').selectOption('Екатеринбург');await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   await page.locator('#search-form [data-action="dates"]').click();assert.match(await page.locator('.calendar-context').textContent(),/Екатеринбург/);
   await page.waitForFunction(()=>document.querySelector('#date-calendar').textContent.includes('97,5'));
