@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /** Exact retained evidence, conditional pending/null transition, no supplier client. */
-const W76_OP='hotel-match-pending8-transition-1971-20260927-v76';
+const W76_OP='hotel-match-pending8-transition-1971-20260927-v76b';
 const W76_PAIRS=[4326=>'309768',55945=>'2000037585',56479=>'2000093384',67304=>'2000055490',76753=>'2000087342',108356=>'269426',116886=>'2000103169',121109=>'2000090159'];
 const W76_PINS=[
  'v65.json'=>'42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810',
@@ -45,6 +45,14 @@ function w76_prepare(string $dir):array{
  w76_need(array_keys($rows)===array_keys(W76_PAIRS),'complete_scope');return$rows;
 }
 function w76_evidence_valid(array $row):bool{$raw=$row['evidence_json']??null;return is_string($raw)&&w76_sha($row['evidence_sha256']??null)&&hash_equals($row['evidence_sha256'],hash('sha256',$raw))&&is_array(json_decode($raw,true));}
+/** m948_safe exports a filtered, reordered projection; full raw SHA remains mandatory. */
+function w76_source_projection_matches(mixed $raw,mixed $projection):bool{
+ if(!is_array($raw)||!is_array($projection)||!$projection)return false;
+ foreach($projection as$key=>$expected){
+  if(!array_key_exists($key,$raw)||w76_canon($raw[$key])!==w76_canon($expected))return false;
+ }
+ return true;
+}
 /** Return hold reasons; proof existence alone never overrides a current conflict. */
 function w76_classify(array $e,array $c):array{
  $id=$e['id'];$cat=$e['catalog_id'];$reasons=[];$sources=$c['sources'][$cat]??[];
@@ -59,7 +67,7 @@ function w76_classify(array $e,array $c):array{
   $ev=json_decode((string)$row['evidence_json'],true);if(!is_array($ev))$ev=[];
   if(array_diff(array_keys($ev),['source','reason','operation_id','candidate_ids','geography','target_name']))$reasons[]='unknown_prior_decision_fields';
   if(($ev['reason']??'')!=='no_unique_name'||(isset($ev['operation_id'])&&$ev['operation_id']!=='andromeda-1759-country6-20260910-v1'))$reasons[]='manual_or_nonautomatic_origin';
-  if(($ev['source']??null)!==($e['history']['source']??null))$reasons[]='prior_source_changed';
+  if(!w76_source_projection_matches($ev['source']??null,$e['history']['source']??null))$reasons[]='prior_source_projection_changed';
   $candidates=$ev['candidate_ids']??[];if(!is_array($candidates))$reasons[]='invalid_candidate_history';elseif($candidates&&!in_array((string)$id,array_map('strval',$candidates),true))$reasons[]='historical_candidate_other_target';
  }
  foreach($c['targets'][$id]??[]as$r)if((string)$r['external_hotel_id']!==$cat)$reasons[]='target_catalog_occupied';
