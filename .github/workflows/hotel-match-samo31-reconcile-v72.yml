@@ -1,4 +1,4 @@
-name: MATCH pending8 evidence-bound transition
+name: MATCH pending8 corrected projection transition
 'on':
   pull_request:
     types:
@@ -14,7 +14,7 @@ concurrency:
   group: hotel-match-samo31-reconcile-v72
   cancel-in-progress: false
 env:
-  OP: hotel-match-pending8-transition-1971-20260927-v76
+  OP: hotel-match-pending8-transition-1971-20260927-v76b
 jobs:
   reconcile:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref
@@ -44,11 +44,11 @@ jobs:
         umask 077
         mkdir -p input terminal package/scripts/diagnostics package/app/integrations package/input
         test "$(git rev-parse HEAD)" = "$HEAD"
-        test "$(git hash-object scripts/diagnostics/hotel_match_pending8_transition_v76.php)" = fd38ea2382c05e2589af5a6818e8d7d6616d4e47
-        test "$(git hash-object tests/hotel_match_pending8_transition_v76_test.php)" = bfa2f5770803a0f24ba1baf7b75b2284ff0baa27
+        test "$(git hash-object scripts/diagnostics/hotel_match_pending8_transition_v76.php)" = fb17d70dce98444cda1b546433d298efb6cb556d
+        test "$(git hash-object tests/hotel_match_pending8_transition_v76_test.php)" = ed8ad9dbc78b6787e9d95deb7db410ad472d527c
         test "$(git hash-object scripts/diagnostics/hotel_match_anex_effective_coverage.php)" = 1b5190727690f50a4cdd606c48afa575978ec48e
         test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
-        for id in 10909959597 10780823859 10927599853 10917808046; do
+        for id in 10909959597 10780823859 10927599853 10917808046 10929098842; do
           curl -fsSL --max-time 90 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" -o "input/$id.zip"
         done
         python3 - <<'PYCODE'
@@ -71,6 +71,15 @@ jobs:
             assert r['operation']==q['operation'] and q['readback_verified'] is True
             assert r['database_writes']==r['mapping_writes']==0
             pathlib.Path('package/input/'+name).write_bytes(raw)
+        p=pathlib.Path('input/10929098842.zip')
+        assert hashlib.sha256(p.read_bytes()).hexdigest()=='3f51e6b9d00a4e87c4e515a63fad7a8244dd42996008031d70bfc074a8ff2304'
+        with zipfile.ZipFile(p) as z:
+            raw=z.read('terminal/result.json');q=json.loads(z.read('terminal/receipt.json'))
+        r=json.loads(raw)
+        assert hashlib.sha256(raw).hexdigest()==q['result_sha256']=='27cf095d42c5cdd97f75551605c36aef16c6da4ab52020ad35b67ee450437098'
+        assert r['operation']==q['operation']=='hotel-match-pending8-transition-1971-20260927-v76'
+        assert r['state']=='completed_no_new_writes' and r['database_writes']==r['mapping_writes']==0
+        assert q['result_file_verified'] is True and r['no_replay'] is True
         PYCODE
     - name: Exact retained proof and disposable MySQL transition tests
       env:
@@ -109,13 +118,13 @@ jobs:
                 assert max(sec,key=lambda r:r['id'])['conclusion']=='success','security_not_green';break
             time.sleep(3)
         else:raise SystemExit('security_timeout')
-        rec={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_write','scope':'exact_pending8_evidence_bound_transition','claim':5854874167,'maximum_writes':8,'provider_http_calls':0,'no_replay':True,'payload_sha256':hashlib.sha256(pathlib.Path('input/payload.tar').read_bytes()).hexdigest()}
+        rec={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_write','scope':'exact_pending8_evidence_bound_transition','claim':5854967836,'predecessor_result_sha256':'27cf095d42c5cdd97f75551605c36aef16c6da4ab52020ad35b67ee450437098','maximum_writes':8,'provider_http_calls':0,'no_replay':True,'payload_sha256':hashlib.sha256(pathlib.Path('input/payload.tar').read_bytes()).hexdigest()}
         with open('input/reservation.json','x') as f:
             json.dump(rec,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
         PYCODE
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
-        name: match-pending8-v76-reservation-${{ github.run_id }}
+        name: match-pending8-v76b-reservation-${{ github.run_id }}
         path: 'input/reservation.json
 
           input/tests.txt'
@@ -170,7 +179,7 @@ jobs:
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       if: always()
       with:
-        name: match-pending8-v76-${{ github.run_id }}
+        name: match-pending8-v76b-${{ github.run_id }}
         path: 'terminal/
 
           input/tests.txt'
