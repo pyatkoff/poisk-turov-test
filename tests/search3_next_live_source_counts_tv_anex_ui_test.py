@@ -20,7 +20,7 @@ ANEX = dict(hotelId=502, name='ANEX fixture', key='anex%3Agroup', day=DAY, night
 CHILD = dict(hotelId=502, name='', key='anex%3Aconcrete', day=DAY, nights=7, room='CONCRETE', meal='AI', localId=101, generation=2, offerRef=CONCRETE, searchRef=REF)
 SEARCH = dict(ok=True, data=dict(provider='anex', generation=2, date_range=dict(**{'from':DAY,'to':DAY}), search_ref=REF, hotels=[dict(local_id=101, tours=[dict(offer_ref=GROUP,kind='group_minimum',search_ref=REF)])]))
 EXPAND = dict(ok=True, data=dict(provider='anex', generation=2, search_ref=REF, offer_ref=GROUP, status='expanded', hotels=[dict(local_id=101,tours=[dict(offer_ref=CONCRETE,kind='concrete',search_ref=REF)])]))
-CURRENT = dict(ok=True, data=dict(provider='anex', generation=2, search_ref=REF, offer_ref=CONCRETE, selection_state='disabled', status='current', offer=dict(final_price_verified=False, context=dict(current_context_verified=True))))
+CURRENT = dict(ok=True, data=dict(provider='anex', generation=2, search_ref=REF, offer_ref=CONCRETE, selection_state='disabled', status='current', offer=dict(final_price_verified=False), context=dict(status='current', current_context_verified=True, selection_state='disabled')))
 ADDITIONAL = dict(ok=True, data=dict(provider='anex', generation=2, search_ref=REF, offer_ref=CONCRETE, selection_state='disabled', additional_prices=dict(application_state='applied', arithmetic_applied=True, final_price_verified=False, included_in_search_price=False, search_price=dict(amount='121000'), party_surcharge=dict(amount='2000.50'), search_plus_additional=dict(amount='123000.50'))))
 ANEX_URL = m.base.ORIGIN+m.ANEX_PATH
 def tv_url(action, identity='test'):
@@ -60,6 +60,19 @@ class Guards(unittest.TestCase):
             self.assertFalse(g.allow(ANEX_URL,'POST',json.dumps(body)))
         self.assertEqual(g.estimate,m.Decimal('123000.50'))
         self.assertEqual(g.selected_calls,dict(tour=0,flights=0,search=1,expand=1,offer=1,additional_prices=1))
+
+    def test_only_verified_current_server_envelope_grants_additional_prices(self):
+        for change in [lambda d:d.pop('context'),
+                       lambda d:d['offer'].update(context=d.pop('context')),
+                       lambda d:d['context'].update(current_context_verified=False),
+                       lambda d:d['context'].update(status='expired'),
+                       lambda d:d['context'].update(selection_state='enabled')]:
+            g=ready();concrete(g)
+            p=copy.deepcopy(CURRENT);change(p['data'])
+            g.observe_response(ANEX_URL,200,p,json.dumps(g.identity('offer',True)))
+            self.assertFalse(g.anex_current)
+            self.assertFalse(g.allow(ANEX_URL,'POST',json.dumps(g.identity('additional_prices',True))))
+            self.assertEqual(g.selected_calls['additional_prices'],0)
 
     def test_foreign_scopes_and_unobserved_transitions(self):
         for change in [lambda c:c['params'].update(hotelIds=['999']),lambda c:c['params'].update(adults=3),lambda c:c.update(day='2026-12-01'),lambda c:c.update(localId=0)]:
@@ -225,6 +238,13 @@ class Browser(unittest.TestCase):
                 self.assertFalse(result['anex']['final_price_verified'])
                 self.assertFalse(result['anex']['flights_verified'])
                 self.assertEqual(g.selected_calls,dict(tour=1,flights=1,search=1,expand=1,offer=1,additional_prices=1))
+                self.assertEqual(g.lead_attempts,0);self.assertEqual(g.denied,[])
+                g=ready()
+                page.goto(m.base.ORIGIN+m.base.BASE+'visual-search/')
+                result=m.exercise_selected(page,g,Path(tmp),('anex',))
+                self.assertEqual(list(result),['anex'])
+                self.assertEqual(result['anex']['status'],'passed')
+                self.assertEqual(g.selected_calls,dict(tour=0,flights=0,search=1,expand=1,offer=1,additional_prices=1))
                 self.assertEqual(g.lead_attempts,0);self.assertEqual(g.denied,[])
             finally:browser.close()
 

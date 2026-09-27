@@ -189,7 +189,7 @@ class SelectedGuard(shared.JourneyGuard):
                 if h.get('local_id') == self.anex['localId']:
                     self.concrete_refs.update(t['offer_ref'] for t in h.get('tours', []) if t.get('kind') == 'concrete' and t.get('search_ref') == self.anex_ref and re.fullmatch('anex_online:[a-f0-9]{64}', str(t.get('offer_ref', ''))))
         elif self.concrete and value.get('search_ref') == self.anex_ref and value.get('offer_ref') == self.concrete['offerRef'] and value.get('selection_state') == 'disabled':
-            if action == 'offer' and value.get('status') == 'current' and value.get('offer', {}).get('context', {}).get('current_context_verified') is True and value.get('offer', {}).get('final_price_verified') is False:
+            if action == 'offer' and value.get('status') == 'current' and value.get('context') == {'status': 'current', 'current_context_verified': True, 'selection_state': 'disabled'} and value.get('offer', {}).get('final_price_verified') is False:
                 self.anex_current = True
             elif action == 'additional_prices' and self.anex_current:
                 p = value.get('additional_prices', {})
@@ -200,7 +200,7 @@ class SelectedGuard(shared.JourneyGuard):
                     self.estimate = total
 
     def receipt(self):
-        return dict(super().receipt(), selectedCalls=dict(self.selected_calls), journeys=self.journeys, selectedResponses=self.responses[:20])
+        return dict(super().receipt(), selectedCalls=dict(self.selected_calls), journeys=self.journeys, anexCurrentContextVerified=self.anex_current, selectedResponses=self.responses[:20])
 
 
 def click_offer(page, candidate, from_card=True):
@@ -245,11 +245,11 @@ def application(page, guard, out, provider):
     return message, widths
 
 
-def exercise_selected(page, guard, out):
+def exercise_selected(page, guard, out, providers=('tourvisor', 'anex')):
     if not page.evaluate("String(window.V2_CONFIG?.leadApi||'').endsWith('/preview-lead-disabled.php')"):
         raise RuntimeError('preview_lead_boundary_missing')
     candidates = page.evaluate('window.__nextSelectedCandidates')
-    for provider in ('tourvisor', 'anex'):
+    for provider in providers:
         try:
             guard.journey_stage = provider+'_select'
             if provider == 'tourvisor':
@@ -307,4 +307,4 @@ def exercise_selected(page, guard, out):
 
 
 if __name__ == '__main__':
-    raise SystemExit(shared.main(SelectedGuard(), OBSERVER, exercise_selected, 'v21'))
+    raise SystemExit(shared.main(SelectedGuard(), OBSERVER, lambda p, g, o: exercise_selected(p, g, o, ('anex',)), 'v22'))
