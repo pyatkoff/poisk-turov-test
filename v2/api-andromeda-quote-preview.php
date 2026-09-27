@@ -309,11 +309,23 @@ function anytour_andromeda_quote_failure_category(Throwable $error): string
 
 function anytour_andromeda_quote_supplier_failure(Throwable $error): array
 {
-    return [
+    $response = [
         'ok' => false,
         'error' => 'supplier_unavailable',
         'failure_category' => anytour_andromeda_quote_failure_category($error),
     ];
+    if (method_exists($error, 'diagnosticFacts')) {
+        $facts = $error->diagnosticFacts();
+        $action = is_array($facts) ? ($facts['action'] ?? null) : null;
+        if (is_string($action) && in_array($action, ['broninit', 'get_flights', 'changeservice', 'calc'], true)) {
+            $response['failure_stage'] = $action;
+        }
+        $code = is_array($facts) ? ($facts['code'] ?? null) : null;
+        if (is_string($code) && preg_match('/^[A-Za-z0-9_.:-]{1,64}$/D', $code) === 1) {
+            $response['supplier_code'] = $code;
+        }
+    }
+    return $response;
 }
 
 function anytour_andromeda_quote_http(): void
