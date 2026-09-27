@@ -3,7 +3,7 @@ name: Run checked Andromeda HTTP flight-selection v9
 on:
   pull_request:
     paths:
-      - '.github/workflows/andromeda-http-flight-selection-v9.yml'
+      - '.github/workflows/andromeda-http-flight-selection-v8.yml'
   issue_comment:
     types: [created]
 
@@ -39,11 +39,12 @@ jobs:
           python3 -m py_compile source/scripts/diagnostics/andromeda_http_flight_selection_e2e.py
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('control/.github/workflows/andromeda-http-flight-selection-v9.yml')
+          p=Path('control/.github/workflows/andromeda-http-flight-selection-v8.yml')
           text=p.read_text()
           required=[
             'andromeda-http-flight-selection-e2e-3419-v9-turkey-2026-12-28-3a-7n',
             'fd3348504f8d07fbacb7def37ed3322e5e8c998c',
+            '4f55bb90b68bf9429f8e7e7716d71429351a468b',
             '36308780159',
             '10927849441',
             'sha256:3f6d4ceaa64591b3376ce29e870aa2e6325bccd3a57d698d3346ed81ed3a4b65',
@@ -85,7 +86,7 @@ jobs:
             if(context.payload.sender?.id!==owner || context.actor!=='pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('Owner invocation required.');
             if(context.repo.owner!=='pyatkoff'||context.repo.repo!=='poisk-turov-test'||context.ref!=='refs/heads/main') throw new Error('Repository/ref mismatch.');
             if(context.payload.issue?.number!==3419 || context.payload.issue?.pull_request || context.payload.comment?.body!==command) throw new Error('Exact fresh #3419 v9 command required.');
-            const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:2530,per_page:100});
+            const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:3419,per_page:100});
             const matches=comments.filter(c=>c.body===command && c.user?.id===owner && c.author_association==='OWNER');
             if(matches.length!==1 || matches[0].id!==context.payload.comment.id) throw new Error('Duplicate/edited v9 owner command rejected.');
             const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
@@ -168,7 +169,7 @@ jobs:
           from pathlib import Path
           p=Path(os.environ['RUNNER_TEMP'])/'andromeda-http-flight-selection-v9/result.json'
           d=json.loads(p.read_text())
-          if d.get('operation')!='andromeda-http-flight-selection-e2e-3419-v9-turkey-2026-12-28-3a-7n' or d.get('runtime_source')!='fd3348504f8d07fbacb7def37ed3322e5e8c998c':
+          if d.get('operation')!='andromeda-http-flight-selection-e2e-3419-v9-turkey-2026-12-28-3a-7n' or d.get('runtime_source')!='4f55bb90b68bf9429f8e7e7716d71429351a468b':
               raise SystemExit('v9 identity mismatch; DO NOT replay')
           if d.get('booking_calls')!=0 or d.get('mapping_writes')!=0:
               raise SystemExit('v9 authority boundary failed; DO NOT replay')
