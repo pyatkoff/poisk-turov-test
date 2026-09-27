@@ -1148,7 +1148,7 @@
       ||!evidence||evidence.application_state!=='applied'||evidence.arithmetic_applied!==true||evidence.final_price_verified!==false
       ||evidence.included_in_search_price!==false||evidence.converted_currency!=='RUB'
       ||evidence.per_person_or_package!=='per_person_by_party_type')return null;
-    const search=anexMoneyFact(evidence.search_price),surcharge=anexMoneyFact(evidence.party_surcharge),total=anexMoneyFact(evidence.search_plus_additional);
+    const search=anexMoneyFact(evidence.search_price),surcharge=anexMoneyFact(evidence.party_surcharge,false),total=anexMoneyFact(evidence.search_plus_additional);
     if(!search||!surcharge||!total||search.units+surcharge.units!==total.units
       ||evidence.search_price.source!=='direct_anex_search'
       ||evidence.party_surcharge.source!=='anex_b2b_additional_prices_daily'
