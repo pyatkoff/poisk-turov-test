@@ -1105,7 +1105,8 @@
     const raw=o?.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');
     if(!value||value.provider!=='anex'||value.generation!==epoch||value.search_ref!==searchRef||value.offer_ref!==offerRef
       ||value.status!=='current'||value.selection_state!=='disabled'||!value.offer||value.offer.final_price_verified!==false
-      ||value.offer.context?.current_context_verified!==true||typeof value.finalPriceReady!=='boolean')return null;
+      ||value.context?.status!=='current'||value.context?.current_context_verified!==true
+      ||value.context?.selection_state!=='disabled'||typeof value.finalPriceReady!=='boolean')return null;
     const ready=value.finalPriceReady;
     let finalPrice=null;
     if(ready){

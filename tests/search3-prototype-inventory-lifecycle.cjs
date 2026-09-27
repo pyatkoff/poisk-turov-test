@@ -37,7 +37,7 @@ const expandedAnex=(body,{groupRef='anex_online:'+'b'.repeat(64),searchRef='c'.r
 const currentAnexConcrete=(body,{ready=false}={})=>({ok:true,data:{
  provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'current',selection_state:'disabled',
  finalPriceReady:ready,finalPrice:ready?'1530000':null,price:ready?'1530000':null,
- offer:{final_price_verified:false,context:{current_context_verified:true}}
+ offer:{final_price_verified:false},context:{status:'current',current_context_verified:true,selection_state:'disabled'}
 }});
 const additionalAnexConcrete=(body,{search='1510000',surcharge='20000',total='1530000'}={})=>({ok:true,data:{
  provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'additional_prices',selection_state:'disabled',
@@ -304,6 +304,34 @@ test('expanded concrete ANEX offer verifies in the same provider session without
  assert.equal(request.search_ref,verifyRef);assert.equal(request.offer_ref,concrete.raw.offerRef);assert.equal(request.local_hotel_id,101);
  assert.equal(current.state,'current');assert.equal(current.currentContextVerified,true);assert.equal(current.finalPriceReady,false);
  assert.equal(current.finalPrice,null);assert.equal(current.finalPriceVerified,false);
+});
+test('ANEX current authority requires exact envelope identity and the server top-level context',async()=>{
+ for(const [name,mutate] of [
+  ['missing context',v=>{delete v.context;}],
+  ['old nested fixture',v=>{v.offer.context=v.context;delete v.context;}],
+  ['unverified context',v=>{v.context.current_context_verified=false;}],
+  ['expired context',v=>{v.context.status='expired';}],
+  ['enabled context',v=>{v.context.selection_state='enabled';}],
+  ['wrong generation',v=>{v.generation++;}],
+  ['wrong search',v=>{v.search_ref='9'.repeat(32);}],
+  ['wrong offer',v=>{v.offer_ref='anex_online:'+'9'.repeat(64);}],
+  ['unearned final price',v=>{v.offer.final_price_verified=true;}]
+ ]){
+  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+  const h=harness({anex:async body=>{
+   if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+   if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
+   if(body.action==='offer'){const value=currentAnexConcrete(body);mutate(value.data);return {response:{ok:true,status:200,json:async()=>value}};}
+   return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');verification=true;
+  const concrete=(await h.data.expandAnexGroup(group)).offers[0];
+  await assert.rejects(h.data.verifyAnexConcrete(concrete),/другого или устаревшего/,name);
+  const before=h.anexCalls.length;
+  await assert.rejects(h.data.verifyAnexAdditional(concrete),/Сначала подтвердите/,name);
+  assert.equal(h.anexCalls.length,before,name+' must not authorize AdditionalPrices');
+ }
 });
 test('ANEX AdditionalPrices requires a current concrete receipt and is explicit no-replay',async()=>{
  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
