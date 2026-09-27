@@ -231,7 +231,7 @@ const server=http.createServer((req,res)=>{
   await page.screenshot({path:path.join(evidence,`progressive-offer-filter-${width}.png`)});
   await roomChoice.selectOption('');assert.equal(await page.locator('#offer-count').textContent(),'3 тура');
   await page.screenshot({path:path.join(evidence,`progressive-offers-${width}.png`)});
-  const lateSamo=page.locator('[data-action="offer"][data-key^="andromeda%3A"]');
+  const lateSamo=page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]');
   await lateSamo.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();await lateSamo.click();
   assert.match(await page.locator('#modal-body').textContent(),/SAMO STANDARD/);
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,beforeOfferSearch+1);

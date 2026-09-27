@@ -235,7 +235,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert([...roomChoice.options].some(o=>o.value==='SAMO STANDARD'),'late source adds its new room option to the open list');
  assert.equal(q('#offer-count').textContent,'1 тур','the selected room filter remains applied');assert.equal(q('[data-action="offer-group"]').getAttribute('aria-expanded'),'true');
  roomChoice.value='';roomChoice.dispatchEvent(new w.Event('change',{bubbles:true}));assert.equal(q('#offer-count').textContent,'3 тура');
- click('[data-action="offer"][data-key^="andromeda%3A"]');assert.match(q('#modal-body').textContent,/SAMO STANDARD/);
+ click('#modal-body [data-action="offer"][data-key^="andromeda%3A"]');assert.match(q('#modal-body').textContent,/SAMO STANDARD/);
  assert.equal(starts(),beforeOfferSearch+1,'late list updates and choosing its offer do not start another search');
  click('[data-action="close-modal"]');await settle();
  const url=w.location.href;w.history.replaceState(null,'','/poisk-turov/');assert.equal(w.Search3CanonicalProfilesV1.create(()=>{}),null,'production consumer stays denied');w.history.replaceState(null,'',url);
