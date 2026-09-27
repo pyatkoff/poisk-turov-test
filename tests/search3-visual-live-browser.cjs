@@ -210,7 +210,9 @@ const server=http.createServer((req,res)=>{
   await page.locator('#applied-search [data-action="edit-search"]').click();await page.locator('#origin').selectOption('Казань');await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('1 вариант'));
   assert.equal(await facetEditor.inputValue(),'');assert.equal(transport.calls.filter(c=>c.action==='search_start').length,facetStarts+1);
-  while(await page.locator('#active-filters [data-action="remove-filter"]').count())await page.locator('#active-filters [data-action="remove-filter"]').first().click();
+  await page.locator('[data-action="filters"]:visible').first().click();
+  await page.locator('#filter-panel [data-action="reset"]').click();
+  if(width<=1100)await page.locator('#apply-filters').click();
   Object.assign(transport.state,{failAnex:false,samoFailure:null,samoFlightChoice:false,wideFacets:false});
   let releaseOfferSource;transport.state.samoSearchGate=new Promise(resolve=>releaseOfferSource=resolve);
   const beforeOfferSearch=transport.calls.filter(c=>c.action==='search_start').length;
