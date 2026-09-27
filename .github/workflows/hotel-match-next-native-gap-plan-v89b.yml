@@ -1,0 +1,87 @@
+name: MATCH next native gap plan v89b
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/hotel-match-next-native-gap-plan-v89b.yml
+      - scripts/diagnostics/hotel_match_next_native_gap_plan_v89b.php
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: hotel-match-next-native-gap-plan-v89b
+  cancel-in-progress: false
+env:
+  OP: hotel-match-next-native-gap-plan-1971-20260928-v89b
+  CLAIM: '5860205766'
+jobs:
+  plan:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.ref == 'match/samo31-reconcile-v72-20260927'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact plan, owner claim and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail;umask 077;mkdir terminal
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_next_native_gap_plan_v89b.php)" = d6c99a05a8fddaa5214d951b7705faecdd22e3eb
+          php -l scripts/diagnostics/hotel_match_next_native_gap_plan_v89b.php
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          def get(p):
+              q=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+p,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:return json.load(f)
+          c=get('/issues/comments/'+os.environ['CLAIM']); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in ['v89b','up to200','Provider HTTP0','exclude every historically attempted hotel']: assert x.lower() in b.lower(),x
+          pr=get('/pulls/4017');assert pr['state']=='open' and pr['draft'] is True and pr['head']['sha']==os.environ['HEAD']
+          for _ in range(100):
+              xs=[x for x in get('/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs'] if x['name']=='Security guard']
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Execute one read-only CURRENT plan
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload\""
+          git archive HEAD scripts/diagnostics app/integrations | ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$rel/payload\""
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=768M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_next_native_gap_plan_v89b.php\" --execute" >terminal/stdout.txt
+          scp "${opts[@]}" "$remote:$rel/result.json" terminal/result.json
+          scp "${opts[@]}" "$remote:$rel/receipt.json" terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['operation']==q['operation']==os.environ['OP'] and r['state']=='completed_read_only_next_native_gap_plan'
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          assert 0<r['scope_count']<=200
+          print(json.dumps({k:r[k] for k in ['current_nontriple_total','historically_attempted_hotel_count','retained_exact_hotel_count','excluded_already_attempted_current','excluded_retained_exact_complete','eligible_unattempted_current_count','scope_count']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-next-native-gap-plan-v89b-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
