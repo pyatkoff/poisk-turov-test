@@ -1357,6 +1357,11 @@
     return Object.freeze({payload(fd){current();return session.payload(fd);},submit(form,controls){current();return session.submit(form,controls);}});
   }
   function variantPrice(t,v){return amount(v?.price);}
-  function fuel(t,v){const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;}
+  function fuel(t,v){
+    const source=v&&Object.hasOwn(v,'fuelCharge')?v:t;
+    const raw=source?.fuelCharge,value=raw&&typeof raw==='object'?raw.value:raw;
+    if(!['number','string'].includes(typeof value)||String(value).trim()==='')return null;
+    const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;
+  }
   root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);

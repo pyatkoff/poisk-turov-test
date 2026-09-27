@@ -17,10 +17,21 @@ const window={
  AnyTourLocalDbProviderV1:{parse:()=>null},
  V2TourController:{createLeadSession(value){handoffs.push(value);return{payload:()=>value,submit:()=>{throw Error('No delivery in this test');}};}}
 };
-const context=vm.createContext({window,structuredClone,URL,DOMException,setTimeout:()=>1,clearTimeout(){},fetch:async url=>({ok:true,json:async()=>url==='/data/departures-v1.php'?{ok:true,items:[{id:1,name:'Москва'}]}:{ok:false}})});
+const context=vm.createContext({window,structuredClone,URL,URLSearchParams,AbortController,DOMException,setTimeout:()=>1,clearTimeout(){},fetch:async url=>({ok:true,json:async()=>url==='/data/departures-v1.php'?{ok:true,items:[{id:1,name:'Москва'}]}:String(url).includes('/search3-destination-read-v1.php?')?{ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',items:[{id:4,name:'Турция',tourvisorIds:['4']}]}:{ok:false}})});
 vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/data.js'),'utf8'),context);
 (async()=>{
  const data=window.AnyTourPrototypeData;
+ const beforeFuel=calls.length;
+ for(const fuel of [undefined,null,'',' \t\n',false,true,[],[0],{},NaN,Infinity,-1,'unknown',{value:null},{value:'  '},{value:false},{value:[]}]){
+  assert.equal(data.fuel({fuelCharge:fuel}),null,'Unknown fuel is not an explicit zero');
+  assert.equal(data.fuel({fuelCharge:20686},{fuelCharge:fuel}),null,'A pair-owned unknown cannot inherit tour fuel');
+ }
+ for(const [fuel,expected] of [[0,0],['0',0],[' 0 ',0],[{value:0},0],[{value:'0'},0],[20686,20686],['20686.50',20686.5],[{value:'20686.50'},20686.5]]){
+  assert.equal(data.fuel({fuelCharge:fuel}),expected);
+  assert.equal(data.fuel({fuelCharge:17},{fuelCharge:fuel}),expected,'Explicit pair amount takes precedence');
+ }
+ assert.equal(data.fuel({fuelCharge:20686},{}),20686,'Only an absent pair fuel field can use the tour amount');
+ assert.equal(calls.length,beforeFuel,'Fuel validation makes no supplier calls');
  await data.init();await data.search({origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-01',minNights:7,maxNights:7,adults:2,ages:[]},()=>{});
  const raw={id:'exact-tour'},offer={raw,provider:'tourvisor',cached:false,flightChoiceId:null};
  offer.tour=await data.quote(offer);
