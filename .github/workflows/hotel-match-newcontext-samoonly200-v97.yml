@@ -106,3 +106,5 @@ jobs:
           if-no-files-found: warn
 
 # explicit owner-triggered v97 acquisition
+
+# synchronize after base authorization
