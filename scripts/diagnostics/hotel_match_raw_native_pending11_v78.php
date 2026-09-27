@@ -1,33 +1,38 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/hotel_match_pending8_transition_v76.php';
-const W78_OP='hotel-match-raw-native-pending11-1971-20260927-v78';
+const W78_OP='hotel-match-raw-native-pending11-1971-20260927-v78b';
 const W78_PAIRS=[17383=>'650',1648=>'3060',17443=>'67775',1597=>'201859',17390=>'218356',17414=>'240679',60358=>'2000023232',65808=>'2000050217',129=>'2000065684',75871=>'2000067202',28649=>'2000073592'];
 const W78_INPUTS=[
  'hotel-match-live30-retained-native-union-1971-20260927-v77'=>'d40fbe2e0240a5df194ac838376a3425a8f4e80f2426a757560fe369011107f7',
  'hotel-match-mass948-retained-files-1971-20260927-v1'=>'1531b8bdb096c3158502b950e863665bd02321374900908498699935922383e9',
  'hotel-match-live30-common4-historical-hold-current-1971-20260925-v20'=>'43a71d55d649ccbece446e3a8a36fc6df59e141215c1de6085b0821c23642545',
- 'hotel-match-mass948-saved-context-1971-20260927-v1'=>'292c8f40d5bc9164e638246fdafa7b5f7113646c1c1597edee9a89b9c1a62851'
+ 'hotel-match-mass948-saved-context-1971-20260927-v1'=>'292c8f40d5bc9164e638246fdafa7b5f7113646c1c1597edee9a89b9c1a62851',
+ 'hotel-match-postaccept-full-queue-1971-20260927-v1'=>'411596e321ba5f128335a29d10181688dacd5e34eee5e7cefdd4436b26d468b2'
 ];
 function w78_read(string $path,string $sha):array{w76_need(is_file($path)&&!is_link($path)&&filesize($path)<=67108864,'proof_file');$raw=file_get_contents($path);w76_need(is_string($raw)&&hash_equals($sha,hash('sha256',$raw)),'proof_digest');$j=json_decode($raw,true,128,JSON_THROW_ON_ERROR);w76_need(is_array($j),'proof_json');return$j;}
 function w78_ptr(array $x,string $p):array{w76_need(str_starts_with($p,'/'),'pointer');foreach(explode('/',substr($p,1))as$k){$k=strtr($k,['~1'=>'/','~0'=>'~']);w76_need(is_array($x)&&array_key_exists($k,$x),'pointer_missing');$x=$x[$k];}w76_need(is_array($x),'pointer_row');return$x;}
 function w78_fact(array $r,string $cat,string $ns,string $native):bool{$op=substr($ns,9);$o=$r['original']??null;return is_array($o)&&in_array($ns,['operator_315','operator_342'],true)&&(string)($r['hotelKey']??'')===$cat&&(string)($r['operatorKey']??($o['operatorKey']??''))===$op&&(!isset($o['operatorKey'])||(string)$o['operatorKey']===$op)&&(string)($o['hotelKey']??'')===$native&&!in_array($r['isOperatorHotelKey']??false,[true,1,'1','true'],true);}
 function w78_name(string $a,string $b):bool{$n=fn(string$x)=>preg_replace('/[^\pL\pN]+/u','',mb_strtolower($x));$na=$n($a);$nb=$n($b);if($na===''||$nb==='')return false;if(str_contains($na,$nb)||str_contains($nb,$na))return true;foreach(preg_split('/[^\pL\pN]+/u',mb_strtolower($a),-1,PREG_SPLIT_NO_EMPTY)as$t)if(mb_strlen($t)>=4&&!in_array($t,['hotel','hotels','resort','beach','grand','club','istanbul','marmaris'],true)&&str_contains($nb,$t))return true;return false;}
-function w78_auto(array $r):bool{if($r['decision_status']!=='pending'||$r['local_hotel_id']!==null||!w76_evidence_valid($r))return false;$e=json_decode($r['evidence_json'],true);return is_array($e)&&!array_diff(array_keys($e),['source','reason'])&&is_array($e['source']??null)&&in_array($e['reason']??'',['no_unique_country_name','no_unique_name'],true);}
-function w78_auto_operator(array $r):bool{if(w78_auto($r))return true;if($r['decision_status']!=='pending'||$r['local_hotel_id']!==null||!w76_evidence_valid($r))return false;$e=json_decode($r['evidence_json'],true);return is_array($e)&&!array_diff(array_keys($e),['country_id','source','operation_id'])&&($e['operation_id']??'')==='hotel-match-operator-original-store-1971-20260915-v2'&&is_array($e['source']??null)&&(string)($e['source']['id']??'')===(string)$r['external_hotel_id']&&'operator_'.(string)($e['source']['operator_key']??'')===$r['supplier_namespace'];}
+function w78_auto(array $r):bool{if($r['decision_status']!=='pending'||$r['local_hotel_id']!==null||!w76_evidence_valid($r))return false;$e=json_decode($r['evidence_json'],true);return is_array($e)&&!array_diff(array_keys($e),['source','reason','candidate_ids','target_name'])&&($e['candidate_ids']??[])===[]&&($e['target_name']??null)===null&&is_array($e['source']??null)&&in_array($e['reason']??'',['no_unique_country_name','no_unique_name'],true);}
+function w78_auto_operator(array $r):bool{if(w78_auto($r))return true;if($r['decision_status']!=='pending'||$r['local_hotel_id']!==null||!w76_evidence_valid($r))return false;$e=json_decode($r['evidence_json'],true);if(!is_array($e)||array_diff(array_keys($e),['country_id','source','operation_id','schema','source_operation_id','source_result_sha256','catalog_reference_kind','decision','provider_bridges']))return false;return ($e['schema']??'')==='operator-original-price-bridge/1'&&($e['operation_id']??'')==='hotel-match-operator-original-store-1971-20260915-v2'&&($e['source_operation_id']??'')==='hotel-match-operator-original-batch-1971-20260915-v2'&&($e['source_result_sha256']??'')==='f379062abd43c36e6feb792f8e0313466ddd579a1959cfe814e90b863a43968e'&&($e['catalog_reference_kind']??'')==='price_capture'&&is_array($e['decision']??null)&&array_key_exists('local_hotel_id',$e['decision'])&&$e['decision']['local_hotel_id']===null&&is_array($e['source']??null)&&(string)($e['source']['id']??'')===(string)$r['external_hotel_id']&&'operator_'.(string)($e['source']['operator_key']??'')===$r['supplier_namespace'];}
+function w78_target(array $r):array{$out=[];foreach(['id','name','country_name','category']as$k)$out[$k]=(string)($r[$k]??'');return$out;}
+function w78_hotels(array $context,array $full):array{$hot=[];foreach($full['remaining_queues']['live_30d']['rows']as$r)$hot[(int)$r['tv_hotel_id']]=['id'=>(int)$r['tv_hotel_id'],'name'=>$r['name'],'country_name'=>$r['country'],'category'=>$r['category']];foreach($context['context']['rows']as$r)$hot[(int)$r['tv_hotel_id']]=$r['hotel'];return$hot;}
 function w78_prepare(string $ops):array{
- $d=[];foreach(W78_INPUTS as$op=>$sha)$d[]=w78_read($ops.'/'.$op.'/result.json',$sha);[$v,$ret,$first,$context]=$d;
+ $d=[];foreach(W78_INPUTS as$op=>$sha)$d[]=w78_read($ops.'/'.$op.'/result.json',$sha);[$v,$ret,$first,$context,$full]=$d;
+ $previous=w78_read($ops.'/hotel-match-raw-native-pending11-1971-20260927-v78/result.json','d034a8ce4f42904c424eaf3ba50ccff9db6409640b44e1c5e8dafaff64b86d6f');w76_need($previous['state']==='completed_no_new_writes'&&$previous['database_writes']===0,'previous_terminal');
+ w78_read($ops.'/hotel-match-pending11-origin-read-1971-20260927-v78/result.json','727675dbc625a478d25ab2afa7a394fdcbaf4b0cce45b85b9224e38f5f3c625c');
  w76_need($v['state']==='completed_retained_native_scan'&&$v['provider_http_calls']===0,'v77_state');
  $si=[];$front=[];$prior=[];$hist=[];$hot=[];$ti=[];$currentOps=[];
  foreach($v['native_facts']as$f)$si[$f['supplier_namespace']][(string)$f['native_id']][(string)$f['catalog_id']]=$f;
  foreach($v['source_frontier']as$f)$front[(string)$f['catalog_id']]=$f;
  foreach($v['current_identities']as$r){if($r['supplier_namespace']==='andromeda_catalog')$prior[(string)$r['external_hotel_id']]=$r;else$currentOps[$r['supplier_namespace']][(string)$r['external_hotel_id']]=$r;}
  foreach($context['context']['selected_and_unaccepted_hotel_evidence']as$r)if($r['identity']['supplier_namespace']==='andromeda_catalog')$hist[(string)$r['identity']['external_hotel_id']]=$r;
- foreach($context['context']['rows']as$r)$hot[(int)$r['tv_hotel_id']]=$r['hotel'];
+ $hot=w78_hotels($context,$full);
  foreach(array_merge($ret['retained']['tv_edges'],$first['rows'])as$r){$ns=$r['supplier_namespace']??'';$id=(int)($r['tv_hotel_id']??0);$n=(string)($r['external_hotel_id']??'');if($id>0&&in_array($ns,['operator_315','operator_342'],true))$ti[$ns][$n][$id][]=$r;}
  $entries=[];
  foreach(W78_PAIRS as$id=>$cat){$e=['id'=>$id,'catalog_id'=>$cat,'prepare_holds'=>[],'proofs'=>[]];
-  try{w76_need(isset($front[$cat],$prior[$cat],$hist[$cat],$hot[$id]),'source_scope');w76_need($front[$cat]['current_accepted_locals']===[],'already_at_scan');$e['prior']=$prior[$cat];$e['history']=$hist[$cat]['hotel_evidence'];$e['target']=w76_target($hot[$id]);$e['live_samo']=true;$e['operator_facts']=[];
+  try{w76_need(isset($front[$cat],$prior[$cat],$hist[$cat],$hot[$id]),'source_scope');w76_need($front[$cat]['current_accepted_locals']===[],'already_at_scan');$e['prior']=$prior[$cat];$e['history']=$hist[$cat]['hotel_evidence'];$e['target']=w78_target($hot[$id]);$e['live_samo']=true;$e['operator_facts']=[];
    w76_need($hist[$cat]['raw_evidence_sha256']===$prior[$cat]['evidence_sha256'],'source_history_digest');
    foreach($v['native_facts']as$f){if((string)$f['catalog_id']!==$cat)continue;$ns=$f['supplier_namespace'];$n=(string)$f['native_id'];$e['operator_facts'][]=['ns'=>$ns,'native'=>$n];if(!in_array($ns,['operator_315','operator_342'],true)||count($si[$ns][$n])!==1)continue;
     $tv=$ti[$ns][$n]??[];$proof=null;if(count($tv)===1&&isset($tv[$id])){$t=$tv[$id][0];w76_need((int)$t['operator_id']===($ns==='operator_315'?25:43),'tv_operator');foreach(['source_result_sha256','operator_link_sha256','search_id_sha256','tour_id_sha256']as$k)w76_need(w76_sha($t[$k]??null),'tv_proof');$proof=['kind'=>'independent_tv_audit','row'=>$t];}
@@ -45,7 +50,7 @@ function w78_classify(array $e,array $c):array{
  if(!$row||!w78_auto($row))$why[]='source_not_automatic_pending_null';
  if($row){if($row['catalog_sha256']!==$e['prior']['catalog_sha256']||$row['evidence_sha256']!==$e['prior']['evidence_sha256'])$why[]='source_drift';$old=json_decode((string)$row['evidence_json'],true);if(!w76_source_projection_matches($old['source']??null,$e['history']['source']??null))$why[]='history_drift';}
  foreach($c['targets'][$id]??[]as$r)if((string)$r['external_hotel_id']!==$cat)$why[]='target_catalog_occupied';
- $h=$c['hotels'][$id]??null;if(!$h||(int)$h['is_active']!==1)$why[]='target_inactive';elseif(w76_target($h)!==$e['target'])$why[]='target_drift';
+ $h=$c['hotels'][$id]??null;if(!$h||(int)$h['is_active']!==1)$why[]='target_inactive';elseif(w78_target($h)!==w78_target($e['target']))$why[]='target_drift';
  if(empty($e['live_samo']))$why[]='outside_samo_live30';
  if(!empty($c['manual'][$id])||!empty($c['exclusions'][$id]))$why[]='protected_target';
  $s=$e['history']['source'];if($h){if(w76_text($s['state']??'')!==w76_text($h['country_name']??'')||preg_match('/^(?:россия|абхазия|russia|abkhazia)$/iu',$h['country_name']))$why[]='country_conflict';if((int)($s['starKey']??0)!==(int)$h['category'])$why[]='category_conflict';if(!w78_name((string)($s['name']??''),(string)$h['name'])&&!w78_name((string)($s['lName']??''),(string)$h['name']))$why[]='name_conflict';}
