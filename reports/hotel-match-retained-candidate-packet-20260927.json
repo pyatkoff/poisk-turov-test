@@ -1,0 +1,165 @@
+{
+  "schema": "retained-match-candidate-packet/1",
+  "date": "2026-09-27",
+  "claim_id": 5859376218,
+  "base_head": "659e0403b112d8f4bf7df6690413f4a56e9b0941",
+  "state": "offline_evidence_saved_not_database_acceptance",
+  "provider_http_calls": 0,
+  "server_calls": 0,
+  "new_operator_ids": 0,
+  "hotel_mapping_writes": 0,
+  "new_full_triples": 0,
+  "safe_to_write_now": false,
+  "full_report_file": "MATCH_retained_frontier_join_2026-09-27.json",
+  "full_report_location": "Owner chat attachment; not a production or repository runtime file",
+  "full_report_sha256": "c1ae9f81d2b24cec71656f803b9a027d41993fd7831b36d23d5137d9d5af1c56",
+  "input_receipts": {
+    "queue": {"artifact_id":10917671953,"result_sha256":"411596e321ba5f128335a29d10181688dacd5e34eee5e7cefdd4436b26d468b2"},
+    "context": {"artifact_id":10917808046,"result_sha256":"292c8f40d5bc9164e638246fdafa7b5f7113646c1c1597edee9a89b9c1a62851"},
+    "tv": {"artifact_id":10918272317,"result_sha256":"1531b8bdb096c3158502b950e863665bd02321374900908498699935922383e9"},
+    "first450": {"artifact_id":10857072001,"result_sha256":"43a71d55d649ccbece446e3a8a36fc6df59e141215c1de6085b0821c23642545"},
+    "v65": {"artifact_id":10909959597,"result_sha256":"42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810"},
+    "bg": {"artifact_id":10684769853,"result_sha256":"b52da9feaa87caea3800b6434fbcaf75d7fc21ff8742824074cef02632758964"},
+    "v75": {"artifact_id":10929490120,"result_sha256":"c4ad7463410f3940d8371589de4ff8af8d0dccb16f684ae2df7bf3ba7f200bdb"},
+    "v76": {"artifact_id":10929393592,"result_sha256":"9875b04ad64a91dbd3187b300f085c19fbf14189e6a2e898cb465a0bd78ecf2b"},
+    "v77": {"artifact_id":10930980517,"result_sha256":"d40fbe2e0240a5df194ac838376a3425a8f4e80f2426a757560fe369011107f7"},
+    "v78": {"artifact_id":10931601051,"result_sha256":"12ec6b462a7628e96791ce65b4e9eca0d32c17a1ed4997a62ea11786675fe414"},
+    "v79": {"artifact_id":10931912283,"result_sha256":"8d312f842648760ffe48337beda0b9420afde01f0b0eee9f9b0b1449ff80ce66"},
+    "v80": {"artifact_id":null,"result_sha256":"04afbb2bf6aff100a426e0bc97457e31c64abda2bdc9707b1335ce3cf37024a2"},
+    "v81": {"artifact_id":null,"result_sha256":"48682ee3bd28499a1696da90b9f72c77d5569e705d579800547af63b470c8b5f"},
+    "v82": {"artifact_id":null,"result_sha256":"dfa4527126e25840b79aa56787503051041ae27a0444ec4e028781b14bf14898"},
+    "v83": {"artifact_id":10937036521,"result_sha256":"ec2cbf1c272fd3ac6d25a21ce86bd8ea13350e6dfc19e560ddb7c8bf9305739a"}
+  },
+  "summary": {
+    "verified_input_packages":15,
+    "raw_tv_evidence_rows":1499,
+    "unique_tv_operator_native_edges":1455,
+    "unique_edges_by_namespace":{"operator_342":251,"anex":148,"operator_315":403,"bgoperator":653},
+    "retained_samo_native_facts":3262,
+    "remaining_tv_with_exact_edge":935,
+    "remaining_tv_without_exact_edge":710,
+    "v80_v81_v82_closed_hotel_scopes":300,
+    "v80_v81_v82_retained_ids":93,
+    "samo_join_pairs":29,
+    "samo_pair_statuses":{"held":24,"candidate_pending_CURRENT":5},
+    "direct_anex_pair_statuses":{"candidate_pending_CURRENT":3,"held":7},
+    "candidate_mapping_pairs":8,
+    "candidate_distinct_hotels":7,
+    "samo_unresolved_sources_with_exact_pair_or_hold":6,
+    "recent_bg_f4_missing_in_retained_subset":59
+  },
+  "last_actual_census_at":"2026-09-27T16:39:47+00:00",
+  "last_actual_census":{"tv_total":4399,"full_triple":2754,"samo_only":737,"anex_only":273,"neither":635},
+  "reconstructed_tv_unresolved":1645,
+  "samo_unresolved113_is_reconstructed":true,
+  "fresh_census_performed":false,
+  "candidate_pairs":[
+    {
+      "kind":"SAMO","local_hotel_id":1477,"local_name":"SEA GULL","catalog_id":"379202","source_name":"Seagull Hotel",
+      "source_evidence_sha256":"dbf87011a5ff4942c73add9133ab87b1a61ffab99bcf746be68b361df847bbf9",
+      "historical_v65_status":null,
+      "required_checks":["fresh_CURRENT_transaction_required","pending_operator_import_provenance_check","pinned_raw_proof_readback_required"],
+      "safe_to_write_now":false,
+      "proofs":[{
+        "namespace":"operator_342","native_id":"22597",
+        "tv_proofs":[{"input":"v80","input_result_sha256":"04afbb2bf6aff100a426e0bc97457e31c64abda2bdc9707b1335ce3cf37024a2","json_pointer":"/edges/16","operator_link_sha256":"a562f937599c206ecfc595471c79a068577c4bbfc6a14156079ebdee9dd0a57d","search_id_sha256":"88d5ecfe63de75bc2931fdf5f7d61a308597db8a067133ebbc9f3e73101cab18","tour_id_sha256":"58f2f7591d7ed31aa1d7ac211587be7ac065653f74b7773d5e45b92f4c0e9c2a"}],
+        "samo_raw_references":[{"source_file":"operations/hotel-match-samo-live30-common4-acquire-1971-20260924-v1/evidence-private/batch-036-page-1.json","sha256":"f1b46ac55c2716781b6ba1f1b4997489226dbb5e05fccd690810d504d982e104","json_pointer":"/PRICES/1"}]
+      }]
+    },
+    {
+      "kind":"SAMO","local_hotel_id":51548,"local_name":"ALPINN HOTEL BEYAZIT","catalog_id":"2000062239","source_name":"Alpinn Hotel Istanbul",
+      "source_evidence_sha256":"528ca32e37e629e839d755421fd51c4c6be6b3324e7eb2980297a26765f60346",
+      "historical_v65_status":null,
+      "required_checks":["fresh_CURRENT_transaction_required","pinned_raw_proof_readback_required"],"safe_to_write_now":false,
+      "proofs":[{
+        "namespace":"operator_342","native_id":"17212",
+        "tv_proofs":[{"input":"v82","input_result_sha256":"dfa4527126e25840b79aa56787503051041ae27a0444ec4e028781b14bf14898","json_pointer":"/edges/32","operator_link_sha256":"55eaa180c68bd24c607fb23da5e03979e02d0b7d3da8520637b486ba71c82e56","search_id_sha256":"598c9dfd80977594dd9a97c43c8131e1aaa6cdb7ef4b69670827ec3ae83871c1","tour_id_sha256":"d9cb5a81586d2859872ea3bf09217ed20a6a05cdb81b27526dc50b54d0d14d3d"}],
+        "samo_raw_references":[{"source_file":"operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-342-10-page-2.json","sha256":"677ccbff442038fa25794aa984b5fb768cf5ecf2fec41b27f6ba646dff56cef7","json_pointer":"/PRICES/19"},{"source_file":"operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-342-14-page-2.json","sha256":"889ce0d5bccdc8439eb4ec5aa9b7c137dc7d056ecaebd0d54aa07fb4dc55f8d5","json_pointer":"/PRICES/19"}]
+      }]
+    },
+    {
+      "kind":"SAMO","local_hotel_id":57552,"local_name":"REETHI FARU RESORT","catalog_id":"2000040084","source_name":"Reethi Faru Bio Resort",
+      "source_evidence_sha256":"2eb0dab2810e40876c9fcbe86e02ba268facffe96379033c1a857f2b88b86298",
+      "historical_v65_status":"review_no_strict_candidate",
+      "required_checks":["fresh_CURRENT_transaction_required","legacy_automatic_import_provenance_check","pinned_raw_proof_readback_required"],"safe_to_write_now":false,
+      "proofs":[{
+        "namespace":"operator_315","native_id":"352338",
+        "tv_proofs":[{"input":"tv","input_result_sha256":"1531b8bdb096c3158502b950e863665bd02321374900908498699935922383e9","json_pointer":"/retained/tv_edges/147","operator_link_sha256":"f50534231f901e5d044348c5b42f389090a0d8c16bd5a0582090f187c3e9ee3e","search_id_sha256":"cda478f141d08e2bfe4aaa8e193921a928aad3528686529c909bdb00be08bde1","tour_id_sha256":"493cb265c2484405713f87c4735196fee1b8f9772a3e48b0d03985651992ab97","source_operation":"hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1","source_result_sha256":"9abce890e0bbf83a36c20bd745822e2a3740970df75f07176cb3d882b11c25fd"}],
+        "samo_raw_references":[{"source_file":"operations/hotel-match-live234-andromeda-context-acquire-1971-20260926-v65/evidence-private/task-124-p1.json","sha256":"8e7b3e8d8d501f32251047aefdc1bb2eb20fe643d846cdec9ecaa2f451995d34","json_pointer":"/PRICES/0"}]
+      }]
+    },
+    {
+      "kind":"SAMO","local_hotel_id":63524,"local_name":"YUNAK EVLERI","catalog_id":"304393","source_name":"Yunak Evleri Cave Hotel Cappadocia",
+      "source_evidence_sha256":"21218dfaf8af253b05716e9d3bbf9cfdaa04f8b160bcc7db1496bf04115f7589",
+      "historical_v65_status":"review_no_strict_candidate",
+      "required_checks":["fresh_CURRENT_transaction_required","pinned_raw_proof_readback_required"],"safe_to_write_now":false,
+      "proofs":[{
+        "namespace":"operator_342","native_id":"23771",
+        "tv_proofs":[{"input":"tv","input_result_sha256":"1531b8bdb096c3158502b950e863665bd02321374900908498699935922383e9","json_pointer":"/retained/tv_edges/181","operator_link_sha256":"43a90a4c0e148ab408e30e190cf49da4f0bb30b20e4293aff26f278258c361f6","search_id_sha256":"8304d3bd6d25627ed079c7813b716794b61f1f6c6229b75dbbb05fca13e04eda","tour_id_sha256":"8dccadacb161177ef91cc3c57150991b322d8eebfe6605bd74855790c1850bf6","source_operation":"hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1","source_result_sha256":"9abce890e0bbf83a36c20bd745822e2a3740970df75f07176cb3d882b11c25fd"}],
+        "samo_raw_references":[{"source_file":"operations/hotel-match-live234-andromeda-context-acquire-1971-20260926-v65/evidence-private/task-48-p1.json","sha256":"26b5ebce5259155326360f85d740a97d6fa369050d9551b45a3783cc3d4af20c","json_pointer":"/PRICES/1"}]
+      }]
+    },
+    {
+      "kind":"SAMO","local_hotel_id":65714,"local_name":"VILLA BOUNTY (EX. HOTEL BOUNTY)","catalog_id":"2000072730","source_name":"Villa Bounty Akuralla Beach",
+      "source_evidence_sha256":"6414878632e2f3bff78071588f8e8868dbf340abd5815910ab1dadcee87f00d0",
+      "historical_v65_status":"review_no_strict_candidate",
+      "required_checks":["fresh_CURRENT_transaction_required","legacy_automatic_import_provenance_check","pinned_raw_proof_readback_required"],"safe_to_write_now":false,
+      "proofs":[{
+        "namespace":"operator_315","native_id":"840211",
+        "tv_proofs":[{"input":"tv","input_result_sha256":"1531b8bdb096c3158502b950e863665bd02321374900908498699935922383e9","json_pointer":"/retained/tv_edges/855","operator_link_sha256":"3cd95c9f8292aa10e354df465db6112067c1eb662e9ccd7d2176967ae0f20d54","search_id_sha256":"a7b2e8c39b0d76702080f11c43405511d6246597444d5aa5bc5e874a4cd81f50","tour_id_sha256":"e4b6fbf9d93d390e1eff57921b689a33122f62cc3103e68da424505ededdfe3f","source_operation":"hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1","source_result_sha256":"11408e926160b87a10ffdf04ebb56106f17fb7efc30f95611033a5cb427dc794"}],
+        "samo_raw_references":[{"source_file":"operations/hotel-match-live234-andromeda-context-acquire-1971-20260926-v65/evidence-private/task-157-p1.json","sha256":"19f0f0bb15835614142a24382c59b1c5c0dfdf1a5e03d2685d0d1fd3972729c3","json_pointer":"/PRICES/0"}]
+      }]
+    },
+    {
+      "kind":"direct_ANEX","local_hotel_id":1124,"local_name":"CLUB HOTEL SIDELYA HV-2","anex_online_id":"8319",
+      "required_checks":["fresh_CURRENT_source_target_protection_check","conditional_transaction_and_readback"],"safe_to_write_now":false,
+      "proofs":[{"input":"v80","input_result_sha256":"04afbb2bf6aff100a426e0bc97457e31c64abda2bdc9707b1335ce3cf37024a2","json_pointer":"/edges/4","operator_link_sha256":"3ad54b460cb929a9b606327c12272ac4429d9d86e2f55655bf9440d96af26172","search_id_sha256":"ae56671259e199174363af8e33fe9a69a1ac8c65d87fa2169244d7ff52d5d012","tour_id_sha256":"afe3ad2492ea6b8fc7d2f0fd6d960927852d21d0c1ada05f18b7bbb585365588"}]
+    },
+    {
+      "kind":"direct_ANEX","local_hotel_id":1477,"local_name":"SEA GULL","anex_online_id":"8418",
+      "required_checks":["fresh_CURRENT_source_target_protection_check","conditional_transaction_and_readback"],"safe_to_write_now":false,
+      "proofs":[{"input":"v80","input_result_sha256":"04afbb2bf6aff100a426e0bc97457e31c64abda2bdc9707b1335ce3cf37024a2","json_pointer":"/edges/15","operator_link_sha256":"fcb5cd6117b837b49f845337b725ad83d33511249c27e848fd1050401cd1c68d","search_id_sha256":"88d5ecfe63de75bc2931fdf5f7d61a308597db8a067133ebbc9f3e73101cab18","tour_id_sha256":"1fc4b077c31239560ae7bd6c2f1937516344a42fcd6545cda5d762f9ccb8e2cf"}]
+    },
+    {
+      "kind":"direct_ANEX","local_hotel_id":1597,"local_name":"SIANJI WELLBEING RESORT (EX. GARDENS OF BABYLON BOUTIQUE)","anex_online_id":"15117",
+      "required_checks":["fresh_CURRENT_source_target_protection_check","conditional_transaction_and_readback"],"safe_to_write_now":false,
+      "proofs":[{"input":"v80","input_result_sha256":"04afbb2bf6aff100a426e0bc97457e31c64abda2bdc9707b1335ce3cf37024a2","json_pointer":"/edges/28","operator_link_sha256":"d97d9dcd6f5c96644813c4e07df3d1e3ebff4e38997de9560846c37cafa68ee8","search_id_sha256":"39e21c4f646e7312e481162759aca152f8c6c37e454c00a44ef5c56ee789af9b","tour_id_sha256":"ed755cee81233045d3e4be885b951490abf803e2c54992da2fa57d0d1cc5a438"}]
+    }
+  ],
+  "held_samo_pairs":[
+    [466,"2000090573",["canonical_source_other_target","operator_identity_other_target"]],
+    [474,"2000059367",["canonical_source_other_target","operator_identity_other_target"]],
+    [490,"3995",["canonical_source_other_target","operator_identity_other_target"]],
+    [1181,"2000028206",["canonical_source_other_target","operator_identity_other_target"]],
+    [1247,"3378",["canonical_source_other_target","operator_identity_other_target"]],
+    [1500,"2000032613",["canonical_source_other_target","operator_identity_other_target"]],
+    [1507,"2000081576",["canonical_source_other_target","operator_identity_other_target"]],
+    [1540,"5257",["canonical_source_other_target","operator_identity_other_target"]],
+    [2191,"859893",["canonical_source_not_in_retained_registry"]],
+    [17282,"2000096933",["canonical_source_other_target","operator_identity_other_target"]],
+    [28529,"475947",["explicit_star_label_disagreement","operator_identity_pending_protected"]],
+    [43461,"2000117376",["target_has_other_canonical_identity"]],
+    [56551,"118706",["explicit_star_label_disagreement","target_has_other_canonical_identity"]],
+    [65341,"2000106034",["canonical_source_other_target","operator_identity_other_target"]],
+    [66037,"2000084437",["canonical_source_other_target","explicit_star_label_disagreement","operator_identity_other_target"]],
+    [76753,"2000087342",["explicit_star_label_disagreement"]],
+    [103125,"131606",["canonical_source_other_target","operator_identity_other_target"]],
+    [144804,"2000086118",["canonical_source_not_in_retained_registry","target_has_other_canonical_identity"]],
+    [147573,"2000060751",["canonical_source_other_target","operator_identity_other_target"]],
+    [148230,"2000113715",["canonical_source_not_in_retained_registry"]],
+    [152266,"2000030128",["canonical_source_other_target","operator_identity_other_target"]],
+    [152744,"2000089633",["canonical_source_other_target","operator_identity_other_target"]],
+    [155174,"6998",["canonical_source_other_target","operator_identity_other_target"]],
+    [156593,"9904",["canonical_source_other_target","operator_identity_other_target"]]
+  ],
+  "held_anex_pairs":[[9251,"24106",[116288]],[9427,"24940",[56455]],[28426,"15739",[1270]],[81349,"27087",[121865]],[115349,"43090",[120728]],[124758,"39553",[148184]],[128305,"23136",[1637]]],
+  "blockers":[
+    "v84_server_execution_safety_rejection_unresolved",
+    "all_candidate_pairs_require_fresh_CURRENT_transaction_not_available_in_offline_data",
+    "raw_provider_files_are_referenced_by_hash_not_downloaded_in_these_artifacts",
+    "59_recent_BG_F4s_outside_retained_820_row_dictionary_subset",
+    "provider_negative_attempt_ledger_not_complete_in_these_inputs; absent_evidence_is_not_permission_to_requery"
+  ],
+  "offline_regression_tests_passed":14,
+  "no_merge_deploy":true
+}
