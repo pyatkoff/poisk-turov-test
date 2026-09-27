@@ -81,6 +81,14 @@ function contextHarness() {
   assert.ok(result.hotels.length===2&&result.hotels.every(row=>row.id===501));
   assert.ok(h.updates.length===2&&h.updates.every(update=>update.observations.length===0));
 
+  // A date window may contain prices for only one of a hotel's accepted IDs.
+  // Reopening must still request all resolved IDs, including IDs without prices.
+  const repeatBefore=h.fetchCalls.length;
+  await data.calendarPrices(h.trip,h.trip.from,h.trip.from,new AbortController().signal,{hotelId:501},()=>{});
+  assert.equal(h.fetchCalls.length,repeatBefore+1);
+  assert.deepEqual(Array.from(h.fetchCalls.at(-1).body.params.hotelIds),['101','102'],
+    'partial calendar observations must not narrow the resolved hotel identity');
+
   const broad=await data.calendarPrices(h.trip,h.trip.from,h.trip.from,new AbortController().signal,{},()=>{});
   assert.equal(h.broadCalendarCalls,1,'non-hotel calendars delegate unchanged');
   assert.equal(broad.hotels[0].id,999);
