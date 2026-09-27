@@ -5,11 +5,18 @@ $n=0;
 function ck(bool $v,string $m):void{global$n;$n++;w76_need($v,'test_'.$m);}
 $entries=w76_prepare($argv[1]??'');ck(count($entries)===8,'input8');
 $proofIds=[];foreach($entries as$id=>$e)if($e['proofs'])$proofIds[]=$id;
-ck($proofIds===[55945,56479,76753,116886,121109],'exact_five_independent');ck(count($entries[121109]['proofs'])===2,'two_operators');
+ck($proofIds===[55945,56479,76753,116886,121109],'exact_five_independent');
+$projection=$entries[55945]['history']['source'];$rawSource=array_reverse($projection,true);$rawSource['provider_metadata_not_exported']='retained';
+ck($rawSource!==$projection,'old_projection_comparison_reproduced');
+ck(w76_source_projection_matches($rawSource,$projection),'projection_order_omissions');
+$changed=$rawSource;$changed['name']='Different hotel';ck(!w76_source_projection_matches($changed,$projection),'projection_value_drift');
+$missing=$rawSource;unset($missing['town']);ck(!w76_source_projection_matches($missing,$projection),'projection_missing_field');
+ck(!w76_source_projection_matches($rawSource,[]),'empty_projection');
+ck(count($entries[121109]['proofs'])===2,'two_operators');
 function fixture(array $entries):array{
  $c=['sources'=>[],'targets'=>[],'operators'=>[],'hotels'=>[],'manual'=>[],'exclusions'=>[],'live'=>[],'effective'=>['by_local'=>[]]];
  foreach($entries as$id=>&$e){
-  $ev=$e['history'];$ev['candidate_ids']=[];$ev['target_name']='';$raw=w76_json($ev);$hash=hash('sha256',$raw);$e['prior']['evidence_sha256']=$hash;
+  $ev=$e['history'];$ev['source']=array_reverse($ev['source'],true);$ev['source']['provider_metadata_not_exported']='retained-fixture';$ev['candidate_ids']=[];$ev['target_name']='';$raw=w76_json($ev);$hash=hash('sha256',$raw);$e['prior']['evidence_sha256']=$hash;
   $row=['supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>$e['catalog_id'],'local_hotel_id'=>null,'decision_status'=>'pending','catalog_sha256'=>$e['prior']['catalog_sha256'],'evidence_sha256'=>$hash,'evidence_json'=>$raw];
   $c['sources'][$e['catalog_id']]=[$row];$c['hotels'][$id]=$e['target'];$c['live'][$id]=true;
   foreach($e['direct_anex_ids']as$x)$c['effective']['by_local'][$id][(int)$x]=true;
@@ -18,7 +25,7 @@ function fixture(array $entries):array{
 [$f,$c]=fixture($entries);
 foreach($f as$id=>$e)ck(w76_classify($e,$c)['status']===($e['proofs']&&(int)$e['history']['source']['starKey']===(int)$e['target']['category']?'ready_pending_transition':'hold'),'base_'.$id);
 $id=55945;$cat=W76_PAIRS[$id];
-foreach(['occupied','status','evidence','catalog','target','live','manual','excluded','anchor','country','star','town','unknown_prior','manual_origin','history_candidates','operator_conflict','operator_bad_hash']as$case){
+foreach(['occupied','status','evidence','catalog','target','live','manual','excluded','anchor','country','star','town','unknown_prior','manual_origin','history_candidates','source_projection_drift','operator_conflict','operator_bad_hash']as$case){
  $g=$c;$e=$f[$id];
  switch($case){
  case'occupied':$g['sources'][$cat][0]['local_hotel_id']=999;break;
@@ -33,9 +40,9 @@ foreach(['occupied','status','evidence','catalog','target','live','manual','excl
  case'country':$g['hotels'][$id]['country_name']='Россия';break;
  case'star':$g['hotels'][$id]['category']='1';break;
  case'town':$g['hotels'][$id]['region_name']='Different';$g['hotels'][$id]['subregion_name']=null;break;
- case'unknown_prior':case'manual_origin':case'history_candidates':
+ case'unknown_prior':case'manual_origin':case'history_candidates':case'source_projection_drift':
   $ev=json_decode($g['sources'][$cat][0]['evidence_json'],true);
-  if($case==='unknown_prior')$ev['manual_review']='reject';elseif($case==='manual_origin')$ev['reason']='manual_rejection';else$ev['candidate_ids']=[999];
+  if($case==='source_projection_drift')$ev['source']['name']='Other source';elseif($case==='unknown_prior')$ev['manual_review']='reject';elseif($case==='manual_origin')$ev['reason']='manual_rejection';else$ev['candidate_ids']=[999];
   $raw=w76_json($ev);$g['sources'][$cat][0]['evidence_json']=$raw;$g['sources'][$cat][0]['evidence_sha256']=hash('sha256',$raw);$e['prior']['evidence_sha256']=hash('sha256',$raw);break;
  case'operator_conflict':case'operator_bad_hash':
   $raw='{}';$g['operators']['operator_315']['295561']=[['decision_status'=>'accepted','local_hotel_id'=>$case==='operator_conflict'?999:$id,'evidence_json'=>$raw,'evidence_sha256'=>$case==='operator_bad_hash'?str_repeat('f',64):hash('sha256',$raw)]];break;
