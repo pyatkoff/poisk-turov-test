@@ -41,7 +41,7 @@ const server=http.createServer((req,res)=>{
   await hotelEditor.press('End');await page.keyboard.type(' отель');assert.equal(await hotelEditor.inputValue(),'Вымышленный отель');
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,1,'filter typing never repeats the initial search');
   await page.screenshot({path:path.join(evidence,`progressive-filter-${width}.png`)});
-  if(width<=1100){await page.locator('[data-action="close-filters"]').click();assert.equal(await page.locator('#hotel-query').inputValue(),'');}
+  if(width<=1100){await page.locator('.mobile-close[data-action="close-filters"]').click();assert.equal(await page.locator('#hotel-query').inputValue(),'');}
   else await page.locator('[data-action="clear-hotel-query"]').click();
   assert.equal(await page.locator('.hotel-card').count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
