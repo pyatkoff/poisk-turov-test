@@ -98,4 +98,5 @@ const server=http.createServer((req,res)=>{
   receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,local_application:true,supplier_requests:0,lead_requests:0});await context.close();
  }}finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
+ await require('./search3-visual-large-flight-choices.cjs')();
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});
