@@ -12,7 +12,8 @@ spec.loader.exec_module(m)
 PARAMS = dict(departureId='1', countryId='4', dateFrom=m.base.TRIP['from'], dateTo=m.base.TRIP['to'], nightsFrom=7, nightsTo=7, adults=2, childs=[])
 CTX = dict(provider='andromeda', search_ref='a'*64, generation=1, page=1, offer_ref='offer_'+'b'*64)
 REQUEST = dict(action='quote', generation=1, page=1, params=PARAMS, offer_context=CTX, listing_price_ref='listing_'+'c'*64)
-CANDIDATE = dict(hotelId=501, name='Fictional hotel', key='andromeda:fixture', localId=101, request=REQUEST)
+# data.js supplies the already encoded DOM offer key to the lifecycle observer.
+CANDIDATE = dict(hotelId=501, name='Fictional hotel', key='andromeda%3Afixture', localId=101, request=REQUEST)
 URL = m.base.ORIGIN + m.QUOTE_PATH
 REFS = ['flight_'+'1'*32, 'flight_'+'2'*32]
 PENDING = dict(ok=True, data=dict(schema_version=1, provider='andromeda', local_id=101, booking_enabled=False, selection_enabled=True,
@@ -94,6 +95,7 @@ class BrowserTests(unittest.TestCase):
             browser = p.chromium.launch(headless=True)
             context = browser.new_context(viewport=dict(width=1280, height=900))
             page = context.new_page()
+            page.set_default_timeout(2000)
             guard = m.JourneyGuard()
             guard.armed = True
             guard.calls = dict.fromkeys(m.base.PROVIDERS, 1)
@@ -120,6 +122,7 @@ class BrowserTests(unittest.TestCase):
                 self.assertEqual(page.evaluate('document.characterSet'), 'UTF-8')
                 result = m.exercise_selection(page, guard, Path(tmp))
                 self.assertTrue(result['application_checked'])
+                self.assertEqual(guard.journey_stage, 'complete')
                 self.assertEqual(result['final_price'], dict(amount='125500', currency='RUB'))
                 self.assertEqual(guard.quote_calls, dict(quote=1, quote_select_flights=1))
                 self.assertEqual(guard.lead_attempts, 0)
