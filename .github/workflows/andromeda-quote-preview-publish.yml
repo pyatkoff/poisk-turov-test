@@ -16,7 +16,7 @@ jobs:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' &&
       github.ref == 'refs/heads/main' &&
-      github.event.issue.number == 2530 &&
+      github.event.issue.number == 3419 &&
       !github.event.issue.pull_request &&
       github.event.comment.user.login == 'pyatkoff' &&
       github.event.sender.id == 226193297 &&
@@ -28,7 +28,7 @@ jobs:
       - name: Require exact owner command and first attempt
         run: |
           test "$GITHUB_RUN_ATTEMPT" = 1
-          test "${{ github.event.issue.number }}" = 2530
+          test "${{ github.event.issue.number }}" = 3419
           test "${{ github.event.comment.user.login }}" = pyatkoff
           test "${{ github.event.comment.body }}" = /publish-andromeda-quote-preview-1717-v12
       - uses: actions/checkout@v4
