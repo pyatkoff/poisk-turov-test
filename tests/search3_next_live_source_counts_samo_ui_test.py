@@ -46,6 +46,22 @@ class GuardTests(unittest.TestCase):
         value=m.safe_quote_failure(dict(action='private',code=['secret'],httpStatus=True,failureCategory='token'))
         self.assertEqual(value,dict(action='other',code='other',httpStatus=0,failureCategory='other'))
 
+    def test_supplier_rejection_stage_is_fixed_and_code_is_numeric_only(self):
+        for stage in ('broninit', 'get_flights', 'changeservice', 'calc'):
+            g = selected()
+            g.observe(502, dict(ok=False, failure_category='supplier_rejected', failure_stage=stage, supplier_code='1002'))
+            row = g.receipt()['quoteResponses'][0]
+            self.assertEqual((row['failureStage'], row['supplierCode']), (stage, '1002'))
+            self.assertIsNone(g.quote_state)
+            self.assertFalse(g.allow(URL, 'POST', json.dumps(continuation())))
+        for code in (None, True, 1002, '1234567', 'private_sid', 'https://private.example', ['private']):
+            g = selected()
+            g.observe(502, dict(ok=False, failure_stage='private_stage', supplier_code=code, error='private body'))
+            row = g.receipt()['quoteResponses'][0]
+            self.assertEqual(row['failureStage'], 'other')
+            self.assertIsNone(row['supplierCode'])
+            self.assertNotIn('private', json.dumps(g.receipt()))
+
     def test_one_quote_and_one_observed_choice_only(self):
         g = selected()
         self.assertTrue(g.allow(URL, 'POST', json.dumps(REQUEST)))
