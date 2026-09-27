@@ -489,12 +489,12 @@ function editFilterBudget(){
 let renderedFilterContext=null;
 function paintFilters(markup,filters){
  const host=$('#filters'),active=document.activeElement,scope=searchKey(state.search);
- const group=active&&host.contains(active)&&['min-price','max-price','price-range'].includes(active.id)?active.closest('.filter-group'):null;
+ const group=active&&host.contains(active)&&['hotel-query','min-price','max-price','price-range'].includes(active.id)?active.closest('.filter-group'):null;
  if(group&&renderedFilterContext?.filters===filters&&renderedFilterContext.scope===scope){
   const template=document.createElement('template');template.innerHTML=markup;
-  const replacement=template.content.querySelector('#min-price')?.closest('.filter-group');
+  const replacement=template.content.querySelector(active.id==='hotel-query'?'#hotel-query':'#min-price')?.closest('.filter-group');
   if(replacement&&replacement.parentNode===template.content){
-   // Preserve the attached editor, native focus and an unfinished number.
+   // Preserve active typing, native focus/caret and unfinished input as sources arrive.
    const nodes=[...template.content.childNodes],index=nodes.indexOf(replacement);
    [...host.childNodes].forEach(node=>{if(node!==group)node.remove();});
    group.before(...nodes.slice(0,index));group.after(...nodes.slice(index+1));

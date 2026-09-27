@@ -30,7 +30,19 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#date-calendar').textContent.includes('97,5'));
   await page.locator('[data-action="apply-dates"]').click();
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
-  await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
+  let releaseSamoSearch;transport.state.samoSearchGate=new Promise(resolve=>releaseSamoSearch=resolve);
+  await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
+  await page.locator('[data-action="filters"]:visible').first().click();
+  const hotelEditor=page.locator('#hotel-query');await hotelEditor.fill('Вымышленный');
+  await hotelEditor.evaluate(el=>{el.setSelectionRange(3,8);window.activeHotelEditor=el;});
+  releaseSamoSearch();transport.state.samoSearchGate=null;
+  await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
+  assert.deepEqual(await hotelEditor.evaluate(el=>({same:el===window.activeHotelEditor,focused:document.activeElement===el,start:el.selectionStart,end:el.selectionEnd})),{same:true,focused:true,start:3,end:8});
+  await hotelEditor.press('End');await page.keyboard.type(' отель');assert.equal(await hotelEditor.inputValue(),'Вымышленный отель');
+  assert.equal(transport.calls.filter(c=>c.action==='search_start').length,1,'filter typing never repeats the initial search');
+  await page.screenshot({path:path.join(evidence,`progressive-filter-${width}.png`)});
+  if(width<=1100){await page.locator('.mobile-close[data-action="close-filters"]').click();assert.equal(await page.locator('#hotel-query').inputValue(),'');}
+  else await page.locator('[data-action="clear-hotel-query"]').click();
   assert.equal(await page.locator('.hotel-card').count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(evidence,`results-${width}.png`)});

@@ -9,10 +9,11 @@ const segment=(number,returning)=>({company:{name:'Тестовая авиако
 const flights=[{isDefault:true,price:{value:120000},fuelCharge:0,forward:[segment('TEST101',false)],backward:[segment('TEST102',true)]},{price:{value:133500.5},fuelCharge:0,forward:[segment('TEST201',false)],backward:[segment('TEST202',true)]}];
 const searchRef='a'.repeat(32),offerRef='anex_online:'+'b'.repeat(64),andromedaRef='offer_'+'d'.repeat(64);
 function fixture({tvFuel=0,anexZeroSurcharge=false}={}){
- const calls=[],state={hold:false,failAnex:false,extended:false,samoFailure:null,samoFlightChoice:false,countriesFailure:'',countryGates:{},regionsGate:null};
+ const calls=[],state={hold:false,failAnex:false,extended:false,samoFailure:null,samoFlightChoice:false,samoSearchGate:null,countriesFailure:'',countryGates:{},regionsGate:null};
  const json=async(url,options={})=>{
   const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},q=u.searchParams,action=q.get('action')||body.action;
   calls.push({url:u.pathname,action,body,query:Object.fromEntries(q)});
+  if(u.pathname.endsWith('/api-andromeda-search3-preview.php')&&state.samoSearchGate)await state.samoSearchGate;
   if(u.pathname==='/data/departures-v1.php')return {ok:true,items:[{id:1,name:'Москва'},{id:2,name:'Казань'},{id:3,name:'Екатеринбург'}]};
   if(u.pathname.endsWith('/search3-destination-read-v1.php')){
    const departure=q.get('departureId')||String(body.departureId||''),fail=action==='countries'&&state.countriesFailure===departure,gate=action==='countries'?state.countryGates[departure]:state.regionsGate;
