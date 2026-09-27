@@ -1,6 +1,32 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {JSDOM,VirtualConsole}=require('jsdom');
+
+// Shared search links must preserve every supported restrictive filter.
+{
+ const vm=require('node:vm'),source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+ const extract=name=>source.match(new RegExp('function '+name+'\\([^]*?\\n\\}'))[0];
+ const defaults=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false});
+ const trip={origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-07',minNights:7,maxNights:7,adults:2,ages:[]};
+ const state={search:structuredClone(trip),filters:defaults(),sort:'recommended',hasSearched:false,selectedDate:null};
+ const context={state,structuredClone,URLSearchParams,countryNames:{4:'Турция'},startDay:'2026-09-27',endDay:'2027-09-27',dateObj:v=>new Date(v+'T12:00:00Z'),data:{scenario:'live',catalog:{departures:[{name:'Москва'}]},text:x=>x.name,date:v=>v,meal:v=>v},$:()=>({value:''}),location:{search:'',hash:''},history:{state:null,replaceState(_,__,query){context.location.search=query;}},searchEditSession:null};
+ vm.createContext(context);
+ vm.runInContext(extract('restoreURL')+'\n'+source.match(/function updateURL\([^]*?\n/)[0],context);
+ state.filters={...defaults(),flight:['charter'],beach:true,family:true,spa:true,rating:true};
+ vm.runInContext('updateURL()',context);const shared=context.location.search;
+ state.filters=defaults();vm.runInContext('restoreURL()',context);
+ assert.deepEqual(Array.from(state.filters.flight),['charter'],'shared link must preserve charter restriction');
+ for(const key of ['beach','family','spa','rating'])assert.equal(state.filters[key],true,'shared link must preserve '+key);
+ vm.runInContext('updateURL()',context);assert.equal(context.location.search,shared,'filter URL must round-trip');
+ context.location.search='?flight=regular%7Ccharter%7Cregular%7Cunknown%7Cinvalid&beach=0&family=true&spa=1&rating=0';
+ vm.runInContext('restoreURL()',context);
+ assert.deepEqual(Array.from(state.filters.flight),['regular','charter'],'only known flight types, deduplicated');
+ assert.equal(state.filters.beach,false);assert.equal(state.filters.family,false);assert.equal(state.filters.spa,true);assert.equal(state.filters.rating,false);
+ context.location.search='';vm.runInContext('restoreURL()',context);
+ assert.deepEqual(Array.from(state.filters.flight),[]);for(const key of ['beach','family','spa','rating'])assert.equal(state.filters[key],false,'absent flag resets '+key);
+ console.log('PASS shared search URL: flight and hotel restrictions round-trip, unknown values rejected');
+}
+
 const root=path.resolve(__dirname,'../v2/visual-search'),errors=[],requests=[],scrolls=[];
 const vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
 const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{
