@@ -1,0 +1,79 @@
+{
+  "schema": "match_current15_samo82_anex_v74",
+  "census": {
+    "full_triple": 2748,
+    "total": 4399,
+    "missing_samo": 197,
+    "missing_anex": 728,
+    "missing_both": 726
+  },
+  "samo15": [
+    [
+      125,
+      "2000062991"
+    ],
+    [
+      1181,
+      "2000028206"
+    ],
+    [
+      1229,
+      "5464"
+    ],
+    [
+      1772,
+      "37255"
+    ],
+    [
+      4326,
+      "309768"
+    ],
+    [
+      7958,
+      "2000026726"
+    ],
+    [
+      13947,
+      "2000046831"
+    ],
+    [
+      55945,
+      "2000037585"
+    ],
+    [
+      56479,
+      "2000093384"
+    ],
+    [
+      65341,
+      "2000106034"
+    ],
+    [
+      67304,
+      "2000055490"
+    ],
+    [
+      76753,
+      "2000087342"
+    ],
+    [
+      108356,
+      "269426"
+    ],
+    [
+      116886,
+      "2000103169"
+    ],
+    [
+      121109,
+      "2000090159"
+    ]
+  ],
+  "known_samo_collision": {
+    "local_hotel_id": 1772,
+    "catalog_id": "37255",
+    "stronger_existing_target": 1773
+  },
+  "anex82_note": "Exact retained82 list is bound from report MATCH_next83_candidates_2026-09-27.json; all82 remain current missing-both at v73c census.",
+  "boundary": "CURRENT audit only until transaction-time guarded writer. Conflicts do not authorize overwrite."
+}
