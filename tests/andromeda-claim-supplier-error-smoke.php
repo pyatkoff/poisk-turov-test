@@ -34,6 +34,7 @@ if (!$error instanceof AnyTourAndromedaSupplierException) throw new RuntimeExcep
 if ($error->getMessage() !== 'ANDROMEDA_SUPPLIER_ERROR' || ($first['reserved'] ?? null) !== 1) throw new RuntimeException('supplier_exception_contract'); ++$checks;
 $facts = $error->diagnosticFacts();
 if (($facts['source'] ?? null) !== 'andromeda_claim_error'
+    || ($facts['action'] ?? null) !== 'get_flights'
     || ($facts['shape'] ?? null) !== 'array'
     || ($facts['reason_category'] ?? null) !== 'flight_or_freight'
     || ($facts['code'] ?? null) !== 'FLIGHT_NOT_AVAILABLE'
@@ -80,6 +81,27 @@ if (!$numericError instanceof AnyTourAndromedaSupplierException
     throw new RuntimeException('numeric_error');
 }
 ++$checks;
+
+
+$stageRun = static function(string $stage) use ($claim): array {
+    $actions = new AnyTourAndromedaClaimActions('SID_stage_test', static function(): void {}, static function(string $url, string $post) use ($stage): array {
+        parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+        if (($query['action'] ?? null) !== $stage) throw new RuntimeException('BAD_STAGE');
+        return ['status'=>200,'body'=>json_encode(['error'=>['code'=>'STAGE_REJECTED','message'=>'private stage detail']], JSON_THROW_ON_ERROR)];
+    });
+    try {
+        if ($stage === 'get_flights') $actions->getFlights($claim);
+        elseif ($stage === 'changeservice') $actions->changeService($claim, 'NEW_UID');
+        else $actions->calc($claim);
+    } catch (AnyTourAndromedaSupplierException $error) { return $error->diagnosticFacts(); }
+    throw new RuntimeException('stage_error_not_thrown');
+};
+foreach (['get_flights','changeservice','calc'] as $stage) {
+    $stageFacts=$stageRun($stage);
+    if (($stageFacts['action']??null)!==$stage || ($stageFacts['code']??null)!=='STAGE_REJECTED') throw new RuntimeException('stage_facts_'.$stage);
+    if (str_contains(json_encode($stageFacts,JSON_THROW_ON_ERROR),'private stage detail')) throw new RuntimeException('stage_raw_leak_'.$stage);
+    ++$checks;
+}
 
 $echo = $run(['error' => ['message' => 'failure SID_secret_echo']], 'SID_secret_echo');
 $echoError = $echo['error'] ?? null;
