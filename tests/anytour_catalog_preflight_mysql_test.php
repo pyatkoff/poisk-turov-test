@@ -69,7 +69,7 @@ function fixtureFullCards(PDO $pdo): void {
     $rows=$pdo->query("SELECT h.id,h.name,d.description,d.images_json FROM catalog_hotels h JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE d.status='success'")->fetchAll(PDO::FETCH_ASSOC);
     $write=$pdo->prepare('UPDATE catalog_hotel_details SET raw_json=?,source_hash=? WHERE hotel_id=?');
     foreach($rows as $r){
-        $raw=AnyTourCanonicalCatalog::json(['id'=>(int)$r['id'],'name'=>$r['name'],'description'=>$r['description'],'images'=>json_decode((string)$r['images_json'],true)]);
+        $raw=AnyTourCanonicalCatalog::json(['id'=>(int)$r['id'],'name'=>$r['name'],'common'=>['description'=>$r['description']],'images'=>json_decode((string)$r['images_json'],true)]);
         $write->execute([$raw,hash('sha256',$raw),$r['id']]);
     }
 }
