@@ -34,7 +34,7 @@ $schema = file_get_contents(__DIR__ . '/../v2/data/migrations/20260916-anytour-c
 check(!preg_match('/^\s*(?:ALTER|DROP|TRUNCATE|DELETE)\b/im', $schema), 'migration is additive only');
 
 $validSource=$input+['detailsAvailable'=>true];
-$raw=['id'=>7001,'name'=>'Отель','description'=>'Описание','images'=>['https://fixture.test/a.jpg']];
+$raw=['id'=>7001,'name'=>'Отель','common'=>['description'=>'Описание'],'images'=>['https://fixture.test/a.jpg']];
 $detailFor=static function(array $v):array{$j=json_encode($v,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRESERVE_ZERO_FRACTION);return ['status'=>'success','raw_json'=>$j,'source_hash'=>hash('sha256',$j)];};
 $validDetail=$detailFor($raw);
 check(AnyTourCanonicalCatalog::creationContentIssues($validSource,$validDetail)===[], 'complete matching source admitted');
@@ -44,7 +44,7 @@ foreach ([['detailsAvailable'=>false],['description'=>null],['description'=>'<p>
 foreach ([null,[],array_replace($validDetail,['status'=>'failure']),array_replace($validDetail,['raw_json'=>'not-json']),array_replace($validDetail,['source_hash'=>str_repeat('0',64)])] as $bad) {
     check(AnyTourCanonicalCatalog::creationContentIssues($validSource,$bad)!==[], 'missing/corrupt full source refused');
 }
-foreach ([['id'=>7002],['id'=>7001.0],['description'=>''],['description'=>'<p>&nbsp;</p>'],['images'=>[]],['images'=>['javascript:alert(1)']],['name'=>'Fortuna Antalya']] as $change) {
+foreach ([['id'=>7002],['id'=>7001.0],['common'=>['description'=>'']],['common'=>['description'=>'<p>&nbsp;</p>']],['common'=>[],'description'=>'Wrong top-level field'],['images'=>[]],['images'=>['javascript:alert(1)']],['name'=>'Fortuna Antalya']] as $change) {
     check(AnyTourCanonicalCatalog::creationContentIssues($validSource,$detailFor(array_replace($raw,$change)))!==[], 'wrong or incomplete TV source refused');
 }
 $legacySparse=['id'=>41,'name'=>'Historical sparse hotel','description'=>null,'images'=>[]];
@@ -112,7 +112,7 @@ function fixtureFullCards(PDO $pdo): void {
     $rows=$pdo->query("SELECT h.id,h.name,d.description,d.images_json FROM catalog_hotels h JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE d.status='success'")->fetchAll(PDO::FETCH_ASSOC);
     $write=$pdo->prepare('UPDATE catalog_hotel_details SET raw_json=?,source_hash=? WHERE hotel_id=?');
     foreach($rows as $r){
-        $raw=AnyTourCanonicalCatalog::json(['id'=>(int)$r['id'],'name'=>$r['name'],'description'=>$r['description'],'images'=>json_decode((string)$r['images_json'],true)]);
+        $raw=AnyTourCanonicalCatalog::json(['id'=>(int)$r['id'],'name'=>$r['name'],'common'=>['description'=>$r['description']],'images'=>json_decode((string)$r['images_json'],true)]);
         $write->execute([$raw,hash('sha256',$raw),$r['id']]);
     }
 }
