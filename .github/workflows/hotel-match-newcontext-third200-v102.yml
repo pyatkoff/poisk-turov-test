@@ -19,9 +19,15 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:\n          ref: ${{ github.event.pull_request.head.sha }}\n          fetch-depth: 0\n          persist-credentials: false
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
       - name: Validate source and Security
-        env:\n          GH_TOKEN: ${{ github.token }}\n          HEAD: ${{ github.event.pull_request.head.sha }}\n          PR: ${{ github.event.pull_request.number }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail; umask 077; mkdir terminal
           test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_newcontext_samoonly_third200_plan_v101.php)" = 3f7b49321a30dfcdaf3454bd62f831faa5646e51
@@ -74,6 +80,10 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        with:\n          name: match-newcontext-third200-v102-${{ github.run_id }}\n          path: terminal/\n          retention-days: 90\n          if-no-files-found: warn
+        with:
+          name: match-newcontext-third200-v102-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: warn
 
 # explicit third200 trigger
