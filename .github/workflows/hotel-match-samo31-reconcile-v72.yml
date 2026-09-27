@@ -1,97 +1,52 @@
-name: MATCH retained v82 CURRENT join audit v83
+name: MATCH v84 isolated tests - no server execution
 'on':
   pull_request:
     types: [opened, synchronize, reopened]
-    paths: [.github/workflows/hotel-match-samo31-reconcile-v72.yml]
+    paths:
+      - .github/workflows/hotel-match-samo31-reconcile-v72.yml
+      - scripts/diagnostics/hotel_match_retained93_primary_write_v84.php
+      - tests/hotel_match_retained93_primary_write_v84_test.php
 permissions:
   contents: read
-  actions: read
-  issues: read
-  pull-requests: read
 concurrency:
-  group: hotel-match-samo31-reconcile-v72
+  group: hotel-match-v84-fixture-tests-${{ github.event.pull_request.number }}
   cancel-in-progress: false
-env:
-  OP: hotel-match-v82-exact-native-join-audit-1971-20260927-v83
-  CLAIM: '5857738345'
+# The v83 server operation is terminal/no-replay. Its execution job is retired.
+# This workflow has no server keys, production configuration, supplier clients,
+# remote execution, database acquisition, deployment or production writer step.
+# MySQL below is a disposable fixture database on this GitHub-hosted runner only.
 jobs:
-  audit:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.ref == 'match/samo31-reconcile-v72-20260927'
+  isolated-tests:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.ref == 'match/samo31-reconcile-v72-20260927' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: match84-test
+          MYSQL_DATABASE: match84_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmatch84-test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
           persist-credentials: false
-      - name: Validate exact audit source, owner claim and Security
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
+      - name: Check fixture prerequisites and PHP syntax
         run: |
-          set -euo pipefail;umask 077;mkdir terminal
-          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_v82_join_audit_v83.php)" = da5072f51998029125c52a36c13311de6488fcc1
-          git merge-base --is-ancestor 03d7799fe1f68bc4a0d535b009389569f144d342 HEAD
-          php -l scripts/diagnostics/hotel_match_v82_join_audit_v83.php
-          php scripts/diagnostics/hotel_match_v82_join_audit_v83.php --self-test
-          python3 - <<'PY'
-          import json,os,time,urllib.request
-          def get(p):
-            q=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+p,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
-            with urllib.request.urlopen(q,timeout=30) as f:return json.load(f)
-          c=get('/issues/comments/'+os.environ['CLAIM']);b=c['body']
-          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          assert c['issue_url'].endswith('/issues/3419')
-          for x in [os.environ['OP'],'Read-only CURRENT database audit','provider HTTP 0','database/mapping writes 0','no merge/deploy','MUST NOT be replayed']:assert x in b,x
-          pr=get('/pulls/4017');assert pr['state']=='open' and pr['draft'] is True and pr['head']['sha']==os.environ['HEAD']
-          for _ in range(100):
-            xs=[x for x in get('/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs'] if x['name']=='Security guard']
-            if xs:
-              x=max(xs,key=lambda y:y['id'])
-              if x['status']=='completed':assert x['conclusion']=='success';break
-            time.sleep(3)
-          else:raise SystemExit('security_not_green')
-          PY
-      - name: Execute one read-only CURRENT join on retained evidence
+          set -euo pipefail
+          php -r 'foreach (["mbstring", "pdo_mysql"] as $extension) { if (!extension_loaded($extension)) { fwrite(STDERR, "Missing test extension: $extension\n"); exit(1); } }'
+          php -l scripts/diagnostics/hotel_match_retained93_primary_write_v84.php
+          php -l tests/hotel_match_retained93_primary_write_v84_test.php
+      - name: Run pure fixtures without any database
+        run: php tests/hotel_match_retained93_primary_write_v84_test.php
+      - name: Run transaction rollback, conflict isolation and readback fixtures
         env:
-          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
-          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail;umask 077
-          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
-          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
-          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
-          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
-          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload\""
-          python3 - <<'PY'
-          import json,os
-          json.dump({'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'claim':os.environ['CLAIM'],'state':'reserved_before_read_only_audit','provider_http_calls':0,'database_writes':0,'mapping_writes':0},open('terminal/reservation.json','w'))
-          PY
-          scp "${opts[@]}" terminal/reservation.json "$remote:$rel/reservation.json"
-          git archive HEAD scripts/diagnostics app/integrations reports/hotel-match-retained-anex82-v74.json | ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$rel/payload\""
-          set +e
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=512M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_v82_join_audit_v83.php\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
-          rc=$?
-          set -e
-          if [ "$rc" -ne 0 ]; then printf 'Audit failed before verified result; no replay.\n'; exit "$rc"; fi
-          scp "${opts[@]}" "$remote:$rel/result.json" terminal/result.json
-          scp "${opts[@]}" "$remote:$rel/receipt.json" terminal/receipt.json
-          python3 - <<'PY'
-          import json,hashlib,pathlib,os
-          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
-          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
-          assert r['operation']==q['operation']==os.environ['OP']
-          assert r['state']=='completed_read_only_v82_join_audit'
-          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False
-          print({k:r[k] for k in ['state','captured_single_native','safe_samo_primary_count','safe_direct_anex_count','safe_total_primary_count','coverage_current']})
-          PY
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
-        with:
-          name: match-v82-current-join-v83-${{ github.run_id }}
-          path: terminal/
-          retention-days: 90
-          if-no-files-found: warn
+          MATCH84_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=match84_test;charset=utf8mb4
+        run: php tests/hotel_match_retained93_primary_write_v84_test.php
