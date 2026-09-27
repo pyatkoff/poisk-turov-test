@@ -113,7 +113,9 @@ function restoreURL(){
  state.filters.meals=[...new Set((p.get('meals')||'').split('|').filter(Boolean).map(data.meal).filter(Boolean))];
  for(const k of ['resorts','operators'])state.filters[k]=[...new Set((p.get(k)||'').split('|').filter(Boolean))];
  state.filters.amenities=[...new Set((p.get('amenities')||'').split('|').filter(x=>/^(1|2|3|5|8):[1-9]\d*$/.test(x)))];
- state.filters.q=p.get('q')||'';state.filters.rating=p.get('rating')==='1';
+ state.filters.flight=[...new Set((p.get('flight')||'').split('|').filter(value=>['charter','regular'].includes(value)))];
+ state.filters.q=p.get('q')||'';
+ for(const key of ['rating','beach','family','spa'])state.filters[key]=p.get(key)==='1';
  if(['recommended','price','rating'].includes(p.get('sort')))state.sort=p.get('sort');
  $('#sort').value=state.sort;
  state.hasSearched=false;draft=structuredClone(s);
