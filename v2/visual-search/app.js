@@ -1398,11 +1398,24 @@ function offerRefinementRecovery(all){
  const choices=offerRefinementFields.filter(field=>offerView[field]).map(field=>({field,count:all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:''})).length})).filter(choice=>choice.count);
  return choices.length?`<p>Можно убрать одно условие, сохранив остальные:</p><div class="offer-recovery-actions">${choices.map(({field,count})=>`<button type="button" class="secondary" data-action="remove-offer-filter" data-field="${field}">${offerRefinementAny[field]} · ${offerCountText(count)}</button>`).join('')}</div>`:'<p>Измените условия выбора тура. Даты поездки и туристы в основном поиске сохранятся.</p>';
 }
+function refreshOpenOfferList(){
+ if(modalType!=='all-offers'||!offerView)return;
+ const body=$('#modal-body'),focus=focusReference(document.activeElement,body),scroll=body.scrollTop;
+ renderOfferList();
+ if(focus&&document.activeElement!==focus.element)restoreFocus(focus,$('#offer-count'),body);
+ body.scrollTop=scroll;
+}
 function renderOfferList(reset=false){
  if(!optionalShortlistEnabled)offerView.mode='list';
  const h=hotels.find(h=>h.id===offerView.id),all=hotelOffers(h),filtered=all.filter(o=>(offerView.mode==='compare'||!offerView.departure||o.day===offerView.departure)&&(!offerView.flight||o.flight===offerView.flight)&&(!offerView.room||o.room===offerView.room)&&(!offerView.meal||o.meal===offerView.meal));
  const sorted=[...filtered].sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total:a.total-b.total||a.day.localeCompare(b.day));
  const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));
+ for(const field of offerRefinementFields){
+  const select=$('#offer-'+field),values=[...new Set(all.map(o=>field==='departure'?o.day:o[field]))];
+  if(offerView[field]&&!values.includes(offerView[field]))values.push(offerView[field]);
+  if(field==='departure')values.sort();
+  if(JSON.stringify([...select.options].map(o=>o.value))!==JSON.stringify(['',...values]))select.innerHTML=`<option value="">${field==='departure'?'Все даты':field==='meal'?'Любое':'Любой'}</option>`+values.map(value=>`<option value="${esc(value)}">${esc(offerRefinementLabel(field,value))}</option>`).join('');
+ }
  if(reset){offerView.open=groups.length===1?[groups[0].key]:[];offerView.limits={};}
  for(const name of ['departure','flight','room','meal','sort'])$('#offer-'+name).value=offerView[name];
  const comparing=offerView.mode==='compare',wasComparing=$('#modal').classList.contains('tour-comparison-dialog');if(comparing!==wasComparing)$('.offer-filter-disclosure').open=!comparing&&innerWidth>760;$('#modal').classList.toggle('tour-comparison-dialog',comparing);$('#offer-comparison-dates').hidden=!comparing;$('#offer-sort-label').hidden=comparing||new Set(filtered.map(o=>o.day)).size<2;$$('[data-action="offer-view"]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.value===offerView.mode));
@@ -1532,6 +1545,7 @@ function mergeSearchResults(event){
  hotels=[...new Map([...hotels,...incoming.values()].map(h=>[h.id,h])).values()];
  operators.splice(0,operators.length,...new Set(hotels.flatMap(h=>h.offers.map(o=>o.operator))));
  hotels.forEach(h=>h.offers.forEach(o=>{if(!data.live)mealNames[o.meal]=o.meal;else if(Number.isSafeInteger(o.mealPlanId)&&o.mealPlanId>0&&o.mealFacet){const previous=mealNames[o.mealFacet];if(previous===undefined||previous===o.mealPlanId)mealNames[o.mealFacet]=o.mealPlanId;}}));
+ refreshOpenOfferList();
 }
 function commitSearchDraft(){
  if(currentFilterBudgetEdit(state.filters)){
