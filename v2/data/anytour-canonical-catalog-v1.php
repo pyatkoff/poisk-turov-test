@@ -84,7 +84,9 @@ final class AnyTourCanonicalCatalog
             if (!$hasText($raw['name'] ?? null)) $issues[] = 'missing_tv_name';
             if (v2_hotel_detail_is_generic_product_name($raw['name'] ?? null)
                 || v2_hotel_detail_is_generic_product_name($source['name'] ?? null)) $issues[] = 'generic_product';
-            if (!$hasText($raw['description'] ?? null)) $issues[] = 'missing_tv_description';
+            // Tourvisor description belongs to common.description; use the established parser.
+            $normalized = v2_hotel_detail_normalized($raw);
+            if (!$hasText($normalized['description'])) $issues[] = 'missing_tv_description';
             if (v2_hotel_detail_images($raw) === []) $issues[] = 'missing_tv_gallery';
         }
         return $issues;
