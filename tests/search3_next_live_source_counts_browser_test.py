@@ -25,13 +25,13 @@ class TransportTests(unittest.TestCase):
         self.assertFalse(g.allow(m.ORIGIN+m.ANEX+'api-anex-search3-preview.php','POST',json.dumps(dict(action='search',params={**PARAMS,'dateTo':'2026-10-17'}))))
         self.assertFalse(g.allow('https://mc.yandex.ru/watch/1','GET'))
         self.assertEqual(sum(g.calls.values()),0)
-    def test_sequential_bounded_samo_pages(self):
+    def test_initial_samo_is_exactly_one_page(self):
         g=m.Guard();g.armed=True;u=m.ORIGIN+m.ANEX+'api-andromeda-search3-preview.php'
         self.assertFalse(g.allow(u,'POST',json.dumps(dict(page=2,params=PARAMS))))
-        for page in range(1,41):self.assertTrue(g.allow(u,'POST',json.dumps(dict(page=page,params=PARAMS))))
-        self.assertFalse(g.allow(u,'POST',json.dumps(dict(page=41,params=PARAMS))))
+        self.assertTrue(g.allow(u,'POST',json.dumps(dict(page=1,params=PARAMS))))
+        self.assertFalse(g.allow(u,'POST',json.dumps(dict(page=2,params=PARAMS))))
         self.assertFalse(g.allow(u,'POST',json.dumps(dict(page=1,params=PARAMS))))
-        self.assertEqual(g.calls['andromeda'],40)
+        self.assertEqual(g.calls['andromeda'],1)
     def test_no_raw_error_or_identity_export(self):
         row=m.safe_response(m.ORIGIN+m.ANEX+'api-anex-search3-preview.php',502,'{}',dict(ok=False,error='password=DO_NOT_LOG',data=dict(provider='anex',hotels=[dict(secret='DO_NOT_LOG')],received_offers=3,mapped_offers=True)))
         self.assertNotIn('DO_NOT_LOG',json.dumps(row));self.assertEqual(row['errorCategory'],'other_error');self.assertEqual(row['receivedHotels'],1);self.assertNotIn('mapped_offers',row)

@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import urllib.request
 
-COMMAND = '/search3-next-live-source-counts-v16'
+COMMAND = '/search3-next-live-source-counts-v17'
 REPOSITORY = 'pyatkoff/poisk-turov-test'
 OWNER = 226193297
 
