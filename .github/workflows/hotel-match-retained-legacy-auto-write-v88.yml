@@ -33,7 +33,7 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail; umask 077; mkdir terminal
-          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_retained_legacy_auto_write_v88.php)" = 158a0042a4269b23313f873e9cd01716a96df75b
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_retained_legacy_auto_write_v88.php)" = 176ecbcef3db679c3f636aa8373d9842a5a8e293
           test "$(git rev-parse HEAD:reports/hotel-match-retained-candidate-packet-20260927.json)" = 757711a6fb7012a18743da1bc2bb4a7a67cb6232
           php -l scripts/diagnostics/hotel_match_retained_legacy_auto_write_v88.php
           php scripts/diagnostics/hotel_match_retained_legacy_auto_write_v88.php --self-test
