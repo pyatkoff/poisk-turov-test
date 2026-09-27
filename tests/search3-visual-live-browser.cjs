@@ -28,6 +28,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
   let initialInvalidBudgetBlocked=false;
   if(width===1280){
+   await page.locator('[data-action="filters"]:visible').first().click();
    await page.locator('#max-price').fill('abc');assert.equal(await page.locator('#max-price').getAttribute('aria-invalid'),'true');
    await page.locator('.search-submit').click();assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0,'invalid budget blocks the first desktop search');
    assert.equal(await page.locator('#max-price').evaluate(el=>document.activeElement===el),true);await page.locator('#max-price').fill('');initialInvalidBudgetBlocked=true;
