@@ -22,6 +22,11 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 (async()=>{
  await wait(()=>!q('.search-submit').disabled);
  assert.equal(starts(),0,'opening shared/search URL never spends a supplier search');assert.equal(d.querySelectorAll('.hotel-card').length,0);
+ w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));
+ q('#max-price').value='abc';q('#max-price').dispatchEvent(new w.Event('input',{bubbles:true}));
+ assert.equal(q('#max-price').getAttribute('aria-invalid'),'true');click('.search-submit');await settle();
+ assert.equal(starts(),0,'invalid budget blocks the first desktop search');assert.equal(d.activeElement,q('#max-price'));
+ q('#max-price').value='';q('#max-price').dispatchEvent(new w.Event('input',{bubbles:true}));w.innerWidth=390;w.dispatchEvent(new w.Event('resize'));
  click('[data-action="about"]');
  assert.match(q('#modal-body').textContent,/живого поиска ТВ, SAMO\/Andromeda и ANEX/);
  assert.match(q('#modal-body').textContent,/База не подменяет живую выдачу/);
