@@ -151,19 +151,29 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  const previousCards=q('#cards').innerHTML,previousURL=w.location.search;
  click('#applied-search [data-action="edit-search"]');click('#quick-stars [data-value="4"]');click('#search-return');await settle();
  assert.equal(q('#cards').innerHTML,previousCards);assert.equal(w.location.search,previousURL);assert.equal(starts(),1,'Cancel never starts another provider search');
- transport.state.failAnex=true;click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('2 варианта'));assert.match(q('#search-status').textContent,/Получены не все предложения/);
+ transport.state.tvFlightFuel=' \t ';transport.state.failAnex=true;click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('2 варианта'));assert.match(q('#search-status').textContent,/Получены не все предложения/);
  assert.doesNotMatch(q('#search-status').textContent,/Получаем предложения|100%/,'terminal partial search must not reuse a loading message');
  assert.match(q('#search-status').textContent,/найденные туры доступны для выбора/);
  click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.equal(tvRequests(),beforeTvReturn+2,'an explicit new search invalidates the old TV selection');
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/120000/);
+ assert.match(q('.tour-fuel-disclosure').textContent,/Сбор уточняется/,'blank pair fuel never becomes zero or inherits the tour amount');
+ click('[data-action="confirm-tour"]');await settle();assert.match(q('.tour-fuel-disclosure').textContent,/Сбор уточняется/,'application retains unknown fuel');
+ assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/120000/,'unknown fuel never changes the offered total');
  click('[data-action="close-modal"]');await settle();
  // A failed current SAMO quote has one safe exit and cannot be repeated by reopening.
  const quoteCount=()=>transport.calls.filter(c=>c.url.endsWith('/api-andromeda-quote-preview.php')).length;
  for(const flightChoice of [false,true]){
   transport.state.samoFailure='supplier_auth';transport.state.samoFlightChoice=flightChoice;
+  transport.state.tvFlightFuel={value:'0'};
   click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>!q('[data-action="stop-search"]')&&q('#results-summary').textContent.includes('2 варианта'));
   click('[data-action="all-offers"][data-id="501"]');
+  if(!flightChoice){
+   click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+   assert.match(q('.tour-fuel-disclosure').textContent,/Без доплаты по сбору/,'explicit supplier zero is preserved');
+   click('[data-action="confirm-tour"]');await settle();assert.match(q('.tour-fuel-disclosure').textContent,/Без доплаты по сбору/);
+   click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');
+  }
   const chooseSamo=()=>[...d.querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('andromeda%3A')).click();
   chooseSamo();await settle();const before=quoteCount();click('[data-action="refresh-hotel"]');
   if(flightChoice){await wait(()=>q('[data-action="apply-andromeda-flights"]'));click('[data-action="apply-andromeda-flights"]');}

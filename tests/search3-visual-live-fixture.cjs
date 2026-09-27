@@ -9,7 +9,7 @@ const segment=(number,returning)=>({company:{name:'Тестовая авиако
 const flights=[{isDefault:true,price:{value:120000},fuelCharge:0,forward:[segment('TEST101',false)],backward:[segment('TEST102',true)]},{price:{value:133500.5},fuelCharge:0,forward:[segment('TEST201',false)],backward:[segment('TEST202',true)]}];
 const searchRef='a'.repeat(32),offerRef='anex_online:'+'b'.repeat(64),andromedaRef='offer_'+'d'.repeat(64);
 function fixture({tvFuel=0,anexZeroSurcharge=false}={}){
- const calls=[],state={hold:false,failAnex:false,extended:false,samoFailure:null,samoFlightChoice:false,samoSearchGate:null,wideFacets:false,countriesFailure:'',countryGates:{},regionsGate:null};
+ const calls=[],state={hold:false,failAnex:false,extended:false,samoFailure:null,samoFlightChoice:false,samoSearchGate:null,wideFacets:false,countriesFailure:'',countryGates:{},regionsGate:null,tvFlightFuel:tvFuel};
  const json=async(url,options={})=>{
   const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},q=u.searchParams,action=q.get('action')||body.action;
   calls.push({url:u.pathname,action,body,query:Object.fromEntries(q)});
@@ -51,7 +51,7 @@ function fixture({tvFuel=0,anexZeroSurcharge=false}={}){
    if(action==='search_continue'){state.extended=true;return {requestCount:1};}
    if(action==='search_results')return [{id:101,provider:'tourvisor',tours:[tour,...(state.wideFacets?Array.from({length:8},(_,i)=>({...tour,id:'operator-tour-'+i,operator:{name:'Тестовый оператор '+(i+1)}})):[])]}];
    if(action==='tour')return {...tour,fuelCharge:tvFuel,hotel:{id:101,name:profile.name}};
-   if(action==='flights')return flights.map(pair=>({...pair,fuelCharge:tvFuel}));
+   if(action==='flights')return flights.map(pair=>({...pair,fuelCharge:state.tvFlightFuel}));
   }
   throw Error('Forbidden fixture request: '+url);
  };
