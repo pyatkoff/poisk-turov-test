@@ -222,6 +222,39 @@ def exercise_selection(page, guard, out):
             'flight_choices': guard.reply_counts, 'widths': widths}
 
 
+def route_request(route, guard):
+    request = route.request
+    if not guard.allow(request.url, request.method, request.post_data):
+        route.abort()
+        return
+    if urlparse(request.url).path not in guard.response_paths:
+        route.continue_()
+        return
+    # The canonical client may immediately chain another request after JSON.
+    # Observe this same single response before delivering its unchanged bytes.
+    # No redirect or transport retry may escape the authorized request budget.
+    try:
+        response = route.fetch(max_redirects=0, max_retries=0, timeout=55000)
+    except Exception:
+        guard.observe_response(request.url, 0, None, request.post_data)
+        route.abort()
+        return
+    if 300 <= response.status < 400:
+        guard.observe_response(request.url, response.status, None, request.post_data)
+        guard.deny('response_redirect_blocked')
+        route.abort()
+        return
+    try:
+        payload = response.json()
+    except Exception:
+        payload = None
+    try:
+        guard.observe_response(request.url, response.status, payload, request.post_data)
+    except Exception:
+        pass  # Malformed evidence cannot authorize a subsequent request.
+    route.fulfill(response=response)
+
+
 def main(guard=None, observer=CANDIDATE_OBSERVER, exercise_journey=exercise_selection, version='v19'):
     from playwright.sync_api import sync_playwright
     out = Path('search3-next-live-source-counts')
@@ -247,20 +280,8 @@ def main(guard=None, observer=CANDIDATE_OBSERVER, exercise_journey=exercise_sele
                 result['pageErrorCount'] += 1
             page.on('pageerror', page_error)
             def route(r):
-                q = r.request
-                if guard.allow(q.url, q.method, q.post_data):
-                    r.continue_()
-                else:
-                    r.abort()
+                route_request(r, guard)
             context.route('**/*', route)
-            def observe(r):
-                if urlparse(r.url).path not in guard.response_paths:
-                    return
-                try:
-                    guard.observe_response(r.url, r.status, r.json(), r.request.post_data)
-                except Exception:
-                    pass  # Invalid/failed response never grants continuation authority.
-            page.on('response', observe)
             result['initial'] = base.exercise(page, guard)
             if not result['initial'].get('complete') or guard.denied or guard.calls != dict.fromkeys(base.PROVIDERS, 1):
                 raise RuntimeError('initial_batch_not_complete')

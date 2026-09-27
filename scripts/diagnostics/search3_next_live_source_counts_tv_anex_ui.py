@@ -307,4 +307,4 @@ def exercise_selected(page, guard, out):
 
 
 if __name__ == '__main__':
-    raise SystemExit(shared.main(SelectedGuard(), OBSERVER, exercise_selected, 'v20'))
+    raise SystemExit(shared.main(SelectedGuard(), OBSERVER, exercise_selected, 'v21'))
