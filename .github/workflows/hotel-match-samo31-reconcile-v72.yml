@@ -1,4 +1,4 @@
-name: MATCH current100 COMMON4 acquire v81
+name: MATCH current100 dedicated-account acquire v82
 'on':
   pull_request:
     types: [opened, synchronize, reopened]
@@ -12,8 +12,8 @@ concurrency:
   group: hotel-match-samo31-reconcile-v72
   cancel-in-progress: false
 env:
-  OP: hotel-match-current100-common4-acquire-1971-20260927-v81
-  CLAIM: '5856794586'
+  OP: hotel-match-current100-dedicated-account-acquire-1971-20260927-v82
+  CLAIM: '5857603278'
 jobs:
   acquire:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.ref == 'match/samo31-reconcile-v72-20260927'
@@ -31,10 +31,10 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail;umask 077;mkdir terminal
-          php -l scripts/diagnostics/hotel_match_current100_plan_v81.php
-          python3 -m py_compile scripts/diagnostics/hotel_match_current100_acquire_v81.py scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py
-          php scripts/diagnostics/hotel_match_current100_plan_v81.php --self-test
-          python3 scripts/diagnostics/hotel_match_current100_acquire_v81.py --self-test
+          php -l scripts/diagnostics/hotel_match_current100_plan_v82.php
+          python3 -m py_compile scripts/diagnostics/hotel_match_current100_acquire_v82.py scripts/diagnostics/hotel_match_live30_dedicated_account_acquire_v3.py
+          php scripts/diagnostics/hotel_match_current100_plan_v82.php --self-test
+          python3 scripts/diagnostics/hotel_match_current100_acquire_v82.py --self-test
           python3 - <<'PY'
           import json,os,time,urllib.request
           def get(p):
@@ -42,7 +42,7 @@ jobs:
             with urllib.request.urlopen(q,timeout=30) as f:return json.load(f)
           c=get('/issues/comments/'+os.environ['CLAIM']);b=c['body']
           assert c['user']['id']==226193297 and c['author_association']=='OWNER'
-          for x in [os.environ['OP'],'exactly 100 Turkey hotels','13/18/25/43','NO /continue','NO /dates','<=3000','<=900']:assert x in b,x
+          for x in [os.environ['OP'],'exactly 100 current unresolved Turkey','TOURVISOR_ANEX_JWT','NO operatorIds','NO /continue','NO /dates','<=3000','<=900']:assert x in b,x
           pr=get('/pulls/4017');assert pr['state']=='open' and pr['draft'] is True and pr['head']['sha']==os.environ['HEAD']
           for _ in range(100):
             xs=[x for x in get('/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs'] if x['name']=='Security guard']
@@ -65,21 +65,21 @@ jobs:
           chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
           remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
           ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
-          printf '%s\n' '{"operation":"hotel-match-current100-common4-acquire-1971-20260927-v81","state":"reserved_before_provider","maximum_hotels":100,"call_cap":900,"database_writes":0,"mapping_writes":0}' >terminal/reservation.json
+          printf '%s\n' '{"operation":"hotel-match-current100-dedicated-account-acquire-1971-20260927-v82","state":"reserved_before_provider","maximum_hotels":100,"call_cap":900,"database_writes":0,"mapping_writes":0}' >terminal/reservation.json
           scp "${opts[@]}" terminal/reservation.json "$remote:$rel/reservation.json"
-          scp "${opts[@]}" scripts/diagnostics/hotel_match_current100_plan_v81.php scripts/diagnostics/hotel_match_current100_acquire_v81.py scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_current100_plan_v82.php scripts/diagnostics/hotel_match_current100_acquire_v82.py scripts/diagnostics/hotel_match_live30_dedicated_account_acquire_v3.py scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
           scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_plan_v81.php\" --execute > \"\$HOME/$rel/plan.json\""
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_plan_v82.php\" --execute > \"\$HOME/$rel/plan.json\""
           scp "${opts[@]}" "$remote:$rel/plan.json" terminal/plan-pre.json
           python3 - <<'PY'
           import json
           p=json.load(open('terminal/plan-pre.json'))
-          assert p['state']=='match_current100_ready' and p['scope_count']==100 and len(p['rows'])==100
+          assert p['state']=='match_current100_dedicated_ready' and p['scope_count']==100 and len(p['rows'])==100 and p['tourvisor_account']=='TOURVISOR_ANEX_JWT' and p['operator_filter_sent'] is False
           assert p['current_nontriple_total']==1645 and p['provider_http_calls']==p['database_writes']==p['mapping_writes']==0
           print({'current_nontriple_total':p['current_nontriple_total'],'scope':p['scope_count']})
           PY
           set +e
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_PLAN_PATH=\"\$HOME/$rel/plan.json\" MATCH_CALL_CAP=900 MATCH_SOURCE_SHA='$HEAD' python3 \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_acquire_v81.py\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_PLAN_PATH=\"\$HOME/$rel/plan.json\" MATCH_CALL_CAP=900 MATCH_SOURCE_SHA='$HEAD' python3 \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_acquire_v82.py\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
           rc=$?
           set -e
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
@@ -90,7 +90,7 @@ jobs:
           r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'));p=json.load(open('terminal/plan.json'))
           assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
           assert p['scope_count']==100 and r['scope_count']==100 and r['frontier_count']==100
-          assert r['database_writes']==r['mapping_writes']==0 and r['continue_calls']==r['dates_calls']==0 and r['provider_calls']<=900
+          assert r['database_writes']==r['mapping_writes']==0 and r['continue_calls']==r['dates_calls']==0 and r['provider_calls']<=900 and r['tourvisor_account']=='TOURVISOR_ANEX_JWT' and r['operator_filter_sent'] is False
           assert r['state'] in ('completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay')
           print({k:r[k] for k in ['state','reason','searched_hotels','returned_targets','returned_missing_operator_pairs','returned_operator_pairs','provider_calls','daily_accounted_after_local_ledger','single_native_chunk_unique_count','single_native_by_operator']})
           PY
@@ -98,7 +98,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-current100-common4-v81-${{ github.run_id }}
+          name: match-current100-dedicated-v82-${{ github.run_id }}
           path: terminal/
           retention-days: 90
           if-no-files-found: warn
