@@ -64,6 +64,7 @@ class JourneyGuard(base.Guard):
         self.final_price = None
         self.reply_counts = []
         self.lead_attempts = 0
+        self.journey_stage = 'not_started'
 
     def select(self, candidate):
         if not self.armed or self.selected is not None or not isinstance(candidate, dict):
@@ -144,20 +145,26 @@ class JourneyGuard(base.Guard):
 
 
 def exercise_selection(page, guard, out):
+    guard.journey_stage = 'select_candidate'
     candidate = page.evaluate('window.__nextSamoCandidate')
     guard.select(candidate)
     if not page.evaluate("String(window.V2_CONFIG?.leadApi||'').endsWith('/preview-lead-disabled.php')"):
         raise RuntimeError('preview_lead_boundary_missing')
+    guard.journey_stage = 'open_hotel_offers'
     page.locator('#hotel-query').fill(candidate['name'])
     page.locator('[data-action="all-offers"][data-id="'+str(candidate['hotelId'])+'"]').first.click()
-    key = __import__('urllib.parse', fromlist=['quote']).quote(candidate['key'], safe='')
+    guard.journey_stage = 'select_offer'
+    # The canonical adapter already encoded this exact DOM identity.
+    key = candidate['key']
     offer = page.locator('#modal-body [data-action="offer"][data-key="'+key+'"]')
     if not offer.is_visible():
         offer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click()
     offer.click()
+    guard.journey_stage = 'quote'
     page.locator('[data-action="refresh-hotel"]').click()
     page.wait_for_function("document.querySelector('[data-action=apply-andromeda-flights]') || document.querySelector('[data-action=andromeda-application-preview]') || document.querySelector('#modal-body .error-text')", timeout=55000)
     if page.locator('[data-action="apply-andromeda-flights"]').count():
+        guard.journey_stage = 'select_flights'
         outbound = page.locator('[name="andromeda-outbound"]')
         inbound = page.locator('[name="andromeda-return"]')
         counts = {'0': outbound.count(), '1': inbound.count()}
@@ -168,10 +175,12 @@ def exercise_selection(page, guard, out):
         inbound.first.check()
         page.screenshot(path=str(out / 'samo-flight-choice-1280.png'))
         page.locator('[data-action="apply-andromeda-flights"]').click()
+    guard.journey_stage = 'open_application'
     page.locator('[data-action="andromeda-application-preview"]').click(timeout=55000)
     if guard.quote_state != 'quote_verified' or guard.final_price is None:
         raise RuntimeError('verified_quote_missing')
     before = dict(guard.quote_calls)
+    guard.journey_stage = 'check_application'
     page.locator('[name="phone"]').fill('+7 999 123-45-67')
     page.locator('[name="consent"]').check()
     page.locator('[type="submit"][form="prototype-lead-form"]').click()
@@ -184,6 +193,7 @@ def exercise_selection(page, guard, out):
     if expected not in shown:
         raise RuntimeError('application_price_mismatch')
     widths = []
+    guard.journey_stage = 'responsive_application'
     for width in (1280, 390):
         page.set_viewport_size({'width': width, 'height': 900})
         page.wait_for_timeout(150)
@@ -192,6 +202,7 @@ def exercise_selection(page, guard, out):
         page.screenshot(path=str(out / ('samo-application-'+str(width)+'.png')))
     if before != guard.quote_calls or guard.lead_attempts or any(row['overflow'] for row in widths):
         raise RuntimeError('application_boundary_failed')
+    guard.journey_stage = 'complete'
     return {'application_checked': True, 'real_lead_sent': False, 'final_price': guard.final_price,
             'flight_choices': guard.reply_counts, 'widths': widths}
 
@@ -207,7 +218,7 @@ def main():
         context = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block')
         page = None
         try:
-            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v18' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
+            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v19' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
                 raise RuntimeError('live_authorization_missing')
             for name, expected in EXPECTED.items():
                 response = context.request.get(base.ORIGIN + base.BASE + name, timeout=30000, max_redirects=0)
@@ -259,6 +270,7 @@ def main():
             result['initialCalls'] = dict(guard.calls)
             result['quoteCalls'] = dict(guard.quote_calls)
             result['quoteState'] = guard.quote_state
+            result['journeyStage'] = guard.journey_stage
             result['leadAttempts'] = guard.lead_attempts
             result['blocked'] = guard.denied[:20]
             browser.close()
