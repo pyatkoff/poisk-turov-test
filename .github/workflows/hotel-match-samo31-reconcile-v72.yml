@@ -1,4 +1,4 @@
-name: MATCH raw native pending11 acceptance v78b
+name: MATCH raw native pending11 acceptance v78c
 'on':
   pull_request:
     types: [opened, synchronize, reopened]
@@ -12,7 +12,7 @@ concurrency:
   group: hotel-match-samo31-reconcile-v72
   cancel-in-progress: false
 env:
-  OP: hotel-match-raw-native-pending11-1971-20260927-v78b
+  OP: hotel-match-raw-native-pending11-1971-20260927-v78c
   BASE: ff717f1f93557420d755887e03885440623fddb9
 jobs:
   accept:
@@ -46,8 +46,8 @@ jobs:
           mkdir -p package/scripts/diagnostics package/app/integrations
           test "$(git rev-parse HEAD)" = "$HEAD"
           git merge-base --is-ancestor "$BASE" HEAD
-          test "$(git hash-object scripts/diagnostics/hotel_match_raw_native_pending11_v78.php)" = a5a7b0d4023191f09a9cfc6aa24e82ecdd5dd318
-          test "$(git hash-object tests/hotel_match_raw_native_pending11_v78_test.php)" = 9ed5b981c5499f93b6ae9fa2098df257d2932f68
+          test "$(git hash-object scripts/diagnostics/hotel_match_raw_native_pending11_v78.php)" = 7c73f7b50b30e5a8cbf55c210166c870e3b09e69
+          test "$(git hash-object tests/hotel_match_raw_native_pending11_v78_test.php)" = ef0019d77e8497729ef372c1740011efc9420d70
           test "$(git hash-object scripts/diagnostics/hotel_match_pending8_transition_v76.php)" = fb17d70dce98444cda1b546433d298efb6cb556d
           test "$(git hash-object scripts/diagnostics/hotel_match_anex_effective_coverage.php)" = 1b5190727690f50a4cdd606c48afa575978ec48e
           test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
@@ -59,7 +59,7 @@ jobs:
           def get(p):
               req=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+p,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
               with urllib.request.urlopen(req,timeout=30) as f:return json.load(f)
-          c=get('/issues/comments/5855548756')
+          c=get('/issues/comments/5855759271')
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419') and os.environ['OP'] in c['body']
           pr=get('/pulls/4017');assert pr['state']=='open' and pr['draft'] is True and pr['head']['sha']==os.environ['HEAD']
           for _ in range(80):
@@ -81,11 +81,11 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=match-raw-native-v78b-reservation&per_page=100" >input/old-reservations.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=match-raw-native-v78c-reservation&per_page=100" >input/old-reservations.json
           python3 - <<'PY'
           import json,os,pathlib
           assert json.load(open('input/old-reservations.json'))['total_count']==0,'no_replay'
-          r={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_write','claim':5855548756,'maximum_writes':11,'provider_http_calls':0,'no_replay':True}
+          r={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_write','claim':5855759271,'maximum_writes':11,'provider_http_calls':0,'no_replay':True}
           pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
           PY
           cp scripts/diagnostics/hotel_match_raw_native_pending11_v78.php scripts/diagnostics/hotel_match_pending8_transition_v76.php scripts/diagnostics/hotel_match_anex_effective_coverage.php package/scripts/diagnostics/
@@ -93,7 +93,7 @@ jobs:
           (cd package && find scripts app -type f -print0 | sort -z | xargs -0 sha256sum >SHA256SUMS && tar -czf ../payload.tar.gz scripts app SHA256SUMS)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-raw-native-v78b-reservation
+          name: match-raw-native-v78c-reservation
           path: reservation/reservation.json
           retention-days: 90
           if-no-files-found: error
@@ -138,7 +138,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-raw-native-v78b-${{ github.run_id }}
+          name: match-raw-native-v78c-${{ github.run_id }}
           path: |
             terminal/result.json
             terminal/receipt.json
