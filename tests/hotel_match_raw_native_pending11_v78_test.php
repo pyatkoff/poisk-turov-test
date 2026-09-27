@@ -3,6 +3,15 @@ declare(strict_types=1);
 require_once __DIR__.'/../scripts/diagnostics/hotel_match_raw_native_pending11_v78.php';
 $count=0;
 function ck(bool $b,string $n):void{global$count;$count++;if(!$b)throw new RuntimeException('test_'.$n);}
+ck(73680505>67108864&&73680505<=w78_limit(W78_FULL_SHA),'actual_queue_exceeds_old_limit');
+ck(w78_limit(str_repeat('0',64))===67108864,'ordinary_inputs_still_bounded');
+$queue=['remaining_queues'=>['live_30d'=>['rows'=>array_fill(0,1674,['tv_hotel_id'=>17383])]],'unrelated'=>['not_retained']];
+$projected=w78_projection($queue,W78_FULL_SHA);ck(count($projected['remaining_queues']['live_30d']['rows'])===1674&&!isset($projected['unrelated']),'drop_unrelated_cohorts');
+ck(w78_projection($queue,str_repeat('0',64))===$queue,'ordinary_inputs_unchanged');
+try{w78_projection([],W78_FULL_SHA);ck(false,'malformed_projection');}catch(RuntimeException $x){ck($x->getMessage()==='full_queue_projection','projection_shape_guard');}
+$tmp=tempnam(sys_get_temp_dir(),'match78-proof-');file_put_contents($tmp,'{"test":true}');$digest=hash_file('sha256',$tmp);ck(w78_read($tmp,$digest)===['test'=>true],'ordinary_file_valid');
+try{w78_read($tmp,str_repeat('0',64));ck(false,'bad_digest');}catch(RuntimeException $x){ck($x->getMessage()==='proof_digest','digest_guard_preserved');}unlink($tmp);
+try{w78_read($tmp,$digest);ck(false,'missing_file');}catch(RuntimeException $x){ck($x->getMessage()==='proof_file_missing','missing_error_distinct');}
 function fixture78():array{$entries=[];$c=['sources'=>[],'targets'=>[],'operators'=>[],'hotels'=>[],'manual'=>[],'exclusions'=>[]];foreach(W78_PAIRS as$id=>$cat){$h=['id'=>$id,'name'=>'Example Unique Hotel '.$id,'country_id'=>4,'country_name'=>'Турция','region_name'=>'Стамбул','subregion_name'=>'','category'=>4,'is_active'=>1,'latitude'=>null,'longitude'=>null];$src=['id'=>$cat,'name'=>'Example Unique Hotel '.$id,'state'=>'Турция','starKey'=>4,'town'=>'Фатих'];$ev=['source'=>$src,'reason'=>'no_unique_country_name'];$r=['supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>$cat,'local_hotel_id'=>null,'decision_status'=>'pending','catalog_sha256'=>str_repeat('a',64),'evidence_sha256'=>hash('sha256',w76_json($ev)),'evidence_json'=>w76_json($ev)];$e=['id'=>$id,'catalog_id'=>$cat,'prepare_holds'=>[],'proofs'=>[['namespace'=>'operator_315','native_id'=>(string)$id,'tv'=>['kind'=>'independent_tv_audit']]],'operator_facts'=>[],'prior'=>$r,'history'=>$ev,'target'=>w76_target($h),'live_samo'=>true];$entries[$id]=$e;$c['sources'][$cat]=[$r];$c['hotels'][$id]=$h;}return[$entries,$c];}
 [$entries,$c]=fixture78();foreach($entries as$e)ck(w78_classify($e,$c)['status']==='ready','one_proof_no_anex_or_exact_town_'.$e['id']);
 $first=array_key_first($entries);$e=$entries[$first];$cat=$e['catalog_id'];
