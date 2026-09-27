@@ -1,7 +1,7 @@
 name: MATCH new-context SAMO-only 200 v96-v97
 'on':
   pull_request:
-    types: [synchronize]
+    types: [opened]
     paths:
       - .github/workflows/hotel-match-newcontext-samoonly200-v97.yml
 permissions:
@@ -18,7 +18,7 @@ env:
   CLAIM: '5860773903'
 jobs:
   acquire:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4061 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/newcontext-samoonly200-v97-20260928'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
