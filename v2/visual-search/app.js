@@ -59,6 +59,9 @@ const needsRefresh=o=>o.cached||(!data.preview&&o.provider!=='tourvisor')||o.raw
 const offerActionLabel=o=>needsRefresh(o)?'Смотреть условия':'Выбрать тур';
 const refreshOfferActionLabel=o=>o.cached?'Найти актуальные туры':'Проверить этот тур';
 const refreshOfferNotice=o=>data.live?'Предложение из текущего поиска. Проверьте цену, наличие и рейсы для этих условий.':'Снимок от 23.09.2026. Цена и наличие не обновляются.';
+const aboutDisclosureHTML=()=>data.live
+ ? `<p class="modal-intro">Версия v${prototypeVersion} получает актуальные предложения только из живого поиска ТВ, SAMO/Andromeda и ANEX. База не подменяет живую выдачу: ранее найденные цены используются только в календаре.</p><p class="modal-intro">Для конкретного предложения выполняется доступная поставщику актуализация цены, наличия и рейсов. Неподтверждённая или расчётная сумма показывается с явным статусом и не выдаётся за финально подтверждённую.</p><p class="modal-intro">Формы заявки доступны только для проверки сценария: данные не отправляются туроператору, бронирование и оплата отключены.</p>`
+ : `<p class="modal-intro">Демонстрационный сценарий v${prototypeVersion} работает на сохранённых и учебных данных. Цены и наличие не обновляются, сценарии рейсов могут быть вымышленными.</p><p class="modal-intro">Формы заявки доступны только для проверки интерфейса: данные не отправляются, бронирование и оплата отключены.</p>`;
 const cachedPriceNote=o=>data.scenario==='live'?'Цена из базы AnyTour · наличие требует проверки':'Цена из снимка 23.09.2026 · наличие не проверяется';
 const priceNote=o=>o.provider==='recorded'?(o.recordingKind==='demo'?'Демонстрационная запись · не для бронирования':'Загруженная запись · не для бронирования'):o.provider==='fixture'?'Демонстрационная цена · не для бронирования':o.cached?cachedPriceNote(o):needsRefresh(o)?'Цена из текущего поиска · требует подтверждения':'Цена предложения · сборы уточняются';
 const cardPriceNote=o=>o.provider==='recorded'?(o.recordingKind==='demo'?'Демо · не для бронирования':'Запись · не для бронирования'):o.provider==='fixture'?'Демо · не для бронирования':o.cached?(data.scenario==='live'?'Цена из базы · требует проверки':'Снимок · цена требует проверки'):priceNote(o);
@@ -1662,7 +1665,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'only-favorites':state.onlyFavorites=true;closeModal();renderResults();$('#results').scrollIntoView({behavior:scrollBehavior()});break;
  case 'show-hotel':{const h=hotels.find(h=>h.id===id);state.search.country=h.country;draft=structuredClone(state.search);draftDestination=null;state.filters=defaultFilters();state.filters.hotelId=h.id;state.onlyFavorites=false;state.selectedDate=null;state.openHotel=id;closeModal();syncFilters();updateURL();$('#results').scrollIntoView({behavior:scrollBehavior()});break}
  case 'operator-info':toast('Туроператор: '+b.dataset.operator);break;
- case 'about':showModal('about','Версия для проверки','ANYTOUR SEARCH3',`<p class="modal-intro">Прототип v${prototypeVersion} подключён к базе туров и календарю AnyTour через доступ только для чтения. Если база временно недоступна, совместимый поиск может показать сохранённые реальные предложения от 23 сентября с явным предупреждением. Проверка цены и наличия выбранного предложения в этом прототипе пока не подключена. Демонстрационные сценарии сохранены. Большая выдача — сохранённый пример: 1047 отелей и 1453 видимых предложения из 1718 найденных. Сценарии рейсов — вымышленные. Цены не обновляются; заявки и оплата отключены.</p>`);break;
+ case 'about':showModal('about','Версия для проверки','ANYTOUR SEARCH3',aboutDisclosureHTML());break;
  }
 });
 matchMedia('(max-width:760px)').addEventListener('change',()=>refreshTourComparison());
