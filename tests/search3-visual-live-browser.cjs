@@ -59,6 +59,17 @@ const server=http.createServer((req,res)=>{
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
   await page.screenshot({path:path.join(evidence,`samo-application-${width}.png`)});
+  await page.locator('[data-action="close-modal"]').click();await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
+  const anexOffer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();if(!await anexOffer.isVisible())await anexOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
+  await anexOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
+  const concrete=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();if(!await concrete.isVisible())await concrete.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
+  await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-additional-prices"]').click();
+  await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Доплаты ANEX рассчитаны');assert((await page.locator('#modal-body').textContent()).replace(/\s/g,'').includes('123000'));
+  const callsBeforeAnexApplication=transport.calls.length;await page.locator('[data-action="anex-application-preview"]').click();
+  assert((await page.locator('#modal-body').textContent()).includes('Расчётная сумма'));assert((await page.locator('#modal-body').textContent()).includes('Итоговая стоимость требует подтверждения'));
+  await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
+  await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('требует подтверждения'));
+  assert.equal(transport.calls.length,callsBeforeAnexApplication,'ANEX application preview adds no provider request');
   assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth),false);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   for(const flightChoice of [false,true]){
    await page.locator('[data-action="close-modal"]').click();

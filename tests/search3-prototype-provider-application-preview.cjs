@@ -50,10 +50,22 @@ for(const mutate of [
  r=>{r.flights=[{direction:'x'}];}
 ]){
  const bad=structuredClone(receipt);mutate(bad);
- assert.throws(()=>preview.providerPreviewPayload(bad,fd),/Подтверждён|рейсы/i);
+ assert.throws(()=>preview.providerPreviewPayload(bad,fd),/Подтверждён|рейсы|Условия тура/i);
 }
+
+const anexReceipt={provider:'anex',offerRef:'anex_online:'+'b'.repeat(64),searchRef:'c'.repeat(32),generation:7,localHotelId:501,
+ priceKind:'estimate',finalPriceVerified:false,hotel:'Fixture Hotel',country:'Турция',resort:'Белек',day:'2026-10-05',nights:7,
+ adults:2,ages:[],room:'ANEX CONCRETE',meal:'Всё включено',operator:'ANEX',price:123000,currency:'RUB',flights:[]};
+const anexPayload=preview.providerPreviewPayload(anexReceipt,fd);
+assert.equal(anexPayload.provider,'anex');assert.equal(anexPayload.price,123000);assert.equal(anexPayload.priceKind,'estimate');
+assert.equal(anexPayload.finalPriceVerified,false);assert.equal(anexPayload.flight,'');
+for(const mutate of [
+ r=>{r.offerRef='bad';},r=>{r.searchRef='bad';},r=>{r.generation=0;},r=>{r.localHotelId=0;},
+ r=>{r.priceKind='verified';},r=>{r.finalPriceVerified=true;}
+]){const bad=structuredClone(anexReceipt);mutate(bad);assert.throws(()=>preview.providerPreviewPayload(bad,fd),/ANEX|непол/i);}
+
 const production=leadApi('/lead-adapter-v2.php');
-assert.throws(()=>production.providerPreviewPayload(receipt,fd),/только в изолированной preview-версии/);
+assert.throws(()=>production.providerPreviewPayload(receipt,fd),/только в изолированной preview-версии/);assert.throws(()=>production.providerPreviewPayload(anexReceipt,fd),/только в изолированной preview-версии/);
 
 const bindStart=leadSource.indexOf('function bindProviderPreview(receipt)');
 const bindEnd=leadSource.indexOf('\n  function reset()',bindStart);
