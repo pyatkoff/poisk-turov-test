@@ -157,6 +157,28 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
   click('[data-action="close-modal"]');await settle();
  }
  assert.equal(quoteFailures.length,2,'only the first failure emits a local diagnostic');
+ // Long facet lists must refresh their choices without interrupting typing.
+ transport.state.failAnex=false;transport.state.wideFacets=true;
+ let releaseFacetSource;transport.state.samoSearchGate=new Promise(resolve=>releaseFacetSource=resolve);
+ click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('10 вариантов'));
+ click('#applied-search [data-action="filters"]');
+ const facetEditor=q('[data-facet-search="operators"]'),facetStarts=starts();
+ facetEditor.closest('.filter-group').querySelector('.filter-section-toggle').click();
+ facetEditor.focus();facetEditor.value='Тестовый';facetEditor.dispatchEvent(new w.Event('input',{bubbles:true}));facetEditor.setSelectionRange(3,8);
+ assert(!q('[data-filter="operators"][value="FUN&SUN"]'));
+ releaseFacetSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('11 вариантов'));
+ assert.equal(q('[data-facet-search="operators"]'),facetEditor);assert.equal(d.activeElement,facetEditor);
+ assert.deepEqual([facetEditor.selectionStart,facetEditor.selectionEnd],[3,8]);
+ assert.match(q('[data-facet-options="operators"] .facet-search-status').textContent,/Найдено в списке: 8/);
+ assert(q('[data-filter="operators"][value="FUN&SUN"]'),'late-source operator joins the current facet choices');
+ facetEditor.value='FUN';facetEditor.dispatchEvent(new w.Event('input',{bubbles:true}));
+ assert(!q('[data-filter="operators"][value="FUN&SUN"]').closest('label').hidden);
+ click('[data-filter="operators"][value="FUN&SUN"]');click('#apply-filters');await settle();
+ assert.match(q('#results-summary').textContent,/1 вариант/);assert.equal(starts(),facetStarts,'facet query and selection never start another search');
+ click('#applied-search [data-action="edit-search"]');changeOrigin('Казань');await wait(()=>!q('.search-submit').disabled);click('.search-submit');
+ await wait(()=>starts()===facetStarts+1&&(q('#search-status').hidden||!q('[data-action="stop-search"]'))&&q('#results-summary').textContent.includes('1 вариант'));
+ assert.equal(q('[data-facet-search="operators"]').value,'','a new departure clears the previous facet-list query');
+ assert.notEqual(q('[data-facet-search="operators"]'),facetEditor,'the previous draft editor does not cross search contexts');
  const url=w.location.href;w.history.replaceState(null,'','/poisk-turov/');assert.equal(w.Search3CanonicalProfilesV1.create(()=>{}),null,'production consumer stays denied');w.history.replaceState(null,'',url);
  assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);
  console.log('PASS live bridge: truthful live/DB/application disclosure; explicit search only; departure error/retry/cancel/late-response recovery; three canonical sources → one hotel; current TV quote/flights/exact-price application dry-run; SAMO verified receipt; ANEX concrete + non-final surcharge; actionable Back, retained receipts and late APD, cross-provider return without replay; no live HTTP');
