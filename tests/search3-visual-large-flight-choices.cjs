@@ -65,6 +65,8 @@ async function run(){
     await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
     assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
     await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
+    const startsFor=name=>transport.calls.filter(c=>c.url.endsWith('/api-'+name+'-search3-preview.php')&&(!c.action||c.action==='search'));
+    for(const name of ['anex','andromeda'])assert.equal(startsFor(name).length,1,'one initial batch per provider');
     const choose=async provider=>{
      await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
      const offer=page.locator('#modal-body [data-action="offer"][data-key^="'+provider+'%3A"]').first();
@@ -104,10 +106,13 @@ async function run(){
     await page.locator('[data-action="anex-application-preview"]').click();await application('anex-application');
     assert.match(await page.locator('.lead-message').textContent(),/Расчётная сумма.*требует подтверждения/);
     assert.equal(transport.calls.filter(c=>c.action==='search_start').length,1);
-    for(const name of ['anex','andromeda']){const starts=transport.calls.filter(c=>c.url.endsWith('/api-'+name+'-search3-preview.php')&&(!c.action||c.action==='search'));assert.equal(starts.length,1);if(name==='andromeda')assert.equal(starts[0].body.page,1);}
+    assert.equal(startsFor('andromeda').length,1);assert.equal(startsFor('andromeda')[0].body.page,1);
+    const anexStarts=startsFor('anex');assert.equal(anexStarts.length,2,'initial batch plus existing explicit selected-hotel revalidation');
+    assert.deepEqual(anexStarts[1].body.params.hotelIds,['101']);assert.equal(anexStarts[1].body.params.dateFrom,trip.from);assert.equal(anexStarts[1].body.params.dateTo,trip.from);
+    assert.equal(anexStarts[1].body.params.nightsFrom,7);assert.equal(anexStarts[1].body.params.nightsTo,7);
     assert(!transport.calls.some(c=>c.action==='search_continue'||c.action==='continue'||/lead|payment|booking/.test(c.url)));
     assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-    receipts.push({width,samo_choices:132,samo_selected:[66,132],samo_quote_calls:2,samo_final:125500,tourvisor_final:133500.5,anex_estimate:123000,three_application_checks:true,initial_searches_per_source:1,continue_calls:0,supplier_calls:0,lead_calls:0});
+    receipts.push({width,samo_choices:132,samo_selected:[66,132],samo_quote_calls:2,samo_final:125500,tourvisor_final:133500.5,anex_estimate:123000,three_application_checks:true,initial_searches_per_source:1,anex_explicit_selected_hotel_searches:1,continue_calls:0,supplier_calls:0,lead_calls:0});
    }catch(error){await page.screenshot({path:path.join(evidence,`failure-${width}.png`)}).catch(()=>{});throw error;}
    finally{await context.close();}
   }

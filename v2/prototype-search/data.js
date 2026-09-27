@@ -1240,7 +1240,8 @@
   }
   function normalizeAndromedaQuote(value,localId){
     if(!value||value.schema_version!==1||value.provider!=='andromeda'||Number(value.local_id)!==localId
-      ||value.selection_enabled!==true||value.booking_enabled!==false||!Array.isArray(value.flights)||value.flights.length>100)return null;
+      ||value.selection_enabled!==true||value.booking_enabled!==false||!Array.isArray(value.flights)
+      ||value.flights.length>(value.state==='flight_selection_required'?1000:100))return null;
     const verified=value.state==='quote_verified'&&value.quote_state==='verified'&&value.final_price_verified===true
       &&value.flight_selection_required===false;
     const pending=value.state==='flight_selection_required'&&value.quote_state==='unverified'&&value.final_price_verified===false
