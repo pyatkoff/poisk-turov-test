@@ -1,187 +1,124 @@
-name: MATCH pending8 corrected projection transition
+name: MATCH live30 retained native union v77
 'on':
   pull_request:
-    types:
-    - opened
-    - synchronize
-    - reopened
-    paths:
-    - .github/workflows/hotel-match-samo31-reconcile-v72.yml
+    types: [opened, synchronize, reopened]
+    paths: [.github/workflows/hotel-match-samo31-reconcile-v72.yml]
 permissions:
   contents: read
   actions: read
+  issues: read
+  pull-requests: read
 concurrency:
   group: hotel-match-samo31-reconcile-v72
   cancel-in-progress: false
 env:
-  OP: hotel-match-pending8-transition-1971-20260927-v76b
+  OP: hotel-match-live30-retained-native-union-1971-20260927-v77
+  BASE: bb00e3c6d897092622d21d0ecd8addd844d9e07e
 jobs:
-  reconcile:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref
-      == 'match/samo31-reconcile-v72-20260927'
+  extract:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/samo31-reconcile-v72-20260927'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: fixture-only-76
-          MYSQL_DATABASE: match_writer_test
-        ports:
-        - 3306:3306
-        options: --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-76" --health-interval=5s --health-timeout=5s --health-retries=20
+    timeout-minutes: 15
     steps:
-    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        persist-credentials: false
-    - name: Verify exact sources and sealed proof inputs
-      env:
-        GH_TOKEN: ${{ github.token }}
-        HEAD: ${{ github.event.pull_request.head.sha }}
-      run: |
-        set -euo pipefail
-        umask 077
-        mkdir -p input terminal package/scripts/diagnostics package/app/integrations package/input
-        test "$(git rev-parse HEAD)" = "$HEAD"
-        test "$(git hash-object scripts/diagnostics/hotel_match_pending8_transition_v76.php)" = fb17d70dce98444cda1b546433d298efb6cb556d
-        test "$(git hash-object tests/hotel_match_pending8_transition_v76_test.php)" = ed8ad9dbc78b6787e9d95deb7db410ad472d527c
-        test "$(git hash-object scripts/diagnostics/hotel_match_anex_effective_coverage.php)" = 1b5190727690f50a4cdd606c48afa575978ec48e
-        test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
-        for id in 10909959597 10780823859 10927599853 10917808046 10929098842; do
-          curl -fsSL --max-time 90 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" -o "input/$id.zip"
-        done
-        python3 - <<'PYCODE'
-        import hashlib,json,pathlib,zipfile
-        specs=[
-         (10909959597,'v65.json','033d372e5aeb4d495b9fe542c148c2d4eb080889b5eb5ca08a5642837e2dbaf8','42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810'),
-         (10780823859,'tv-r1.json','b3a0d90bfedc809bb5f517bf05a01542204d2271cc56766d66023dd3e9499d2c','4cd23630e97bb31b81bb7e2980a85e51145fff862346fbee51d0e1a6e85bad24'),
-         (10927599853,'current97.json','af0c671333fd04cdc7cb610553922e37c66a1e75d1b5443100c9e004fa8b6262','00a1ffe4177da1441f8c3d823a22c8ca7c1ac72b285f192389c6521413e902cc'),
-         (10917808046,'context.json','c753a6f349df7ac3832387fb820481e4066b1e6616b97b14343ae0e9b5ee5853','292c8f40d5bc9164e638246fdafa7b5f7113646c1c1597edee9a89b9c1a62851')]
-        for aid,name,zsha,rsha in specs:
-            p=pathlib.Path(f'input/{aid}.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()==zsha
-            with zipfile.ZipFile(p) as z:
-                values={}
-                for wanted in ('result.json','receipt.json'):
-                    found=[m for m in z.infolist() if pathlib.PurePosixPath(m.filename).name==wanted]
-                    assert len(found)==1 and found[0].file_size<=33554432
-                    values[wanted]=z.read(found[0])
-            raw=values['result.json'];r=json.loads(raw);q=json.loads(values['receipt.json'])
-            assert hashlib.sha256(raw).hexdigest()==rsha==q['result_sha256']
-            assert r['operation']==q['operation'] and q['readback_verified'] is True
-            assert r['database_writes']==r['mapping_writes']==0
-            pathlib.Path('package/input/'+name).write_bytes(raw)
-        p=pathlib.Path('input/10929098842.zip')
-        assert hashlib.sha256(p.read_bytes()).hexdigest()=='3f51e6b9d00a4e87c4e515a63fad7a8244dd42996008031d70bfc074a8ff2304'
-        with zipfile.ZipFile(p) as z:
-            raw=z.read('terminal/result.json');q=json.loads(z.read('terminal/receipt.json'))
-        r=json.loads(raw)
-        assert hashlib.sha256(raw).hexdigest()==q['result_sha256']=='27cf095d42c5cdd97f75551605c36aef16c6da4ab52020ad35b67ee450437098'
-        assert r['operation']==q['operation']=='hotel-match-pending8-transition-1971-20260927-v76'
-        assert r['state']=='completed_no_new_writes' and r['database_writes']==r['mapping_writes']==0
-        assert q['result_file_verified'] is True and r['no_replay'] is True
-        PYCODE
-    - name: Exact retained proof and disposable MySQL transition tests
-      env:
-        MATCH_WRITER_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=match_writer_test;charset=utf8mb4
-      run: |
-        set -euo pipefail
-        php -l scripts/diagnostics/hotel_match_pending8_transition_v76.php
-        php -l tests/hotel_match_pending8_transition_v76_test.php
-        php tests/hotel_match_pending8_transition_v76_test.php package/input | tee input/tests.txt
-        grep -q '^W76_MYSQL_TRANSACTION_PASS ' input/tests.txt
-    - name: Build complete package and gate on exact-head Security
-      env:
-        GH_TOKEN: ${{ github.token }}
-        HEAD: ${{ github.event.pull_request.head.sha }}
-      run: |
-        set -euo pipefail
-        cp scripts/diagnostics/hotel_match_pending8_transition_v76.php scripts/diagnostics/hotel_match_anex_effective_coverage.php package/scripts/diagnostics/
-        cp app/integrations/anex-search-mapping-registry.php package/app/integrations/
-        php -r 'require $argv[1]; require $argv[2]; if(count(w76_prepare($argv[3]))!==8||!class_exists("AnyTourAnexSearchMappingRegistry",false)) throw new RuntimeException("package_incomplete"); echo "PENDING8_COMPLETE_PACKAGE_PASS\n";' package/scripts/diagnostics/hotel_match_pending8_transition_v76.php package/scripts/diagnostics/hotel_match_anex_effective_coverage.php package/input
-        (cd package && find . -type f -print0 | sort -z | xargs -0 sha256sum) >input/checksums.txt
-        cp input/checksums.txt package/checksums.txt
-        tar -C package -cf input/payload.tar .
-        python3 - <<'PYCODE'
-        import json,os,time,urllib.request,pathlib,hashlib,tarfile
-        with tarfile.open('input/payload.tar') as t:
-            files=[m for m in t if m.isfile()]
-            assert len(files)==8 and len({m.name for m in files})==8
-            assert all(not m.issym() and not m.islnk() for m in t.getmembers())
-            assert all(not m.name.startswith('/') and '..' not in pathlib.PurePosixPath(m.name).parts for m in t.getmembers())
-        url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
-        for _ in range(80):
-            req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
-            with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
-            sec=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
-            if sec and max(sec,key=lambda r:r['id'])['status']=='completed':
-                assert max(sec,key=lambda r:r['id'])['conclusion']=='success','security_not_green';break
-            time.sleep(3)
-        else:raise SystemExit('security_timeout')
-        rec={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_write','scope':'exact_pending8_evidence_bound_transition','claim':5854967836,'predecessor_result_sha256':'27cf095d42c5cdd97f75551605c36aef16c6da4ab52020ad35b67ee450437098','maximum_writes':8,'provider_http_calls':0,'no_replay':True,'payload_sha256':hashlib.sha256(pathlib.Path('input/payload.tar').read_bytes()).hexdigest()}
-        with open('input/reservation.json','x') as f:
-            json.dump(rec,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
-        PYCODE
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-      with:
-        name: match-pending8-v76b-reservation-${{ github.run_id }}
-        path: 'input/reservation.json
-
-          input/tests.txt'
-        retention-days: 90
-        if-no-files-found: error
-    - name: Conditional transitions once with preserved prior evidence
-      env:
-        KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
-        HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-        USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        HEAD: ${{ github.event.pull_request.head.sha }}
-      run: |
-        set -euo pipefail
-        umask 077
-        key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known"
-        trap 'rm -f "$key" "$known"' EXIT
-        if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY" | tr -d '\r' >"$key";else printf '%s' "$KEY" | base64 --decode >"$key";fi
-        chmod 600 "$key";ssh-keygen -y -f "$key" >/dev/null
-        ssh-keyscan -T15 -t ed25519 "$HOST" >"$known" 2>/dev/null
-        remote="$USER@$HOST";rel=".anytoour-match/operations/$OP"
-        opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
-        ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir \"\$HOME/$rel\";mkdir \"\$HOME/$rel/payload\""
-        scp "${opts[@]}" input/payload.tar input/reservation.json "$remote:$rel/"
-        payload_sha="$(sha256sum input/payload.tar | cut -d ' ' -f 1)"
-        ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/$rel\";echo '$payload_sha  payload.tar' | sha256sum --check;cd payload;tar -xf ../payload.tar;sha256sum --check checksums.txt" >terminal/package-verified.txt
-        set +e
-        ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_pending8_transition_v76.php\" --execute" >input/remote.stdout 2>input/remote.stderr
-        rc=$?
-        ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
-        rr=$?
-        ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
-        qr=$?
-        set -e
-        test "$rr" -eq 0;test "$qr" -eq 0
-        python3 - <<'PYCODE'
-        import hashlib,json,os,pathlib
-        raw=pathlib.Path('terminal/result.json').read_bytes();r=json.loads(raw);q=json.load(open('terminal/receipt.json'))
-        assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
-        assert q['result_sha256']==hashlib.sha256(raw).hexdigest() and q['result_file_verified'] is True
-        assert r['provider_http_calls']==q['provider_http_calls']==0 and r['no_replay'] is True and q['no_replay'] is True
-        print(json.dumps({k:v for k,v in r.items() if k!='rows'},ensure_ascii=False))
-        assert r['state'] in ('committed_readback_verified','completed_no_new_writes'),'writer_not_verified_no_replay'
-        assert r['readback_verified'] is True and q['database_readback_verified'] is True
-        assert r['database_writes']==r['mapping_writes']==q['database_writes']==q['mapping_writes']==r['transitioned']==len(r['rows'])
-        assert r['prior_evidence_preserved'] is True and r['unrelated_identities_unchanged'] is True
-        assert len(r['rows'])+len(r['already'])+len(r['held'])==8
-        permitted={55945:'2000037585',56479:'2000093384',116886:'2000103169',121109:'2000090159'}
-        for row in r['rows']:
-            assert permitted[int(row['local_hotel_id'])]==row['catalog_id'] and row['proof_operator_count']>=1
-        PYCODE
-        test "$rc" -eq 0
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-      if: always()
-      with:
-        name: match-pending8-v76b-${{ github.run_id }}
-        path: 'terminal/
-
-          input/tests.txt'
-        retention-days: 90
-        if-no-files-found: warn
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check tested source and current-head Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir input terminal reservation package
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          git merge-base --is-ancestor "$BASE" HEAD
+          test "$(git hash-object scripts/diagnostics/hotel_match_live30_retained_native_v77.php)" = 958e951cf1790b86ee25b5332954c62cc8d268bb
+          php -l scripts/diagnostics/hotel_match_live30_retained_native_v77.php
+          php scripts/diagnostics/hotel_match_live30_retained_native_v77.php --self-test
+          python3 - <<'PY'
+          import json,os,subprocess,time,urllib.request
+          changed=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE'],'HEAD'],text=True).splitlines())
+          assert changed=={'.github/workflows/hotel-match-samo31-reconcile-v72.yml','scripts/diagnostics/hotel_match_live30_retained_native_v77.php'},changed
+          def get(p):
+              req=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+p,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:return json.load(f)
+          c=get('/issues/comments/5855358442')
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419') and os.environ['OP'] in c['body']
+          pr=get('/pulls/4017');assert pr['state']=='open' and pr['draft'] is True and pr['head']['sha']==os.environ['HEAD']
+          for _ in range(80):
+              runs=get('/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+              checks=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if checks and max(checks,key=lambda x:x['id'])['status']=='completed':
+                  assert max(checks,key=lambda x:x['id'])['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Reserve unique read-only operation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=match-live30-native-v77-reservation&per_page=100" >input/old-reservations.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          assert json.load(open('input/old-reservations.json'))['total_count']==0,'no_replay'
+          r={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_read','claim':5855358442,'database_writes':0,'provider_http_calls':0,'no_replay':True}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+          cp scripts/diagnostics/hotel_match_live30_retained_native_v77.php package/extract.php
+          (cd package && sha256sum extract.php >SHA256SUMS && tar -czf ../payload.tar.gz extract.php SHA256SUMS)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-live30-native-v77-reservation
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Extract native evidence without provider calls or DB writes
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/match-key";known="$RUNNER_TEMP/match-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir \"\$HOME/$rel\";mkdir \"\$HOME/$rel/payload\""
+          scp "${opts[@]}" reservation/reservation.json payload.tar.gz "$remote:$rel/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$rel/payload\" && tar -xzf ../payload.tar.gz && sha256sum --check SHA256SUMS" >terminal/payload-verified.txt
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=512M \"\$HOME/$rel/payload/extract.php\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          raw=pathlib.Path('terminal/result.json').read_bytes();r=json.loads(raw);q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
+          assert q['result_sha256']==hashlib.sha256(raw).hexdigest()
+          assert r['database_writes']==q['database_writes']==r['mapping_writes']==q['mapping_writes']==r['provider_http_calls']==q['provider_http_calls']==0
+          print({k:v for k,v in r.items() if not isinstance(v,(dict,list))})
+          assert r['state']=='completed_retained_native_scan',r['state']
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-live30-native-v77-${{ github.run_id }}
+          path: |
+            terminal/result.json
+            terminal/receipt.json
+            terminal/payload-verified.txt
+          retention-days: 90
+          if-no-files-found: warn
