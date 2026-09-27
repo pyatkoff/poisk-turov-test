@@ -94,6 +94,75 @@ class Guards(unittest.TestCase):
 
 
 class Browser(unittest.TestCase):
+    def test_response_forwarding_cannot_follow_unapproved_redirect(self):
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        from threading import Thread
+        from playwright.sync_api import sync_playwright
+        requests=[]
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self,*args):pass
+            def do_GET(self):
+                requests.append(self.path)
+                if self.path.startswith('/api-v2.php'):
+                    self.send_response(302);self.send_header('Location','/unapproved');self.send_header('Content-Length','0');self.end_headers();return
+                body=b'''<script>fetch('/api-v2.php?action=tour&tourId=test&currency=RUB').catch(()=>{}).finally(()=>window.done=true)</script>'''
+                self.send_response(200);self.send_header('Content-Type','text/html');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+        server=ThreadingHTTPServer(('127.0.0.1',0),Handler);thread=Thread(target=server.serve_forever,daemon=True);thread.start()
+        original=m.base.ORIGIN;m.base.ORIGIN='http://127.0.0.1:'+str(server.server_port)
+        try:
+            with sync_playwright() as p:
+                browser=p.chromium.launch(headless=True);page=browser.new_page();g=ready();g.select_tv(TV)
+                page.route('**/*',lambda r:m.shared.route_request(r,g))
+                try:
+                    page.goto(m.base.ORIGIN+m.base.BASE+'visual-search/')
+                    page.wait_for_function('window.done',timeout=5000)
+                    self.assertEqual(len([x for x in requests if x.startswith('/api-v2.php')]),1)
+                    self.assertNotIn('/unapproved',requests)
+                    self.assertEqual(g.denied,['response_redirect_blocked'])
+                    self.assertFalse(g.tv_current)
+                    self.assertEqual(g.selected_calls['flights'],0)
+                finally:browser.close()
+        finally:m.base.ORIGIN=original;server.shutdown();server.server_close();thread.join()
+
+    def test_immediate_client_followup_waits_for_response_authority(self):
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        from threading import Thread
+        from playwright.sync_api import sync_playwright
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self,*args):pass
+            def do_GET(self):
+                if self.path.startswith('/api-v2.php'):
+                    data=dict(id='test',price=120000) if 'action=tour&' in self.path else [dict(price=dict(value=133500.5))]
+                    body=json.dumps(data).encode();kind='application/json'
+                else:
+                    body=b'''<script>window.done=false;(async()=>{try{await(await fetch('/api-v2.php?action=tour&tourId=test&currency=RUB')).json();await(await fetch('/api-v2.php?action=flights&tourId=test&currency=RUB')).json();}catch(e){}finally{window.done=true;}})();</script>''';kind='text/html'
+                self.send_response(200);self.send_header('Content-Type',kind);self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+        server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        thread=Thread(target=server.serve_forever,daemon=True);thread.start()
+        original=m.base.ORIGIN;m.base.ORIGIN='http://127.0.0.1:'+str(server.server_port)
+        try:
+            with sync_playwright() as p:
+                browser=p.chromium.launch(headless=True);page=browser.new_page()
+                g=ready();g.select_tv(TV)
+                page.route('**/*',lambda r:m.shared.route_request(r,g))
+                def delayed_observer(response):
+                    if 'action=tour&' not in response.url:return
+                    payload=response.json()
+                    # A post-delivery observer can finish after the client chains flights.
+                    page.wait_for_timeout(75)
+                    g.observe_response(response.url,response.status,payload)
+                page.on('response',delayed_observer)
+                try:
+                    page.goto(m.base.ORIGIN+m.base.BASE+'visual-search/')
+                    page.wait_for_function('window.done',timeout=5000)
+                    page.wait_for_timeout(120)
+                    self.assertEqual(g.selected_calls['tour'],1)
+                    self.assertEqual(g.selected_calls['flights'],1)
+                    self.assertEqual(g.denied,[])
+                finally:browser.close()
+        finally:
+            m.base.ORIGIN=original;server.shutdown();server.server_close();thread.join()
+
     def test_observer_preserves_frozen_live_bridge_and_payload_contract(self):
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
