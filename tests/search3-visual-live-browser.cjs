@@ -155,6 +155,13 @@ const server=http.createServer((req,res)=>{
    await page.locator('.mobile-close[data-action="close-filters"]').click();await page.locator('[data-action="filters"]:visible').first().click();
    await page.locator('.filter-group').filter({has:facetEditor}).locator('.filter-section-toggle').click();
    assert.equal(await facetEditor.inputValue(),'','cancelling the drawer discards its transient list query');
+   const resizeStar=page.locator('#filters [data-action="star"]').first(),resizeStarValue=await resizeStar.getAttribute('data-value');await resizeStar.click();
+   await page.locator('#max-price').fill('abc');await page.setViewportSize({width:1280,height:900});
+   assert.match(await page.locator('#applied-search').textContent(),new RegExp(resizeStarValue+' ★'),'widening promotes valid mobile draft choices');
+   assert.equal(await page.locator('#filter-panel').evaluate(el=>el.classList.contains('open')),false);assert.equal(await page.locator('#max-price').inputValue(),'abc');assert.equal(await page.locator('#max-price').getAttribute('aria-invalid'),'true');
+   assert.equal(await page.locator('[inert]').count(),0);assert.equal(await page.evaluate(()=>document.body.style.overflow),'');assert.equal(await page.locator('#max-price').evaluate(el=>document.activeElement===el),true);
+   await page.locator('#max-price').fill('');await page.setViewportSize({width,height:900});await page.locator('[data-action="filters"]:visible').first().click();
+   await page.locator('.filter-group').filter({has:facetEditor}).locator('.filter-section-toggle').click();
   }
   await facetEditor.fill('FUN');await page.locator('[data-filter="operators"][value="FUN&SUN"]').check();
   if(width<=1100)await page.locator('#apply-filters').click();
@@ -164,7 +171,7 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('1 вариант'));
   assert.equal(await facetEditor.inputValue(),'');assert.equal(transport.calls.filter(c=>c.action==='search_start').length,facetStarts+1);
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
+  receipts.push({width,three_sources_one_hotel:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }}finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
  await require('./search3-visual-large-flight-choices.cjs')();
