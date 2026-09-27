@@ -1,0 +1,140 @@
+{
+  "schema": "hotel_match_samo31_current_ready_v71",
+  "source_audit_sha256": "1f6846947cefe390a9f0fc9fc6663d8cb1a73ca2b766ca57348311d53bc4cb04",
+  "audit_generated_at_utc": "2026-09-27T08:00:05Z",
+  "current_ready_source_missing": 23,
+  "current_ready_pending_transition": 8,
+  "current_hold": 6,
+  "excluded_known_collision": {
+    "local_hotel_id": 1772,
+    "catalog_id": "37255",
+    "reason": "weaker target collision with exact MARHABA SALEM local1773"
+  },
+  "exact_pairs": [
+    [
+      167,
+      "261102"
+    ],
+    [
+      242,
+      "244469"
+    ],
+    [
+      320,
+      "405440"
+    ],
+    [
+      856,
+      "174700"
+    ],
+    [
+      898,
+      "73024"
+    ],
+    [
+      1299,
+      "2000123210"
+    ],
+    [
+      1734,
+      "129812"
+    ],
+    [
+      1735,
+      "5767"
+    ],
+    [
+      1736,
+      "298738"
+    ],
+    [
+      1737,
+      "150070"
+    ],
+    [
+      1739,
+      "450605"
+    ],
+    [
+      1760,
+      "207647"
+    ],
+    [
+      1773,
+      "37255"
+    ],
+    [
+      1781,
+      "315584"
+    ],
+    [
+      3111,
+      "141649"
+    ],
+    [
+      4100,
+      "105904"
+    ],
+    [
+      15819,
+      "2000028170"
+    ],
+    [
+      22632,
+      "450630"
+    ],
+    [
+      23214,
+      "394688"
+    ],
+    [
+      23668,
+      "2000073524"
+    ],
+    [
+      45140,
+      "2000034456"
+    ],
+    [
+      51062,
+      "2000034535"
+    ],
+    [
+      68667,
+      "10866"
+    ],
+    [
+      4326,
+      "309768"
+    ],
+    [
+      55945,
+      "2000037585"
+    ],
+    [
+      56479,
+      "2000093384"
+    ],
+    [
+      67304,
+      "2000055490"
+    ],
+    [
+      76753,
+      "2000087342"
+    ],
+    [
+      108356,
+      "269426"
+    ],
+    [
+      116886,
+      "2000103169"
+    ],
+    [
+      121109,
+      "2000090159"
+    ]
+  ],
+  "boundary": "Exact fresh CURRENT classification only. Writer must recheck transaction-time source/target/manual/live30/direct-ANEX guards and preserve six HOLD rows."
+}
