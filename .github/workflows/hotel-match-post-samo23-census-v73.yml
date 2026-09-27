@@ -1,7 +1,6 @@
 name: MATCH post-SAMO23 live30 census v73
 'on':
   pull_request:
-    types: [opened, synchronize, reopened]
 permissions:
   contents: read
   actions: read
