@@ -6,8 +6,8 @@ require __DIR__ . '/../app/integrations/andromeda-price-observation.php';
 require __DIR__ . '/../app/integrations/andromeda-search-surcharge.php';
 
 $request = anytour_andromeda_surcharge_e2e_request();
-if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-1717-v5-turkey-2026-12-13-2a-7n'
-    || ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE !== '067bba00e664b0f76d7239d72306f8fb70252f00'
+if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-3419-v6-turkey-2026-12-13-2a-7n'
+    || ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE !== '4f55bb90b68bf9429f8e7e7716d71429351a468b'
     || ($request['generation'] ?? null) !== 17171213
     || ($request['params']['countryId'] ?? null) !== '4'
     || ($request['params']['departureId'] ?? null) !== '1'
