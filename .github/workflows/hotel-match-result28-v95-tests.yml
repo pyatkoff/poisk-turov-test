@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   tests:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.number == 4061 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.number == 4063 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
