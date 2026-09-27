@@ -39,3 +39,5 @@ jobs:
           php -l scripts/diagnostics/hotel_match_result28_v95.php
           php -l tests/hotel_match_result28_v95_test.php
           php tests/hotel_match_result28_v95_test.php
+
+# v95 isolated test trigger
