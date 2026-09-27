@@ -21,5 +21,5 @@ try {
 }
 $pkg=new AnyTourAndromedaPackageSupplierException(['code'=>'X','message'=>'package rejected']);
 $pf=$pkg->diagnosticFacts();
-if(($pf['source']??null)!=='andromeda_package_error'||isset($pf['action'])||$pkg->getMessage()!=='ANDROMEDA_SUPPLIER_ERROR')throw new RuntimeException('package_compat');
+if(($pf['source']??null)!=='andromeda_package_error'||($pf['action']??null)!=='broninit'||$pkg->getMessage()!=='ANDROMEDA_SUPPLIER_ERROR')throw new RuntimeException('package_stage');
 echo "ANDROMEDA_PRICE_SUPPLIER_FACTS_OK\n";
