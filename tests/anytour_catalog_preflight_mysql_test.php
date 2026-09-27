@@ -49,7 +49,7 @@ $pdo->exec("CREATE TABLE catalog_hotels (
 $pdo->exec("CREATE TABLE catalog_hotel_details (
     hotel_id BIGINT PRIMARY KEY,status VARCHAR(32),description TEXT,address TEXT,place TEXT,
     build_info TEXT,repair_info TEXT,square_info TEXT,images_json TEXT,infrastructure_json TEXT,
-    meals_json TEXT,services_json TEXT,room_types TEXT,fetched_at DATETIME) ENGINE=InnoDB CHARSET=utf8mb4");
+    meals_json TEXT,services_json TEXT,room_types TEXT,fetched_at DATETIME,raw_json LONGTEXT,source_hash CHAR(64)) ENGINE=InnoDB CHARSET=utf8mb4");
 $pdo->beginTransaction();
 $insert = $pdo->prepare('INSERT INTO catalog_hotels(id,name) VALUES (?,?)');
 foreach (range(10001,11000) as $id) $insert->execute([$id,'Сохранённый отель '.$id]);
@@ -63,6 +63,18 @@ function legacyHash(PDO $pdo): string {
         $pdo->query('SELECT * FROM catalog_hotels ORDER BY id')->fetchAll(),
         $pdo->query('SELECT * FROM catalog_hotel_details ORDER BY hotel_id')->fetchAll()]));
 }
+
+// Artificial full TV cards for this disposable SQL fixture only.
+function fixtureFullCards(PDO $pdo): void {
+    $rows=$pdo->query("SELECT h.id,h.name,d.description,d.images_json FROM catalog_hotels h JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE d.status='success'")->fetchAll(PDO::FETCH_ASSOC);
+    $write=$pdo->prepare('UPDATE catalog_hotel_details SET raw_json=?,source_hash=? WHERE hotel_id=?');
+    foreach($rows as $r){
+        $raw=AnyTourCanonicalCatalog::json(['id'=>(int)$r['id'],'name'=>$r['name'],'description'=>$r['description'],'images'=>json_decode((string)$r['images_json'],true)]);
+        $write->execute([$raw,hash('sha256',$raw),$r['id']]);
+    }
+}
+
+fixtureFullCards($pdo);
 $catalog = new AnyTourCanonicalCatalog($pdo); $ids = range(10001,11000); $before = legacyHash($pdo);
 $pdo->probeReadOnly = true; $report = $catalog->preflight($ids);
 verify($pdo->writeRejected, 'SQL engine enforced read-only source transaction');
@@ -132,10 +144,12 @@ $present = $catalog->preflight($ids);
 verify($present['target_schema_state'] === 'present_requires_review', 'all present still requires ownership review');
 $plan = $catalog->plan($ids);
 verify($plan['source_sha256'] === $report['source_sha256'] && $present['source_sha256'] === $plan['source_sha256'], 'identical pre-schema/post-schema seed digest');
-$seed = $catalog->seed($ids,$report['source_sha256']);
-verify($seed['created'] === 1000 && $seed['verified_bridges'] === 1000, 'reviewed preflight hash works with unchanged seed');
+refuses(fn()=>$catalog->seed($ids,$report['source_sha256']), 'preflight count and hash do not authorize incomplete new hotels');
+verify((int)$pdo->query('SELECT COUNT(*) FROM anytour_hotels')->fetchColumn()===0, 'rejected incomplete batch leaves no new profiles');
+$onePlan=$catalog->plan([10001]); $seed=$catalog->seed([10001],$onePlan['source_sha256']);
+verify($seed['created'] === 1 && $seed['verified_bridges'] === 1, 'only complete retained card can be created');
 verify(legacyHash($pdo) === $before, 'old catalogue remains unchanged');
 $after = $catalog->preflight($ids);
 verify($after['source_sha256'] === $report['source_sha256'] && $after['writes'] === 0, 'inspection after seed remains read-only');
-verify($catalog->seed($ids,$report['source_sha256'])['created'] === 0, 'no duplicate canonical hotels');
+verify($catalog->seed([10001],$onePlan['source_sha256'])['created'] === 0, 'no duplicate canonical hotels');
 echo "ANYTOUR_PREFLIGHT_MYSQL_OK checks=$checks profiles=1000 readonly_engine=1 cli=1 hash_parity=1 real_mysql=1 live_database=0\n";
