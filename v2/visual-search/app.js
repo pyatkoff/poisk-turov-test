@@ -1532,7 +1532,7 @@ function mergeSearchResults(event){
  hotels.forEach(h=>h.offers.forEach(o=>{if(!data.live)mealNames[o.meal]=o.meal;else if(Number.isSafeInteger(o.mealPlanId)&&o.mealPlanId>0&&o.mealFacet){const previous=mealNames[o.mealFacet];if(previous===undefined||previous===o.mealPlanId)mealNames[o.mealFacet]=o.mealPlanId;}}));
 }
 function commitSearchDraft(){
- if(searchEditSession&&currentFilterBudgetEdit(state.filters)){
+ if(currentFilterBudgetEdit(state.filters)){
   const budget=readBudgetFields($('#min-price'),$('#max-price'));
   if(!budget.valid){showFilterBudgetValidity(budget);$(budget.invalidMin?'#min-price':'#max-price').focus();return false;}
  }
