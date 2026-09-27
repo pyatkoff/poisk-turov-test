@@ -360,12 +360,13 @@ function syncFilterSections(){
   const key=heading.textContent;group.dataset.filterSection=key;
   let button=group.querySelector(':scope>.filter-section-toggle');
   if(!button){
-   const body=document.createElement('div');body.className='filter-section-values';body.id='filter-values-'+i;
+   const body=document.createElement('div');body.className='filter-section-values';
    [...group.children].filter(child=>child!==heading).forEach(child=>body.append(child));
-   button=document.createElement('button');button.type='button';button.className='filter-section-toggle';button.dataset.action='toggle-filter-section';button.setAttribute('aria-controls',body.id);
+   button=document.createElement('button');button.type='button';button.className='filter-section-toggle';button.dataset.action='toggle-filter-section';
    button.innerHTML=`<span class="filter-section-title">${esc(key)}</span><span class="filter-section-value"></span><span class="filter-section-chevron" aria-hidden="true">⌄</span>`;
    group.append(button,body);
   }
+  const body=group.querySelector(':scope>.filter-section-values');body.id='filter-values-'+i;button.setAttribute('aria-controls',body.id);
   const selected=[...group.querySelectorAll('.check-row input:checked')].map(input=>input.closest('label').querySelector('span').textContent);
   let summary=selected.slice(0,2).join(' · ')+(selected.length>2?` · ещё ${selected.length-2}`:''),active=selected.length>0;
   if(group.querySelector('#min-price')){summary=currentFilterBudgetEdit(f)&&!readBudgetFields($('#min-price'),$('#max-price')).valid?'Проверьте сумму':budgetLabel(f);active=f.min>0||f.max!==null;}
@@ -489,11 +490,18 @@ function editFilterBudget(){
 let renderedFilterContext=null;
 function paintFilters(markup,filters){
  const host=$('#filters'),active=document.activeElement,scope=searchKey(state.search);
- const group=active&&host.contains(active)&&['hotel-query','min-price','max-price','price-range'].includes(active.id)?active.closest('.filter-group'):null;
+ const facet=active?.dataset.facetSearch;
+ const group=active&&host.contains(active)&&(facet||['hotel-query','min-price','max-price','price-range'].includes(active.id))?active.closest('.filter-group'):null;
  if(group&&renderedFilterContext?.filters===filters&&renderedFilterContext.scope===scope){
   const template=document.createElement('template');template.innerHTML=markup;
-  const replacement=template.content.querySelector(active.id==='hotel-query'?'#hotel-query':'#min-price')?.closest('.filter-group');
+  const replacement=template.content.querySelector(facet?`[data-facet-search="${facet}"]`:active.id==='hotel-query'?'#hotel-query':'#min-price')?.closest('.filter-group');
   if(replacement&&replacement.parentNode===template.content){
+   if(facet){
+    // Refresh choices/counts around the attached editor, including new sources.
+    const options=active.closest('.facet-options'),search=active.closest('.facet-search'),fresh=replacement.querySelector('.facet-options');
+    [...options.childNodes].forEach(node=>{if(node!==search)node.remove();});
+    search.after(...[...fresh.childNodes].filter(node=>!node.classList?.contains('facet-search')));
+   }
    // Preserve active typing, native focus/caret and unfinished input as sources arrive.
    const nodes=[...template.content.childNodes],index=nodes.indexOf(replacement);
    [...host.childNodes].forEach(node=>{if(node!==group)node.remove();});
