@@ -1,0 +1,56 @@
+{
+  "schema": "match_current948_retained_evidence_v1",
+  "date": "2026-09-27",
+  "current": {
+    "missing_samo_only": 220,
+    "missing_anex_only": 728
+  },
+  "missing_anex_retained_tranches": [
+    {
+      "op": "v41b",
+      "selected": 300,
+      "returned": 51,
+      "single_native": 16,
+      "ambiguous": 35
+    },
+    {
+      "op": "v45",
+      "selected": 160,
+      "returned": 39,
+      "single_native": 17,
+      "ambiguous": 22
+    },
+    {
+      "op": "v49",
+      "selected": 78,
+      "returned": 23,
+      "single_native": 12,
+      "ambiguous": 11
+    },
+    {
+      "op": "v53",
+      "state": "terminal_failed_no_replay",
+      "http_attempts": 1,
+      "returned": 0
+    },
+    {
+      "op": "v59",
+      "selected": 88,
+      "returned": 5,
+      "single_native": 2,
+      "ambiguous": 3
+    }
+  ],
+  "missing_anex": {
+    "historical_single_native_unique": 47,
+    "current728_intersection_single_native": 0,
+    "current728_retained_ambiguous": 71,
+    "current728_ambiguous_one_positive_candidate": 45,
+    "current728_ambiguous_multiple_positive_candidates": 26,
+    "current728_without_edge_in_these_artifacts": 657
+  },
+  "missing_samo": {
+    "current220_v65_strict_multi_lane_candidates": 38
+  },
+  "boundary": "Candidates are not accepted mappings. No new server CURRENT validation/provider call/write."
+}
