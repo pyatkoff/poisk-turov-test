@@ -70,13 +70,14 @@ jobs:
           scp "${opts[@]}" scripts/diagnostics/hotel_match_current100_plan_v80.php scripts/diagnostics/hotel_match_current100_acquire_v80.py scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
           scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_plan_v80.php\" --execute > \"\$HOME/$rel/plan.json\""
-          ssh "${opts[@]}" "$remote" "python3 - <<'PY'
-import json
-p=json.load(open('$HOME/$rel/plan.json'))
-assert p['state']=='match_current100_ready' and p['scope_count']==100 and len(p['rows'])==100
-assert p['current_nontriple_total']==1645 and p['provider_http_calls']==p['database_writes']==p['mapping_writes']==0
-print({'current_nontriple_total':p['current_nontriple_total'],'scope':p['scope_count']})
-PY"
+          scp "${opts[@]}" "$remote:$rel/plan.json" terminal/plan-pre.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('terminal/plan-pre.json'))
+          assert p['state']=='match_current100_ready' and p['scope_count']==100 and len(p['rows'])==100
+          assert p['current_nontriple_total']==1645 and p['provider_http_calls']==p['database_writes']==p['mapping_writes']==0
+          print({'current_nontriple_total':p['current_nontriple_total'],'scope':p['scope_count']})
+          PY
           set +e
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_PLAN_PATH=\"\$HOME/$rel/plan.json\" MATCH_CALL_CAP=900 MATCH_SOURCE_SHA='$HEAD' python3 \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_acquire_v80.py\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
           rc=$?
