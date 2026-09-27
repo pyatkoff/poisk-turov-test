@@ -994,6 +994,7 @@ function rememberProviderView(o,type,result,error='',pending=false){
 function restoreProviderView(o){
  const view=retainedProviderView(o);if(!view)return false;
  selectedOffer=view.offer;
+ if(view.type==='tourvisor-selection')renderRealOffer();
  if(view.type==='andromeda-flights')openAndromedaFlightChoice(view.offer,view.result);
  if(view.type==='andromeda-verified')openAndromedaVerified(view.offer,view.result);
  if(view.type==='anex-current'){
@@ -1063,6 +1064,7 @@ function chosenStayHTML(o,editable=false){
 }
 function renderRealOffer(){
  const o=selectedOffer,h=selectedTourHotel(o);if(!o||!h)return;
+ if(o.provider==='tourvisor'&&o.tour&&!o.loading&&!o.quoteError&&!o.flightsLoading&&!o.flightsError&&o.variants?.length)rememberProviderView(o,'tourvisor-selection');
  const unavailable=needsRefresh(o);
  const terminalQuoteError=o.quoteErrorTerminal===true||['offer_unavailable','offer_expired'].includes(o.quoteErrorCode);
  const selectionHint=o.loading?'Проверяем цену и условия тура…':o.flightsLoading?'Загружаем варианты перелёта…':terminalQuoteError?'Выберите другой тур в результатах.':o.quoteError?'Повторите проверку предложения, чтобы продолжить.':o.pricePending?'Выберите перелёт с подтверждённой ценой.':o.flightsError?'Повторите загрузку рейсов в разделе перелёта.':!o.variants?.length||!o.tour?'Для выбора тура нужны актуальная цена и доступные рейсы.':'';
