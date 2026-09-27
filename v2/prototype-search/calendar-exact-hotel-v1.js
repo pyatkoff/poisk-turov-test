@@ -70,7 +70,8 @@
     });
     const rows = source.project(list, scope);
     if (!Array.isArray(rows) || rows.some(row => Number(row?.id) !== hotelId)) throw new Error('База вернула другой отель.');
-    rememberHotels(rows);
+    // Date-scoped observations are not a complete hotel identity resolution.
+    // Keep the full catalog/search IDs for subsequent calendar windows.
     return rows;
   }
 
