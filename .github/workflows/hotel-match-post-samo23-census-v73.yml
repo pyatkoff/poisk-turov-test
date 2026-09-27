@@ -1,6 +1,5 @@
 name: MATCH post-SAMO23 live30 census v73
-'on':
-  pull_request:
+'on': [pull_request]
 permissions:
   contents: read
   actions: read
