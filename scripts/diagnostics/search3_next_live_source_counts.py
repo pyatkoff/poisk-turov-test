@@ -16,8 +16,8 @@ ANEX = '/_preview/search3-anex-candidate/'
 PROVIDERS = ('tourvisor', 'anex', 'andromeda')
 TRIP = dict(origin='Москва', country='4', **{'from': '2026-10-10', 'to': '2026-10-16'}, minNights='7', maxNights='7', adults='2', ages='')
 EXPECTED = {
-    'visual-search/app.js': 'ff2adf47bf9f03e808b339d2c7d9ecf9f2b447e42fbf083328fa6858310b8359',
-    'prototype-search/data.js': '73fa30a1a3b064ff5adb88ca564fb859ae062fdfda29dd259db6437663cf9228',
+    'visual-search/app.js': '7b736e5d8d6332d88e4b0c28d7932c8de57c222f868f06f160e9c2e8bb165779',
+    'prototype-search/data.js': '61eb8a8e34c48b9e3f621b3b3872b6fbd595c0e881644bf967b0ad7423879a58',
     'prototype-search/search-lifecycle-v1.js': 'ee5851243288cd3d1de348721ec2a4606241779a06e7ea7c6d7f73be520489ab',
     'visual-search/live-bridge.js': '07c649b13c83a6d370f2a3dada8d99e91c7820b5211e9939bba0302f3c2a7509',
 }
@@ -97,10 +97,10 @@ class Guard:
             return True
         if path == ANEX + 'api-andromeda-search3-preview.php':
             page = body.get('page')
-            if not self.armed or method != 'POST' or body.get('action', 'search') != 'search' or type(page) is not int or not 1 <= page <= 40 or page in self.pages or page != len(self.pages) + 1 or not self.scope(body.get('params', {})):
-                return self.deny('andromeda_page_or_scope_guard')
-            self.pages.add(page)
-            self.calls['andromeda'] += 1
+            if not self.armed or method != 'POST' or body.get('action', 'search') != 'search' or page != 1 or self.pages or not self.scope(body.get('params', {})):
+                return self.deny('andromeda_initial_page_budget')
+            self.pages.add(1)
+            self.calls['andromeda'] = 1
             return True
         if any(x in path.lower() for x in ('lead', 'quote', 'booking', 'payment')) and path.endswith('.php'):
             return self.deny('transaction_endpoint_blocked')
@@ -157,13 +157,13 @@ def exercise(page, guard, timeout=120000):
 def main():
     from playwright.sync_api import sync_playwright
     out = Path('search3-next-live-source-counts'); out.mkdir(exist_ok=True)
-    result = {'source': 'eb0f66d9fc455da053ba64a5cf8d881795f95286', 'route': BASE, 'trip': TRIP, 'status': 'not_started', 'network': [], 'sourceHashes': {}}
+    result = {'source': '67bf82a62eaf829ffecea2d59121b31320f4de66', 'route': BASE, 'trip': TRIP, 'status': 'not_started', 'network': [], 'sourceHashes': {}}
     guard = Guard()
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block')
         try:
-            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v12' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1': raise RuntimeError('live_authorization_missing')
+            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v17' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1': raise RuntimeError('live_authorization_missing')
             for name, expected in EXPECTED.items():
                 response = context.request.get(ORIGIN + BASE + name, timeout=30000, max_redirects=0)
                 digest = hashlib.sha256(response.body()).hexdigest()
