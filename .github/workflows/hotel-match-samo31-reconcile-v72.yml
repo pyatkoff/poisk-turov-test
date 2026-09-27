@@ -10,7 +10,7 @@ concurrency:
   group: hotel-match-samo31-reconcile-v72
   cancel-in-progress: false
 env:
-  OP: hotel-match-post-samo23-census-1971-20260927-v73b
+  OP: hotel-match-post-samo23-census-1971-20260927-v73c
 jobs:
   reconcile:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017
