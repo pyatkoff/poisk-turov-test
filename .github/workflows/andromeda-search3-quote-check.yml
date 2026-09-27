@@ -17,6 +17,7 @@ on:
       - 'tests/andromeda-price-observation-smoke.php'
       - 'tests/andromeda-quote-attempt-state-test.php'
       - 'tests/andromeda-quote-failure-category-test.php'
+      - 'tests/andromeda-quote-operator-config-test.php'
       - 'scripts/diagnostics/andromeda_http_flight_selection_e2e_v7.py'
       - 'tests/andromeda_http_flight_selection_e2e_v7_test.py'
       - '.github/workflows/andromeda-search3-quote-check.yml'
@@ -47,6 +48,7 @@ jobs:
           php tests/andromeda-price-observation-smoke.php
           php tests/andromeda-quote-attempt-state-test.php
           php tests/andromeda-quote-failure-category-test.php
+          php -d allow_url_fopen=0 tests/andromeda-quote-operator-config-test.php
           python3 -m py_compile scripts/diagnostics/andromeda_http_flight_selection_e2e_v7.py tests/andromeda_http_flight_selection_e2e_v7_test.py
           python3 -B tests/andromeda_http_flight_selection_e2e_v7_test.py
       - name: Enforce read-only boundary
