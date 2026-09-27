@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-const A74_OP='hotel-match-current15-samo82-anex-1971-20260927-v74b';
+const A74_OP='hotel-match-current15-samo82-anex-1971-20260927-v74c';
 const S15=[125=>'2000062991',1181=>'2000028206',1229=>'5464',1772=>'37255',4326=>'309768',7958=>'2000026726',13947=>'2000046831',55945=>'2000037585',56479=>'2000093384',65341=>'2000106034',67304=>'2000055490',76753=>'2000087342',108356=>'269426',116886=>'2000103169',121109=>'2000090159'];
 function qq(PDO $d,string $s,array $a=[]):array{$q=$d->prepare($s);if(!$q||!$q->execute(array_values($a)))throw new RuntimeException('query');return $q->fetchAll(PDO::FETCH_ASSOC);}
 function main(array $v):int{
