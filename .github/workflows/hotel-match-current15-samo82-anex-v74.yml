@@ -1,0 +1,74 @@
+name: MATCH current SAMO15 ANEX82 v74
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: [.github/workflows/hotel-match-current15-samo82-anex-v74.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: hotel-match-current15-samo82-anex-v74
+  cancel-in-progress: false
+env:
+  OP: hotel-match-current15-samo82-anex-1971-20260927-v74
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4023
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: { ref: ${{ github.event.pull_request.head.sha }}, persist-credentials: false }
+      - name: Wait Security
+        env: { GH_TOKEN: ${{ github.token }}, HEAD: ${{ github.event.pull_request.head.sha }} }
+        run: |
+          set -euo pipefail;mkdir terminal input
+          php -l scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(80):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+            s=[x for x in r if x['name']=='Security guard']
+            if s and max(s,key=lambda x:x['id'])['status']=='completed':
+              assert max(s,key=lambda x:x['id'])['conclusion']=='success';break
+            time.sleep(3)
+          else:raise SystemExit('security_timeout')
+          PY
+      - name: Retrieve retained ANEX82 proof package
+        env: { GH_TOKEN: ${{ github.token }} }
+        run: |
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10917671953/zip" -o input/fullqueue.zip || true
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$GITHUB_REPOSITORY/contents/reports/hotel-match-dual-live30-verified-20260927.json?ref=match/dual-live30-full-union-20260927" -o input/meta.json || true
+          python3 - <<'PY'
+          import json,urllib.request,os,base64
+          # exact retained82 report is repository content on the dual-live30 branch
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/contents/reports/MATCH_next83_candidates_2026-09-27.json?ref=match/dual-live30-full-union-20260927'
+          q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(q) as f:j=json.load(f)
+          open('input/anex82.json','wb').write(base64.b64decode(j['content']))
+          d=json.load(open('input/anex82.json'));assert d['direct_anex_count']==82 and len(d['direct_anex_candidates'])==82
+          PY
+      - name: Execute CURRENT audit
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php input/anex82.json "$remote:$rel/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_ANEX82=\"\$HOME/$rel/payload/anex82.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/hotel_match_current15_samo82_anex_v74.php\" --execute"
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-current15-samo82-anex-v74-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
