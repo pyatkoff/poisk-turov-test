@@ -49,7 +49,6 @@ final class AnyTourAndromedaPackageSupplierException extends RuntimeException
         $generic = new AnyTourAndromedaPriceSupplierException($error, 'broninit');
         $facts = $generic->diagnosticFacts();
         $facts['source'] = 'andromeda_package_error';
-        unset($facts['action']);
         $this->diagnosticFacts = $facts;
         parent::__construct('ANDROMEDA_SUPPLIER_ERROR');
     }
