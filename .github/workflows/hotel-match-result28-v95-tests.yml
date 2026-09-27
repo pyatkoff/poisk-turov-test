@@ -1,0 +1,41 @@
+name: MATCH result28 v95 isolated tests
+'on':
+  pull_request:
+    types: [synchronize]
+    paths:
+      - .github/workflows/hotel-match-result28-v95-tests.yml
+permissions:
+  contents: read
+concurrency:
+  group: match-result28-v95-tests
+  cancel-in-progress: false
+jobs:
+  tests:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.number == 4061 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: match95-test
+          MYSQL_DATABASE: match95_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmatch95-test"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Exact source and isolated tests
+        env:
+          MATCH95_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=match95_test;charset=utf8mb4
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_result28_v95.php)" = 2d01387f8fcfdc3905c7b0a7d169867034d39081
+          test "$(git rev-parse HEAD:tests/hotel_match_result28_v95_test.php)" = ec079fd20cb3428faffdf650bcf90ddbde0f10f4
+          php -l scripts/diagnostics/hotel_match_result28_v95.php
+          php -l tests/hotel_match_result28_v95_test.php
+          php tests/hotel_match_result28_v95_test.php
