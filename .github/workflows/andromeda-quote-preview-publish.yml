@@ -21,7 +21,7 @@ jobs:
       github.event.comment.user.login == 'pyatkoff' &&
       github.event.sender.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/publish-andromeda-quote-preview-1717-v11'
+      github.event.comment.body == '/publish-andromeda-quote-preview-1717-v12'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -30,10 +30,10 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "${{ github.event.issue.number }}" = 2530
           test "${{ github.event.comment.user.login }}" = pyatkoff
-          test "${{ github.event.comment.body }}" = /publish-andromeda-quote-preview-1717-v11
+          test "${{ github.event.comment.body }}" = /publish-andromeda-quote-preview-1717-v12
       - uses: actions/checkout@v4
         with:
-          ref: 4d8f53763806932cbf24160437cb93e33d04f419
+          ref: ada42db11a2528c334129d9e8e1a68f5a95894b8
           path: source
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
           persist-credentials: false
       - name: Recheck exact quote and publisher source offline
         run: |
-          test "$(git -C source rev-parse HEAD)" = 4d8f53763806932cbf24160437cb93e33d04f419
+          test "$(git -C source rev-parse HEAD)" = ada42db11a2528c334129d9e8e1a68f5a95894b8
           php -l source/app/integrations/andromeda-claim-actions.php
           php -l source/app/integrations/andromeda-selected-quote.php
           php -l source/v2/api-andromeda-quote-preview.php
@@ -55,7 +55,7 @@ jobs:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          QUOTE_SOURCE_SHA: 4d8f53763806932cbf24160437cb93e33d04f419
+          QUOTE_SOURCE_SHA: ada42db11a2528c334129d9e8e1a68f5a95894b8
           QUOTE_HELPER_PATH: ${{ github.workspace }}/helper
         run: python3 -B source/scripts/diagnostics/andromeda_quote_preview_publish.py source
       - name: Preserve publication receipt
