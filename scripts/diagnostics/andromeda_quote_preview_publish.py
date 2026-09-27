@@ -11,6 +11,7 @@ import sys
 
 FILES = {
     'app/integrations/andromeda-client.php': 'app/integrations/andromeda-client.php',
+    'app/integrations/andromeda-operator-config.php': 'app/integrations/andromeda-operator-config.php',
     'app/integrations/andromeda-claim-actions.php': 'app/integrations/andromeda-claim-actions.php',
     'app/integrations/andromeda-selected-quote.php': 'app/integrations/andromeda-selected-quote.php',
     'api-andromeda-search3-preview.php': 'v2/api-andromeda-search3-preview.php',
@@ -18,6 +19,7 @@ FILES = {
 }
 ORDER = [
     'app/integrations/andromeda-client.php',
+    'app/integrations/andromeda-operator-config.php',
     'app/integrations/andromeda-claim-actions.php',
     'app/integrations/andromeda-selected-quote.php',
     'api-andromeda-search3-preview.php',
@@ -37,7 +39,7 @@ try{
   if(PHP_SAPI!=='cli')throw new RuntimeException('cli_only');
   $input=json_decode(stream_get_contents(STDIN),true,16,JSON_THROW_ON_ERROR);
   if(!is_array($input)||array_keys($input)!==['source','files']||!is_string($input['source'])||!preg_match('/^[0-9a-f]{40}$/D',$input['source'])||!is_array($input['files']))throw new RuntimeException('input');
-  $allowed=['app/integrations/andromeda-client.php','app/integrations/andromeda-claim-actions.php','app/integrations/andromeda-selected-quote.php','api-andromeda-search3-preview.php','api-andromeda-quote-preview.php'];
+  $allowed=['app/integrations/andromeda-client.php','app/integrations/andromeda-operator-config.php','app/integrations/andromeda-claim-actions.php','app/integrations/andromeda-selected-quote.php','api-andromeda-search3-preview.php','api-andromeda-quote-preview.php'];
   if(array_keys($input['files'])!==$allowed)throw new RuntimeException('file_set');
   $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('wrong_project');
   $target=$root.'/_preview/search3-anex-candidate';$integrations=$target.'/app/integrations';
@@ -131,9 +133,9 @@ def main() -> None:
        or result.get('supplier_calls') != 0 or result.get('booking_calls') != 0 or result.get('database_writes') != 0:
         raise SystemExit('publication not confirmed; inspect retained receipt, do not replay')
     expected = {name: row['sha256'] for name, row in data['files'].items()}
-    if result.get('sha256') != expected or result.get('files') != 5:
+    if result.get('sha256') != expected or result.get('files') != 6:
         raise SystemExit('publication readback mismatch')
-    print(json.dumps({'status':result['status'],'source':source,'files':5,'supplier_calls':0,'booking_calls':0}))
+    print(json.dumps({'status':result['status'],'source':source,'files':6,'supplier_calls':0,'booking_calls':0}))
 
 if __name__ == '__main__':
     main()

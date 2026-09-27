@@ -1,10 +1,14 @@
 import base64
 import importlib.util
+import contextlib
+import io
 import json
 import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
+from types import SimpleNamespace
 from pathlib import Path
 
 MODULE = Path(__file__).resolve().parents[1] / 'scripts' / 'diagnostics' / 'andromeda_quote_preview_publish.py'
@@ -14,12 +18,14 @@ publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publi
 # Independent contract: deriving this from FILES hid the #4018 client omission.
 EXPECTED = {
     'app/integrations/andromeda-client.php': 'app/integrations/andromeda-client.php',
+    'app/integrations/andromeda-operator-config.php': 'app/integrations/andromeda-operator-config.php',
     'app/integrations/andromeda-claim-actions.php': 'app/integrations/andromeda-claim-actions.php',
     'app/integrations/andromeda-selected-quote.php': 'app/integrations/andromeda-selected-quote.php',
     'api-andromeda-search3-preview.php': 'v2/api-andromeda-search3-preview.php',
     'api-andromeda-quote-preview.php': 'v2/api-andromeda-quote-preview.php',
 }
 CLIENT = 'app/integrations/andromeda-client.php'
+OPERATOR_CONFIG = 'app/integrations/andromeda-operator-config.php'
 SOURCE = 'a' * 40
 
 
@@ -60,6 +66,37 @@ class QuotePublisherTest(QuoteFixture):
         with self.assertRaises(FileNotFoundError):
             publisher.payload(self.source, SOURCE)
 
+    def test_missing_operator_config_source_rejected(self):
+        (self.source / OPERATOR_CONFIG).unlink()
+        with self.assertRaises(FileNotFoundError):
+            publisher.payload(self.source, SOURCE)
+
+    def run_entrypoint(self, file_count):
+        def ssh_php(code, data, maximum_bytes):
+            self.assertEqual(code, publisher.PHP)
+            self.assertEqual(list(data['files']), list(EXPECTED))
+            return dict(status='published', source=SOURCE, files=file_count,
+                        sha256={key: row['sha256'] for key, row in data['files'].items()},
+                        supplier_calls=0, booking_calls=0, database_writes=0)
+        output = io.StringIO()
+        with mock.patch.dict(publisher.os.environ, QUOTE_SOURCE_SHA=SOURCE, QUOTE_HELPER_PATH=str(self.root), RUNNER_TEMP=str(self.root)), \
+             mock.patch.object(publisher.sys, 'argv', ['publisher', str(self.source)]), \
+             mock.patch.object(publisher.sys, 'path', list(publisher.sys.path)), \
+             mock.patch.dict(publisher.sys.modules, {'anex_search3_owner_decisions': SimpleNamespace(ssh_php=ssh_php)}), \
+             mock.patch.object(publisher.subprocess, 'check_output', return_value=SOURCE), \
+             contextlib.redirect_stdout(output):
+            publisher.main()
+        return json.loads(output.getvalue())
+
+    def test_entrypoint_accepts_complete_six_file_receipt(self):
+        result = self.run_entrypoint(6)
+        self.assertEqual(result['files'], 6)
+        self.assertEqual(result['status'], 'published')
+
+    def test_entrypoint_rejects_old_five_file_receipt(self):
+        with self.assertRaisesRegex(SystemExit, 'publication readback mismatch'):
+            self.run_entrypoint(5)
+
 
 @unittest.skipUnless(shutil.which('php'), 'PHP CLI required for offline publication tests')
 class QuotePublicationTransactionTest(QuoteFixture):
@@ -99,7 +136,7 @@ class QuotePublicationTransactionTest(QuoteFixture):
     def test_complete_publication_includes_client_and_retains_backups(self):
         result = self.run_php()
         self.assertEqual(result['status'], 'published')
-        self.assertEqual(result['files'], 5)
+        self.assertEqual(result['files'], 6)
         self.assertEqual(result['source'], SOURCE)
         self.assertEqual(list(result['sha256']), list(EXPECTED))
         for index, (target, source) in enumerate(EXPECTED.items()):
@@ -110,8 +147,16 @@ class QuotePublicationTransactionTest(QuoteFixture):
         for path in ('index.php', '_preview/search3-next-candidate/index.php'):
             self.assertEqual((self.site / path).read_bytes(), self.before[path])
 
-    def test_old_four_file_payload_rejected_before_installation(self):
+    def test_missing_client_payload_rejected_before_installation(self):
         self.data['files'].pop(CLIENT, None)
+        result = self.run_php()
+        self.assertEqual((result['status'], result['reason']), ('blocked', 'file_set'))
+        self.assertEqual(result['installed_count'], 0)
+        self.assertEqual(self.snapshot(self.site), self.before)
+        self.assertFalse(self.release.exists())
+
+    def test_old_five_file_payload_rejected_before_installation(self):
+        self.data['files'].pop(OPERATOR_CONFIG)
         result = self.run_php()
         self.assertEqual((result['status'], result['reason']), ('blocked', 'file_set'))
         self.assertEqual(result['installed_count'], 0)
@@ -140,7 +185,7 @@ class QuotePublicationTransactionTest(QuoteFixture):
         self.assertEqual((result['status'], result['reason']), ('blocked', 'published_target_changed'))
         self.assertEqual(self.snapshot(self.root), before)
 
-    def test_old_four_file_receipt_cannot_reauthorize_same_source(self):
+    def test_incomplete_receipt_cannot_reauthorize_same_source(self):
         self.release.mkdir()
         old_hashes = {key: row['sha256'] for key, row in self.data['files'].items() if key != CLIENT}
         (self.release / 'completed.json').write_text(json.dumps({
