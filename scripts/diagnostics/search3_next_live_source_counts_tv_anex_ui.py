@@ -56,20 +56,56 @@ OBSERVER = r"""(() => {
 })();"""
 
 
-def amount(value):
+def amount(value, positive=True):
     if isinstance(value, dict):
         value = value.get('value', value.get('amount'))
     if isinstance(value, bool) or value is None:
         return None
     try:
         number = Decimal(str(value))
-        return number if number.is_finite() and 0 < number < Decimal('1000000000000') else None
+        return number if number.is_finite() and (number > 0 or not positive and number == 0) and number < Decimal('1000000000000') else None
     except InvalidOperation:
         return None
 
 
+def fixed(value, allowed):
+    return value if isinstance(value, str) and value in allowed else 'other'
+
+
+def anex_money(value, positive=True):
+    if (not isinstance(value, dict) or value.get('currency') != 'RUB'
+            or not isinstance(value.get('amount'), str)
+            or not re.fullmatch(r'(?:0|[1-9][0-9]{0,10})(?:\.[0-9]{1,4})?', value['amount'])):
+        return None
+    return amount(value['amount'], positive)
+
+
+def additional_diagnostic(value):
+    value = value if isinstance(value, dict) else {}
+    p = value.get('additional_prices')
+    p = p if isinstance(p, dict) else {}
+    search, extra, total = [anex_money(p.get(k), k != 'party_surcharge') for k in ('search_price', 'party_surcharge', 'search_plus_additional')]
+    count = p.get('total_count')
+    rows = p.get('rows')
+    return dict(status=fixed(value.get('status'), {'additional_prices', 'additional_prices_unavailable', 'additional_prices_unknown',
+                'expired', 'mismatch', 'not_loaded', 'identity_unresolved', 'identity_changed', 'not_available', 'not_concrete'}),
+                applicationState=fixed(p.get('application_state'), {'applied', 'unknown'}),
+                rowCount=len(rows) if isinstance(rows, list) and len(rows) <= 10 else None,
+                reportedCount=count if type(count) is int and 0 <= count <= 100000 else None,
+                truncated=p.get('truncated') if type(p.get('truncated')) is bool else None,
+                arithmeticApplied=p.get('arithmetic_applied') is True, currencyRUB=p.get('converted_currency') == 'RUB',
+                partyMode=p.get('per_person_or_package') == 'per_person_by_party_type',
+                notIncluded=p.get('included_in_search_price') is False, notFinal=p.get('final_price_verified') is False,
+                searchMoneyValid=search is not None, surchargeMoneyValid=extra is not None,
+                surchargeZero=extra == 0, totalMoneyValid=total is not None,
+                arithmeticMatches=all(x is not None for x in (search, extra, total)) and search+extra == total,
+                sourceFieldsMatch=all(isinstance(p.get(k), dict) and p[k].get(field) == expected for k, field, expected in [
+                    ('search_price', 'source', 'direct_anex_search'), ('party_surcharge', 'source', 'anex_b2b_additional_prices_daily'),
+                    ('search_plus_additional', 'formula', 'search_price_plus_program_date_party_additional')]))
+
+
 class SelectedGuard(shared.JourneyGuard):
-    response_paths = {'/api-v2.php', ANEX_PATH}
+    response_paths = {'/api-v2.php', ANEX_PATH, shared.QUOTE_PATH}
 
     def __init__(self):
         super().__init__()
@@ -84,6 +120,7 @@ class SelectedGuard(shared.JourneyGuard):
         self.estimate = None
         self.journeys = {}
         self.responses = []
+        self.anex_additional = None
 
     def select_tv(self, value):
         if (not self.armed or self.tv is not None or not isinstance(value, dict)
@@ -154,6 +191,8 @@ class SelectedGuard(shared.JourneyGuard):
 
     def observe_response(self, url, status, payload, raw_body=None):
         u = urlparse(url)
+        if u.path == shared.QUOTE_PATH:
+            return super().observe_response(url, status, payload, raw_body)
         action = parse_qs(u.query).get('action', [self.body(raw_body).get('action', '')])[0]
         if action not in self.selected_calls:
             return
@@ -162,6 +201,8 @@ class SelectedGuard(shared.JourneyGuard):
         category = error.get('category') if isinstance(error, dict) else error
         allowed = {'supplier_rejected', 'supplier_auth', 'rate_limited', 'search_expired', 'invalid_request', 'supplier_unavailable'}
         self.responses.append({'action': action, 'httpStatus': status, 'errorCategory': category if isinstance(category, str) and category in allowed else 'other_error' if error else None})
+        if action == 'additional_prices':
+            self.anex_additional = additional_diagnostic(payload.get('data') if isinstance(payload, dict) else None)
         if status != 200:
             return
         value = payload.get('data') if isinstance(payload, dict) and payload.get('ok') is True else payload
@@ -193,14 +234,15 @@ class SelectedGuard(shared.JourneyGuard):
                 self.anex_current = True
             elif action == 'additional_prices' and self.anex_current:
                 p = value.get('additional_prices', {})
-                search, extra, total = [amount(p.get(k)) for k in ('search_price', 'party_surcharge', 'search_plus_additional')]
+                search, extra, total = [amount(p.get(k), k != 'party_surcharge') for k in ('search_price', 'party_surcharge', 'search_plus_additional')]
                 if (p.get('application_state') == 'applied' and p.get('arithmetic_applied') is True
                         and p.get('final_price_verified') is False and p.get('included_in_search_price') is False
                         and all(x is not None for x in (search, extra, total)) and search+extra == total):
                     self.estimate = total
 
     def receipt(self):
-        return dict(super().receipt(), selectedCalls=dict(self.selected_calls), journeys=self.journeys, anexCurrentContextVerified=self.anex_current, selectedResponses=self.responses[:20])
+        return dict(super().receipt(), selectedCalls=dict(self.selected_calls), journeys=self.journeys, anexCurrentContextVerified=self.anex_current,
+                    anexAdditional=self.anex_additional, selectedResponses=self.responses[:20])
 
 
 def click_offer(page, candidate, from_card=True):
@@ -306,5 +348,21 @@ def exercise_selected(page, guard, out, providers=('tourvisor', 'anex')):
     return guard.journeys
 
 
+def exercise_native(page, guard, out):
+    try:
+        guard.journeys['andromeda'] = dict(shared.exercise_selection(page, guard, out), status='passed')
+    except Exception as error:
+        known = {'quote_unconfirmed', 'selection_not_available', 'selection_scope_invalid', 'selection_identity_invalid',
+                 'verified_quote_missing', 'ui_flight_choices_mismatch', 'application_price_mismatch', 'application_boundary_failed'}
+        guard.journeys['andromeda'] = dict(status='incomplete', stage=guard.journey_stage,
+                                          reason=str(error) if str(error) in known else 'ui_step_unavailable')
+        page.screenshot(path=str(out / 'andromeda-incomplete.png'))
+    finally:
+        if page.locator('#modal[open]').count():
+            page.locator('[data-action="close-modal"]').first.click()
+        page.set_viewport_size({'width': 1280, 'height': 900})
+    return exercise_selected(page, guard, out, ('anex',))
+
+
 if __name__ == '__main__':
-    raise SystemExit(shared.main(SelectedGuard(), OBSERVER, lambda p, g, o: exercise_selected(p, g, o, ('anex',)), 'v22'))
+    raise SystemExit(shared.main(SelectedGuard(), shared.CANDIDATE_OBSERVER+'\n'+OBSERVER, exercise_native, 'v23'))

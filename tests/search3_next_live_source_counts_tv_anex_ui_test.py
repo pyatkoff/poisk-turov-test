@@ -40,6 +40,30 @@ def concrete(g):
 
 
 class Guards(unittest.TestCase):
+    def test_zero_surcharge_is_evidence_and_diagnostic_never_exports_supplier_text(self):
+        g=ready();concrete(g)
+        g.observe_response(ANEX_URL,200,CURRENT,json.dumps(g.identity('offer',True)))
+        p=copy.deepcopy(ADDITIONAL);a=p['data']['additional_prices']
+        a['party_surcharge']['amount']='0';a['search_plus_additional']['amount']=a['search_price']['amount']
+        a.update(converted_currency='RUB',per_person_or_package='per_person_by_party_type',rows=[{'private':'secret provider text'}],total_count=1,truncated=False)
+        for field,source in [('search_price','direct_anex_search'),('party_surcharge','anex_b2b_additional_prices_daily')]:
+            a[field].update(currency='RUB',source=source)
+        a['search_plus_additional'].update(currency='RUB',formula='search_price_plus_program_date_party_additional')
+        p['data']['status']='additional_prices'
+        g.observe_response(ANEX_URL,200,p,json.dumps(g.identity('additional_prices',True)))
+        self.assertEqual(g.estimate,m.Decimal('121000'))
+        self.assertTrue(g.anex_additional['surchargeZero'])
+        self.assertTrue(g.anex_additional['arithmeticMatches'])
+        self.assertEqual(g.anex_additional['rowCount'],1)
+        self.assertNotIn('secret',json.dumps(g.receipt()))
+        a['party_surcharge']['amount']=None
+        d=m.additional_diagnostic(p['data'])
+        self.assertFalse(d['surchargeMoneyValid']);self.assertFalse(d['surchargeZero'])
+        p['data']['status']='private session secret';a['application_state']='private token'
+        d=m.additional_diagnostic(p['data'])
+        self.assertEqual(d['status'],'other');self.assertEqual(d['applicationState'],'other')
+        self.assertNotIn('private',json.dumps(d))
+
     def test_tv_exact_quote_then_one_flight_read(self):
         g=ready();g.select_tv(TV)
         self.assertFalse(g.allow(tv_url('flights'),'GET'))

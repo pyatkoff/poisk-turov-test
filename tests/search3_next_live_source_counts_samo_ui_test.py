@@ -34,6 +34,18 @@ def continuation():
 
 
 class GuardTests(unittest.TestCase):
+    def test_quote_failure_receipt_keeps_fixed_classification_only(self):
+        g=selected()
+        g.observe(502,dict(ok=False,failure_category='supplier_transport',error='private supplier token'))
+        self.assertEqual(g.quote_responses[0]['failureCategory'],'supplier_transport')
+        self.assertEqual(g.quote_responses[0]['httpStatus'],502)
+        self.assertIsNone(g.quote_state)
+        self.assertNotIn('private',json.dumps(g.receipt()))
+        value=m.safe_quote_failure(dict(action='quote',code='quote_unconfirmed',httpStatus=0,failureCategory='timeout',raw='secret'))
+        self.assertEqual(value,dict(action='quote',code='quote_unconfirmed',httpStatus=0,failureCategory='timeout'))
+        value=m.safe_quote_failure(dict(action='private',code=['secret'],httpStatus=True,failureCategory='token'))
+        self.assertEqual(value,dict(action='other',code='other',httpStatus=0,failureCategory='other'))
+
     def test_one_quote_and_one_observed_choice_only(self):
         g = selected()
         self.assertTrue(g.allow(URL, 'POST', json.dumps(REQUEST)))
@@ -89,6 +101,24 @@ class GuardTests(unittest.TestCase):
 
 
 class BrowserTests(unittest.TestCase):
+    def test_browser_failure_events_are_bounded_and_redacted(self):
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True)
+            page=browser.new_page()
+            try:
+                page.add_init_script(m.QUOTE_FAILURE_OBSERVER)
+                page.goto('data:text/html,<meta charset="utf-8">')
+                result=page.evaluate('''()=>{
+                 for(let i=0;i<4;i++)window.dispatchEvent(new CustomEvent('anytour:quote-failure',{detail:{provider:'andromeda',action:'quote',code:'quote_unconfirmed',httpStatus:502,failureCategory:i?'secret supplier response':'supplier_transport',raw:'private token'}}));
+                 return window.__nextQuoteFailures;
+                }''')
+                self.assertEqual(len(result),2)
+                self.assertEqual(result[0]['failureCategory'],'supplier_transport')
+                self.assertEqual(result[1]['failureCategory'],'other')
+                self.assertNotIn('secret',json.dumps(result));self.assertNotIn('private',json.dumps(result))
+            finally:browser.close()
+
     def test_actual_click_sequence_uses_guard_and_local_form_only(self):
         from playwright.sync_api import sync_playwright
         with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
