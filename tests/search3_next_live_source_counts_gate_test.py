@@ -15,7 +15,7 @@ class Gates(unittest.TestCase):
         for key,value in [('GITHUB_EVENT_NAME','pull_request'),('GITHUB_RUN_ATTEMPT','2'),('GITHUB_ACTOR','x'),('GITHUB_TRIGGERING_ACTOR','x'),('GITHUB_REPOSITORY','other/repo'),('GITHUB_REF','refs/heads/release/search3-production-ready-v1')]:
             e=env();e[key]=value;self.assertFalse(gate.authorize(event(),e)[0])
     def test_reject_old_commands_issue_and_edits(self):
-        for command in ['/search3-next-live-source-counts-v7','/search3-next-live-source-counts-v18',gate.COMMAND+' ',gate.COMMAND+'\n']:
+        for command in ['/search3-next-live-source-counts-v7','/search3-next-live-source-counts-v18','/search3-next-live-source-counts-v19',gate.COMMAND+' ',gate.COMMAND+'\n']:
             e=event();e['comment']['body']=command;self.assertFalse(gate.authorize(e,env())[0])
         for issue in [2530,996]:
             e=event();e['issue']['number']=issue;self.assertFalse(gate.authorize(e,env())[0])
