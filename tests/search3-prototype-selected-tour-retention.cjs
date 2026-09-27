@@ -258,11 +258,17 @@ assert.ok(urlStateStart>=0&&urlStateEnd>urlStateStart,'URL state block is presen
 const urlStateSource=source.slice(urlStateStart,urlStateEnd);
 assert.match(urlStateSource,/p\.get\('searched'\)==='1'/,'searched=1 restores the searched state on reload');
 assert.match(urlStateSource,/state\.filters\.flight=.*regular.*charter.*unknown/s,'flight filter round-trips through the URL');
+assert.match(urlStateSource,/state\.filters\.stars=.*n>=1&&n<=5/s,
+  'all supported hotel categories round-trip through the URL');
+assert.match(source,/const starFilterValues=.*\[1,2,3,4,5\].*selected\.includes\(value\).*h\.stars===value/s,
+  'main category facet exposes selected and currently returned categories from one to five stars');
 assert.match(source,/const flightFilterValues=.*\['regular','charter','unknown'\].*selected\.includes\(value\).*o\.flight===value/s,
   'main flight facet exposes selected and currently returned supported flight states');
 const mainFilterSource=source.slice(source.indexOf('function renderFilters()'),source.indexOf('\nfunction loadResultCalendar()'));
 assert.match(mainFilterSource,/<h4>Перелёт<\/h4>.*checkRows\('flight',flightOptions\)/s,
   'main filter drawer exposes the existing flight restriction');
+assert.match(mainFilterSource,/<h4>Категория отеля<\/h4>.*starOptions\.map/s,
+  'main filter drawer renders the complete result-derived category facet');
 const filterChipSource=source.slice(source.indexOf('function filterChipData('),source.indexOf('\nfunction removeModelFilter'));
 assert.match(filterChipSource,/key==='flight'\?flightLabel\(\{flight:value\}\)/,
   'active flight chips keep unknown distinct from a regular flight');

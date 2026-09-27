@@ -43,6 +43,7 @@ const operators=[];
 const data=window.AnyTourPrototypeData;
 const popularity=window.AnyTourHotelPopularityV1;
 const flightLabel=o=>o.flight==='regular'?'Регулярный':o.flight==='charter'?'Чартер':'Тип рейса уточняется';
+const starFilterValues=(hs,selected=[])=>[1,2,3,4,5].filter(value=>selected.includes(value)||hs.some(h=>h.stars===value));
 const flightFilterValues=(hs,selected=[])=>['regular','charter','unknown'].filter(value=>selected.includes(value)||hs.some(h=>(h.offers||[]).some(o=>o.flight===value)));
 const needsRefresh=o=>o.cached||o.provider!=='tourvisor'||o.raw?.selectionEnabled===false;
 const offerActionLabel=o=>needsRefresh(o)?'Смотреть условия':'Выбрать тур';
@@ -87,7 +88,7 @@ function restoreURL(){
  if(s.maxNights<s.minNights||s.maxNights-s.minNights>10)s.maxNights=s.minNights;
  if(p.has('ages'))s.ages=p.get('ages').split(',').filter(x=>/^\d+$/.test(x)&&Number(x)<=17).slice(0,3).map(Number);
  const hotelId=p.get('hotel');if(/^[1-9]\d*$/.test(hotelId||'')&&Number.isSafeInteger(Number(hotelId)))state.filters.hotelId=Number(hotelId);
- state.filters.stars=(p.get('stars')||'').split('|').map(Number).filter(n=>[3,4,5].includes(n));
+ state.filters.stars=[...new Set((p.get('stars')||'').split('|').map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=5))];
  for(const k of ['min','max'])if(p.has(k)&&p.get(k).trim()!==''&&Number.isFinite(Number(p.get(k))))state.filters[k]=Math.max(0,Number(p.get(k)));
  if(state.filters.max!==null&&state.filters.min>state.filters.max)state.filters.min=state.filters.max;
  state.filters.meals=[...new Set((p.get('meals')||'').split('|').map(value=>value.trim()).filter(Boolean))];
@@ -340,10 +341,10 @@ function paintFilters(markup,filters){
  }else host.innerHTML=markup;
  renderedFilterContext={filters,scope};
 }
-function renderFilters(){const model=editingFilterModel(),f=model.filters,hs=hotels.filter(h=>h.country===state.search.country),scale=budgetScale(f),flightOptions=flightFilterValues(hs,f.flight).map(value=>[value,flightLabel({flight:value})]);paintFilters(`
+function renderFilters(){const model=editingFilterModel(),f=model.filters,hs=hotels.filter(h=>h.country===state.search.country),scale=budgetScale(f),starOptions=starFilterValues(hs,f.stars),flightOptions=flightFilterValues(hs,f.flight).map(value=>[value,flightLabel({flight:value})]);paintFilters(`
  <div class="filter-group"><h4>Название отеля или курорт</h4><div class="filter-search"><input class="input" id="hotel-query" type="search" value="${esc(f.q)}" placeholder="Введите название" aria-label="Название отеля или курорт">${icon('search')}</div></div>
  <div class="filter-group"><h4>Бюджет на всех туристов</h4><div class="price-inputs"><label>От, ₽<input type="number" id="min-price" value="${f.min}" min="0" step="any"></label><label>До, ₽<input type="number" id="max-price" value="${f.max??''}" min="0" step="any" placeholder="Без ограничений"></label></div><input class="range" type="range" id="price-range" aria-label="Максимальная цена" aria-valuetext="${esc(budgetLabel(f))}" min="0" max="${scale}" step="1000" value="${f.max??scale}"></div>
- <div class="filter-group"><h4>Категория отеля</h4><div class="star-options">${[3,4,5].map(n=>`<button type="button" data-action="star" data-value="${n}" aria-pressed="${f.stars.includes(n)}" class="${f.stars.includes(n)?'active':''}">${n} <span>★</span></button>`).join('')}</div></div>
+ ${starOptions.length?`<div class="filter-group"><h4>Категория отеля</h4><div class="star-options">${starOptions.map(n=>`<button type="button" data-action="star" data-value="${n}" aria-pressed="${f.stars.includes(n)}" class="${f.stars.includes(n)?'active':''}">${n} <span>★</span></button>`).join('')}</div></div>`:''}
  ${Object.keys(mealNames).length?`<div class="filter-group"><h4>Питание</h4>${checkRows('meals',[...new Set([...Object.keys(mealNames),...f.meals])].map(m=>[m,m]))}</div>`:''}
  ${f.rating||hs.length&&hs.every(h=>h.rating!==null)?`<div class="filter-group"><h4>Оценка гостей</h4><label class="check-row"><input type="checkbox" data-filter-bool="rating" ${f.rating?'checked':''}><span>От 4,5 из 5</span><small>${countMatchingHotels({...model,filters:{...f,rating:true}})}</small></label></div>`:''}
  ${f.resorts.length||hs.some(h=>hotelPlaces(h).length)?`<div class="filter-group"><h4>Курорт</h4>${checkRows('resorts',[...new Set([...f.resorts,...hs.flatMap(h=>hotelPlaces(h))])].map(r=>[r,r]))}</div>`:''}
