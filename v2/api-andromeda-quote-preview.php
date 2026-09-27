@@ -8,6 +8,7 @@ require_once $quoteApp . '/andromeda-selected-offer.php';
 require_once $quoteApp . '/andromeda-claim-actions.php';
 require_once $quoteApp . '/andromeda-selected-quote.php';
 require_once $quoteApp . '/andromeda-quote-attempt-state.php';
+require_once $quoteApp . '/andromeda-operator-config.php';
 
 /** Resolve a retained offer privately, under the same search/session authority as offer_detail. */
 function anytour_andromeda_quote_resolve(array $request, PDO $pdo, array $saved, array $config, string $session, array $listingPrices = []): array
@@ -155,13 +156,14 @@ function anytour_andromeda_quote_unknown(string $checkpoint, string $lockPath, a
 
 function anytour_andromeda_quote_supplier(array $config): array
 {
+    [$operatorLogin, $operatorPassword] = anytour_andromeda_operator_credentials_from_config($config);
     $budgetDirectory = dirname($config['catalog_path']);
     $transport = new AnyTourAndromedaTransport(false, true);
     $client = new AnyTourAndromedaClient(
         static function (string $url, array $options) use ($transport, $budgetDirectory): array {
             anytour_andromeda_search3_budget($budgetDirectory);
             return $transport($url, $options);
-        }, true, true
+        }, true, true, $operatorLogin, $operatorPassword
     );
     $client->login($config['username'], $config['password']);
     $sid = $client->privateSession()['sid'] ?? null;
@@ -278,6 +280,8 @@ function anytour_andromeda_quote_failure_category(Throwable $error): string
         'ANDROMEDA_LOGIN_REQUIRED' => 'supplier_auth',
         'ANDROMEDA_CREDENTIALS_REQUIRED' => 'supplier_auth',
         'ANDROMEDA_CLAIM_SESSION_INVALID' => 'supplier_auth',
+        'ANDROMEDA_OPERATOR_CREDENTIALS_PAIR_REQUIRED' => 'supplier_auth',
+        'ANDROMEDA_OPERATOR_CREDENTIALS_INVALID' => 'supplier_auth',
         'ANDROMEDA_QUOTE_CONTEXT_MISMATCH' => 'quote_state',
         'ANDROMEDA_QUOTE_CHECKPOINT_INVALID' => 'quote_state',
         'ANDROMEDA_QUOTE_CHECKPOINT_CHANGED' => 'quote_state',

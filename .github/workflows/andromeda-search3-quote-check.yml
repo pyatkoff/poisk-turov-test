@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'app/integrations/andromeda-claim-actions.php'
+      - 'app/integrations/andromeda-operator-config.php'
       - 'app/integrations/andromeda-selected-quote.php'
       - 'app/integrations/andromeda-search-surcharge.php'
       - 'tests/andromeda-search-surcharge-smoke.php'

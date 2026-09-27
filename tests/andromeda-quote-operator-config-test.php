@@ -62,12 +62,12 @@ foreach ([['operator_login' => $login, 'operator_password' => $password], []] as
     $client->package('synthetic-opaque-selected-offer');
     $requests = AnyTourAndromedaTransport::$requests;
     $check(count($requests) === 2 && $budgetCalls === 2, 'REQUEST_BUDGET_CHANGED');
-    $check(!isset($requests[0]['OPERATOR_LOGIN'], $requests[0]['OPERATOR_PASSWORD']), 'PAIR_LEAKED_TO_GATEWAY_LOGIN');
+    $check(!array_key_exists('OPERATOR_LOGIN', $requests[0]) && !array_key_exists('OPERATOR_PASSWORD', $requests[0]), 'PAIR_LEAKED_TO_GATEWAY_LOGIN');
     if ($pair) {
         $check(($requests[1]['OPERATOR_LOGIN'] ?? null) === $login, 'QUOTE_OPERATOR_LOGIN_NOT_FORWARDED');
         $check(($requests[1]['OPERATOR_PASSWORD'] ?? null) === $password, 'QUOTE_OPERATOR_PASSWORD_NOT_FORWARDED');
     } else {
-        $check(!isset($requests[1]['OPERATOR_LOGIN'], $requests[1]['OPERATOR_PASSWORD']), 'ABSENT_PAIR_BEHAVIOR_CHANGED');
+        $check(!array_key_exists('OPERATOR_LOGIN', $requests[1]) && !array_key_exists('OPERATOR_PASSWORD', $requests[1]), 'ABSENT_PAIR_BEHAVIOR_CHANGED');
     }
     try {
         $client->package('synthetic-opaque-selected-offer');
