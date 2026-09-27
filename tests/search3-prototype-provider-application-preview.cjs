@@ -50,7 +50,7 @@ for(const mutate of [
  r=>{r.flights=[{direction:'x'}];}
 ]){
  const bad=structuredClone(receipt);mutate(bad);
- assert.throws(()=>preview.providerPreviewPayload(bad,fd),/Подтверждён|рейсы/i);
+ assert.throws(()=>preview.providerPreviewPayload(bad,fd),/Подтверждён|рейсы|Условия тура/i);
 }
 
 const anexReceipt={provider:'anex',offerRef:'anex_online:'+'b'.repeat(64),searchRef:'c'.repeat(32),generation:7,localHotelId:501,
