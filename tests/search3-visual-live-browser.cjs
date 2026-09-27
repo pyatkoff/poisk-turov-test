@@ -155,6 +155,7 @@ const server=http.createServer((req,res)=>{
    await page.locator('.mobile-close[data-action="close-filters"]').click();await page.locator('[data-action="filters"]:visible').first().click();
    await page.locator('.filter-group').filter({has:facetEditor}).locator('.filter-section-toggle').click();
    assert.equal(await facetEditor.inputValue(),'','cancelling the drawer discards its transient list query');
+   await page.locator('.filter-group').filter({has:page.locator('[data-action="star"]')}).locator('.filter-section-toggle').click();
    const resizeStar=page.locator('#filters [data-action="star"]').first(),resizeStarValue=await resizeStar.getAttribute('data-value');await resizeStar.click();
    await page.locator('#max-price').fill('abc');await page.setViewportSize({width:1280,height:900});
    assert.match(await page.locator('#applied-search').textContent(),new RegExp(resizeStarValue+' ★'),'widening promotes valid mobile draft choices');
