@@ -54,7 +54,7 @@ jobs:
           remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
           ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
           scp "${opts[@]}" scripts/diagnostics/hotel_match_post_samo23_census_v73.php scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
-          scp "\${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/anex-search-mapping-registry.php"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/anex-search-mapping-registry.php"
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_post_samo23_census_v73.php\" --execute"
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
