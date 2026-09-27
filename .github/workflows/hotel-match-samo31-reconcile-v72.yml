@@ -1,4 +1,4 @@
-name: MATCH SAMO31 reconcile v72
+name: MATCH SAMO15 ANEX82 canonical CURRENT audit
 'on':
   pull_request:
     types: [opened, synchronize, reopened]
@@ -10,10 +10,10 @@ concurrency:
   group: hotel-match-samo31-reconcile-v72
   cancel-in-progress: false
 env:
-  OP: hotel-match-current15-samo82-anex-1971-20260927-v74c
+  OP: hotel-match-current15-samo82-anex-1971-20260927-v74d
 jobs:
   reconcile:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/samo31-reconcile-v72-20260927'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -21,51 +21,105 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Wait for Security and verify source
+      - name: Verify exact source, classification tests and complete package
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          set -euo pipefail; mkdir terminal
+          set -euo pipefail
+          umask 077
+          mkdir -p input terminal package/scripts/diagnostics package/app/integrations package/reports
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git hash-object scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php)" = 24a7b54b7f9868daa47ab6b5ded78aec90c3110a
+          test "$(git hash-object tests/hotel_match_current15_samo82_anex_v74_test.php)" = 5602dfe8051a48b6030bdbf9037a3e00b4be8dce
+          test "$(git hash-object scripts/diagnostics/hotel_match_anex_effective_coverage.php)" = 1b5190727690f50a4cdd606c48afa575978ec48e
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          test "$(git hash-object reports/hotel-match-retained-anex82-v74.json)" = 3af896b13f6d858caa14c7e9a886df25b4458de4
           php -l scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php
+          php tests/hotel_match_current15_samo82_anex_v74_test.php
+          cp scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php scripts/diagnostics/hotel_match_anex_effective_coverage.php package/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php package/app/integrations/
+          cp reports/hotel-match-retained-anex82-v74.json package/reports/
+          php -r 'require $argv[1]; require $argv[2]; if (!class_exists("AnyTourAnexSearchMappingRegistry",false)) throw new RuntimeException("dependency_closure"); if(count(a74_pairs(file_get_contents($argv[3])))!==82) throw new RuntimeException("manifest_scope"); echo "COMPLETE_PACKAGE_PASS\n";' package/scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php package/scripts/diagnostics/hotel_match_anex_effective_coverage.php package/reports/hotel-match-retained-anex82-v74.json
+          (cd package && find . -type f -print0 | sort -z | xargs -0 sha256sum) > input/checksums.txt
+          cp input/checksums.txt package/checksums.txt
+          tar -C package -cf input/payload.tar .
           python3 - <<'PY'
-          import json,os,time,urllib.request
+          import json,os,time,urllib.request,tarfile,hashlib,pathlib
+          expected={'./scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php','./scripts/diagnostics/hotel_match_anex_effective_coverage.php','./app/integrations/anex-search-mapping-registry.php','./reports/hotel-match-retained-anex82-v74.json','./checksums.txt'}
+          with tarfile.open('input/payload.tar') as tar:
+              members=tar.getmembers()
+              assert all(m.isdir() or m.isfile() for m in members)
+              assert {m.name for m in members if m.isfile()}==expected
           url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
           for _ in range(80):
-            q=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
-            with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
-            s=[x for x in r if x['name']=='Security guard']
-            if s and max(s,key=lambda x:x['id'])['status']=='completed':
-              assert max(s,key=lambda x:x['id'])['conclusion']=='success';break
-            time.sleep(3)
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              checks=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if checks and max(checks,key=lambda r:r['id'])['status']=='completed':
+                  assert max(checks,key=lambda r:r['id'])['conclusion']=='success','security_not_green'
+                  break
+              time.sleep(3)
           else:raise SystemExit('security_timeout')
+          record={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_read','scope':'samo15_anex82_read_only','manifest_blob':'3af896b13f6d858caa14c7e9a886df25b4458de4','database_writes':0,'mapping_writes':0,'provider_http_calls':0,'no_replay':True,'payload_sha256':hashlib.sha256(pathlib.Path('input/payload.tar').read_bytes()).hexdigest()}
+          with open('input/reservation.json','x') as f:
+              json.dump(record,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
           PY
-      - name: Execute fresh read-only reconciliation
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-current97-v74d-reservation-${{ github.run_id }}
+          path: input/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Transfer one complete package and run read-only audit once
         env:
           KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          set -euo pipefail; umask 077
-          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
-          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
-          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
-          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
-          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\""
-          scp "${opts[@]}" scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php "$remote:$rel/payload/scripts/diagnostics/"
-          scp "${opts[@]}" reports/hotel-match-retained-anex82-v74.json "$remote:$rel/payload/hotel-match-retained-anex82-v74.json"
-          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/anex-search-mapping-registry.php"
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_ANEX82=\"\$HOME/$rel/payload/hotel-match-retained-anex82-v74.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php\" --execute"
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST" > "$known" 2>/dev/null
+          remote="$USER@$HOST"; rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir \"\$HOME/$rel\"; mkdir \"\$HOME/$rel/payload\""
+          scp "${opts[@]}" input/payload.tar input/reservation.json "$remote:$rel/"
+          payload_sha="$(sha256sum input/payload.tar | cut -d ' ' -f 1)"
+          ssh "${opts[@]}" "$remote" "set -eu; cd \"\$HOME/$rel\"; echo '$payload_sha  payload.tar' | sha256sum --check; cd payload; tar -xf ../payload.tar; sha256sum --check checksums.txt" >terminal/package-verified.txt
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_ANEX82=\"\$HOME/$rel/payload/reports/hotel-match-retained-anex82-v74.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current15_samo82_anex_v74.php\" --execute" >input/remote.stdout 2>input/remote.stderr
+          rc=$?
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          result_rc=$?
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          receipt_rc=$?
+          set -e
+          test "$result_rc" -eq 0; test "$receipt_rc" -eq 0
           python3 - <<'PY'
-          import json
-          r=json.load(open('terminal/result.json'));assert r['state']=='completed_read_only_current' and r['database_writes']==0 and len(r['samo_rows'])==15 and len(r['anex_rows'])==82
-          print(r['samo_counts'],r['anex_counts'])
+          import hashlib,json,os,pathlib
+          raw=pathlib.Path('terminal/result.json').read_bytes();r=json.loads(raw);q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
+          assert q['result_sha256']==hashlib.sha256(raw).hexdigest() and q['readback_verified'] is True
+          for obj in (r,q):
+              assert obj['no_replay'] is True
+              for key in ('database_writes','mapping_writes','provider_http_calls'):assert obj[key]==0
+          print(json.dumps({k:v for k,v in r.items() if k not in ('samo_rows','anex_rows')},ensure_ascii=False))
+          assert r['state']=='completed_read_only_current'
+          assert len(r['samo_rows'])==15 and len(r['anex_rows'])==82
+          assert sum(r['samo_counts'].values())==15 and sum(r['anex_counts'].values())==82
+          assert all(x['safe_to_write_now'] is False for x in r['samo_rows']+r['anex_rows'])
           PY
+          test "$rc" -eq 0
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: match-samo31-reconcile-v72-${{ github.run_id }}
+          name: match-current97-v74d-${{ github.run_id }}
           path: terminal/
           retention-days: 90
+          if-no-files-found: warn
