@@ -258,6 +258,14 @@ assert.ok(urlStateStart>=0&&urlStateEnd>urlStateStart,'URL state block is presen
 const urlStateSource=source.slice(urlStateStart,urlStateEnd);
 assert.match(urlStateSource,/p\.get\('searched'\)==='1'/,'searched=1 restores the searched state on reload');
 assert.match(urlStateSource,/state\.filters\.flight=.*regular.*charter.*unknown/s,'flight filter round-trips through the URL');
+assert.match(source,/const flightFilterValues=.*\['regular','charter','unknown'\].*selected\.includes\(value\).*o\.flight===value/s,
+  'main flight facet exposes selected and currently returned supported flight states');
+const mainFilterSource=source.slice(source.indexOf('function renderFilters()'),source.indexOf('\nfunction loadResultCalendar()'));
+assert.match(mainFilterSource,/<h4>Перелёт<\/h4>.*checkRows\('flight',flightOptions\)/s,
+  'main filter drawer exposes the existing flight restriction');
+const filterChipSource=source.slice(source.indexOf('function filterChipData('),source.indexOf('\nfunction removeModelFilter'));
+assert.match(filterChipSource,/key==='flight'\?flightLabel\(\{flight:value\}\)/,
+  'active flight chips keep unknown distinct from a regular flight');
 for(const key of ['beach','rating','family','spa'])assert.match(urlStateSource,new RegExp("p\\.get\\(k\\)==='1'"),key+' boolean filters use the canonical URL flag parser');
 assert.match(urlStateSource,/state\.onlyFavorites=p\.get\('favorites'\)==='1'/,'favorites-only mode round-trips through the URL');
 assert.match(urlStateSource,/history\[push\?'pushState':'replaceState'\]/,'URL owner can distinguish fresh search history from local replacements');
