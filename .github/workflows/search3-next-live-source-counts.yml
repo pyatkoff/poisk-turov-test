@@ -37,7 +37,7 @@ jobs:
       github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
       github.event.issue.number == 3419 && !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
-      github.event.comment.body == '/search3-next-live-source-counts-v23'
+      github.event.comment.body == '/search3-next-live-source-counts-v24'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:
@@ -59,10 +59,10 @@ jobs:
         run: |
           python3 -m pip install playwright==1.55.0
           python3 -m playwright install --with-deps chromium
-      - name: Verify NEXT bytes then bounded native-provider selections
+      - name: Verify NEXT bytes then one fresh SAMO selected journey
         env:
-          SEARCH3_NEXT_LIVE_ALLOWED: v23
-        run: python3 scripts/diagnostics/search3_next_live_source_counts_tv_anex_ui.py
+          SEARCH3_NEXT_LIVE_ALLOWED: v24
+        run: python3 scripts/diagnostics/search3_next_live_source_counts_samo_ui.py
       - name: Retain aggregate counts and screenshots only
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

@@ -17,6 +17,8 @@ from urllib.parse import urlparse
 _spec = importlib.util.spec_from_file_location('next_initial_base', Path(__file__).with_name('search3_next_live_source_counts.py'))
 base = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(base)
+# Fresh verification after the quote-config fix; prior selected-offer dates stay terminal.
+base.TRIP = dict(base.TRIP, **{'from': '2026-10-20', 'to': '2026-10-26'})
 SOURCE = '5ca33accc2c83d40ec3af2faff297d6a975598e7'
 EXPECTED = dict(base.EXPECTED, **{'prototype-search/data.js': '705d078b80dcda38ce38b5580c1266b94a9f8b7f4dabc8b8dc87756bf8c5eebe',
                                 'visual-search/app.js': 'f051a4e4e008282b454fd6e5e794916d4ddfddffde5099071125de3455588dfe'})
@@ -303,7 +305,7 @@ def route_request(route, guard):
     route.fulfill(response=response)
 
 
-def main(guard=None, observer=CANDIDATE_OBSERVER, exercise_journey=exercise_selection, version='v19'):
+def main(guard=None, observer=CANDIDATE_OBSERVER, exercise_journey=exercise_selection, version='v24'):
     from playwright.sync_api import sync_playwright
     out = Path('search3-next-live-source-counts')
     out.mkdir(exist_ok=True)
