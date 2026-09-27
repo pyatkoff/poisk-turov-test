@@ -74,12 +74,16 @@ class ContinueGuard(base.Guard):
             return True
         if parsed.path == base.ANEX + 'api-andromeda-search3-preview.php':
             page = body.get('page')
-            if page != (2 if self.continuing else 1):
+            if not self.continuing:
+                return super().allow(url, method, raw_body)
+            if (not self.armed or method != 'POST' or body.get('action', 'search') != 'search'
+                    or page != 2 or self.pages != {1} or self.continues['andromeda']
+                    or not self.scope(body.get('params', {}))):
                 return self.deny('andromeda_explicit_page_budget')
-            allowed = super().allow(url, method, raw_body)
-            if allowed and self.continuing:
-                self.continues['andromeda'] += 1
-            return allowed
+            self.pages.add(2)
+            self.calls['andromeda'] += 1
+            self.continues['andromeda'] = 1
+            return True
         return super().allow(url, method, raw_body)
 
     def observe(self, url, status, raw_body, payload):
