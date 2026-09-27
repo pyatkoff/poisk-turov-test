@@ -56,6 +56,42 @@ final class AnyTourCanonicalCatalog
         return $profile;
     }
 
+    /** New creation only. Historical projection remains usable for provenance repair. */
+    public static function creationContentIssues(array $source, ?array $detail): array
+    {
+        $issues = [];
+        $hasText = static function (mixed $value): bool {
+            if (!is_string($value)) return false;
+            $text = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            return preg_match('/[^\s\p{Z}]/u', $text) === 1;
+        };
+        if (!$hasText($source['name'] ?? null)) $issues[] = 'missing_name';
+        if (($source['detailsAvailable'] ?? null) !== true || ($detail['status'] ?? null) !== 'success') {
+            $issues[] = 'missing_successful_details';
+        }
+        if (!$hasText($source['description'] ?? null)) $issues[] = 'missing_description';
+        if (v2_hotel_detail_images(['images'=>$source['images'] ?? []]) === []) $issues[] = 'missing_safe_gallery';
+        $json = $detail['raw_json'] ?? null;
+        $hash = $detail['source_hash'] ?? null;
+        $raw = is_string($json) ? json_decode($json, true) : null;
+        if (!is_array($raw) || array_is_list($raw)) {
+            $issues[] = 'missing_full_tv_payload';
+        } else {
+            if (!is_string($hash) || !preg_match('/^[a-f0-9]{64}$/D', $hash)
+                || !hash_equals($hash, hash('sha256', $json))) $issues[] = 'invalid_full_tv_hash';
+            $sourceId = hotel_details_read_id($source['id'] ?? null);
+            if ($sourceId === null || hotel_details_read_id($raw['id'] ?? null) !== $sourceId) $issues[] = 'tv_identity_mismatch';
+            if (!$hasText($raw['name'] ?? null)) $issues[] = 'missing_tv_name';
+            if (v2_hotel_detail_is_generic_product_name($raw['name'] ?? null)
+                || v2_hotel_detail_is_generic_product_name($source['name'] ?? null)) $issues[] = 'generic_product';
+            // Tourvisor description belongs to common.description; use the established parser.
+            $normalized = v2_hotel_detail_normalized($raw);
+            if (!$hasText($normalized['description'])) $issues[] = 'missing_tv_description';
+            if (v2_hotel_detail_images($raw) === []) $issues[] = 'missing_tv_gallery';
+        }
+        return $issues;
+    }
+
     public function assertSchema(): void
     {
         if ($this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
@@ -206,6 +242,13 @@ final class AnyTourCanonicalCatalog
                 $sourceJson = self::json($source); $sourceHash = hash('sha256', $sourceJson);
                 $find->execute([$key]); $existing = $find->fetch(PDO::FETCH_ASSOC);
                 if ($existing === false) {
+                    // Do not allow a direct ID-list seed to bypass the content-ready planner.
+                    // Read from the same transaction snapshot; never call the provider here.
+                    $detailRead = $this->pdo->prepare('SELECT status,raw_json,source_hash FROM catalog_hotel_details WHERE hotel_id=?');
+                    $detailRead->execute([$key]);
+                    $detail = $detailRead->fetch(PDO::FETCH_ASSOC);
+                    $issues = self::creationContentIssues($source, $detail === false ? null : $detail);
+                    if ($issues !== []) throw new DomainException('CANONICAL_CONTENT_REQUIRED:' . $key . ':' . implode(',', $issues));
                     $json = self::json(self::initialProfile($source)); $profileHash = hash('sha256', $json);
                     $insertHotel->execute([$json, $profileHash]);
                     $id = (int)$this->pdo->lastInsertId();

@@ -32,6 +32,25 @@ check($profile['description'] === 'Описание' && $profile['images'] === $
 rejects(fn() => AnyTourCanonicalCatalog::initialProfile(['name'=>'']), 'unnamed source not materialized');
 $schema = file_get_contents(__DIR__ . '/../v2/data/migrations/20260916-anytour-canonical-catalog.sql');
 check(!preg_match('/^\s*(?:ALTER|DROP|TRUNCATE|DELETE)\b/im', $schema), 'migration is additive only');
+
+$validSource=$input+['detailsAvailable'=>true];
+$raw=['id'=>7001,'name'=>'Отель','common'=>['description'=>'Описание'],'images'=>['https://fixture.test/a.jpg']];
+$detailFor=static function(array $v):array{$j=json_encode($v,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRESERVE_ZERO_FRACTION);return ['status'=>'success','raw_json'=>$j,'source_hash'=>hash('sha256',$j)];};
+$validDetail=$detailFor($raw);
+check(AnyTourCanonicalCatalog::creationContentIssues($validSource,$validDetail)===[], 'complete matching source admitted');
+foreach ([['detailsAvailable'=>false],['description'=>null],['description'=>'<p>&nbsp; </p>'],['images'=>[]],['images'=>['http://unsafe.test/a.jpg']]] as $change) {
+    check(AnyTourCanonicalCatalog::creationContentIssues(array_replace($validSource,$change),$validDetail)!==[], 'partial normalized source refused');
+}
+foreach ([null,[],array_replace($validDetail,['status'=>'failure']),array_replace($validDetail,['raw_json'=>'not-json']),array_replace($validDetail,['source_hash'=>str_repeat('0',64)])] as $bad) {
+    check(AnyTourCanonicalCatalog::creationContentIssues($validSource,$bad)!==[], 'missing/corrupt full source refused');
+}
+foreach ([['id'=>7002],['id'=>7001.0],['common'=>['description'=>'']],['common'=>['description'=>'<p>&nbsp;</p>']],['common'=>[],'description'=>'Wrong top-level field'],['images'=>[]],['images'=>['javascript:alert(1)']],['name'=>'Fortuna Antalya']] as $change) {
+    check(AnyTourCanonicalCatalog::creationContentIssues($validSource,$detailFor(array_replace($raw,$change)))!==[], 'wrong or incomplete TV source refused');
+}
+$legacySparse=['id'=>41,'name'=>'Historical sparse hotel','description'=>null,'images'=>[]];
+check(AnyTourCanonicalCatalog::initialProfile($legacySparse)['description']===null, 'historical sparse projection remains available for provenance repair');
+check(AnyTourCanonicalCatalog::creationContentIssues($legacySparse,null)!==[], 'same sparse source cannot create a NEW hotel');
+
 if (in_array('--unit-only', $argv, true)) {
     echo "ANYTOUR_CANONICAL_PURE_OK checks=$checks SQL_NOT_RUN=1\n"; exit;
 }
@@ -61,7 +80,7 @@ $pdo->exec("CREATE TABLE catalog_hotels (
 $pdo->exec("CREATE TABLE catalog_hotel_details (
     hotel_id BIGINT PRIMARY KEY,status VARCHAR(32),description TEXT,address TEXT,place TEXT,
     build_info TEXT,repair_info TEXT,square_info TEXT,images_json TEXT,infrastructure_json TEXT,
-    meals_json TEXT,services_json TEXT,room_types TEXT,fetched_at DATETIME
+    meals_json TEXT,services_json TEXT,room_types TEXT,fetched_at DATETIME,raw_json LONGTEXT,source_hash CHAR(64)
 ) ENGINE=InnoDB CHARSET=utf8mb4");
 // Existing MATCH is a protected input, not another seed target.
 $pdo->exec("CREATE TABLE tour_operator_hotel_identities (
@@ -87,6 +106,18 @@ function ownCount(PDO $pdo, string $table): int {
     if (!in_array($table,['anytour_hotels','anytour_hotel_sources'],true)) throw new LogicException('test table');
     return (int)$pdo->query('SELECT COUNT(*) FROM '.$table)->fetchColumn();
 }
+
+// Artificial full TV cards for this disposable SQL fixture only.
+function fixtureFullCards(PDO $pdo): void {
+    $rows=$pdo->query("SELECT h.id,h.name,d.description,d.images_json FROM catalog_hotels h JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE d.status='success'")->fetchAll(PDO::FETCH_ASSOC);
+    $write=$pdo->prepare('UPDATE catalog_hotel_details SET raw_json=?,source_hash=? WHERE hotel_id=?');
+    foreach($rows as $r){
+        $raw=AnyTourCanonicalCatalog::json(['id'=>(int)$r['id'],'name'=>$r['name'],'common'=>['description'=>$r['description']],'images'=>json_decode((string)$r['images_json'],true)]);
+        $write->execute([$raw,hash('sha256',$raw),$r['id']]);
+    }
+}
+
+fixtureFullCards($pdo);
 $catalog = new AnyTourCanonicalCatalog($pdo);
 rejects(fn()=>$catalog->plan([7001]), 'missing schema fails without installing it');
 check(count($pdo->query('SHOW TABLES')->fetchAll()) === 3, 'reader did not install schema');
@@ -100,18 +131,31 @@ check($plan['writes']===0 && $plan['source_profiles']===2 && $plan['missingIds']
 check(ownCount($pdo,'anytour_hotels')===0, 'planning does not seed');
 rejects(fn()=>$catalog->seed($ids,str_repeat('0',64)), 'wrong digest rejected');
 check(ownCount($pdo,'anytour_hotels')===0, 'wrong digest wrote nothing');
+rejects(fn()=>$catalog->seed($ids,$plan['source_sha256']), 'direct seed with a failed-details hotel is rejected');
+check(ownCount($pdo,'anytour_hotels')===0 && ownCount($pdo,'anytour_hotel_sources')===0, 'mixed valid/invalid batch rolled back completely');
+check(legacyDigest($pdo)===$legacyBefore, 'rejected seed never repairs or changes source itself');
+$pdo->exec("UPDATE catalog_hotel_details SET status='success',description='Second saved description',images_json='[\"https://fixture.test/b.jpg\"]' WHERE hotel_id=7002");
+fixtureFullCards($pdo); $legacyBefore=legacyDigest($pdo); $plan=$catalog->plan($ids);
 $result=$catalog->seed($ids,$plan['source_sha256']);
 check($result['created']===2 && $result['verified_bridges']===2, 'initial seed committed and reread');
 $targets=$catalog->legacyTargets([7001,7002,7099]);
 check(count($targets)===2 && $targets[7001]!==7001 && $targets[7002]!==7002, 'IDs allocated independently, not copied');
 $canonical=$catalog->read(array_values($targets));
 check($canonical['items'][0]['name']==='Saved hotel one', 'real canonical reader materializes content');
-check($canonical['items'][1]['description']===null, 'failed source description not fabricated');
+check($canonical['items'][1]['description']==='Second saved description', 'new hotel contains real saved description');
 check($canonical['items'][0]['catalog']==='anytour', 'own catalogue provenance');
 check(!isset($canonical['items'][0]['country']['id']), 'source geography IDs stay out of own profile');
 check(legacyDigest($pdo)===$legacyBefore, 'seed preserves all original catalogues and matches');
 $repeat=$catalog->seed($ids,$plan['source_sha256']);
 check($repeat['created']===0 && $repeat['unchanged']===2 && ownCount($pdo,'anytour_hotels')===2, 'same seed is idempotent');
+
+// Loss of upstream content is not a reason to reject an existing source refresh.
+$pdo->exec("UPDATE catalog_hotel_details SET status='failure' WHERE hotel_id=7002");
+$existingFailurePlan=$catalog->plan([7002]);
+check($catalog->seed([7002],$existingFailurePlan['source_sha256'])['created']===0, 'existing hotel survives source failure without creation');
+check($catalog->read([$targets[7002]])['items'][0]['description']==='Second saved description', 'existing content is not erased');
+$pdo->exec("UPDATE catalog_hotel_details SET status='success' WHERE hotel_id=7002");
+$restorePlan=$catalog->plan([7002]); $catalog->seed([7002],$restorePlan['source_sha256']);
 
 // Editorial update simulates a future authorized editor, not an import capability.
 $edited=$canonical['items'][0]; unset($edited['id'],$edited['catalog'],$edited['revision']);
@@ -156,6 +200,10 @@ rejects(fn()=>$add->execute(['operator_a','unknown',99999999,hash('sha256','{}')
 
 // Trigger forces failure after one insert: both canonical records and bridges roll back.
 $pdo->exec("INSERT INTO catalog_hotels (id,name) VALUES (8001,'First'),(8002,'ROLLBACK_MARKER')");
+$pdo->exec("INSERT INTO catalog_hotel_details(hotel_id,status,description,images_json,fetched_at)
+    VALUES (8001,'success','First description','[\"https://fixture.test/first.jpg\"]',UTC_TIMESTAMP()),
+           (8002,'success','Second description','[\"https://fixture.test/second.jpg\"]',UTC_TIMESTAMP())");
+fixtureFullCards($pdo);
 $pdo->exec("CREATE TRIGGER catalogue_fixture_failure BEFORE INSERT ON anytour_hotels FOR EACH ROW
     BEGIN IF NEW.profile_json LIKE '%ROLLBACK_MARKER%' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture failure'; END IF; END");
 $rollbackPlan=$catalog->plan([8001,8002]); $count=ownCount($pdo,'anytour_hotels'); $links=ownCount($pdo,'anytour_hotel_sources');
@@ -178,6 +226,9 @@ check($pdo->inTransaction(), 'caller transaction not committed'); $pdo->rollBack
 $insert=$pdo->prepare('INSERT INTO catalog_hotels (id,name) VALUES (?,?)');
 $bulk=range(100001,101000);
 foreach ($bulk as $id) $insert->execute([$id,'Mass fixture '.$id]);
+$detailsInsert=$pdo->prepare("INSERT INTO catalog_hotel_details(hotel_id,status,description,images_json,fetched_at) VALUES (?,'success','Saved full-card description','[\"https://fixture.test/mass.jpg\"]',UTC_TIMESTAMP())");
+foreach($bulk as $id)$detailsInsert->execute([$id]);
+fixtureFullCards($pdo);
 $legacyBefore=legacyDigest($pdo); $mass=$catalog->plan($bulk);
 $result=$catalog->seed($bulk,$mass['source_sha256']);
 check($result['created']===1000 && $result['verified_bridges']===1000, 'all thousand copied and reread');

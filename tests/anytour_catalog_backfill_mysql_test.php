@@ -46,7 +46,7 @@ $pdo->exec("CREATE TABLE catalog_hotels (
 $pdo->exec("CREATE TABLE catalog_hotel_details (
     hotel_id BIGINT PRIMARY KEY,status VARCHAR(32),description TEXT,address TEXT,place TEXT,
     build_info TEXT,repair_info TEXT,square_info TEXT,images_json TEXT,infrastructure_json TEXT,
-    meals_json TEXT,services_json TEXT,room_types TEXT,fetched_at DATETIME) ENGINE=InnoDB CHARSET=utf8mb4");
+    meals_json TEXT,services_json TEXT,room_types TEXT,fetched_at DATETIME,raw_json LONGTEXT,source_hash CHAR(64)) ENGINE=InnoDB CHARSET=utf8mb4");
 $sql = preg_replace('/^--.*$/m','',file_get_contents(__DIR__.'/../v2/data/migrations/20260916-anytour-canonical-catalog.sql'));
 foreach (array_values(array_filter(array_map('trim',explode(';',$sql)))) as $statement) $pdo->exec($statement);
 
@@ -64,6 +64,18 @@ foreach ([
  [19,'success','Desc 19',$good],[20,'success','Desc 20',$unsafe],
 ] as $row) $details->execute([$row[0],$row[1],$row[2],$row[3],'2026-09-17 01:00:00']);
 
+
+// Artificial full TV cards for this disposable SQL fixture only.
+function fixtureFullCards(PDO $pdo): void {
+    $rows=$pdo->query("SELECT h.id,h.name,d.description,d.images_json FROM catalog_hotels h JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE d.status='success'")->fetchAll(PDO::FETCH_ASSOC);
+    $write=$pdo->prepare('UPDATE catalog_hotel_details SET raw_json=?,source_hash=? WHERE hotel_id=?');
+    foreach($rows as $r){
+        $raw=AnyTourCanonicalCatalog::json(['id'=>(int)$r['id'],'name'=>$r['name'],'common'=>['description'=>$r['description']],'images'=>json_decode((string)$r['images_json'],true)]);
+        $write->execute([$raw,hash('sha256',$raw),$r['id']]);
+    }
+}
+
+fixtureFullCards($pdo);
 $catalog = new AnyTourCanonicalCatalog($pdo);
 $ownedPlan = $catalog->plan([11]);
 $ownedSeed = $catalog->seed([11], $ownedPlan['source_sha256']);
