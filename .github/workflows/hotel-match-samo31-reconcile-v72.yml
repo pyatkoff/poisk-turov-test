@@ -1,4 +1,4 @@
-name: MATCH raw native pending11 acceptance v78c
+name: MATCH live30 raw operator bridge v79
 'on':
   pull_request:
     types: [opened, synchronize, reopened]
@@ -12,8 +12,8 @@ concurrency:
   group: hotel-match-samo31-reconcile-v72
   cancel-in-progress: false
 env:
-  OP: hotel-match-raw-native-pending11-1971-20260927-v78c
-  BASE: ff717f1f93557420d755887e03885440623fddb9
+  OP: hotel-match-live30-raw-operator-bridge-1971-20260927-v79
+  BASE: 9723de39a1a5439080c40d34ac6091b6b5040f2b
 jobs:
   accept:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/samo31-reconcile-v72-20260927'
@@ -23,11 +23,11 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: match78-test
-          MYSQL_DATABASE: match78_test
+          MYSQL_ROOT_PASSWORD: match79-test
+          MYSQL_DATABASE: match79_test
         ports: ['3306:3306']
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmatch78-test"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmatch79-test"
           --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -43,23 +43,21 @@ jobs:
           set -euo pipefail
           umask 077
           mkdir input terminal reservation
-          mkdir -p package/scripts/diagnostics package/app/integrations
+          mkdir -p package/scripts/diagnostics
           test "$(git rev-parse HEAD)" = "$HEAD"
           git merge-base --is-ancestor "$BASE" HEAD
-          test "$(git hash-object scripts/diagnostics/hotel_match_raw_native_pending11_v78.php)" = 7c73f7b50b30e5a8cbf55c210166c870e3b09e69
-          test "$(git hash-object tests/hotel_match_raw_native_pending11_v78_test.php)" = ef0019d77e8497729ef372c1740011efc9420d70
-          test "$(git hash-object scripts/diagnostics/hotel_match_pending8_transition_v76.php)" = fb17d70dce98444cda1b546433d298efb6cb556d
-          test "$(git hash-object scripts/diagnostics/hotel_match_anex_effective_coverage.php)" = 1b5190727690f50a4cdd606c48afa575978ec48e
-          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
-          php -l scripts/diagnostics/hotel_match_raw_native_pending11_v78.php
+          test "$(git hash-object scripts/diagnostics/hotel_match_live30_raw_operator_bridge_v79.php)" = 94aa7236e523fe82f1eadc4293527c9171a5e8a6
+          test "$(git hash-object tests/hotel_match_live30_raw_operator_bridge_v79_test.php)" = af793b4409f936be910a9aee3688e237f4c85e1e
+          php -l scripts/diagnostics/hotel_match_live30_raw_operator_bridge_v79.php
+          php -l tests/hotel_match_live30_raw_operator_bridge_v79_test.php
           python3 - <<'PY'
           import json,os,subprocess,time,urllib.request
           changed=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE'],'HEAD'],text=True).splitlines())
-          assert changed=={'.github/workflows/hotel-match-samo31-reconcile-v72.yml','scripts/diagnostics/hotel_match_raw_native_pending11_v78.php','tests/hotel_match_raw_native_pending11_v78_test.php'},changed
+          assert changed=={'.github/workflows/hotel-match-samo31-reconcile-v72.yml','scripts/diagnostics/hotel_match_live30_raw_operator_bridge_v79.php','tests/hotel_match_live30_raw_operator_bridge_v79_test.php'},changed
           def get(p):
               req=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+p,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
               with urllib.request.urlopen(req,timeout=30) as f:return json.load(f)
-          c=get('/issues/comments/5855759271')
+          c=get('/issues/comments/5855898030')
           assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419') and os.environ['OP'] in c['body']
           pr=get('/pulls/4017');assert pr['state']=='open' and pr['draft'] is True and pr['head']['sha']==os.environ['HEAD']
           for _ in range(80):
@@ -69,35 +67,34 @@ jobs:
               time.sleep(3)
           else:raise SystemExit('security_not_green')
           PY
-      - name: Test real MySQL updates, rollback, conflict isolation and actual provenance
+      - name: Test disposable MySQL inserts, updates, rollback and conflict isolation
         env:
-          MATCH78_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=match78_test;charset=utf8mb4
+          MATCH79_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=match79_test;charset=utf8mb4
         run: |
           set -euo pipefail
-          php tests/hotel_match_raw_native_pending11_v78_test.php | tee terminal/tests.log
-      - name: Reserve distinct eleven-row writer and checksum payload
+          php tests/hotel_match_live30_raw_operator_bridge_v79_test.php | tee terminal/tests.log
+      - name: Reserve exact 310 operator identities and checksum payload
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=match-raw-native-v78c-reservation&per_page=100" >input/old-reservations.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=match-raw-operator-v79-reservation&per_page=100" >input/old-reservations.json
           python3 - <<'PY'
           import json,os,pathlib
           assert json.load(open('input/old-reservations.json'))['total_count']==0,'no_replay'
-          r={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_write','claim':5855759271,'maximum_writes':11,'provider_http_calls':0,'no_replay':True}
+          r={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_write','claim':5855898030,'maximum_writes':310,'provider_http_calls':0,'no_replay':True}
           pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
           PY
-          cp scripts/diagnostics/hotel_match_raw_native_pending11_v78.php scripts/diagnostics/hotel_match_pending8_transition_v76.php scripts/diagnostics/hotel_match_anex_effective_coverage.php package/scripts/diagnostics/
-          cp app/integrations/anex-search-mapping-registry.php package/app/integrations/
-          (cd package && find scripts app -type f -print0 | sort -z | xargs -0 sha256sum >SHA256SUMS && tar -czf ../payload.tar.gz scripts app SHA256SUMS)
+          cp scripts/diagnostics/hotel_match_live30_raw_operator_bridge_v79.php package/scripts/diagnostics/
+          (cd package && find scripts -type f -print0 | sort -z | xargs -0 sha256sum >SHA256SUMS && tar -czf ../payload.tar.gz scripts SHA256SUMS)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-raw-native-v78c-reservation
+          name: match-raw-operator-v79-reservation
           path: reservation/reservation.json
           retention-days: 90
           if-no-files-found: error
-      - name: Verify retained raw evidence and commit only safe pending links
+      - name: Verify retained raw proof and commit safe operator identities only
         env:
           KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -117,7 +114,7 @@ jobs:
           scp "${opts[@]}" reservation/reservation.json payload.tar.gz "$remote:$rel/"
           ssh "${opts[@]}" "$remote" "cd \"\$HOME/$rel/payload\" && tar -xzf ../payload.tar.gz && sha256sum --check SHA256SUMS" >terminal/payload-verified.txt
           set +e
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=512M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_raw_native_pending11_v78.php\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=512M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_live30_raw_operator_bridge_v79.php\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
           rc=$?
           set -e
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
@@ -128,17 +125,22 @@ jobs:
           assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
           assert q['result_sha256']==hashlib.sha256(raw).hexdigest()
           assert r['provider_http_calls']==q['provider_http_calls']==0
-          print({k:v for k,v in r.items() if k!='rows'})
+          assert r['new_primary_links']==r['new_full_triples']==r['direct_anex_mapping_writes']==0
+          assert r['scope_sha256']=='8d178f71dddbd3b4b01bda3f27d3ad01542e54becc07f0ae8d79536130b7bb76'
+          print({k:v for k,v in r.items() if k not in ('rows','held','already')})
           assert r['state'] in ('committed_readback_verified','completed_no_new_writes'),r['state']
           assert r['readback_verified'] and q['database_readback_verified']
-          assert r['database_writes']==q['database_writes']==r['mapping_writes']==len(r['rows'])<=11
-          assert len(r['rows'])+len(r['held'])+len(r['already'])==11
+          assert r['database_writes']==q['database_writes']==q['mapping_writes']==r['mapping_writes']==len(r['rows'])<=310
+          assert r['inserted']+r['updated']==len(r['rows'])
+          assert len(r['rows'])+len(r['held'])+len(r['already'])==310
+          assert all(x['supplier_namespace'] in ('operator_5','operator_115','operator_315','operator_342') for x in r['rows'])
+          if r['rows']:assert r['primary_identities_unchanged'] and r['unrelated_identities_unchanged'] and r['prior_evidence_preserved']
           PY
           test "$rc" -eq 0
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-raw-native-v78c-${{ github.run_id }}
+          name: match-raw-operator-v79-${{ github.run_id }}
           path: |
             terminal/result.json
             terminal/receipt.json
