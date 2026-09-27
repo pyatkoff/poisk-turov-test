@@ -160,10 +160,14 @@ class JourneyGuard(base.Guard):
         p = payload if isinstance(payload, dict) else {}
         v = p.get('data') if isinstance(p.get('data'), dict) else {}
         failure = p.get('failure_category')
+        failure_stage = p.get('failure_stage')
+        supplier_code = p.get('supplier_code')
         state = v.get('state')
         self.quote_responses.append(dict(httpStatus=status if type(status) is int and 0 <= status <= 599 else 0,
             payloadOK=p.get('ok') is True,
             failureCategory=failure if isinstance(failure, str) and failure in FAILURES else 'other',
+            failureStage=failure_stage if isinstance(failure_stage, str) and failure_stage in ('broninit', 'get_flights', 'changeservice', 'calc') else 'other',
+            supplierCode=supplier_code if isinstance(supplier_code, str) and re.fullmatch(r'[0-9]{1,6}', supplier_code) else None,
             state=state if state in ('quote_verified', 'flight_selection_required') else 'other',
             localIdentityMatches=self.selected is not None and v.get('local_id') == self.selected['localId'],
             schemaValid=v.get('schema_version') == 1 and v.get('provider') == 'andromeda',
