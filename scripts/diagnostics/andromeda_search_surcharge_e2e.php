@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 /** One immutable P0/P1 proof: retained PRICE -> saved surcharge -> served response -> verified quote. */
-const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION = 'andromeda-search-surcharge-e2e-1717-v5-turkey-2026-12-13-2a-7n';
-const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE = '067bba00e664b0f76d7239d72306f8fb70252f00';
+const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION = 'andromeda-search-surcharge-e2e-3419-v6-turkey-2026-12-13-2a-7n';
+const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE = '4f55bb90b68bf9429f8e7e7716d71429351a468b';
 const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_MIN_HEADROOM = 100;
 
 function anytour_andromeda_surcharge_e2e_request(): array
@@ -181,6 +181,24 @@ function anytour_andromeda_surcharge_e2e_reason(Throwable $error): string
     return is_string($reason) && preg_match('/^[A-Za-z0-9_.:-]{1,96}$/D', $reason) ? $reason : 'operation_unconfirmed';
 }
 
+/** Public-safe supplier failure discriminator; raw supplier data is never retained. */
+function anytour_andromeda_surcharge_e2e_failure_facts(Throwable $error): array
+{
+    if (!method_exists($error, 'diagnosticFacts')) return [];
+    $facts = $error->diagnosticFacts();
+    if (!is_array($facts)) return [];
+    $out = [];
+    $stage = $facts['action'] ?? null;
+    if (is_string($stage) && in_array($stage, ['broninit', 'get_flights', 'changeservice', 'calc'], true)) {
+        $out['failure_stage'] = $stage;
+    }
+    $code = $facts['code'] ?? null;
+    if (is_string($code) && preg_match('/^[A-Za-z0-9_.:-]{1,64}$/D', $code) === 1) {
+        $out['supplier_code'] = $code;
+    }
+    return $out;
+}
+
 function anytour_andromeda_surcharge_e2e_run(string $root): array
 {
     $lock = null; $pdo = null; $readOnly = false; $reserved = false; $operationDir = null;
@@ -333,6 +351,7 @@ function anytour_andromeda_surcharge_e2e_run(string $root): array
         $result['status'] = $reserved ? 'unknown' : 'blocked';
         $result['phase'] = $phase;
         $result['reason'] = anytour_andromeda_surcharge_e2e_reason($error);
+        $result = array_replace($result, anytour_andromeda_surcharge_e2e_failure_facts($error));
         if ($quoteStarted && ($result['calc_calls'] ?? 0) === 0) $result['calc_calls'] = null;
         if ($private !== '') {
             try {
