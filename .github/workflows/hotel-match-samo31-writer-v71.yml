@@ -1,0 +1,112 @@
+name: MATCH SAMO31 guarded acceptance v71
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: [.github/workflows/hotel-match-samo31-writer-v71.yml]
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: hotel-match-samo31-writer-v71
+  cancel-in-progress: false
+env:
+  OP: hotel-match-samo31-writer-1971-20260927-v71
+jobs:
+  accept:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4015 && github.event.pull_request.head.ref == 'match/samo31-guarded-writer-v71-20260927'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact scope and current-head security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          php -l scripts/diagnostics/hotel_match_samo31_writer_v71.php
+          python3 - <<'PY'
+          import json
+          m=json.load(open('reports/hotel-match-samo31-current-ready-20260927.json'))
+          assert m['source_audit_sha256']=='1f6846947cefe390a9f0fc9fc6663d8cb1a73ca2b766ca57348311d53bc4cb04'
+          assert len(m['exact_pairs'])==31 and len({x[0] for x in m['exact_pairs']})==31 and len({str(x[1]) for x in m['exact_pairs']})==31
+          assert 1772 not in {x[0] for x in m['exact_pairs']}
+          PY
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          def get(path):
+            q=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as r:return json.load(r)
+          for _ in range(80):
+            runs=get('/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+            sec=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+            if sec and max(sec,key=lambda x:x['id'])['status']=='completed':
+              assert max(sec,key=lambda x:x['id'])['conclusion']=='success';break
+            time.sleep(3)
+          else: raise SystemExit('security_timeout')
+          pr=get('/pulls/4015');assert pr['state']=='open' and pr['head']['sha']==os.environ['HEAD']
+          PY
+      - name: Reserve before server access
+        env:
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          x={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'reserved_before_db_write','scope':'samo31_current_guarded','expected_writes':31,'provider_http_calls':0,'no_replay':True}
+          with open('reservation/reservation.json','x') as f:json.dump(x,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-samo31-v71-reservation-${{ github.run_id }}
+          path: reservation/reservation.json
+          retention-days: 90
+      - name: Execute guarded writer once
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/reports\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$rel/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_samo31_writer_v71.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" reports/hotel-match-samo31-current-ready-20260927.json "$remote:$rel/payload/reports/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_MANIFEST=\"\$HOME/$rel/payload/reports/hotel-match-samo31-current-ready-20260927.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_samo31_writer_v71.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import hashlib,json,pathlib,os
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state']=='committed_readback_verified' and r['database_writes']==r['mapping_writes']==31 and r['readback_verified'] is True
+          assert q['database_writes']==q['mapping_writes']==31 and q['readback_verified'] is True
+          assert r['provider_http_calls']==q['provider_http_calls']==0 and len(r['rows'])==31
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-samo31-v71-terminal-${{ github.run_id }}
+          path: |
+            terminal/result.json
+            terminal/receipt.json
+          retention-days: 90
+          if-no-files-found: warn
