@@ -43,6 +43,9 @@ jobs:
               "pull_number: 4026",
               "for (const run_id of [36309062921, 36309062919])",
               "ref: 643d8b9ee7fb4dce84939f49ca1a50c970940e5b",
+              "const publicationRun = 36308780159;",
+              "artifact_id: 10927849441",
+              "sha256:3f6d4ceaa64591b3376ce29e870aa2e6325bccd3a57d698d3346ed81ed3a4b65",
               "ANYTOOUR_DEPLOY_HOST: $" + "{{ secrets.ANYTOOUR_DEPLOY_HOST }}",
               "ANYTOOUR_DEPLOY_USER: $" + "{{ secrets.ANYTOOUR_DEPLOY_USER }}",
               "result.get('booking_calls') != 0",
@@ -77,7 +80,7 @@ jobs:
             const e2eHead = 'cfcef47f5c3365b7d4cadb9464b7ce8a833ae325';
             const e2eMerge = '643d8b9ee7fb4dce84939f49ca1a50c970940e5b';
             const publicationRun = 36308780159;
-                        if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('No replay; inspect the E2E checkpoint.');
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('No replay; inspect the E2E checkpoint.');
             if (context.payload.sender?.id !== owner || context.actor !== 'pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
             if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
             if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
