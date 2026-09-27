@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/hotel_match_tv_samo_anex_coverage_v2.php';
-const C73_OP='hotel-match-post-samo23-census-1971-20260927-v73b';
+const C73_OP='hotel-match-post-samo23-census-1971-20260927-v73c';
 if(($argv[1]??'')!=='--execute')throw new RuntimeException('disabled');
 $root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$head=(string)getenv('MATCH_SOURCE_SHA');
 hmtsac_need(is_dir($root)&&is_dir($dir)&&basename($dir)===C73_OP,'scope');
