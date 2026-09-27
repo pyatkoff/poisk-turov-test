@@ -92,7 +92,7 @@ final class AnyTourAndromedaClaimActions
         if (!is_array($reply)) throw new RuntimeException('ANDROMEDA_INVALID_RESPONSE');
         $this->rejectSessionEcho($reply);
         if (array_key_exists('error', $reply)) {
-            throw new AnyTourAndromedaSupplierException(self::supplierErrorFacts($reply['error']));
+            throw new AnyTourAndromedaSupplierException(self::supplierErrorFacts($reply['error'], $action));
         }
         if (!isset($reply['claimDocument']) || !is_array($reply['claimDocument'])
             || array_keys($reply['claimDocument']) !== [0] || !is_array($reply['claimDocument'][0])) {
@@ -105,11 +105,12 @@ final class AnyTourAndromedaClaimActions
      * Classify a supplier rejection without retaining raw supplier text.
      * The facts are diagnostic-only and never participate in money arithmetic.
      */
-    private static function supplierErrorFacts(mixed $error): array
+    private static function supplierErrorFacts(mixed $error, string $action): array
     {
         $encoded = json_encode($error, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $facts = [
             'source' => 'andromeda_claim_error',
+            'action' => in_array($action, ['get_flights', 'changeservice', 'calc'], true) ? $action : 'unknown',
             'shape' => match (true) {
                 is_array($error) => 'array',
                 is_string($error) => 'string',
