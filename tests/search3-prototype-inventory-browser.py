@@ -552,6 +552,42 @@ def check_width(browser, origin, width):
         assert parse_qs(urlparse(page.url).query)['resorts'] == ['Кадрие']
         page.screenshot(path=str(EVIDENCE / f"canonical-subregion-stale-label-{width}.png"))
 
+        # Reloaded My Tour preserves the flight observation without restoring a
+        # quote, a supplier session, current baggage, or a final-price promise.
+        saved_flight = 'Тестовая авиакомпания TT 211 14:00 · TT 212 16:00'
+        saved_search = {"origin": "Москва", "country": "4", "from": DATE, "to": DATE,
+                        "minNights": 7, "maxNights": 7, "adults": 2, "ages": []}
+        saved_record = {"version": 1, "observedAt": int(datetime.now(timezone.utc).timestamp() * 1000),
+                        "hotel": {"id": 501, "name": "Вымышленный отель 101", "country": "4",
+                                  "resort": "Анталья", "stars": 5, "rating": 4.7,
+                                  "legacyIds": [101], "photos": [origin + '/test-photo.svg']},
+                        "offer": {"key": "tourvisor:saved-flight", "hotelId": 501, "day": DATE,
+                                  "nights": 7, "total": 133500.5, "room": "FAMILY SEA VIEW",
+                                  "placement": "DBL", "adults": 2, "ages": [], "origin": "Москва",
+                                  "meal": "Всё включено", "operator": "ANEX", "flight": "charter",
+                                  "provider": "tourvisor", "fuel": None, "search": saved_search,
+                                  "savedFlightText": saved_flight}}
+        page.evaluate("record => localStorage.setItem('anytour.real.selected-tour.v1', JSON.stringify(record))", saved_record)
+        def supplier_counts():
+            return (len([call for call in calls if call['action'] != 'meals']),
+                    len(native_calls), len(anex_calls), len(andromeda_quote_calls))
+        supplier_before = supplier_counts()
+        page.goto(origin + BASE + 'prototype-search/?' + params, wait_until='networkidle')
+        page.locator('#selected-tour-nav').click()
+        saved_summary = page.locator('.saved-flight-summary')
+        saved_summary.wait_for()
+        assert saved_flight in saved_summary.inner_text()
+        assert 'Ранее выбранный перелёт' in saved_summary.inner_text()
+        assert 'Актуальность рейсов и багажа нужно проверить.' in page.locator('.flight-summary').inner_text()
+        assert 'Сбор уточняется' in page.locator('.price-breakdown').inner_text()
+        assert page.locator('[data-action="confirm-tour"], [data-action="retry-flights"]').count() == 0
+        assert page.locator('[data-action="refresh-hotel"]').is_visible()
+        assert supplier_before == supplier_counts()
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'saved flight overflows viewport'
+        assert not forbidden, forbidden
+        assert not errors, errors
+        page.screenshot(path=str(EVIDENCE / f"saved-flight-after-reload-{width}.png"))
+
         return {"width": width, "status": "passed", "providers": providers,
                 "calls": calls, "mocked_andromeda_requests": native_calls,
                 "mocked_anex_requests": anex_calls,

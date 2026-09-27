@@ -71,6 +71,33 @@ assert.equal(record.offer.meal, offer.meal);
 assert.equal(record.offer.operator, offer.operator);
 assert.equal(record.offer.flight, offer.flight);
 
+for (const fuel of [null, undefined, '', '  ', false, [], {}, -1, Infinity]) {
+  assert.equal(api.snapshot({...offer, fuel}).fuel, null, 'unknown or invalid saved surcharge must not become zero');
+}
+for (const fuel of [0, 1250, '0', '1250.5']) {
+  assert.equal(api.snapshot({...offer, fuel}).fuel, Number(fuel), 'explicit nonnegative saved surcharge is retained');
+}
+
+const flightSummaryStart = source.indexOf('function flightSummaryHTML(o)');
+const flightSummaryEnd = source.indexOf('\nasync function openOffer', flightSummaryStart);
+const flightSummaryContext = {
+  flightPairFor: o => o.variants?.[Number(o.flightChoiceId)] || null,
+  legHTML: () => '<p>Live flight details</p>',
+  icon: () => '',
+  esc: value => String(value).replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c])),
+};
+vm.createContext(flightSummaryContext);
+vm.runInContext(source.slice(flightSummaryStart, flightSummaryEnd) + '\nthis.renderFlightSummary=flightSummaryHTML;', flightSummaryContext);
+const restoredFlight = flightSummaryContext.renderFlightSummary(record.offer);
+assert.match(restoredFlight, /TK 3025 10:00 · TK 3024 18:00/, 'restored My Tour shows the retained selected flight');
+assert.match(restoredFlight, /Ранее выбранный перелёт/, 'retained flight is visibly historical');
+assert.match(restoredFlight, /Актуальность рейсов и багажа нужно проверить/, 'saved flight does not imply current availability or baggage');
+assert.doesNotMatch(restoredFlight, /Варианты рейсов пока не предоставлены|retry-flights|choose-flight/, 'cached observation neither erases the flight nor opens an unverified flight action');
+assert.match(flightSummaryContext.renderFlightSummary({...record.offer, savedFlightText:'<img src=x>'}), /&lt;img src=x&gt;/, 'saved flight text remains escaped');
+assert.match(flightSummaryContext.renderFlightSummary({...record.offer, savedFlightText:'Рейс пока не выбран'}), /Варианты рейсов пока не предоставлены/, 'no selected flight keeps the existing unknown state');
+assert.doesNotMatch(flightSummaryContext.renderFlightSummary({...record.offer, cached:false}), /Ранее выбранный перелёт|TK 3025/, 'live missing-flight state cannot reuse a saved summary');
+assert.match(flightSummaryContext.renderFlightSummary({...record.offer, variants:[{}], flightChoiceId:'0'}), /Live flight details/, 'actual flight details retain precedence');
+
 api.demote();
 assert.equal(api.read().cached, true, 'a new search demotes the in-memory quote');
 assert.equal(api.read().tour, null, 'a changed search cannot reuse the previous quote');
