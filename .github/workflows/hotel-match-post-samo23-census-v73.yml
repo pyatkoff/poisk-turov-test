@@ -2,7 +2,6 @@ name: MATCH post-SAMO23 live30 census v73
 'on':
   pull_request:
     types: [opened, synchronize, reopened]
-    paths: [.github/workflows/hotel-match-post-samo23-census-v73.yml]
 permissions:
   contents: read
   actions: read
