@@ -1,0 +1,69 @@
+name: MATCH SAMO31 reconcile v72
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: [.github/workflows/hotel-match-samo31-reconcile-v72.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: hotel-match-samo31-reconcile-v72
+  cancel-in-progress: false
+env:
+  OP: hotel-match-samo31-reconcile-1971-20260927-v72
+jobs:
+  reconcile:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Wait for Security and verify source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail; mkdir terminal
+          php -l scripts/diagnostics/hotel_match_samo31_reconcile_v72.php
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(80):
+            q=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+            s=[x for x in r if x['name']=='Security guard']
+            if s and max(s,key=lambda x:x['id'])['status']=='completed':
+              assert max(s,key=lambda x:x['id'])['conclusion']=='success';break
+            time.sleep(3)
+          else:raise SystemExit('security_timeout')
+          PY
+      - name: Execute fresh read-only reconciliation
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_samo31_reconcile_v72.php "$remote:$rel/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_samo31_reconcile_v72.php\" --execute"
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('terminal/result.json'));assert r['state']=='completed_read_only' and len(r['rows'])==31 and r['database_writes']==0
+          print(r['counts'])
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-samo31-reconcile-v72-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
