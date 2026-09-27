@@ -1,0 +1,335 @@
+{
+  "schema": "retained_anex82_v74",
+  "direct_anex_count": 82,
+  "direct_anex_candidates": [
+    {
+      "local_hotel_id": 8928,
+      "anex_hotel_id": "14355"
+    },
+    {
+      "local_hotel_id": 9116,
+      "anex_hotel_id": "11548"
+    },
+    {
+      "local_hotel_id": 9135,
+      "anex_hotel_id": "40608"
+    },
+    {
+      "local_hotel_id": 11736,
+      "anex_hotel_id": "30938"
+    },
+    {
+      "local_hotel_id": 11806,
+      "anex_hotel_id": "15978"
+    },
+    {
+      "local_hotel_id": 11812,
+      "anex_hotel_id": "35738"
+    },
+    {
+      "local_hotel_id": 11818,
+      "anex_hotel_id": "16927"
+    },
+    {
+      "local_hotel_id": 11819,
+      "anex_hotel_id": "39378"
+    },
+    {
+      "local_hotel_id": 11824,
+      "anex_hotel_id": "26491"
+    },
+    {
+      "local_hotel_id": 11828,
+      "anex_hotel_id": "32466"
+    },
+    {
+      "local_hotel_id": 11831,
+      "anex_hotel_id": "16844"
+    },
+    {
+      "local_hotel_id": 12126,
+      "anex_hotel_id": "16296"
+    },
+    {
+      "local_hotel_id": 13921,
+      "anex_hotel_id": "5605"
+    },
+    {
+      "local_hotel_id": 13949,
+      "anex_hotel_id": "13541"
+    },
+    {
+      "local_hotel_id": 14133,
+      "anex_hotel_id": "5585"
+    },
+    {
+      "local_hotel_id": 20825,
+      "anex_hotel_id": "40240"
+    },
+    {
+      "local_hotel_id": 22728,
+      "anex_hotel_id": "5177"
+    },
+    {
+      "local_hotel_id": 23031,
+      "anex_hotel_id": "43269"
+    },
+    {
+      "local_hotel_id": 26043,
+      "anex_hotel_id": "14709"
+    },
+    {
+      "local_hotel_id": 26061,
+      "anex_hotel_id": "25271"
+    },
+    {
+      "local_hotel_id": 28159,
+      "anex_hotel_id": "8537"
+    },
+    {
+      "local_hotel_id": 33536,
+      "anex_hotel_id": "32469"
+    },
+    {
+      "local_hotel_id": 37222,
+      "anex_hotel_id": "13410"
+    },
+    {
+      "local_hotel_id": 37936,
+      "anex_hotel_id": "9224"
+    },
+    {
+      "local_hotel_id": 41772,
+      "anex_hotel_id": "39285"
+    },
+    {
+      "local_hotel_id": 42576,
+      "anex_hotel_id": "17097"
+    },
+    {
+      "local_hotel_id": 49611,
+      "anex_hotel_id": "25220"
+    },
+    {
+      "local_hotel_id": 49622,
+      "anex_hotel_id": "14881"
+    },
+    {
+      "local_hotel_id": 56729,
+      "anex_hotel_id": "40273"
+    },
+    {
+      "local_hotel_id": 59115,
+      "anex_hotel_id": "18778"
+    },
+    {
+      "local_hotel_id": 59578,
+      "anex_hotel_id": "41274"
+    },
+    {
+      "local_hotel_id": 60257,
+      "anex_hotel_id": "41660"
+    },
+    {
+      "local_hotel_id": 60388,
+      "anex_hotel_id": "29332"
+    },
+    {
+      "local_hotel_id": 60874,
+      "anex_hotel_id": "20569"
+    },
+    {
+      "local_hotel_id": 60957,
+      "anex_hotel_id": "44301"
+    },
+    {
+      "local_hotel_id": 60960,
+      "anex_hotel_id": "41636"
+    },
+    {
+      "local_hotel_id": 64275,
+      "anex_hotel_id": "25053"
+    },
+    {
+      "local_hotel_id": 64350,
+      "anex_hotel_id": "23364"
+    },
+    {
+      "local_hotel_id": 64915,
+      "anex_hotel_id": "18578"
+    },
+    {
+      "local_hotel_id": 65633,
+      "anex_hotel_id": "14912"
+    },
+    {
+      "local_hotel_id": 67403,
+      "anex_hotel_id": "27234"
+    },
+    {
+      "local_hotel_id": 71259,
+      "anex_hotel_id": "37269"
+    },
+    {
+      "local_hotel_id": 72602,
+      "anex_hotel_id": "29103"
+    },
+    {
+      "local_hotel_id": 74218,
+      "anex_hotel_id": "34652"
+    },
+    {
+      "local_hotel_id": 74258,
+      "anex_hotel_id": "30599"
+    },
+    {
+      "local_hotel_id": 74279,
+      "anex_hotel_id": "31999"
+    },
+    {
+      "local_hotel_id": 80533,
+      "anex_hotel_id": "33219"
+    },
+    {
+      "local_hotel_id": 81314,
+      "anex_hotel_id": "35690"
+    },
+    {
+      "local_hotel_id": 102486,
+      "anex_hotel_id": "37573"
+    },
+    {
+      "local_hotel_id": 110700,
+      "anex_hotel_id": "37560"
+    },
+    {
+      "local_hotel_id": 112448,
+      "anex_hotel_id": "37742"
+    },
+    {
+      "local_hotel_id": 113114,
+      "anex_hotel_id": "37326"
+    },
+    {
+      "local_hotel_id": 113315,
+      "anex_hotel_id": "38788"
+    },
+    {
+      "local_hotel_id": 116384,
+      "anex_hotel_id": "37917"
+    },
+    {
+      "local_hotel_id": 118671,
+      "anex_hotel_id": "37886"
+    },
+    {
+      "local_hotel_id": 120840,
+      "anex_hotel_id": "43496"
+    },
+    {
+      "local_hotel_id": 121069,
+      "anex_hotel_id": "39226"
+    },
+    {
+      "local_hotel_id": 122366,
+      "anex_hotel_id": "39426"
+    },
+    {
+      "local_hotel_id": 122893,
+      "anex_hotel_id": "27023"
+    },
+    {
+      "local_hotel_id": 124986,
+      "anex_hotel_id": "44617"
+    },
+    {
+      "local_hotel_id": 126072,
+      "anex_hotel_id": "40252"
+    },
+    {
+      "local_hotel_id": 127325,
+      "anex_hotel_id": "41621"
+    },
+    {
+      "local_hotel_id": 127573,
+      "anex_hotel_id": "40650"
+    },
+    {
+      "local_hotel_id": 127609,
+      "anex_hotel_id": "40939"
+    },
+    {
+      "local_hotel_id": 129442,
+      "anex_hotel_id": "41275"
+    },
+    {
+      "local_hotel_id": 129551,
+      "anex_hotel_id": "41566"
+    },
+    {
+      "local_hotel_id": 130621,
+      "anex_hotel_id": "45330"
+    },
+    {
+      "local_hotel_id": 132354,
+      "anex_hotel_id": "34595"
+    },
+    {
+      "local_hotel_id": 132421,
+      "anex_hotel_id": "41436"
+    },
+    {
+      "local_hotel_id": 138801,
+      "anex_hotel_id": "43206"
+    },
+    {
+      "local_hotel_id": 138803,
+      "anex_hotel_id": "43207"
+    },
+    {
+      "local_hotel_id": 141665,
+      "anex_hotel_id": "43326"
+    },
+    {
+      "local_hotel_id": 141976,
+      "anex_hotel_id": "44231"
+    },
+    {
+      "local_hotel_id": 144205,
+      "anex_hotel_id": "43439"
+    },
+    {
+      "local_hotel_id": 146995,
+      "anex_hotel_id": "44843"
+    },
+    {
+      "local_hotel_id": 148425,
+      "anex_hotel_id": "43573"
+    },
+    {
+      "local_hotel_id": 150513,
+      "anex_hotel_id": "43782"
+    },
+    {
+      "local_hotel_id": 154810,
+      "anex_hotel_id": "44187"
+    },
+    {
+      "local_hotel_id": 157530,
+      "anex_hotel_id": "44560"
+    },
+    {
+      "local_hotel_id": 159008,
+      "anex_hotel_id": "44763"
+    },
+    {
+      "local_hotel_id": 161982,
+      "anex_hotel_id": "45068"
+    },
+    {
+      "local_hotel_id": 162479,
+      "anex_hotel_id": "45123"
+    }
+  ],
+  "source_report_sha256": "branch_report"
+}
