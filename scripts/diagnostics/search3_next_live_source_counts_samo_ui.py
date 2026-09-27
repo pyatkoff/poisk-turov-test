@@ -19,6 +19,11 @@ base = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(base)
 SOURCE = '7cd20c1b6faf3e0be00a0539a54fd625a304f018'
 EXPECTED = dict(base.EXPECTED, **{'prototype-search/data.js': 'd29d892d52e12b23dd7610c82357b030dc2a3697b39f15e2b5e562032663d83e'})
+EXPECTED.update({
+    'prototype-search/lead.js': '539aa347823aa6c847d3501cde2976cef201d7e1b58ef8310d8aaee59f379a8d',
+    'tour-controller-v4.js': '616f914ff2f3b3b18f230b5780eed454dcaa8d30c8fc9974e735c89c0e18704f',
+    'visual-search/flight-picker-v18.js': 'd6de6d2deb26c5f6fbce4bbbbc70bfafda61961b1d674d67c5fef7a70626d7a5',
+})
 QUOTE_PATH = base.ANEX + 'api-andromeda-quote-preview.php'
 FLIGHT_REF = re.compile(r'flight_[a-f0-9]{32}')
 MONEY = re.compile(r'(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?')
@@ -55,6 +60,11 @@ def money(value):
 
 
 class JourneyGuard(base.Guard):
+    response_paths = {QUOTE_PATH}
+
+    def observe_response(self, url, status, payload, raw_body=None):
+        self.observe(status, payload)
+
     def __init__(self):
         super().__init__()
         self.selected = None
@@ -65,6 +75,11 @@ class JourneyGuard(base.Guard):
         self.reply_counts = []
         self.lead_attempts = 0
         self.journey_stage = 'not_started'
+
+    def receipt(self):
+        return {'initialCalls': dict(self.calls), 'quoteCalls': dict(self.quote_calls),
+                'quoteState': self.quote_state, 'journeyStage': self.journey_stage,
+                'leadAttempts': self.lead_attempts, 'blocked': self.denied[:20]}
 
     def select(self, candidate):
         if not self.armed or self.selected is not None or not isinstance(candidate, dict):
@@ -207,18 +222,18 @@ def exercise_selection(page, guard, out):
             'flight_choices': guard.reply_counts, 'widths': widths}
 
 
-def main():
+def main(guard=None, observer=CANDIDATE_OBSERVER, exercise_journey=exercise_selection, version='v19'):
     from playwright.sync_api import sync_playwright
     out = Path('search3-next-live-source-counts')
     out.mkdir(exist_ok=True)
-    guard = JourneyGuard()
+    guard = guard if guard is not None else JourneyGuard()
     result = {'source': SOURCE, 'route': base.BASE, 'trip': base.TRIP, 'status': 'not_started', 'sourceHashes': {}, 'pageErrorCount': 0}
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block')
         page = None
         try:
-            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != 'v19' or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
+            if os.environ.get('SEARCH3_NEXT_LIVE_ALLOWED') != version or os.environ.get('GITHUB_RUN_ATTEMPT') != '1':
                 raise RuntimeError('live_authorization_missing')
             for name, expected in EXPECTED.items():
                 response = context.request.get(base.ORIGIN + base.BASE + name, timeout=30000, max_redirects=0)
@@ -226,7 +241,7 @@ def main():
                 result['sourceHashes'][name] = digest
                 if response.status != 200 or digest != expected:
                     raise RuntimeError('served_source_mismatch')
-            context.add_init_script(base.OBSERVER + '\n' + CANDIDATE_OBSERVER)
+            context.add_init_script(base.OBSERVER + '\n' + observer)
             page = context.new_page()
             def page_error(_):
                 result['pageErrorCount'] += 1
@@ -239,17 +254,17 @@ def main():
                     r.abort()
             context.route('**/*', route)
             def observe(r):
-                if urlparse(r.url).path != QUOTE_PATH:
+                if urlparse(r.url).path not in guard.response_paths:
                     return
                 try:
-                    guard.observe(r.status, r.json())
+                    guard.observe_response(r.url, r.status, r.json(), r.request.post_data)
                 except Exception:
                     pass  # Invalid/failed response never grants continuation authority.
             page.on('response', observe)
             result['initial'] = base.exercise(page, guard)
             if not result['initial'].get('complete') or guard.denied or guard.calls != dict.fromkeys(base.PROVIDERS, 1):
                 raise RuntimeError('initial_batch_not_complete')
-            result['journey'] = exercise_selection(page, guard, out)
+            result['journey'] = exercise_journey(page, guard, out)
             if guard.denied or result['pageErrorCount']:
                 raise RuntimeError('browser_or_budget_failure')
             result['status'] = 'passed'
@@ -257,7 +272,8 @@ def main():
             allowed = {'live_authorization_missing', 'served_source_mismatch', 'selection_not_available', 'selection_scope_invalid',
                        'selection_identity_invalid', 'preview_lead_boundary_missing', 'ui_flight_choices_mismatch',
                        'verified_quote_missing', 'application_preview_not_verified', 'application_price_mismatch',
-                       'application_boundary_failed', 'initial_batch_not_complete', 'browser_or_budget_failure'}
+                       'application_boundary_failed', 'initial_batch_not_complete', 'browser_or_budget_failure',
+                       'selected_journeys_incomplete'}
             result['status'] = 'incomplete'
             result['reason'] = str(error) if str(error) in allowed else 'ui_journey_not_completed'
             if page is not None:
@@ -267,12 +283,7 @@ def main():
                     pass
         finally:
             guard.armed = False
-            result['initialCalls'] = dict(guard.calls)
-            result['quoteCalls'] = dict(guard.quote_calls)
-            result['quoteState'] = guard.quote_state
-            result['journeyStage'] = guard.journey_stage
-            result['leadAttempts'] = guard.lead_attempts
-            result['blocked'] = guard.denied[:20]
+            result.update(guard.receipt())
             browser.close()
             (out / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
     print(json.dumps(result, ensure_ascii=False))
