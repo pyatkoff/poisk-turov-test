@@ -34,6 +34,16 @@ def continuation():
 
 
 class GuardTests(unittest.TestCase):
+    def test_prior_selected_dates_cannot_enter_the_fresh_journey(self):
+        self.assertEqual((m.base.TRIP['from'], m.base.TRIP['to']), ('2026-10-20', '2026-10-26'))
+        c = copy.deepcopy(CANDIDATE)
+        c['request']['params'].update(dateFrom='2026-10-10', dateTo='2026-10-16')
+        g = m.JourneyGuard()
+        g.armed = True
+        with self.assertRaisesRegex(RuntimeError, 'selection_scope_invalid'):
+            g.select(c)
+        self.assertEqual(sum(g.quote_calls.values()), 0)
+
     def test_quote_failure_receipt_keeps_fixed_classification_only(self):
         g=selected()
         g.observe(502,dict(ok=False,failure_category='supplier_transport',error='private supplier token'))
