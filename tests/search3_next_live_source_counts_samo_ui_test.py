@@ -97,7 +97,7 @@ class BrowserTests(unittest.TestCase):
             guard = m.JourneyGuard()
             guard.armed = True
             guard.calls = dict.fromkeys(m.base.PROVIDERS, 1)
-            html = '''<!doctype html><html><body><input id="hotel-query"><button data-action="all-offers" data-id="501">Offers</button><div id="modal" style="max-width:100%;box-sizing:border-box"><div id="modal-body"><button data-action="offer" data-key="andromeda%3Afixture">Select</button><button data-action="refresh-hotel">Quote</button><div id="stage"></div></div></div><script>
+            html = '''<!doctype html><html><head><meta charset="utf-8"></head><body><input id="hotel-query"><button data-action="all-offers" data-id="501">Offers</button><div id="modal" style="max-width:100%;box-sizing:border-box"><div id="modal-body"><button data-action="offer" data-key="andromeda%3Afixture">Select</button><button data-action="refresh-hotel">Quote</button><div id="stage"></div></div></div><script>
             window.__nextSamoCandidate=CANDIDATE;window.V2_CONFIG={leadApi:'/preview-lead-disabled.php'};
             document.querySelector('[data-action=refresh-hotel]').onclick=async()=>{await fetch(ENDPOINT,{method:'POST',body:JSON.stringify(REQUEST)});document.querySelector('#stage').innerHTML='<input type="radio" name="andromeda-outbound"><input type="radio" name="andromeda-return"><button data-action="apply-andromeda-flights">Apply</button>';document.querySelector('[data-action=apply-andromeda-flights]').onclick=async()=>{await fetch(ENDPOINT,{method:'POST',body:JSON.stringify(CONTINUATION)});document.querySelector('#stage').innerHTML='<button data-action="andromeda-application-preview">Application</button>';document.querySelector('[data-action=andromeda-application-preview]').onclick=()=>{document.querySelector('#stage').innerHTML='<form id="prototype-lead-form"><input name="phone"><input type="checkbox" name="consent"><div class="lead-message"></div></form><button type="submit" form="prototype-lead-form">Check</button>';document.querySelector('form').onsubmit=e=>{e.preventDefault();e.target.dataset.checked='1';document.querySelector('.lead-message').textContent='Подтверждённая стоимость: 125 500 ₽. Заявка не отправлена.';};};};};
             </script></body></html>'''
@@ -117,6 +117,7 @@ class BrowserTests(unittest.TestCase):
             context.route('**/*', route)
             try:
                 page.goto(m.base.ORIGIN+m.base.BASE+'visual-search/')
+                self.assertEqual(page.evaluate('document.characterSet'), 'UTF-8')
                 result = m.exercise_selection(page, guard, Path(tmp))
                 self.assertTrue(result['application_checked'])
                 self.assertEqual(result['final_price'], dict(amount='125500', currency='RUB'))
