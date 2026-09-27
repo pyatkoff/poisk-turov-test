@@ -361,6 +361,27 @@ test('ANEX AdditionalPrices requires a current concrete receipt and is explicit 
  await assert.rejects(h.data.verifyAnexAdditional(concrete),/уже запрашивались/);
  assert.equal(h.anexCalls.length,sent,'same AdditionalPrices request cannot replay in one browser generation');
 });
+test('ANEX accepts an evidenced zero surcharge but rejects missing or negative money',async()=>{
+ for(const [surcharge,valid] of [['0',true],['0.0000',true],['-1',false],[null,false]]){
+  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+  const h=harness({anex:async body=>{
+   if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+   if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
+   if(body.action==='offer')return {response:{ok:true,status:200,json:async()=>currentAnexConcrete(body)}};
+   if(body.action==='additional_prices')return {response:{ok:true,status:200,json:async()=>additionalAnexConcrete(body,{surcharge,total:'1510000'})}};
+   return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');verification=true;
+  const concrete=(await h.data.expandAnexGroup(group)).offers[0];await h.data.verifyAnexConcrete(concrete);
+  if(valid){
+   const result=await h.data.verifyAnexAdditional(concrete);
+   assert.equal(result.partySurcharge.amount,surcharge);assert.equal(result.calculatedTotal.amount,'1510000');
+   assert.equal(result.finalPriceVerified,false);assert.equal(result.arithmeticApplied,true);
+  }else await assert.rejects(h.data.verifyAnexAdditional(concrete),/применимый расчёт/);
+  assert.equal(h.anexCalls.filter(call=>call.action==='additional_prices').length,1);
+ }
+});
 test('ANEX AdditionalPrices rejects inconsistent server arithmetic',async()=>{
  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
  const h=harness({anex:async body=>{

@@ -39,7 +39,7 @@ async function run(){
  try{
   browser=await chromium.launch(process.env.TEST_CHROMIUM?{executablePath:process.env.TEST_CHROMIUM}:{});
   for(const width of [390,768,1280]){
-   const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+   const anexEstimate=width===390?121000:123000,transport=fixture({anexZeroSurcharge:width===390}),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
    transport.state.samoFlightChoice=true;page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
    let supplied=[];
    await page.route('**/*',async route=>{
@@ -105,6 +105,7 @@ async function run(){
     await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-additional-prices"]').click();
     await page.locator('[data-action="anex-application-preview"]').click();await application('anex-application');
     assert.match(await page.locator('.lead-message').textContent(),/Расчётная сумма.*требует подтверждения/);
+    assert((await page.locator('.lead-message').textContent()).replace(/\s/g,'').includes(String(anexEstimate)),'evidenced zero surcharge keeps the search amount and permits preview application');
     assert.equal(transport.calls.filter(c=>c.action==='search_start').length,1);
     assert.equal(startsFor('andromeda').length,1);assert.equal(startsFor('andromeda')[0].body.page,1);
     const anexStarts=startsFor('anex');assert.equal(anexStarts.length,2,'initial batch plus existing explicit selected-hotel revalidation');
@@ -112,7 +113,7 @@ async function run(){
     assert.equal(anexStarts[1].body.params.nightsFrom,7);assert.equal(anexStarts[1].body.params.nightsTo,7);
     assert(!transport.calls.some(c=>c.action==='search_continue'||c.action==='continue'||/lead|payment|booking/.test(c.url)));
     assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-    receipts.push({width,samo_choices:132,samo_selected:[66,132],samo_quote_calls:2,samo_final:125500,tourvisor_final:133500.5,anex_estimate:123000,three_application_checks:true,initial_searches_per_source:1,anex_explicit_selected_hotel_searches:1,continue_calls:0,supplier_calls:0,lead_calls:0});
+    receipts.push({width,samo_choices:132,samo_selected:[66,132],samo_quote_calls:2,samo_final:125500,tourvisor_final:133500.5,anex_estimate:anexEstimate,anex_zero_surcharge:width===390,three_application_checks:true,initial_searches_per_source:1,anex_explicit_selected_hotel_searches:1,continue_calls:0,supplier_calls:0,lead_calls:0});
    }catch(error){await page.screenshot({path:path.join(evidence,`failure-${width}.png`)}).catch(()=>{});throw error;}
    finally{await context.close();}
   }
