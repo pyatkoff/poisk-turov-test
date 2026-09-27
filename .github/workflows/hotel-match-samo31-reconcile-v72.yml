@@ -1,4 +1,4 @@
-name: MATCH current100 COMMON4 acquire v80
+name: MATCH current100 COMMON4 acquire v81
 'on':
   pull_request:
     types: [opened, synchronize, reopened]
@@ -12,8 +12,8 @@ concurrency:
   group: hotel-match-samo31-reconcile-v72
   cancel-in-progress: false
 env:
-  OP: hotel-match-current100-common4-acquire-1971-20260927-v80
-  CLAIM: '5856707471'
+  OP: hotel-match-current100-common4-acquire-1971-20260927-v81
+  CLAIM: '5856794586'
 jobs:
   acquire:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4017 && github.event.pull_request.head.ref == 'match/samo31-reconcile-v72-20260927'
@@ -31,10 +31,10 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail;umask 077;mkdir terminal
-          php -l scripts/diagnostics/hotel_match_current100_plan_v80.php
-          python3 -m py_compile scripts/diagnostics/hotel_match_current100_acquire_v80.py scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py
-          php scripts/diagnostics/hotel_match_current100_plan_v80.php --self-test
-          python3 scripts/diagnostics/hotel_match_current100_acquire_v80.py --self-test
+          php -l scripts/diagnostics/hotel_match_current100_plan_v81.php
+          python3 -m py_compile scripts/diagnostics/hotel_match_current100_acquire_v81.py scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py
+          php scripts/diagnostics/hotel_match_current100_plan_v81.php --self-test
+          python3 scripts/diagnostics/hotel_match_current100_acquire_v81.py --self-test
           python3 - <<'PY'
           import json,os,time,urllib.request
           def get(p):
@@ -65,11 +65,11 @@ jobs:
           chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
           remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
           ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
-          printf '%s\n' '{"operation":"hotel-match-current100-common4-acquire-1971-20260927-v80","state":"reserved_before_provider","maximum_hotels":100,"call_cap":900,"database_writes":0,"mapping_writes":0}' >terminal/reservation.json
+          printf '%s\n' '{"operation":"hotel-match-current100-common4-acquire-1971-20260927-v81","state":"reserved_before_provider","maximum_hotels":100,"call_cap":900,"database_writes":0,"mapping_writes":0}' >terminal/reservation.json
           scp "${opts[@]}" terminal/reservation.json "$remote:$rel/reservation.json"
-          scp "${opts[@]}" scripts/diagnostics/hotel_match_current100_plan_v80.php scripts/diagnostics/hotel_match_current100_acquire_v80.py scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_current100_plan_v81.php scripts/diagnostics/hotel_match_current100_acquire_v81.py scripts/diagnostics/hotel_match_live30_common4_acquire_v2.py scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
           scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_plan_v80.php\" --execute > \"\$HOME/$rel/plan.json\""
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_plan_v81.php\" --execute > \"\$HOME/$rel/plan.json\""
           scp "${opts[@]}" "$remote:$rel/plan.json" terminal/plan-pre.json
           python3 - <<'PY'
           import json
@@ -79,7 +79,7 @@ jobs:
           print({'current_nontriple_total':p['current_nontriple_total'],'scope':p['scope_count']})
           PY
           set +e
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_PLAN_PATH=\"\$HOME/$rel/plan.json\" MATCH_CALL_CAP=900 MATCH_SOURCE_SHA='$HEAD' python3 \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_acquire_v80.py\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_PLAN_PATH=\"\$HOME/$rel/plan.json\" MATCH_CALL_CAP=900 MATCH_SOURCE_SHA='$HEAD' python3 \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_current100_acquire_v81.py\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
           rc=$?
           set -e
           ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
@@ -98,7 +98,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-current100-common4-v80-${{ github.run_id }}
+          name: match-current100-common4-v81-${{ github.run_id }}
           path: terminal/
           retention-days: 90
           if-no-files-found: warn
