@@ -1,0 +1,102 @@
+name: MATCH SAMO wave3 active process readback
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - '.github/workflows/hotel-match-samo-wave3-active-readback.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-wave3-active-readback-20260924, cancel-in-progress: false}
+env:
+  SEALED_OP: hotel-match-samo-business-live30-common4-acquire-1971-20260924-v3-wave3
+  BASE: 48db6edecc206a5fe0937168288ff9a1af084d0f
+  CLAIM: '5820605786'
+jobs:
+  readback:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-wave3-active-readback-20260924'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact read-only claim and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-samo-wave3-active-readback.yml "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['SEALED_OP'],'process_alive','server-state check','DB/mapping writes0','Do not kill']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Read sealed wave3 state only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          sealed=".anytoour-match/operations/$SEALED_OP"
+          ssh "${opts[@]}" "$remote" "SEALED_OP='$SEALED_OP' SEALED_DIR=\"\$HOME/$sealed\" python3 - <<'PY'
+          import os,pathlib,json,hashlib
+          op=os.environ['SEALED_OP']; d=pathlib.Path(os.environ['SEALED_DIR'])
+          assert d.is_dir() and d.name==op
+          procs=[]
+          proc=pathlib.Path('/proc')
+          for p in proc.iterdir():
+              if not p.name.isdigit(): continue
+              try:
+                  raw=(p/'cmdline').read_bytes().replace(b'\0',b' ').decode('utf-8','ignore')
+                  if op in raw and 'hotel_match_samo_business_live30_common4_acquire_v3_wave3.php' in raw:
+                      stat=(p/'stat').read_text().split()
+                      procs.append({'pid':int(p.name),'state':stat[2] if len(stat)>2 else None})
+              except Exception: pass
+          def cnt(pattern,base=d):
+              return sum(1 for _ in base.glob(pattern)) if base.is_dir() else 0
+          ev=d/'evidence-private'
+          out={'sealed_operation':op,'process_alive':bool(procs),'process_count':len(procs),
+               'http_reservation_count':cnt('http-*-reserved.json'),
+               'page_reservation_count':cnt('batch-*-page-*-reserved.json'),
+               'evidence_page_count':cnt('batch-*-page-*.json',ev),
+               'result_exists':(d/'result.json').is_file(),'receipt_exists':(d/'receipt.json').is_file(),
+               'server_writes':0,'database_writes':0,'mapping_writes':0,'provider_http_calls_from_readback':0}
+          if out['result_exists'] and out['receipt_exists']:
+              r=json.loads((d/'result.json').read_text());q=json.loads((d/'receipt.json').read_text())
+              h=hashlib.sha256((d/'result.json').read_bytes()).hexdigest()
+              out['receipt_hash_ok']=(q.get('result_sha256')==h)
+              out['result_sha256']=h
+              for k in ['state','reason','queried_edge_count','planned_batch_count','completed_batch_count','batch_error_count','samo_http_calls','edge_state_counts','operator_state_counts','single_native_source_unique_count','single_native_source_collision_count']:
+                  if k in r:out[k]=r[k]
+          print(json.dumps(out,sort_keys=True))
+          PY" | tee readback.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('readback.json'))
+          assert x['server_writes']==x['database_writes']==x['mapping_writes']==x['provider_http_calls_from_readback']==0
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-wave3-active-readback-${{ github.run_id }}', path: readback.json, retention-days: 30, if-no-files-found: error}
+
+# poll 2
+
+# poll terminal hash
