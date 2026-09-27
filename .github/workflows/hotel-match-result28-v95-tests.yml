@@ -40,4 +40,4 @@ jobs:
           php -l tests/hotel_match_result28_v95_test.php
           php tests/hotel_match_result28_v95_test.php
 
-# v95 isolated test trigger
+# v95 isolated test trigger on dedicated PR
