@@ -64,7 +64,7 @@ const server=http.createServer((req,res)=>{
   await anexOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
   const concrete=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();if(!await concrete.isVisible())await concrete.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-additional-prices"]').click();
-  await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Доплаты ANEX рассчитаны');assert((await page.locator('#modal-body').textContent()).replace(/\\s/g,'').includes('123000'));
+  await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Доплаты ANEX рассчитаны');assert((await page.locator('#modal-body').textContent()).replace(/\s/g,'').includes('123000'));
   const callsBeforeAnexApplication=transport.calls.length;await page.locator('[data-action="anex-application-preview"]').click();
   assert((await page.locator('#modal-body').textContent()).includes('Расчётная сумма'));assert((await page.locator('#modal-body').textContent()).includes('Итоговая стоимость требует подтверждения'));
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
