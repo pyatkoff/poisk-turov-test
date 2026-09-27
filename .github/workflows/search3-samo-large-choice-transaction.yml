@@ -11,7 +11,7 @@ jobs:
       github.repository == 'pyatkoff/poisk-turov-test' &&
       github.ref == 'refs/heads/fix/search3-samo-large-flight-choice-20260927' &&
       github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
-      github.event.head_commit.message == 'SEARCH: run bounded source transaction'
+      github.event.head_commit.message == 'SEARCH: run bounded source transaction v2'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:
@@ -24,7 +24,7 @@ jobs:
       - name: Require exact source and test blobs before any edit
         run: |
           test "$GITHUB_RUN_ATTEMPT" = 1
-          test "$(git rev-parse HEAD^)" = 98c92902c85bc1f44c6ccff042420c4af67c4238
+          test "$(git rev-parse HEAD^)" = abbfec2a97e8f04da9e9164312c4cf6e6cd6c03b
           test "$(git hash-object v2/prototype-search/data.js)" = 02bbcb3da1b7025f0ba0fdd022df4aaed7292c03
           test "$(git hash-object tests/search3-visual-live-browser.cjs)" = 63c2b40d71b644c80ef14078e87a67fb147a377b
           test "$(git hash-object tests/search3-visual-large-flight-choices.cjs)" = 0592046096a7c1ba6df5d702deb3a5bd3cbb679e
@@ -34,7 +34,7 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/search3-node" --no-audit --no-fund playwright@1.55.0
           echo "NODE_PATH=$RUNNER_TEMP/search3-node/node_modules" >> "$GITHUB_ENV"
           "$RUNNER_TEMP/search3-node/node_modules/.bin/playwright" install --with-deps chromium
-      - name: Reproduce the exact 132-choice rejection then apply only the two-file change
+      - name: Reproduce the rejection and apply the bounded source and test delta
         run: |
           if SAMO_TEST_PARSER_ONLY=1 node tests/search3-visual-large-flight-choices.cjs > "$RUNNER_TEMP/samo-before.log" 2>&1; then
             echo 'Expected pre-fix rejection was not reproduced'; exit 1
@@ -51,6 +51,16 @@ jobs:
           marker='})().catch(e=>{console.error(e);server.close();process.exitCode=1;});'
           assert s.count(marker)==1
           p.write_text(s.replace(marker," await require('./search3-visual-large-flight-choices.cjs')();\n"+marker))
+          p=Path('tests/search3-visual-large-flight-choices.cjs');s=p.read_text()
+          marker="    const choose=async provider=>{"
+          assert s.count(marker)==1
+          s=s.replace(marker,"    const startsFor=name=>transport.calls.filter(c=>c.url.endsWith('/api-'+name+'-search3-preview.php')&&(!c.action||c.action==='search'));\n    for(const name of ['anex','andromeda'])assert.equal(startsFor(name).length,1,'one initial batch per provider');\n"+marker)
+          before="    for(const name of ['anex','andromeda']){const starts=transport.calls.filter(c=>c.url.endsWith('/api-'+name+'-search3-preview.php')&&(!c.action||c.action==='search'));assert.equal(starts.length,1);if(name==='andromeda')assert.equal(starts[0].body.page,1);}"
+          after="    assert.equal(startsFor('andromeda').length,1);assert.equal(startsFor('andromeda')[0].body.page,1);\n    const anexStarts=startsFor('anex');assert.equal(anexStarts.length,2,'initial batch plus existing explicit selected-hotel revalidation');\n    assert.deepEqual(anexStarts[1].body.params.hotelIds,['101']);assert.equal(anexStarts[1].body.params.dateFrom,trip.from);assert.equal(anexStarts[1].body.params.dateTo,trip.from);\n    assert.equal(anexStarts[1].body.params.nightsFrom,7);assert.equal(anexStarts[1].body.params.nightsTo,7);"
+          assert s.count(before)==1
+          s=s.replace(before,after)
+          s=s.replace('initial_searches_per_source:1,continue_calls:0','initial_searches_per_source:1,anex_explicit_selected_hotel_searches:1,continue_calls:0')
+          p.write_text(s)
           PY
           test "$(git hash-object v2/prototype-search/data.js)" = 3d1eca3748e5302a12ceef8c318f1ca789f53fc0
           node --check v2/prototype-search/data.js
@@ -62,13 +72,13 @@ jobs:
           python3 - <<'PY'
           import subprocess
           paths=subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()
-          assert set(paths)=={'v2/prototype-search/data.js','tests/search3-visual-live-browser.cjs'},paths
+          assert set(paths)=={'v2/prototype-search/data.js','tests/search3-visual-live-browser.cjs','tests/search3-visual-large-flight-choices.cjs'},paths
           PY
           branch=fix/search3-samo-large-flight-choice-20260927
           test "$(git ls-remote origin refs/heads/$branch | cut -f1)" = "$GITHUB_SHA"
           git config user.name 'pyatkoff'
           git config user.email '226193297+pyatkoff@users.noreply.github.com'
-          git add v2/prototype-search/data.js tests/search3-visual-live-browser.cjs
+          git add v2/prototype-search/data.js tests/search3-visual-live-browser.cjs tests/search3-visual-large-flight-choices.cjs
           git commit -m 'fix(SEARCH): accept large SAMO flight choices in NEXT'
           git push origin "HEAD:refs/heads/$branch"
           git rev-parse HEAD
