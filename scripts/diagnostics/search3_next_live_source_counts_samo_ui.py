@@ -17,8 +17,9 @@ from urllib.parse import urlparse
 _spec = importlib.util.spec_from_file_location('next_initial_base', Path(__file__).with_name('search3_next_live_source_counts.py'))
 base = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(base)
-SOURCE = '4311d1a37366d983f9e6524a40bc52bb8cf6e51b'
-EXPECTED = dict(base.EXPECTED, **{'prototype-search/data.js': '527c95397713605d5adb9548bcb823bc2cb78833ebdf801514ddc8253b54e01e'})
+SOURCE = '5ca33accc2c83d40ec3af2faff297d6a975598e7'
+EXPECTED = dict(base.EXPECTED, **{'prototype-search/data.js': '705d078b80dcda38ce38b5580c1266b94a9f8b7f4dabc8b8dc87756bf8c5eebe',
+                                'visual-search/app.js': 'f051a4e4e008282b454fd6e5e794916d4ddfddffde5099071125de3455588dfe'})
 EXPECTED.update({
     'prototype-search/lead.js': '539aa347823aa6c847d3501cde2976cef201d7e1b58ef8310d8aaee59f379a8d',
     'tour-controller-v4.js': '616f914ff2f3b3b18f230b5780eed454dcaa8d30c8fc9974e735c89c0e18704f',
@@ -27,6 +28,31 @@ EXPECTED.update({
 QUOTE_PATH = base.ANEX + 'api-andromeda-quote-preview.php'
 FLIGHT_REF = re.compile(r'flight_[a-f0-9]{32}')
 MONEY = re.compile(r'(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?')
+FAILURES = {'supplier_transport', 'supplier_http', 'supplier_rejected', 'supplier_response', 'supplier_auth',
+            'quote_state', 'internal', 'limit', 'unavailable', 'access', 'invalid_request', 'invalid_response', 'stale', 'timeout', 'network'}
+QUOTE_FAILURE_OBSERVER = r"""(() => {
+ if(window.__nextQuoteFailureHook)return;window.__nextQuoteFailureHook=true;window.__nextQuoteFailures=[];
+ window.addEventListener('anytour:quote-failure',e=>{
+  const d=e.detail;if(!d||d.provider!=='andromeda'||window.__nextQuoteFailures.length>=2)return;
+  const allowed=['supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal','limit','unavailable','access','invalid_request','invalid_response','stale','timeout','network'];
+  window.__nextQuoteFailures.push({action:['quote','quote_select_flights'].includes(d.action)?d.action:'other',
+   code:['offer_unavailable','quote_unconfirmed','offer_expired'].includes(d.code)?d.code:'other',
+   httpStatus:Number.isInteger(d.httpStatus)&&d.httpStatus>=0&&d.httpStatus<=599?d.httpStatus:0,
+   failureCategory:allowed.includes(d.failureCategory)?d.failureCategory:'other'});
+ });
+})();"""
+
+
+def safe_quote_failure(value):
+    value = value if isinstance(value, dict) else {}
+    def fixed(key, allowed):
+        v = value.get(key)
+        return v if isinstance(v, str) and v in allowed else 'other'
+    status = value.get('httpStatus')
+    return dict(action=fixed('action', {'quote', 'quote_select_flights'}),
+                code=fixed('code', {'offer_unavailable', 'quote_unconfirmed', 'offer_expired'}),
+                httpStatus=status if type(status) is int and 0 <= status <= 599 else 0,
+                failureCategory=fixed('failureCategory', FAILURES))
 
 CANDIDATE_OBSERVER = r"""(() => {
  const descriptor=Object.getOwnPropertyDescriptor(window,'AnyTourPrototypeSearchLifecycleV1');
@@ -73,13 +99,14 @@ class JourneyGuard(base.Guard):
         self.quote_state = None
         self.final_price = None
         self.reply_counts = []
+        self.quote_responses = []
         self.lead_attempts = 0
         self.journey_stage = 'not_started'
 
     def receipt(self):
         return {'initialCalls': dict(self.calls), 'quoteCalls': dict(self.quote_calls),
                 'quoteState': self.quote_state, 'journeyStage': self.journey_stage,
-                'leadAttempts': self.lead_attempts, 'blocked': self.denied[:20]}
+                'leadAttempts': self.lead_attempts, 'quoteResponses': self.quote_responses[:2], 'blocked': self.denied[:20]}
 
     def select(self, candidate):
         if not self.armed or self.selected is not None or not isinstance(candidate, dict):
@@ -130,6 +157,18 @@ class JourneyGuard(base.Guard):
         return True
 
     def observe(self, status, payload):
+        p = payload if isinstance(payload, dict) else {}
+        v = p.get('data') if isinstance(p.get('data'), dict) else {}
+        failure = p.get('failure_category')
+        state = v.get('state')
+        self.quote_responses.append(dict(httpStatus=status if type(status) is int and 0 <= status <= 599 else 0,
+            payloadOK=p.get('ok') is True,
+            failureCategory=failure if isinstance(failure, str) and failure in FAILURES else 'other',
+            state=state if state in ('quote_verified', 'flight_selection_required') else 'other',
+            localIdentityMatches=self.selected is not None and v.get('local_id') == self.selected['localId'],
+            schemaValid=v.get('schema_version') == 1 and v.get('provider') == 'andromeda',
+            selectionEnabled=v.get('selection_enabled') is True, bookingDisabled=v.get('booking_enabled') is False,
+            flightCount=len(v['flights']) if isinstance(v.get('flights'), list) and len(v['flights']) <= 1000 else None))
         if status != 200 or not isinstance(payload, dict) or payload.get('ok') is not True or self.selected is None:
             return
         value = payload.get('data')
@@ -177,7 +216,9 @@ def exercise_selection(page, guard, out):
     offer.click()
     guard.journey_stage = 'quote'
     page.locator('[data-action="refresh-hotel"]').click()
-    page.wait_for_function("document.querySelector('[data-action=apply-andromeda-flights]') || document.querySelector('[data-action=andromeda-application-preview]') || document.querySelector('#modal-body .error-text')", timeout=55000)
+    page.wait_for_function("document.querySelector('[data-action=apply-andromeda-flights]') || document.querySelector('[data-action=andromeda-application-preview]') || document.querySelector('#modal-body .error-text')?.textContent.trim()", timeout=55000)
+    if not page.locator('[data-action="apply-andromeda-flights"], [data-action="andromeda-application-preview"]').count():
+        raise RuntimeError('quote_unconfirmed')
     if page.locator('[data-action="apply-andromeda-flights"]').count():
         guard.journey_stage = 'select_flights'
         outbound = page.locator('[name="andromeda-outbound"]')
@@ -190,6 +231,9 @@ def exercise_selection(page, guard, out):
         inbound.first.check()
         page.screenshot(path=str(out / 'samo-flight-choice-1280.png'))
         page.locator('[data-action="apply-andromeda-flights"]').click()
+        page.wait_for_function("document.querySelector('[data-action=andromeda-application-preview]') || document.querySelector('#modal-body .error-text')?.textContent.trim()", timeout=55000)
+        if not page.locator('[data-action="andromeda-application-preview"]').count():
+            raise RuntimeError('quote_unconfirmed')
     guard.journey_stage = 'open_application'
     page.locator('[data-action="andromeda-application-preview"]').click(timeout=55000)
     if guard.quote_state != 'quote_verified' or guard.final_price is None:
@@ -274,7 +318,7 @@ def main(guard=None, observer=CANDIDATE_OBSERVER, exercise_journey=exercise_sele
                 result['sourceHashes'][name] = digest
                 if response.status != 200 or digest != expected:
                     raise RuntimeError('served_source_mismatch')
-            context.add_init_script(base.OBSERVER + '\n' + observer)
+            context.add_init_script(base.OBSERVER + '\n' + QUOTE_FAILURE_OBSERVER + '\n' + observer)
             page = context.new_page()
             def page_error(_):
                 result['pageErrorCount'] += 1
@@ -294,7 +338,7 @@ def main(guard=None, observer=CANDIDATE_OBSERVER, exercise_journey=exercise_sele
                        'selection_identity_invalid', 'preview_lead_boundary_missing', 'ui_flight_choices_mismatch',
                        'verified_quote_missing', 'application_preview_not_verified', 'application_price_mismatch',
                        'application_boundary_failed', 'initial_batch_not_complete', 'browser_or_budget_failure',
-                       'selected_journeys_incomplete'}
+                       'selected_journeys_incomplete', 'quote_unconfirmed'}
             result['status'] = 'incomplete'
             result['reason'] = str(error) if str(error) in allowed else 'ui_journey_not_completed'
             if page is not None:
@@ -305,6 +349,12 @@ def main(guard=None, observer=CANDIDATE_OBSERVER, exercise_journey=exercise_sele
         finally:
             guard.armed = False
             result.update(guard.receipt())
+            if page is not None:
+                try:
+                    failures = page.evaluate('window.__nextQuoteFailures || []')
+                    result['browserQuoteFailures'] = [safe_quote_failure(v) for v in failures[:2]] if isinstance(failures, list) else []
+                except Exception:
+                    result['browserQuoteFailures'] = []
             browser.close()
             (out / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
     print(json.dumps(result, ensure_ascii=False))
