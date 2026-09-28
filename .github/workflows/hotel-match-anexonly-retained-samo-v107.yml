@@ -15,7 +15,7 @@ env:
   CLAIM: '5865689904'
 jobs:
   audit:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4061 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/anexonly-retained-v107-run-20260928'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -64,3 +64,5 @@ jobs:
         with: {name: match-anexonly-retained-samo-v107-${{ github.run_id }}, path: terminal/, retention-days: 90, if-no-files-found: warn}
 
 # execute v107 on operational MATCH PR4061
+
+# registered for isolated run branch
