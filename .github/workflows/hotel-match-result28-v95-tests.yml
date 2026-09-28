@@ -1,4 +1,4 @@
-name: MATCH retrieve sealed SAMO refresh v117e
+name: MATCH refresh SAMO live30 native facts v117f
 'on':
   pull_request:
     types: [synchronize]
@@ -10,10 +10,10 @@ permissions:
   issues: read
   pull-requests: read
 concurrency:
-  group: match-retrieve-samo-v117e
+  group: match-samo-live30-native-v117f
   cancel-in-progress: false
 env:
-  OP: hotel-match-samo-live30-native-refresh-1971-20260928-v117e
+  OP: hotel-match-samo-live30-native-refresh-1971-20260928-v117f
 jobs:
   refresh:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.number == 4061 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
@@ -27,9 +27,9 @@ jobs:
       - name: Validate exact source
         run: |
           set -euo pipefail;umask 077;mkdir terminal
-          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_samo_live30_native_refresh_v117e.php)" = f8ad866aeeff99872ceca7ba2a1dbbedf72def92
-          php -l scripts/diagnostics/hotel_match_samo_live30_native_refresh_v117e.php
-      - name: Retrieve sealed v117e result without execution
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_samo_live30_native_refresh_v117f.php)" = abc09d65f058eb2252131f1125af1cdf64bb982b
+          php -l scripts/diagnostics/hotel_match_samo_live30_native_refresh_v117f.php
+      - name: Refresh stored native facts without provider access
         env:
           KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -40,19 +40,32 @@ jobs:
           key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
           if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
           chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
-          remote="$USER@$HOST";rel=".anytoour-match/operations/hotel-match-samo-live30-native-refresh-1971-20260928-v117e";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload\""
+          python3 - "$HEAD" <<'PY'
+          import json,sys
+          json.dump({'operation':'hotel-match-samo-live30-native-refresh-1971-20260928-v117f','source_sha':sys.argv[1],'state':'reserved_before_db_read','provider_http_calls':0,'database_writes':0},open('terminal/reservation.json','w'))
+          PY
+          scp "${opts[@]}" terminal/reservation.json "$remote:$rel/reservation.json"
+          git archive HEAD scripts/diagnostics | ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$rel/payload\""
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\"&&ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=1024M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_samo_live30_native_refresh_v117f.php\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
+          rc=$?
+          set -e
           scp "${opts[@]}" "$remote:$rel/result.json" terminal/result.json
           scp "${opts[@]}" "$remote:$rel/receipt.json" terminal/receipt.json
-          python3 - <<'PY'
-          import json,hashlib,pathlib
+          python3 - "$rc" <<'PY'
+          import json,hashlib,pathlib,sys
           d=json.load(open('terminal/result.json'));r=json.load(open('terminal/receipt.json'))
           assert r['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
-          print(json.dumps({k:d.get(k) for k in ['state','reason','error_class','files_examined','bytes_examined','live30_page_files','live30_catalog_sources','live30_unmapped_catalog_sources','raw_native_facts','provider_http_calls','database_writes','mapping_writes']},ensure_ascii=False))
+          assert d['provider_http_calls']==d['database_writes']==d['mapping_writes']==0
+          print(json.dumps({k:d.get(k) for k in ['state','reason','files_examined','bytes_examined','live30_page_files','live30_catalog_sources','live30_unmapped_catalog_sources','raw_native_facts']},ensure_ascii=False))
+          assert d['state']=='completed_retained_native_scan' and int(sys.argv[1])==0
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-retrieve-samo-v117e-${{ github.run_id }}
+          name: match-samo-live30-native-v117f-${{ github.run_id }}
           path: terminal/
           retention-days: 90
           if-no-files-found: warn
