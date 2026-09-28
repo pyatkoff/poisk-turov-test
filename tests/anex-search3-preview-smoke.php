@@ -340,12 +340,59 @@ search3_check($follow($readRequest, $state)['status'] === 'not_available', 'cata
 $currentMetadata = [];
 search3_check($follow($readRequest, $state)['status'] === 'not_available', 'inactive/missing catalog hotel accepted');
 $currentMetadata = $metadata;
-foreach ([['generation' => '7'], ['offer_ref' => 'private-concrete-a'], ['local_hotel_id' => '999'], ['criteria' => []], ['action' => 'flights']] as $invalid) {
+foreach ([['generation' => '7'], ['offer_ref' => 'private-concrete-a'], ['local_hotel_id' => '999'], ['criteria' => []], ['action' => 'quote']] as $invalid) {
     search3_reject(static function () use ($follow, $readRequest, &$state, $invalid) {
         $follow(array_replace($readRequest, $invalid), $state);
     }, 'invalid followup schema must not reach transport');
 }
 search3_check($readFactoryCalls === 0 && $transportCalls === 2, 'rejected read dispatched supplier');
+
+// Flight inventory is independent of APD, bound to the same concrete offer, and
+// read at most once. It does not authorize selecting flights or a final price.
+$flightRequest = array_replace($readRequest, ['action' => 'flights']);
+$flightState = $state;
+$flightCalls = 0;
+$flightReservations = [];
+$flightCheckpoint = static function (array &$pending) use (&$flightReservations): void { $flightReservations[] = $pending; };
+$flightFactory = static function () use (&$flightCalls, &$flightReservations, $flightRequest): AnyTourAnexClient {
+    search3_check(($flightReservations[0]['flights'][$flightRequest['offer_ref']]['status'] ?? '') === 'unknown', 'flights reserved before client');
+    return new AnyTourAnexClient('test-secret', static function (string $url) use (&$flightCalls): array {
+        ++$flightCalls;
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+        search3_check($query['action'] === 'FreightMonitor_FREIGHTSBYPACKET' && $query['CATCLAIM'] === 'private-concrete-a', 'exact retained CATCLAIM drives flight read');
+        return ['status' => 200, 'body' => json_encode(['FreightMonitor_FREIGHTSBYPACKET' => ['routes' => [[
+            'info' => ['date' => '2026-10-13', 'sourceTown' => 'Moscow', 'targetTown' => 'Istanbul'],
+            'freights' => [['name' => 'Регулярный', 'places' => []]],
+        ]]]])];
+    });
+};
+$flightResult = $follow($flightRequest, $flightState, $flightFactory, $flightCheckpoint);
+search3_check($flightResult['status'] === 'flights' && $flightResult['flights']['routes'][0]['options'][0]['name'] === 'Регулярный', 'flight continuation without APD');
+search3_check($flightResult['flights']['selected'] === false && $flightResult['flights']['final_price_verified'] === false
+    && $flightResult['flights']['included_in_search_price_verified'] === false, 'inventory promoted to selected/verified price');
+search3_check($follow($flightRequest, $flightState) === $flightResult && $flightCalls === 1, 'completed flights replayed');
+search3_check(strpos(json_encode($flightResult), 'private-concrete-a') === false && !isset($flightResult['flights']['offer_key']), 'flight private ref leaked');
+foreach ([['generation' => 8], ['search_ref' => str_repeat('a', 32)], ['local_hotel_id' => 998]] as $mismatch) {
+    search3_check($follow(array_replace($flightRequest, $mismatch), $flightState)['status'] !== 'flights', 'cross-context flights accepted');
+}
+search3_check($follow(array_replace($groupRequest, ['action' => 'flights']), $groupState)['status'] === 'not_concrete', 'group minimum used for flights');
+$unknownFlights = $state;
+$unknownFlights['flights'][$flightRequest['offer_ref']] = ['status' => 'unknown'];
+search3_check($follow($flightRequest, $unknownFlights)['status'] === 'flights_unknown' && $flightCalls === 1 && $readFactoryCalls === 0, 'unknown flight read replayed');
+$unreservedFlights = $state;
+try {
+    $follow($flightRequest, $unreservedFlights, $flightFactory);
+    throw new RuntimeException('FLIGHTS_WITHOUT_RESERVATION');
+} catch (RuntimeException $error) { search3_check($error->getMessage() === 'ANEX_RESERVATION_REQUIRED', 'flight reservation required'); }
+$failedFlights = $state;
+try {
+    $follow($flightRequest, $failedFlights, static function () { throw new RuntimeException('SYNTHETIC_FLIGHT_FAILURE'); }, $flightCheckpoint);
+    throw new RuntimeException('FLIGHT_FAILURE_NOT_EXERCISED');
+} catch (RuntimeException $error) { search3_check($error->getMessage() === 'SYNTHETIC_FLIGHT_FAILURE', 'flight failure propagated'); }
+search3_check($follow($flightRequest, $failedFlights)['status'] === 'flights_unknown', 'failed flight request retried');
+$expiredFlights = $flightState;
+$expiredFlights['gateway']['saved_offers']['expires_at'] = $now;
+search3_check($follow($flightRequest, $expiredFlights)['status'] === 'expired', 'cached flight receipt outlived search');
 
 $unknownState = $groupState;
 $failedCalls = 0;

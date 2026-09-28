@@ -770,7 +770,7 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
 {
     $keys = ['action', 'generation', 'search_ref', 'offer_ref', 'local_hotel_id'];
     if (count($request) !== count($keys) || array_diff($keys, array_keys($request))
-        || !in_array($request['action'] ?? null, ['offer', 'expand', 'additional_prices'], true)
+        || !in_array($request['action'] ?? null, ['offer', 'expand', 'additional_prices', 'flights'], true)
         || !is_int($request['generation'] ?? null) || $request['generation'] < 1 || $request['generation'] > 2147483647
         || !is_string($request['search_ref'] ?? null) || !preg_match('/\A[a-f0-9]{32}\z/D', $request['search_ref'])
         || !is_string($request['offer_ref'] ?? null) || !preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $request['offer_ref'])
@@ -852,6 +852,27 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
     $gateway = new AnyTourAnexPreviewGateway(
         $clientFactory, $resolver, [], $clock, $enforceGatewayRateLimit
     );
+    if ($request['action'] === 'flights') {
+        if (($offer['kind'] ?? null) !== 'concrete') return array_replace($reply, ['status' => 'not_concrete']);
+        $attempt = $state['flights'][$key] ?? null;
+        if ($attempt !== null && ($attempt['status'] ?? null) !== 'complete') {
+            return array_replace($reply, ['status' => 'flights_unknown']);
+        }
+        if ($attempt === null) {
+            if ($checkpoint === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');
+            $state['flights'][$key] = ['status' => 'unknown'];
+            $checkpoint($state);
+            if (!anytour_anex_search3_current($state, $clock())) return $reply;
+            $flights = $gateway->handle(['action' => 'flights', 'offer_key' => $key], $state['gateway']);
+            unset($flights['offer_key']);
+            $state['flights'][$key] = ['status' => 'complete', 'result' => $flights];
+            $attempt = $state['flights'][$key];
+        }
+        if (!anytour_anex_search3_current($state, $clock())) return $reply;
+        // Inventory is not a priced selection or package recalculation. APD is
+        // deliberately not a prerequisite for this independent read method.
+        return array_replace($reply, ['status' => 'flights', 'flights' => $attempt['result']]);
+    }
     if ($request['action'] === 'offer') {
         $result = $gateway->handle(['action' => 'offer', 'search_ref' => $request['search_ref'],
             'offer_key' => $key, 'local_hotel_id' => $local], $state['gateway']);
@@ -1009,7 +1030,7 @@ function anytour_anex_search3_http(): void
     if (!session_start()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
     try {
         $action = $request['action'] ?? 'search';
-        if (!in_array($action, ['search', 'continue', 'offer', 'expand', 'additional_prices', 'additional_prices_batch'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
+        if (!in_array($action, ['search', 'continue', 'offer', 'expand', 'additional_prices', 'additional_prices_batch', 'flights'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
         anytour_anex_search3_select_context($request, $_SESSION, time());
         if (!is_array($_SESSION['dictionaries'] ?? null)) $_SESSION['dictionaries'] = [];
         $app = is_file(__DIR__ . '/app/integrations/anex-search.php') ? __DIR__ . '/app/integrations' : __DIR__ . '/../app/integrations';
