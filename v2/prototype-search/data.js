@@ -669,6 +669,7 @@
     if(!current(run))return null;
     if(!response.ok||payload?.ok!==true)throw andromedaSearchFailure('response',response.status,
       ['not_found','method_not_allowed','forbidden','invalid_request','supplier_unavailable','monthly_quota_exhausted','search_not_supported'].includes(payload?.error)?payload.error:'invalid_response');
+    if(!data||typeof data!=='object'||Array.isArray(data))throw andromedaSearchFailure('response',response.status,'invalid_response');
     return data;
   }
   function andromedaContinuationAvailable(run){

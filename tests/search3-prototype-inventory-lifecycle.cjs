@@ -177,12 +177,14 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,quoteFailures,quoteWarnings,searchLogs,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
-for(const mode of ['http','quota','invalid-json','injection','transport','projection','empty','success','aborted'])test('SAMO ordinary search diagnostic '+mode,async()=>{
+for(const mode of ['http','quota','invalid-json','missing-data','false-data','injection','transport','projection','empty','success','aborted'])test('SAMO ordinary search diagnostic '+mode,async()=>{
  const secret='PRIVATE-RESPONSE-AND-URL';
  const h=harness({native:async body=>{
   if(mode==='transport')throw new Error(secret);
   if(mode==='aborted')throw new DOMException(secret,'AbortError');
   const payload=directAndromeda(body,{empty:mode==='empty'});
+  if(mode==='missing-data')delete payload.data;
+  if(mode==='false-data')payload.data=false;
   if(mode==='projection')payload.data.generation++;
   if(mode==='http'||mode==='quota'||mode==='injection')return {response:{ok:false,status:mode==='quota'?429:502,json:async()=>({ok:false,error:mode==='quota'?'monthly_quota_exhausted':mode==='injection'?secret:'supplier_unavailable',raw:secret})}};
   return {response:{ok:true,status:200,json:async()=>{if(mode==='invalid-json')throw Error(secret);return payload;}}};
@@ -201,6 +203,7 @@ for(const mode of ['http','quota','invalid-json','injection','transport','projec
    httpStatus:mode==='transport'||mode==='projection'?0:mode==='quota'?429:mode==='http'||mode==='injection'?502:200,
    code:mode==='transport'?'transport_error':mode==='projection'?'invalid_result':mode==='http'?'supplier_unavailable':mode==='quota'?'monthly_quota_exhausted':'invalid_response'});
   assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(o=>o.provider==='andromeda').length,0);
+  assert.equal(h.events.filter(e=>e.type==='provider'&&e.provider==='andromeda').at(-1).status,'error','invalid source must terminate instead of staying in loading');
  }
 });
 for(const mode of ['complete','http-error','wrong-offer','verified','malformed','stopped'])test('ANEX independent flight continuation '+mode,async()=>{
