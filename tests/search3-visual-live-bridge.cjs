@@ -238,6 +238,26 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  click('#modal-body [data-action="offer"][data-key^="andromeda%3A"]');assert.match(q('#modal-body').textContent,/SAMO STANDARD/);
  assert.equal(starts(),beforeOfferSearch+1,'late list updates and choosing its offer do not start another search');
  click('[data-action="close-modal"]');await settle();
+ // Hotel room choices and minimum must follow late initial results too.
+ transport.state.samoMeal='BB';
+ let releaseHotelSource;transport.state.samoSearchGate=new Promise(resolve=>releaseHotelSource=resolve);
+ const beforeHotelSearch=starts();click('#applied-search [data-action="edit-search"]');click('.search-submit');
+ await wait(()=>q('#results-summary').textContent.includes('2 варианта'));
+ click('[data-action="hotel-details"][data-id="501"]');
+ assert.equal(q('#hotel-room-count').textContent,'Номера: 2 · Туры: 2');
+ const overview=q('.hotel-detail-photos'),room=q('.room-overview[data-room="STANDARD SEA VIEW"]');room.open=true;
+ room.querySelector('summary').focus();
+ releaseHotelSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
+ assert.equal(q('#hotel-room-count').textContent,'Номера: 3 · Туры: 3');
+ assert.match(q('#hotel-detail-min').textContent,/119\s*000/);
+ assert.equal(q('.hotel-detail-photos'),overview,'overview is not recreated');
+ assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);
+ assert.equal(d.activeElement,q('.room-overview[data-room="STANDARD SEA VIEW"]>summary'));
+ const mealChoice=q('#hotel-room-meal');assert(mealChoice,'late different meal creates the existing meal filter');
+ mealChoice.value='Завтраки';mealChoice.dispatchEvent(new w.Event('change',{bubbles:true}));assert.equal(q('#hotel-room-count').textContent,'Номера: 1 · Туры: 1');
+
+ click('#modal-body [data-action="offer"][data-key^="andromeda%3A"]');assert.match(q('#modal-body').textContent,/SAMO STANDARD/);
+ assert.equal(starts(),beforeHotelSearch+1);click('[data-action="close-modal"]');await settle();
  const url=w.location.href;w.history.replaceState(null,'','/poisk-turov/');assert.equal(w.Search3CanonicalProfilesV1.create(()=>{}),null,'production consumer stays denied');w.history.replaceState(null,'',url);
  assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);
  console.log('PASS live bridge: truthful live/DB/application disclosure; explicit search only; departure error/retry/cancel/late-response recovery; three canonical sources → one hotel; current TV quote/flights/exact-price application dry-run; contact draft survives offer change while consent resets; SAMO verified receipt; ANEX concrete + non-final surcharge; actionable Back, retained receipts and late APD, cross-provider return without replay; no live HTTP');
