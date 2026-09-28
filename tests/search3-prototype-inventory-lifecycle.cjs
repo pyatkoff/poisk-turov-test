@@ -187,7 +187,7 @@ for(const mode of ['http','quota','invalid-json','injection','transport','projec
   if(mode==='http'||mode==='quota'||mode==='injection')return {response:{ok:false,status:mode==='quota'?429:502,json:async()=>({ok:false,error:mode==='quota'?'monthly_quota_exhausted':mode==='injection'?secret:'supplier_unavailable',raw:secret})}};
   return {response:{ok:true,status:200,json:async()=>{if(mode==='invalid-json')throw Error(secret);return payload;}}};
  }});
- await h.start();await flush();
+ await h.start();await h.poll();await flush();
  assert.equal(h.nativeCalls.length,1,'diagnostics must not retry or drain the source');
  const logs=h.searchLogs.map(s=>JSON.parse(s.slice('[AnyTour search] '.length)));
  assert.doesNotMatch(JSON.stringify(logs),/PRIVATE|offer_|search_ref|generation|params|FICTIONAL/);
