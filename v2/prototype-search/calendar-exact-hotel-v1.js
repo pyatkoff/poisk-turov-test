@@ -48,7 +48,13 @@
       headers: {'Content-Type': 'application/json', 'X-Requested-With': 'AnyTourSearch3'},
       body: JSON.stringify({params: request})
     });
-    if (!response.ok) throw new Error('Цены выбранного отеля из базы временно недоступны.');
+    if (!response.ok) {
+      const error = new Error('Цены выбранного отеля из базы временно недоступны.');
+      // Access, invalid-request and quota failures apply to the reader, not a
+      // single date window. Do not continue them with different dates.
+      error.stopCalendar = response.status >= 400 && response.status < 500;
+      throw error;
+    }
     const payload = await response.json(), data = payload?.data;
     if (payload?.ok !== true || !data || !source.sameScope(request, data.scope)) {
       throw new Error('Ответ базы не соответствует выбранному отелю.');
@@ -76,22 +82,29 @@
   }
 
   async function exactHotelCalendarPrices(search, from, to, signal, filters, onUpdate, legacyIds, hotelId) {
-    const snapshot = {hotels: [], observations: []};
+    const snapshot = {hotels: [], observations: [], partial: false};
     const show = () => {
       if (!signal?.aborted && typeof onUpdate === 'function') onUpdate(clone(snapshot));
     };
-    try {
-      for (let start = from; start <= to; start = plus(start, 22)) {
-        const end = plus(start, 21) < to ? plus(start, 21) : to;
+    for (let start = from; start <= to; start = plus(start, 22)) {
+      const end = plus(start, 21) < to ? plus(start, 21) : to;
+      let stop = false;
+      try {
         const rows = await exactWindow(search, start, end, signal, filters, legacyIds, hotelId);
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
         snapshot.hotels.push(...rows);
-        show();
+      } catch (error) {
+        if (signal?.aborted || error?.name === 'AbortError') throw error;
+        // Keep good windows on both sides of a recoverable failure. The failed
+        // window is not retried and later success cannot make this complete.
+        snapshot.partial = true;
+        stop = error?.stopCalendar === true;
       }
-      return {...snapshot, partial: false};
-    } catch (error) {
-      if (signal?.aborted || error?.name === 'AbortError') throw error;
-      return {...snapshot, partial: true};
+      show();
+      if (stop) break;
     }
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    return snapshot;
   }
 
   const descriptors = Object.getOwnPropertyDescriptors(source);
