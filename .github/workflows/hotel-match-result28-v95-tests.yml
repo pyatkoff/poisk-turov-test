@@ -1,4 +1,4 @@
-name: MATCH ANEX-only tail acquisition v111-v112
+name: MATCH ANEX-only tail SAMO writer v113
 'on':
   pull_request:
     types: [synchronize]
@@ -10,38 +10,35 @@ permissions:
   issues: read
   pull-requests: read
 concurrency:
-  group: match-anexonly-tail-v111-v112
+  group: match-anexonly-tail-samo-v113
   cancel-in-progress: false
 env:
-  PLAN: hotel-match-anexonly-tail-plan-1971-20260928-v111
-  ACQ: hotel-match-anexonly-tail-acquire-1971-20260928-v112
-  CLAIM: '5865931579'
+  OP: hotel-match-anexonly-tail-samo-write-1971-20260928-v113
+  CLAIM: '5865977826'
 jobs:
-  acquire:
+  write:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.number == 4061 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Validate source claim and Security
+      - name: Validate writer and Security
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail;umask 077;mkdir terminal
-          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_anexonly_tail_plan_v111.php)" = ed188fb85017d980413333e4cc7b0c60aa8e64a0
-          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_anexonly_tail_acquire_v112.py)" = 12b87c85b187ef1f5abc473df84bbbea8e76603b
-          php -l scripts/diagnostics/hotel_match_anexonly_tail_plan_v111.php
-          python3 scripts/diagnostics/hotel_match_anexonly_tail_acquire_v112.py --self-test
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_anexonly_tail_samo_write_v113.php)" = aa0cfbb29a69b500a5852c25d848546c1bc79b1e
+          php -l scripts/diagnostics/hotel_match_anexonly_tail_samo_write_v113.php
           python3 - <<'PY'
           import json,os,time,urllib.request
           def get(p):
               q=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+p,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
               with urllib.request.urlopen(q,timeout=30) as f:return json.load(f)
-          c=get('/issues/comments/'+os.environ['CLAIM']);assert c['user']['id']==226193297 and c['author_association']=='OWNER' and 'v111/v112' in c['body']
+          c=get('/issues/comments/'+os.environ['CLAIM']);assert c['user']['id']==226193297 and c['author_association']=='OWNER' and 'v113' in c['body']
           for _ in range(100):
               xs=[x for x in get('/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs'] if x['name']=='Security guard']
               if xs:
@@ -50,7 +47,7 @@ jobs:
               time.sleep(3)
           else:raise SystemExit('security')
           PY
-      - name: Plan and acquire tail
+      - name: Execute guarded tail SAMO transaction
         env:
           KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -61,28 +58,25 @@ jobs:
           key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
           if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
           chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
-          remote="$USER@$HOST";base=".anytoour-match/operations";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
-          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$base/$PLAN\";test ! -e \"\$HOME/$base/$ACQ\";mkdir -p \"\$HOME/$base/$PLAN\" \"\$HOME/$base/$ACQ/payload\""
-          git archive HEAD scripts/diagnostics app/integrations|ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$base/$ACQ/payload\""
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\"&&ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$base/$PLAN\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=768M \"\$HOME/$base/$ACQ/payload/scripts/diagnostics/hotel_match_anexonly_tail_plan_v111.php\" --execute"
-          scp "${opts[@]}" "$remote:$base/$PLAN/result.json" terminal/plan.json
-          PLAN_SHA="$(sha256sum terminal/plan.json|awk '{print $1}')"
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload\""
           python3 - <<'PY'
           import json
-          json.dump({'operation':'hotel-match-anexonly-tail-acquire-1971-20260928-v112','state':'reserved_before_provider_access','maximum_hotels':100,'daily_limit':3000,'operation_call_cap':600,'operator_filter_sent':False,'continue_calls':0,'dates_calls':0},open('terminal/reservation.json','w'))
+          json.dump({'operation':'hotel-match-anexonly-tail-samo-write-1971-20260928-v113','state':'reserved_before_db_write','maximum_writes':20,'provider_http_calls':0},open('terminal/reservation.json','w'))
           PY
-          scp "${opts[@]}" terminal/reservation.json "$remote:$base/$ACQ/reservation.json"
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\"&&ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$base/$ACQ\" MATCH_PLAN_PATH=\"\$HOME/$base/$PLAN/result.json\" MATCH_PLAN_SHA256='$PLAN_SHA' MATCH_CALL_CAP=600 python3 \"\$HOME/$base/$ACQ/payload/scripts/diagnostics/hotel_match_anexonly_tail_acquire_v112.py\" --execute"
-          scp "${opts[@]}" "$remote:$base/$ACQ/result.json" terminal/result.json;scp "${opts[@]}" "$remote:$base/$ACQ/receipt.json" terminal/receipt.json
+          scp "${opts[@]}" terminal/reservation.json "$remote:$rel/reservation.json"
+          git archive HEAD scripts/diagnostics app/integrations|ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$rel/payload\""
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\"&&ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=768M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_anexonly_tail_samo_write_v113.php\" --execute">terminal/stdout.txt
+          scp "${opts[@]}" "$remote:$rel/result.json" terminal/result.json;scp "${opts[@]}" "$remote:$rel/receipt.json" terminal/receipt.json
           python3 - <<'PY'
           import json,hashlib,pathlib
-          p=json.load(open('terminal/plan.json'));d=json.load(open('terminal/result.json'));r=json.load(open('terminal/receipt.json'));assert r['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest();assert d['state'] in ('completed_read_only','terminal_quota_stop_no_replay') and d['database_writes']==d['mapping_writes']==0 and d['continue_calls']==d['dates_calls']==0
-          print(json.dumps({'scope':p['scope_count'],'countries':p['country_counts'],'provider_calls':d['provider_calls'],'daily_after':d['daily_accounted_after_local_ledger'],'single_native':d['single_native_chunk_unique_count'],'by_operator':d['single_native_by_operator']},ensure_ascii=False))
+          d=json.load(open('terminal/result.json'));r=json.load(open('terminal/receipt.json'));assert r['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest();assert d['state'] in ('committed_readback_verified','completed_no_new_writes') and d['provider_http_calls']==0
+          print(json.dumps({k:d.get(k) for k in ['state','mapping_writes','primary_samo_writes','coverage_before','coverage_after','held','already']},ensure_ascii=False))
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-anexonly-tail-v111-v112-${{ github.run_id }}
+          name: match-anexonly-tail-samo-v113-${{ github.run_id }}
           path: terminal/
           retention-days: 90
           if-no-files-found: warn
