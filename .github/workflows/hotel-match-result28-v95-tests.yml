@@ -1,0 +1,73 @@
+name: MATCH bulk write all CURRENT-ready neither600 rows v122
+'on':
+  pull_request:
+    types: [synchronize]
+    paths:
+      - .github/workflows/hotel-match-result28-v95-tests.yml
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: match-neither600-bulk-write-v122
+  cancel-in-progress: false
+env:
+  OP: hotel-match-neither600-bulk-write-1971-20260928-v122
+jobs:
+  refresh:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.number == 4061 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate exact source
+        run: |
+          set -euo pipefail;umask 077;mkdir terminal
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_neither600_bulk_write_v122.php)" = cbb46500f0f5df5c65752ad3ed7c3a546b3c0a11
+          php -l scripts/diagnostics/hotel_match_neither600_bulk_write_v122.php
+      - name: Execute one bulk transaction for all ready rows
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload\""
+          python3 - "$HEAD" <<'PY'
+          import json,sys
+          json.dump({'operation':'hotel-match-neither600-bulk-write-1971-20260928-v122','source_sha':sys.argv[1],'state':'reserved_before_db_write','maximum_writes':32,'provider_http_calls':0},open('terminal/reservation.json','w'))
+          PY
+          scp "${opts[@]}" terminal/reservation.json "$remote:$rel/reservation.json"
+          git archive HEAD scripts/diagnostics app/integrations | ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$rel/payload\""
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\"&&ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=1024M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_neither600_bulk_write_v122.php\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
+          rc=$?
+          set -e
+          scp "${opts[@]}" "$remote:$rel/result.json" terminal/result.json
+          scp "${opts[@]}" "$remote:$rel/receipt.json" terminal/receipt.json
+          scp "${opts[@]}" "$remote:$rel/write-plan.json" terminal/write-plan.json || true
+          python3 - "$rc" <<'PY'
+          import json,hashlib,pathlib,sys
+          d=json.load(open('terminal/result.json'));r=json.load(open('terminal/receipt.json'))
+          assert r['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert d['provider_http_calls']==0 and d['state'] in ('committed_readback_verified','completed_no_new_writes')
+          if d['state']=='committed_readback_verified': assert d['readback_verified'] is True and d['mapping_writes']<=32
+          print(json.dumps({k:d.get(k) for k in ['state','mapping_writes','primary_samo_writes','direct_anex_writes','coverage_before','coverage_after','held','already']},ensure_ascii=False))
+          assert int(sys.argv[1])==0
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-neither600-bulk-write-v122-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: warn

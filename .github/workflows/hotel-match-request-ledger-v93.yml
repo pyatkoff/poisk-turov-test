@@ -1,0 +1,101 @@
+name: MATCH actual request ledger v93
+'on':
+  pull_request:
+    types: [opened]
+    paths:
+      - .github/workflows/hotel-match-request-ledger-v93.yml
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: hotel-match-request-ledger-v93
+  cancel-in-progress: false
+env:
+  OP: hotel-match-request-ledger-1971-20260928-v93
+  CLAIM: '5860552776'
+jobs:
+  read-only-ledger:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928' && github.event.pull_request.draft && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Exact source and request-ledger regression tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail; umask 077; mkdir terminal
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_request_ledger_v93.php)" = a0749837ccdb7db09376027b7aff5da8c5659c01
+          test "$(sha256sum scripts/diagnostics/hotel_match_request_ledger_v93.php | cut -d' ' -f1)" = 8157c1538b318ff552a2d974a39a5aff1d2da136fc188fc9eaacd2c8e86fe6c6
+          git merge-base --is-ancestor e9daf127ba9446c5cbee0963cf7b292c0bc61f8a HEAD
+          php -l scripts/diagnostics/hotel_match_request_ledger_v93.php
+          php scripts/diagnostics/hotel_match_request_ledger_v93.php --self-test | tee terminal/tests.txt
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          def get(path):
+              req=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:return json.load(f)
+          c=get('/issues/comments/'+os.environ['CLAIM'])
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for term in ['request-ledger repair v93','No supplier acquisition in v93','no mapping writes','no merge/deploy']:assert term in c['body']
+          pr=get('/pulls/'+os.environ['PR']);assert pr['draft'] and pr['state']=='open' and pr['head']['sha']==os.environ['HEAD']
+          for i in range(100):
+              rs=get('/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs']
+              ss=[r for r in rs if r['name']=='Security guard']
+              if ss:
+                  r=max(ss,key=lambda r:r['id'])
+                  if r['status']=='completed':assert r['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Inventory actual receipts and CURRENT coverage without supplier access
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/match93-key"; known="$RUNNER_TEMP/match93-known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          python3 - <<'PY'
+          import json,os
+          with open('terminal/reservation.json','x') as f:json.dump({'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'claim':os.environ['CLAIM'],'provider_http_calls':0,'database_writes':0,'mapping_writes':0,'state':'reserved_before_read_only_inventory'},f)
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload\""
+          scp "${opts[@]}" terminal/reservation.json "$remote:$rel/reservation.json"
+          git archive HEAD scripts/diagnostics app/integrations | ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$rel/payload\""
+          set +e
+          ssh "${opts[@]}" "$remote" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=768M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_request_ledger_v93.php\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
+          rc=$?
+          set -e
+          scp "${opts[@]}" "$remote:$rel/result.json" terminal/result.json
+          scp "${opts[@]}" "$remote:$rel/receipt.json" terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==os.environ['HEAD']
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          assert r['state']=='completed_read_only_request_ledger' and r['safe_to_query_now'] is False
+          print(json.dumps({k:r[k] for k in ['state','coverage_current','counts','scan','quota_current']},ensure_ascii=False))
+          PY
+          exit "$rc"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-request-ledger-v93-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: warn

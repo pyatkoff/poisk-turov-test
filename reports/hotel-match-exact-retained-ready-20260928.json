@@ -1,0 +1,91 @@
+{
+  "generated_from": "retained v93 request ledger + v77 SAMO native facts + v109/v112 terminal acquisitions",
+  "rule": "one unique exact same-operator native ID; no accepted source/operator/target conflict",
+  "current_baseline": {
+    "full_triple": 2785,
+    "total": 4399,
+    "remaining": 1614
+  },
+  "ready_existing_canonical": [
+    {
+      "tv": 420,
+      "catalog": "9501",
+      "operator": "Intourist",
+      "native": "24402",
+      "gap": "neither"
+    },
+    {
+      "tv": 28529,
+      "catalog": "475947",
+      "operator": "FUN&SUN",
+      "native": "751870",
+      "gap": "neither"
+    },
+    {
+      "tv": 16944,
+      "catalog": "2000034238",
+      "operator": "FUN&SUN",
+      "native": "211585",
+      "gap": "neither"
+    },
+    {
+      "tv": 76753,
+      "catalog": "2000087342",
+      "operator": "FUN&SUN+Intourist",
+      "native": "859965/51541",
+      "gap": "anex_only"
+    },
+    {
+      "tv": 66290,
+      "catalog": "2000052048",
+      "operator": "Intourist",
+      "native": "23147",
+      "gap": "anex_only"
+    },
+    {
+      "tv": 67304,
+      "catalog": "2000055490",
+      "operator": "Intourist",
+      "native": "23057",
+      "gap": "anex_only"
+    },
+    {
+      "tv": 108356,
+      "catalog": "269426",
+      "operator": "Intourist",
+      "native": "2977",
+      "gap": "anex_only"
+    },
+    {
+      "tv": 42903,
+      "catalog": "3126",
+      "operator": "FUN&SUN",
+      "native": "849821",
+      "gap": "anex_only"
+    }
+  ],
+  "exact_missing_canonical_source": [
+    {
+      "tv": 2191,
+      "catalog": "859893",
+      "operator": "FUN&SUN",
+      "native": "859893",
+      "gap": "neither"
+    },
+    {
+      "tv": 148230,
+      "catalog": "2000113715",
+      "operator": "Intourist",
+      "native": "66674",
+      "gap": "anex_only"
+    },
+    {
+      "tv": 73924,
+      "catalog": "2000092639",
+      "operator": "Intourist",
+      "native": "23335",
+      "gap": "anex_only"
+    }
+  ],
+  "note": "These are retained-evidence candidates only. CURRENT DB guards must be rechecked immediately before write; rows with changed ownership/manual exclusion must be held."
+}
