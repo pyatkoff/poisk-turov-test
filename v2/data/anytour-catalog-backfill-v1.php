@@ -29,8 +29,8 @@ final class AnyTourCatalogBackfillV1
 
     /**
      * Content-ready is deliberately narrow: active named saved hotel + successful
-     * detail row + nonblank saved description + at least one image accepted by the
-     * same presentation sanitizer used by the canonical seed. No identity is inferred.
+     * full detail evidence accepted by the same NEW-creation gate as seed().
+     * Rejects are aggregate diagnostics only; no identity/status is written.
      */
     public function planNext(mixed $requestedLimit): array
     {
@@ -56,12 +56,27 @@ final class AnyTourCatalogBackfillV1
 
             $contentReadyTotal = $contentReadyBridged = $contentReadyMissing = 0;
             $selected = [];
+            $contentRejected = 0; $rejectionReasons = [];
             foreach (array_chunk($candidateIds, HOTEL_PRESENTATION_READ_LIMIT) as $chunk) {
                 $read = hotel_presentation_read_many($this->pdo, $chunk);
+                // Bound raw-card memory to this chunk and use the same read-only snapshot.
+                $marks = implode(',', array_fill(0, count($chunk), '?'));
+                $detailRead = $this->pdo->prepare("SELECT hotel_id,status,raw_json,source_hash
+                    FROM catalog_hotel_details WHERE hotel_id IN ($marks)");
+                if ($detailRead === false || !$detailRead->execute($chunk)) {
+                    throw new RuntimeException('Could not read saved creation evidence');
+                }
+                $details = $detailRead->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
                 foreach ($read['items'] as $profile) {
-                    // The shared reader has already removed unsafe/invalid media here.
-                    if ($profile['description'] === null || $profile['images'] === []) continue;
                     $legacyId = (int)$profile['id'];
+                    $issues = AnyTourCanonicalCatalog::creationContentIssues($profile, $details[$legacyId] ?? null);
+                    if ($issues !== []) {
+                        $contentRejected++;
+                        foreach (array_unique($issues) as $reason) {
+                            $rejectionReasons[$reason] = ($rejectionReasons[$reason] ?? 0) + 1;
+                        }
+                        continue;
+                    }
                     $contentReadyTotal++;
                     if (isset($bridges[$legacyId])) {
                         $contentReadyBridged++;
@@ -77,11 +92,14 @@ final class AnyTourCatalogBackfillV1
             throw $e;
         }
 
+        ksort($rejectionReasons, SORT_STRING);
         $report = [
             'status' => 'backfill_plan_read_only',
-            'definition' => 'active_named_success_description_safe_images',
+            'definition' => 'active_named_success_full_tv_hash_identity_description_safe_images',
             'limit' => $limit,
             'saved_detail_candidates' => count($candidateIds),
+            'content_rejected_total' => $contentRejected,
+            'content_rejection_reasons' => $rejectionReasons,
             'content_ready_total' => $contentReadyTotal,
             'content_ready_bridged' => $contentReadyBridged,
             'content_ready_missing' => $contentReadyMissing,
