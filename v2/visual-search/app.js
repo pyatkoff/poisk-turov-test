@@ -589,13 +589,17 @@ function roomOfferChoiceHTML(o){
 }
 function renderHotelRooms(id,meal='',restoredRooms=null){
  const h=hotels.find(h=>h.id===id);if(!h||modalType!=='hotel-details')return;
- const offers=hotelOffers(h).filter(o=>!meal||o.meal===meal),rooms=[...new Set(offers.map(o=>o.room))].map(room=>({room,offers:offers.filter(o=>o.room===room)}));
+ const allOffers=hotelOffers(h),meals=[...new Set(allOffers.map(o=>o.meal))];
+ let mealControl=$('#hotel-room-meal');
+ if(!mealControl&&meals.length>1&&allOffers.length>2){$('#hotel-room-count').insertAdjacentHTML('beforebegin',`<label class="hotel-room-meal-filter">Питание в туре<select id="hotel-room-meal" data-id="${h.id}"></select></label>`);mealControl=$('#hotel-room-meal');}
+ if(mealControl){const values=['',...meals];if(meal&&!values.includes(meal))values.push(meal);if(JSON.stringify([...mealControl.options].map(o=>o.value))!==JSON.stringify(values))mealControl.innerHTML=values.map(value=>`<option value="${esc(value)}">${esc(value||'Любое питание')}</option>`).join('');}
+ const offers=allOffers.filter(o=>!meal||o.meal===meal),rooms=[...new Set(offers.map(o=>o.room))].map(room=>({room,offers:offers.filter(o=>o.room===room)}));
  $('#hotel-room-count').textContent=`Номера: ${rooms.length} · Туры: ${offers.length}`;
  const roomCards=$('.hotel-room-cards');roomCards.classList.toggle('single-direct-offer',offers.length===1);
  roomCards.innerHTML=rooms.map(({room,offers:rows})=>{
   const choices=`<div class="room-offer-list">${rows.slice(0,2).map(roomOfferChoiceHTML).join('')}${rows.length>2?`<details class="hotel-room-more"><summary><span class="room-more-closed">Ещё ${offerCountText(rows.length-2)}</span><span class="room-more-open">Скрыть остальные туры</span></summary>${rows.slice(2).map(roomOfferChoiceHTML).join('')}</details>`:''}</div>`;
   const title=`<h4>${esc(room||'Тип номера уточняется')}</h4>`;
-  if(rooms.length===1)return `<article class="hotel-room-card"><header class="room-choice-main">${title}<span class="room-choice-label">${offerCountText(rows.length)}</span></header>${choices}</article>`;
+  if(rooms.length===1)return `<article class="hotel-room-card" data-room="${esc(room)}"><header class="room-choice-main">${title}<span class="room-choice-label">${offerCountText(rows.length)}</span></header>${choices}</article>`;
   const meals=[...new Set(rows.map(mealLabel))].map(esc).join(' · '),min=Math.min(...rows.map(o=>o.total));
   return `<details class="hotel-room-card room-overview" data-room="${esc(room)}" ${restoredRooms?.includes(room)?'open':''}><summary class="room-overview-toggle"><span class="room-overview-name">${title}<span class="room-overview-meals">${meals}</span></span><span class="room-overview-bottom"><strong class="room-overview-price">от ${money(min)}</strong><span class="room-overview-action"><span class="room-overview-closed">${offerCountText(rows.length)}</span><span class="room-overview-open">Свернуть</span><span class="rotate-arrow" aria-hidden="true">⌄</span></span></span></summary>${choices}</details>`;
  }).join('')||'<p class="tour-missing">По текущим условиям предложений нет. Измените даты или фильтры поиска.</p>';
@@ -606,6 +610,20 @@ function renderHotelRooms(id,meal='',restoredRooms=null){
  if(button){button.dataset.action=offers.length===1?'offer':'hotel-section';button.dataset.target='hotel-rooms-heading';if(offers.length===1)button.dataset.key=offers[0].key;else delete button.dataset.key;button.innerHTML=(offers.length===1?'Смотреть тур':'Выбрать тур')+' '+icon('arrow');button.disabled=!offers.length;}
  queueMicrotask(()=>{observeHotelRoomChoices();syncHotelSectionNavigation();});
  rememberUIRoute();
+}
+function refreshOpenHotelRooms(){
+ if(modalType!=='hotel-details')return;
+ const body=$('#modal-body'),id=Number($('.hotel-section-nav')?.dataset.hotelId);if(!id)return;
+ const focused=document.activeElement,focus=focusReference(focused,body),scroll=body.scrollTop;
+ const openRooms=[...body.querySelectorAll('.room-overview[open],article.hotel-room-card')].map(room=>room.dataset.room);
+ const expandedMore=[...body.querySelectorAll('.hotel-room-more[open]')].map(more=>more.closest('[data-room]').dataset.room);
+ const summaryRoom=focused?.matches('summary')?focused.closest('[data-room]')?.dataset.room:null;
+ const summaryMore=focused?.parentElement?.classList.contains('hotel-room-more');
+ renderHotelRooms(id,$('#hotel-room-meal')?.value||'',openRooms);
+ for(const room of body.querySelectorAll('.hotel-room-card[data-room]'))if(expandedMore.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
+ if(summaryRoom!==null&&summaryRoom!==undefined){const room=[...body.querySelectorAll('.hotel-room-card[data-room]')].find(room=>room.dataset.room===summaryRoom);room?.querySelector(summaryMore?'.hotel-room-more>summary':':scope>summary')?.focus({preventScroll:true});}
+ else if(focus&&document.activeElement!==focus.element)restoreFocus(focus,$('#hotel-room-count'),body);
+ body.scrollTop=scroll;
 }
 function observeHotelRoomChoices(){
  hotelRoomObserver?.disconnect();hotelRoomObserver=null;
@@ -1546,6 +1564,7 @@ function mergeSearchResults(event){
  operators.splice(0,operators.length,...new Set(hotels.flatMap(h=>h.offers.map(o=>o.operator))));
  hotels.forEach(h=>h.offers.forEach(o=>{if(!data.live)mealNames[o.meal]=o.meal;else if(Number.isSafeInteger(o.mealPlanId)&&o.mealPlanId>0&&o.mealFacet){const previous=mealNames[o.mealFacet];if(previous===undefined||previous===o.mealPlanId)mealNames[o.mealFacet]=o.mealPlanId;}}));
  refreshOpenOfferList();
+ refreshOpenHotelRooms();
 }
 function commitSearchDraft(){
  if(currentFilterBudgetEdit(state.filters)){
