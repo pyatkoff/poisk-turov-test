@@ -298,14 +298,16 @@ const server=http.createServer((req,res)=>{
   const movingRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await movingRoom.locator(':scope>summary').click();
   const movingOffer=movingRoom.locator('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]');
   assert.equal(await movingOffer.evaluate(el=>Boolean(el.closest('.hotel-room-more'))),false,'chosen offer starts in the visible first two');
-  await movingOffer.scrollIntoViewIfNeeded();await movingOffer.focus();const movedOfferScroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);await movingOffer.click();
+  await movingOffer.scrollIntoViewIfNeeded();await movingOffer.focus();const movedOfferPosition=await movingOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));await movingOffer.click();
   await page.waitForFunction(()=>/Не удалось подтвердить цену|Условия поиска изменились/.test(document.querySelector('#modal-body').textContent));
   releaseMovedOfferSource();transport.state.samoSearchGate=null;await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('11 вариантов'));
   await page.locator('#modal-back').click();
   const movedOffer=page.locator('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]'),movedMore=movedOffer.locator('xpath=ancestor::details[contains(@class,"hotel-room-more")]');
   assert.equal(await movedMore.count(),1,'late cheaper offer moves the exact returning choice below the first two');
   assert(await movedMore.evaluate(el=>el.open),'Back reveals the exact returning offer after its position changes');
-  assert(await movedOffer.evaluate(el=>document.activeElement===el));assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),movedOfferScroll);
+  assert(await movedOffer.evaluate(el=>document.activeElement===el));assert(await movedOffer.isVisible());
+  const returnedPosition=await movedOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));
+  assert(Math.abs(returnedPosition.top-movedOfferPosition.top)<2,'Back preserves the chosen offer viewport position after reordering');assert(returnedPosition.scroll>=movedOfferPosition.scroll);
   await page.screenshot({path:path.join(evidence,`hotel-moved-offer-back-${width}.png`)});
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,beforeMovedOfferSearch+1);
   await page.locator('[data-action="close-modal"]').click();transport.state.samoRoom='SAMO STANDARD';

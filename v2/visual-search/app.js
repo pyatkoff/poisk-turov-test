@@ -722,7 +722,8 @@ function focusReference(element,root=document){
  if(!element||element===document.body||element===document.documentElement||!root.contains(element))return null;
  let selector=element.id?'#'+CSS.escape(element.id):'';
  if(!selector&&element.dataset?.action){selector='[data-action="'+CSS.escape(element.dataset.action)+'"]';for(const key of ['id','key','value','room'])if(element.dataset[key]!==undefined)selector+='[data-'+key+'="'+CSS.escape(element.dataset[key])+'"]';const card=element.closest('.hotel-card');if(card)selector='#'+CSS.escape(card.id)+' '+selector;}
- return {element,selector};
+ const scroller=root.querySelector?.('#modal-body'),top=scroller?.contains(element)?element.getBoundingClientRect().top-scroller.getBoundingClientRect().top:null;
+ return {element,selector,top};
 }
 function restoreFocus(reference,fallback,root=document){
  const element=reference?.element?.isConnected&&root.contains(reference.element)?reference.element:reference?.selector?root.querySelector(reference.selector):null;
@@ -863,7 +864,9 @@ function modalBack(){
   if(returningOffer?.matches('[data-action="offer"]'))returningOffer.closest('.hotel-room-more')?.setAttribute('open','');
  }
  restoringModal=false;if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='compare')renderCompare();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);refreshSavedTourControls();
- restoreFocus(previous.focus,$('#modal-title'),$('#modal'));$('#modal-body').scrollTop=previous.scroll;syncHotelSectionNavigation();rememberUIRoute();
+ const modalBody=$('#modal-body');restoreFocus(previous.focus,$('#modal-title'),$('#modal'));modalBody.scrollTop=previous.scroll;
+ if(Number.isFinite(previous.focus?.top)&&modalBody.contains(document.activeElement)){const top=document.activeElement.getBoundingClientRect().top-modalBody.getBoundingClientRect().top;modalBody.scrollTop+=top-previous.focus.top;}
+ syncHotelSectionNavigation();rememberUIRoute();
 }
 $('#modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal()}});
