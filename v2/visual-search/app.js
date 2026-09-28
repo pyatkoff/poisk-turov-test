@@ -852,7 +852,13 @@ function modalBack(){
   if(previous.type==='provider-application')openAndromedaApplicationPreview();
   if(previous.type==='anex-application')openAnexApplicationPreview();
  }
- restoringModal=false;if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='compare')renderCompare();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);if(previous.type==='hotel-details')queueMicrotask(observeHotelRoomChoices);refreshSavedTourControls();
+ if(previous.type==='hotel-details'){
+  const id=Number($('.hotel-section-nav')?.dataset.hotelId),h=hotels.find(h=>h.id===id);
+  const meal=$('#hotel-room-meal')?.value||'',meals=new Set(hotelOffers(h).map(o=>o.meal));
+  const openRooms=$$('.room-overview[open],article.hotel-room-card').map(room=>room.dataset.room);
+  renderHotelRooms(id,!meal||meals.has(meal)?meal:'',openRooms);
+ }
+ restoringModal=false;if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='compare')renderCompare();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);refreshSavedTourControls();
  restoreFocus(previous.focus,$('#modal-title'),$('#modal'));$('#modal-body').scrollTop=previous.scroll;syncHotelSectionNavigation();rememberUIRoute();
 }
 $('#modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
