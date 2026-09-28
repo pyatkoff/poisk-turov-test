@@ -1,0 +1,179 @@
+name: Search3 HC-1 Tourvisor missing content D1
+
+on:
+  push:
+    branches: [ops/hc1-tv-missing-content-20260927-d1]
+    paths: [.github/workflows/search3-hc1-tv-content-d1.yml]
+
+permissions:
+  contents: read
+
+# Shares the existing collector's quota/concurrency slot, not its broader scope.
+concurrency:
+  group: anytour-hotel-details-collector
+  cancel-in-progress: false
+
+jobs:
+  first-intake:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/ops/hc1-tv-missing-content-20260927-d1' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'HC-1 D1: owner-requested native retry; bounded first intake'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: a1968cb819c126be8e7d287f9176acb2647e6f67
+      OPERATION: hc1-tv-missing-content-20260927-d1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: a1968cb819c126be8e7d287f9176acb2647e6f67
+          persist-credentials: false
+
+      - name: Prepare exact existing content CLI without publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git rev-parse HEAD:scripts/catalog/anytour_identity_only_hotel_content_v1.php)" = def34d79c83fd3e5d217db11745aca7a4003c61e
+          mkdir -p "$RUNNER_TEMP/hc1-d1-evidence"
+          php -l scripts/catalog/anytour_identity_only_hotel_content_v1.php >/dev/null
+          git archive --format=tar.gz HEAD \
+            scripts/catalog/anytour_identity_only_hotel_content_v1.php \
+            v2/data > "$RUNNER_TEMP/hc1-d1-source.tar.gz"
+          sha256sum "$RUNNER_TEMP/hc1-d1-source.tar.gz" | cut -d' ' -f1 > "$RUNNER_TEMP/hc1-d1-source.sha256"
+          printf 'operation=%s\nsource=%s\nowner_claim=5880018336\nlimit=80\nhttp_budget=80\nmax_attempts=1\nmin_interval_ms=650\n' \
+            "$OPERATION" "$SOURCE_SHA" > "$RUNNER_TEMP/hc1-d1-evidence/scope.txt"
+
+      - name: Single original D1 attempt with private receipt and no replay
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/hc1-d1-key"
+          trap 'rm -f "$RUNNER_TEMP/hc1-d1-key"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          opts=(-i "$key" -o BatchMode=yes -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=accept-new
+            -o "UserKnownHostsFile=$RUNNER_TEMP/hc1-d1-known-hosts"
+            -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$USER_VALUE@$HOST_VALUE"
+          bundle_sha="$(cat "$RUNNER_TEMP/hc1-d1-source.sha256")"
+          [[ "$bundle_sha" =~ ^[a-f0-9]{64}$ ]]
+
+          # Reserve the original operation atomically outside the public site.
+          # An existing reservation/started/unknown outcome is never retried.
+          ssh "${opts[@]}" "$remote" 'bash -s' <<'RESERVE'
+          set -euo pipefail
+          umask 077
+          test -r "$HOME/www/anytoour.ru/config.php"
+          command -v php >/dev/null
+          command -v timeout >/dev/null
+          base="$HOME/.anytour-ops"
+          work="$base/hc1-tv-missing-content-20260927-d1"
+          test ! -L "$base"
+          mkdir -p "$base"
+          chmod 700 "$base"
+          if ! mkdir -m 700 "$work"; then
+            echo 'D1_ALREADY_RESERVED_NO_REPLAY' >&2
+            exit 73
+          fi
+          printf '%s\n' 'owner_claim=5880018336' 'source=a1968cb819c126be8e7d287f9176acb2647e6f67' > "$work/reserved"
+          RESERVE
+
+          scp -q "${opts[@]}" "$RUNNER_TEMP/hc1-d1-source.tar.gz" \
+            "$remote:.anytour-ops/$OPERATION/source.tar.gz"
+
+          ssh "${opts[@]}" "$remote" "bash -s -- '$bundle_sha'" <<'INTAKE' \
+            | tee "$RUNNER_TEMP/hc1-d1-evidence/intake.txt"
+          set -euo pipefail
+          umask 077
+          work="$HOME/.anytour-ops/hc1-tv-missing-content-20260927-d1"
+          test -f "$work/reserved"
+          test ! -e "$work/started"
+          test ! -e "$work/completed"
+          cd "$work"
+          printf '%s  source.tar.gz\n' "$1" | sha256sum -c - >/dev/null
+          mkdir source
+          tar --no-same-owner -xzf source.tar.gz -C source
+          config="$HOME/www/anytoour.ru/config.php"
+          cli="$work/source/scripts/catalog/anytour_identity_only_hotel_content_v1.php"
+          test -r "$config"
+          php -l "$cli" >/dev/null
+          through="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          # First acquisition only: do not refresh any already retained card or
+          # retry a previous provider failure as part of this bounded operation.
+          args=(--limit=80 --retry-before=1970-01-01T00:00:00Z "--demand-through=$through")
+          php -d "auto_prepend_file=$config" "$cli" "${args[@]}" > plan.json
+          plan_sha="$(php -r '
+            $p=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);
+            if (($p["status"]??"")!=="prepared_read_only" || ($p["limit"]??0)!==80
+              || ($p["supplierCalls"]??-1)!==0 || ($p["writes"]??-1)!==0
+              || !isset($p["selected"]) || !is_array($p["selected"]) || count($p["selected"])>80
+              || !preg_match("/^[a-f0-9]{64}$/D",$p["planSha256"]??"")) exit(2);
+            foreach ($p["selected"] as $r) {
+              if (!array_key_exists("previousDetailStatus",$r)
+                || !array_key_exists("previousDetailFetchedAt",$r)
+                || $r["previousDetailStatus"]!==null || $r["previousDetailFetchedAt"]!==null
+                || !is_int($r["tourvisorHotelId"]??null) || $r["tourvisorHotelId"]<1
+                || !is_int($r["anytourHotelId"]??null) || $r["anytourHotelId"]<1) exit(3);
+            }
+            echo $p["planSha256"];
+          ' plan.json)"
+          [[ "$plan_sha" =~ ^[a-f0-9]{64}$ ]]
+          selected="$(php -r '$p=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); echo count($p["selected"]);' plan.json)"
+          printf 'D1_PLAN selected=%s plan_sha=%s\n' "$selected" "$plan_sha"
+          if test "$selected" -eq 0; then
+            printf '%s\n' '{"status":"no_first_acquisition_candidates","selected":0,"httpAttempts":0,"canonicalProfileWrites":0,"mappingWrites":0}' > result.json
+            date -u +%Y-%m-%dT%H:%M:%SZ > completed
+            cat result.json
+            exit 0
+          fi
+
+          # This marker precedes the first possible supplier/DB write.
+          # It stays on any failure or lost response; rerun is not recovery.
+          printf 'plan=%s\nsource=a1968cb819c126be8e7d287f9176acb2647e6f67\n' "$plan_sha" > started
+          set +e
+          timeout --signal=TERM --kill-after=15s 900s \
+            php -d "auto_prepend_file=$config" "$cli" "${args[@]}" \
+              "--apply-plan-sha=$plan_sha" --max-attempts=1 --http-budget=80 --min-interval-ms=650 \
+              > result.json 2> failure.txt
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > exit-code
+          if test -s result.json; then
+            php -r '
+              $r=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);
+              if (($r["status"]??"")!=="completed"
+                || ($r["httpAttempts"]??81)>80 || ($r["selected"]??81)>80
+                || ($r["canonicalProfileWrites"]??-1)!==0 || ($r["mappingWrites"]??-1)!==0) exit(4);
+              echo json_encode($r,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+            ' result.json
+            date -u +%Y-%m-%dT%H:%M:%SZ > completed
+          else
+            printf 'D1_NO_TERMINAL_RESULT exit=%s; started marker retained; NO_REPLAY\n' "$rc" >&2
+          fi
+          exit "$rc"
+          INTAKE
+
+      - name: Retain compact acquisition outcome, never credentials or raw cards
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hc1-tv-missing-content-d1-${{ github.run_id }}
+          path: ${{ runner.temp }}/hc1-d1-evidence/
+          if-no-files-found: warn
+          retention-days: 14
