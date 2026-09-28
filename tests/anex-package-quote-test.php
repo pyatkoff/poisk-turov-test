@@ -40,6 +40,7 @@ function qp_fixture(string $mode = ''): array
                 $facts->selection = ['0' => $fields['transport[0]'], '1' => $fields['transport[1]']];
             }
             if ($mode === '401') return ['status' => 401, 'body' => '{"message":"private rejection"}'];
+            if ($mode === 'http-' . $stage) return ['status' => 503, 'body' => 'PRIVATE_HTTP_BODY'];
             if ($mode === $stage) throw new RuntimeException('private transport failure');
             $leg = static fn($route, $uid): array => ['routeIndex' => (string) $route, 'uid' => $uid,
                 'name' => $route ? 'Fixture return' : 'Fixture outward', 'datebeg' => $route ? '2026-10-17' : '2026-10-10'];
@@ -160,6 +161,21 @@ foreach (['start', 'transports', 'SetTransport', 'calcfull', 'string'] as $rejec
     $calls = $f->calls; $s = unserialize(serialize($s));
     qp_assert(qp_run($r, $s, $fac, $cp) === $failed && $f->calls === $calls, 'failure remains terminal after restore');
     qp_assert(strpos(json_encode([$failed, $s]), 'PRIVATE_SUPPLIER_REJECTION') === false, 'rejection text not retained or public');
+}
+foreach (['start', 'transports', 'SetTransport', 'calcfull'] as $failedStage) {
+    [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture('http-' . $failedStage);
+    $failed = qp_run($r, $s, $fac, $cp);
+    if ($failed['status'] === 'quote_choices') {
+        $r = array_replace($r, ['action' => 'quote_calculate', 'choice_ref' => $failed['choices'][0]['choice_ref']]);
+        $failed = qp_run($r, $s, $fac, $cp);
+    }
+    qp_assert($failed['reason'] === 'ANEX_QUOTE_HTTP_ERROR' && $failed['failure_stage'] === $failedStage
+        && $failed['supplier_http_status'] === 503 && !$failed['final_price_verified'] && !isset($failed['price']),
+        'ordinary failure distinguishes its exact HTTP stage: ' . $failedStage);
+    $calls = $f->calls;
+    qp_assert(end($calls) === $failedStage && qp_run($r, $s, $fac, $cp) === $failed && $f->calls === $calls,
+        'HTTP failure remains terminal without a new diagnostic request');
+    qp_assert(strpos(json_encode([$failed, $s]), 'PRIVATE_HTTP_BODY') === false, 'no HTTP body retained or projected');
 }
 [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture('checkpoint');
 [$detailState, $detailRequest, , , , $detailFacts, $detailFactory, $detailPersist] = qp_fixture('identity-detail');

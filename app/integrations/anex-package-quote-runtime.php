@@ -261,11 +261,17 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
             'ANEX_QUOTE_SUPPLIER_REJECTED', 'ANEX_QUOTE_HTTP_ERROR', 'ANEX_QUOTE_TRANSPORT_ERROR', 'ANEX_QUOTE_INVALID_RESPONSE',
             'ANEX_QUOTE_CLIENT_UNAVAILABLE', 'ANEX_QUOTE_RATE_LIMIT'];
         $attempt['public'] = array_replace($base, ['status' => 'quote_failed', 'reason' => in_array($code, $allowed, true) ? $code : 'ANEX_QUOTE_UNKNOWN']);
-        if ($code === 'ANEX_QUOTE_IDENTITY_UNCONFIRMED' && $identityMismatches !== []) {
-            $attempt['public']['identity_mismatches'] = $identityMismatches;
+        if (in_array($stage, ['start', 'transports', 'SetTransport', 'calcfull'], true)) {
             $attempt['public']['failure_stage'] = $stage;
         }
+        if ($code === 'ANEX_QUOTE_IDENTITY_UNCONFIRMED' && $identityMismatches !== []) {
+            $attempt['public']['identity_mismatches'] = $identityMismatches;
+        }
         if ($client instanceof AnyTourAnexPackageQuoteClient) $attempt['diagnostics'][$stage] = $client->lastRequestDiagnostics();
+        $httpStatus = $attempt['diagnostics'][$stage]['http_status'] ?? null;
+        if ($code === 'ANEX_QUOTE_HTTP_ERROR' && is_int($httpStatus) && $httpStatus >= 100 && $httpStatus <= 599) {
+            $attempt['public']['supplier_http_status'] = $httpStatus;
+        }
         // If checkpoint itself fails, leave the durable reservation UNKNOWN; never send a success.
         $checkpoint($state);
     }
