@@ -134,4 +134,56 @@ foreach ([[],array_merge($args,['--apply=1']),array_merge($args,['--limit=2']),
     bfVerify(!str_contains($err,$dsn) && !str_contains($err,$password), 'CLI failure stays sanitized');
 }
 bfVerify(bfState($pdo)===$stable, 'CLI planning performs no database writes');
+// Materialized text/photos alone are not sufficient NEW-creation evidence.
+// Earlier invalid rows must not occupy the limit and starve complete cards.
+$insertBadHotel=$pdo->prepare('INSERT INTO catalog_hotels(id,name) VALUES (?,?)');
+$insertBadDetail=$pdo->prepare('INSERT INTO catalog_hotel_details(hotel_id,status,description,images_json,fetched_at,raw_json,source_hash) VALUES (?,?,?,?,?,?,?)');
+foreach (range(1,9) as $id) {
+    $name='Admission fixture '.$id;
+    $rawCard=['id'=>$id,'name'=>$name,'common'=>['description'=>'Verified source description'],'images'=>['https://fixture.test/one.jpg']];
+    $sourceDescription='Saved materialized description';
+    if ($id===4) $rawCard['id']=444;
+    if ($id===5) $rawCard['common']['description']='<p>&nbsp;</p>';
+    if ($id===6) $rawCard['images']=['http://unsafe.test/one.jpg'];
+    if ($id===7) $rawCard['name']='Fortuna Antalya';
+    if ($id===8) $sourceDescription='<p>&nbsp;</p>';
+    $raw=AnyTourCanonicalCatalog::json($rawCard);
+    if ($id===1) $raw=null;
+    if ($id===2) $raw='{';
+    if ($id===9) $raw='[]';
+    $hash=is_string($raw)?hash('sha256',$raw):null;
+    if ($id===3) $hash=str_repeat('0',64);
+    $insertBadHotel->execute([$id,$name]);
+    $insertBadDetail->execute([$id,'success',$sourceDescription,$good,'2026-09-28 00:00:00',$raw,$hash]);
+}
+$admissionBefore=bfState($pdo);
+$admission=$planner->planNext(2);
+bfVerify($admission['selectedIds']===[18,19], 'incomplete raw cards must not starve later content-ready IDs');
+bfVerify($admission['content_ready_total']===4 && $admission['content_ready_missing']===2, 'readiness excludes invalid raw-card evidence');
+bfVerify($admission['content_rejected_total']===12, 'all twelve rejected candidate profiles are counted once');
+foreach (['missing_full_tv_payload','invalid_full_tv_hash','tv_identity_mismatch','missing_tv_description','missing_tv_gallery','generic_product','missing_description'] as $reason) {
+    bfVerify(($admission['content_rejection_reasons'][$reason]??0)>0, 'readiness reports fixed reason '.$reason);
+}
+bfVerify($admission['definition']==='active_named_success_full_tv_hash_identity_description_safe_images', 'readiness definition names the actual admission contract');
+bfVerify($admission['ready_for_seed_review']===true && $admission['seed_authorized']===false, 'valid-only selection remains review evidence, not write authority');
+bfVerify(bfState($pdo)===$admissionBefore && !$pdo->inTransaction(), 'invalid-card classification never writes or deactivates profiles');
+bfVerify($planner->planNext(2)===$admission, 'unchanged read-only classification is deterministic');
+
+// The insertion guard is independent: a caller cannot re-add a rejected ID.
+$invalidPlan=$catalog->plan([1,18]);
+bfRefuses(fn()=>$catalog->seed([1,18],$invalidPlan['source_sha256']), 'direct seed still refuses incomplete raw evidence');
+bfVerify(bfState($pdo)===$admissionBefore, 'failed mixed direct seed leaves all rows unchanged');
+$created=$catalog->seed($admission['selectedIds'],$admission['canonical_plan']['source_sha256']);
+bfVerify($created['created']===2, 'selected complete fixture cards pass the unchanged insertion guard');
+$onlyRejected=$planner->planNext(1000);
+bfVerify($onlyRejected['selectedIds']===[] && $onlyRejected['content_rejected_total']===12
+    && $onlyRejected['canonical_plan']===null && $onlyRejected['ready_for_seed_review']===false, 'remaining invalid cards produce no ready batch');
+
+// A source repair is observed on the next read, without a permanent exclusion.
+$repaired=AnyTourCanonicalCatalog::json(['id'=>1,'name'=>'Admission fixture 1','common'=>['description'=>'Verified source description'],'images'=>['https://fixture.test/one.jpg']]);
+$pdo->prepare('UPDATE catalog_hotel_details SET raw_json=?,source_hash=? WHERE hotel_id=1')->execute([$repaired,hash('sha256',$repaired)]);
+$repairBefore=bfState($pdo); $afterRepair=$planner->planNext(2);
+bfVerify($afterRepair['selectedIds']===[1] && $afterRepair['content_rejected_total']===11, 'repaired evidence becomes eligible without a cached hold');
+bfVerify(bfState($pdo)===$repairBefore, 'recovery planning remains read-only');
+
 echo "ANYTOUR_BACKFILL_MYSQL_OK checks=$checks selected=2 remaining=2 readonly_engine=1 safe_media=1 cli=1 real_mysql=1 live_database=0\n";
