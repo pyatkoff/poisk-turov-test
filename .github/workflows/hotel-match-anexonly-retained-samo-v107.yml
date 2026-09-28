@@ -1,7 +1,7 @@
 name: MATCH ANEX-only retained SAMO audit v107
 'on':
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
 permissions:
   contents: read
   actions: read
