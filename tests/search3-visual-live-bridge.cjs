@@ -258,6 +258,22 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 
  assert.match(q('#hotel-detail-offers').dataset.key,/^andromeda%3A/);click('#hotel-detail-offers');assert.match(q('#modal-body').textContent,/SAMO STANDARD/);
  assert.equal(starts(),beforeHotelSearch+1);click('[data-action="close-modal"]');await settle();
+ // Back from a chosen offer must reconcile a stored hotel snapshot with late initial results.
+ transport.state.samoMeal='BB';
+ let releaseHotelBackSource;transport.state.samoSearchGate=new Promise(resolve=>releaseHotelBackSource=resolve);
+ const beforeHotelBackSearch=starts();click('#applied-search [data-action="edit-search"]');click('.search-submit');
+ await wait(()=>q('#results-summary').textContent.includes('2 варианта'));
+ click('[data-action="hotel-details"][data-id="501"]');
+ const priorRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');priorRoom.open=true;
+ const priorOffer=priorRoom.querySelector('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');priorOffer.focus();q('#modal-body').scrollTop=64;priorOffer.click();
+ await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+ releaseHotelBackSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
+ click('#modal-back');
+ assert.equal(q('#hotel-room-count').textContent,'Номера: 3 · Туры: 3','Back renders current progressive rooms, not the stored snapshot');
+ assert.match(q('#hotel-detail-min').textContent,/119\s*000/);assert(q('#hotel-room-meal'));
+ assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);
+ assert.equal(q('#modal-body').scrollTop,64);assert.equal(starts(),beforeHotelBackSearch+1);
+ click('[data-action="close-modal"]');await settle();
  const url=w.location.href;w.history.replaceState(null,'','/poisk-turov/');assert.equal(w.Search3CanonicalProfilesV1.create(()=>{}),null,'production consumer stays denied');w.history.replaceState(null,'',url);
  assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);
  console.log('PASS live bridge: truthful live/DB/application disclosure; explicit search only; departure error/retry/cancel/late-response recovery; three canonical sources → one hotel; current TV quote/flights/exact-price application dry-run; contact draft survives offer change while consent resets; SAMO verified receipt; ANEX concrete + non-final surcharge; actionable Back, retained receipts and late APD, cross-provider return without replay; no live HTTP');
