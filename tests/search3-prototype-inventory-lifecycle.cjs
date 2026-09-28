@@ -1180,6 +1180,36 @@ test('ANEX identity diagnostics contain only fixed fields and classifications',a
   assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret/);
  }
 });
+test('ordinary ANEX failures log only fixed stages and bounded HTTP statuses without replay',async()=>{
+ for(const [reason,stage,status,expected] of [
+  ['ANEX_QUOTE_HTTP_ERROR','transports',503,{failureStage:'transports',supplierHttpStatus:503}],
+  ['ANEX_QUOTE_HTTP_ERROR','start',401,{failureStage:'start',supplierHttpStatus:401}],
+  ['ANEX_QUOTE_HTTP_ERROR','private',503,{supplierHttpStatus:503}],
+  ['ANEX_QUOTE_HTTP_ERROR','calcfull','503',{failureStage:'calcfull'}],
+  ['ANEX_QUOTE_HTTP_ERROR','SetTransport',600,{failureStage:'SetTransport'}],
+  ['ANEX_QUOTE_HTTP_ERROR','start',99,{failureStage:'start'}],
+  ['ANEX_QUOTE_HTTP_ERROR','start','private secret',{failureStage:'start'}],
+  ['ANEX_QUOTE_TRANSPORT_ERROR','transports',503,{failureStage:'transports'}],
+  ['ANEX_QUOTE_PRIVATE','start',503,{}]
+ ]){
+  const h=harness({anex:async body=>{
+   const value=body.action==='search'?directAnex(body):body.action==='expand'?expandedAnex(body):
+    body.action==='offer'?currentAnexConcrete(body):{ok:true,data:{...body,provider:'anex',status:'quote_failed',reason,
+     failure_stage:stage,supplier_http_status:status,message:'private response body'}};
+   return {response:{ok:true,status:200,json:async()=>value}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+  const concrete=(await h.data.expandAnexGroup(group)).offers[0];await h.data.verifyAnexConcrete(concrete);
+  const before=h.anexCalls.length;
+  const error=await h.data.verifyAnexPackage(concrete).catch(e=>e);
+  assert.equal(await h.data.verifyAnexPackage(concrete).catch(e=>e),error);
+  assert.deepEqual(JSON.parse(h.quoteWarnings[0].slice('[AnyTour quote] '.length)),{provider:'anex',action:'quote_start',
+   code:'quote_unconfirmed',httpStatus:200,...(reason!=='ANEX_QUOTE_PRIVATE'?{failureReason:reason}:{}),...expected});
+  assert.equal(h.anexCalls.length,before+1);
+  assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret|PRIVATE|response body/);
+ }
+});
 test('SAMO continuation identifies fixed quote guards and rejects arbitrary reason text',async()=>{
  for(const reason of ['ANDROMEDA_SELECTED_FLIGHTS_INVALID','ANDROMEDA_FINAL_PRICE_MISSING',
   'ANDROMEDA_QUOTE_CHECKPOINT_INVALID','ANDROMEDA_TOKEN_PRIVATE','ANDROMEDA_SELECTED_FLIGHTS_INVALID private sid secret']){

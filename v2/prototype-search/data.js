@@ -1222,7 +1222,9 @@
             httpStatus:Number.isInteger(response.status)?response.status:0,...(reason?{failureReason:reason}:{})};
           const mismatches=reason==='ANEX_QUOTE_IDENTITY_UNCONFIRMED'?safeAnexIdentityMismatches(payload?.data?.identity_mismatches):{};
           if(Object.keys(mismatches).length)detail.identityMismatches=mismatches;
-          if(reason==='ANEX_QUOTE_IDENTITY_UNCONFIRMED'&&['start','transports','SetTransport','calcfull'].includes(payload?.data?.failure_stage))detail.failureStage=payload.data.failure_stage;
+          if(reason&&['start','transports','SetTransport','calcfull'].includes(payload?.data?.failure_stage))detail.failureStage=payload.data.failure_stage;
+          const supplierHttpStatus=payload?.data?.supplier_http_status;
+          if(reason==='ANEX_QUOTE_HTTP_ERROR'&&Number.isInteger(supplierHttpStatus)&&supplierHttpStatus>=100&&supplierHttpStatus<=599)detail.supplierHttpStatus=supplierHttpStatus;
           root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
           throw new Error('ANEX не подтвердил расчёт выбранного тура. Цена и наличие требуют уточнения.');
         }
