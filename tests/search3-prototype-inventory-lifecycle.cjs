@@ -1153,7 +1153,7 @@ test('ordinary ANEX quote failure preserves only fixed reasons without a diagnos
   assert.equal(await h.data.verifyAnexPackage(concrete).catch(e=>e),error);
   const known=['ANEX_QUOTE_IDENTITY_UNCONFIRMED','ANEX_QUOTE_HTTP_ERROR','ANEX_QUOTE_SUPPLIER_REJECTED','ANEX_QUOTE_UNKNOWN'].includes(reason);
   assert.deepEqual(h.quoteWarnings,['[AnyTour quote] '+JSON.stringify({provider:'anex',action:'quote_start',
-   code:'quote_unconfirmed',httpStatus:200,...(known?{failureReason:reason}:{})})]);
+   code:'quote_unconfirmed',httpStatus:200,...(known?{failureReason:reason}:{}),responseStatus:'quote_failed'})]);
   assert.equal(h.anexCalls.length,before+1);assert.equal(h.anexCalls.at(-1).action,'quote_start');
   assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret|sid|TOKEN|offer_ref|search_ref/);
  }
@@ -1175,7 +1175,7 @@ test('ANEX identity diagnostics contain only fixed fields and classifications',a
   assert.equal(await h.data.verifyAnexPackage(concrete).catch(e=>e),error);
   assert.deepEqual(JSON.parse(h.quoteWarnings[0].slice('[AnyTour quote] '.length)),{provider:'anex',action:'quote_start',
    code:'quote_unconfirmed',httpStatus:200,failureReason:reason,
-   ...(reason==='ANEX_QUOTE_IDENTITY_UNCONFIRMED'?{identityMismatches:{checkin:'format',children:'missing',meal:'mismatch'},failureStage:'start'}:{})});
+   ...(reason==='ANEX_QUOTE_IDENTITY_UNCONFIRMED'?{identityMismatches:{checkin:'format',children:'missing',meal:'mismatch'},failureStage:'start'}:{}),responseStatus:'quote_failed'});
   assert.equal(h.anexCalls.length,before+1);
   assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret/);
  }
@@ -1205,9 +1205,29 @@ test('ordinary ANEX failures log only fixed stages and bounded HTTP statuses wit
   const error=await h.data.verifyAnexPackage(concrete).catch(e=>e);
   assert.equal(await h.data.verifyAnexPackage(concrete).catch(e=>e),error);
   assert.deepEqual(JSON.parse(h.quoteWarnings[0].slice('[AnyTour quote] '.length)),{provider:'anex',action:'quote_start',
-   code:'quote_unconfirmed',httpStatus:200,...(reason!=='ANEX_QUOTE_PRIVATE'?{failureReason:reason}:{}),...expected});
+   code:'quote_unconfirmed',httpStatus:200,...(reason!=='ANEX_QUOTE_PRIVATE'?{failureReason:reason}:{}),...expected,responseStatus:'quote_failed'});
   assert.equal(h.anexCalls.length,before+1);
   assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret|PRIVATE|response body/);
+ }
+});
+test('ANEX ordinary rejection distinguishes fixed response states without exposing response content',async()=>{
+ for(const status of ['quote_unavailable','quote_expired','quote_unknown','quote_selection_locked','expired','mismatch','not_loaded',
+  'identity_unresolved','identity_changed','not_available','quote_choices','quote_verified','PRIVATE_SESSION_STATUS',null,{private:'secret'}]){
+  const h=harness({anex:async body=>{
+   const value=body.action==='search'?directAnex(body):body.action==='expand'?expandedAnex(body):
+    body.action==='offer'?currentAnexConcrete(body):{ok:true,data:{...body,provider:'anex',status,message:'PRIVATE_RESPONSE'}};
+   return {response:{ok:true,status:200,json:async()=>value}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+  const concrete=(await h.data.expandAnexGroup(group)).offers[0];await h.data.verifyAnexConcrete(concrete);
+  const before=h.anexCalls.length;const failure=await h.data.verifyAnexPackage(concrete).catch(e=>e);
+  assert.match(failure.message,/ANEX не подтвердил/);
+  assert.equal(await h.data.verifyAnexPackage(concrete).catch(e=>e),failure);
+  const diagnostic=JSON.parse(h.quoteWarnings[0].slice('[AnyTour quote] '.length));
+  assert.equal(diagnostic.responseStatus,typeof status==='string'&&!status.startsWith('PRIVATE')?status:'unknown');
+  assert.equal(h.anexCalls.length,before+1);
+  assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret|PRIVATE|message/);
  }
 });
 test('SAMO continuation identifies fixed quote guards and rejects arbitrary reason text',async()=>{
