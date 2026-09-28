@@ -23,6 +23,32 @@ function anytour_anex_quote_identity_date($value): ?string
     return $parts[1] . '-' . $parts[2] . '-' . $parts[3];
 }
 
+/** Only explicit supplier age classes; no names, birth dates or inferred zero counts. */
+function anytour_anex_quote_participant_counts(array $doc): ?array
+{
+    $people = anytour_anex_quote_rows($doc['peoples']['people'] ?? null);
+    if ($people === [] || count($people) > 17) return null;
+    $counts = ['adults' => 0, 'children' => 0];
+    $keys = [];
+    foreach ($people as $person) {
+        if (!is_array($person)) return null;
+        $classes = [];
+        foreach (['age', 'human'] as $field) {
+            $value = $person[$field] ?? null;
+            if (in_array($value, ['ADL', 'CHD', 'INF'], true)) $classes[$value] = true;
+        }
+        if (count($classes) !== 1 || isset($classes['INF'])) return null;
+        if (isset($person['key'])) {
+            if (!is_string($person['key']) && !is_int($person['key'])) return null;
+            $key = (string) $person['key'];
+            if ($key === '' || isset($keys[$key])) return null;
+            $keys[$key] = true;
+        }
+        ++$counts[isset($classes['ADL']) ? 'adults' : 'children'];
+    }
+    return $counts;
+}
+
 /** Diagnostic classifications never substitute for the strict identity checks. */
 function anytour_anex_quote_identity(array $response, array $offer, ?array &$mismatches = null): array
 {
@@ -32,7 +58,7 @@ function anytour_anex_quote_identity(array $response, array $offer, ?array &$mis
         $mismatches['document'] = 'missing';
         throw new RuntimeException('ANEX_QUOTE_IDENTITY_UNCONFIRMED');
     }
-    foreach (['datebeg' => 'checkin', 'dateend' => 'checkout', 'nights' => 'nights', 'adult' => 'adults', 'child' => 'children'] as $from => $to) {
+    foreach (['datebeg' => 'checkin', 'dateend' => 'checkout', 'nights' => 'nights'] as $from => $to) {
         if (!isset($doc[$from], $offer[$to]) || (string) $doc[$from] !== (string) $offer[$to]) {
             $mismatches[$to] = isset($doc[$from], $offer[$to]) ? 'mismatch' : 'missing';
             if (in_array($to, ['checkin', 'checkout'], true)) {
@@ -41,6 +67,15 @@ function anytour_anex_quote_identity(array $response, array $offer, ?array &$mis
                 if ($actualDate !== null && $actualDate === $expectedDate) $mismatches[$to] = 'format';
             }
         }
+    }
+    // The public ANEX client derives party from peoples.people. Some matching
+    // documents omit the summary counters; every participant must then be explicit.
+    $party = isset($doc['adult'], $doc['child']) ? null : anytour_anex_quote_participant_counts($doc);
+    foreach (['adult' => 'adults', 'child' => 'children'] as $from => $to) {
+        $actual = $doc[$from] ?? ($party[$to] ?? null);
+        if ($actual === null || !isset($offer[$to])) $mismatches[$to] = 'missing';
+        elseif ((string) $actual !== (string) $offer[$to]
+            || ($party !== null && (string) $actual !== (string) $party[$to])) $mismatches[$to] = 'mismatch';
     }
     $hotels = anytour_anex_quote_rows($doc['hotels']['hotel'] ?? null);
     if (count($hotels) !== 1 || !is_array($hotels[0])
