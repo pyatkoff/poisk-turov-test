@@ -58,6 +58,11 @@ function qp_fixture(string $mode = ''): array
             $body = ['bron' => ['claim' => ['claimDocument' => $doc,
                 'variants' => ['transports' => ['transport' => [$leg(0, 'private-alt-out'), $leg(1, 'private-alt-back')]]]]]];
             if ($mode === 'supplier') $body['error'] = 1108;
+            if ($mode === 'code-' . $stage || ($mode === 'code-string' && $stage === 'calcfull')) {
+                // A failure envelope may still contain the prior package document.
+                $body['code'] = $mode === 'code-string' ? '-1' : -1;
+                $body['message'] = 'PRIVATE_SUPPLIER_REJECTION';
+            }
             if ($mode === 'echo') $body['echo'] = 'fixture-bearer-secret';
             return ['status' => 200, 'body' => json_encode($body, JSON_THROW_ON_ERROR)];
         });
@@ -104,6 +109,24 @@ foreach (['hotel', 'party', 'room', 'meal', '401', 'supplier', 'echo', 'start', 
     $count = count($f->calls); $s = unserialize(serialize($s));
     qp_assert(qp_run($r, $s, $fac, $cp) === $failed && count($f->calls) === $count, 'terminal failure not replayed: ' . $mode);
     qp_assert(strpos(json_encode($failed), 'private') === false, 'failure redacted');
+}
+foreach (['start', 'transports', 'SetTransport', 'calcfull', 'string'] as $rejectedStage) {
+    [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture('code-' . $rejectedStage);
+    $failed = qp_run($r, $s, $fac, $cp);
+    if ($failed['status'] === 'quote_choices') {
+        $r = array_replace($r, ['action' => 'quote_calculate', 'choice_ref' => $failed['choices'][0]['choice_ref']]);
+        $failed = qp_run($r, $s, $fac, $cp);
+    }
+    qp_assert($failed['status'] === 'quote_failed' && $failed['reason'] === 'ANEX_QUOTE_SUPPLIER_REJECTED'
+        && !$failed['final_price_verified'] && !isset($failed['price']) && !isset($failed['choices']),
+        'supplier code -1 overrides an otherwise valid package: ' . $rejectedStage);
+    $stages = ['start', 'transports', 'SetTransport', 'calcfull'];
+    $last = $rejectedStage === 'string' ? 'calcfull' : $rejectedStage;
+    qp_assert($f->calls === array_slice($stages, 0, array_search($last, $stages, true) + 1),
+        'no supplier stage after rejection: ' . $rejectedStage);
+    $calls = $f->calls; $s = unserialize(serialize($s));
+    qp_assert(qp_run($r, $s, $fac, $cp) === $failed && $f->calls === $calls, 'failure remains terminal after restore');
+    qp_assert(strpos(json_encode([$failed, $s]), 'PRIVATE_SUPPLIER_REJECTION') === false, 'rejection text not retained or public');
 }
 [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture('checkpoint');
 try { qp_run($r, $s, $fac, $cp); throw new RuntimeException('missing checkpoint failure'); }
