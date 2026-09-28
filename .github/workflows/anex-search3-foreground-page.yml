@@ -5,10 +5,12 @@ on:
     paths:
       - 'app/integrations/anex-search.php'
       - 'app/integrations/anex-preview-gateway.php'
+      - 'app/integrations/anex-package-quote-*.php'
       - 'v2/api-anex-search3-preview.php'
       - 'tests/anex-search3-foreground-page-test.php'
       - 'tests/anex-search3-http-continuation-test.php'
       - 'tests/anex-search3-continue-failure-test.php'
+      - 'tests/anex-package-quote-test.php'
       - '.github/workflows/anex-search3-foreground-page.yml'
 permissions:
   contents: read
@@ -27,6 +29,9 @@ jobs:
           php -l app/integrations/anex-search.php
           php -l app/integrations/anex-preview-gateway.php
           php -l v2/api-anex-search3-preview.php
+          php -l app/integrations/anex-package-quote-client.php
+          php -l app/integrations/anex-package-quote-runtime.php
+          php tests/anex-package-quote-test.php
           php -l tests/anex-search3-http-continuation-test.php
           php tests/anex-search3-foreground-page-test.php
           php tests/anex-search3-http-continuation-test.php
