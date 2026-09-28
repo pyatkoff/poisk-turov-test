@@ -108,12 +108,15 @@ async function run(){
     assert((await page.locator('.lead-message').textContent()).replace(/\s/g,'').includes(String(anexEstimate)),'evidenced zero surcharge keeps the search amount and permits preview application');
     assert.equal(transport.calls.filter(c=>c.action==='search_start').length,1);
     assert.equal(startsFor('andromeda').length,1);assert.equal(startsFor('andromeda')[0].body.page,1);
-    const anexStarts=startsFor('anex');assert.equal(anexStarts.length,2,'initial batch plus existing explicit selected-hotel revalidation');
-    assert.deepEqual(anexStarts[1].body.params.hotelIds,['101']);assert.equal(anexStarts[1].body.params.dateFrom,trip.from);assert.equal(anexStarts[1].body.params.dateTo,trip.from);
-    assert.equal(anexStarts[1].body.params.nightsFrom,7);assert.equal(anexStarts[1].body.params.nightsTo,7);
+    const anexStarts=startsFor('anex');assert.equal(anexStarts.length,1,'selected hotel expands the retained initial group without another search');
+    const anexExpands=transport.calls.filter(c=>c.url.endsWith('/api-anex-search3-preview.php')&&c.action==='expand');
+    assert.equal(anexExpands.length,1,'one explicit selected-hotel expansion');
+    assert.equal(anexExpands[0].body.generation,anexStarts[0].body.generation);
+    assert.equal(anexExpands[0].body.search_ref,'a'.repeat(32));assert.equal(anexExpands[0].body.offer_ref,'anex_online:'+'b'.repeat(64));
+    assert.equal(String(anexExpands[0].body.local_hotel_id),'101');
     assert(!transport.calls.some(c=>c.action==='search_continue'||c.action==='continue'||/lead|payment|booking/.test(c.url)));
     assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-    receipts.push({width,samo_choices:132,samo_selected:[66,132],samo_quote_calls:2,samo_final:125500,tourvisor_final:133500.5,anex_estimate:anexEstimate,anex_zero_surcharge:width===390,three_application_checks:true,initial_searches_per_source:1,anex_explicit_selected_hotel_searches:1,continue_calls:0,supplier_calls:0,lead_calls:0});
+    receipts.push({width,samo_choices:132,samo_selected:[66,132],samo_quote_calls:2,samo_final:125500,tourvisor_final:133500.5,anex_estimate:anexEstimate,anex_zero_surcharge:width===390,three_application_checks:true,initial_searches_per_source:1,anex_explicit_selected_hotel_searches:0,anex_retained_group_expands:1,continue_calls:0,supplier_calls:0,lead_calls:0});
    }catch(error){await page.screenshot({path:path.join(evidence,`failure-${width}.png`)}).catch(()=>{});throw error;}
    finally{await context.close();}
   }

@@ -230,6 +230,8 @@ const server=http.createServer((req,res)=>{
   const crossSourceCalls=transport.calls.slice(beforeCrossSource);
   assert.equal(crossSourceCalls.filter(c=>c.url.endsWith('/api-andromeda-quote-preview.php')).length,1);
   assert.equal(crossSourceCalls.filter(c=>c.action==='search_start').length,0,'ANEX expansion does not restart the mixed search');
+  assert.equal(crossSourceCalls.filter(c=>c.action==='search').length,0,'opening a retained group never repeats direct initial search');
+  assert.equal(crossSourceCalls.filter(c=>c.action==='expand').length,1,'one selected-group request uses the retained server context');
   await page.screenshot({path:path.join(evidence,`samo-after-anex-${width}.png`)});
   for(const flightChoice of [false,true]){
    await page.locator('[data-action="close-modal"]').click();
