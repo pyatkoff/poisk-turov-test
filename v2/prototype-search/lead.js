@@ -49,14 +49,18 @@
       &&Array.isArray(ages)&&ages.length<=3&&!ages.some(age=>!Number.isInteger(age)||age<0||age>17);
     if(!common)throw new Error('Условия тура неполные. Повторите проверку предложения.');
     if(value.provider==='anex'){
+      const verified=value.priceKind==='verified'&&value.finalPriceVerified===true
+        &&(/^anex_quote:[a-f0-9]{64}$/).test(String(value.choiceRef||''))&&Number.isInteger(value.expiresAt)&&value.expiresAt*1000>Date.now()
+        &&Array.isArray(value.flights)&&value.flights.length===2&&value.flights.every((f,i)=>f?.direction===String(i)&&typeof f.name==='string'&&f.name.trim()&&f.name.length<=6000);
       if(!(/^anex_online:[a-f0-9]{64}$/).test(String(value.offerRef||''))||!(/^[a-f0-9]{32}$/).test(String(value.searchRef||''))
         ||!Number.isInteger(value.generation)||value.generation<1||!Number.isSafeInteger(value.localHotelId)||value.localHotelId<1
-        ||value.priceKind!=='estimate'||value.finalPriceVerified!==false)throw new Error('Расчёт ANEX неполный. Повторите проверку предложения.');
+        ||!verified&&(value.priceKind!=='estimate'||value.finalPriceVerified!==false))throw new Error('Расчёт ANEX неполный. Повторите проверку предложения.');
       return Object.freeze({provider:'anex',offerRef:String(value.offerRef),searchRef:String(value.searchRef),generation:value.generation,
-        localHotelId:value.localHotelId,priceKind:'estimate',finalPriceVerified:false,hotel:providerText(value.hotel,240),
+        localHotelId:value.localHotelId,priceKind:verified?'verified':'estimate',finalPriceVerified:verified,
+        ...(verified?{choiceRef:value.choiceRef,expiresAt:value.expiresAt}:{}),hotel:providerText(value.hotel,240),
         country:providerText(value.country,120),resort:providerText(value.resort,160),day:String(value.day),nights,adults,
         ages:Object.freeze([...ages]),room:providerText(value.room,300),meal:providerText(value.meal,160),
-        operator:providerText(value.operator,180),price,currency:'RUB',flights:Object.freeze([])});
+        operator:providerText(value.operator,180),price,currency:'RUB',flights:Object.freeze(verified?value.flights.map(f=>Object.freeze({direction:f.direction,name:providerText(f.name,6000)})):[])});
     }
     if(value.provider!=='andromeda'||!(/^offer_[a-f0-9]{64}$/).test(String(value.offerRef||''))||!Array.isArray(value.flights)||value.flights.length>100)
       throw new Error('Подтверждённые условия тура неполные. Повторите проверку предложения.');
@@ -101,8 +105,8 @@
         const payload=providerPreviewPayload(accepted,new FormData(form));
         if(!payload.consent)throw new Error('Подтвердите согласие на обработку персональных данных.');
         form.dataset.checked='1';message.setAttribute('role','status');
-        const priceLabel=accepted.provider==='anex'?'Расчётная сумма':'Подтверждённая стоимость';
-        message.textContent='Данные проверены. '+accepted.operator+' · '+accepted.hotel+' · '+priceLabel+': '+new Intl.NumberFormat('ru-RU').format(accepted.price)+' ₽. '+(accepted.provider==='anex'?'Итоговая стоимость требует подтверждения. ':'')+'Заявка не отправлена.';
+        const priceLabel=accepted.finalPriceVerified?'Подтверждённая стоимость':'Расчётная сумма';
+        message.textContent='Данные проверены. '+accepted.operator+' · '+accepted.hotel+' · '+priceLabel+': '+new Intl.NumberFormat('ru-RU').format(accepted.price)+' ₽. '+(!accepted.finalPriceVerified?'Итоговая стоимость требует подтверждения. ':'')+'Заявка не отправлена.';
         message.scrollIntoView({block:'nearest'});
       }catch(error){message.textContent=error.message;message.setAttribute('role','alert');}
     });

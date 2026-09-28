@@ -101,4 +101,44 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
   }finally{dom.window.close();}
  }
  console.log('VISUAL_ANEX_EMPTY_APD_FLIGHT_CONTINUATION_OK success/failure/pending/reopen; supplier calls 0');
+ for(const failure of ['', 'supplier', 'different-pair']){
+  const transport=fixture({anexEmptyAdditional:true}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+  const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+  const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+  Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+  w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+  w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+  w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+  w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+  transport.state.anexQuoteFailure=failure==='supplier';
+  w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(failure==='different-pair'&&value.data?.status==='quote_verified')value.data.choice.choice_ref='anex_quote:'+'1'.repeat(64);return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});};
+  const wait=async(fn)=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}assert.fail('Timeout quote: '+d.body.textContent.slice(-2000));};
+  try{
+   for(const file of scripts)w.eval(source(file));
+   await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('[data-action="all-offers"]'));
+   click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
+   await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
+   click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-package-quote"]'));
+   click('[data-action="anex-package-quote"]');await wait(()=>q('[name="anex-package-choice"]'));
+   const alternate=d.querySelectorAll('[name="anex-package-choice"]')[1];alternate.click();
+   assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 2 OUT/);
+   click('[data-action="anex-package-calculate"]');
+   if(failure){
+    await wait(()=>q('#anex-package-status').textContent.includes('не подтвердил'));
+    assert(!q('[data-action="anex-application-preview"]'));assert(!q('[data-action="anex-package-calculate"]'));
+   }else{
+    await wait(()=>q('[data-action="anex-application-preview"]'));assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 2 OUT/);
+    assert.match(q('#modal-body').textContent.replace(/\s/g,''),/135678,9/);click('[data-action="anex-application-preview"]');
+    const form=q('#prototype-lead-form');form.elements.phone.value='+79990000000';form.elements.phone.dispatchEvent(new w.Event('input',{bubbles:true}));form.elements.consent.checked=true;
+    form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(form.dataset.checked,'1');
+    assert.match(q('.lead-message').textContent,/Подтверждённая стоимость/);assert.match(q('.lead-message').textContent,/не отправлена/);
+   }
+   const count=transport.calls.length;click('[data-action="close-modal"]');await new Promise(r=>setTimeout(r,150));w.history.forward();await new Promise(r=>setTimeout(r,150));
+   assert(q('#modal').open);assert.equal(transport.calls.length,count,'ANEX package/application Forward is supplier-free');
+   if(!failure){assert(q('#prototype-lead-form'));assert.equal(q('#prototype-lead-form').elements.phone.value,'+79990000000');assert.equal(q('#prototype-lead-form').elements.consent.checked,false);}
+   assert.equal(transport.calls.filter(c=>c.action==='quote_start').length,1);assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,1);
+   assert.equal(transport.calls.filter(c=>c.action==='additional_prices').length,0,'package quote independent of APD');assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+ }
+ console.log('VISUAL_ANEX_PACKAGE_QUOTE_OK exact pair/gross price/application/history/rejections; supplier calls 0');
 })().catch(e=>{console.error(e);process.exitCode=1;});

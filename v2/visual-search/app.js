@@ -791,7 +791,7 @@ function restorePageReturn(){
 function uiRoute(){
  if($('#filter-panel').classList.contains('open')){const budget=currentFilterBudgetEdit(filterDraft?.filters);return {type:'filters',draft:filterHistorySnapshot(filterDraft),budget:budget?{minText:budget.minText,maxText:budget.maxText}:null,sections:[...expandedFilterSections],scroll:$('#filter-panel').scrollTop};}
  const type=modalType;
- if(['andromeda-flights','andromeda-verified','provider-application','anex-current','anex-additional','anex-application'].includes(type))return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop,...(type==='andromeda-flights'?{outbound:$('[name="andromeda-outbound"]:checked')?.value,inbound:$('[name="andromeda-return"]:checked')?.value}:{})};
+ if(['andromeda-flights','andromeda-verified','provider-application','anex-current','anex-additional','anex-quote','anex-application'].includes(type))return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop,...(type==='andromeda-flights'?{outbound:$('[name="andromeda-outbound"]:checked')?.value,inbound:$('[name="andromeda-return"]:checked')?.value}:{}),...(type==='anex-quote'?{choice:$('[name="anex-package-choice"]:checked')?.value}:{})};
  if(type==='destination')return {type,choice:{country:destinationChoice?.country,resorts:[...(destinationChoice?.resorts||[])],hotelId:destinationChoice?.hotelId||0},query:$('#destination-query')?.value||'',resolvedQuery:destinationResolvedQuery,expanded:destinationResortsExpanded,limit:destinationHotelLimit,scroll:$('#modal-body').scrollTop};
  if(type==='guests')return {type,draft:{adults:guestDraft.adults,ages:[...(guestDraft.ages||[])]}};
  if(type==='nights')return {type,draft:{min:nightsDraft.min,max:nightsDraft.max,phase:nightsDraft.phase===1?1:0}};
@@ -833,14 +833,15 @@ function reopenUIRoute(route){
  case 'meals':openMeals(route);break;
  case 'budget':openBudget(route);break;
  case 'saved-tour':case 'saved-details':return false;
- case 'andromeda-flights':case 'andromeda-verified':case 'provider-application':case 'anex-current':case 'anex-additional':case 'anex-application':{
+ case 'andromeda-flights':case 'andromeda-verified':case 'provider-application':case 'anex-current':case 'anex-additional':case 'anex-quote':case 'anex-application':{
   const o=offerFromKey(route.key),view=retainedProviderView(o),provider=route.type.startsWith('anex-')?'anex':'andromeda';
   // History is a passive locator, never authority for a price or supplier request.
   if(o?.provider!==provider||!view||!view.type.startsWith(provider+'-'))return false;
-  if(route.type==='provider-application'&&view.type!=='andromeda-verified'||route.type==='anex-application'&&view.type!=='anex-additional')return false;
+  if(route.type==='provider-application'&&view.type!=='andromeda-verified'||route.type==='anex-application'&&view.type!=='anex-additional'&&!(view.type==='anex-quote'&&view.result?.state==='quote_verified'))return false;
   if(view.type==='andromeda-flights'){selectedOffer=view.offer;renderRealOffer();}
   if(!restoreProviderView(o))return false;
   if(modalType==='andromeda-flights')for(const [name,value] of [['andromeda-outbound',route.outbound],['andromeda-return',route.inbound]]){const input=$$('[name="'+name+'"]').find(el=>el.value===value);if(input)input.checked=true;}
+  if(modalType==='anex-quote'){const input=$$('[name="anex-package-choice"]').find(el=>el.value===route.choice);if(input)input.checked=true;}
   if(route.type==='provider-application')openAndromedaApplicationPreview();
   if(route.type==='anex-application')openAnexApplicationPreview();
   if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;
@@ -924,7 +925,7 @@ function modalBack(){
  restoringModal=true;showModal(previous.type,previous.title,previous.kicker,previous.body,previous.className==='wide-dialog');
  $('#modal').className=previous.className;$('#modal-footer').innerHTML=previous.footer;$('#modal-footer').hidden=previous.footerHidden;gallery=previous.gallery;selectedOffer=previous.offer;updateModalBack();
  if(previous.type==='offer')renderRealOffer();
- if(['andromeda-flights','andromeda-verified','anex-current','anex-additional','provider-application','anex-application'].includes(previous.type)){
+ if(['andromeda-flights','andromeda-verified','anex-current','anex-additional','anex-quote','provider-application','anex-application'].includes(previous.type)){
   restoreProviderView(selectedOffer);
   if(previous.type==='provider-application')openAndromedaApplicationPreview();
   if(previous.type==='anex-application')openAnexApplicationPreview();
@@ -1128,6 +1129,7 @@ function restoreProviderView(o){
   if(view.error||view.pending){$('#anex-additional-error').textContent=view.error||'Уточняем обязательные доплаты…';const button=$('[data-action="anex-additional-prices"]');if(button)button.disabled=true;}
  }
  if(view.type==='anex-additional')openAnexAdditionalEstimate(view.offer,view.result);
+ if(view.type==='anex-quote')openAnexPackageQuote(view.offer,view.result,view.error,view.pending);
  return true;
 }
 const flightPairFor=o=>o?.flightChoiceId==null||o.flightChoiceId===''?null:o.variants?.[Number(o.flightChoiceId)]||null;
@@ -1330,12 +1332,52 @@ function anexApplicationReceipt(o,result,h){
 }
 function openAnexApplicationPreview(){
  const receipt=anexApplicationDraft;if(!receipt)return;
+ if(receipt.finalPriceVerified===true){
+  if(receipt.expiresAt*1000<=Date.now()){openAnexPackageQuote(selectedOffer,null,'Срок подтверждённой цены истёк.');return;}
+  showModal('anex-application','Заявка на тур','ANEX · ПОДТВЕРЖДЁННАЯ СТОИМОСТЬ',`<div class="verification-tour"><strong>${esc(receipt.hotel)}</strong><span>${dateText(receipt.day)} · ${nightsText(receipt.nights)} · ${receipt.adults+(receipt.ages?.length||0)} туриста</span><span>${esc(receipt.room)} · ${esc(receipt.meal)}</span><strong>${money(receipt.price)}</strong></div>${receipt.flights.map(f=>`<p><strong>${f.direction==='0'?'Туда':'Обратно'}</strong><br>${esc(f.name)}</p>`).join('')}${window.AnyTourPrototypeLead.markup()}`,true);
+  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="modal-back">К туру</button>${window.AnyTourPrototypeLead.action()}`;
+  window.AnyTourPrototypeLead.bindProviderPreview(receipt);return;
+ }
  showModal('anex-application','Заявка на тур','ANEX · РАСЧЁТНАЯ СТОИМОСТЬ',window.AnyTourPrototypeLead.markup(),true);
  $('#modal-body').insertAdjacentHTML('afterbegin',`<div class="verification-tour"><strong>${esc(receipt.hotel)}</strong><span>${dateText(receipt.day)} · ${nightsText(receipt.nights)} · ${receipt.adults+(receipt.ages?.length||0)} туриста</span><span>${esc(receipt.room)} · ${esc(receipt.meal)}</span><strong>${money(receipt.price)}</strong></div><p class="modal-intro">Расчётная сумма включает обязательную доплату ANEX для выбранного состава туристов. Итоговая стоимость требует подтверждения.</p>`);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${selectedOffer.hotelId}">К вариантам</button>${window.AnyTourPrototypeLead.action()}`;
  window.AnyTourPrototypeLead.bindProviderPreview(receipt);
 }
 const anexFlightViews=new WeakMap();
+function openAnexPackageQuote(o,result,error='',pending=false){
+ const h=selectedTourHotel(o);if(!h)return;
+ if(result?.state==='quote_verified'&&result.expiresAt*1000<=Date.now()){result=null;error='Срок подтверждённой цены истёк.';}
+ rememberProviderView(o,'anex-quote',result,error,pending);selectedOffer={...o,loading:false};anexApplicationDraft=null;
+ const verified=result?.state==='quote_verified'&&result.finalPriceVerified===true;
+ if(verified){
+  const raw=o.raw;anexApplicationDraft=Object.freeze({provider:'anex',offerRef:raw.offerRef,searchRef:raw.searchRef,generation:raw.anexGeneration,
+   localHotelId:Number(raw.anexLocalHotelId),priceKind:'verified',finalPriceVerified:true,choiceRef:result.choice.choiceRef,expiresAt:result.expiresAt,
+   hotel:String(h.name||''),country:String(countryNames[h.country]||''),resort:String(h.resort||''),day:o.day,nights:o.nights,adults:o.adults,
+   ages:Object.freeze([...(o.ages||[])]),room:String(o.room||''),meal:String(mealLabel(o)||''),operator:'ANEX',
+   price:Number(result.finalPrice.amount),currency:'RUB',flights:Object.freeze(result.choice.legs.map((leg,i)=>Object.freeze({direction:String(i),name:leg.label})))});
+ }
+ const choices=result?.state==='quote_choices'?result.choices:[];
+ const content=`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span>${verified?`<strong>${money(Number(result.finalPrice.amount))}</strong>`:''}</div>`
+  +(verified?`<p>ANEX пересчитал полную стоимость тура с выбранным перелётом.</p>${result.choice.legs.map((leg,i)=>`<p><strong>${i?'Обратно':'Туда'}</strong><br>${esc(leg.label)}</p>`).join('')}`
+   :choices.length?`<p>Выберите перелёт. Полную цену подтвердит ANEX после выбора.</p><fieldset class="flight-options"><legend>Перелёт туда и обратно</legend>${choices.map((c,i)=>`<label class="flight-option"><div class="flight-option-heading"><input type="radio" name="anex-package-choice" value="${esc(c.choiceRef)}" ${i===0?'checked':''} ${pending?'disabled':''}><span>${c.legs.map((leg,n)=>`<strong>${n?'Обратно':'Туда'}</strong><small>${esc(leg.label)}</small>`).join('')}</span></div></label>`).join('')}</fieldset>`:'')
+  +`<p id="anex-package-status" class="${error?'error-text':''}" role="${error?'alert':'status'}">${esc(error||(pending?'ANEX проверяет выбранный тур…':''))}</p>`;
+ showModal('anex-quote',verified?'Тур подтверждён':'Перелёт и цена тура','ANEX · АКТУАЛИЗАЦИЯ',content,true);
+ $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button>`+(verified?'<button class="primary" data-action="anex-application-preview">К заявке</button>':choices.length&&!error?`<button class="primary" data-action="anex-package-calculate" ${pending?'disabled':''}>Подтвердить перелёт и цену</button>`:'');
+}
+async function loadAnexPackageQuote(calculate=false){
+ const o=selectedOffer,view=retainedProviderView(o);if(!o||o.provider!=='anex'||view?.pending)return;
+ if(calculate&&modalType!=='anex-quote'||!calculate&&!['anex-current','anex-additional'].includes(modalType))return;
+ const choice=calculate?$('[name="anex-package-choice"]:checked')?.value:null;if(calculate&&!choice)return;
+ const old=calculate?view?.result:null;openAnexPackageQuote(o,old,'',true);
+ try{
+  const result=await data.verifyAnexPackage(o,choice);
+  rememberProviderView(o,'anex-quote',result);
+  if($('#modal').open&&selectedOffer?.raw===o.raw&&modalType==='anex-quote')openAnexPackageQuote(o,result);
+ }catch(error){
+  rememberProviderView(o,'anex-quote',old,error.message);
+  if($('#modal').open&&selectedOffer?.raw===o.raw&&modalType==='anex-quote')openAnexPackageQuote(o,old,error.message);
+ }
+}
 function anexFlightInventoryHTML(o){
  const view=anexFlightViews.get(o.raw);
  if(!view)return `<h3>Перелёт ANEX</h3><p>Рейсы можно запросить независимо от расчёта доплат.</p><button class="secondary" data-action="anex-flights" ${retainedProviderView(o)?.pending?'disabled':''}>Показать рейсы ANEX</button>`;
@@ -1350,7 +1392,7 @@ function renderAnexFlightInventory(){
  if(!selectedOffer||!['anex-current','anex-additional'].includes(modalType))return;
  let section=$('#anex-flight-inventory');
  if(!section){$('#modal-body').insertAdjacentHTML('beforeend','<section id="anex-flight-inventory" aria-label="Перелёт ANEX"></section>');section=$('#anex-flight-inventory');}
- section.innerHTML=anexFlightInventoryHTML(selectedOffer);
+ section.innerHTML=`<p><button class="primary" data-action="anex-package-quote" ${retainedProviderView(selectedOffer)?.pending?'disabled':''}>Актуализировать тур и выбрать перелёт</button></p>`+anexFlightInventoryHTML(selectedOffer);
  const apd=$('[data-action="anex-additional-prices"]'),view=retainedProviderView(selectedOffer);
  if(apd)apd.disabled=!!(view?.pending||view?.error||anexFlightViews.get(selectedOffer.raw)?.pending);
 }
@@ -1750,6 +1792,7 @@ document.addEventListener('change',e=>{const t=e.target;
  if(t.id==='tour-differences-only'){offerView.differencesOnly=t.checked;refreshTourComparison(t.id);}
  if(t.id==='comparison-pair-0'||t.id==='comparison-pair-1'){const side=t.id==='comparison-pair-0'?0:1,other=1-side,old=offerView.pair[side],variant=+t.value;offerView.pair[side]=variant;if(offerView.pair[other]===variant)offerView.pair[other]=old;if(!offerView.pair.includes(offerView.activeVariant))offerView.activeVariant=variant;refreshTourComparison(t.id);}
  if(t.id==='origin'){draft.origin=t.value;loadCountries(t.value);}
+ if(t.name==='anex-package-choice')rememberUIRoute();
  if(t.id==='compare-differences'){compareView.onlyDifferences=t.checked;refreshSavedView('compare','#compare-differences')}
  if(t.id==='compare-left'||t.id==='compare-right'){const side=t.id==='compare-left'?0:1,other=1-side,old=compareView.pair[side],id=+t.value;compareView.pair[side]=id;if(compareView.pair[other]===id)compareView.pair[other]=old;refreshSavedView('compare','#'+t.id)}
  if(['offer-departure','offer-flight','offer-room','offer-meal','offer-sort'].includes(t.id)){offerView[t.id.replace('offer-','')]=t.value;renderOfferList(true)}
@@ -1847,7 +1890,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'remove-offer-filter':if(offerRefinementFields.includes(b.dataset.field)&&offerView){offerView[b.dataset.field]='';renderOfferList(true);$('#offer-count').focus();}break;
  case 'reset-offer-filters':offerView.departure='';offerView.flight='';offerView.room='';offerView.meal='';renderOfferList(true);break;
  case 'more-offers':{const h=hotels.find(h=>h.id===id),offers=hotelOffers(h),off=+b.dataset.offset;$('#all-offers-list').insertAdjacentHTML('beforeend',offers.slice(off,off+30).map(o=>offerHTML(h,o)).join(''));if(off+30>=offers.length)b.remove();else b.dataset.offset=off+30;break}
- case 'offer':openOffer(b.dataset.key);break;case 'confirm-tour':confirmTour();break;case 'andromeda-application-preview':openAndromedaApplicationPreview();break;case 'anex-application-preview':openAnexApplicationPreview();break;case 'apply-andromeda-flights':applyAndromedaFlightChoice();break;case 'anex-additional-prices':applyAnexAdditionalPrices();break;case 'anex-flights':loadAnexFlightInventory();break;case 'accept-price':if(verifiedOffer){const accepted=verifiedOffer;verifiedOffer=null;completeTour(accepted);}break;
+ case 'offer':openOffer(b.dataset.key);break;case 'confirm-tour':confirmTour();break;case 'andromeda-application-preview':openAndromedaApplicationPreview();break;case 'anex-application-preview':openAnexApplicationPreview();break;case 'apply-andromeda-flights':applyAndromedaFlightChoice();break;case 'anex-additional-prices':applyAnexAdditionalPrices();break;case 'anex-flights':loadAnexFlightInventory();break;case 'anex-package-quote':loadAnexPackageQuote();break;case 'anex-package-calculate':loadAnexPackageQuote(true);break;case 'accept-price':if(verifiedOffer){const accepted=verifiedOffer;verifiedOffer=null;completeTour(accepted);}break;
  case 'gallery':openGallery(id,state.photoIndexes[id]||0);break;case 'gallery-next':case 'gallery-prev':{const count=hotels.find(h=>h.id===gallery.id).photos.length;gallery.index=(gallery.index+(action==='gallery-next'?1:-1)+count)%count;renderGallery();break}
  case 'gallery-index':gallery.index=+b.dataset.value;renderGallery();break;
  case 'favorite':toggleFavorite(id);break;case 'favorites':openFavorites();break;
