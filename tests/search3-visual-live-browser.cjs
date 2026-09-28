@@ -41,11 +41,12 @@ const server=http.createServer((req,res)=>{
  try{for(const width of [390,768,1280]){
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
+  let releaseAnexQuote,markAnexQuotePending;const anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());
    if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
-   try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
+   try{const value=await transport.json(req.url(),{body:req.postData()});if(u.pathname.includes('anex')&&value.data?.status==='quote_verified')await new Promise(resolve=>{releaseAnexQuote=resolve;markAnexQuotePending();});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
   });
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}));
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
@@ -174,7 +175,12 @@ const server=http.createServer((req,res)=>{
   await retainedAnex.click();await page.locator('[data-action="anex-package-quote"]').click();
   await page.locator('[name="anex-package-choice"]').nth(1).check();
   await page.screenshot({path:path.join(evidence,`anex-package-choices-${width}.png`)});
-  await page.locator('[data-action="anex-package-calculate"]').click();await page.locator('[data-action="anex-application-preview"]').waitFor();
+  await page.locator('[data-action="anex-package-calculate"]').click();await anexQuotePending;
+  assert.equal(await page.locator('[name="anex-package-choice"]').nth(1).isChecked(),true,'requested second pair stays selected while calculating');
+  assert.equal(await page.locator('[name="anex-package-choice"]').nth(1).isDisabled(),true);
+  assert.equal(await page.locator('[data-action="anex-application-preview"]').count(),0);
+  await page.screenshot({path:path.join(evidence,`anex-package-pending-${width}.png`)});
+  releaseAnexQuote();await page.locator('[data-action="anex-application-preview"]').waitFor();
   assert.match((await page.locator('.verification-tour').textContent()).replace(/\s/g,''),/135678,9/);
   assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 2 OUT/);
   await page.screenshot({path:path.join(evidence,`anex-package-verified-${width}.png`)});
