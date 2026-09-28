@@ -263,8 +263,8 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   const backRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await backRoom.locator(':scope>summary').click();
-  const backOffer=backRoom.locator('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await backOffer.focus();
-  const hotelBackScroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=64;return el.scrollTop;});await backOffer.click();
+  const backOffer=backRoom.locator('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await backOffer.scrollIntoViewIfNeeded();await backOffer.focus();
+  const hotelBackScroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);await backOffer.click();
   await page.waitForFunction(()=>document.querySelector('[data-action="confirm-tour"]')&&!document.querySelector('[data-action="confirm-tour"]').disabled);
   releaseHotelBackSource();transport.state.samoSearchGate=null;await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
   await page.locator('#modal-back').click();
