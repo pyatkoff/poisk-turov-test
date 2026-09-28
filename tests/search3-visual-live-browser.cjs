@@ -197,6 +197,7 @@ const server=http.createServer((req,res)=>{
    const resizeStar=page.locator('#filters [data-action="star"]').first(),resizeStarValue=await resizeStar.getAttribute('data-value');await resizeStar.click();
    await page.locator('.filter-group').filter({has:page.locator('#max-price')}).locator('.filter-section-toggle').click();
    await page.locator('#max-price').fill('abc');await page.setViewportSize({width:1280,height:900});
+   await page.waitForFunction(value=>document.querySelector('#applied-search').textContent.includes(value+' ★'),resizeStarValue);
    assert.match(await page.locator('#applied-search').textContent(),new RegExp(resizeStarValue+' ★'),'widening promotes valid mobile draft choices');
    assert.equal(await page.locator('#filter-panel').evaluate(el=>el.classList.contains('open')),false);assert.equal(await page.locator('#max-price').inputValue(),'abc');assert.equal(await page.locator('#max-price').getAttribute('aria-invalid'),'true');
    assert.equal(await page.locator('[inert]').count(),0);assert.equal(await page.evaluate(()=>document.body.style.overflow),'');assert.equal(await page.locator('#max-price').evaluate(el=>document.activeElement===el),true);
