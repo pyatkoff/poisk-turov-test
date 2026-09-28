@@ -41,11 +41,22 @@ function anytour_andromeda_quote_resolve(array $request, PDO $pdo, array $saved,
             $pdo, (int)$request['params']['countryId'], $offer);
         $resolved = AnyTourAndromedaSelectedOffer::resolve(
             new AnyTourAndromedaOfferStore($state['store'], true), $context, $allows, $now);
+        $resolved['expires_at'] = min($first['store']['expires_at'], $state['store']['expires_at']);
         $resolved['listing_price_receipt'] = AnyTourAndromedaPriceObservation::resolveServed(
             $listingPrices, $request['listing_price_ref'] ?? null, $resolved,
             $state['store']['created_at'], $state['store']['expires_at'], $now);
         return $resolved;
     } finally { flock($lock, LOCK_UN); fclose($lock); }
+}
+
+/** Keep public quotes and flight choices within the existing retained search lifetime. */
+function anytour_andromeda_quote_with_expiry(array $result, array $resolved, ?int $now = null): array
+{
+    $expires = $resolved['expires_at'] ?? null;
+    if (!is_int($expires) || ($now ?? time()) >= $expires) throw new DomainException('offer_expired');
+    // This is an absolute search deadline: cache reads never renew it.
+    $result['expires_at'] = $expires;
+    return $result;
 }
 
 function anytour_andromeda_quote_meta(array $resolved, array $config): array
@@ -181,7 +192,7 @@ function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, arr
     $operationSha256 = hash('sha256', 'andromeda-selected-quote-v1');
     $reserved = anytour_andromeda_quote_reserve(
         $checkpoint, $meta['lock_path'], $meta['context_sha256'], $operationSha256);
-    if (is_array($reserved['replay'])) return $reserved['replay'];
+    if (is_array($reserved['replay'])) return anytour_andromeda_quote_with_expiry($reserved['replay'], $resolved);
     $attempt = $reserved['attempt'];
 
     try {
@@ -200,6 +211,7 @@ function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, arr
             return $built['refs'];
         };
         $result = AnyTourAndromedaSelectedQuote::run($resolved, $client, $actions, $retain);
+        $result = anytour_andromeda_quote_with_expiry($result, $resolved);
         $result['served_price_observation'] = AnyTourAndromedaPriceObservation::compareServed(
             $resolved['listing_price_receipt'] ?? null, $result, time());
         anytour_andromeda_quote_finish($checkpoint, $meta['lock_path'], $attempt, $result);
@@ -246,13 +258,14 @@ function anytour_andromeda_quote_continue(array $request, PDO $pdo, array $saved
     $operationSha256 = hash('sha256', 'andromeda-selected-quote-flight-selection-v1');
     $reserved = anytour_andromeda_quote_reserve(
         $continuationCheckpoint, $meta['lock_path'], $continuationContext, $operationSha256);
-    if (is_array($reserved['replay'])) return $reserved['replay'];
+    if (is_array($reserved['replay'])) return anytour_andromeda_quote_with_expiry($reserved['replay'], $resolved);
     $attempt = $reserved['attempt'];
 
     try {
         [, $actions] = anytour_andromeda_quote_supplier($config);
         $result = AnyTourAndromedaSelectedQuote::continueWithFlights(
             $resolved, $resolvedSelection['claim'], $resolvedSelection['selected'], $actions);
+        $result = anytour_andromeda_quote_with_expiry($result, $resolved);
         $result['served_price_observation'] = AnyTourAndromedaPriceObservation::compareServed(
             $resolved['listing_price_receipt'] ?? null, $result, time());
         anytour_andromeda_quote_finish($continuationCheckpoint, $meta['lock_path'], $attempt, $result);
