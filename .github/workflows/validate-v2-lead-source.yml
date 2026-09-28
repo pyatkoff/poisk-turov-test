@@ -2,8 +2,13 @@ name: Validate V2 lead source contracts
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, release/search3-production-ready-v1]
     paths:
+      - 'v2/prototype-search/lead.js'
+      - 'v2/tour-controller-v4.js'
+      - 'v2/lead-adapter-v2.php'
+      - 'v2/visual-search/app.js'
+      - 'tests/search3-provider-lead-*'
       - 'v2/lead-form-guard-v1.js'
       - 'v2/lead-idempotency-v1.php'
       - 'scripts/ci/lead/validate-idempotency.php'
@@ -27,6 +32,16 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate provider delivery and CRM mapping without writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/search3-provider-lead-delivery.cjs
+          node tests/search3-prototype-provider-application-preview.cjs
+          node tests/search3-prototype-lead-bind.cjs
+          php -l v2/lead-adapter-v2.php
+          php tests/search3-provider-lead-mapping.php
 
       - name: Validate lead form guard
         shell: bash

@@ -278,6 +278,20 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 # The prototype enters the same lead owner with a frozen selection.
                 # Reverse only that reviewed entry; the original payload, request,
                 # response handling and events must still match the protected hash.
+                # Owner-approved provider mapping (2026-09-28), same delivery owner.
+                provider_start = source.index(b'// Approved provider lead handoff:')
+                provider_end = source.index(b'// Presentation handoff:', provider_start)
+                self.assertEqual(hashlib.sha256(source[provider_start:provider_end]).hexdigest(),
+                                 '5ed8fd51d580e66fe2745314e334c72660abefc733af4ce84db4a00d7861c9c8')
+                source = source[:provider_start] + source[provider_end:]
+                provider_fragments = (
+                    ("if(selection&&selection.providerPayload)return Object.assign({},attribution(),selection.providerPayload(fd),{sessid:sessid(),page:location.href});", ""),
+                    ("||(selection&&selection.providerPayload&&(!Number.isSafeInteger(d.leadId)||d.leadId<1))", ""),
+                    ("createLeadSession,createProviderLeadSession,get", "createLeadSession,get"),
+                )
+                for reviewed, original in provider_fragments:
+                    self.assertEqual(source.count(reviewed.encode()), 1)
+                    source = source.replace(reviewed.encode(), original.encode(), 1)
                 handoff_start = source.index(b'// Presentation handoff:')
                 handoff_end = source.index(b'function consentHtml()', handoff_start)
                 self.assertEqual(hashlib.sha256(source[handoff_start:handoff_end]).hexdigest(),

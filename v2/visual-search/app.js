@@ -1290,7 +1290,7 @@ function andromedaApplicationReceipt(o,quote,h){
  if(!o||!h||!andromedaQuoteCurrent(quote)||quote?.state!=='quote_verified'||quote?.finalPriceVerified!==true||quote?.flightSelectionRequired!==false
    ||quote?.finalPrice?.currency!=='RUB'||!Number.isFinite(price)||price<=0||!(/^offer_[a-f0-9]{64}$/).test(offerRef)
    ||!Array.isArray(quote.flights))return null;
- return Object.freeze({provider:'andromeda',offerRef,expiresAt:quote.expiresAt,hotel:String(h.name||''),country:String(countryNames[h.country]||''),
+ return Object.freeze({provider:'andromeda',offerRef,priceKind:'verified',finalPriceVerified:true,expiresAt:quote.expiresAt,departure:String(o.origin||state.search.origin||''),hotel:String(h.name||''),country:String(countryNames[h.country]||''),
   resort:String(h.resort||''),day:o.day,nights:o.nights,adults:o.adults,ages:Object.freeze([...(o.ages||[])]),
   room:String(o.room||''),meal:String(mealLabel(o)||''),operator:String(o.operator||''),price,currency:'RUB',
   flights:Object.freeze(quote.flights.map(f=>Object.freeze({direction:String(f.direction||''),name:String(f.name||''),
@@ -1314,7 +1314,7 @@ function openAndromedaApplicationPreview(){
   <section class="tour-section"><h3>${icon('plane')} Перелёт из подтверждённого ответа</h3>${flights}</section>
   ${window.AnyTourPrototypeLead.markup()}`,true);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="modal-back">К туру</button>${window.AnyTourPrototypeLead.action()}`;
- window.AnyTourPrototypeLead.bindProviderPreview(receipt);
+ window.AnyTourPrototypeLead.bindProviderApplication(receipt);
 }
 async function applyAndromedaFlightChoice(){
  const draft=andromedaQuoteDraft;if(!draft||modalType!=='andromeda-flights')return;
@@ -1358,12 +1358,12 @@ function openAnexApplicationPreview(){
   if(receipt.expiresAt*1000<=Date.now()){openAnexPackageQuote(selectedOffer,null,'Срок подтверждённой цены истёк.');return;}
   showModal('anex-application','Заявка на тур','ANEX · ПОДТВЕРЖДЁННАЯ СТОИМОСТЬ',`<div class="verification-tour"><strong>${esc(receipt.hotel)}</strong><span>${dateText(receipt.day)} · ${nightsText(receipt.nights)} · ${receipt.adults+(receipt.ages?.length||0)} туриста</span><span>${esc(receipt.room)} · ${esc(receipt.meal)}</span><strong>${money(receipt.price)}</strong></div>${receipt.flights.map(f=>`<p><strong>${f.direction==='0'?'Туда':'Обратно'}</strong><br>${esc(f.name)}</p>`).join('')}${window.AnyTourPrototypeLead.markup()}`,true);
   $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="modal-back">К туру</button>${window.AnyTourPrototypeLead.action()}`;
-  window.AnyTourPrototypeLead.bindProviderPreview(receipt);return;
+  window.AnyTourPrototypeLead.bindProviderApplication(receipt);return;
  }
  showModal('anex-application','Заявка на тур','ANEX · РАСЧЁТНАЯ СТОИМОСТЬ',window.AnyTourPrototypeLead.markup(),true);
  $('#modal-body').insertAdjacentHTML('afterbegin',`<div class="verification-tour"><strong>${esc(receipt.hotel)}</strong><span>${dateText(receipt.day)} · ${nightsText(receipt.nights)} · ${receipt.adults+(receipt.ages?.length||0)} туриста</span><span>${esc(receipt.room)} · ${esc(receipt.meal)}</span><strong>${money(receipt.price)}</strong></div><p class="modal-intro">Расчётная сумма включает обязательную доплату ANEX для выбранного состава туристов. Итоговая стоимость требует подтверждения.</p>`);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${selectedOffer.hotelId}">К вариантам</button>${window.AnyTourPrototypeLead.action()}`;
- window.AnyTourPrototypeLead.bindProviderPreview(receipt);
+ window.AnyTourPrototypeLead.bindProviderApplication(receipt);
 }
 const anexFlightViews=new WeakMap();
 function openAnexPackageQuote(o,result,error='',pending=false){
@@ -1373,7 +1373,7 @@ function openAnexPackageQuote(o,result,error='',pending=false){
  const verified=result?.state==='quote_verified'&&result.finalPriceVerified===true;
  if(verified){
   const raw=o.raw;anexApplicationDraft=Object.freeze({provider:'anex',offerRef:raw.offerRef,searchRef:raw.searchRef,generation:raw.anexGeneration,
-   localHotelId:Number(raw.anexLocalHotelId),priceKind:'verified',finalPriceVerified:true,choiceRef:result.choice.choiceRef,expiresAt:result.expiresAt,
+   departure:String(o.origin||state.search.origin||''),localHotelId:Number(raw.anexLocalHotelId),priceKind:'verified',finalPriceVerified:true,choiceRef:result.choice.choiceRef,expiresAt:result.expiresAt,
    hotel:String(h.name||''),country:String(countryNames[h.country]||''),resort:String(h.resort||''),day:o.day,nights:o.nights,adults:o.adults,
    ages:Object.freeze([...(o.ages||[])]),room:String(o.room||''),meal:String(mealLabel(o)||''),operator:'ANEX',
    price:Number(result.finalPrice.amount),currency:'RUB',flights:Object.freeze(result.choice.legs.map((leg,i)=>Object.freeze({direction:String(i),name:leg.label})))});
