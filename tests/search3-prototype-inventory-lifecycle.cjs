@@ -24,7 +24,7 @@ const directAnex=(body,{offerRef='anex_online:'+'b'.repeat(64),localId=101,searc
  return {ok:true,data:{generation:body.generation,provider:'anex',date_range:{from:body.params.dateFrom,to:body.params.dateTo},
   search_ref:searchRef,external_search_pending:false,pages_read:1,first_page_only:true,hotels}};
 };
-const expandedAnex=(body,{groupRef='anex_online:'+'b'.repeat(64),searchRef='c'.repeat(32),localId=101}={})=>({ok:true,data:{
+const expandedAnex=(body,{groupRef='anex_online:'+'b'.repeat(64),searchRef=body.search_ref,localId=101}={})=>({ok:true,data:{
  provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:groupRef,status:'expanded',offer:null,selection_state:'disabled',
  external_search_pending:false,first_page_only:true,hotels:[{local_id:localId,name:'FICTIONAL HOTEL '+localId,category:5,rating:4.7,country:'Турция',region:'Сиде',
  catalog:{hotel_id:localId,source:'tourvisor',image_url:null,description:'',address:'',subregion:'',sea_distance:null},tours:[
@@ -178,7 +178,7 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
 for(const mode of ['complete','http-error','wrong-offer','verified','malformed','stopped'])test('ANEX independent flight continuation '+mode,async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),searchRef='c'.repeat(32);let verification=false,releaseFlights=null;
+ const groupRef='anex_online:'+'b'.repeat(64),searchRef='a'.repeat(32);let verification=false,releaseFlights=null;
  const h=harness({anex:async body=>{
   let value;
   if(body.action==='search')value=directAnex(body,{offerRef:groupRef,localId:101,searchRef:verification?searchRef:'a'.repeat(32)});
@@ -300,30 +300,33 @@ test('first search unions direct ANEX once and waits for it before complete',asy
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='complete'));
  await h.data.continueSearch();await flush();assert.equal(h.anexCalls.length,1,'Continue never replays direct ANEX');
 });
-test('direct ANEX group verification re-searches exact scope and expands without Tourvisor fallback',async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+test('ANEX expands the retained group without a second initial search or a new generation',async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),searchRef='a'.repeat(32);let initial;
  const h=harness({anex:async body=>{
-  if(body.action==='search'&&verification){
-   return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
+  if(body.action==='search'){
+   // The installed initial-week gate skips narrowed windows in the same generation.
+   if(initial&&body.generation===initial.generation&&(body.params.dateFrom!==initial.params.dateFrom||body.params.dateTo!==initial.params.dateTo))
+    return {response:{ok:true,json:async()=>({ok:true,data:{provider:'anex',generation:body.generation,date_range:{from:body.params.dateFrom,to:body.params.dateTo},hotels:[],skipped:true,skip_reason:'initial_week_only'}})}};
+   initial=structuredClone(body);
+   return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef})}};
   }
-  if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
-  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
+  assert.equal(body.action,'expand');assert.equal(body.generation,initial.generation);
+  assert.equal(body.search_ref,searchRef);assert.equal(body.offer_ref,groupRef);assert.equal(body.local_hotel_id,101);
+  return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef,localId:101})}};
  }});
  canonicalMeals(h);await h.start();await h.poll();
  const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');assert.ok(offer);assert.equal(offer.raw.anexKind,'group_minimum');
- verification=true;const beforeTourvisor=h.calls.filter(call=>call.action==='search_start').length;
+ const beforeTourvisor=h.calls.filter(call=>call.action==='search_start').length;
  const result=await h.data.expandAnexGroup(offer);
  assert.equal(h.calls.filter(call=>call.action==='search_start').length,beforeTourvisor,'verification must not launch Tourvisor');
- const verifyCalls=h.anexCalls.slice(-2);assert.deepEqual(verifyCalls.map(call=>call.action),['search','expand']);
- assert.equal(verifyCalls[0].params.dateFrom,trip.from);assert.equal(verifyCalls[0].params.dateTo,trip.from);
- assert.equal(verifyCalls[0].params.nightsFrom,7);assert.equal(verifyCalls[0].params.nightsTo,7);
- assert.deepEqual(verifyCalls[0].params.hotelIds,['101']);assert.equal(verifyCalls[0].params.meal,'7');
- assert.equal(verifyCalls[1].offer_ref,groupRef);assert.equal(verifyCalls[1].search_ref,verifyRef);assert.equal(verifyCalls[1].local_hotel_id,101);
+ assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand'],'one initial search, then the existing selected-offer action');
+ assert.equal(h.anexCalls[0].params.dateFrom,trip.from);assert.equal(h.anexCalls[0].params.dateTo,trip.to);
+ assert.equal(result.offers[0].raw.searchRef,searchRef,'concrete offers retain the initial server context');
  assert.equal(result.hotelId,offer.hotelId);assert.equal(result.offers.length,2);
  assert.ok(result.offers.every(item=>item.provider==='anex'&&item.raw.anexKind==='concrete'&&item.raw.anexLocalHotelId===101));
 });
 for(const phase of ['initial','flight-choices','verified','failed'])test('ANEX expansion preserves same-search SAMO '+phase,async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32);let verification=false;
  const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),
   andromedaQuote:async body=>({response:{ok:phase!=='failed',status:phase==='failed'?502:200,json:async()=>phase==='failed'
    ?{ok:false,failure_category:'supplier_rejected',failure_stage:'broninit',supplier_code:'1108'}
@@ -361,7 +364,7 @@ for(const phase of ['initial','flight-choices','verified','failed'])test('ANEX e
  assert.equal(h.anexCalls.length,before,'old ANEX groups cannot restart after explicit Stop or a changed search');
 });
 test('a superseded ANEX expansion cannot publish its late response in the same search',async()=>{
- const gate=defer(),verifyRef='c'.repeat(32);let verification=false,firstSignal=null;
+ const gate=defer(),verifyRef='a'.repeat(32);let verification=false,firstSignal=null;
  const h=harness({anex:async(body,signal)=>{
   if(body.action==='expand'&&!firstSignal){firstSignal=signal;await gate.promise;}
   return {response:{ok:true,json:async()=>body.action==='expand'?expandedAnex(body,{searchRef:verifyRef})
@@ -377,7 +380,7 @@ test('a superseded ANEX expansion cannot publish its late response in the same s
  h.data.stop();
 });
 test('expanded concrete ANEX offer verifies in the same provider session without Tourvisor fallback',async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32);let verification=false;
  const h=harness({anex:async body=>{
   if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
   if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
@@ -408,7 +411,7 @@ test('ANEX current authority requires exact envelope identity and the server top
   ['wrong offer',v=>{v.offer_ref='anex_online:'+'9'.repeat(64);}],
   ['unearned final price',v=>{v.offer.final_price_verified=true;}]
  ]){
-  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32);let verification=false;
   const h=harness({anex:async body=>{
    if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
    if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
@@ -456,7 +459,7 @@ test('ANEX current ready offer retains only the exact validated APD estimate wit
  }
 });
 test('ANEX AdditionalPrices requires a current concrete receipt and is explicit no-replay',async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32);let verification=false;
  const h=harness({anex:async body=>{
   if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
   if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
@@ -485,7 +488,7 @@ test('ANEX AdditionalPrices requires a current concrete receipt and is explicit 
 });
 test('ANEX accepts an evidenced zero surcharge but rejects missing or negative money',async()=>{
  for(const [surcharge,valid] of [['0',true],['0.0000',true],['-1',false],[null,false]]){
-  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32);let verification=false;
   const h=harness({anex:async body=>{
    if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
    if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
@@ -505,7 +508,7 @@ test('ANEX accepts an evidenced zero surcharge but rejects missing or negative m
  }
 });
 test('ANEX AdditionalPrices rejects inconsistent server arithmetic',async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32);let verification=false;
  const h=harness({anex:async body=>{
   if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
   if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
@@ -519,7 +522,7 @@ test('ANEX AdditionalPrices rejects inconsistent server arithmetic',async()=>{
  assert.equal(h.anexCalls.filter(call=>call.action==='additional_prices').length,1);
 });
 test('Stop aborts pending ANEX AdditionalPrices and invalidates its receipt',async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32),gate=defer();let verification=false,additionalSignal=null;
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32),gate=defer();let verification=false,additionalSignal=null;
  const h=harness({anex:async(body,signal)=>{
   if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
   if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
@@ -542,7 +545,7 @@ test('only exact-expanded session-current ANEX concrete rows can use provider fo
  assert.equal(h.anexCalls.length,0,'non-current concrete row cannot reach ANEX follow-up');
 });
 test('Stop aborts pending concrete ANEX verification and rejects stale response',async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32),gate=defer();let verification=false,offerSignal=null;
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32),gate=defer();let verification=false,offerSignal=null;
  const h=harness({anex:async(body,signal)=>{
   if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
   if(body.action==='expand')return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};
@@ -556,7 +559,7 @@ test('Stop aborts pending concrete ANEX verification and rejects stale response'
  assert.equal(h.anexCalls.filter(call=>call.action==='offer').length,1,'stale concrete follow-up is never replayed');
 });
 test('Stop invalidates and aborts a pending direct ANEX group verification',async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32),gate=defer();let verification=false,expandSignal=null;
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32),gate=defer();let verification=false,expandSignal=null;
  const h=harness({anex:async(body,signal)=>{
   if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef})}};
   if(body.action==='expand'){expandSignal=signal;await gate.promise;return {response:{ok:true,json:async()=>expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101})}};}
@@ -574,15 +577,39 @@ test('Stop invalidates and aborts a pending direct ANEX group verification',asyn
  assert.equal(JSON.stringify(h.latest()),before,'stale verification cannot mutate canonical result inventory');
  assert.equal(h.anexCalls.filter(call=>call.action==='expand').length,1,'stale verification is never replayed');
 });
-test('direct ANEX group verification fails closed when exact group identity is no longer returned',async()=>{
- const groupRef='anex_online:'+'b'.repeat(64),otherRef='anex_online:'+'d'.repeat(64);let verification=false;
- const h=harness({anex:async body=>{
-  if(body.action==='search'&&verification)return {response:{ok:true,json:async()=>directAnex(body,{offerRef:otherRef,localId:101,searchRef:'e'.repeat(32)})}};
-  return {response:{ok:true,json:async()=>directAnex(body,{offerRef:groupRef,localId:101})}};
- }});
+test('ANEX retained group expansion rejects foreign or unavailable response context',async()=>{
+ for(const [name,mutate] of [
+  ['foreign search',v=>{v.search_ref='f'.repeat(32);}],
+  ['foreign group',v=>{v.offer_ref='anex_online:'+'f'.repeat(64);}],
+  ['foreign generation',v=>{v.generation++;}],
+  ['foreign hotel',v=>{v.hotels[0].local_id=102;}],
+  ['expired context',v=>{v.status='expired';}],
+  ['missing retained group',v=>{v.status='not_loaded';}],
+  ['unknown expansion',v=>{v.status='expansion_unknown';}],
+  ['empty expansion',v=>{v.hotels[0].tours=[];}],
+  ['foreign concrete context',v=>{v.hotels[0].tours[0].search_ref='f'.repeat(32);}],
+  ['foreign day',v=>{v.hotels[0].tours[0].checkin='2026-10-02';}],
+  ['foreign nights',v=>{v.hotels[0].tours[0].nights=9;}],
+  ['foreign party',v=>{v.hotels[0].tours[0].adults=1;}]
+ ]){
+  const h=harness({anex:async body=>{
+   const value=body.action==='expand'?expandedAnex(body):directAnex(body);
+   if(body.action==='expand')mutate(value.data);
+   return {response:{ok:true,json:async()=>value}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+  await assert.rejects(h.data.expandAnexGroup(offer),/ANEX/,name);
+  assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand'],name+' cannot trigger a replacement search');
+ }
+});
+test('ANEX group without a valid retained search reference cannot reach HTTP',async()=>{
+ const h=harness({anex:async body=>({response:{ok:true,json:async()=>directAnex(body)}})});
  canonicalMeals(h);await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
- verification=true;await assert.rejects(h.data.expandAnexGroup(offer),/предложение ANEX изменилось/);
- assert.equal(h.anexCalls.at(-1).action,'search');assert.equal(h.anexCalls.some(call=>call.action==='expand'),false);
+ for(const searchRef of [undefined,'','invalid']){
+  const invalid=structuredClone(offer);invalid.raw.searchRef=searchRef;
+  await assert.rejects(h.data.expandAnexGroup(invalid),/нельзя конкретизировать/);
+ }
+ assert.equal(h.anexCalls.length,1,'invalid identity never requests a new search or expansion');
 });
 test('direct ANEX failure preserves Tourvisor inventory',async()=>{
  const h=harness({anex:async()=>({response:{ok:false,status:503,json:async()=>({ok:false,error:'supplier_unavailable'})}})});

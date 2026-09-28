@@ -1038,9 +1038,10 @@
     }finally{clearTimeout(timeout);}
   }
   async function expandAnexGroup(o){
-    const rawOffer=o&&o.raw,localHotelId=Number(rawOffer?.anexLocalHotelId),targetRef=String(rawOffer?.offerRef||'');
+    const rawOffer=o&&o.raw,localHotelId=Number(rawOffer?.anexLocalHotelId),targetRef=String(rawOffer?.offerRef||''),searchRef=String(rawOffer?.searchRef||'');
     if(!o||o.cached||o.provider!=='anex'||rawOffer?.selectionEnabled!==false||rawOffer?.anexKind!=='group_minimum'
-      ||rawOffer.anexGeneration!==generation||!Number.isSafeInteger(localHotelId)||localHotelId<1||!(/^anex_online:[a-f0-9]{64}$/).test(targetRef)) {
+      ||rawOffer.anexGeneration!==generation||!Number.isSafeInteger(localHotelId)||localHotelId<1
+      ||!(/^anex_online:[a-f0-9]{64}$/).test(targetRef)||!(/^[a-f0-9]{32}$/).test(searchRef)) {
       throw new Error('Выбранное предложение ANEX нельзя конкретизировать.');
     }
     const exact={...structuredClone(o.search),from:o.day,to:o.day,minNights:o.nights,maxNights:o.nights,adults:o.adults,ages:[...o.ages]};
@@ -1060,25 +1061,17 @@
       return payload.data;
     };
     try{
-      const searched=await request({action:'search',generation:epoch,params:p});
-      if(searched.provider!=='anex'||searched.generation!==epoch||searched.date_range?.from!==o.day||searched.date_range?.to!==o.day
-        ||typeof searched.search_ref!=='string'||!(/^[a-f0-9]{32}$/).test(searched.search_ref)||!Array.isArray(searched.hotels)) {
-        throw new Error('ANEX вернул ответ для других условий.');
-      }
-      const targetHotel=searched.hotels.find(h=>Number(h?.local_id)===localHotelId);
-      const targetTour=targetHotel?.tours?.find(t=>t?.offer_ref===targetRef);
-      if(!targetTour||targetTour.kind!=='group_minimum'||targetTour.search_ref!==searched.search_ref) {
-        throw new Error('Выбранное предложение ANEX изменилось. Откройте актуальные варианты.');
-      }
-      const expanded=await request({action:'expand',generation:epoch,search_ref:searched.search_ref,offer_ref:targetRef,local_hotel_id:localHotelId});
-      if(expanded.provider!=='anex'||expanded.generation!==epoch||expanded.search_ref!==searched.search_ref||expanded.offer_ref!==targetRef
+      // The initial search already retained this exact group on the server.
+      // A narrowed replacement search would violate its first-week window gate.
+      const expanded=await request({action:'expand',generation:epoch,search_ref:searchRef,offer_ref:targetRef,local_hotel_id:localHotelId});
+      if(expanded.provider!=='anex'||expanded.generation!==epoch||expanded.search_ref!==searchRef||expanded.offer_ref!==targetRef
         ||expanded.status!=='expanded'||!Array.isArray(expanded.hotels)||expanded.hotels.length!==1
         ||Number(expanded.hotels[0]?.local_id)!==localHotelId||!Array.isArray(expanded.hotels[0]?.tours)||!expanded.hotels[0].tours.length) {
         throw new Error('ANEX не вернул конкретные варианты выбранного тура.');
       }
       const seen=new Set(),normalized=[];
       for(const tour of expanded.hotels[0].tours){
-        if(tour?.kind!=='concrete'||tour?.search_ref!==searched.search_ref)throw new Error('ANEX вернул некорректный конкретный вариант.');
+        if(tour?.kind!=='concrete'||tour?.search_ref!==searchRef)throw new Error('ANEX вернул некорректный конкретный вариант.');
         const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch,anexSessionCurrent:true},p,seen);
         if(item)normalized.push(item);
       }
