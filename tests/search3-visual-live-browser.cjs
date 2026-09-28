@@ -4,6 +4,18 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require('playwright');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const root=path.resolve(__dirname,'../v2'),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
+// The hotel footer is controlled by IntersectionObserver. Two animation frames
+// can still capture its intermediate layout after Playwright scrolls a summary.
+const settledHotelScroll=page=>page.locator('#modal-body').evaluate(async el=>{
+ let previous='',stable=0;const samples=[];
+ for(let frame=0;frame<120;frame++){
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  const sample=[el.scrollTop,el.clientHeight,el.scrollHeight,document.querySelector('#modal-footer').hidden];
+  const key=JSON.stringify(sample);samples.push(sample);stable=key===previous?stable+1:0;previous=key;
+  if(stable>=4)return {scroll:el.scrollTop,samples};
+ }
+ throw new Error('Hotel layout did not settle: '+JSON.stringify(samples.slice(-10)));
+});
 const server=http.createServer((req,res)=>{
  const u=new URL(req.url,'http://fixture');if(!u.pathname.startsWith(base)){res.writeHead(404).end();return;}
  const local=path.resolve(root,u.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
@@ -247,13 +259,16 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 2 · Туры: 2');
   const hotelRoomSummary=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]>summary');await hotelRoomSummary.click();await hotelRoomSummary.focus();
-  const hotelScroll=await page.locator('#modal-body').evaluate(async el=>{await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));window.hotelOverview=document.querySelector('.hotel-detail-photos');return el.scrollTop;});
+  const hotelLayoutBefore=await settledHotelScroll(page),hotelScroll=hotelLayoutBefore.scroll;
+  await page.evaluate(()=>{window.hotelOverview=document.querySelector('.hotel-detail-photos');});
   releaseHotelSource();transport.state.samoSearchGate=null;
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 3 · Туры: 3');assert.match(await page.locator('#hotel-detail-min').textContent(),/119\s*000/);
   assert(await hotelRoomSummary.evaluate(el=>el.parentElement.open&&document.activeElement===el));
   assert(await page.locator('.hotel-detail-photos').evaluate(el=>el===window.hotelOverview));
-  assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),hotelScroll,'late source preserves settled hotel scroll at width '+width);
+  const hotelLayoutAfter=await settledHotelScroll(page);
+  fs.writeFileSync(path.join(evidence,`hotel-scroll-layout-${width}.json`),JSON.stringify({before:hotelLayoutBefore,after:hotelLayoutAfter},null,2));
+  assert.equal(hotelLayoutAfter.scroll,hotelScroll,'late source preserves settled hotel scroll at width '+width);
   await page.screenshot({path:path.join(evidence,`progressive-hotel-${width}.png`)});
   await page.locator('#hotel-room-meal').selectOption({label:'Завтраки'});
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 1 · Туры: 1');
