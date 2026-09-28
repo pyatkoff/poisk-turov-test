@@ -243,13 +243,13 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 2 · Туры: 2');
   const hotelRoomSummary=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]>summary');await hotelRoomSummary.click();await hotelRoomSummary.focus();
-  const hotelScroll=await page.locator('#modal-body').evaluate(el=>{window.hotelOverview=document.querySelector('.hotel-detail-photos');return el.scrollTop;});
+  const hotelScroll=await page.locator('#modal-body').evaluate(async el=>{await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));window.hotelOverview=document.querySelector('.hotel-detail-photos');return el.scrollTop;});
   releaseHotelSource();transport.state.samoSearchGate=null;
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 3 · Туры: 3');assert.match(await page.locator('#hotel-detail-min').textContent(),/119\s*000/);
   assert(await hotelRoomSummary.evaluate(el=>el.parentElement.open&&document.activeElement===el));
   assert(await page.locator('.hotel-detail-photos').evaluate(el=>el===window.hotelOverview));
-  assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),hotelScroll);
+  assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),hotelScroll,'late source preserves settled hotel scroll at width '+width);
   await page.screenshot({path:path.join(evidence,`progressive-hotel-${width}.png`)});
   await page.locator('#hotel-room-meal').selectOption({label:'Завтраки'});
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 1 · Туры: 1');
