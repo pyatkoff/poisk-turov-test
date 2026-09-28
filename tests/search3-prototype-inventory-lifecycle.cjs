@@ -1136,6 +1136,49 @@ test('Andromeda rejection preserves bounded supplier facts through the browser d
   assert.equal(h.andromedaQuoteCalls.length,phase==='continuation'?2:1,'diagnostics add no requests or retries');
  }
 });
+test('ordinary ANEX quote failure preserves only fixed reasons without a diagnostic request or replay',async()=>{
+ for(const reason of ['ANEX_QUOTE_IDENTITY_UNCONFIRMED','ANEX_QUOTE_HTTP_ERROR','ANEX_QUOTE_SUPPLIER_REJECTED',
+  'ANEX_QUOTE_UNKNOWN','ANEX_QUOTE_HTTP_ERROR private sid secret','ANEX_TOKEN_PRIVATE']){
+  const h=harness({anex:async body=>{
+   const value=body.action==='search'?directAnex(body):body.action==='expand'?expandedAnex(body):
+    body.action==='offer'?currentAnexConcrete(body):{ok:true,data:{...body,provider:'anex',status:'quote_failed',reason}};
+   return {response:{ok:true,status:200,json:async()=>value}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+  const concrete=(await h.data.expandAnexGroup(group)).offers[0];await h.data.verifyAnexConcrete(concrete);
+  const before=h.anexCalls.length;
+  const error=await h.data.verifyAnexPackage(concrete).catch(e=>e);
+  assert.match(error.message,/ANEX не подтвердил/);
+  assert.equal(await h.data.verifyAnexPackage(concrete).catch(e=>e),error);
+  const known=['ANEX_QUOTE_IDENTITY_UNCONFIRMED','ANEX_QUOTE_HTTP_ERROR','ANEX_QUOTE_SUPPLIER_REJECTED','ANEX_QUOTE_UNKNOWN'].includes(reason);
+  assert.deepEqual(h.quoteWarnings,['[AnyTour quote] '+JSON.stringify({provider:'anex',action:'quote_start',
+   code:'quote_unconfirmed',httpStatus:200,...(known?{failureReason:reason}:{})})]);
+  assert.equal(h.anexCalls.length,before+1);assert.equal(h.anexCalls.at(-1).action,'quote_start');
+  assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret|sid|TOKEN|offer_ref|search_ref/);
+ }
+});
+test('SAMO continuation identifies fixed quote guards and rejects arbitrary reason text',async()=>{
+ for(const reason of ['ANDROMEDA_SELECTED_FLIGHTS_INVALID','ANDROMEDA_FINAL_PRICE_MISSING',
+  'ANDROMEDA_QUOTE_CHECKPOINT_INVALID','ANDROMEDA_TOKEN_PRIVATE','ANDROMEDA_SELECTED_FLIGHTS_INVALID private sid secret']){
+  const h=harness({native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+   andromedaQuote:async body=>({response:body.action==='quote'
+    ?{ok:true,status:200,json:async()=>({ok:true,data:andromedaChoice(101)})}
+    :{ok:false,status:502,json:async()=>({ok:false,failure_category:'quote_state',failure_reason:reason})}})});
+  await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='andromeda');
+  await h.data.verifyAndromeda(offer);
+  const selection={provider:'andromeda',outbound_ref:'flight_'+'1'.repeat(32),return_ref:'flight_'+'3'.repeat(32)};
+  const error=await h.data.verifyAndromeda(offer,selection).catch(e=>e);
+  const known=['ANDROMEDA_SELECTED_FLIGHTS_INVALID','ANDROMEDA_FINAL_PRICE_MISSING','ANDROMEDA_QUOTE_CHECKPOINT_INVALID'].includes(reason);
+  assert.equal(error.failureReason,known?reason:undefined);
+  assert.equal(await h.data.verifyAndromeda(offer).catch(e=>e),error);
+  assert.equal(h.quoteWarnings.length,1);assert.equal(h.quoteFailures.length,1);
+  assert.equal(h.quoteFailures[0].failureReason,known?reason:undefined);
+  assert.equal(h.quoteFailures[0].action,'quote_select_flights');
+  assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret|sid|TOKEN|offer_ref|search_ref/);
+  assert.equal(h.andromedaQuoteCalls.length,2);
+ }
+});
 test('failed flight confirmation cannot be restarted by reopening the offer or changing flights',async()=>{
  const h=harness({native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
   andromedaQuote:async body=>({response:body.action==='quote'?{ok:true,status:200,json:async()=>({ok:true,data:andromedaChoice(101)})}:{ok:false,status:502,json:async()=>({ok:false,error:'supplier_unavailable',failure_category:'quote_state'})}})});

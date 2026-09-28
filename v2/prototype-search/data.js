@@ -1168,6 +1168,21 @@
         choice:selected,verifiedAt:value.verified_at,expiresAt:value.expires_at});
     }catch{return null;}
   }
+  function safeQuoteFailureReason(provider,value){
+    const codes=provider==='anex'?[
+      'QUOTE_IDENTITY_UNCONFIRMED','QUOTE_TRANSPORT_UNCONFIRMED','QUOTE_PRICE_UNCONFIRMED',
+      'QUOTE_SUPPLIER_REJECTED','QUOTE_HTTP_ERROR','QUOTE_TRANSPORT_ERROR','QUOTE_INVALID_RESPONSE',
+      'QUOTE_CLIENT_UNAVAILABLE','QUOTE_RATE_LIMIT','QUOTE_UNKNOWN'
+    ]:provider==='andromeda'?[
+      'QUOTE_CONTEXT_MISMATCH','QUOTE_CHECKPOINT_INVALID','QUOTE_CHECKPOINT_CHANGED','QUOTE_CHECKPOINT_FAILED',
+      'QUOTE_LOCK_FAILED','QUOTE_NOT_OFFER','FLIGHT_STATE_CHANGED','FLIGHT_STATE_FAILED','FLIGHT_STATE_INVALID',
+      'FLIGHT_SELECTION_INVALID','FLIGHT_UID_INVALID','FLIGHT_OPTIONS_INVALID','FLIGHT_REF_INVALID',
+      'FLIGHT_REFS_INVALID','FLIGHT_CONTEXT_INVALID','FLIGHT_ALREADY_SELECTED','SELECTED_FLIGHTS_INVALID',
+      'FINAL_PRICE_MISSING','CLAIM_SHAPE_INVALID','CLAIM_TOO_LARGE','CLAIM_REQUEST_BUDGET',
+      'CLAIM_ACTION_NOT_ALLOWED','PACKAGE_DISABLED','PACKAGE_REPLAY_REFUSED','INVALID_PACKAGE_ID'
+    ]:[];
+    return typeof value==='string'&&codes.some(code=>value===provider.toUpperCase()+'_'+code)?value:null;
+  }
   async function verifyAnexPackage(o,choiceRef=null){
     const identity=anexConcreteKey(o);
     if(!identity||!anexCurrentReceipts.has(identity.key))throw new Error('Предложение ANEX устарело. Откройте актуальные варианты.');
@@ -1196,7 +1211,13 @@
         const payload=await response.json().catch(()=>null);
         if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Проверка прервана. Повторный запрос автоматически не выполняется.');
         const result=response.ok&&payload?.ok===true?normalizeAnexPackage(payload.data,o,choiceRef):null;
-        if(!result)throw new Error('ANEX не подтвердил расчёт выбранного тура. Цена и наличие требуют уточнения.');
+        if(!result){
+          const reason=safeQuoteFailureReason('anex',payload?.data?.reason);
+          const detail={provider:'anex',action:body.action,code:'quote_unconfirmed',
+            httpStatus:Number.isInteger(response.status)?response.status:0,...(reason?{failureReason:reason}:{})};
+          root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+          throw new Error('ANEX не подтвердил расчёт выбранного тура. Цена и наличие требуют уточнения.');
+        }
         receipt.result=result;return result;
       }catch(error){receipt.error=error;throw error;}
       finally{clearTimeout(timeout);receipt.pending=null;if(activeVerification===controller)activeVerification=null;}
@@ -1373,6 +1394,8 @@
     const allowed=['supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal'];
     const category=kind|| (status===429?'limit':status===422?'unavailable':status===403?'access':status===400?'invalid_request':allowed.includes(payload?.failure_category)?payload.failure_category:'internal');
     const facts={};
+    const reason=category==='quote_state'?safeQuoteFailureReason('andromeda',payload?.failure_reason):null;
+    if(reason)facts.failureReason=reason;
     if(category==='supplier_rejected'&&['broninit','get_flights','changeservice','calc'].includes(payload?.failure_stage)){
       facts.failureStage=payload.failure_stage;
       const code=payload.supplier_code;
@@ -1434,6 +1457,7 @@
         if(epoch===generation){
           const detail=Object.freeze({provider:'andromeda',action:prepared.body.action,code:failure.code,
             httpStatus:failure.httpStatus,failureCategory:failure.failureCategory,
+            ...(failure.failureReason?{failureReason:failure.failureReason}:{}),
             ...(failure.failureStage?{failureStage:failure.failureStage}:{}),
             ...(failure.supplierCode?{supplierCode:failure.supplierCode}:{})});
           root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
