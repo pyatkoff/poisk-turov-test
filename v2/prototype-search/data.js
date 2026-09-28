@@ -641,13 +641,34 @@
     branch.pagesTotal=data.pages_count;
     return rebuildDirectAndromeda(run);
   }
+  function andromedaSearchFailure(phase,httpStatus,code){
+    return Object.assign(new Error('Andromeda search unavailable'),{searchFailure:{phase,httpStatus,code}});
+  }
+  function reportAndromedaSearchFailure(error,page){
+    const fact=error?.searchFailure;
+    const phase=['request','response'].includes(fact?.phase)?fact.phase:'projection';
+    const httpStatus=Number.isInteger(fact?.httpStatus)&&fact.httpStatus>=100&&fact.httpStatus<=599?fact.httpStatus:0;
+    const code=['transport_error','invalid_response','not_found','method_not_allowed','forbidden','invalid_request',
+      'supplier_unavailable','monthly_quota_exhausted','search_not_supported'].includes(fact?.code)?fact.code:'invalid_result';
+    root.console?.warn?.('[AnyTour search] '+JSON.stringify({provider:'andromeda',action:page===1?'initial':'continue',phase,httpStatus,code}));
+  }
+  function reportAndromedaSearchPage(run){
+    const source=run.sourceCounts.andromeda,detail={provider:'andromeda',action:'page',status:['complete','partial'].includes(source?.status)?source.status:'unknown'};
+    for(const key of ['pagesLoaded','receivedOffers','mappedOffers','projectedOffers','visibleOffers']){
+      const value=source?.[key];if(Number.isSafeInteger(value)&&value>=0&&value<=10000000)detail[key]=value;
+    }
+    root.console?.info?.('[AnyTour search] '+JSON.stringify(detail));
+  }
   async function requestDirectAndromeda(run,p,url,page){
-    const response=await fetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,
+    let response;
+    try{response=await fetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',signal:run.controller.signal,
       headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
       body:JSON.stringify({generation:run.generation,page,params:p})});
+    }catch(error){if(error?.name==='AbortError')throw error;throw andromedaSearchFailure('request',0,'transport_error');}
     const payload=await response.json().catch(()=>null),data=payload&&payload.data;
     if(!current(run))return null;
-    if(!response.ok||payload?.ok!==true)throw new Error('Andromeda search unavailable');
+    if(!response.ok||payload?.ok!==true)throw andromedaSearchFailure('response',response.status,
+      ['not_found','method_not_allowed','forbidden','invalid_request','supplier_unavailable','monthly_quota_exhausted','search_not_supported'].includes(payload?.error)?payload.error:'invalid_response');
     return data;
   }
   function andromedaContinuationAvailable(run){
@@ -693,9 +714,11 @@
       try{
         const data=await requestDirectAndromeda(run,branch.params,url,page);if(!data||!current(run))return {loaded,failed,canContinue:false};
         await applyDirectAndromeda(run,data,branch.params,branchIndex,run.andromedaBranchesTotal||branchOrder.length);if(!current(run))return {loaded,failed,canContinue:false};
+        reportAndromedaSearchPage(run);
         loaded++;
       }catch(error){
         if(!current(run)||error?.name==='AbortError')return {loaded,failed,canContinue:false};
+        reportAndromedaSearchFailure(error,page);
         branch.continuationFailed=true;failed++;
         const previous=run.sourceCounts.andromeda;
         if(previous&&Number.isInteger(previous.pagesLoaded)&&previous.pagesLoaded>0){
@@ -726,11 +749,13 @@
       try{
         const data=await requestDirectAndromeda(run,scope,url.href,1);if(!data||!current(run))return;
         await applyDirectAndromeda(run,data,scope,branchIndex,scopes.length);if(!current(run))return;
+        reportAndromedaSearchPage(run);
         loaded++;
         // Provider persistence may update calendar/SEO data, but stored offers never re-enter this live union.
         clearCalendarWindows();
       }catch(error){
         if(!current(run)||error?.name==='AbortError')return;
+        reportAndromedaSearchFailure(error,1);
         failed++;
         if(scopes.length===1){
           owner.clearOffers('direct-andromeda');owner.refresh();

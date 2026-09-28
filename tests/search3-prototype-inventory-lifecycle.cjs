@@ -79,7 +79,7 @@ const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
 function harness({database,api,onEvent,native,anex,andromedaQuote,observations,destinations,clock=()=>Date.now()}={}){
- const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],quoteFailures=[],quoteWarnings=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
+ const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],quoteFailures=[],quoteWarnings=[],searchLogs=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
   if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'){
@@ -163,7 +163,7 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  if(native||anex||andromedaQuote){win.V2_CONFIG={};if(native)win.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';if(anex)win.V2_CONFIG.anexApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php';if(andromedaQuote)win.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';}
  const bus=new EventTarget();win.addEventListener=bus.addEventListener.bind(bus);win.removeEventListener=bus.removeEventListener.bind(bus);win.dispatchEvent=bus.dispatchEvent.bind(bus);
  win.CustomEvent=class extends Event{constructor(type,{detail}){super(type);this.detail=detail;}};
- win.console={warn:message=>quoteWarnings.push(message)};
+ win.console={warn:message=>message.startsWith('[AnyTour search] ')?searchLogs.push(message):quoteWarnings.push(message),info:message=>searchLogs.push(message)};
  win.addEventListener('anytour:quote-failure',event=>quoteFailures.push(event.detail));
  const sandbox={window:win,fetch,URL,URLSearchParams,AbortController,DOMException,structuredClone,console,crypto:crypto.webcrypto,TextEncoder,Date:class extends Date{static now(){return clock();}},setTimeout:win.setTimeout,clearTimeout:win.clearTimeout};
  vm.createContext(sandbox);
@@ -174,9 +174,35 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  const poll=async()=>{const entry=[...timers].find(([,value])=>value.delay<=2500);assert.ok(entry,'pending poll required');timers.delete(entry[0]);await entry[1].fn();await flush();};
  const latest=()=>events.filter(e=>e.type==='results').at(-1)?.hotels||[];
  const providers=()=>[...new Set(latest().flatMap(h=>h.offers.map(o=>o.provider)))].sort();
- return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,quoteFailures,quoteWarnings,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
+ return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,quoteFailures,quoteWarnings,searchLogs,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
+for(const mode of ['http','quota','invalid-json','injection','transport','projection','empty','success','aborted'])test('SAMO ordinary search diagnostic '+mode,async()=>{
+ const secret='PRIVATE-RESPONSE-AND-URL';
+ const h=harness({native:async body=>{
+  if(mode==='transport')throw new Error(secret);
+  if(mode==='aborted')throw new DOMException(secret,'AbortError');
+  const payload=directAndromeda(body,{empty:mode==='empty'});
+  if(mode==='projection')payload.data.generation++;
+  if(mode==='http'||mode==='quota'||mode==='injection')return {response:{ok:false,status:mode==='quota'?429:502,json:async()=>({ok:false,error:mode==='quota'?'monthly_quota_exhausted':mode==='injection'?secret:'supplier_unavailable',raw:secret})}};
+  return {response:{ok:true,status:200,json:async()=>{if(mode==='invalid-json')throw Error(secret);return payload;}}};
+ }});
+ await h.start();await flush();
+ assert.equal(h.nativeCalls.length,1,'diagnostics must not retry or drain the source');
+ const logs=h.searchLogs.map(s=>JSON.parse(s.slice('[AnyTour search] '.length)));
+ assert.doesNotMatch(JSON.stringify(logs),/PRIVATE|offer_|search_ref|generation|params|FICTIONAL/);
+ if(mode==='aborted'){assert.equal(logs.length,0);return;}
+ assert.equal(logs.length,1);
+ if(mode==='empty'||mode==='success'){
+  assert.equal(logs[0].action,'page');assert.equal(logs[0].pagesLoaded,1);
+  assert.equal(logs[0].receivedOffers,mode==='empty'?0:1);assert.equal(logs[0].visibleOffers,mode==='empty'?0:1);
+ }else{
+  assert.deepEqual(logs[0],{provider:'andromeda',action:'initial',phase:mode==='transport'?'request':mode==='projection'?'projection':'response',
+   httpStatus:mode==='transport'||mode==='projection'?0:mode==='quota'?429:mode==='http'||mode==='injection'?502:200,
+   code:mode==='transport'?'transport_error':mode==='projection'?'invalid_result':mode==='http'?'supplier_unavailable':mode==='quota'?'monthly_quota_exhausted':'invalid_response'});
+  assert.equal(h.latest().flatMap(hotel=>hotel.offers).filter(o=>o.provider==='andromeda').length,0);
+ }
+});
 for(const mode of ['complete','http-error','wrong-offer','verified','malformed','stopped'])test('ANEX independent flight continuation '+mode,async()=>{
  const groupRef='anex_online:'+'b'.repeat(64),searchRef='a'.repeat(32);let verification=false,releaseFlights=null;
  const h=harness({anex:async body=>{
