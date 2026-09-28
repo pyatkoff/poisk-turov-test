@@ -16,6 +16,18 @@ const settledHotelScroll=page=>page.locator('#modal-body').evaluate(async el=>{
  }
  throw new Error('Hotel layout did not settle: '+JSON.stringify(samples.slice(-10)));
 });
+const forwardProviderApplication=async(page,transport,room,price)=>{
+ const before=transport.calls.length;
+ const scroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=83;return el.scrollTop;});
+ await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!history.state?.['anytour.prototype.v18.ui.v1']);
+ await page.evaluate(()=>history.forward());await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#prototype-lead-form'));
+ assert((await page.locator('#modal-body').textContent()).includes(room));assert((await page.locator('.verification-tour').textContent()).replace(/\s/g,'').includes(price));
+ assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 999 123-45-67');assert.equal(await page.locator('[name="consent"]').isChecked(),false);
+ assert.equal(await page.locator('#prototype-lead-form').getAttribute('data-checked'),null);
+ const position=await page.locator('#modal-body').evaluate(el=>({top:el.scrollTop,max:el.scrollHeight-el.clientHeight}));
+ assert.equal(position.top,Math.min(scroll,position.max));assert.equal(transport.calls.length,before,'provider application Forward is passive');
+ assert.deepEqual(await page.evaluate(()=>Object.keys(history.state['anytour.prototype.v18.ui.v1']).sort()),['key','scroll','type']);
+};
 const server=http.createServer((req,res)=>{
  const u=new URL(req.url,'http://fixture');if(!u.pathname.startsWith(base)){res.writeHead(404).end();return;}
  const local=path.resolve(root,u.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
@@ -123,6 +135,8 @@ const server=http.createServer((req,res)=>{
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
   await page.screenshot({path:path.join(evidence,`samo-application-${width}.png`)});
+  await forwardProviderApplication(page,transport,'SAMO STANDARD','125500');
+  await page.screenshot({path:path.join(evidence,`samo-application-forward-${width}.png`)});
   await page.locator('[data-action="close-modal"]').click();await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
   const anexOffer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();if(!await anexOffer.isVisible())await anexOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await anexOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
@@ -145,6 +159,8 @@ const server=http.createServer((req,res)=>{
   assert.equal(transport.calls.length,callsBeforeAnexApplication,'ANEX application preview adds no provider request');
   await page.locator('.verification-tour').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(evidence,`anex-retained-application-${width}.png`)});
+  await forwardProviderApplication(page,transport,'ANEX CONCRETE','123000');
+  await page.screenshot({path:path.join(evidence,`anex-application-forward-${width}.png`)});
   await page.locator('#modal-footer [data-action="all-offers"]').click();
   const retainedAnex=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();
   if(!await retainedAnex.isVisible())await retainedAnex.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
