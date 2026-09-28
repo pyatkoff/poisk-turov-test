@@ -15,7 +15,7 @@ env:
   CLAIM: '5865689904'
 jobs:
   audit:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/anexonly200-v107-20260928'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4061 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -62,3 +62,5 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with: {name: match-anexonly-retained-samo-v107-${{ github.run_id }}, path: terminal/, retention-days: 90, if-no-files-found: warn}
+
+# execute v107 on operational MATCH PR4061
