@@ -32,22 +32,23 @@ not describe these new outcomes. None of these checks sent a real application.
 | --- | --- | --- |
 | `v2/visual-search/index.php` | Rejects paths outside the NEXT preview with 403; injects shared runtime/data/lead modules into `index.html` | Reviewed production entry and route mapping for this exact UI; copying its directory cannot activate it |
 | `v2/prototype-search/config.js` | Uses `preview-lead-disabled.php` and INT preview supplier endpoints | Explicit production endpoint map and server dependencies; do not silently keep preview dependencies |
-| `v2/prototype-search/lead.js` | Actual live target form owner. TV uses `leadSession`; SAMO/ANEX use `bindProviderPreview` | Implement and review provider handoff; switching `leadApi` alone makes `providerPreviewReceipt` reject the form |
-| `v2/prototype-search/data.js` and `v2/tour-controller-v4.js` | Existing lead session accepts only current, confirmed TV identity and positive numeric TV search ID | Preserve TV path; do not forge a TV tour/search identity for direct suppliers |
+| `v2/prototype-search/lead.js` | Actual live target form owner. TV uses `leadSession`; SAMO/ANEX use `bindProviderApplication`, delegating to dry-run on preview | Provider mapping implemented under owner approval; real delivery remains disabled in preview |
+| `v2/prototype-search/data.js` and `v2/tour-controller-v4.js` | TV session preserves numeric TV identity; separate provider session shares the same sender | Provider offer identity stays namespaced; no synthetic TV search ID |
 | `v2/lead-bridge-v1.php` → `v2/lead-receiver-v1.php` → `v2/lead-adapter-v2.php` | Existing HMAC bridge and Bitrix delivery. Deployment installs the bridge under public `/lead-adapter-v2.php` | Reuse existing transport/auth, preserve receiver and CRM contract unless separately approved |
-| `v2/lead-adapter-v2.php`, `v2/lead-idempotency-v1.php` | `tourId` required; manager text labels it Tourvisor; deduplication includes tour/search/flight identity | Review provider identity mapping and manager text before routing direct offers here |
+| `v2/lead-adapter-v2.php`, `v2/lead-idempotency-v1.php` | Provider-aware manager text and exact offer/flight/party dedup; legacy TV mapping preserved | Install this receiver mapping before enabling provider delivery |
 
 `v2/visual-search/preview-lead.js` is used for offline scenarios; it is not the
 live target form owner. The source graph above is selected by `index.php`.
 
-### Concrete provider handoff proposal — review required, not implemented
+### Approved provider handoff — implemented in source, delivery not activated
 
-Keep the existing HMAC/receiver/Bitrix transport. Add a provider-aware handoff at
-the confirmed-selection boundary, with the following explicit contract review:
+Owner approved this mapping explicitly on 2026-09-28 at 23:13 UTC (coordination
+#3419, comment5880427102). The implementation keeps the same HMAC/receiver/Bitrix
+transport and applies the following provider handoff contract:
 
 | Value | Required mapping / rejection behavior |
 | --- | --- |
-| Provider identity | Preserve `andromeda` or `anex` plus exact opaque offer reference; never represent it as a TV ID. Review a namespaced `tourId` and provider-neutral manager label together, or approve dedicated provider fields; neither is presently authorized |
+| Provider identity | Preserve `andromeda` or `anex` plus exact opaque offer reference; never represent it as a TV ID. Use `provider`, `providerOfferRef`, and `tourId = provider + ":" + offerRef`; manager text says SAMO/Andromeda or ANEX |
 | Confirmation | Bind to exact search generation, offer, room, meal, party, dates and selected outbound/return pair; reject expired, failed, pending and mismatched receipts |
 | Price | Transfer supplier-confirmed RUB total only for the confirmed flow; no invented supplement or fuel formula. Keep estimate distinguishable and outside final-confirmed handoff |
 | Flights | Preserve both directions, dates, airport codes and selected pair identity. Existing manager field is limited to 2500 characters; reject/resolve overflow explicitly rather than silently losing itinerary |
@@ -55,20 +56,23 @@ the confirmed-selection boundary, with the following explicit contract review:
 | Retries | Preserve in-flight guard, receipt-bound deduplication, successful `leadId` and explicit failure recovery; no success on HTTP200 alone |
 | Return | Returning from application restores the same confirmed selection; changing offer/search/flight invalidates the old submission context |
 
-The existing `AGENTS.md` protects lead external contract/mapping. Owner direction
-to prepare transfer does not by itself approve a new identity mapping, receiver
-change or real lead. Present this exact mapping choice for approval before
-implementing that protected boundary; do not work around it through comments,
-synthetic TV IDs, a second delivery service or a new endpoint.
+The approval covers these provider fields/mapping only. It does not authorize
+production activation, real CRM submissions, authentication or analytics changes.
+`tests/search3-provider-lead-delivery.cjs` exercises the actual binder/controller
+with an intercepted transport; `tests/search3-provider-lead-mapping.php` executes
+the actual pure receiver mapping and dedup without bootstrapping Bitrix. The
+existing lead-source workflow runs both. Backend deployment and real delivery
+acceptance are still separate gates, not implied by passing fixtures.
 
 ### Release gates and rollout order
 
 1. Close fresh SAMO manual alternative-flight acceptance and ANEX regular final
    calculation; record exact installed versions and terminal results. A successful
    charter or unambiguous pair does not close either branch.
-2. Review the provider identity/lead mapping above; implement it with fake
-   transport tests proving exact fields, expired/mismatched rejection, double
-   submit, failure and retry. Real sends remain a separately agreed check.
+2. Merge the approved provider identity/lead mapping only after exact-head CI
+   proves exact fields, expired/mismatched rejection, double submit, failure and
+   retry. Install its receiver before enabling delivery. Real sends remain a
+   separately agreed check.
 3. Prepare exact production route/configuration delta, dependency inventory,
    artifact hashes and immutable source tree. Review actual target at mobile and
    desktop sizes. Do not activate the old prototype, saved tours or comparison.

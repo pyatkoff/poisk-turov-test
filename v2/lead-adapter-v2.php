@@ -28,19 +28,56 @@ function lead_bootstrap(){$docRoot=$_SERVER['DOCUMENT_ROOT']??'';$prolog=$docRoo
 function lead_project_marker(){if(class_exists('CSiteParams')&&property_exists('CSiteParams','isAnytourOnline'))return \CSiteParams::$isAnytourOnline;return null;}
 function lead_same_origin(){$origin=trim((string)($_SERVER['HTTP_ORIGIN']??''));if($origin==='')return true;$host=strtolower((string)($_SERVER['HTTP_HOST']??''));$originHost=strtolower((string)(parse_url($origin,PHP_URL_HOST)??''));return $host!==''&&$originHost===$host;}
 
+/** Provider fields are lead context, never supplier authorization or a booking command. */
+function lead_provider_context(array $data,array &$errors){
+    $provider=$data['provider']??'tourvisor';
+    if($provider==='tourvisor'){
+        if(isset($data['providerOfferRef'])||preg_match('/^(andromeda:|anex:|offer_|anex_online:)/',(string)($data['tourId']??'')))$errors['provider']='Provider identity is required';
+        return null;
+    }
+    if(!is_string($provider)||!in_array($provider,['andromeda','anex'],true)){$errors['provider']='Unsupported provider';return null;}
+    $ref=$data['providerOfferRef']??null;
+    $pattern=$provider==='anex'?'/^anex_online:[a-f0-9]{64}$/D':'/^offer_[a-f0-9]{64}$/D';
+    if(!is_string($ref)||!preg_match($pattern,$ref)||($data['tourId']??null)!==$provider.':'.$ref)$errors['providerOfferRef']='Exact provider offer is required';
+    $expires=$data['providerQuoteExpiresAt']??null;
+    if(!is_int($expires)||$expires<=time())$errors['providerQuoteExpiresAt']='Quote expired';
+    if(($data['finalPriceVerified']??null)!==true||($data['priceKind']??null)!=='verified'||($data['currency']??null)!=='RUB')$errors['price']='Confirmed RUB price is required';
+    $price=$data['price']??null;
+    if(!is_numeric($price)||!is_finite((float)$price)||(float)$price<=0||(float)$price>1000000000||($data['flightPrice']??null)!==$price)$errors['price']='Confirmed total must match selected price';
+    if(($data['flightFuel']??null)!==null)$errors['flightFuel']='Separate fuel amount is not confirmed by this receipt';
+    if(!is_string($data['roomType']??null)||mb_strlen($data['roomType'],'UTF-8')>240)$errors['roomType']='Room must fit the CRM field';
+    $flights=$data['providerFlights']??null;$texts=[];$directions=[];
+    if(!is_array($flights)||count($flights)<2||count($flights)>100)$errors['providerFlights']='Both flight directions are required';
+    else foreach($flights as $flight){
+        if(!is_array($flight)||!in_array($flight['direction']??null,['0','1'],true)||!is_string($flight['text']??null)||trim($flight['text'])===''){$errors['providerFlights']='Invalid flight';break;}
+        $directions[]=$flight['direction'];$texts[]=$flight['text'];
+    }
+    if(!in_array('0',$directions,true)||!in_array('1',$directions,true)||implode(' | ',$texts)!==($data['flight']??null)||mb_strlen(implode(' | ',$texts),'UTF-8')>2500)$errors['providerFlights']='Exact selected itinerary is required';
+    $choice=$data['providerChoiceRef']??null;
+    if($provider==='anex'&&(!is_string($choice)||!preg_match('/^anex_quote:[a-f0-9]{64}$/D',$choice)))$errors['providerChoiceRef']='ANEX choice is required';
+    foreach(['departure','hotel'] as $field)if(!is_string($data[$field]??null)||trim($data[$field])==='')$errors[$field]='Required';
+    if(!is_int($data['adults']??null)||$data['adults']<1||$data['adults']>6||!is_int($data['nights']??null)||$data['nights']<1)$errors['party']='Invalid party or duration';
+    if(!is_string($data['date']??null)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$data['date']))$errors['date']='Date is required';
+    return ['provider'=>$provider,'providerOfferRef'=>$ref,'providerQuoteExpiresAt'=>$expires,'providerChoiceRef'=>$choice,'providerFlights'=>$flights];
+}
+
 function lead_build(array $data){
     $phone=lead_phone($data['phone']??'');$phoneDigits=strlen(preg_replace('/\D+/','',$phone));$tourId=lead_text($data['tourId']??'',200);$consent=lead_bool($data['consent']??false);$ageError=null;$childAges=lead_child_ages($data['childAges']??null,$ageError);$errors=[];
     if($phoneDigits<10||$phoneDigits>15)$errors['phone']='Valid phone is required';
     if($tourId==='')$errors['tourId']='tourId is required';
     if(!$consent)$errors['consent']='Consent is required';
     if($ageError!==null)$errors['childAges']=$ageError;
+    $providerContext=lead_provider_context($data,$errors);
     if($errors)return['errors'=>$errors];
     $childCount=$childAges?count($childAges):(isset($data['childs'])?(int)$data['childs']:null);
     $lead=['name'=>lead_text($data['name']??'',120),'phone'=>$phone,'tourId'=>$tourId,'searchId'=>lead_text($data['searchId']??'',80),'hotel'=>lead_text($data['hotel']??'',240),'country'=>lead_text($data['country']??'',120),'region'=>lead_text($data['region']??'',160),'departure'=>lead_text($data['departure']??'',160),'date'=>lead_text($data['date']??'',40),'nights'=>isset($data['nights'])?(int)$data['nights']:null,'adults'=>isset($data['adults'])?(int)$data['adults']:null,'childs'=>$childCount,'childAges'=>$childAges,'meal'=>lead_text($data['meal']??'',160),'roomType'=>lead_text($data['roomType']??'',240),'placement'=>lead_text($data['placement']??'',160),'operator'=>lead_text($data['operator']??'',160),'price'=>lead_money($data['price']??null),'currency'=>lead_text($data['currency']??'RUB',12)?:'RUB','flight'=>lead_text($data['flight']??'',2500),'flightPrice'=>lead_money($data['flightPrice']??null),'flightFuel'=>lead_money($data['flightFuel']??null),'comment'=>lead_text($data['comment']??'',1000),'page'=>lead_text($data['page']??'',500),'yclid'=>lead_text($data['yclid']??'',100),'yaclient'=>lead_text($data['yaclient']??'',100),'utm_source'=>lead_text($data['utm_source']??'',160),'utm_medium'=>lead_text($data['utm_medium']??'',160),'utm_campaign'=>lead_text($data['utm_campaign']??'',160),'utm_content'=>lead_text($data['utm_content']??'',160),'utm_term'=>lead_text($data['utm_term']??'',160),'consent'=>true];
+    if($providerContext!==null)$lead=array_merge($lead,$providerContext);
     $priceSummary=v2_lead_price_summary($lead['price'],$lead['flightPrice']);$lead['basePrice']=$priceSummary['basePrice'];$lead['selectedPrice']=$priceSummary['selectedPrice'];$lead['priceDelta']=$priceSummary['delta'];
+    if($providerContext!==null){$lead['price']=(float)$data['price'];$lead['flightPrice']=$lead['price'];$lead['basePrice']=$lead['price'];$lead['selectedPrice']=$lead['price'];$lead['priceDelta']=0;}
     $people='Взрослых: '.max(1,(int)$lead['adults']);if((int)$lead['childs']>0)$people.='; Детей: '.(int)$lead['childs'];if($lead['childAges'])$people.='; Возраст детей: '.implode(', ',$lead['childAges']);
-    $details=['Имя: '.$lead['name'],'Телефон: '.$lead['phone'],'Город вылета: '.$lead['departure'],'Страна: '.$lead['country'],'Туристы: '.$people,'Даты вылета: '.$lead['date'],'Количество ночей: '.(string)$lead['nights'],'V2 Tourvisor tourId: '.$lead['tourId'],'Согласие на обработку персональных данных: получено '.date('d.m.Y H:i:s')];
+    $details=['Имя: '.$lead['name'],'Телефон: '.$lead['phone'],'Город вылета: '.$lead['departure'],'Страна: '.$lead['country'],'Туристы: '.$people,'Даты вылета: '.$lead['date'],'Количество ночей: '.(string)$lead['nights'],($providerContext===null?'V2 Tourvisor tourId: ':'V2 '.($lead['provider']==='anex'?'ANEX':'SAMO/Andromeda').' offer: ').($providerContext===null?$lead['tourId']:$lead['providerOfferRef']),'Согласие на обработку персональных данных: получено '.date('d.m.Y H:i:s')];
     if($lead['searchId'])$details[]='searchId: '.$lead['searchId'];if($lead['hotel'])$details[]='Отель: '.$lead['hotel'];if($lead['region'])$details[]='Регион: '.$lead['region'];if($lead['meal'])$details[]='Питание: '.$lead['meal'];if($lead['roomType'])$details[]='Номер: '.$lead['roomType'];if($lead['placement'])$details[]='Размещение: '.$lead['placement'];if($lead['operator'])$details[]='Оператор: '.$lead['operator'];if($lead['basePrice'])$details[]='Базовая цена тура: '.$lead['basePrice'].' '.$lead['currency'];if($lead['selectedPrice'])$details[]='Цена с выбранным рейсом: '.$lead['selectedPrice'].' '.$lead['currency'];if($lead['priceDelta']>0)$details[]='Доплата за выбранный рейс: '.$lead['priceDelta'].' '.$lead['currency'];elseif($lead['priceDelta']<0)$details[]='Изменение цены выбранного рейса: '.$lead['priceDelta'].' '.$lead['currency'];if($lead['flight'])$details[]='Выбранный перелёт: '.$lead['flight'];if($lead['flightFuel'])$details[]='Топливный сбор: '.$lead['flightFuel'].' '.$lead['currency'];if($lead['comment'])$details[]='Комментарий пользователя: '.$lead['comment'];if($lead['page'])$details[]='Страница: '.$lead['page'];
+    if($providerContext!==null){$details[]='Статус цены: подтверждена для выбранного перелёта';if($lead['providerChoiceRef'])$details[]='Выбор перелёта: '.$lead['providerChoiceRef'];$details[]='Подтверждение действительно до: '.gmdate('c',$lead['providerQuoteExpiresAt']);}
     $createdAt=date('d.m.Y H:i:s');$properties=['DATE'=>$createdAt,'NAME'=>$lead['name'],'PHONE'=>$lead['phone'],'COMMENTS'=>implode('; ',$details),'DEPARTURE'=>$lead['departure'],'PEOPLE'=>$people,'COUNTRY'=>$lead['country'],'STATUS'=>V2_LEAD_STATUS_ID,'SOURCE'=>V2_LEAD_SOURCE_ID,'YA_CLIENT'=>$lead['yaclient'],'YA_CLID'=>$lead['yclid'],'YA_UTM_SOURCE'=>$lead['utm_source'],'YA_UTM_MEDIUM'=>$lead['utm_medium'],'YA_UTM_CAMPAIGN'=>$lead['utm_campaign'],'YA_UTM_CONTENT'=>$lead['utm_content'],'YA_UTM_TERM'=>$lead['utm_term']];if($lead['meal'])$properties['MEAL']=$lead['meal'];if($lead['nights'])$properties['NIGHTS']=(string)$lead['nights'];
     return['lead'=>$lead,'properties'=>$properties,'element'=>['IBLOCK_ID'=>V2_LEAD_IBLOCK_ID,'IBLOCK_SECTION_ID'=>V2_LEAD_SECTION_ID,'PROPERTY_VALUES'=>$properties,'NAME'=>'Заявка от '.$createdAt,'ACTIVE'=>'Y']];
 }
