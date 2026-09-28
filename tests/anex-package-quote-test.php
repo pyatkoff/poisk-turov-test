@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/../app/integrations/anex-normalizer.php';
 require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
 // Synthetic contract fixtures, NOT retained supplier/live acceptance evidence.
