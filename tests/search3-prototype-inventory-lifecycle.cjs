@@ -300,6 +300,31 @@ test('first search unions direct ANEX once and waits for it before complete',asy
  assert.ok(h.events.some(e=>e.type==='provider'&&e.provider==='anex'&&e.status==='complete'));
  await h.data.continueSearch();await flush();assert.equal(h.anexCalls.length,1,'Continue never replays direct ANEX');
 });
+for(const nativeMeal of ['AI','RO'])test('ANEX retained expansion keeps selected conditions across its original window: '+nativeMeal,async()=>{
+ const h=harness({anex:async body=>{
+  const value=body.action==='expand'?expandedAnex(body):directAnex(body);
+  const tours=value.data.hotels[0].tours;tours.forEach(t=>{t.meal=nativeMeal;});
+  if(body.action==='expand')tours.push({...tours[0],offer_ref:'anex_online:'+'3'.repeat(64),checkin:'2026-10-02',price:{amount:'1000000',currency:'RUB'}});
+  return {response:{ok:true,json:async()=>value}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();
+ const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ const result=await h.data.expandAnexGroup(group);
+ assert.equal(result.offers.length,2,'another valid day in the retained first week is excluded from selected conditions');
+ assert.ok(result.offers.every(o=>o.day===group.day&&o.nights===group.nights&&o.meal===group.meal));
+ assert.deepEqual(h.anexCalls.map(c=>c.action),['search','expand'],'no replacement search or meal lookup');
+ if(nativeMeal==='RO')assert.throws(()=>h.data.supplierScope({meals:[group.meal]}),/канонического/,'free-form supplier search still requires canonical meal identity');
+});
+test('ANEX retained expansion never substitutes a different valid day when the selected day disappears',async()=>{
+ const h=harness({anex:async body=>{
+  const value=body.action==='expand'?expandedAnex(body):directAnex(body);
+  if(body.action==='expand')value.data.hotels[0].tours.forEach(t=>{t.checkin='2026-10-02';});
+  return {response:{ok:true,json:async()=>value}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+ await assert.rejects(h.data.expandAnexGroup(group),/Конкретные варианты ANEX больше недоступны/);
+ assert.deepEqual(h.anexCalls.map(c=>c.action),['search','expand']);
+});
 test('ANEX expands the retained group without a second initial search or a new generation',async()=>{
  const groupRef='anex_online:'+'b'.repeat(64),searchRef='a'.repeat(32);let initial;
  const h=harness({anex:async body=>{
@@ -588,7 +613,7 @@ test('ANEX retained group expansion rejects foreign or unavailable response cont
   ['unknown expansion',v=>{v.status='expansion_unknown';}],
   ['empty expansion',v=>{v.hotels[0].tours=[];}],
   ['foreign concrete context',v=>{v.hotels[0].tours[0].search_ref='f'.repeat(32);}],
-  ['foreign day',v=>{v.hotels[0].tours[0].checkin='2026-10-02';}],
+  ['day outside retained first week',v=>{v.hotels[0].tours[0].checkin='2026-10-06';}],
   ['foreign nights',v=>{v.hotels[0].tours[0].nights=9;}],
   ['foreign party',v=>{v.hotels[0].tours[0].adults=1;}]
  ]){

@@ -9,14 +9,24 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
  for(const zero of [false,true]){
   const transport=fixture({anexZeroSurcharge:zero}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
   transport.state.anexCurrentAdditional=true;
-  const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+  const weekEnd=new Date(Date.parse(trip.from+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
+  const siblingDay=new Date(Date.parse(trip.from+'T12:00:00Z')+86400000).toISOString().slice(0,10);
+  const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,to:weekEnd,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
   const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
   Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
   w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
   w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
   w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
   w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
-  w.fetch=async(url,options={})=>new Response(JSON.stringify(await transport.json(url,options)),{status:200,headers:{'Content-Type':'application/json'}});
+  w.fetch=async(url,options={})=>{
+   const value=await transport.json(url,options);
+   if(value.data?.provider==='anex'&&value.data.hotels){
+    for(const hotel of value.data.hotels)for(const tour of hotel.tours)tour.meal=zero?'RO':'AI';
+    if(value.data.status==='expanded')value.data.hotels[0].tours.push({...value.data.hotels[0].tours[0],
+     checkin:siblingDay,offer_ref:'anex_online:'+'3'.repeat(64),room:'ANEX OTHER DAY'});
+   }
+   return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});
+  };
   const wait=async(fn)=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}assert.fail('Timeout: '+d.body.textContent.slice(-2000));};
   try{
    for(const file of scripts)w.eval(source(file));
@@ -26,6 +36,10 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
    await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
    click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
    await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
+   assert.doesNotMatch(q('#modal-body').textContent,/ANEX OTHER DAY/,'retained window expansion preserves the selected day');
+   if(zero)assert.match(q('#modal-body').textContent,/Без питания/,'native RO does not require a Tourvisor catalogue alias');
+   assert.equal(transport.calls.filter(c=>c.action==='search').length,1);
+   assert.equal(transport.calls.filter(c=>c.action==='expand').length,1);
    click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-application-preview"]'));
    assert.match(q('#modal-body').textContent,/не финально подтверждённая/);
    assert.equal(q('[data-action="anex-additional-prices"]'),null,'retained APD requires no repeated supplier request');
