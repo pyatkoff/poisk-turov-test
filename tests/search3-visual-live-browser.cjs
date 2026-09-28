@@ -294,6 +294,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   const historyRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await historyRoom.locator(':scope>summary').click();
   const historyMore=historyRoom.locator('.hotel-room-more');await historyMore.locator(':scope>summary').click();
+  await page.waitForFunction(()=>history.state?.['anytour.prototype.v18.ui.v1']?.more?.includes('STANDARD SEA VIEW'));
   await page.evaluate(()=>history.back());await page.waitForFunction(()=>!document.querySelector('#modal').open);
   await page.evaluate(()=>history.forward());await page.waitForFunction(()=>document.querySelector('#modal').open);
   assert(await page.locator('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').evaluate(el=>el.open),'browser Forward restores the expanded nested tour list');
