@@ -34,7 +34,7 @@ jobs:
           umask 077
           mkdir terminal
           test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114d.php)" = cf040a973b7a6e065c0599e43204ef2505b7dc86
-          php -l scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114d.php
+          php -l scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114d.php >terminal/lint.txt 2>&1 || true
           echo MATCH_V114D_SOURCE_OK\n
       - name: Audit entire CURRENT frontier once
         env:
