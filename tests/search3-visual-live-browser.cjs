@@ -253,7 +253,8 @@ const server=http.createServer((req,res)=>{
   await page.screenshot({path:path.join(evidence,`progressive-hotel-${width}.png`)});
   await page.locator('#hotel-room-meal').selectOption({label:'Завтраки'});
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 1 · Туры: 1');
-  await page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').click();assert.match(await page.locator('#modal-body').textContent(),/SAMO STANDARD/);
+  assert.match(await page.locator('#hotel-detail-offers').getAttribute('data-key'),/^andromeda%3A/);
+  await page.locator('#hotel-detail-offers').click();assert.match(await page.locator('#modal-body').textContent(),/SAMO STANDARD/);
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,beforeHotelSearch+1);
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();

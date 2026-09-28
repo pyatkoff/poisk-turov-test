@@ -256,7 +256,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  const mealChoice=q('#hotel-room-meal');assert(mealChoice,'late different meal creates the existing meal filter');
  mealChoice.value='Завтраки';mealChoice.dispatchEvent(new w.Event('change',{bubbles:true}));assert.equal(q('#hotel-room-count').textContent,'Номера: 1 · Туры: 1');
 
- click('#modal-body [data-action="offer"][data-key^="andromeda%3A"]');assert.match(q('#modal-body').textContent,/SAMO STANDARD/);
+ assert.match(q('#hotel-detail-offers').dataset.key,/^andromeda%3A/);click('#hotel-detail-offers');assert.match(q('#modal-body').textContent,/SAMO STANDARD/);
  assert.equal(starts(),beforeHotelSearch+1);click('[data-action="close-modal"]');await settle();
  const url=w.location.href;w.history.replaceState(null,'','/poisk-turov/');assert.equal(w.Search3CanonicalProfilesV1.create(()=>{}),null,'production consumer stays denied');w.history.replaceState(null,'',url);
  assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);
