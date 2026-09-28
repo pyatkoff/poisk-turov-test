@@ -1,8 +1,94 @@
 # Search3 production migration and rollback runbook
 
-Status: **prepared and fixture-drill verified; no live backup captured and no production switch authorized.**
+Status: **rollback tooling fixture-tested; current visual-search transfer is NOT ready for activation. No live backup captured and no production switch authorized.**
 
 This runbook applies to the eventual whole-site Search3 migration. It does not widen the nine-file search-only deploy allowlist and it does not authorize the existing production workflow. Owner approval of the exact preview version is still required.
+
+## Current transfer review — 2026-09-28 UTC
+
+The only accepted UI target is `https://anytoour.ru/_preview/search3-next-candidate/visual-search/`.
+The old prototype and the old whole-site search are not substitutes for that UI.
+This section updates this runbook; it does not create another product specification.
+
+Reviewed release: `2e16ae86186547dabc976aa164ea2480595886f4`.
+Installed NEXT source: `98af3df27950b4519b32ee146a1353cfbf39e956`;
+installed INT at the acceptance checks: `dd64e683abf021717e010dd94073f1d49bd127aa`.
+Reconcile newer source heads and actual installs separately before using this review.
+
+| Evidence | Result and limit |
+| --- | --- |
+| NEXT install run `36493980488`, artifact `11001897996` | Isolated preview installed; not production activation |
+| ANEX charter PARADOR, v40, [receipt](https://github.com/pyatkoff/poisk-turov-test/issues/3419#issuecomment-5880146007) | Explicit TK1232/TK3002, supplier final 164529 RUB, preview application and return passed |
+| SAMO FUN&SUN KLEOPATRA, v41, [receipt](https://github.com/pyatkoff/poisk-turov-test/issues/3419#issuecomment-5880191093) | Final 101069 RUB, ZF3003/U63556, preview application and return passed; unambiguous pair, NOT manual alternative selection |
+| ANEX regular SOKULLU, v42, [receipt](https://github.com/pyatkoff/poisk-turov-test/issues/3419#issuecomment-5880266008) | Fresh search and 40 flight pairs passed; explicit S7 pair calculation returned `quote_unconfirmed`, no final price. Cause remains unclassified |
+| Fresh SAMO manual-selection attempt v43, [receipt](https://github.com/pyatkoff/poisk-turov-test/issues/3419#issuecomment-5880354067) | Search returned partial results; no eligible SAMO sample established, no quote or selection request made. Manual-selection acceptance remains open |
+
+All cited attempts are terminal/no-replay. Historical empty APD and code1108 do
+not describe these new outcomes. None of these checks sent a real application.
+
+### Proven entry and lead ownership
+
+| Current owner | Actual behavior | Transfer work still required |
+| --- | --- | --- |
+| `v2/visual-search/index.php` | Rejects paths outside the NEXT preview with 403; injects shared runtime/data/lead modules into `index.html` | Reviewed production entry and route mapping for this exact UI; copying its directory cannot activate it |
+| `v2/prototype-search/config.js` | Uses `preview-lead-disabled.php` and INT preview supplier endpoints | Explicit production endpoint map and server dependencies; do not silently keep preview dependencies |
+| `v2/prototype-search/lead.js` | Actual live target form owner. TV uses `leadSession`; SAMO/ANEX use `bindProviderPreview` | Implement and review provider handoff; switching `leadApi` alone makes `providerPreviewReceipt` reject the form |
+| `v2/prototype-search/data.js` and `v2/tour-controller-v4.js` | Existing lead session accepts only current, confirmed TV identity and positive numeric TV search ID | Preserve TV path; do not forge a TV tour/search identity for direct suppliers |
+| `v2/lead-bridge-v1.php` → `v2/lead-receiver-v1.php` → `v2/lead-adapter-v2.php` | Existing HMAC bridge and Bitrix delivery. Deployment installs the bridge under public `/lead-adapter-v2.php` | Reuse existing transport/auth, preserve receiver and CRM contract unless separately approved |
+| `v2/lead-adapter-v2.php`, `v2/lead-idempotency-v1.php` | `tourId` required; manager text labels it Tourvisor; deduplication includes tour/search/flight identity | Review provider identity mapping and manager text before routing direct offers here |
+
+`v2/visual-search/preview-lead.js` is used for offline scenarios; it is not the
+live target form owner. The source graph above is selected by `index.php`.
+
+### Concrete provider handoff proposal — review required, not implemented
+
+Keep the existing HMAC/receiver/Bitrix transport. Add a provider-aware handoff at
+the confirmed-selection boundary, with the following explicit contract review:
+
+| Value | Required mapping / rejection behavior |
+| --- | --- |
+| Provider identity | Preserve `andromeda` or `anex` plus exact opaque offer reference; never represent it as a TV ID. Review a namespaced `tourId` and provider-neutral manager label together, or approve dedicated provider fields; neither is presently authorized |
+| Confirmation | Bind to exact search generation, offer, room, meal, party, dates and selected outbound/return pair; reject expired, failed, pending and mismatched receipts |
+| Price | Transfer supplier-confirmed RUB total only for the confirmed flow; no invented supplement or fuel formula. Keep estimate distinguishable and outside final-confirmed handoff |
+| Flights | Preserve both directions, dates, airport codes and selected pair identity. Existing manager field is limited to 2500 characters; reject/resolve overflow explicitly rather than silently losing itinerary |
+| Contacts | Reuse phone validation, explicit consent and existing CRM field limits; no contact data in diagnostics or browser persistence |
+| Retries | Preserve in-flight guard, receipt-bound deduplication, successful `leadId` and explicit failure recovery; no success on HTTP200 alone |
+| Return | Returning from application restores the same confirmed selection; changing offer/search/flight invalidates the old submission context |
+
+The existing `AGENTS.md` protects lead external contract/mapping. Owner direction
+to prepare transfer does not by itself approve a new identity mapping, receiver
+change or real lead. Present this exact mapping choice for approval before
+implementing that protected boundary; do not work around it through comments,
+synthetic TV IDs, a second delivery service or a new endpoint.
+
+### Release gates and rollout order
+
+1. Close fresh SAMO manual alternative-flight acceptance and ANEX regular final
+   calculation; record exact installed versions and terminal results. A successful
+   charter or unambiguous pair does not close either branch.
+2. Review the provider identity/lead mapping above; implement it with fake
+   transport tests proving exact fields, expired/mismatched rejection, double
+   submit, failure and retry. Real sends remain a separately agreed check.
+3. Prepare exact production route/configuration delta, dependency inventory,
+   artifact hashes and immutable source tree. Review actual target at mobile and
+   desktop sizes. Do not activate the old prototype, saved tours or comparison.
+4. Obtain owner approval of that exact release and separately reviewed production
+   procedure. Keep existing preview isolation until this approval.
+5. Capture the CURRENT live predecessor and private rollback snapshot immediately
+   before switching. The historical `fa58a0c…` example below is not proof of the
+   current live version. Hash all overwritten paths and enumerate candidate-only
+   paths; configuration/secrets remain server-local.
+6. Restore the snapshot into an isolated empty directory and verify bytes/modes.
+   Then use only the approved publisher and verify installed source, routes,
+   search-to-selection-to-application and unchanged existing delivery behavior.
+7. If canonical search is unavailable, verified identity/price/flight changes in
+   handoff, contacts are lost, or delivery falsely reports success: stop the
+   rollout and restore the exact predecessor. HTTP200/CI alone cannot waive this.
+
+The existing offline checks are `tests/search3-visual-live-bridge.cjs`,
+`tests/search3-prototype-provider-application-preview.cjs`, and
+`tests/search3_production_snapshot_test.py`. Preview tests intentionally prove
+NO delivery and must not be reported as production lead acceptance.
 
 ## Safety boundary
 
