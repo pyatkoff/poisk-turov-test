@@ -79,7 +79,7 @@ const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
 function harness({database,api,onEvent,native,anex,andromedaQuote,observations,destinations,clock=()=>Date.now()}={}){
- const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
+ const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],quoteFailures=[],quoteWarnings=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
   if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'){
@@ -162,6 +162,9 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,crypto:crypto.webcrypto,TextEncoder,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
  if(native||anex||andromedaQuote){win.V2_CONFIG={};if(native)win.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';if(anex)win.V2_CONFIG.anexApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php';if(andromedaQuote)win.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';}
  const bus=new EventTarget();win.addEventListener=bus.addEventListener.bind(bus);win.removeEventListener=bus.removeEventListener.bind(bus);win.dispatchEvent=bus.dispatchEvent.bind(bus);
+ win.CustomEvent=class extends Event{constructor(type,{detail}){super(type);this.detail=detail;}};
+ win.console={warn:message=>quoteWarnings.push(message)};
+ win.addEventListener('anytour:quote-failure',event=>quoteFailures.push(event.detail));
  const sandbox={window:win,fetch,URL,URLSearchParams,AbortController,DOMException,structuredClone,console,crypto:crypto.webcrypto,TextEncoder,Date:class extends Date{static now(){return clock();}},setTimeout:win.setTimeout,clearTimeout:win.clearTimeout};
  vm.createContext(sandbox);
  for(const name of ['search3-canonical-profiles-v1.js','search3-local-db-provider-v1.js','prototype-search/data.js'])vm.runInContext(fs.readFileSync(path.join(rootDir,'v2',name),'utf8'),sandbox,{filename:name});
@@ -171,7 +174,7 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  const poll=async()=>{const entry=[...timers].find(([,value])=>value.delay<=2500);assert.ok(entry,'pending poll required');timers.delete(entry[0]);await entry[1].fn();await flush();};
  const latest=()=>events.filter(e=>e.type==='results').at(-1)?.hotels||[];
  const providers=()=>[...new Set(latest().flatMap(h=>h.offers.map(o=>o.provider)))].sort();
- return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
+ return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,quoteFailures,quoteWarnings,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
 for(const mode of ['complete','http-error','wrong-offer','verified','malformed','stopped'])test('ANEX independent flight continuation '+mode,async()=>{
@@ -994,6 +997,37 @@ test('Andromeda first failure stays terminal and retains only safe diagnostic fi
   await h.start();await h.poll();const fresh=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='andromeda');
   await h.data.verifyAndromeda(fresh).catch(()=>{});assert.equal(h.andromedaQuoteCalls.length,2,'only an explicit new search owns a new attempt');
   await assert.rejects(h.data.verifyAndromeda(offer),/устарело/);assert.equal(h.andromedaQuoteCalls.length,2);
+ }
+});
+test('Andromeda rejection preserves bounded supplier facts through the browser diagnostic without replay',async()=>{
+ for(const [phase,stage,code,expected,category='supplier_rejected'] of [
+  ['initial','broninit','1108',{failureStage:'broninit',supplierCode:'1108'}],
+  ['continuation','calc','E_PRICE',{failureStage:'calc',supplierCode:'E_PRICE'}],
+  ['initial','get_flights','1110',{failureStage:'get_flights',supplierCode:'1110'}],
+  ['initial','changeservice','x'.repeat(65),{failureStage:'changeservice'}],
+  ['initial','broninit',1108,{failureStage:'broninit'}],
+  ['initial','broninit','1108\n',{failureStage:'broninit'}],
+  ['initial','broninit','private sid secret',{failureStage:'broninit'}],
+  ['initial','private sid secret','1108',{}],
+  ['initial','broninit','1108',{},'supplier_auth']
+ ]){
+  const h=harness({native:async body=>({response:{ok:true,status:200,json:async()=>directAndromeda(body)}}),
+   andromedaQuote:async body=>({response:phase==='continuation'&&body.action==='quote'
+    ?{ok:true,status:200,json:async()=>({ok:true,data:andromedaChoice(101)})}
+    :{ok:false,status:502,json:async()=>({ok:false,failure_category:category,failure_stage:stage,supplier_code:code,
+      message:'private sid secret',claimDocument:{secret:'private'},supplier_offer_id:'private'})}})});
+  await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='andromeda');
+  const selection={provider:'andromeda',outbound_ref:'flight_'+'1'.repeat(32),return_ref:'flight_'+'3'.repeat(32)};
+  if(phase==='continuation')await h.data.verifyAndromeda(offer);
+  const failure=await h.data.verifyAndromeda(offer,phase==='continuation'?selection:null).catch(error=>error);
+  assert.equal(failure.failureStage,expected.failureStage);assert.equal(failure.supplierCode,expected.supplierCode);
+  assert.equal(await h.data.verifyAndromeda(offer).catch(error=>error),failure,'reopening keeps the same failure facts');
+  const diagnostic={provider:'andromeda',action:phase==='continuation'?'quote_select_flights':'quote',
+   code:'quote_unconfirmed',httpStatus:502,failureCategory:category,...expected};
+  assert.deepEqual(JSON.parse(JSON.stringify(h.quoteFailures)),[diagnostic],'one bounded diagnostic survives both quote stages');
+  assert.deepEqual(h.quoteWarnings,['[AnyTour quote] '+JSON.stringify(diagnostic)]);
+  assert.doesNotMatch(failure.message+JSON.stringify(failure)+JSON.stringify(h.quoteFailures),/private|secret|sid|claimDocument|supplier_offer_id/);
+  assert.equal(h.andromedaQuoteCalls.length,phase==='continuation'?2:1,'diagnostics add no requests or retries');
  }
 });
 test('failed flight confirmation cannot be restarted by reopening the offer or changing flights',async()=>{

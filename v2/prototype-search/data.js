@@ -1374,6 +1374,12 @@
   function andromedaQuoteFailure(status=0,payload=null,kind=''){
     const allowed=['supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal'];
     const category=kind|| (status===429?'limit':status===422?'unavailable':status===403?'access':status===400?'invalid_request':allowed.includes(payload?.failure_category)?payload.failure_category:'internal');
+    const facts={};
+    if(category==='supplier_rejected'&&['broninit','get_flights','changeservice','calc'].includes(payload?.failure_stage)){
+      facts.failureStage=payload.failure_stage;
+      const code=payload.supplier_code;
+      if(typeof code==='string'&&code.length>0&&code.length<=64&&!/[^A-Za-z0-9_.:-]/.test(code))facts.supplierCode=code;
+    }
     const message=category==='limit'?'Сейчас проверка этого поставщика недоступна. Выберите другое предложение или вернитесь позже.':
       category==='unavailable'?'Не удалось подтвердить этот тур. Выберите другое предложение.':
       category==='access'?'Проверка этого тура временно недоступна.':
@@ -1383,7 +1389,7 @@
       category==='stale'?'Условия поиска изменились. Выберите тур заново.':
       'Подтверждение тура не получено. Цена и наличие пока неизвестны.';
     return Object.assign(new Error(message),{code:category==='expired'?'offer_expired':category==='unavailable'?'offer_unavailable':'quote_unconfirmed',retryable:false,
-      httpStatus:Number.isInteger(status)&&status>=0&&status<=599?status:0,failureCategory:category});
+      httpStatus:Number.isInteger(status)&&status>=0&&status<=599?status:0,failureCategory:category},facts);
   }
   async function verifyAndromeda(o,flightSelection=null){
     const base=andromedaQuoteRequest(o);
@@ -1426,10 +1432,12 @@
       }catch(error){
         if(flightSelection)andromedaQuoteChoices.delete(prepared.key);
         const failure=error?.retryable===false?error:andromedaQuoteFailure(status,null,epoch!==generation?'stale':timedOut?'timeout':'network');
-        // Browser-local diagnostics contain fixed public classifications only, never response text or identities.
+        // Browser-local diagnostics retain bounded public failure facts, never response text or identities.
         if(epoch===generation){
           const detail=Object.freeze({provider:'andromeda',action:prepared.body.action,code:failure.code,
-            httpStatus:failure.httpStatus,failureCategory:failure.failureCategory});
+            httpStatus:failure.httpStatus,failureCategory:failure.failureCategory,
+            ...(failure.failureStage?{failureStage:failure.failureStage}:{}),
+            ...(failure.supplierCode?{supplierCode:failure.supplierCode}:{})});
           root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
           if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
         }
