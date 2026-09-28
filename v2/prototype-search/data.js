@@ -1225,6 +1225,9 @@
           if(reason&&['start','transports','SetTransport','calcfull'].includes(payload?.data?.failure_stage))detail.failureStage=payload.data.failure_stage;
           const supplierHttpStatus=payload?.data?.supplier_http_status;
           if(reason==='ANEX_QUOTE_HTTP_ERROR'&&Number.isInteger(supplierHttpStatus)&&supplierHttpStatus>=100&&supplierHttpStatus<=599)detail.supplierHttpStatus=supplierHttpStatus;
+          const responseStatus=payload?.data?.status;
+          detail.responseStatus=['quote_failed','quote_unavailable','quote_expired','quote_unknown','quote_selection_locked',
+            'expired','mismatch','not_loaded','identity_unresolved','identity_changed','not_available','quote_choices','quote_verified'].includes(responseStatus)?responseStatus:'unknown';
           root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
           throw new Error('ANEX не подтвердил расчёт выбранного тура. Цена и наличие требуют уточнения.');
         }
