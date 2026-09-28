@@ -1048,7 +1048,9 @@
     const filters={};if(o.meal&&!/уточняется/i.test(o.meal))filters.meals=[o.meal];
     // Concretizing one hotel belongs to this search. Stopping it would expire
     // the still-visible SAMO/ANEX offers and discard their no-replay receipts.
-    const p=params(exact,[String(localHotelId)],filters),epoch=generation;
+    // Expand retains the original first-week/nights window. Native meal labels
+    // constrain the returned offers locally, not a new Tourvisor search scope.
+    const p=directFirstWeekScopes(params(o.search,[String(localHotelId)]))[0],epoch=generation;
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url)throw new Error('ANEX сейчас недоступен.');
     activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
@@ -1073,7 +1075,7 @@
       for(const tour of expanded.hotels[0].tours){
         if(tour?.kind!=='concrete'||tour?.search_ref!==searchRef)throw new Error('ANEX вернул некорректный конкретный вариант.');
         const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch,anexSessionCurrent:true},p,seen);
-        if(item)normalized.push(item);
+        if(item&&item.date===o.day&&item.nights===o.nights)normalized.push(item);
       }
       if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
       if(!normalized.length)throw new Error('Конкретные варианты ANEX больше недоступны.');
