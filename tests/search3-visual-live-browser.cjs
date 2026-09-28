@@ -131,6 +131,8 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Доплаты ANEX рассчитаны');assert((await page.locator('#modal-body').textContent()).replace(/\s/g,'').includes('123000'));
   await page.locator('[data-action="anex-flights"]').click();await page.waitForFunction(()=>document.querySelector('#anex-flight-inventory').textContent.includes('TEST ANEX 101'));
   assert.match(await page.locator('#anex-flight-inventory').textContent(),/не выбранные рейсы/);
+  await page.locator('#anex-flight-inventory').scrollIntoViewIfNeeded();
+  assert.equal(await page.locator('#anex-flight-inventory').evaluate(el=>el.scrollWidth>el.clientWidth),false,'ANEX flight facts fit the target viewport');
   await page.screenshot({path:path.join(evidence,`anex-flights-${width}.png`)});
   const callsBeforeAnexApplication=transport.calls.length;await page.locator('[data-action="anex-application-preview"]').click();
   assert((await page.locator('#modal-body').textContent()).includes('Расчётная сумма'));assert((await page.locator('#modal-body').textContent()).includes('Итоговая стоимость требует подтверждения'));
