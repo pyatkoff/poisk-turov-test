@@ -111,7 +111,8 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
   w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
   w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
   transport.state.anexQuoteFailure=failure==='supplier';
-  w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(failure==='different-pair'&&value.data?.status==='quote_verified')value.data.choice.choice_ref='anex_quote:'+'1'.repeat(64);return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});};
+  let releaseQuote;
+  w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(transport.calls.at(-1)?.action==='quote_calculate')await new Promise(resolve=>releaseQuote=resolve);if(failure==='different-pair'&&value.data?.status==='quote_verified')value.data.choice.choice_ref='anex_quote:'+'1'.repeat(64);return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});};
   const wait=async(fn)=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}assert.fail('Timeout quote: '+d.body.textContent.slice(-2000));};
   try{
    for(const file of scripts)w.eval(source(file));
@@ -122,10 +123,20 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
    click('[data-action="anex-package-quote"]');await wait(()=>q('[name="anex-package-choice"]'));
    const alternate=d.querySelectorAll('[name="anex-package-choice"]')[1];alternate.click();
    assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 2 OUT/);
-   click('[data-action="anex-package-calculate"]');
+   click('[data-action="anex-package-calculate"]');await wait(()=>releaseQuote);
+   assert.equal(q('[name="anex-package-choice"]:checked')?.value,alternate.value,'pending calculation must keep the requested second pair selected');
+   assert([...d.querySelectorAll('[name="anex-package-choice"]')].every(el=>el.disabled),'pending pair is locked');
+   assert(!q('[data-action="anex-application-preview"]'),'pending calculation grants no priced application');
+   const pendingCalls=transport.calls.length;
+   click('[data-action="close-modal"]');await new Promise(r=>setTimeout(r,150));w.history.forward();await new Promise(r=>setTimeout(r,150));
+   assert.equal(q('[name="anex-package-choice"]:checked')?.value,alternate.value,'pending Forward keeps the actual requested pair');
+   assert.equal(transport.calls.length,pendingCalls,'pending Forward is passive');
+   releaseQuote();
    if(failure){
     await wait(()=>q('#anex-package-status').textContent.includes('не подтвердил'));
     assert(!q('[data-action="anex-application-preview"]'));assert(!q('[data-action="anex-package-calculate"]'));
+    assert.equal(q('[name="anex-package-choice"]:checked')?.value,alternate.value,'failed calculation keeps the requested pair visible');
+    assert([...d.querySelectorAll('[name="anex-package-choice"]')].every(el=>el.disabled),'consumed calculation cannot imply another selection is actionable');
    }else{
     await wait(()=>q('[data-action="anex-application-preview"]'));assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 2 OUT/);
     assert.match(q('#modal-body').textContent.replace(/\s/g,''),/135678,9/);click('[data-action="anex-application-preview"]');
@@ -135,6 +146,7 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
    }
    const count=transport.calls.length;click('[data-action="close-modal"]');await new Promise(r=>setTimeout(r,150));w.history.forward();await new Promise(r=>setTimeout(r,150));
    assert(q('#modal').open);assert.equal(transport.calls.length,count,'ANEX package/application Forward is supplier-free');
+   if(failure)assert.equal(q('[name="anex-package-choice"]:checked')?.value,alternate.value,'failed Forward keeps the requested pair');
    if(!failure){assert(q('#prototype-lead-form'));assert.equal(q('#prototype-lead-form').elements.phone.value,'+79990000000');assert.equal(q('#prototype-lead-form').elements.consent.checked,false);}
    assert.equal(transport.calls.filter(c=>c.action==='quote_start').length,1);assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,1);
    assert.equal(transport.calls.filter(c=>c.action==='additional_prices').length,0,'package quote independent of APD');assert.deepEqual(errors,[]);
