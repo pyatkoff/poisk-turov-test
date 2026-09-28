@@ -755,7 +755,7 @@ function uiRoute(){
  if(type==='all-offers')return {type,id:offerView?.id,mode:offerView?.mode,departure:offerView?.departure,day:offerView?.day,nights:offerView?.nights,flight:offerView?.flight,room:offerView?.room,meal:offerView?.meal,sort:offerView?.sort,pair:offerView?.pair,activeVariant:offerView?.activeVariant,differencesOnly:offerView?.differencesOnly,filtersOpen:$('.offer-filter-disclosure')?.open===true,scroll:$('#modal-body').scrollTop};
  if(type==='hotel-details')return {type,id:Number($('.hotel-section-nav')?.dataset.hotelId)||null,meal:$('#hotel-room-meal')?.value||'',rooms:$$('.room-overview[open]').map(el=>el.dataset.room),more:$$('#modal-body .hotel-room-more[open]').map(el=>el.closest('[data-room]').dataset.room),scroll:$('#modal-body').scrollTop};
  if(type==='gallery')return {type,id:gallery.id,index:gallery.index};
- if(type==='dates')return {type,source:dateContext?.source};
+ if(type==='dates')return {type,source:dateContext?.source,draft:{from:dateDraft.from,to:dateDraft.to,phase:dateDraft.phase===1?1:0},month:calendarMonth,scroll:$('#modal-body').scrollTop};
  return {type};
 }
 function rememberUIRoute(){
@@ -780,7 +780,7 @@ function reopenUIRoute(route){
  case 'destination':openDestination();break;
  case 'guests':openGuests();break;
  case 'nights':openNights();break;
- case 'dates':openDates(route.source==='results'?'results':'form');break;
+ case 'dates':openDates(route.source==='results'?'results':'form',route);if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;break;
  case 'meals':openMeals();break;
  case 'budget':openBudget();break;
  case 'saved-tour':case 'saved-details':return false;
@@ -967,10 +967,12 @@ function openBudget(){
  $('#modal').classList.add('budget-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<button class="primary picker-apply" data-action="apply-budget">Применить бюджет</button>';updateBudgetPreview();
 }
 
-function openDates(source='form'){
+function openDates(source='form',restore=null){
  dateContext=createDateContext(source);const s=dateContext.search,selectedDay=source==='results'?state.selectedDate:draftSelectedDate();
- dateDraft={from:selectedDay||s.from,to:selectedDay||s.to,phase:0};
- datePrices=new Map();calendarMonth=dateDraft.from.slice(0,7)+'-01';
+ const restoredDraft=restore?.draft&&typeof restore.draft==='object'?{from:String(restore.draft.from||''),to:String(restore.draft.to||''),phase:restore.draft.phase===1?1:0}:null;
+ dateDraft=restoredDraft&&!dateRangeError(restoredDraft)?restoredDraft:{from:selectedDay||s.from,to:selectedDay||s.to,phase:0};
+ const firstMonth=startDay.slice(0,7)+'-01',lastMonth=endDay.slice(0,7)+'-01',restoredMonth=String(restore?.month||'');
+ datePrices=new Map();calendarMonth=/^\d{4}-\d{2}-01$/.test(restoredMonth)&&restoredMonth>=firstMonth&&restoredMonth<=lastMonth?restoredMonth:dateDraft.from.slice(0,7)+'-01';
  showModal('dates','Даты вылета','КАЛЕНДАРЬ ЦЕН · ЗА ВСЕХ ТУРИСТОВ',`<div class="date-choice-tools"><div class="calendar-context"></div><div class="calendar-price-key"><span>Весь тур · тыс. ₽</span><span><i class="legend-dot"></i>Минимум в месяце</span></div><div class="calendar-legend" role="status" hidden><span></span></div></div><div id="date-calendar"></div>`);
  renderCalendarScope();
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="date-footer"><div id="date-selection-price" class="date-selection-price" aria-live="polite"></div><p id="date-selection-hint" aria-live="polite"></p><p class="error-text" id="date-error" role="alert"></p><button class="primary picker-apply" data-action="apply-dates"></button></div>`;
@@ -1705,8 +1707,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
 
  case 'clear-date':state.selectedDate=null;renderResults({keepFilters:true});updateSearchUI();break;
  case 'select-date':selectDate(b.dataset.date);break;
- case 'month-prev':case 'month-next':{const d=dateObj(calendarMonth);d.setUTCMonth(d.getUTCMonth()+(action==='month-next'?1:-1));calendarMonth=iso(d);renderDateCalendar();loadCalendarPrices();break}
- case 'day-pick':{const day=b.dataset.date;if(dateDraft.phase===0){dateDraft.from=day;dateDraft.to=day;dateDraft.phase=1}else{const range={from:day<dateDraft.from?day:dateDraft.from,to:day<dateDraft.from?dateDraft.from:day};if(dateRangeError(range)){$('#date-error').textContent='Между датами — не больше 21 дня. Выберите вторую дату ближе к первой.';break;}dateDraft.from=range.from;dateDraft.to=range.to;dateDraft.phase=0}updateDateSelection();break}
+ case 'month-prev':case 'month-next':{const d=dateObj(calendarMonth);d.setUTCMonth(d.getUTCMonth()+(action==='month-next'?1:-1));calendarMonth=iso(d);renderDateCalendar();loadCalendarPrices();rememberUIRoute();break}
+ case 'day-pick':{const day=b.dataset.date;if(dateDraft.phase===0){dateDraft.from=day;dateDraft.to=day;dateDraft.phase=1}else{const range={from:day<dateDraft.from?day:dateDraft.from,to:day<dateDraft.from?dateDraft.from:day};if(dateRangeError(range)){$('#date-error').textContent='Между датами — не больше 21 дня. Выберите вторую дату ближе к первой.';break;}dateDraft.from=range.from;dateDraft.to=range.to;dateDraft.phase=0}updateDateSelection();rememberUIRoute();break}
  case 'apply-dates':{const {from,to}=dateDraft;if(!from||!to||from<startDay||to>endDay||from>to||(dateObj(to)-dateObj(from))/86400000>21){$('#date-error').textContent='Выберите корректный диапазон не больше 21 дня между датами.';return}const refreshResults=dateContext.source==='results'&&(from!==dateContext.search.from||to!==dateContext.search.to);draft.from=from;draft.to=to;if(dateContext.source==='results'){state.search.from=from;state.search.to=to;state.selectedDate=from===to?from:null;state.openHotel=null;renderResults({keepFilters:true})}else if(state.selectedDate){state.selectedDate=null;renderResults({keepFilters:true})}closeModal();updateSearchUI();if(refreshResults)searchLifecycle.requestSubmit();break}
  case 'adults-minus':guestDraft.adults=Math.max(1,guestDraft.adults-1);renderGuests();break;
  case 'adults-plus':guestDraft.adults=Math.min(6,guestDraft.adults+1);renderGuests();break;
