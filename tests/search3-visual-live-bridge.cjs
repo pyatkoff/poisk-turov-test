@@ -80,6 +80,11 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 
  click('[data-action="hotel-details"][data-id="501"]');assert.match(q('#modal-body').textContent,/Тестовая улица/);assert.match(q('#modal-body').textContent,/Мини-клуб/);click('[data-action="close-modal"]');await settle();
  click('[data-action="all-offers"][data-id="501"]');await settle();
+ const callsBeforeOfferListForward=transport.calls.length;q('.offer-filter-disclosure').open=true;q('#modal-body').scrollTop=142;
+ click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#all-offers-list'));
+ assert(q('.offer-filter-disclosure').open,'browser Forward restores the expanded concrete-tour filters');
+ assert.equal(q('#modal-body').scrollTop,142,'browser Forward restores the concrete-tour list position');
+ assert.equal(transport.calls.length,callsBeforeOfferListForward,'browser Forward neither restarts search nor checks an offer');
  click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.match(q('#modal-body').textContent,/STANDARD SEA VIEW/);
  click('[data-action="choose-flight"]');click('[name="flight-pair"][value="1"]');click('[data-action="apply-flight"]');await settle();

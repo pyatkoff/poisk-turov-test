@@ -752,7 +752,7 @@ function uiRoute(){
  if(type==='flights'){const o=flightDraft?.base;return o?.isSavedSelection?{type:'saved-details'}:{type:'offer',key:o?.key,flightChoiceId:o?.flightChoiceId};}
  if(type==='selected-tour')return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop};
  if(type==='offer')return selectedOffer===savedSelection?{type:'saved-details'}:{type,key:selectedOffer?.key,flightChoiceId:selectedOffer?.flightChoiceId};
- if(type==='all-offers')return {type,id:offerView?.id,mode:offerView?.mode,departure:offerView?.departure,day:offerView?.day,nights:offerView?.nights,flight:offerView?.flight,room:offerView?.room,meal:offerView?.meal,sort:offerView?.sort,pair:offerView?.pair,activeVariant:offerView?.activeVariant,differencesOnly:offerView?.differencesOnly};
+ if(type==='all-offers')return {type,id:offerView?.id,mode:offerView?.mode,departure:offerView?.departure,day:offerView?.day,nights:offerView?.nights,flight:offerView?.flight,room:offerView?.room,meal:offerView?.meal,sort:offerView?.sort,pair:offerView?.pair,activeVariant:offerView?.activeVariant,differencesOnly:offerView?.differencesOnly,filtersOpen:$('.offer-filter-disclosure')?.open===true,scroll:$('#modal-body').scrollTop};
  if(type==='hotel-details')return {type,id:Number($('.hotel-section-nav')?.dataset.hotelId)||null,meal:$('#hotel-room-meal')?.value||'',rooms:$$('.room-overview[open]').map(el=>el.dataset.room),more:$$('#modal-body .hotel-room-more[open]').map(el=>el.closest('[data-room]').dataset.room),scroll:$('#modal-body').scrollTop};
  if(type==='gallery')return {type,id:gallery.id,index:gallery.index};
  if(type==='dates')return {type,source:dateContext?.source};
@@ -798,7 +798,11 @@ function reopenUIRoute(route){
   if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;
   break;
  }
- case 'all-offers':if(!hotel)return false;openAllOffers(hotel.id,route);break;
+ case 'all-offers':{
+  if(!hotel)return false;openAllOffers(hotel.id,route);
+  const filters=$('.offer-filter-disclosure');if(filters)filters.open=route.filtersOpen===true;
+  if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;break;
+ }
  case 'gallery':if(!hotel)return false;openGallery(hotel.id,Number.isInteger(route.index)&&route.index>=0&&route.index<hotel.photos.length?route.index:0);break;
  case 'offer':{
   const o=offerFromKey(route.key);if(!o)return false;
