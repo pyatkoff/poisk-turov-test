@@ -1321,7 +1321,7 @@
       const retained=andromedaQuoteChoices.get(andromedaQuoteKey(ctx));
       const outbound=retained?.flights?.find(row=>row.direction==='0'&&row.flightRef===flightSelection.outbound_ref);
       const inbound=retained?.flights?.find(row=>row.direction==='1'&&row.flightRef===flightSelection.return_ref);
-      if(!outbound||!inbound)return null;
+      if(!outbound||!inbound||!andromedaQuoteCurrent(retained))return null;
       body.flight_selection=structuredClone(flightSelection);
     }
     return {body,ctx,localId,key:andromedaQuoteKey(ctx)};
@@ -1347,9 +1347,11 @@
     }
     return Object.freeze(row);
   }
+  function andromedaQuoteCurrent(quote){return Number.isSafeInteger(quote?.expiresAt)&&quote.expiresAt*1000>Date.now();}
   function normalizeAndromedaQuote(value,localId){
     if(!value||value.schema_version!==1||value.provider!=='andromeda'||Number(value.local_id)!==localId
       ||value.selection_enabled!==true||value.booking_enabled!==false||!Array.isArray(value.flights)
+      ||!Number.isSafeInteger(value.expires_at)||value.expires_at*1000<=Date.now()
       ||value.flights.length>(value.state==='flight_selection_required'?1000:100))return null;
     const verified=value.state==='quote_verified'&&value.quote_state==='verified'&&value.final_price_verified===true
       &&value.flight_selection_required===false;
@@ -1366,7 +1368,7 @@
     for(const raw of value.flights){const flight=andromedaQuoteFlight(raw,pending,seen);if(!flight)return null;flights.push(flight);}
     if(pending&&(!flights.some(row=>row.direction==='0')||!flights.some(row=>row.direction==='1')))return null;
     return Object.freeze({state:pending?'flight_selection_required':'quote_verified',finalPrice,finalPriceVerified:verified,
-      flightSelectionRequired:pending,flights:Object.freeze(flights)});
+      flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.expires_at});
   }
   function hasAndromedaQuoteAttempt(o){const prepared=andromedaQuoteRequest(o);return !!prepared&&andromedaQuoteAttempts.has(prepared.key);}
   function andromedaQuoteFailure(status=0,payload=null,kind=''){
@@ -1377,9 +1379,10 @@
       category==='access'?'Проверка этого тура временно недоступна.':
       category==='invalid_request'?'Условия этого предложения не удалось проверить.':
       category==='invalid_response'?'Andromeda вернул некорректное подтверждение. Цена и наличие пока неизвестны.':
+      category==='expired'?'Срок подтверждения тура истёк. Выполните новый поиск.':
       category==='stale'?'Условия поиска изменились. Выберите тур заново.':
       'Подтверждение тура не получено. Цена и наличие пока неизвестны.';
-    return Object.assign(new Error(message),{code:category==='unavailable'?'offer_unavailable':'quote_unconfirmed',retryable:false,
+    return Object.assign(new Error(message),{code:category==='expired'?'offer_expired':category==='unavailable'?'offer_unavailable':'quote_unconfirmed',retryable:false,
       httpStatus:Number.isInteger(status)&&status>=0&&status<=599?status:0,failureCategory:category});
   }
   async function verifyAndromeda(o,flightSelection=null){
@@ -1395,8 +1398,11 @@
         if(Object.keys(flightSelection).sort().join(',')!=='outbound_ref,provider,return_ref'
           ||Object.keys(expected).some(key=>expected[key]!==flightSelection[key]))throw andromedaQuoteFailure(0,null,'unavailable');
       }
-      return previous.promise;
+      const quote=await previous.promise;
+      if(!andromedaQuoteCurrent(quote))throw andromedaQuoteFailure(0,null,'expired');
+      return quote;
     }
+    if(flightSelection&&!andromedaQuoteCurrent(andromedaQuoteChoices.get(base.key)))throw andromedaQuoteFailure(0,null,'expired');
     const prepared=flightSelection?andromedaQuoteRequest(o,flightSelection):base;
     if(!prepared)throw Object.assign(new Error('Предложение Andromeda устарело. Повторите поиск.'),{code:'offer_expired',retryable:false});
     activeVerification?.abort();const controller=new AbortController();activeVerification=controller;

@@ -64,12 +64,16 @@
     }
     if(value.provider!=='andromeda'||!(/^offer_[a-f0-9]{64}$/).test(String(value.offerRef||''))||!Array.isArray(value.flights)||value.flights.length>100)
       throw new Error('Подтверждённые условия тура неполные. Повторите проверку предложения.');
+    // Legacy prototype receipts have no deadline; the visual-search owner requires one.
+    if(value.expiresAt!==undefined&&(!Number.isSafeInteger(value.expiresAt)||value.expiresAt*1000<=Date.now()))
+      throw new Error('Срок подтверждения тура истёк. Выполните новый поиск.');
     const flights=value.flights.map(f=>Object.freeze({direction:String(f?.direction||''),name:providerText(f?.name,160),
       datebeg:providerText(f?.datebeg,40),dateend:providerText(f?.dateend,40),class:providerText(f?.class,80),
       departure:f?.departure&&typeof f.departure==='object'?structuredClone(f.departure):null,
       arrival:f?.arrival&&typeof f.arrival==='object'?structuredClone(f.arrival):null}));
     if(flights.some(f=>!['0','1'].includes(f.direction)))throw new Error('Подтверждённые рейсы повреждены. Повторите проверку предложения.');
     return Object.freeze({provider:'andromeda',offerRef:String(value.offerRef),priceKind:'verified',finalPriceVerified:true,
+      ...(value.expiresAt!==undefined?{expiresAt:value.expiresAt}:{}),
       hotel:providerText(value.hotel,240),country:providerText(value.country,120),resort:providerText(value.resort,160),
       day:String(value.day),nights,adults,ages:Object.freeze([...ages]),room:providerText(value.room,300),meal:providerText(value.meal,160),
       operator:providerText(value.operator,180),price,currency:'RUB',flights:Object.freeze(flights)});

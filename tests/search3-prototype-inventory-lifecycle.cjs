@@ -58,11 +58,11 @@ const directAndromeda=(body,{empty=false,offerRef='offer_'+ 'd'.repeat(64),local
   grouped:true,first_page_only:false,page,pages_count:pagesCount,external_search_pending:false,search_ref:searchRef,status,
   received_offers:hotels.length,mapped_offers:hotels.length,selection_enabled:false}};
 };
-const andromedaVerified=(localId=101,amount='1499000')=>({schema_version:1,provider:'andromeda',local_id:localId,selection_enabled:true,booking_enabled:false,
+const andromedaVerified=(localId=101,amount='1499000')=>({schema_version:1,provider:'andromeda',expires_at:Math.floor(Date.now()/1000)+900,local_id:localId,selection_enabled:true,booking_enabled:false,
  state:'quote_verified',quote_state:'verified',final_price:{amount,currency:'RUB'},final_price_verified:true,flight_selection_required:false,
  flights:[{direction:'0',name:'OUT 101',datebeg:trip.from,class:'ECONOM',departure:{state:'Россия',town:'Москва',port:'SVO'},arrival:{state:'Турция',town:'Анталья',port:'AYT'}},
           {direction:'1',name:'BACK 102',datebeg:'2026-10-06',class:'ECONOM',departure:{state:'Турция',town:'Анталья',port:'AYT'},arrival:{state:'Россия',town:'Москва',port:'SVO'}}]});
-const andromedaChoice=(localId=101)=>({schema_version:1,provider:'andromeda',local_id:localId,selection_enabled:true,booking_enabled:false,
+const andromedaChoice=(localId=101)=>({schema_version:1,provider:'andromeda',expires_at:Math.floor(Date.now()/1000)+900,local_id:localId,selection_enabled:true,booking_enabled:false,
  state:'flight_selection_required',quote_state:'unverified',final_price:null,final_price_verified:false,flight_selection_required:true,
  flights:[
   {direction:'0',flight_ref:'flight_'+'1'.repeat(32),name:'OUT A',datebeg:trip.from,class:'ECONOM',departure:{town:'Москва',port:'SVO'},arrival:{town:'Анталья',port:'AYT'}},
