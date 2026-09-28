@@ -1257,7 +1257,14 @@ function andromedaFlightRoute(f){
  const point=p=>[data.text(p?.town),data.text(p?.port)].filter(Boolean).join(' · ')||'Аэропорт уточняется';
  const day=data.date(f?.datebeg);return `<div class="flight-leg"><div class="flight-leg-label"><strong>${f.direction==='0'?'Туда':'Обратно'}</strong><span>${esc(f.name||'Рейс уточняется')}</span></div><div class="flight-timeline"><div><strong>${day?dateText(day):'—'}</strong><span>${esc(point(f.departure))}</span></div><div class="flight-duration"><i>${icon('plane')}</i><span>${esc(f.class||'')}</span></div><div><strong>${day?dateText(day):'—'}</strong><span>${esc(point(f.arrival))}</span></div></div></div>`;
 }
+function andromedaQuoteCurrent(quote){return Number.isSafeInteger(quote?.expiresAt)&&quote.expiresAt*1000>Date.now();}
+function showAndromedaExpired(o){
+ providerViews.delete(o?.key);andromedaQuoteDraft=null;andromedaApplicationDraft=null;
+ selectedOffer={...o,loading:false,quoteError:'Срок подтверждения тура истёк. Выполните новый поиск.',quoteErrorCode:'offer_expired',quoteErrorTerminal:true};
+ renderRealOffer();
+}
 function openAndromedaFlightChoice(o,quote){
+ if(!andromedaQuoteCurrent(quote)){showAndromedaExpired(o);return;}
  const h=selectedTourHotel(o),outbound=quote.flights.filter(f=>f.direction==='0'),inbound=quote.flights.filter(f=>f.direction==='1');
  if(!h||!outbound.length||!inbound.length){selectedOffer={...o,loading:false,quoteError:'Andromeda не вернул полный выбор перелёта.'};renderRealOffer();return;}
  rememberProviderView(o,'andromeda-flights',quote,'',retainedProviderView(o)?.pending);andromedaQuoteDraft={offer:o,quote};
@@ -1268,10 +1275,10 @@ function openAndromedaFlightChoice(o,quote){
 }
 function andromedaApplicationReceipt(o,quote,h){
  const price=Number(quote?.finalPrice?.amount),offerRef=String(o?.raw?.offerRef||o?.raw?.offer_context?.offer_ref||'');
- if(!o||!h||quote?.state!=='quote_verified'||quote?.finalPriceVerified!==true||quote?.flightSelectionRequired!==false
+ if(!o||!h||!andromedaQuoteCurrent(quote)||quote?.state!=='quote_verified'||quote?.finalPriceVerified!==true||quote?.flightSelectionRequired!==false
    ||quote?.finalPrice?.currency!=='RUB'||!Number.isFinite(price)||price<=0||!(/^offer_[a-f0-9]{64}$/).test(offerRef)
    ||!Array.isArray(quote.flights))return null;
- return Object.freeze({provider:'andromeda',offerRef,hotel:String(h.name||''),country:String(countryNames[h.country]||''),
+ return Object.freeze({provider:'andromeda',offerRef,expiresAt:quote.expiresAt,hotel:String(h.name||''),country:String(countryNames[h.country]||''),
   resort:String(h.resort||''),day:o.day,nights:o.nights,adults:o.adults,ages:Object.freeze([...(o.ages||[])]),
   room:String(o.room||''),meal:String(mealLabel(o)||''),operator:String(o.operator||''),price,currency:'RUB',
   flights:Object.freeze(quote.flights.map(f=>Object.freeze({direction:String(f.direction||''),name:String(f.name||''),
@@ -1279,6 +1286,7 @@ function andromedaApplicationReceipt(o,quote,h){
     departure:f.departure?structuredClone(f.departure):null,arrival:f.arrival?structuredClone(f.arrival):null})))});
 }
 function openAndromedaVerified(o,quote){
+ if(!andromedaQuoteCurrent(quote)){showAndromedaExpired(o);return;}
  const h=selectedTourHotel(o),receipt=andromedaApplicationReceipt(o,quote,h),price=Number(quote.finalPrice?.amount);
  if(!receipt){selectedOffer={...o,loading:false,quoteError:'Andromeda не подтвердил итоговую цену.'};renderRealOffer();return;}
  rememberProviderView(o,'andromeda-verified',quote);andromedaQuoteDraft=null;andromedaApplicationDraft=receipt;selectedOffer={...o,loading:false};
@@ -1287,6 +1295,7 @@ function openAndromedaVerified(o,quote){
 }
 function openAndromedaApplicationPreview(){
  const receipt=andromedaApplicationDraft;if(!receipt||modalType!=='andromeda-verified')return;
+ if(!andromedaQuoteCurrent(receipt)){showAndromedaExpired(selectedOffer);return;}
  const flights=receipt.flights.length?receipt.flights.map(f=>andromedaFlightRoute(f)).join(''):'<p class="tour-missing">Рейсы не указаны поставщиком в подтверждённом ответе.</p>';
  showModal('provider-application','Заявка на тур','ANDROMEDA · ПРОВЕРКА ЗАЯВКИ',`
   <div class="verification-tour"><strong>${esc(receipt.hotel)}</strong><span>${dateText(receipt.day)} · ${nightsText(receipt.nights)} · ${receipt.adults} взр.${receipt.ages.length?' · дети '+receipt.ages.join(', '):''}</span><span>${esc(receipt.room)} · ${esc(receipt.meal)}</span><strong>${money(receipt.price)}</strong></div>

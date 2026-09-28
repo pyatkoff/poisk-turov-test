@@ -14,7 +14,7 @@ function leadApi(leadApi){
 const receipt={
  provider:'andromeda',offerRef:'offer_'+'a'.repeat(64),hotel:'Fixture Hotel',country:'Турция',resort:'Сиде',
  day:'2026-10-05',nights:7,adults:2,ages:[6,6],room:'Deluxe Sea View',meal:'Всё включено',
- operator:'FUN&SUN',price:199900,currency:'RUB',flights:[
+ expiresAt:Math.floor(Date.now()/1000)+900,operator:'FUN&SUN',price:199900,currency:'RUB',flights:[
   {direction:'0',name:'ZF 3001',datebeg:'2026-10-05 09:10',dateend:'2026-10-05 13:30',class:'ECONOM',departure:{town:'Москва',port:'VKO'},arrival:{town:'Анталья',port:'AYT'}},
   {direction:'1',name:'ZF 3002',datebeg:'2026-10-12 15:20',dateend:'2026-10-12 19:40',class:'ECONOM',departure:{town:'Анталья',port:'AYT'},arrival:{town:'Москва',port:'VKO'}}
  ]
@@ -42,6 +42,8 @@ assert.equal(payload.delivery,'preview-disabled');
 assert.equal(payload.consent,true);
 
 for(const mutate of [
+ r=>{r.expiresAt=Math.floor(Date.now()/1000);},
+ r=>{r.expiresAt='9999999999';},
  r=>{r.provider='tourvisor';},
  r=>{r.offerRef='bad';},
  r=>{r.price=0;},
@@ -50,7 +52,7 @@ for(const mutate of [
  r=>{r.flights=[{direction:'x'}];}
 ]){
  const bad=structuredClone(receipt);mutate(bad);
- assert.throws(()=>preview.providerPreviewPayload(bad,fd),/Подтверждён|рейсы|Условия тура/i);
+ assert.throws(()=>preview.providerPreviewPayload(bad,fd),/Подтверждён|рейсы|Условия тура|Срок/i);
 }
 
 const anexReceipt={provider:'anex',offerRef:'anex_online:'+'b'.repeat(64),searchRef:'c'.repeat(32),generation:7,localHotelId:501,

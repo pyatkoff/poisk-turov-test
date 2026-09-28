@@ -12,10 +12,10 @@ function parserChecks(){
  assert(start>0&&end>start,'use the actual canonical normalizer, not a substitute');
  const parse=vm.runInNewContext(source.slice(start,end)+'\nnormalizeAndromedaQuote;');
  const seed=[{direction:'0',name:'TEST OUT'},{direction:'1',name:'TEST BACK'}];
- const response=count=>({schema_version:1,provider:'andromeda',local_id:101,selection_enabled:true,booking_enabled:false,state:'flight_selection_required',quote_state:'unverified',final_price:null,final_price_verified:false,flight_selection_required:true,flights:choices(seed,count)});
+ const response=count=>({schema_version:1,provider:'andromeda',expires_at:Math.floor(Date.now()/1000)+900,local_id:101,selection_enabled:true,booking_enabled:false,state:'flight_selection_required',quote_state:'unverified',final_price:null,final_price_verified:false,flight_selection_required:true,flights:choices(seed,count)});
  for(const count of [2,100,132,1000]){const quote=parse(response(count),101);assert(quote,`valid ${count}-option SAMO response rejected`);assert.equal(quote.flights.length,count);assert.equal(quote.flights.at(-1).flightRef,flightRef(count-1));}
  assert.equal(parse(response(1001),101),null,'pending options remain bounded');
- for(const mutate of [x=>x.flights[131].flight_ref=x.flights[0].flight_ref,x=>x.flights[131].flight_ref='supplier-uid',x=>x.flights.forEach(f=>f.direction='0'),x=>x.booking_enabled=true,x=>x.local_id=102]){const bad=response(132);mutate(bad);assert.equal(parse(bad,101),null,'malformed quote must remain rejected');}
+ for(const mutate of [x=>delete x.expires_at,x=>x.expires_at=Math.floor(Date.now()/1000),x=>x.expires_at='9999999999',x=>x.flights[131].flight_ref=x.flights[0].flight_ref,x=>x.flights[131].flight_ref='supplier-uid',x=>x.flights.forEach(f=>f.direction='0'),x=>x.booking_enabled=true,x=>x.local_id=102]){const bad=response(132);mutate(bad);assert.equal(parse(bad,101),null,'malformed quote must remain rejected');}
  const verified=response(132);Object.assign(verified,{state:'quote_verified',quote_state:'verified',final_price:{amount:'125500',currency:'RUB'},final_price_verified:true,flight_selection_required:false});
  assert.equal(parse(verified,101),null,'do not widen the completed-itinerary bound');
  verified.flights=seed;assert.equal(parse(verified,101).finalPrice.amount,'125500');

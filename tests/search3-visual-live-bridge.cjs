@@ -15,7 +15,14 @@ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogE
 let additionalGate=null;
 w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(value.data?.state==='flight_selection_required')value.data.flights.push({...value.data.flights[0],name:'TEST SAMO ALTERNATIVE',flight_ref:'flight_'+'3'.repeat(32)});if(value.data?.status==='additional_prices'&&additionalGate)await additionalGate;return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
 const quoteFailures=[];w.addEventListener('anytour:quote-failure',e=>quoteFailures.push(e.detail));
-for(const file of scripts)w.eval(source(file));
+let lastSamoOffer;
+for(const file of scripts){
+ if(file==='visual-search/app.js'){
+  const canonical=w.AnyTourPrototypeData;
+  w.AnyTourPrototypeData=Object.freeze(Object.create(canonical,{verifyAndromeda:{value:(...args)=>{lastSamoOffer=args[0];return canonical.verifyAndromeda(...args);}}}));
+ }
+ w.eval(source(file));
+}
 const settle=async()=>{await new Promise(resolve=>setTimeout(resolve,120));};
 const wait=async(fn)=>{for(let i=0;i<40;i++){if(fn())return;await settle();}throw Error('Timed out: '+q('#cards').textContent+' / '+q('#modal-body').textContent);};
 const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
@@ -182,6 +189,10 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert.equal(q('[name="andromeda-outbound"]:checked').value,flightRef);assert.equal(transport.calls.length,beforeSamoForward);
  assert(!q('#modal-back').hidden,'restored flight choice retains an actionable passive Back');
+ const realNow=w.Date.now;w.Date.now=()=>realNow()+901000;
+ await assert.rejects(w.AnyTourPrototypeData.verifyAndromeda(lastSamoOffer,{provider:'andromeda',outbound_ref:flightRef,return_ref:'flight_'+'2'.repeat(32)}),e=>e.code==='offer_expired');
+ assert.equal(transport.calls.length,beforeSamoForward,'expired flight choice cannot spend a continuation');w.Date.now=realNow;
+
  click('[data-action="apply-andromeda-flights"]');await wait(()=>q('#modal-title').textContent==='Тур подтверждён');assert.match(q('#modal-body').textContent.replace(/\s/g,''),/125500/);
  const beforeSamoReturn=transport.calls.length;click('#modal-back');await settle();
  assert(q('[data-action="refresh-hotel"]')&&!q('[data-action="refresh-hotel"]').disabled,'Back from SAMO verification must restore an actionable offer, not its loading snapshot');
@@ -200,6 +211,16 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert(q('#prototype-lead-form'));assert.match(q('#modal-body').textContent,/SAMO STANDARD/);assert.match(q('#modal-body').textContent.replace(/\s/g,''),/125500/);
  assert.equal(q('[name="phone"]').value,'+7 999 123-45-67');assert.equal(q('[name="consent"]').checked,false);assert.equal(q('#prototype-lead-form').dataset.checked,undefined);
  assert.equal(q('#modal-body').scrollTop,87);assert.equal(transport.calls.length,beforeSamoApplicationForward,'SAMO Forward never requotes or submits');
+ w.Date.now=()=>realNow()+901000;
+ await assert.rejects(w.AnyTourPrototypeData.verifyAndromeda(lastSamoOffer),e=>e.code==='offer_expired');
+ q('[name="consent"]').checked=true;q('#prototype-lead-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await settle();
+ assert.match(q('.lead-message').textContent,/Срок подтверждения тура истёк/);assert.equal(q('#prototype-lead-form').dataset.checked,undefined);
+ assert.equal(q('[name="phone"]').value,'+7 999 123-45-67');
+ click('[data-action="close-modal"]');await settle();w.history.forward();await settle();
+ assert.match(q('#modal-body').textContent,/Срок подтверждения тура истёк/);
+ assert(!q('#prototype-lead-form')&&!q('[data-action="andromeda-application-preview"]')&&!q('[data-action="refresh-hotel"]'));
+ assert.equal(transport.calls.length,beforeSamoApplicationForward,'expired reuse, submit and Forward spend zero requests');w.Date.now=realNow;
+
  click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');
  const anex=[...d.querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('anex%3A'));assert(anex);anex.click();await settle();click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
  const concrete=[...d.querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('anex%3A'));concrete.click();await settle();click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));

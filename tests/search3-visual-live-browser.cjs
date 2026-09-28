@@ -138,6 +138,23 @@ const server=http.createServer((req,res)=>{
   await page.screenshot({path:path.join(evidence,`samo-application-${width}.png`)});
   await forwardProviderApplication(page,transport,'SAMO STANDARD','125500');
   await page.screenshot({path:path.join(evidence,`samo-application-forward-${width}.png`)});
+  // Expiry while the form is open must be checked again at submit, not only on mount.
+  const beforeSamoExpiry=transport.calls.length;
+  await page.clock.setFixedTime(new Date(Date.now()+901000));
+  await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
+  await page.getByText('Срок подтверждения тура истёк. Выполните новый поиск.',{exact:true}).waitFor();
+  assert.equal(await page.locator('#prototype-lead-form').getAttribute('data-checked'),null);
+  assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 999 123-45-67','expiry preserves the entered contact draft');
+  await page.screenshot({path:path.join(evidence,`samo-expired-application-${width}.png`)});
+  await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!history.state?.['anytour.prototype.v18.ui.v1']);
+  await page.evaluate(()=>history.forward());
+  await page.getByText('Срок подтверждения тура истёк. Выполните новый поиск.',{exact:true}).waitFor();
+  assert.equal(await page.locator('[data-action="andromeda-application-preview"]').count(),0,'Forward cannot reopen an expired verified application');
+  assert.equal(await page.locator('[data-action="refresh-hotel"]').count(),0,'expiry cannot replay the same supplier quote');
+  assert.equal(transport.calls.length,beforeSamoExpiry,'expiry and history navigation are passive');
+  await page.screenshot({path:path.join(evidence,`samo-expired-return-${width}.png`)});
+  await page.clock.setFixedTime(new Date());
+
   await page.locator('[data-action="close-modal"]').click();await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
   const anexOffer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();if(!await anexOffer.isVisible())await anexOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await anexOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
