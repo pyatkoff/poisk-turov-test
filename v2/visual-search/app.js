@@ -736,8 +736,8 @@ function applyQuickFilters(){
 
 // One browser-history entry belongs to an open dialog/drawer session. Nested
 // Back consumes the in-memory step before reusing that entry; closing consumes
-// it altogether. Forward/reload only reopen a passive view, never a request or
-// a previously accepted price. Keep search parameters canonical on every pop.
+// it altogether. Forward only reuses current-search outcomes held in memory;
+// reload/history never authorizes a request or price. Keep search parameters canonical.
 const uiHistoryKey='anytour.prototype.v18.ui.v1';
 let uiHistoryOpen=false,uiHistoryClosing=false,restoringUIHistory=false,handlingUIBack=false,actionTrigger=null,pageReturn=null,pendingPageReturn=null;
 function focusReference(element,root=document){
@@ -791,6 +791,7 @@ function restorePageReturn(){
 function uiRoute(){
  if($('#filter-panel').classList.contains('open')){const budget=currentFilterBudgetEdit(filterDraft?.filters);return {type:'filters',draft:filterHistorySnapshot(filterDraft),budget:budget?{minText:budget.minText,maxText:budget.maxText}:null,sections:[...expandedFilterSections],scroll:$('#filter-panel').scrollTop};}
  const type=modalType;
+ if(['andromeda-flights','andromeda-verified','provider-application','anex-current','anex-additional','anex-application'].includes(type))return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop,...(type==='andromeda-flights'?{outbound:$('[name="andromeda-outbound"]:checked')?.value,inbound:$('[name="andromeda-return"]:checked')?.value}:{})};
  if(type==='destination')return {type,choice:{country:destinationChoice?.country,resorts:[...(destinationChoice?.resorts||[])],hotelId:destinationChoice?.hotelId||0},query:$('#destination-query')?.value||'',resolvedQuery:destinationResolvedQuery,expanded:destinationResortsExpanded,limit:destinationHotelLimit,scroll:$('#modal-body').scrollTop};
  if(type==='guests')return {type,draft:{adults:guestDraft.adults,ages:[...(guestDraft.ages||[])]}};
  if(type==='nights')return {type,draft:{min:nightsDraft.min,max:nightsDraft.max,phase:nightsDraft.phase===1?1:0}};
@@ -832,6 +833,19 @@ function reopenUIRoute(route){
  case 'meals':openMeals(route);break;
  case 'budget':openBudget(route);break;
  case 'saved-tour':case 'saved-details':return false;
+ case 'andromeda-flights':case 'andromeda-verified':case 'provider-application':case 'anex-current':case 'anex-additional':case 'anex-application':{
+  const o=offerFromKey(route.key),view=retainedProviderView(o),provider=route.type.startsWith('anex-')?'anex':'andromeda';
+  // History is a passive locator, never authority for a price or supplier request.
+  if(o?.provider!==provider||!view||!view.type.startsWith(provider+'-'))return false;
+  if(route.type==='provider-application'&&view.type!=='andromeda-verified'||route.type==='anex-application'&&view.type!=='anex-additional')return false;
+  if(view.type==='andromeda-flights'){selectedOffer=view.offer;renderRealOffer();}
+  if(!restoreProviderView(o))return false;
+  if(modalType==='andromeda-flights')for(const [name,value] of [['andromeda-outbound',route.outbound],['andromeda-return',route.inbound]]){const input=$$('[name="'+name+'"]').find(el=>el.value===value);if(input)input.checked=true;}
+  if(route.type==='provider-application')openAndromedaApplicationPreview();
+  if(route.type==='anex-application')openAnexApplicationPreview();
+  if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;
+  break;
+ }
  case 'selected-tour':{
   if(!route.key||selectedOffer?.key!==route.key)return false;
   openLeadPreview();if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;break;

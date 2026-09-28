@@ -32,10 +32,29 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
    form.elements.phone.value='+79990000000';form.elements.consent.checked=true;
    form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
    assert.equal(form.dataset.checked,'1');assert.match(q('.lead-message').textContent,/Заявка не отправлена/);
+   form.elements.phone.dispatchEvent(new w.Event('input',{bubbles:true}));q('#modal-body').scrollTop=73;
+   const beforeForward=transport.calls.length;
+   click('[data-action="close-modal"]');await new Promise(r=>setTimeout(r,150));w.history.forward();await new Promise(r=>setTimeout(r,150));
+   assert.equal(q('#modal').open,true,'browser Forward restores the current ANEX application');
+   assert.equal(q('#prototype-lead-form').elements.phone.value,'+79990000000');
+   assert.equal(q('#prototype-lead-form').elements.consent.checked,false);assert.equal(q('#prototype-lead-form').dataset.checked,undefined);
+   assert.equal(q('#modal-body').scrollTop,73);assert.match(q('#modal-body').textContent,zero?/121\s*000/:/123\s*000/);
+   assert.equal(transport.calls.length,beforeForward,'browser Forward never repeats current/APD/flights or submits a lead');
    const before=transport.calls.length;
    click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="anex-application-preview"]');
    assert.equal(q('#prototype-lead-form').elements.consent.checked,false);assert.equal(transport.calls.length,before,'return uses the same retained exact offer');
    assert.equal(transport.calls.filter(c=>c.action==='additional_prices').length,0);assert.equal(transport.calls.filter(c=>c.action==='offer').length,1);
+   await new Promise(r=>setTimeout(r,50));
+   const historyKey='anytour.prototype.v18.ui.v1',route=w.history.state[historyKey];
+   assert.deepEqual(Object.keys(route).sort(),['key','scroll','type'],'history does not persist price, supplier receipt, contacts or consent');
+   click('[data-action="close-modal"]');await new Promise(r=>setTimeout(r,150));
+   const restore=async value=>{w.history.replaceState({...w.history.state,[historyKey]:value},'',w.location.href);w.dispatchEvent(new w.PopStateEvent('popstate',{state:w.history.state}));await new Promise(r=>setTimeout(r,150));};
+   await restore({...route,key:'tourvisor%3Avisual-tv-101'});assert(!q('#modal').open,'wrong-provider history cannot open an ANEX application');
+   assert.equal(transport.calls.length,before,'invalid history never performs a provider request');
+   click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>q('[data-action="all-offers"]'));
+   const quoteCalls=()=>transport.calls.filter(c=>['quote','quote_select_flights','offer','additional_prices','flights'].includes(c.action)).length,afterSearch=quoteCalls();
+   await restore(route);assert(!q('#modal').open,'a new search invalidates the old application route');
+   assert.equal(quoteCalls(),afterSearch,'stale history cannot re-quote the previous offer');
    assert.deepEqual(errors,[]);
   }finally{await new Promise(r=>setTimeout(r,50));dom.window.close();}
  }
@@ -72,6 +91,9 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
    if(!failed){assert.match(q('#anex-flight-inventory').textContent,/Расписание уточняется/);assert.match(q('#anex-flight-inventory').textContent,/не выбранные рейсы/);}
    assert(!q('[data-action="anex-application-preview"]'),'unknown price cannot acquire priced application authority');
    const before=transport.calls.length;
+   click('[data-action="close-modal"]');await new Promise(r=>setTimeout(r,150));w.history.forward();await new Promise(r=>setTimeout(r,150));
+   assert(q('#modal').open,'browser Forward restores terminal APD and flight outcomes');
+   assert(q('[data-action="anex-additional-prices"]').disabled);assert(!q('[data-action="anex-flights"]'));assert.equal(transport.calls.length,before);
    click('[data-action="close-modal"]');click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');
    assert(q('[data-action="anex-additional-prices"]').disabled);assert(!q('[data-action="anex-flights"]'));assert.equal(transport.calls.length,before);
    assert.equal(transport.calls.filter(c=>c.url.includes('anex')&&c.action==='flights').length,1);assert.equal(transport.calls.filter(c=>c.action==='additional_prices').length,1);
