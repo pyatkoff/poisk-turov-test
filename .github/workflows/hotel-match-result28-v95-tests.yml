@@ -1,4 +1,4 @@
-name: MATCH whole-frontier reconciler audit v114b
+name: MATCH whole-frontier reconciler audit v114c
 'on':
   pull_request:
     types: [synchronize]
@@ -10,11 +10,11 @@ permissions:
   issues: read
   pull-requests: read
 concurrency:
-  group: match-whole-frontier-v114b
+  group: match-whole-frontier-v114c
   cancel-in-progress: false
 env:
-  OP: hotel-match-mass-current-reconcile-audit-1971-20260928-v114b
-  CLAIM: '5866390801'
+  OP: hotel-match-mass-current-reconcile-audit-1971-20260928-v114c
+  CLAIM: '5866408551'
 jobs:
   audit:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.number == 4061 && github.event.pull_request.head.ref == 'match/request-ledger-v93-20260928'
@@ -33,8 +33,8 @@ jobs:
           set -euo pipefail
           umask 077
           mkdir terminal
-          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114b.php)" = 7974c474784541abfad4fabd81ed61d55eb6bc9d
-          php -l scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114b.php
+          test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114c.php)" = 698f62a13bd29a2331875268752f4f9d4c8814c0
+          php -l scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114c.php
           python3 - <<'PY'
           import json,os,time,urllib.request
           def get(p):
@@ -73,7 +73,7 @@ jobs:
           opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
           ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload\""
           git archive HEAD scripts/diagnostics app/integrations | ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$rel/payload\""
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=1024M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114b.php\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=1024M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114c.php\" --execute" >terminal/stdout.txt 2>terminal/stderr.txt
           scp "${opts[@]}" "$remote:$rel/result.json" terminal/result.json
           scp "${opts[@]}" "$remote:$rel/receipt.json" terminal/receipt.json
           python3 - <<'PY'
@@ -88,7 +88,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-whole-frontier-v114b-${{ github.run_id }}
+          name: match-whole-frontier-v114c-${{ github.run_id }}
           path: terminal/
           retention-days: 90
           if-no-files-found: warn
