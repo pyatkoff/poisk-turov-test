@@ -62,3 +62,5 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with: {name: match-anexonly-retained-samo-v107-${{ github.run_id }}, path: terminal/, retention-days: 90, if-no-files-found: warn}
+
+# execute v107 once
