@@ -55,6 +55,22 @@ function qp_fixture(string $mode = ''): array
                 unset($doc['child']);
                 $doc['hotels']['hotel'][0]['meal'] = 'PRIVATE_DIFFERENT_MEAL';
             }
+            if (str_starts_with($mode, 'party-')) {
+                unset($doc['adult'], $doc['child']);
+                $doc['peoples']['people'] = [['key' => '1', 'age' => 'ADL'], ['key' => '2', 'human' => 'ADL']];
+                if ($mode === 'party-single-counter') $doc['adult'] = '2';
+                if ($mode === 'party-conflict') $doc['adult'] = '3';
+                if ($mode === 'party-counter-versus-people') {
+                    $doc['adult'] = '2'; $doc['peoples']['people'][] = ['key' => '3', 'age' => 'ADL'];
+                }
+                if ($mode === 'party-wrong-count') array_pop($doc['peoples']['people']);
+                if ($mode === 'party-unknown') $doc['peoples']['people'][1] = ['key' => '2', 'age' => 'UNKNOWN'];
+                if ($mode === 'party-infant') $doc['peoples']['people'][1]['human'] = 'INF';
+                if ($mode === 'party-conflicting-types') $doc['peoples']['people'][1]['age'] = 'CHD';
+                if ($mode === 'party-duplicate') $doc['peoples']['people'][1]['key'] = '1';
+                if ($mode === 'party-absent') unset($doc['peoples']);
+                if ($mode === 'party-final-mismatch' && $stage === 'calcfull') $doc['peoples']['people'][1]['human'] = 'CHD';
+            }
             if ($mode === 'room') $doc['hotels']['hotel'][0]['room'] = 'OTHER';
             if ($mode === 'meal') $doc['hotels']['hotel'][0]['meal'] = 'BB';
             if ($stage === 'calcfull' && $mode === 'changed-flight') $doc['transports']['transport'][0]['uid'] = 'different';
@@ -103,7 +119,8 @@ foreach (['private-catclaim', 'private-alt-out', 'fixture-bearer-secret', 'PRIVA
     qp_assert(strpos(json_encode($quote), $private) === false, 'no private fields in public quote');
 }
 qp_assert(strpos(json_encode($state), 'PRIVATE_NAME') === false && strpos(json_encode($state), 'PRIVATE_PASSPORT') === false, 'personal fields never persisted');
-foreach (['hotel', 'party', 'room', 'meal', '401', 'supplier', 'echo', 'start', 'transports', 'SetTransport', 'calcfull', 'net-only', 'ambiguous', 'changed-flight'] as $mode) {
+foreach (['hotel', 'party', 'room', 'meal', '401', 'supplier', 'echo', 'start', 'transports', 'SetTransport', 'calcfull', 'net-only', 'ambiguous', 'changed-flight',
+    'party-conflict', 'party-counter-versus-people', 'party-wrong-count', 'party-unknown', 'party-infant', 'party-conflicting-types', 'party-duplicate', 'party-absent', 'party-final-mismatch'] as $mode) {
     [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture($mode);
     $failed = qp_run($r, $s, $fac, $cp);
     if ($failed['status'] === 'quote_choices') {
@@ -115,6 +132,17 @@ foreach (['hotel', 'party', 'room', 'meal', '401', 'supplier', 'echo', 'start', 
     qp_assert(qp_run($r, $s, $fac, $cp) === $failed && count($f->calls) === $count, 'terminal failure not replayed: ' . $mode);
     qp_assert(strpos(json_encode($failed), 'private') === false, 'failure redacted');
 }
+foreach (['party-participants', 'party-single-counter'] as $mode) {
+    [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture($mode);
+    $choices = qp_run($r, $s, $fac, $cp);
+    qp_assert($choices['status'] === 'quote_choices' && !$choices['final_price_verified'], 'explicit participants replace missing counters: ' . $mode);
+    $r = array_replace($r, ['action' => 'quote_calculate', 'choice_ref' => $choices['choices'][0]['choice_ref']]);
+    $verified = qp_run($r, $s, $fac, $cp);
+    qp_assert($verified['status'] === 'quote_verified' && $verified['price']['amount'] === '123456.78'
+        && $f->calls === ['start', 'transports', 'SetTransport', 'calcfull'], 'party remains bound through supplier calc: ' . $mode);
+}
+qp_assert(anytour_anex_quote_participant_counts(['peoples' => ['people' => [['age' => 'ADL'], ['age' => 'CHD']]]]) === ['adults' => 1, 'children' => 1], 'explicit child is not counted as an adult');
+qp_assert(anytour_anex_quote_participant_counts(['peoples' => ['people' => ['human' => 'ADL']]]) === ['adults' => 1, 'children' => 0], 'single participant object is supported');
 foreach (['start', 'transports', 'SetTransport', 'calcfull', 'string'] as $rejectedStage) {
     [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture('code-' . $rejectedStage);
     $failed = qp_run($r, $s, $fac, $cp);
