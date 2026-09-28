@@ -16,10 +16,10 @@ function qp_fixture(string $mode = ''): array
         'price' => ['amount' => '100000', 'currency' => 'RUB'], 'converted_price' => null,
         'availability' => [], 'supplier_booking_flag' => true, 'final_price_verified' => false];
     $known = ['offer_key' => $key, 'kind' => 'concrete', 'hotel_external_id' => '469', 'supplier_offer_id' => 'private-catclaim'];
-    $entry = ['offer' => $offer, 'observed_at' => 1001, 'supplier_currency_id' => '3'];
+    $entry = ['offer' => $offer, 'observed_at' => 1001, 'supplier_currency_id' => '1'];
     $state = ['generation' => 7, 'params' => ['countryId' => 4], 'gateway' => [
         'saved_offers' => ['search_ref' => $ref, 'created_at' => 1000, 'expires_at' => 1900, 'offers' => [$key => $entry]],
-        'search' => ['offers' => [$known]]]];
+        'search' => ['context' => ['currency_id' => 3], 'offers' => [$known]]]];
     $request = ['action' => 'quote_start', 'generation' => 7, 'search_ref' => $ref, 'offer_ref' => $key, 'local_hotel_id' => 245];
     $facts = (object) ['calls' => [], 'persisted' => [], 'selection' => ['0' => 'private-out', '1' => 'private-back'], 'id' => null];
     $checkpoint = static function (array &$s) use ($facts, $mode): void {
