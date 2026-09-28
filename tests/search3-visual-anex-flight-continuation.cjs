@@ -23,7 +23,7 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
    await wait(()=>!q('.search-submit').disabled);click('.search-submit');
    // Expansion preserves the original first search; finish its status/results
    // reads before asserting that later history navigation makes no requests.
-   await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&!q('[data-action="stop-search"]'));
+   await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
    click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
    await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
    click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-application-preview"]'));
@@ -81,7 +81,7 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
   try{
    for(const file of scripts)w.eval(source(file));
    await wait(()=>!q('.search-submit').disabled);click('.search-submit');
-   await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&!q('[data-action="stop-search"]'));
+   await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
    click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
    await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
    click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));
@@ -120,7 +120,8 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
   const wait=async(fn)=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}assert.fail('Timeout quote: '+d.body.textContent.slice(-2000));};
   try{
    for(const file of scripts)w.eval(source(file));
-   await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('[data-action="all-offers"]'));
+   await wait(()=>!q('.search-submit').disabled);click('.search-submit');
+   await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
    click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
    await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
    click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-package-quote"]'));
