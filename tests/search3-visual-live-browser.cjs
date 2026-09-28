@@ -85,7 +85,7 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
   await page.screenshot({path:path.join(evidence,`application-${width}.png`)});
   await page.locator('#modal-back').click();assert.match((await page.locator('#detail-total').textContent()).replace(/\s/g,''),/133500/);
-  const tvRequests=()=>transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,beforeTvReturn=tvRequests();
+  const tvRequests=()=>transport.calls.filter(c=>c.url==='/api-v2.php'&&['tour','flights'].includes(c.action)).length,beforeTvReturn=tvRequests();
   await page.locator('[data-action="close-modal"]').click();await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
   if(!await tvOffer.isVisible())await tvOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await tvOffer.click();await page.locator('[data-action="confirm-tour"]').waitFor();
@@ -117,6 +117,9 @@ const server=http.createServer((req,res)=>{
   const concrete=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();if(!await concrete.isVisible())await concrete.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-additional-prices"]').click();
   await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Доплаты ANEX рассчитаны');assert((await page.locator('#modal-body').textContent()).replace(/\s/g,'').includes('123000'));
+  await page.locator('[data-action="anex-flights"]').click();await page.waitForFunction(()=>document.querySelector('#anex-flight-inventory').textContent.includes('TEST ANEX 101'));
+  assert.match(await page.locator('#anex-flight-inventory').textContent(),/не выбранные рейсы/);
+  await page.screenshot({path:path.join(evidence,`anex-flights-${width}.png`)});
   const callsBeforeAnexApplication=transport.calls.length;await page.locator('[data-action="anex-application-preview"]').click();
   assert((await page.locator('#modal-body').textContent()).includes('Расчётная сумма'));assert((await page.locator('#modal-body').textContent()).includes('Итоговая стоимость требует подтверждения'));
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();

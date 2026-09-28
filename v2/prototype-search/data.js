@@ -7,7 +7,7 @@
   const regionRequests=new Map();
   const quoteReceipts = new WeakMap();
   const andromedaQuoteChoices=new Map(),andromedaQuoteAttempts=new Map();
-  const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set();
+  const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set(),anexFlightAttempts=new Set(),anexFlightReceipts=new Map();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
@@ -293,7 +293,7 @@
   function stop(){
     clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
-    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();
+    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();
     return generation;
   }
   async function searchError(run,error){
@@ -1141,6 +1141,50 @@
       return currentOffer;
     }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
+  function normalizeAnexFlights(value,o){
+    const identity=anexConcreteKey(o),inventory=value?.flights;
+    if(!identity||value?.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef
+      ||value.offer_ref!==identity.offerRef||value.status!=='flights'||value.selection_state!=='disabled'
+      ||inventory?.provider!=='anex'||inventory.selected!==false||inventory.final_price_verified!==false
+      ||inventory.included_in_search_price_verified!==false||typeof inventory.truncated!=='boolean'
+      ||!Array.isArray(inventory.routes)||inventory.routes.length>6)return null;
+    const label=v=>{if(v===null)return null;if(typeof v!=='string'||v.length>720)throw Error();return v;};
+    const list=(v,max)=>{if(!Array.isArray(v)||v.length>max)throw Error();return v;};
+    try{
+      const routes=inventory.routes.map(route=>Object.freeze({date:label(route.date),from:label(route.from),to:label(route.to),
+        options:Object.freeze(list(route.options,60).map(option=>Object.freeze({name:label(option.name),carrier:label(option.carrier),
+          transportType:label(option.transport_type),
+          departure:Object.freeze({airport:label(option.departure?.airport),airportCode:label(option.departure?.airport_code),time:label(option.departure?.time)}),
+          arrival:Object.freeze({airport:label(option.arrival?.airport),airportCode:label(option.arrival?.airport_code),time:label(option.arrival?.time)}),
+          classes:Object.freeze(list(option.classes,10).map(item=>{
+            if(![null,'Y','N','R','F'].includes(item.availability))throw Error();
+            return Object.freeze({name:label(item.name),availability:item.availability,baggage:label(item.baggage),handBaggage:label(item.hand_baggage)});
+          }))}))) }));
+      return Object.freeze({state:'flights',selected:false,finalPriceVerified:false,includedInSearchPriceVerified:false,
+        routes:Object.freeze(routes),truncated:inventory.truncated});
+    }catch{return null;}
+  }
+  async function verifyAnexFlights(o){
+    const identity=anexConcreteKey(o);
+    if(!identity||!anexCurrentReceipts.has(identity.key))throw new Error('Сначала проверьте контекст конкретного предложения ANEX.');
+    if(anexFlightReceipts.has(identity.key))return anexFlightReceipts.get(identity.key);
+    if(anexFlightAttempts.has(identity.key))throw new Error('Рейсы уже запрашивались. Неизвестный результат не запрашивается повторно.');
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+    if(!url)throw new Error('ANEX сейчас недоступен.');
+    anexFlightAttempts.add(identity.key);
+    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    const timeout=setTimeout(()=>controller.abort(),30000);
+    try{
+      const body={action:'flights',generation:identity.epoch,search_ref:identity.searchRef,offer_ref:identity.offerRef,local_hotel_id:identity.localId};
+      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
+      const payload=await response.json().catch(()=>null);
+      if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
+      if(!response.ok||payload?.ok!==true)throw new Error(response.status===429?'Лимит проверки рейсов ANEX временно исчерпан.':'Не удалось получить рейсы ANEX.');
+      const result=normalizeAnexFlights(payload.data,o);if(!result)throw new Error('Рейсы выбранного предложения не подтверждены.');
+      anexFlightReceipts.set(identity.key,result);return result;
+    }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
+  }
   function normalizeAnexAdditional(value,o){
     const identity=anexConcreteKey(o),evidence=value&&value.additional_prices;
     if(!identity||!value||value.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef
@@ -1363,5 +1407,5 @@
     if(!['number','string'].includes(typeof value)||String(value).trim()==='')return null;
     const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;
   }
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);
