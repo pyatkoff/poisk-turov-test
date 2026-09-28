@@ -209,4 +209,58 @@ try{
     }
 }finally{restore_error_handler();}
 
+// A price calculated for different/missing flights must never confirm the old pair.
+$boundQuote=static function(string $flow,string $mutation,string $at='calc')use($resolved,$package,$getFlights,$money):array{
+    $claim=$package;$pair=$getFlights['variants'][0]['transports'][0]['transport'];
+    if($flow==='charter'){
+        $claim['claimDocument'][0]['freightExternal']=0;
+        $claim['claimDocument'][0]['transports']=[['transport'=>$pair]];
+    }
+    $calls=[];$reserved=0;
+    $actions=new AnyTourAndromedaClaimActions('SID_binding_fixture',static function()use(&$reserved){++$reserved;},
+        static function(string $url,string $post)use(&$calls,$getFlights,$money,$mutation,$at):array{
+            parse_str((string)parse_url($url,PHP_URL_QUERY),$query);$action=$query['action'];$calls[]=$action;
+            parse_str($post,$form);$reply=json_decode($form['claim'],true,64,JSON_THROW_ON_ERROR);
+            if($action==='get_flights')$reply=$getFlights;
+            if($action==='calc')$reply['claimDocument'][0]['buyerMoneys']=$money('199999');
+            if($action===$at){
+                $rows=&$reply['claimDocument'][0]['transports'][0]['transport'];
+                if($mutation==='replace'){$rows[0]['uid']='different_out';$rows[0]['name']='DIFFERENT FLIGHT';}
+                elseif($mutation==='missing')array_pop($rows);
+                elseif($mutation==='duplicate')$rows[]=$rows[0];
+                elseif($mutation==='missing_uid')unset($rows[0]['uid']);
+                elseif($mutation==='updated')$rows[0]['name']='OUT 101 updated schedule';
+                elseif($mutation==='reordered')$rows=array_reverse($rows);
+            }
+            return ['status'=>200,'body'=>json_encode($reply,JSON_THROW_ON_ERROR)];
+        });
+    try{
+        $result=$flow==='continuation'
+            ?AnyTourAndromedaSelectedQuote::continueWithFlights($resolved,$getFlights,[0=>$pair[0],1=>$pair[1]],$actions)
+            :AnyTourAndromedaSelectedQuote::run($resolved,new AnyTourAndromedaClient($claim),$actions);
+        return ['result'=>$result,'calls'=>$calls,'reserved'=>$reserved];
+    }catch(RuntimeException $error){return ['error'=>$error->getMessage(),'calls'=>$calls,'reserved'=>$reserved];}
+};
+foreach(['charter','regular','continuation'] as $flow){
+    foreach(['replace','missing','duplicate','missing_uid'] as $mutation){
+        $r=$boundQuote($flow,$mutation);
+        if(($r['error']??null)!=='ANDROMEDA_SELECTED_FLIGHTS_INVALID'||isset($r['result']))throw new RuntimeException('CALC_FLIGHT_BINDING_'.$flow.'_'.$mutation);
+        if(count(array_filter($r['calls'],static fn($action)=>$action==='calc'))!==1||$r['reserved']!==count($r['calls']))throw new RuntimeException('CALC_BINDING_BUDGET');
+        ++$checks;
+    }
+    foreach(['updated','reordered'] as $mutation){
+        $r=$boundQuote($flow,$mutation);$v=$r['result']??[];
+        if(($v['final_price']['amount']??null)!=='199999'||($v['final_price_verified']??null)!==true
+            ||count($v['flights']??[])!==2||($v['flights'][0]['direction']??null)!=='0')throw new RuntimeException('CALC_CURRENT_FLIGHTS_'.$flow);
+        if($mutation==='updated'&&$v['flights'][0]['name']!=='OUT 101 updated schedule')throw new RuntimeException('CALC_STALE_FLIGHT_DISPLAY');
+        if(str_contains(json_encode($v,JSON_THROW_ON_ERROR),'out_uid'))throw new RuntimeException('CALC_PRIVATE_UID_LEAK');
+        ++$checks;
+    }
+}
+foreach(['regular','continuation'] as $flow){
+    $r=$boundQuote($flow,'replace','changeservice');
+    if(($r['error']??null)!=='ANDROMEDA_SELECTED_FLIGHTS_INVALID'||in_array('calc',$r['calls'],true))throw new RuntimeException('SELECTION_FLIGHT_BINDING_'.$flow);
+    ++$checks;
+}
+
 print("Andromeda selected quote: {$checks} checks passed\n");

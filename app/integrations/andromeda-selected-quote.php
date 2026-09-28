@@ -61,6 +61,7 @@ final class AnyTourAndromedaSelectedQuote
             if (array_keys($selectedFlights) !== [0, 1]) {
                 throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
             }
+            self::assertSameFlights($choice['private'], $selectedFlights);
         } else {
             $selectedFlights = self::selectedFlights($claim);
         }
@@ -128,16 +129,20 @@ final class AnyTourAndromedaSelectedQuote
         if (array_keys($selectedFlights) !== [0, 1]) {
             throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
         }
+        self::assertSameFlights($selected, $selectedFlights);
         return self::finalize($resolved, $claim, $packagePrice, $searchPriceEstimate, $selectedFlights, $actions);
     }
 
     private static function finalize(array $resolved, array $claim, ?array $packagePrice,
         ?array $searchPriceEstimate, array $selectedFlights, AnyTourAndromedaClaimActions $actions): array
     {
+        self::assertSameFlights($selectedFlights, $selectedFlights);
         $calculated = $actions->calc($claim);
         $finalPrice = self::touristPrice($calculated);
         if ($finalPrice === null) throw new RuntimeException('ANDROMEDA_FINAL_PRICE_MISSING');
-        if (!$selectedFlights) $selectedFlights = self::selectedFlights($calculated);
+        $calculatedFlights = self::selectedFlights($calculated);
+        self::assertSameFlights($selectedFlights ?: $calculatedFlights, $calculatedFlights);
+        $selectedFlights = $calculatedFlights;
         $priceObservation = AnyTourAndromedaPriceObservation::build($searchPriceEstimate, $finalPrice);
 
         return self::base($resolved, $packagePrice) + [
@@ -459,12 +464,29 @@ final class AnyTourAndromedaSelectedQuote
             foreach ($block['transport'] as $item) {
                 if (!is_array($item) || ($item['type'] ?? null) !== 'ttAvia') continue;
                 $direction = (string)($item['direction'] ?? '');
-                if (!in_array($direction, ['0', '1'], true) || isset($out[$direction])) continue;
+                if (!in_array($direction, ['0', '1'], true) || isset($out[$direction])) {
+                    throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+                }
                 $out[$direction] = $item;
             }
         }
         ksort($out, SORT_STRING);
         return $out;
+    }
+
+    /** The calculated customer total must belong to the selected supplier pair. */
+    private static function assertSameFlights(array $expected, array $actual): void
+    {
+        if (array_keys($expected) !== array_keys($actual)) {
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+        }
+        foreach ($expected as $direction => $flight) {
+            $uid = $flight['uid'] ?? null;
+            if (!is_string($uid) || preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $uid) !== 1
+                || ($actual[$direction]['uid'] ?? null) !== $uid) {
+                throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+            }
+        }
     }
 
     /** Preserve a single supplier markup fact for one flight; cross-leg aggregation is intentionally unknown. */
