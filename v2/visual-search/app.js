@@ -859,6 +859,8 @@ function modalBack(){
   const expandedMore=$$('.hotel-room-more[open]').map(more=>more.closest('[data-room]').dataset.room);
   renderHotelRooms(id,!meal||meals.has(meal)?meal:'',openRooms);
   for(const room of $$('.hotel-room-card[data-room]'))if(expandedMore.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
+  const returningOffer=previous.focus?.selector?$('#modal-body').querySelector(previous.focus.selector):null;
+  if(returningOffer?.matches('[data-action="offer"]'))returningOffer.closest('.hotel-room-more')?.setAttribute('open','');
  }
  restoringModal=false;if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='compare')renderCompare();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);refreshSavedTourControls();
  restoreFocus(previous.focus,$('#modal-title'),$('#modal'));$('#modal-body').scrollTop=previous.scroll;syncHotelSectionNavigation();rememberUIRoute();
