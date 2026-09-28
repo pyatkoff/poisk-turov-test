@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "lane": "MATCH",
+  "issue": 1971,
+  "status": "prepared_priority_only_not_acceptance",
+  "source_report": "reports/hotel-match-geo-context-review-20260912.json",
+  "source_live_rows": 23,
+  "source_saved_observation_weight": 800,
+  "priority_rule": "saved_search_count >= 16",
+  "priority_rows": 19,
+  "priority_unique_local_targets": 16,
+  "priority_saved_observation_weight": 796,
+  "priority_weight_share": 0.995,
+  "low_observation_rows": 4,
+  "low_observation_weight": 4,
+  "priority_rows_data": [
+    [8803,17461,50,"Hali Hotel","HALI HOTEL SULTANAHMET"],
+    [28990,17680,50,"Tilia Hotel","TILIA HOTEL LALELI"],
+    [29860,17346,50,"Birbey Hotel","BIRBEY HOTEL LALELI"],
+    [30720,17656,50,"Sureyya Hotel","SUREYYA HOTEL LALELI"],
+    [32616,17527,50,"Martinenz Hotel.","MARTINENZ HOTEL LALELI"],
+    [32769,17656,50,"Sureyya Hotel.","SUREYYA HOTEL LALELI"],
+    [32826,17461,50,"Hali Hotel.","HALI HOTEL SULTANAHMET"],
+    [34078,37383,50,"Hotel Darkmen.","DARKMEN LALELI"],
+    [44411,131384,50,"Nova City Hotel Istanbul","NOVA CITY HOTEL (EX. GRAND INOVA, AMBER SUITES)"],
+    [29426,17612,49,"Hotel Sahinler","SAHINLER HOTEL LALELI"],
+    [30538,17527,49,"Martinenz Otel","MARTINENZ HOTEL LALELI"],
+    [41114,59144,49,"Adelmar Hotel.","ADELMAR SISLI"],
+    [44413,101819,48,"The Barbarossa Hotel Istanbul","BARBAROSSA HOTEL"],
+    [4293,109,37,"Pickalbatros Aqua Vista Resort Hurghada","PICKALBATROS AQUA VISTA RESORT"],
+    [1639,150,27,"Pickalbatros Citadel Resort Sahl Hasheesh","PICKALBATROS CITADEL RESORT (EX. CITADEL AZUR RESORT)"],
+    [14902,55574,27,"Pickalbatros White Beach Resort Hurghada","PICKALBATROS WHITE BEACH RESORT"],
+    [780,464,26,"Steigenberger Golf Resort El Gouna","STEIGENBERGER GOLF RESORT"],
+    [32734,17456,18,"Grand Washington Hotel.","GRAND WASHINGTON LALELI"],
+    [44596,28760,16,"Metropark Hotel","TAKSIM METROPARK"]
+  ],
+  "repeated_local_targets": {
+    "17461": [8803,32826],
+    "17656": [30720,32769],
+    "17527": [32616,30538]
+  },
+  "low_observation_rows_data": [
+    [29618,17317,1,"Avicenna Hotel","AVICENNA HOTEL SULTANAHMET"],
+    [32575,17692,1,"Vicenza Hotel.","VICENZA HOTEL LALELI"],
+    [32577,17689,1,"Venera Hotel.","VENERA HOTEL LALELI"],
+    [35869,17366,1,"Cartoon Hotel.","CARTOON HOTEL TAKSIM"]
+  ],
+  "safety": {
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "supplier_calls": 0,
+    "tourvisor_calls": 0,
+    "current_db_status_verified": false,
+    "this_is_not_an_apply_manifest": true,
+    "next_step": "CURRENT read-only recheck priority 19 first: mapping/manual/exclusion/conflict state, full geography/qualifier evidence, then a separately reserved guarded write transaction with post-COMMIT per-row readback."
+  }
+}

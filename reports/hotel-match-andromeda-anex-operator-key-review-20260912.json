@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "lane": "MATCH",
+  "issue": 1971,
+  "status": "saved_evidence_verified_not_db_acceptance",
+  "source_run_id": 34365549508,
+  "source_artifact_id": 10109677472,
+  "source_artifact_digest": "sha256:0a31817b0032c2bf4fedf2c827a4450e2b5a71333facf2a1aec95af0f6ff7aff",
+  "source_query": {
+    "TOWNFROMINC": 1,
+    "STATEINC": 3,
+    "CHECKIN_BEG": "20260918",
+    "CHECKIN_END": "20260918",
+    "NIGHTS_FROM": 8,
+    "NIGHTS_TILL": 8,
+    "ADULT": 2,
+    "CHILD": 0,
+    "CURRENCYINC": 643,
+    "MEAL": "5",
+    "OPERATORS": "5",
+    "PACKETTYPE": 0,
+    "PAGE": 1
+  },
+  "observed": {
+    "andromeda_anex_offer_rows": 50,
+    "hotel_url_rows": 50,
+    "rows_with_original_hotel_key": 50,
+    "ordinary_catalog_rows_isOperatorHotelKey_0": 46,
+    "operator_scoped_rows_isOperatorHotelKey_1": 4,
+    "rows_with_hotel_image_pattern": 46,
+    "image_middle_equals_original_hotel_key": 46,
+    "image_last_equals_andromeda_hotel_key": 46,
+    "unique_direct_anex_to_andromeda_hotel_bridges": 14,
+    "unique_operator_scoped_quarantine_hotels": 2
+  },
+  "interpretation": {
+    "andromeda_hotel_key": "Top-level hotelKey is the Andromeda catalog hotel identity for ordinary rows.",
+    "anex_hotel_code": "For ANEX operatorKey=5 ordinary rows, original.hotelKey is the observed operator-side ANEX hotel key. In every saved row with hotelImage it equals the middle filename component.",
+    "image_pattern": "5.<ANEX operator hotel key>.<Andromeda hotelKey>.jpg in the verified saved sample.",
+    "hotel_url": "All 50 rows carry agent.anextour.ru hotelUrl; useful for ANEX current-name/page corroboration, but not required to extract the operator key in this sample.",
+    "quarantine": "isOperatorHotelKey=1 rows (Roulette) are not promoted as catalog bridges."
+  },
+  "verified_examples": [
+    {"anex_hotel_code":5844,"andromeda_hotel_key":3414,"hotel":"Swiss Heaven Sharming Inn Hotel","town":"Хадаба","hotel_url":"https://agent.anextour.ru/hotels/egypt/swiss-heaven-sharming-inn-hotel"},
+    {"anex_hotel_code":798,"andromeda_hotel_key":2000073714,"hotel":"Empire Hotel Aqua Park (Ex. Triton Empire Hotel Hurghada)","town":"Хургада","hotel_url":"https://agent.anextour.ru/hotels/egypt/empire-hotel-aqua-park-ex-triton-empire-hotel-hurghada"},
+    {"anex_hotel_code":21281,"andromeda_hotel_key":2000037570,"hotel":"Mazar Resort & Spa Sharm El Sheikh","town":"Шаркс Бэй","hotel_url":"https://agent.anextour.ru/hotels/egypt/mazar-resortspa-sharm-el-sheikh"},
+    {"anex_hotel_code":34884,"andromeda_hotel_key":2000072982,"hotel":"El Khan Sharm Hotel","town":"Хадаба","hotel_url":"https://agent.anextour.ru/hotels/egypt/el-khan-sharm-hotel"}
+  ],
+  "next_mass_step": "Run the extractor over saved/current ANEX-only Andromeda pages, join original.hotelKey directly to the ANEX catalog/API identity, then intersect with Tourvisor ANEX-only 1-day results. Page HTML is secondary corroboration for current ANEX name/aliases/geography. Current DB/manual/exclusion/conflict guards remain mandatory before write.",
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "supplier_calls_this_review": 0,
+  "tourvisor_calls_this_review": 0,
+  "no_replay": true
+}
