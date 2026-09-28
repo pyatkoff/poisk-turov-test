@@ -79,6 +79,11 @@ final class AnyTourAnexPackageQuoteClient
             if (is_string($value)) $value = json_decode($value, true, 64, JSON_THROW_ON_ERROR);
         } catch (Throwable $ignored) { throw new RuntimeException('ANEX_QUOTE_INVALID_RESPONSE'); }
         if (!is_array($value)) throw new RuntimeException('ANEX_QUOTE_INVALID_RESPONSE');
+        // The official bron client treats code=-1 as rejection, even if a prior
+        // claimDocument accompanies it. That document cannot confirm this step.
+        if (in_array($value['code'] ?? null, [-1, '-1'], true)) {
+            throw new RuntimeException('ANEX_QUOTE_SUPPLIER_REJECTED');
+        }
         foreach ([$value, $value['bron'] ?? []] as $node) {
             foreach (['error', 'errors', 'errorCode'] as $field) {
                 if (!empty($node[$field])) throw new RuntimeException('ANEX_QUOTE_SUPPLIER_REJECTED');

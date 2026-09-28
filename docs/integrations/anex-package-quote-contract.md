@@ -32,6 +32,15 @@ money.price; money.net is agency money. This adapter accepts only one explicit
 RUB gross row. It does not reconstruct FX, rounding, fuel or additional charges.
 Missing/ambiguous currency or price stays unverified.
 
+The official bron client also treats the top-level `code: -1` envelope as a
+supplier rejection (observed in the first two frontend chunks above). A returned
+claimDocument does not override that failure. The adapter rejects numeric or
+string `-1` before reading the document, seals the attempted stage and exposes
+only `ANEX_QUOTE_SUPPLIER_REJECTED`; supplier message text is not retained.
+Offline coverage exercises this envelope at all four stages and proves that a
+retained valid-looking document cannot produce choices or a verified price.
+This does not identify the cause of the earlier live attempt's unknown failure.
+
 Booking is a DIFFERENT /bron/save call in the official client, taking personal
 form values. Save, buyer/tourist writes, draft booking, payment, services and
 fare changes are outside this adapter's allowlist and authorization.
