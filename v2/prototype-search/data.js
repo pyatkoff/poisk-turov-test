@@ -1108,13 +1108,18 @@
       ||value.context?.status!=='current'||value.context?.current_context_verified!==true
       ||value.context?.selection_state!=='disabled'||typeof value.finalPriceReady!=='boolean')return null;
     const ready=value.finalPriceReady;
-    let finalPrice=null;
+    let finalPrice=null,additionalPrices=null;
     if(ready){
       const amount=String(value.finalPrice??'');
       if(!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(amount)||Number(amount)<=0||String(value.price??'')!==amount)return null;
       finalPrice=Object.freeze({amount,currency:'RUB'});
+      // The current-offer response can already carry retained APD evidence.
+      // Reuse the same validation as an explicit APD read; readiness alone is
+      // not authority for a priced application or a final supplier quote.
+      additionalPrices=normalizeAnexAdditional(value,o,'current');
+      if(!additionalPrices||anexMoneyFact(finalPrice)?.units!==anexMoneyFact(additionalPrices.calculatedTotal)?.units)return null;
     }else if(value.finalPrice!==null&&value.finalPrice!==undefined||value.price!==null&&value.price!==undefined)return null;
-    return Object.freeze({state:'current',currentContextVerified:true,finalPriceReady:ready,finalPrice,
+    return Object.freeze({state:'current',currentContextVerified:true,finalPriceReady:ready,finalPrice,additionalPrices,
       finalPriceVerified:false,localHotelId:localId,searchRef,offerRef});
   }
   async function verifyAnexConcrete(o){
@@ -1185,10 +1190,10 @@
       anexFlightReceipts.set(identity.key,result);return result;
     }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
-  function normalizeAnexAdditional(value,o){
+  function normalizeAnexAdditional(value,o,status='additional_prices'){
     const identity=anexConcreteKey(o),evidence=value&&value.additional_prices;
     if(!identity||!value||value.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef
-      ||value.offer_ref!==identity.offerRef||value.status!=='additional_prices'||value.selection_state!=='disabled'
+      ||value.offer_ref!==identity.offerRef||value.status!==status||value.selection_state!=='disabled'
       ||!evidence||evidence.application_state!=='applied'||evidence.arithmetic_applied!==true||evidence.final_price_verified!==false
       ||evidence.included_in_search_price!==false||evidence.converted_currency!=='RUB'
       ||evidence.per_person_or_package!=='per_person_by_party_type')return null;

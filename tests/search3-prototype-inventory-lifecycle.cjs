@@ -367,6 +367,37 @@ test('ANEX current authority requires exact envelope identity and the server top
   assert.equal(h.anexCalls.length,before,name+' must not authorize AdditionalPrices');
  }
 });
+test('ANEX current ready offer retains only the exact validated APD estimate without another read',async()=>{
+ for(const [name,valid,mutate] of [
+  ['positive',true,()=>{}],
+  ['explicit zero',true,v=>{v.additional_prices=additionalAnexConcrete({}, {surcharge:'0',total:'1510000'}).data.additional_prices;v.finalPrice=v.price='1510000';}],
+  ['missing evidence',false,v=>{delete v.additional_prices;}],
+  ['empty evidence',false,v=>{v.additional_prices={application_state:'unknown',arithmetic_applied:false};}],
+  ['different total',false,v=>{v.finalPrice=v.price='1530001';}],
+  ['wrong arithmetic',false,v=>{v.additional_prices.party_surcharge.amount='20001';}],
+  ['unearned final flag',false,v=>{v.additional_prices.final_price_verified=true;}],
+  ['wrong currency',false,v=>{v.additional_prices.search_plus_additional.currency='USD';}],
+  ['wrong offer',false,v=>{v.offer_ref='anex_online:'+'9'.repeat(64);}]
+ ]){
+  const h=harness({anex:async body=>{
+   let value;
+   if(body.action==='expand')value=expandedAnex(body);
+   else if(body.action==='offer'){value=currentAnexConcrete(body,{ready:true});value.data.additional_prices=additionalAnexConcrete(body).data.additional_prices;mutate(value.data);}
+   else value=directAnex(body,{searchRef:'c'.repeat(32)});
+   return {response:{ok:true,status:200,json:async()=>value}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex'),concrete=(await h.data.expandAnexGroup(group)).offers[0];
+  if(valid){
+   const result=await h.data.verifyAnexConcrete(concrete);
+   assert.equal(result.finalPriceReady,true,name);assert.equal(result.finalPriceVerified,false,name);
+   assert.equal(result.additionalPrices.calculatedTotal.amount,result.finalPrice.amount,name);
+   assert.equal(result.additionalPrices.finalPriceVerified,false,name);assert(Object.isFrozen(result.additionalPrices),name);
+   assert.equal(result.additionalPrices.partySurcharge.amount,name==='explicit zero'?'0':'20000');
+  }else await assert.rejects(h.data.verifyAnexConcrete(concrete),/другого или устаревшего/,name);
+  assert.equal(h.anexCalls.filter(c=>c.action==='additional_prices').length,0,name+' does not request APD');
+ }
+});
 test('ANEX AdditionalPrices requires a current concrete receipt and is explicit no-replay',async()=>{
  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
  const h=harness({anex:async body=>{

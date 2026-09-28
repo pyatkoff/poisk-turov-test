@@ -127,8 +127,12 @@ const server=http.createServer((req,res)=>{
   const anexOffer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();if(!await anexOffer.isVisible())await anexOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await anexOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
   const concrete=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();if(!await concrete.isVisible())await concrete.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
-  await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-additional-prices"]').click();
+  transport.state.anexCurrentAdditional=true;
+  await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();
   await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Доплаты ANEX рассчитаны');assert((await page.locator('#modal-body').textContent()).replace(/\s/g,'').includes('123000'));
+  assert.equal(transport.calls.filter(c=>c.action==='additional_prices').length,0,'ready current offer reuses retained APD');
+  assert.equal(await page.locator('[data-action="anex-additional-prices"]').count(),0);
+  await page.screenshot({path:path.join(evidence,`anex-retained-estimate-${width}.png`)});
   await page.locator('[data-action="anex-flights"]').click();await page.waitForFunction(()=>document.querySelector('#anex-flight-inventory').textContent.includes('TEST ANEX 101'));
   assert.match(await page.locator('#anex-flight-inventory').textContent(),/не выбранные рейсы/);
   await page.locator('#anex-flight-inventory').scrollIntoViewIfNeeded();
@@ -139,6 +143,8 @@ const server=http.createServer((req,res)=>{
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('требует подтверждения'));
   assert.equal(transport.calls.length,callsBeforeAnexApplication,'ANEX application preview adds no provider request');
+  await page.locator('.verification-tour').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(evidence,`anex-retained-application-${width}.png`)});
   await page.locator('#modal-footer [data-action="all-offers"]').click();
   const retainedAnex=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();
   if(!await retainedAnex.isVisible())await retainedAnex.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
