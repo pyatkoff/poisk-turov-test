@@ -76,11 +76,31 @@ foreach ($cases as $message => $expected) {
     if ($actual !== $expected || !in_array($actual, $allowed, true)) {
         throw new RuntimeException('FAILURE_CATEGORY_' . $message);
     }
+    $public = anytour_andromeda_quote_supplier_failure(new RuntimeException($message));
+    if ($expected === 'quote_state') {
+        if (($public['failure_reason'] ?? null) !== $message) {
+            throw new RuntimeException('FAILURE_REASON_LOST_' . $message);
+        }
+    } elseif (array_key_exists('failure_reason', $public)) {
+        throw new RuntimeException('NON_STATE_REASON_EXPOSED');
+    }
 }
 
 foreach (['', 'unexpected', 'ANDROMEDA_UNKNOWN', 'secret sid=abc url=https://gateway.samo.ru/api/'] as $message) {
     if (anytour_andromeda_quote_failure_category(new RuntimeException($message)) !== 'internal') {
         throw new RuntimeException('FAILURE_CATEGORY_FALLBACK');
+    }
+    if (array_key_exists('failure_reason', anytour_andromeda_quote_supplier_failure(new RuntimeException($message)))) {
+        throw new RuntimeException('UNKNOWN_REASON_EXPOSED');
+    }
+}
+
+// A familiar prefix or suffix cannot turn raw details into a public reason.
+foreach (['ANDROMEDA_SELECTED_FLIGHTS_INVALID secret=private',
+    'ANDROMEDA_TOKEN_PRIVATE', "ANDROMEDA_QUOTE_CHECKPOINT_INVALID\n/private/path"] as $message) {
+    $public = anytour_andromeda_quote_supplier_failure(new RuntimeException($message));
+    if ($public['failure_category'] !== 'internal' || array_key_exists('failure_reason', $public)) {
+        throw new RuntimeException('UNLISTED_REASON_EXPOSED');
     }
 }
 
