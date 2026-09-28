@@ -64,3 +64,5 @@ jobs:
         with: {name: match-anexonly-retained-samo-v107-${{ github.run_id }}, path: terminal/, retention-days: 90, if-no-files-found: warn}
 
 # execute v107 once
+
+# trigger after base registration
