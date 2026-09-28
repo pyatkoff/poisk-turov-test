@@ -13,7 +13,7 @@ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w
 w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
 w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
 let additionalGate=null;
-w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(value.data?.state==='flight_selection_required')value.data.flights.push({...value.data.flights[0],name:'TEST SAMO ALTERNATIVE',flight_ref:'flight_'+'3'.repeat(32)});if(value.data?.status==='additional_prices'&&additionalGate)await additionalGate;return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
+w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(value.data?.state==='flight_selection_required')value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(value.data?.status==='additional_prices'&&additionalGate)await additionalGate;return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
 const quoteFailures=[];w.addEventListener('anytour:quote-failure',e=>quoteFailures.push(e.detail));
 let lastSamoOffer;
 for(const file of scripts){
@@ -185,18 +185,26 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  transport.state.samoFlightChoice=true;
  const samo=[...d.querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('andromeda%3A'));assert(samo);samo.click();await settle();click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="apply-andromeda-flights"]'));
  const alternative=q('[name="andromeda-outbound"][value="flight_'+'3'.repeat(32)+'"]');assert(alternative);alternative.click();
+ const alternativeReturn=q('[name="andromeda-return"][value="flight_'+'4'.repeat(32)+'"]');assert(alternativeReturn);alternativeReturn.click();
  const beforeSamoForward=transport.calls.length,flightRef=alternative.value;
  click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert.equal(q('[name="andromeda-outbound"]:checked').value,flightRef);assert.equal(transport.calls.length,beforeSamoForward);
  assert(!q('#modal-back').hidden,'restored flight choice retains an actionable passive Back');
+ click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');
+ [...d.querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key===samo.dataset.key).click();await settle();
+ assert.equal(q('[name="andromeda-outbound"]:checked').value,flightRef,'reopening the same tour retains the chosen outbound flight');
+ assert.equal(q('[name="andromeda-return"]:checked').value,alternativeReturn.value,'reopening retains the chosen inbound flight');
+ assert.equal(transport.calls.length,beforeSamoForward,'reopening the flight draft never repeats quote or search');
  const realNow=w.Date.now;w.Date.now=()=>realNow()+901000;
  await assert.rejects(w.AnyTourPrototypeData.verifyAndromeda(lastSamoOffer,{provider:'andromeda',outbound_ref:flightRef,return_ref:'flight_'+'2'.repeat(32)}),e=>e.code==='offer_expired');
  assert.equal(transport.calls.length,beforeSamoForward,'expired flight choice cannot spend a continuation');w.Date.now=realNow;
 
  click('[data-action="apply-andromeda-flights"]');await wait(()=>q('#modal-title').textContent==='Тур подтверждён');assert.match(q('#modal-body').textContent.replace(/\s/g,''),/125500/);
+ const submittedPair=transport.calls.findLast(call=>call.action==='quote_select_flights').body.flight_selection;
+ assert.equal(submittedPair.outbound_ref,flightRef);assert.equal(submittedPair.return_ref,alternativeReturn.value);
  const beforeSamoReturn=transport.calls.length;click('#modal-back');await settle();
- assert(q('[data-action="refresh-hotel"]')&&!q('[data-action="refresh-hotel"]').disabled,'Back from SAMO verification must restore an actionable offer, not its loading snapshot');
- click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-title').textContent==='Тур подтверждён');
+ assert(q('#all-offers-list'),'Back from a reopened SAMO quote returns to its offer list');
+ [...d.querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key===samo.dataset.key).click();await wait(()=>q('#modal-title').textContent==='Тур подтверждён');
  assert.equal(transport.calls.length,beforeSamoReturn,'return to retained SAMO verification adds no request');
  assert(!q('[data-action="apply-andromeda-flights"]'),'completed flight choice is never restored');transport.state.samoFlightChoice=false;
  click('[data-action="andromeda-application-preview"]');await settle();assert(q('#prototype-lead-form'));assert.match(q('#modal-body').textContent,/SAMO STANDARD/);
