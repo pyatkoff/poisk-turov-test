@@ -707,8 +707,16 @@ function renderResults(options={}){
  const failed=!pristine&&!items.length&&responseFor(state.search).phase==='error';
  $('#results-summary').textContent=pristine?'Задайте направление, даты и состав туристов — предложения появятся после поиска.':failed?`Результаты не получены · ${durationText()} · ${guestsText()}`:`${hotelCountText(items.length)} · ${total} ${total%10===1&&total%100!==11?'вариант':total%10>=2&&total%10<=4&&(total%100<12||total%100>14)?'варианта':'вариантов'} тура`;
  const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;
- const cardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);if(cardScope!==renderedCardScope){renderedCardScope=cardScope;renderedCardLimit=24;}
- $('#cards').innerHTML=items.length?items.slice(0,renderedCardLimit).map(cardHTML).join('')+(items.length>renderedCardLimit?`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,items.length-renderedCardLimit)} отеля <span>Показано ${Math.min(renderedCardLimit,items.length)} из ${items.length}</span></button>`:''):emptyResultsHTML();
+ const cards=$('#cards'),cardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]),sameCardScope=cardScope===renderedCardScope;
+ const active=document.activeElement,activeInCards=sameCardScope&&cards.contains(active),focus=activeInCards?focusReference(active,cards):null,focusAction=activeInCards?active.dataset.action:null;
+ const anchor=activeInCards?active.closest('.hotel-card'):null,anchorId=anchor?.id||'',anchorTop=anchor?.getBoundingClientRect().top,anchorScroll=scrollY;
+ if(!sameCardScope){renderedCardScope=cardScope;renderedCardLimit=24;}
+ cards.innerHTML=items.length?items.slice(0,renderedCardLimit).map(cardHTML).join('')+(items.length>renderedCardLimit?`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,items.length-renderedCardLimit)} отеля <span>Показано ${Math.min(renderedCardLimit,items.length)} из ${items.length}</span></button>`:''):emptyResultsHTML();
+ if(focus){
+  const nextAnchor=anchorId?document.getElementById(anchorId):null,fallback=nextAnchor?.querySelector(focusAction?`[data-action="${CSS.escape(focusAction)}"]`:'button')||nextAnchor?.querySelector('button')||cards.querySelector('[data-action="more-cards"]')||$('#results');
+  restoreFocus(focus,fallback,cards);
+  if(nextAnchor&&Number.isFinite(anchorTop))window.scrollTo({top:anchorScroll+nextAnchor.getBoundingClientRect().top-anchorTop,behavior:'instant'});
+ }
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
  renderCalendarStrip();renderActive();updateNav();renderSummary();updateURL();if(!options.keepFilters)renderFilters();else{updateFacetCounts();syncFilterResetState();}renderSearchStatus(items,total);if(filterDraft)updateDrawerPreview();if(modalType==='budget')updateBudgetPreview();if(modalType==='meals'){updateMealCounts();updateMealPicker();}
 }
