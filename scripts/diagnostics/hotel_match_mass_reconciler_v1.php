@@ -1,0 +1,56 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/hotel_match_mass_reconciler_prepare_v1.php';
+require_once __DIR__.'/hotel_match_anex_effective_coverage.php';
+const MR1_OP='hotel-match-mass-reconciler-1971-20260928-v1';
+
+function mr1_run(PDO $db,array $p,array $cohort,string $head,string $dir):array{
+ mr1_need(!$db->inTransaction()&&($cohort['complete']??false)===true,'writer_scope');
+ $attempt=false;$committed=false;$sql=false;$rolled=false;$planned=[];$anex=[];$held=$p['held'];$already=[];
+ try{
+  $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET SESSION innodb_lock_wait_timeout=30');$db->exec('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');mr1_need($db->beginTransaction(),'begin');
+  $all=w76_q($db,'SELECT * FROM andromeda_hotel_identities ORDER BY supplier_namespace,external_hotel_id LIMIT 50001 FOR UPDATE');$before=w76_index($all);
+  $maps=w76_q($db,'SELECT '.W75_COLUMNS.' FROM anex_hotel_search_mappings ORDER BY anex_hotel_id LIMIT 50001 FOR UPDATE');$mapBefore=w75_index($maps);
+  $dec=w76_q($db,'SELECT anex_hotel_id,catalog_hotel_id,decision_status FROM anex_hotel_decisions ORDER BY anex_hotel_id LIMIT 50001 FOR UPDATE');
+  $exc=w76_q($db,'SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions ORDER BY anex_hotel_id,catalog_hotel_id LIMIT 50001 FOR UPDATE');
+  $src=[];$target=[];$ops=[];$mapSource=[];$mapTarget=[];$manualTarget=[];$manualSource=[];$excludedTarget=[];$excludedSource=[];$op5=[];
+  foreach($all as $r){$ns=(string)$r['supplier_namespace'];$n=(string)$r['external_hotel_id'];if($ns==='andromeda_catalog'){$src[$n][]=$r;if($r['local_hotel_id']!==null)$target[(int)$r['local_hotel_id']][]=$r;}else{$ops[$ns][$n][]=$r;if($ns==='operator_5')$op5[$n][]=$r;}}
+  foreach($maps as $r){$mapSource[(string)$r['anex_hotel_id']][]=$r;$mapTarget[(int)$r['catalog_hotel_id']][]=$r;}
+  foreach($dec as $r){$manualSource[(string)$r['anex_hotel_id']][]=$r;if($r['catalog_hotel_id']!==null)$manualTarget[(int)$r['catalog_hotel_id']][]=$r;}
+  foreach($exc as $r){$excludedSource[(string)$r['anex_hotel_id']][]=$r;$excludedTarget[(int)$r['catalog_hotel_id']][]=$r;}
+  $ids=[];foreach($p['candidates'] as $e)$ids[$e['id']]=true;foreach($p['direct'] as $e)$ids[$e['local_hotel_id']]=true;$ids=array_keys($ids);sort($ids,SORT_NUMERIC);
+  $hot=[];$live=[];if($ids){$ph=implode(',',array_fill(0,count($ids),'?'));foreach(w76_q($db,"SELECT id,name,country_name,region_name,subregion_name,category,is_active FROM catalog_hotels WHERE id IN ($ph) ORDER BY id FOR UPDATE",$ids) as $r)$hot[(int)$r['id']]=$r;foreach(w76_q($db,"SELECT DISTINCT hotel_id FROM tour_operator_identity_observations WHERE hotel_id IN ($ph) AND last_seen_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY) ORDER BY hotel_id FOR UPDATE",$ids) as $r)$live[(int)$r['hotel_id']]=true;}
+  $beforeC=w76_census($db);$beforeS=w84_samo_census($all,$cohort);
+  foreach($p['candidates'] as $e){
+   $id=$e['id'];$cat=$e['catalog_id'];$ns=$e['namespace'];$n=$e['native_id'];$why=[];$rows=$src[$cat]??[];$row=count($rows)===1?$rows[0]:null;
+   if(count($rows)!==1)$why[]='canonical_source_missing_or_duplicate';
+   if($row&&($row['decision_status']??'')==='accepted'&&$row['local_hotel_id']!==null&&(int)$row['local_hotel_id']===$id){$already[]=['kind'=>'SAMO','local_hotel_id'=>$id,'catalog_id'=>$cat];continue;}
+   if($row&&(($row['decision_status']??'')!=='pending'||$row['local_hotel_id']!==null))$why[]='canonical_source_owned_or_not_pending';
+   foreach($target[$id]??[] as $x)if(($x['decision_status']??'')==='accepted'&&(string)$x['external_hotel_id']!==$cat)$why[]='target_other_canonical';
+   foreach($ops[$ns][$n]??[] as $x)if(($x['decision_status']??'')==='accepted'&&$x['local_hotel_id']!==null&&(int)$x['local_hotel_id']!==$id)$why[]='operator_native_other_target';
+   if(isset($manualTarget[$id]))$why[]='manual_target_protected';if(isset($excludedTarget[$id]))$why[]='excluded_target_protected';if(!isset($hot[$id])||(int)$hot[$id]['is_active']!==1)$why[]='target_inactive_or_missing';if(!isset($live[$id]))$why[]='outside_tv_live30';
+   $why=array_values(array_unique($why));if($why){$held[]=['kind'=>'SAMO','local_hotel_id'=>$id,'catalog_id'=>$cat,'operator_namespace'=>$ns,'native_id'=>$n,'reasons'=>$why];continue;}
+   $ev=['operation_id'=>MR1_OP,'rule'=>'one_exact_same_operator_unique_no_real_conflict','source_sha'=>$head,'target'=>$hot[$id],'proofs'=>[['namespace'=>$ns,'native_id'=>$n,'tv'=>['kind'=>'terminal_acquisition','row'=>$e['tv_proof']],'samo'=>$e['samo_proof'],'samo_catalog_id'=>$cat]],'prior_evidence_json'=>$row['evidence_json'],'prior_evidence_sha256'=>$row['evidence_sha256'],'catalog_sha256_preserved'=>$row['catalog_sha256'],'provider_http_calls'=>0];
+   $raw=w76_json($ev);$planned['andromeda_catalog|'.$cat]=['id'=>$id,'cat'=>$cat,'name'=>$hot[$id]['name'],'old'=>$row,'new_json'=>$raw,'new_sha'=>hash('sha256',$raw),'proof_count'=>1];
+  }
+  $ctx=['hotels'=>$hot,'live'=>$live,'mapping_source'=>$mapSource,'mapping_target'=>$mapTarget,'manual_source'=>$manualSource,'manual_target'=>$manualTarget,'excluded_source'=>$excludedSource,'op5_source'=>$op5,'effective'=>AnyTourMatchAnexEffectiveCoverage::fromPdo($db)];
+  foreach($p['direct'] as $e){$id=$e['local_hotel_id'];$n=$e['anex_hotel_id'];$d=a74_anex($id,$n,$ctx);if(isset($excludedTarget[$id]))$d['reasons'][]='excluded_target_protected';$d['reasons']=array_values(array_unique($d['reasons']));if($d['status']==='already_effective_same'){$already[]=['kind'=>'ANEX','local_hotel_id'=>$id,'anex_hotel_id'=>$n];continue;}if($d['status']!=='source_missing_needs_identity_proof'||$d['reasons']){$held[]=['kind'=>'ANEX','local_hotel_id'=>$id,'anex_hotel_id'=>$n,'reasons'=>$d['reasons']];continue;}$ev=['operation'=>MR1_OP,'source_sha'=>$head,'authority'=>'terminal_exact_TV_operator13','proof'=>$e['proof'],'current_target'=>$hot[$id],'provider_http_calls'=>0];$anex[]=['anex_hotel_id'=>$n,'catalog_hotel_id'=>$id,'match_class'=>W75_CLASS,'scope'=>'preview','approval_policy'=>W75_POLICY,'source_row_digest'=>w75_digest($ev),'mapping_digest'=>'','enabled'=>1,'evidence'=>$ev];}
+  mr1_need(count($planned)+count($anex)<=1000,'write_cap');$batch=w75_digest(['operation'=>MR1_OP,'rows'=>$anex]);foreach($anex as &$a)$a['mapping_digest']=$batch;unset($a);
+  w76_save($dir.'/write-plan.json',['operation'=>MR1_OP,'source_sha'=>$head,'source_edge_count'=>$p['source_edge_count'],'primary'=>$planned,'direct_anex'=>$anex,'held'=>$held,'already'=>$already,'coverage_before'=>$beforeC,'samo_before'=>$beforeS]);
+  if(!$planned&&!$anex){$db->rollBack();return['state'=>'completed_no_new_writes','database_writes'=>0,'mapping_writes'=>0,'primary_samo_writes'=>0,'direct_anex_writes'=>0,'held'=>$held,'already'=>$already,'coverage_before'=>$beforeC,'coverage_after'=>$beforeC,'samo_before'=>$beforeS,'samo_after'=>$beforeS,'readback_verified'=>true];}
+  $st=$db->prepare("UPDATE andromeda_hotel_identities SET local_hotel_id=?,decision_status='accepted',evidence_sha256=?,evidence_json=? WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=? AND decision_status='pending' AND local_hotel_id IS NULL AND catalog_sha256=? AND evidence_sha256=?");
+  foreach($planned as $x){$sql=true;mr1_need($st->execute([$x['id'],$x['new_sha'],$x['new_json'],$x['cat'],$x['old']['catalog_sha256'],$x['old']['evidence_sha256']])&&$st->rowCount()===1,'samo_update');}
+  $ins=$db->prepare('INSERT INTO anex_hotel_search_mappings ('.W75_COLUMNS.') VALUES (?,?,?,?,?,?,?,?)');foreach($anex as $x){$sql=true;mr1_need($ins->execute(array_map(fn($k)=>$x[$k],explode(',',W75_COLUMNS)))&&$ins->rowCount()===1,'anex_insert');}
+  w76_verify($before,$planned,w76_q($db,'SELECT * FROM andromeda_hotel_identities ORDER BY supplier_namespace,external_hotel_id LIMIT 50001'));w75_verify($mapBefore,$anex,w76_q($db,'SELECT '.W75_COLUMNS.' FROM anex_hotel_search_mappings ORDER BY anex_hotel_id LIMIT 50001'),true);
+  w76_save($dir.'/commit-attempt.json',['operation'=>MR1_OP,'state'=>'commit_attempt_no_replay','planned_writes'=>count($planned)+count($anex)]);$attempt=true;mr1_need($db->commit(),'commit');$committed=true;
+  $db->exec('START TRANSACTION READ ONLY');$after=w76_q($db,'SELECT * FROM andromeda_hotel_identities ORDER BY supplier_namespace,external_hotel_id LIMIT 50001');w76_verify($before,$planned,$after);w75_verify($mapBefore,$anex,w76_q($db,'SELECT '.W75_COLUMNS.' FROM anex_hotel_search_mappings ORDER BY anex_hotel_id LIMIT 50001'),false);$afterC=w76_census($db);$afterS=w84_samo_census($after,$cohort);$db->rollBack();
+  return['state'=>'committed_readback_verified','database_writes'=>count($planned)+count($anex),'mapping_writes'=>count($planned)+count($anex),'primary_samo_writes'=>count($planned),'direct_anex_writes'=>count($anex),'held'=>$held,'already'=>$already,'coverage_before'=>$beforeC,'coverage_after'=>$afterC,'samo_before'=>$beforeS,'samo_after'=>$afterS,'readback_verified'=>true];
+ }catch(Throwable $x){if($db->inTransaction())try{$rolled=$db->rollBack();}catch(Throwable){}$n=$committed?count($planned)+count($anex):(($attempt||($sql&&!$rolled))?null:0);return['state'=>$committed?'committed_readback_unconfirmed':($attempt?'commit_outcome_unknown_no_replay':($rolled?'rolled_back_no_writes':'failed_before_writer')),'reason'=>preg_match('/^[a-z_]+$/D',$x->getMessage())?$x->getMessage():'writer_failed','database_writes'=>$n,'mapping_writes'=>$n,'readback_verified'=>false];}
+}
+function mr1_main(array $a):int{
+ mr1_need(($a[1]??'')==='--execute','disabled');$root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$head=(string)getenv('MATCH_SOURCE_SHA');mr1_need(is_dir($root)&&basename($root)==='anytoour.ru'&&is_dir($dir)&&basename($dir)===MR1_OP&&preg_match('/^[a-f0-9]{40}$/D',$head),'scope');
+ $rv=json_decode((string)file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);mr1_need(($rv['operation']??'')===MR1_OP&&($rv['maximum_writes']??0)===1000&&($rv['provider_http_calls']??-1)===0,'reservation');foreach(['result.json','receipt.json','commit-attempt.json'] as $f)mr1_need(!file_exists($dir.'/'.$f),'no_replay');
+ try{$p=mr1_prepare(dirname($dir));$co=w84_live_sources($root);require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$out=mr1_run(v2_data_db(),$p,$co,$head,$dir);}catch(Throwable $x){$out=['state'=>'failed_before_writer','reason'=>preg_match('/^[a-z_]+$/D',$x->getMessage())?$x->getMessage():'prepare_failed','database_writes'=>0,'mapping_writes'=>0,'readback_verified'=>false];}
+ $out+=['operation'=>MR1_OP,'source_sha'=>$head,'provider_http_calls'=>0,'new_operator_ids'=>0,'no_replay'=>true,'generated_at_utc'=>gmdate('c')];$sha=w76_save($dir.'/result.json',$out);w76_save($dir.'/receipt.json',['operation'=>MR1_OP,'state'=>$out['state'],'source_sha'=>$head,'result_sha256'=>$sha,'database_writes'=>$out['database_writes'],'mapping_writes'=>$out['mapping_writes'],'readback_verified'=>$out['readback_verified'],'provider_http_calls'=>0,'no_replay'=>true]);echo w76_json(array_diff_key($out,['held'=>true,'already'=>true,'samo_before'=>true,'samo_after'=>true]))."\n";return in_array($out['state'],['committed_readback_verified','completed_no_new_writes'],true)?0:2;
+}
+if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__)exit(mr1_main($argv));
