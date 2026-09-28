@@ -29,6 +29,16 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
   }
   if(u.pathname.endsWith('/api-anex-search3-preview.php')){
    if(state.failAnex)throw Error('Test provider unavailable');
+   if(['quote_start','quote_calculate'].includes(action)){
+    const common={provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref};
+    const choices=[1,2].map(n=>({choice_ref:'anex_quote:'+String(n).repeat(64),current:n===1,
+     legs:[{label:`TEST ANEX PACKAGE ${n} OUT · Москва SVO → Анталья AYT · ${day} 10:00`},{label:`TEST ANEX PACKAGE ${n} BACK · Анталья AYT → Москва SVO · ${back} 14:00`}]}));
+    if(action==='quote_start')return {ok:true,data:{...common,status:'quote_choices',final_price_verified:false,selection_state:'disabled',choices}};
+    if(state.anexQuoteFailure)return {ok:true,data:{...common,status:'quote_failed',final_price_verified:false,selection_state:'disabled'}};
+    const choice=choices.find(c=>c.choice_ref===body.choice_ref);if(!choice)throw Error('Foreign fixture ANEX pair');
+    return {ok:true,data:{...common,status:'quote_verified',final_price_verified:true,selection_state:'preview_only',choice,
+     price:{amount:'135678.90',currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(Date.now()/1000),expires_at:Math.floor(Date.now()/1000)+600}};
+   }
    const nativeTour={price:{amount:'121000',currency:'RUB'},checkin:day,nights:7,adults:2,children:0,meal:'AI',room:'ANEX STANDARD',kind:'group_minimum',flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:offerRef,selection_enabled:false};
    const h={local_id:101,name:profile.name,category:5,country:'Турция',region:'Белек',catalog:{hotel_id:101,source:'tourvisor'},tours:[nativeTour]};
    if(action==='expand')return {ok:true,data:{provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'expanded',selection_state:'disabled',external_search_pending:false,first_page_only:true,hotels:[{...h,tours:[{...nativeTour,room:'ANEX CONCRETE',kind:'concrete',offer_ref:'anex_online:'+'1'.repeat(64)}]}]}};

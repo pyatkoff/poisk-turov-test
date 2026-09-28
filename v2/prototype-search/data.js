@@ -8,6 +8,7 @@
   const quoteReceipts = new WeakMap();
   const andromedaQuoteChoices=new Map(),andromedaQuoteAttempts=new Map();
   const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set(),anexFlightAttempts=new Set(),anexFlightReceipts=new Map();
+  const anexPackageReceipts=new Map();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
@@ -293,7 +294,7 @@
   function stop(){
     clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
-    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();
+    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();anexPackageReceipts.clear();
     return generation;
   }
   async function searchError(run,error){
@@ -1146,6 +1147,64 @@
       return currentOffer;
     }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
+  function normalizeAnexPackage(value,o,choiceRef){
+    const identity=anexConcreteKey(o);
+    if(!identity||value?.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef||value.offer_ref!==identity.offerRef)return null;
+    const choice=item=>{
+      if(!item||!(/^anex_quote:[a-f0-9]{64}$/).test(item.choice_ref)||!Array.isArray(item.legs)||item.legs.length!==2
+        ||item.legs.some(leg=>typeof leg?.label!=='string'||!leg.label.trim()||leg.label.length>6000))throw Error();
+      return Object.freeze({choiceRef:item.choice_ref,legs:Object.freeze(item.legs.map(leg=>Object.freeze({label:leg.label}))),current:item.current===true});
+    };
+    try{
+      if(value.status==='quote_choices'&&!choiceRef&&value.final_price_verified===false&&value.selection_state==='disabled'
+        &&Array.isArray(value.choices)&&value.choices.length>0&&value.choices.length<=40){
+        const choices=value.choices.map(choice);if(new Set(choices.map(c=>c.choiceRef)).size!==choices.length)return null;
+        return Object.freeze({state:'quote_choices',finalPriceVerified:false,choices:Object.freeze(choices)});
+      }
+      const price=anexMoneyFact(value.price),selected=choice(value.choice);
+      if(value.status!=='quote_verified'||value.final_price_verified!==true||value.selection_state!=='preview_only'
+        ||value.price?.basis!=='supplier_gross_package'||!price||selected.choiceRef!==choiceRef
+        ||!Number.isInteger(value.verified_at)||!Number.isInteger(value.expires_at)||value.verified_at>value.expires_at
+        ||value.expires_at*1000<=Date.now())return null;
+      return Object.freeze({state:'quote_verified',finalPriceVerified:true,finalPrice:Object.freeze({amount:price.amount,currency:'RUB'}),
+        choice:selected,verifiedAt:value.verified_at,expiresAt:value.expires_at});
+    }catch{return null;}
+  }
+  async function verifyAnexPackage(o,choiceRef=null){
+    const identity=anexConcreteKey(o);
+    if(!identity||!anexCurrentReceipts.has(identity.key))throw new Error('Предложение ANEX устарело. Откройте актуальные варианты.');
+    let receipt=anexPackageReceipts.get(identity.key);
+    if(!receipt){receipt={result:null,chosen:null,error:null,pending:null};anexPackageReceipts.set(identity.key,receipt);}
+    if(receipt.error)throw receipt.error;
+    if(receipt.chosen&&choiceRef&&receipt.chosen!==choiceRef)throw new Error('Расчёт выбранного перелёта уже выполнен.');
+    if(receipt.pending)return receipt.pending;
+    if(receipt.result?.state==='quote_verified'){
+      if(receipt.result.expiresAt*1000<=Date.now())throw new Error('Срок подтверждённой цены истёк.');
+      return receipt.result;
+    }
+    if(!choiceRef&&receipt.result)return receipt.result;
+    if(choiceRef&&!receipt.result?.choices?.some(c=>c.choiceRef===choiceRef))throw new Error('Выберите перелёт из ответа ANEX.');
+    if(choiceRef)receipt.chosen=choiceRef;
+    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+    if(!url)throw new Error('ANEX сейчас недоступен.');
+    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    const timeout=setTimeout(()=>controller.abort(),65000);
+    receipt.pending=(async()=>{
+      try{
+        const body={action:choiceRef?'quote_calculate':'quote_start',generation:identity.epoch,search_ref:identity.searchRef,
+          offer_ref:identity.offerRef,local_hotel_id:identity.localId,...(choiceRef?{choice_ref:choiceRef}:{})};
+        const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+          headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
+        const payload=await response.json().catch(()=>null);
+        if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Проверка прервана. Повторный запрос автоматически не выполняется.');
+        const result=response.ok&&payload?.ok===true?normalizeAnexPackage(payload.data,o,choiceRef):null;
+        if(!result)throw new Error('ANEX не подтвердил расчёт выбранного тура. Цена и наличие требуют уточнения.');
+        receipt.result=result;return result;
+      }catch(error){receipt.error=error;throw error;}
+      finally{clearTimeout(timeout);receipt.pending=null;if(activeVerification===controller)activeVerification=null;}
+    })();
+    return receipt.pending;
+  }
   function normalizeAnexFlights(value,o){
     const identity=anexConcreteKey(o),inventory=value?.flights;
     if(!identity||value?.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef
@@ -1412,5 +1471,5 @@
     if(!['number','string'].includes(typeof value)||String(value).trim()==='')return null;
     const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;
   }
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);
