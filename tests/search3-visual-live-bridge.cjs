@@ -288,10 +288,11 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  // Browser Back/Forward must reopen the same passive hotel disclosure state.
  click('[data-action="hotel-details"][data-id="501"]');
  const historyRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');historyRoom.open=true;historyRoom.dispatchEvent(new w.Event('toggle'));
- const historyMore=historyRoom.querySelector('.hotel-room-more');historyMore.open=true;historyMore.dispatchEvent(new w.Event('toggle'));
+ const historyMore=historyRoom.querySelector('.hotel-room-more');historyMore.open=true;q('#modal-body').scrollTop=128;historyMore.dispatchEvent(new w.Event('toggle'));
  w.history.back();await settle();assert(!q('#modal').open,'browser Back closes hotel details');
  w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').open,'browser Forward restores the expanded nested tour list');
+ assert.equal(q('#modal-body').scrollTop,128,'browser Forward restores the hotel disclosure position');
  click('[data-action="close-modal"]');await settle();
  // A late cheaper offer can move the exact returning choice into the nested list.
  transport.state.samoMeal='AI';transport.state.samoRoom='STANDARD SEA VIEW';

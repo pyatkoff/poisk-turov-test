@@ -753,7 +753,7 @@ function uiRoute(){
  if(type==='selected-tour')return {type,key:selectedOffer?.key};
  if(type==='offer')return selectedOffer===savedSelection?{type:'saved-details'}:{type,key:selectedOffer?.key,flightChoiceId:selectedOffer?.flightChoiceId};
  if(type==='all-offers')return {type,id:offerView?.id,mode:offerView?.mode,departure:offerView?.departure,day:offerView?.day,nights:offerView?.nights,flight:offerView?.flight,room:offerView?.room,meal:offerView?.meal,sort:offerView?.sort,pair:offerView?.pair,activeVariant:offerView?.activeVariant,differencesOnly:offerView?.differencesOnly};
- if(type==='hotel-details')return {type,id:Number($('.hotel-section-nav')?.dataset.hotelId)||null,meal:$('#hotel-room-meal')?.value||'',rooms:$$('.room-overview[open]').map(el=>el.dataset.room),more:$$('#modal-body .hotel-room-more[open]').map(el=>el.closest('[data-room]').dataset.room)};
+ if(type==='hotel-details')return {type,id:Number($('.hotel-section-nav')?.dataset.hotelId)||null,meal:$('#hotel-room-meal')?.value||'',rooms:$$('.room-overview[open]').map(el=>el.dataset.room),more:$$('#modal-body .hotel-room-more[open]').map(el=>el.closest('[data-room]').dataset.room),scroll:$('#modal-body').scrollTop};
  if(type==='gallery')return {type,id:gallery.id,index:gallery.index};
  if(type==='dates')return {type,source:dateContext?.source};
  return {type};
@@ -792,6 +792,7 @@ function reopenUIRoute(route){
   openHotelDetails(hotel.id);renderHotelRooms(hotel.id,hotelOffers(hotel).some(o=>o.meal===route.meal)?route.meal:'',Array.isArray(route.rooms)?route.rooms:null);
   const expandedMore=Array.isArray(route.more)?route.more:[];
   for(const room of $$('.hotel-room-card[data-room]'))if(expandedMore.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
+  if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;
   break;
  }
  case 'all-offers':if(!hotel)return false;openAllOffers(hotel.id,route);break;

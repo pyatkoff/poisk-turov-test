@@ -295,9 +295,12 @@ const server=http.createServer((req,res)=>{
   const historyRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await historyRoom.locator(':scope>summary').click();
   const historyMore=historyRoom.locator('.hotel-room-more');await historyMore.locator(':scope>summary').click();
   await page.waitForFunction(()=>history.state?.['anytour.prototype.v18.ui.v1']?.more?.includes('STANDARD SEA VIEW'));
+  const historyPosition=await historyMore.locator(':scope>summary').evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));
   await page.evaluate(()=>history.back());await page.waitForFunction(()=>!document.querySelector('#modal').open);
   await page.evaluate(()=>history.forward());await page.waitForFunction(()=>document.querySelector('#modal').open);
-  assert(await page.locator('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').evaluate(el=>el.open),'browser Forward restores the expanded nested tour list');
+  const restoredMore=page.locator('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more');assert(await restoredMore.evaluate(el=>el.open),'browser Forward restores the expanded nested tour list');
+  const restoredPosition=await restoredMore.locator(':scope>summary').evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));
+  assert(Math.abs(restoredPosition.top-historyPosition.top)<2,'browser Forward restores the hotel disclosure viewport position');assert.equal(restoredPosition.scroll,historyPosition.scroll);
   await page.screenshot({path:path.join(evidence,`hotel-more-forward-${width}.png`)});
   await page.locator('[data-action="close-modal"]').click();transport.state.samoMeal='AI';transport.state.samoRoom='STANDARD SEA VIEW';
   let releaseMovedOfferSource;transport.state.samoSearchGate=new Promise(resolve=>releaseMovedOfferSource=resolve);
