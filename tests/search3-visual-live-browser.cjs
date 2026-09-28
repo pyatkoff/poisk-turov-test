@@ -4,6 +4,18 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require('playwright');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const root=path.resolve(__dirname,'../v2'),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
+// The hotel footer is controlled by IntersectionObserver. Two animation frames
+// can still capture its intermediate layout after Playwright scrolls a summary.
+const settledHotelScroll=page=>page.locator('#modal-body').evaluate(async el=>{
+ let previous='',stable=0;const samples=[];
+ for(let frame=0;frame<120;frame++){
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  const sample=[el.scrollTop,el.clientHeight,el.scrollHeight,document.querySelector('#modal-footer').hidden];
+  const key=JSON.stringify(sample);samples.push(sample);stable=key===previous?stable+1:0;previous=key;
+  if(stable>=4)return {scroll:el.scrollTop,samples};
+ }
+ throw new Error('Hotel layout did not settle: '+JSON.stringify(samples.slice(-10)));
+});
 const server=http.createServer((req,res)=>{
  const u=new URL(req.url,'http://fixture');if(!u.pathname.startsWith(base)){res.writeHead(404).end();return;}
  const local=path.resolve(root,u.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
@@ -85,7 +97,7 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
   await page.screenshot({path:path.join(evidence,`application-${width}.png`)});
   await page.locator('#modal-back').click();assert.match((await page.locator('#detail-total').textContent()).replace(/\s/g,''),/133500/);
-  const tvRequests=()=>transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,beforeTvReturn=tvRequests();
+  const tvRequests=()=>transport.calls.filter(c=>c.url==='/api-v2.php'&&['tour','flights'].includes(c.action)).length,beforeTvReturn=tvRequests();
   await page.locator('[data-action="close-modal"]').click();await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
   if(!await tvOffer.isVisible())await tvOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await tvOffer.click();await page.locator('[data-action="confirm-tour"]').waitFor();
@@ -117,6 +129,11 @@ const server=http.createServer((req,res)=>{
   const concrete=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();if(!await concrete.isVisible())await concrete.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-additional-prices"]').click();
   await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Доплаты ANEX рассчитаны');assert((await page.locator('#modal-body').textContent()).replace(/\s/g,'').includes('123000'));
+  await page.locator('[data-action="anex-flights"]').click();await page.waitForFunction(()=>document.querySelector('#anex-flight-inventory').textContent.includes('TEST ANEX 101'));
+  assert.match(await page.locator('#anex-flight-inventory').textContent(),/не выбранные рейсы/);
+  await page.locator('#anex-flight-inventory').scrollIntoViewIfNeeded();
+  assert.equal(await page.locator('#anex-flight-inventory').evaluate(el=>el.scrollWidth>el.clientWidth),false,'ANEX flight facts fit the target viewport');
+  await page.screenshot({path:path.join(evidence,`anex-flights-${width}.png`)});
   const callsBeforeAnexApplication=transport.calls.length;await page.locator('[data-action="anex-application-preview"]').click();
   assert((await page.locator('#modal-body').textContent()).includes('Расчётная сумма'));assert((await page.locator('#modal-body').textContent()).includes('Итоговая стоимость требует подтверждения'));
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
@@ -244,13 +261,16 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 2 · Туры: 2');
   const hotelRoomSummary=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]>summary');await hotelRoomSummary.click();await hotelRoomSummary.focus();
-  const hotelScroll=await page.locator('#modal-body').evaluate(async el=>{await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));window.hotelOverview=document.querySelector('.hotel-detail-photos');return el.scrollTop;});
+  const hotelLayoutBefore=await settledHotelScroll(page),hotelScroll=hotelLayoutBefore.scroll;
+  await page.evaluate(()=>{window.hotelOverview=document.querySelector('.hotel-detail-photos');});
   releaseHotelSource();transport.state.samoSearchGate=null;
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 3 · Туры: 3');assert.match(await page.locator('#hotel-detail-min').textContent(),/119\s*000/);
   assert(await hotelRoomSummary.evaluate(el=>el.parentElement.open&&document.activeElement===el));
   assert(await page.locator('.hotel-detail-photos').evaluate(el=>el===window.hotelOverview));
-  assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),hotelScroll,'late source preserves settled hotel scroll at width '+width);
+  const hotelLayoutAfter=await settledHotelScroll(page);
+  fs.writeFileSync(path.join(evidence,`hotel-scroll-layout-${width}.json`),JSON.stringify({before:hotelLayoutBefore,after:hotelLayoutAfter},null,2));
+  assert.equal(hotelLayoutAfter.scroll,hotelScroll,'late source preserves settled hotel scroll at width '+width);
   await page.screenshot({path:path.join(evidence,`progressive-hotel-${width}.png`)});
   await page.locator('#hotel-room-meal').selectOption({label:'Завтраки'});
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 1 · Туры: 1');

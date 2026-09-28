@@ -174,6 +174,40 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
+for(const mode of ['complete','http-error','wrong-offer','verified','malformed','stopped'])test('ANEX independent flight continuation '+mode,async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),searchRef='c'.repeat(32);let verification=false,releaseFlights=null;
+ const h=harness({anex:async body=>{
+  let value;
+  if(body.action==='search')value=directAnex(body,{offerRef:groupRef,localId:101,searchRef:verification?searchRef:'a'.repeat(32)});
+  if(body.action==='expand')value=expandedAnex(body,{groupRef,searchRef,localId:101});
+  if(body.action==='offer')value=currentAnexConcrete(body);
+  if(body.action==='additional_prices')value={ok:true,data:{...body,provider:'anex',status:'additional_prices',selection_state:'disabled',additional_prices:{application_state:'unknown',arithmetic_applied:false,rows:[]}}};
+  if(body.action==='flights'){
+   value={ok:true,data:{...body,provider:'anex',status:'flights',selection_state:'disabled',flights:{provider:'anex',selected:false,final_price_verified:false,included_in_search_price_verified:false,truncated:false,routes:[]}}};
+   if(mode==='http-error')return {response:{ok:false,status:502,json:async()=>({ok:false})}};
+   if(mode==='wrong-offer')value.data.offer_ref='anex_online:'+'9'.repeat(64);
+   if(mode==='verified')value.data.flights.final_price_verified=true;
+   if(mode==='malformed')value.data.flights.routes=[{options:[{}]}];
+   if(mode==='stopped')await new Promise(resolve=>releaseFlights=resolve);
+  }
+  return {response:{ok:true,status:200,json:async()=>value}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');verification=true;
+ const concrete=(await h.data.expandAnexGroup(group)).offers[0];
+ await assert.rejects(h.data.verifyAnexFlights(concrete),/Сначала/);
+ await h.data.verifyAnexConcrete(concrete);
+ await assert.rejects(h.data.verifyAnexAdditional(concrete),/применимый расчёт/);
+ const before=h.anexCalls.length,pending=h.data.verifyAnexFlights(concrete);
+ if(mode==='stopped'){
+  await waitFor(()=>releaseFlights!==null,'one pending flight read');h.data.stop();releaseFlights();await assert.rejects(pending,/изменились/);
+ }else if(mode==='complete'){
+  const result=await pending;assert.equal(result.finalPriceVerified,false);assert.equal(result.selected,false);assert.equal(result.routes.length,0);
+  assert.strictEqual(await h.data.verifyAnexFlights(concrete),result,'reopening uses immutable completed receipt');
+ }else {await assert.rejects(pending);await assert.rejects(h.data.verifyAnexFlights(concrete),/уже запрашивались/);}
+ assert.equal(h.anexCalls.length,before+1,'empty APD permits exactly one independent flight read');
+ const request=h.anexCalls.at(-1);assert.equal(request.action,'flights');assert.equal(request.offer_ref,concrete.raw.offerRef);assert.equal(request.search_ref,concrete.raw.searchRef);
+ h.data.stop();await assert.rejects(h.data.verifyAnexFlights(concrete),/Сначала/);
+});
 const observed=(q,price=97500)=>{const childAges=String(q.childs||'').trim()?String(q.childs).split(',').map(Number).sort((a,b)=>a-b):[],regionIds=[...new Set((q.regionIds||[]).map(Number))].sort((a,b)=>a-b);return {ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:Number(q.adults),childrenCount:childAges.length,childAges,childAgesSignature:childAges.join(','),departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:regionIds.length===1?regionIds[0]:null,regionIds,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]};};
 function canonicalMeals(h){
  h.data.catalog.meals.splice(0,h.data.catalog.meals.length,
