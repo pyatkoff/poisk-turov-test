@@ -816,8 +816,12 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
     }
     if (in_array($request['action'], ['quote_start', 'quote_calculate'], true)) {
         if ($checkpoint === null || $quoteFactory === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');
+        // /bron/start takes the currency selected in the search, not the offer's native price currency.
+        $quoteEntry = $savedEntry;
+        $selectedCurrency = $state['gateway']['search']['context']['currency_id'] ?? null;
+        $quoteEntry['supplier_currency_id'] = is_int($selectedCurrency) || is_string($selectedCurrency) ? (string) $selectedCurrency : null;
         return array_replace($reply, anytour_anex_quote_run($request, $state, $offer, $known[$key],
-            $savedEntry, $quoteFactory, $checkpoint, $now));
+            $quoteEntry, $quoteFactory, $checkpoint, $now));
     }
     if ($request['action'] === 'additional_prices') {
         if (($offer['kind'] ?? null) !== 'concrete') return array_replace($reply, ['status' => 'not_concrete']);
