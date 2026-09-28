@@ -6,6 +6,40 @@ const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(root,n),'utf8');
 const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
 (async()=>{
+ for(const zero of [false,true]){
+  const transport=fixture({anexZeroSurcharge:zero}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+  transport.state.anexCurrentAdditional=true;
+  const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+  const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+  Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+  w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+  w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+  w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+  w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+  w.fetch=async(url,options={})=>new Response(JSON.stringify(await transport.json(url,options)),{status:200,headers:{'Content-Type':'application/json'}});
+  const wait=async(fn)=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}assert.fail('Timeout: '+d.body.textContent.slice(-2000));};
+  try{
+   for(const file of scripts)w.eval(source(file));
+   await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('[data-action="all-offers"]'));
+   click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
+   await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
+   click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-application-preview"]'));
+   assert.match(q('#modal-body').textContent,/не финально подтверждённая/);
+   assert.equal(q('[data-action="anex-additional-prices"]'),null,'retained APD requires no repeated supplier request');
+   click('[data-action="anex-application-preview"]');
+   const form=q('#prototype-lead-form');assert(form);assert.match(q('#modal-body').textContent,zero?/121\s*000/:/123\s*000/);
+   assert.match(q('#modal-body').textContent,/ANEX CONCRETE/);assert.match(q('#modal-body').textContent,/Итоговая стоимость требует подтверждения/);
+   form.elements.phone.value='+79990000000';form.elements.consent.checked=true;
+   form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+   assert.equal(form.dataset.checked,'1');assert.match(q('.lead-message').textContent,/Заявка не отправлена/);
+   const before=transport.calls.length;
+   click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="anex-application-preview"]');
+   assert.equal(q('#prototype-lead-form').elements.consent.checked,false);assert.equal(transport.calls.length,before,'return uses the same retained exact offer');
+   assert.equal(transport.calls.filter(c=>c.action==='additional_prices').length,0);assert.equal(transport.calls.filter(c=>c.action==='offer').length,1);
+   assert.deepEqual(errors,[]);
+  }finally{await new Promise(r=>setTimeout(r,50));dom.window.close();}
+ }
+ console.log('VISUAL_ANEX_RETAINED_ESTIMATE_APPLICATION_OK positive/zero/reopen; supplier calls 0');
  for(const failed of [false,true]){
   const transport=fixture({anexEmptyAdditional:true}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
   const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});

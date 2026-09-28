@@ -1349,13 +1349,12 @@ async function loadAnexFlightInventory(){
  if($('#modal').open&&selectedOffer?.raw===o.raw)renderAnexFlightInventory();
 }
 function openAnexConcreteCurrent(o,current){
- const h=selectedTourHotel(o),ready=current?.finalPriceReady===true,price=ready?Number(current.finalPrice?.amount):Number(o.total);
+ if(current?.finalPriceReady===true&&current.additionalPrices){selectedOffer={...o,loading:false};openAnexAdditionalEstimate(o,current.additionalPrices);return;}
+ const h=selectedTourHotel(o),price=Number(o.total);
  if(!h||!Number.isFinite(price)||price<=0){selectedOffer={...o,loading:false,quoteError:'ANEX не вернул корректную цену предложения.'};renderRealOffer();return;}
  rememberProviderView(o,'anex-current',current,retainedProviderView(o)?.error,retainedProviderView(o)?.pending);selectedOffer={...o,loading:false};anexApplicationDraft=null;anexCurrentDraft={offer:o,current};
- showModal('anex-current','Предложение ANEX','ANEX · ТУР ИЗ ТЕКУЩЕГО ПОИСКА',`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span><strong>${money(price)}</strong></div><p class="modal-intro">${ready?'Предложение относится к текущему поиску. Показанная сумма включает сохранённую расчётную обязательную доплату, но не помечается как финально подтверждённая цена.':'Предложение относится к текущему поиску. Это проверка контекста, а не пересчёт стоимости у ANEX. Показана цена из поиска; обязательные доплаты и итоговая цена ещё требуют подтверждения.'}</p><p class="error-text" id="anex-additional-error" role="alert"></p>`,true);
- $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=ready
-  ?`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="close-modal">Готово</button>`
-  :`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="anex-additional-prices">Уточнить обязательные доплаты</button>`;
+ showModal('anex-current','Предложение ANEX','ANEX · ТУР ИЗ ТЕКУЩЕГО ПОИСКА',`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span><strong>${money(price)}</strong></div><p class="modal-intro">Предложение относится к текущему поиску. Это проверка контекста, а не пересчёт стоимости у ANEX. Показана цена из поиска; обязательные доплаты и итоговая цена ещё требуют подтверждения.</p><p class="error-text" id="anex-additional-error" role="alert"></p>`,true);
+ $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="anex-additional-prices">Уточнить обязательные доплаты</button>`;
  renderAnexFlightInventory();
 }
 function openAnexAdditionalEstimate(o,result){
