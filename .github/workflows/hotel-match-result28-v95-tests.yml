@@ -2,9 +2,16 @@ name: MATCH whole-frontier reconciler audit v114
 'on':
   pull_request:
     types: [synchronize]
-    paths:\n      - .github/workflows/hotel-match-result28-v95-tests.yml
-permissions:\n  contents: read\n  actions: read\n  issues: read\n  pull-requests: read
-concurrency:\n  group: match-whole-frontier-v114\n  cancel-in-progress: false
+    paths:
+      - .github/workflows/hotel-match-result28-v95-tests.yml
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: match-whole-frontier-v114
+  cancel-in-progress: false
 env:
   OP: hotel-match-mass-current-reconcile-audit-1971-20260928-v114
   CLAIM: '5866361835'
@@ -15,11 +22,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with: {ref: ${{ github.event.pull_request.head.sha }}, persist-credentials: false}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - name: Validate source claim and Security
-        env: {GH_TOKEN: ${{ github.token }}, HEAD: ${{ github.event.pull_request.head.sha }}}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          set -euo pipefail;umask 077;mkdir terminal
+          set -euo pipefail
+          umask 077
+          mkdir terminal
           test "$(git rev-parse HEAD:scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114.php)" = 48318524d04a4189ed41d82f0b741d633d762e93
           php -l scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114.php
           python3 - <<'PY'
@@ -27,32 +40,55 @@ jobs:
           def get(p):
               q=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+p,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
               with urllib.request.urlopen(q,timeout=30) as f:return json.load(f)
-          c=get('/issues/comments/'+os.environ['CLAIM']);assert c['user']['id']==226193297 and c['author_association']=='OWNER' and 'whole-frontier' in c['body']
+          c=get('/issues/comments/'+os.environ['CLAIM'])
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and 'whole-frontier' in c['body']
           for _ in range(100):
               xs=[x for x in get('/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100')['workflow_runs'] if x['name']=='Security guard']
               if xs:
                   x=max(xs,key=lambda y:y['id'])
-                  if x['status']=='completed':assert x['conclusion']=='success';break
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success'
+                      break
               time.sleep(3)
-          else:raise SystemExit('security')
+          else: raise SystemExit('security')
           PY
       - name: Audit entire CURRENT frontier once
-        env: {KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}, HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}, USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}, HEAD: ${{ github.event.pull_request.head.sha }}}
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          set -euo pipefail;umask 077
-          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
-          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
-          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
-          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"
+          known="$RUNNER_TEMP/known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"
+          rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
           ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload\""
-          git archive HEAD scripts/diagnostics app/integrations|ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$rel/payload\""
-          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\"&&ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=1024M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114.php\" --execute">terminal/stdout.txt
-          scp "${opts[@]}" "$remote:$rel/result.json" terminal/result.json;scp "${opts[@]}" "$remote:$rel/receipt.json" terminal/receipt.json
+          git archive HEAD scripts/diagnostics app/integrations | ssh "${opts[@]}" "$remote" "tar -xf - -C \"\$HOME/$rel/payload\""
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php -d memory_limit=1024M \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_mass_current_reconcile_audit_v114.php\" --execute" >terminal/stdout.txt
+          scp "${opts[@]}" "$remote:$rel/result.json" terminal/result.json
+          scp "${opts[@]}" "$remote:$rel/receipt.json" terminal/receipt.json
           python3 - <<'PY'
           import json,hashlib,pathlib
-          d=json.load(open('terminal/result.json'));r=json.load(open('terminal/receipt.json'));assert r['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest();assert d['state']=='completed_read_only_mass_reconcile_audit' and d['provider_http_calls']==d['database_writes']==d['mapping_writes']==0
+          d=json.load(open('terminal/result.json'))
+          r=json.load(open('terminal/receipt.json'))
+          assert r['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert d['state']=='completed_read_only_mass_reconcile_audit'
+          assert d['provider_http_calls']==d['database_writes']==d['mapping_writes']==0
           print(json.dumps({k:d[k] for k in ['coverage_current','tv_hotels_with_exact_evidence','ready_samo_count','ready_direct_anex_count','ready_total','hold_count']},ensure_ascii=False))
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        with: {name: match-whole-frontier-v114-${{ github.run_id }}, path: terminal/, retention-days: 90, if-no-files-found: warn}
+        with:
+          name: match-whole-frontier-v114-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: warn
