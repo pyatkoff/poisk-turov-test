@@ -113,4 +113,26 @@ $s['package_quotes'][$r['offer_ref']] = ['id' => '1234567890123', 'expires_at' =
 qp_assert(qp_run($r, $s, $fac, $cp)['status'] === 'quote_unknown' && $f->calls === [], 'crash reservation cannot be replayed');
 $r['generation'] = 8;
 qp_assert(qp_run($r, $s, $fac, $cp)['status'] === 'mismatch' && $f->calls === [], 'search generation binding precedes supplier');
+[$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture('401');
+qp_run($r, $s, $fac, $cp);
+$session = ['offer_context' => $s, 'unrelated_secret' => 'PRIVATE_SESSION_DATA'];
+$session['offer_context']['package_quotes'][$r['offer_ref']]['diagnostics']['start']['raw'] = 'PRIVATE_SUPPLIER_BODY';
+$before = serialize($session); $calls = count($f->calls);
+$receipt = anytour_anex_search3_quote_receipt($session);
+qp_assert($receipt === ['retained_only' => true, 'supplier_calls' => 0, 'records' => [[
+    'status' => 'quote_failed', 'reason' => 'ANEX_QUOTE_HTTP_ERROR',
+    'stages' => [['stage' => 'start', 'state' => 'unknown', 'http_status' => 401, 'response_bytes' => 31]],
+]]], 'retained receipt proves original stage and HTTP without raw response');
+qp_assert(anytour_anex_search3_quote_receipt($session) === $receipt && serialize($session) === $before
+    && count($f->calls) === $calls, 'repeat receipt read neither changes session nor invokes supplier');
+foreach (['PRIVATE', 'private-catclaim', $r['offer_ref'], $s['package_quotes'][$r['offer_ref']]['id']] as $private) {
+    qp_assert(strpos(json_encode($receipt), $private) === false, 'retained receipt redacts private context');
+}
+$bad = ['public' => ['status' => 'PRIVATE_STATUS', 'reason' => 'PRIVATE_REASON'],
+    'stages' => ['start' => 'complete', 'private-stage' => 'complete'],
+    'diagnostics' => ['start' => ['http_status' => 'PRIVATE', 'response_bytes' => -1]]];
+$safe = anytour_anex_search3_quote_receipt(['offer_context' => ['package_quotes' => array_fill(0, 50, $bad)]]);
+qp_assert(count($safe['records']) === 40 && $safe['records'][0] === ['status' => 'quote_unknown', 'reason' => null,
+    'stages' => [['stage' => 'start', 'state' => 'complete']]], 'bounded allowlist handles malformed retained values');
+qp_assert(anytour_anex_search3_quote_receipt([])['records'] === [], 'missing session never triggers a fresh quote');
 echo "ANEX package quote: {$checks} checks passed (offline contract fixtures; no live supplier calls)\n";

@@ -1015,6 +1015,38 @@ function anytour_anex_search3_continue_failure(Throwable $error, array $last): a
     return $safe;
 }
 
+/** Read retained calculation diagnostics only; never return supplier/session identifiers. */
+function anytour_anex_search3_quote_receipt(array $session): array
+{
+    $attempts = $session['offer_context']['package_quotes'] ?? [];
+    $records = [];
+    $reasons = ['ANEX_QUOTE_IDENTITY_UNCONFIRMED', 'ANEX_QUOTE_TRANSPORT_UNCONFIRMED',
+        'ANEX_QUOTE_PRICE_UNCONFIRMED', 'ANEX_QUOTE_SUPPLIER_REJECTED', 'ANEX_QUOTE_HTTP_ERROR',
+        'ANEX_QUOTE_TRANSPORT_ERROR', 'ANEX_QUOTE_INVALID_RESPONSE', 'ANEX_QUOTE_CLIENT_UNAVAILABLE',
+        'ANEX_QUOTE_RATE_LIMIT', 'ANEX_QUOTE_UNKNOWN'];
+    foreach (array_slice(is_array($attempts) ? $attempts : [], 0, 40) as $attempt) {
+        if (!is_array($attempt)) continue;
+        $status = $attempt['public']['status'] ?? 'quote_unknown';
+        if (!in_array($status, ['quote_choices', 'quote_verified', 'quote_failed', 'quote_unknown'], true)) $status = 'quote_unknown';
+        $record = ['status' => $status, 'reason' => null, 'stages' => []];
+        $reason = $attempt['public']['reason'] ?? null;
+        if (in_array($reason, $reasons, true)) $record['reason'] = $reason;
+        foreach (['start', 'transports', 'SetTransport', 'calcfull'] as $stage) {
+            $state = $attempt['stages'][$stage] ?? null;
+            if (!in_array($state, ['unknown', 'complete'], true)) continue;
+            $row = ['stage' => $stage, 'state' => $state];
+            $diagnostics = $attempt['diagnostics'][$stage] ?? [];
+            foreach (['http_status' => 599, 'response_bytes' => 2097152] as $field => $max) {
+                $value = $diagnostics[$field] ?? null;
+                if (is_int($value) && $value >= 0 && $value <= $max) $row[$field] = $value;
+            }
+            $record['stages'][] = $row;
+        }
+        $records[] = $record;
+    }
+    return ['retained_only' => true, 'supplier_calls' => 0, 'records' => $records];
+}
+
 function anytour_anex_search3_http(): void
 {
     header('Content-Type: application/json; charset=utf-8');
@@ -1026,6 +1058,18 @@ function anytour_anex_search3_http(): void
     $enabled = getenv('ANYTOUR_ANEX_PREVIEW_ENABLED') === '1' || (defined('ANYTOUR_ANEX_PREVIEW_ENABLED')
         && in_array(ANYTOUR_ANEX_PREVIEW_ENABLED, [true, 1, '1'], true));
     if (!$enabled) anytour_anex_search3_out(['ok' => false, 'error' => 'not_found'], 404);
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET' && $_GET === ['action' => 'quote_receipt']) {
+        if (!in_array(strtolower((string) ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? 'same-origin')), ['same-origin', 'none'], true)
+            || !is_string($_COOKIE['ANYTOUR_ANEX_SEARCH3'] ?? null) || $_COOKIE['ANYTOUR_ANEX_SEARCH3'] === '') {
+            anytour_anex_search3_out(['ok' => false, 'error' => 'forbidden'], 403);
+        }
+        ini_set('session.use_strict_mode', '1');
+        ini_set('session.use_only_cookies', '1');
+        session_name('ANYTOUR_ANEX_SEARCH3');
+        session_set_cookie_params(['lifetime' => 0, 'path' => '/_preview/search3-anex-candidate/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
+        if (!session_start(['read_and_close' => true])) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
+        anytour_anex_search3_out(['ok' => true, 'data' => anytour_anex_search3_quote_receipt($_SESSION)], 200);
+    }
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         header('Allow: POST');
         anytour_anex_search3_out(['ok' => false, 'error' => 'method_not_allowed'], 405);
