@@ -99,4 +99,24 @@ foreach ([
     }
 }
 $check(str_contains($source, "require_once \$quoteApp . '/andromeda-operator-config.php';"), 'QUOTE_CONFIG_DEPENDENCY_MISSING');
+// The public deadline is the retained search deadline, never a new lease on replay.
+eval($extract('anytour_andromeda_quote_with_expiry'));
+$resolved = ['expires_at' => 1000];
+$quote = ['state' => 'quote_verified', 'final_price' => ['amount' => '125500', 'currency' => 'RUB']];
+$public = anytour_andromeda_quote_with_expiry($quote, $resolved, 900);
+$check($public['expires_at'] === 1000 && $public['final_price'] === $quote['final_price'], 'QUOTE_EXPIRY_OR_MONEY_CHANGED');
+$check(anytour_andromeda_quote_with_expiry($public, $resolved, 999) === $public, 'REPLAY_EXTENDED_EXPIRY');
+$check(anytour_andromeda_quote_with_expiry(['state' => 'flight_selection_required'], $resolved, 900)['expires_at'] === 1000, 'FLIGHT_CHOICE_EXPIRY_MISSING');
+foreach ([[], ['expires_at' => '1000'], ['expires_at' => 900], ['expires_at' => 899]] as $expired) {
+    try {
+        anytour_andromeda_quote_with_expiry($quote, $expired, 900);
+        throw new LogicException('EXPIRED_QUOTE_ACCEPTED');
+    } catch (DomainException $e) {
+        $check($e->getMessage() === 'offer_expired', 'EXPIRY_WRONG_ERROR');
+    }
+}
+try {
+    anytour_andromeda_quote_with_expiry($public, $resolved, 1000);
+    throw new LogicException('EXPIRY_BOUNDARY_ACCEPTED');
+} catch (DomainException $e) { $check($e->getMessage() === 'offer_expired', 'EXPIRY_BOUNDARY_WRONG_ERROR'); }
 echo "Andromeda quote operator config: $checks checks passed; external requests=0.\n";
