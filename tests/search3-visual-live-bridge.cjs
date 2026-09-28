@@ -372,6 +372,26 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').open,'browser Forward restores the expanded nested tour list');
  assert.equal(q('#modal-body').scrollTop,128,'browser Forward restores the hotel disclosure position');
  click('[data-action="close-modal"]');await settle();
+ // Browser Back/Forward must retain how many concrete offers the user revealed.
+ click('[data-action="all-offers"][data-id="501"]');
+ const deepGroupMore=q('[data-action="group-more"]');assert(deepGroupMore,'a nine-offer group exposes the bounded show-more action');
+ const deepGroupKey=deepGroupMore.dataset.value,deepGroupBody=()=>d.getElementById('group-'+deepGroupKey);
+ q(`[data-action="offer-group"][data-value="${deepGroupKey}"]`).click();
+ assert.equal(deepGroupBody().querySelectorAll('.grouped-offer').length,4);
+ deepGroupBody().querySelector('[data-action="group-more"]').click();assert.equal(deepGroupBody().querySelectorAll('.grouped-offer').length,9);
+ assert(!deepGroupBody().querySelector('[data-action="group-more"]'));
+ const callsBeforeOfferDepthForward=transport.calls.length;q('#modal-body').scrollTop=143;
+ click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#all-offers-list'));
+ assert.equal(q(`[data-action="offer-group"][data-value="${deepGroupKey}"]`)?.getAttribute('aria-expanded'),'true');
+ assert.equal(deepGroupBody().querySelectorAll('.grouped-offer').length,9,'browser Forward restores all concrete offers already revealed by the user');
+ assert(!deepGroupBody().querySelector('[data-action="group-more"]'),'restored offer depth does not bring the consumed show-more action back');
+ assert.equal(q('#modal-body').scrollTop,143);assert.equal(transport.calls.length,callsBeforeOfferDepthForward);
+ const depthRouteKey='anytour.prototype.v18.ui.v1',depthRoute=w.history.state[depthRouteKey];
+ w.history.replaceState({...w.history.state,[depthRouteKey]:{...depthRoute,limits:{[deepGroupKey]:9999,'forged-group':12}}},'',w.location.href);
+ w.history.back();await settle();w.history.forward();await settle();await wait(()=>q('#all-offers-list'));
+ assert.equal(deepGroupBody().querySelectorAll('.grouped-offer').length,4,'oversized and unknown history limits fall back to the initial bounded offer depth');
+ assert.equal(transport.calls.length,callsBeforeOfferDepthForward,'restoring concrete-offer depth never starts a supplier or offer request');
+ click('[data-action="close-modal"]');await settle();
  // A late cheaper offer can move the exact returning choice into the nested list.
  transport.state.samoMeal='AI';transport.state.samoRoom='STANDARD SEA VIEW';
  let releaseMovedOfferSource;transport.state.samoSearchGate=new Promise(resolve=>releaseMovedOfferSource=resolve);
