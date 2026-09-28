@@ -1158,6 +1158,28 @@ test('ordinary ANEX quote failure preserves only fixed reasons without a diagnos
   assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret|sid|TOKEN|offer_ref|search_ref/);
  }
 });
+test('ANEX identity diagnostics contain only fixed fields and classifications',async()=>{
+ for(const reason of ['ANEX_QUOTE_IDENTITY_UNCONFIRMED','ANEX_QUOTE_HTTP_ERROR']){
+  const h=harness({anex:async body=>{
+   const value=body.action==='search'?directAnex(body):body.action==='expand'?expandedAnex(body):
+    body.action==='offer'?currentAnexConcrete(body):{ok:true,data:{...body,provider:'anex',status:'quote_failed',reason,
+     failure_stage:reason==='ANEX_QUOTE_IDENTITY_UNCONFIRMED'?'start':'private',
+     identity_mismatches:{checkin:'format',children:'missing',meal:'mismatch',hotel:'private',private:'mismatch',room:{secret:'private'}}}};
+   return {response:{ok:true,status:200,json:async()=>value}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+  const concrete=(await h.data.expandAnexGroup(group)).offers[0];await h.data.verifyAnexConcrete(concrete);
+  const before=h.anexCalls.length;
+  const error=await h.data.verifyAnexPackage(concrete).catch(e=>e);
+  assert.equal(await h.data.verifyAnexPackage(concrete).catch(e=>e),error);
+  assert.deepEqual(JSON.parse(h.quoteWarnings[0].slice('[AnyTour quote] '.length)),{provider:'anex',action:'quote_start',
+   code:'quote_unconfirmed',httpStatus:200,failureReason:reason,
+   ...(reason==='ANEX_QUOTE_IDENTITY_UNCONFIRMED'?{identityMismatches:{checkin:'format',children:'missing',meal:'mismatch'},failureStage:'start'}:{})});
+  assert.equal(h.anexCalls.length,before+1);
+  assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret/);
+ }
+});
 test('SAMO continuation identifies fixed quote guards and rejects arbitrary reason text',async()=>{
  for(const reason of ['ANDROMEDA_SELECTED_FLIGHTS_INVALID','ANDROMEDA_FINAL_PRICE_MISSING',
   'ANDROMEDA_QUOTE_CHECKPOINT_INVALID','ANDROMEDA_TOKEN_PRIVATE','ANDROMEDA_SELECTED_FLIGHTS_INVALID private sid secret']){

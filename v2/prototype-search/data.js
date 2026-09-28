@@ -1183,6 +1183,11 @@
     ]:[];
     return typeof value==='string'&&codes.some(code=>value===provider.toUpperCase()+'_'+code)?value:null;
   }
+  function safeAnexIdentityMismatches(value){
+    if(!value||typeof value!=='object'||Array.isArray(value))return {};
+    const fields=['document','checkin','checkout','nights','adults','children','hotel','room','meal','hotel_place','room_id'];
+    return Object.fromEntries(Object.entries(value).filter(([key,kind])=>fields.includes(key)&&['missing','mismatch','shape','format'].includes(kind)));
+  }
   async function verifyAnexPackage(o,choiceRef=null){
     const identity=anexConcreteKey(o);
     if(!identity||!anexCurrentReceipts.has(identity.key))throw new Error('Предложение ANEX устарело. Откройте актуальные варианты.');
@@ -1215,6 +1220,9 @@
           const reason=safeQuoteFailureReason('anex',payload?.data?.reason);
           const detail={provider:'anex',action:body.action,code:'quote_unconfirmed',
             httpStatus:Number.isInteger(response.status)?response.status:0,...(reason?{failureReason:reason}:{})};
+          const mismatches=reason==='ANEX_QUOTE_IDENTITY_UNCONFIRMED'?safeAnexIdentityMismatches(payload?.data?.identity_mismatches):{};
+          if(Object.keys(mismatches).length)detail.identityMismatches=mismatches;
+          if(reason==='ANEX_QUOTE_IDENTITY_UNCONFIRMED'&&['start','transports','SetTransport','calcfull'].includes(payload?.data?.failure_stage))detail.failureStage=payload.data.failure_stage;
           root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
           throw new Error('ANEX не подтвердил расчёт выбранного тура. Цена и наличие требуют уточнения.');
         }
