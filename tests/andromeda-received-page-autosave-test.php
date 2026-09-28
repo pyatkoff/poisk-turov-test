@@ -54,6 +54,9 @@ try {
     write_state($dir, $ref, $created, 3, $emptyState);
     $empty = pa_consume($dir, $ref, $created, 3, $cb);
     pa_assert(($empty['published'] ?? false) === false && count($ingests) === 2, 'terminal empty partial is not authoritative empty');
+    // This file was created just above in this isolated temporary fixture. Remove
+    // EOF before testing the distinct incomplete-cohort case, not a completed one.
+    unlink($dir . '/' . $ref . '-' . $created . '-3.json');
 
     $bad = state($ref, 2, 2, 4, $created + 5, [$two]);
     write_state($dir, $ref, $created, 2, $bad);
@@ -61,8 +64,7 @@ try {
     catch (DomainException $expected) { pa_assert(count($ingests) === 2, 'generation mismatch must not ingest'); }
     write_state($dir, $ref, $created, 2, state($ref, 1, 2, 4, $created + 5, [$two]));
 
-    // A content/pricing change invalidates only this page checkpoint; neither an old
-    // full-cohort checkpoint nor another page may suppress newly observed facts.
+    // A content/pricing change invalidates only this page checkpoint.
     $changed = $one; $changed['price']['amount'] = '185225';
     write_state($dir, $ref, $created, 1, state($ref, 1, 1, 4, $created, [$changed]));
     $update = pa_consume($dir, $ref, $created, 1, $cb);
@@ -71,11 +73,19 @@ try {
     pa_consume($dir, $ref, $created, 1, $cb);
     pa_assert(count($ingests) === 3, 'updated page remains idempotent');
 
-    // The old complete-cohort API remains strict even when received pages were saved.
     $complete = AnyTourAndromedaOfferAutosaveV1::consume(
         search_request(), $dir, $ref, 1, new DateTimeImmutable('@' . ($created + 30)), ...$cb
     );
-    pa_assert(($complete['published'] ?? false) === false, 'partial path cannot manufacture complete-cohort authority');
+    pa_assert(($complete['published'] ?? false) === false && count($ingests) === 3, 'partial path cannot manufacture complete-cohort authority');
+    $invalidPage = pa_consume($dir, $ref, $created, 1001, $cb);
+    pa_assert(($invalidPage['reason'] ?? '') === 'context_invalid' && count($ingests) === 3, 'invalid page bounded before access');
+    try {
+        AnyTourAndromedaOfferAutosaveV1::consume(
+            search_request(), $dir, $ref, 1, new DateTimeImmutable('@' . ($created + 900)),
+            $cb[0], $cb[1], $cb[2], $cb[3], $cb[4], 1
+        );
+        throw new LogicException('expired page accepted');
+    } catch (DomainException $expected) { pa_assert(count($ingests) === 3, 'expired context cannot renew publication'); }
 } finally { cleanup_dir($dir); }
 
 foreach (['unmapped', 'excluded', 'empty', 'failed_ingest'] as $case) {
