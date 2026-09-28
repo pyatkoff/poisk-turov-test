@@ -2,9 +2,9 @@ name: MATCH whole-frontier reconciler audit v114
 'on':
   pull_request:
     types: [synchronize]
-    paths: [.github/workflows/hotel-match-result28-v95-tests.yml]
-permissions: {contents: read, actions: read, issues: read, pull-requests: read}
-concurrency: {group: match-whole-frontier-v114, cancel-in-progress: false}
+    paths:\n      - .github/workflows/hotel-match-result28-v95-tests.yml
+permissions:\n  contents: read\n  actions: read\n  issues: read\n  pull-requests: read
+concurrency:\n  group: match-whole-frontier-v114\n  cancel-in-progress: false
 env:
   OP: hotel-match-mass-current-reconcile-audit-1971-20260928-v114
   CLAIM: '5866361835'
