@@ -35,9 +35,9 @@ final class AnyTourAndromedaOfferAutosaveV1
     /**
      * @param callable(array):array $mappingReader current [namespace,external] -> legacy local map
      * @param callable(array):array $canonicalResolver legacy local -> AnyTour own id/null map
-     * @param callable(array,int,array,array):?array $surchargeReader retained local pricing reader; null may be reread once after the cohort is primed
-     * @param callable(string,array):bool $save atomic private checkpoint writer
      * @param callable(string,array,array,DateTimeImmutable):array $ingest LOCAL snapshot ingestor
+     * @param ?int $receivedPage Explicit received-page mode, paired with mergePartialSnapshot.
+     * Null preserves the complete-cohort collector contract. No missing-page fetches occur.
      */
     public static function consume(
         array $request,
@@ -49,7 +49,8 @@ final class AnyTourAndromedaOfferAutosaveV1
         callable $canonicalResolver,
         callable $surchargeReader,
         callable $save,
-        callable $ingest
+        callable $ingest,
+        ?int $receivedPage = null
     ): array {
         if (isset($request['hotel_scope']) || isset($request['andromeda_operator_ids'])
             || isset($request['action'])) {
@@ -59,66 +60,66 @@ final class AnyTourAndromedaOfferAutosaveV1
             || ($request['generation'] ?? null) !== $generation
             || !preg_match('/\A[a-f0-9]{64}\z/D', $searchRef)
             || $generation < 1 || !is_dir($directory) || is_link($directory)
-            || basename($directory) !== 'searches') {
+            || basename($directory) !== 'searches'
+            || ($receivedPage !== null && ($receivedPage < 1 || $receivedPage > self::MAX_PAGES
+                || ($request['page'] ?? null) !== $receivedPage))) {
             return self::receipt(false, 'context_invalid', 0, 0, 0);
         }
+        $partial = $receivedPage !== null;
+        $mode = $partial ? ['snapshotMode' => 'partial_additive', 'receivedPage' => $receivedPage] : [];
         $nowTs = $now->getTimestamp();
-        if ($nowTs < 1) return self::receipt(false, 'context_invalid', 0, 0, 0);
+        if ($nowTs < 1) return self::receipt(false, 'context_invalid', 0, 0, 0) + $mode;
 
         $firstPath = $directory . '/' . $searchRef . '-1.json';
         $first = self::readState($firstPath, true);
-        if ($first === null) return self::receipt(false, 'cohort_incomplete', 0, 0, 0);
+        if ($first === null) return self::receipt(false, 'cohort_incomplete', 0, 0, 0) + $mode;
         $firstSnapshot = self::validateState($first, $searchRef, $generation, 1, $nowTs);
         $firstCreated = $first['store']['created_at'];
         $target = $firstSnapshot['pages_count'];
         if ($target < 0 || $target > self::MAX_PAGES) {
-            return self::receipt(false, 'cohort_invalid', 0, 0, 0);
-        }
-        if (!self::rejectionsSafeOutsideAndromeda($firstSnapshot['rejected'])) {
-            return self::receipt(false, 'cohort_rejected_rows', 0, 0, 0);
+            return self::receipt(false, 'cohort_invalid', 0, 0, 0) + $mode;
         }
 
-        try {
-            $firstDecision = AnyTourAndromedaPaginationV1::nextTarget(
-                1,
-                $target,
-                count($firstSnapshot['offers']),
-                (string)($first['status'] ?? ''),
-                count($firstSnapshot['rejected']),
-                max(1, $target)
-            );
-        } catch (RuntimeException $error) {
-            if ($error->getMessage() === 'andromeda_pages_invalid') {
-                return self::receipt(false, 'cohort_invalid', 0, 0, 0);
+        if ($partial) {
+            // Read exactly the page just returned by the existing search owner. The
+            // first page binds the generation/path; other advertised pages are not
+            // required, fetched, republished or given a new observation timestamp.
+            $path = $receivedPage === 1 ? $firstPath
+                : $directory . '/' . $searchRef . '-' . $firstCreated . '-' . $receivedPage . '.json';
+            $state = $receivedPage === 1 ? $first : self::readState($path, true);
+            if ($state === null) return self::receipt(false, 'received_page_missing', 0, 0, 0) + $mode;
+            $snapshot = self::validateState($state, $searchRef, $generation, $receivedPage, $nowTs);
+            if ($state['store']['created_at'] < $firstCreated) {
+                throw new DomainException('ANDROMEDA_ANYTOUR_COHORT_INVALID');
             }
-            throw $error;
-        }
-        if (($firstDecision['terminal'] ?? false) === true) {
-            $states = [];
-            $snapshots = [];
-            $target = 0;
-        } else {
-            $states = [1 => $first];
-            $snapshots = [1 => $firstSnapshot];
-            $target = $firstDecision['target'];
-        }
-
-        for ($page = 2; $page <= $target; ++$page) {
-            $path = $directory . '/' . $searchRef . '-' . $firstCreated . '-' . $page . '.json';
-            $state = self::readState($path, true);
-            if ($state === null) return self::receipt(false, 'cohort_incomplete', 0, 0, 0);
-            $snapshot = self::validateState($state, $searchRef, $generation, $page, $nowTs);
+            $target = $snapshot['pages_count'];
+            if ($target < 0 || $target > self::MAX_PAGES) {
+                return self::receipt(false, 'cohort_invalid', 0, 0, 0) + $mode;
+            }
             if (!self::rejectionsSafeOutsideAndromeda($snapshot['rejected'])) {
+                return self::receipt(false, 'cohort_rejected_rows', 0, 0, count($snapshot['offers'])) + $mode;
+            }
+            try {
+                AnyTourAndromedaPaginationV1::nextTarget(
+                    $receivedPage, $target, count($snapshot['offers']),
+                    (string)($state['status'] ?? ''), count($snapshot['rejected']), max(1, $target)
+                );
+            } catch (RuntimeException $error) {
+                if ($error->getMessage() === 'andromeda_pages_invalid') {
+                    return self::receipt(false, 'cohort_invalid', 0, 0, 0) + $mode;
+                }
+                throw $error;
+            }
+            $states = [$receivedPage => $state];
+            $snapshots = [$receivedPage => $snapshot];
+        } else {
+            if (!self::rejectionsSafeOutsideAndromeda($firstSnapshot['rejected'])) {
                 return self::receipt(false, 'cohort_rejected_rows', 0, 0, 0);
             }
             try {
-                $decision = AnyTourAndromedaPaginationV1::nextTarget(
-                    $page,
-                    $snapshot['pages_count'],
-                    count($snapshot['offers']),
-                    (string)($state['status'] ?? ''),
-                    count($snapshot['rejected']),
-                    $target
+                $firstDecision = AnyTourAndromedaPaginationV1::nextTarget(
+                    1, $target, count($firstSnapshot['offers']),
+                    (string)($first['status'] ?? ''), count($firstSnapshot['rejected']), max(1, $target)
                 );
             } catch (RuntimeException $error) {
                 if ($error->getMessage() === 'andromeda_pages_invalid') {
@@ -126,23 +127,52 @@ final class AnyTourAndromedaOfferAutosaveV1
                 }
                 throw $error;
             }
-            if (($decision['terminal'] ?? false) === true) {
-                $target = $decision['target'];
-                break;
+            if (($firstDecision['terminal'] ?? false) === true) {
+                $states = [];
+                $snapshots = [];
+                $target = 0;
+            } else {
+                $states = [1 => $first];
+                $snapshots = [1 => $firstSnapshot];
+                $target = $firstDecision['target'];
             }
-            $states[$page] = $state;
-            $snapshots[$page] = $snapshot;
-            $target = $decision['target'];
+            for ($page = 2; $page <= $target; ++$page) {
+                $path = $directory . '/' . $searchRef . '-' . $firstCreated . '-' . $page . '.json';
+                $state = self::readState($path, true);
+                if ($state === null) return self::receipt(false, 'cohort_incomplete', 0, 0, 0);
+                $snapshot = self::validateState($state, $searchRef, $generation, $page, $nowTs);
+                if (!self::rejectionsSafeOutsideAndromeda($snapshot['rejected'])) {
+                    return self::receipt(false, 'cohort_rejected_rows', 0, 0, 0);
+                }
+                try {
+                    $decision = AnyTourAndromedaPaginationV1::nextTarget(
+                        $page, $snapshot['pages_count'], count($snapshot['offers']),
+                        (string)($state['status'] ?? ''), count($snapshot['rejected']), $target
+                    );
+                } catch (RuntimeException $error) {
+                    if ($error->getMessage() === 'andromeda_pages_invalid') {
+                        return self::receipt(false, 'cohort_invalid', 0, 0, 0);
+                    }
+                    throw $error;
+                }
+                if (($decision['terminal'] ?? false) === true) {
+                    $target = $decision['target'];
+                    break;
+                }
+                $states[$page] = $state;
+                $snapshots[$page] = $snapshot;
+                $target = $decision['target'];
+            }
         }
 
         $offers = [];
         $seen = [];
         foreach ($snapshots as $page => $snapshot) {
             foreach ($snapshot['offers'] as $offer) {
-                if (!is_array($offer)) return self::receipt(false, 'cohort_invalid', 0, 0, 0);
+                if (!is_array($offer)) return self::receipt(false, 'cohort_invalid', 0, 0, 0) + $mode;
                 $offerRef = $offer['offer_ref'] ?? null;
                 if (!is_string($offerRef) || !preg_match('/\Aoffer_[a-f0-9]{64}\z/D', $offerRef)) {
-                    return self::receipt(false, 'cohort_invalid', 0, 0, 0);
+                    return self::receipt(false, 'cohort_invalid', 0, 0, 0) + $mode;
                 }
                 $offerDigest = hash('sha256', json_encode(
                     $offer,
@@ -150,15 +180,14 @@ final class AnyTourAndromedaOfferAutosaveV1
                 ));
                 if (isset($seen[$offerRef])) {
                     // PRICE pagination may repeat the exact boundary row. Reuse that
-                    // observation once; the same identity with changed money/context
-                    // is contradictory and still blocks authoritative publication.
+                    // observation once; changed facts with the same identity conflict.
                     if (hash_equals($seen[$offerRef], $offerDigest)) continue;
-                    return self::receipt(false, 'conflicting_offer_identity', 0, count($offers), 0);
+                    return self::receipt(false, 'conflicting_offer_identity', 0, count($offers), 0) + $mode;
                 }
                 $seen[$offerRef] = $offerDigest;
                 $offers[] = ['page' => $page, 'state' => $states[$page], 'offer' => $offer];
                 if (count($offers) > self::MAX_OFFERS) {
-                    return self::receipt(false, 'too_many_offers', 0, count($offers), 0);
+                    return self::receipt(false, 'too_many_offers', 0, count($offers), 0) + $mode;
                 }
             }
         }
@@ -168,8 +197,11 @@ final class AnyTourAndromedaOfferAutosaveV1
             if (self::andromedaOwnsOperator((string)($row['offer']['operator'] ?? ''))) $owned[] = $row;
         }
 
-        // A complete supplier cohort containing only operators owned by direct ANEX or
-        // Tourvisor is an authoritative empty Andromeda-owned cohort for this exact scope.
+        // No received owned rows is never an authoritative empty provider snapshot.
+        if ($partial && $owned === []) {
+            return self::receipt(false, 'no_received_owned_offers', 0, 0, count($offers)) + $mode;
+        }
+        // Preserve the complete collector's authoritative-empty behavior separately.
         if ($owned === []) {
             $digest = hash('sha256', json_encode([
                 'search_ref' => $searchRef, 'generation' => $generation,
@@ -217,16 +249,14 @@ final class AnyTourAndromedaOfferAutosaveV1
             $legacyIds[$local] = $local;
         }
         if ($mapped === []) {
-            return self::receipt(false, 'no_current_mapped_offers', 0, count($owned), count($offers));
+            return self::receipt(false, 'no_current_mapped_offers', 0, count($owned), count($offers)) + $mode;
         }
 
         $canonical = $canonicalResolver(array_values($legacyIds));
         if (!is_array($canonical)) throw new RuntimeException('ANDROMEDA_ANYTOUR_CANONICAL_RECEIPT');
         $childAges = self::childAges($request['params']['childs'] ?? null);
         // Reading an exact retained estimate may seed the strict group cache. Finish
-        // this bounded supplier-free pass before resolving earlier cache misses, even
-        // when the specimen is on a later PRICE page. Non-null pricing is immutable
-        // here: exact/verified/invalid envelopes must never be replaced by fallback.
+        // this bounded supplier-free pass before resolving earlier cache misses.
         $pricing = [];
         foreach ($mapped as $index => $row) {
             $pricing[$index] = $surchargeReader($row['state'], $firstCreated, $row['offer'], $current);
@@ -241,17 +271,12 @@ final class AnyTourAndromedaOfferAutosaveV1
                 $pricing[$index] = $surchargeReader($state, $firstCreated, $raw, $current);
             }
             $entry = self::entryFromOffer(
-                $raw,
-                $searchRef,
-                $generation,
-                $page,
-                $state['store']['created_at'],
-                $childAges,
-                $canonical[$local] ?? null,
-                $pricing[$index]
+                $raw, $searchRef, $generation, $page,
+                $state['store']['created_at'], $childAges,
+                $canonical[$local] ?? null, $pricing[$index]
             );
             if ($entry === null) {
-                return self::receipt(false, 'offer_contract_incomplete', 0, count($owned), count($offers));
+                return self::receipt(false, 'offer_contract_incomplete', 0, count($owned), count($offers)) + $mode;
             }
             $entries[] = $entry;
         }
@@ -270,76 +295,65 @@ final class AnyTourAndromedaOfferAutosaveV1
                 'anytour_hotel_id' => $entry['anytour_hotel_id'],
                 'identity' => $entry['current']['identity'],
                 'page' => $entry['current']['page'],
-                // Confirmation-required Andromeda rows intentionally have priced_money=null.
-                // Hash the canonical supplier search money separately so a changed base or
-                // validated retained surcharge/provenance reaches LOCAL instead of being
-                // hidden by an older already-published checkpoint.
                 'search_money_digest' => hash('sha256', json_encode(
                     $searchMoney,
                     JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
                 )),
                 'priced' => $entry['priced_money']['search_price_with_surcharge'] ?? null,
                 'verified_final' => is_array($verifiedQuote) ? ($verifiedQuote['final_price'] ?? null) : null,
-                // Idempotency must advance when already-validated supplier evidence changes,
-                // even if the verified customer total remains byte-for-byte unchanged.
                 'verified_quote_digest' => is_array($verifiedQuote)
                     ? hash('sha256', json_encode(
                         $verifiedQuote,
                         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
-                    ))
-                    : null,
+                    )) : null,
                 'operator_fuel_digest' => is_array($operatorFuel)
                     ? hash('sha256', json_encode(
                         $operatorFuel,
                         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
-                    ))
-                    : null,
+                    )) : null,
                 'program_fuel_digest' => is_array($programFuel)
                     ? hash('sha256', json_encode(
                         $programFuel,
                         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
-                    ))
-                    : null,
+                    )) : null,
                 'fuel_owner_policy_digest' => is_array($fuelOwnerPolicy)
                     ? hash('sha256', json_encode(
                         $fuelOwnerPolicy,
                         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
-                    ))
-                    : null,
+                    )) : null,
             ];
         }
         $digest = hash('sha256', json_encode([
             'search_ref' => $searchRef, 'generation' => $generation,
             'pages' => $target, 'offers' => $digestRows,
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        if ($partial) $digest = hash('sha256', 'received-page-v1:' . $receivedPage . ':' . $digest);
         $publishedReadyCount = null;
         $publishedConfirmationCount = null;
         if (self::alreadyPublished(
             $directory, $searchRef, $firstCreated, $generation, $digest,
-            $publishedReadyCount, $publishedConfirmationCount
+            $publishedReadyCount, $publishedConfirmationCount, $receivedPage
         )) {
-            // The checkpoint records the producer's actual counts. Counting entries
-            // would turn confirmation-required rows into final-price-ready rows.
             return self::receipt(
                 false, 'already_published', $publishedReadyCount, count($owned), count($offers),
                 $publishedConfirmationCount
-            );
+            ) + $mode;
         }
 
         $result = AnyTourIntOfferSnapshotProducerV1::produce('andromeda', $request['params'], [
-            'complete' => true,
+            'complete' => !$partial,
             'authoritative_empty' => false,
             'offers' => $entries,
-        ], $now, $ingest);
+        ], $now, $ingest, $partial);
         if (($result['published'] ?? null) === true) {
             self::saveCheckpoint(
                 $directory, $searchRef, $firstCreated, $generation, $digest, $nowTs,
                 (int)($result['readyOfferCount'] ?? 0),
                 (int)($result['confirmationRequiredOfferCount'] ?? 0),
-                $save
+                $save, $receivedPage
             );
         }
-        return self::producerReceipt($result, count($owned), count($offers));
+        return self::producerReceipt($result, count($owned), count($offers)) + $mode;
     }
 
     private static function entryFromOffer(
@@ -635,9 +649,10 @@ final class AnyTourAndromedaOfferAutosaveV1
         return $value;
     }
 
-    private static function checkpointPath(string $directory, string $ref, int $created): string
+    private static function checkpointPath(string $directory, string $ref, int $created, ?int $page = null): string
     {
-        return $directory . '/' . $ref . '-' . $created . '-anytour-offer-autosave-v1.json';
+        $suffix = $page === null ? '' : '-page-' . $page;
+        return $directory . '/' . $ref . '-' . $created . $suffix . '-anytour-offer-autosave-v1.json';
     }
 
     private static function alreadyPublished(
@@ -647,9 +662,10 @@ final class AnyTourAndromedaOfferAutosaveV1
         int $generation,
         string $digest,
         ?int &$publishedReadyCount = null,
-        ?int &$publishedConfirmationCount = null
+        ?int &$publishedConfirmationCount = null,
+        ?int $receivedPage = null
     ): bool {
-        $path = self::checkpointPath($directory, $ref, $created);
+        $path = self::checkpointPath($directory, $ref, $created, $receivedPage);
         if (!file_exists($path)) return false;
         $value = self::readState($path, false);
         $hasConfirmationCount = array_key_exists('confirmation_required_offer_count', $value);
@@ -659,7 +675,9 @@ final class AnyTourAndromedaOfferAutosaveV1
             || !is_int($value['published_at'] ?? null)
             || !is_int($value['ready_offer_count'] ?? null) || $value['ready_offer_count'] < 0
             || ($hasConfirmationCount && (!is_int($value['confirmation_required_offer_count'])
-                || $value['confirmation_required_offer_count'] < 0))) {
+                || $value['confirmation_required_offer_count'] < 0))
+            || ($receivedPage !== null && (($value['received_page'] ?? null) !== $receivedPage
+                || ($value['snapshot_mode'] ?? null) !== 'partial_additive'))) {
             throw new DomainException('ANDROMEDA_ANYTOUR_CHECKPOINT_INVALID');
         }
         $matches = hash_equals($value['cohort_digest'], $digest);
@@ -680,12 +698,13 @@ final class AnyTourAndromedaOfferAutosaveV1
         int $publishedAt,
         int $readyCount,
         int $confirmationCount,
-        callable $save
+        callable $save,
+        ?int $receivedPage = null
     ): void {
         if ($readyCount < 0 || $confirmationCount < 0) {
             throw new RuntimeException('ANDROMEDA_ANYTOUR_CHECKPOINT_COUNT');
         }
-        $path = self::checkpointPath($directory, $ref, $created);
+        $path = self::checkpointPath($directory, $ref, $created, $receivedPage);
         $value = [
             'version' => self::CHECKPOINT_VERSION,
             'provider' => 'andromeda',
@@ -696,6 +715,10 @@ final class AnyTourAndromedaOfferAutosaveV1
             'ready_offer_count' => $readyCount,
             'confirmation_required_offer_count' => $confirmationCount,
         ];
+        if ($receivedPage !== null) {
+            $value['received_page'] = $receivedPage;
+            $value['snapshot_mode'] = 'partial_additive';
+        }
         if ($save($path, $value) !== true) throw new RuntimeException('ANDROMEDA_ANYTOUR_CHECKPOINT_WRITE');
         $read = self::readState($path, false);
         if ($read !== $value) throw new RuntimeException('ANDROMEDA_ANYTOUR_CHECKPOINT_READBACK');
@@ -759,6 +782,21 @@ function anytour_andromeda_anytour_offer_canonical_targets(PDO $db, array $legac
     return $out;
 }
 
+/** Log bounded counters/reasons even when the HTTP caller discards the receipt. */
+function anytour_andromeda_anytour_offer_autosave_receipt(array $result): array
+{
+    $reason = $result['reason'] ?? 'stored';
+    if (!is_string($reason) || !preg_match('/\A[a-z_]{1,80}\z/D', $reason)) $reason = 'unknown';
+    $mode = ($result['snapshotMode'] ?? null) === 'partial_additive' ? 'partial_additive' : 'complete_replace';
+    error_log('ANDROMEDA_ANYTOUR_AUTOSAVE_RESULT published=' . (int)(($result['published'] ?? false) === true)
+        . ' mode=' . $mode . ' reason=' . $reason
+        . ' received=' . max(0, (int)($result['receivedOfferCount'] ?? 0))
+        . ' owned=' . max(0, (int)($result['ownedOfferCount'] ?? 0))
+        . ' ready=' . max(0, (int)($result['readyOfferCount'] ?? 0))
+        . ' confirmation=' . max(0, (int)($result['confirmationRequiredOfferCount'] ?? 0)));
+    return $result;
+}
+
 /** Best-effort runtime adapter. Search response must survive persistence failure. */
 function anytour_andromeda_anytour_offer_autosave_runtime(
     array $request,
@@ -781,17 +819,27 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
             if (is_string($candidate) && is_file($candidate)) { require_once $candidate; break; }
         }
         if (!class_exists('AnyTourOfferSnapshotIngestV1')) {
-            return ['published' => false, 'reason' => 'local_ingest_unavailable'];
+            return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'local_ingest_unavailable']);
+        }
+        $receivedPage = $request['page'] ?? null;
+        if ($receivedPage !== null && (!is_int($receivedPage) || $receivedPage < 1 || $receivedPage > 1000)) {
+            return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'context_invalid']);
+        }
+        if ($receivedPage !== null && !method_exists('AnyTourOfferSnapshotIngestV1', 'mergePartialSnapshot')) {
+            // Never fall back to complete replacement during a mixed-version rollout.
+            return anytour_andromeda_anytour_offer_autosave_receipt([
+                'published' => false, 'reason' => 'partial_ingest_unavailable', 'snapshotMode' => 'partial_additive',
+            ]);
         }
         $reader = __DIR__ . '/andromeda-saved-package-runtime.php';
         if (is_file($reader) && !is_link($reader)) require_once $reader;
         if (!function_exists('anytour_andromeda_read_saved_pricing')
             || !function_exists('anytour_andromeda_search3_current_mappings')
             || !function_exists('anytour_andromeda_search3_save')) {
-            return ['published' => false, 'reason' => 'runtime_dependency_unavailable'];
+            return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'runtime_dependency_unavailable']);
         }
         $country = (int)($request['params']['countryId'] ?? 0);
-        if ($country < 1) return ['published' => false, 'reason' => 'country_invalid'];
+        if ($country < 1) return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'country_invalid']);
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $nowTs = $now->getTimestamp();
         $result = AnyTourAndromedaOfferAutosaveV1::consume(
@@ -804,7 +852,7 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
             static fn(array $legacyIds): array => anytour_andromeda_anytour_offer_canonical_targets($db, $legacyIds),
             static function(array $state, int $created, array $offer, array $current) use ($directory, $searchRef, $generation, $nowTs): ?array {
                 $allows = static function(array $candidate) use ($current): bool {
-                    $key = json_encode([$candidate['supplier_namespace'] ?? null, (string)($candidate['external_hotel_id'] ?? '')]);
+                    $key = json_encode([$candidate['supplier_namespace'] ?? null, (string)$candidate['external_hotel_id']]);
                     return is_int($candidate['local_hotel_id'] ?? null)
                         && ($current[$key] ?? null) === $candidate['local_hotel_id'];
                 };
@@ -817,16 +865,20 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
                 );
             },
             static fn(string $path, array $value): bool => anytour_andromeda_search3_save($path, $value),
-            static function(string $provider, array $search, array $rows, DateTimeImmutable $at) use ($db): array {
+            static function(string $provider, array $search, array $rows, DateTimeImmutable $at) use ($db, $receivedPage): array {
+                if ($receivedPage !== null) {
+                    return AnyTourOfferSnapshotIngestV1::mergePartialSnapshot($db, $provider, $search, $rows, $at);
+                }
                 return AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db, $provider, $search, $rows, $at);
-            }
+            },
+            $receivedPage
         );
         if (($result['published'] ?? false) === true) {
             error_log('ANDROMEDA_ANYTOUR_AUTOSAVE_OK offers=' . (int)($result['readyOfferCount'] ?? 0));
         }
-        return $result;
+        return anytour_andromeda_anytour_offer_autosave_receipt($result);
     } catch (Throwable $error) {
         error_log('ANDROMEDA_ANYTOUR_AUTOSAVE_FAILED ' . preg_replace('/[^A-Z0-9_:-]+/i', '_', substr($error->getMessage(), 0, 120)));
-        return ['published' => false, 'reason' => 'autosave_failed'];
+        return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'autosave_failed']);
     }
 }

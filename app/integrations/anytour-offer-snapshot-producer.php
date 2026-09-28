@@ -4,11 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/three-provider-search-handoff.php';
 
 /**
- * INT-owned bridge from one complete provider refresh to the LOCAL snapshot ingestor.
+ * INT-owned bridge from a provider refresh to the LOCAL snapshot ingestor.
  *
- * This layer performs no supplier I/O and no price/fuel arithmetic. It accepts the
- * provider-normalized offer/context plus the already-computed protected priced-money
- * facts and lets the existing INT handoff validate finalPriceReady before persistence.
+ * Complete refreshes retain their existing contract. Explicit Andromeda partial
+ * batches must be paired with LOCAL mergePartialSnapshot by the trusted caller;
+ * they are never authoritative-empty or evidence of supplier completeness.
+ * This layer performs no supplier I/O and no price/fuel arithmetic.
  */
 final class AnyTourIntOfferSnapshotProducerV1
 {
@@ -37,22 +38,25 @@ final class AnyTourIntOfferSnapshotProducerV1
 
     /**
      * @param callable(string,array,array,DateTimeImmutable):array $ingest
+     * @param bool $partial Trusted received-page mode; never inferred from missing data.
      */
     public static function produce(
         string $provider,
         array $searchParams,
         array $refresh,
         DateTimeImmutable $now,
-        callable $ingest
+        callable $ingest,
+        bool $partial = false
     ): array {
         if (!in_array($provider, self::PROVIDERS, true)) {
             throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_PROVIDER');
         }
         if (!self::exactKeys($refresh, self::REFRESH_KEYS)
-            || ($refresh['complete'] ?? null) !== true
+            || ($refresh['complete'] ?? null) !== !$partial
             || !is_bool($refresh['authoritative_empty'] ?? null)
             || !is_array($refresh['offers'] ?? null)
-            || !array_is_list($refresh['offers'])) {
+            || !array_is_list($refresh['offers'])
+            || ($partial && ($provider !== 'andromeda' || $refresh['authoritative_empty'] !== false))) {
             throw new InvalidArgumentException('ANYTOUR_INT_SNAPSHOT_REFRESH_INCOMPLETE');
         }
         if (count($refresh['offers']) > 5000) {
