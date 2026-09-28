@@ -274,6 +274,17 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);
  assert.equal(q('#modal-body').scrollTop,64);assert.equal(starts(),beforeHotelBackSearch+1);
  click('[data-action="close-modal"]');await settle();
+ // Back must also retain an expanded nested list when a room has more than two tours.
+ transport.state.wideFacets=true;const beforeMoreBackSearch=starts();click('#applied-search [data-action="edit-search"]');click('.search-submit');
+ await wait(()=>q('#results-summary').textContent.includes('11 вариантов'));
+ click('[data-action="hotel-details"][data-id="501"]');
+ const manyRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');manyRoom.open=true;
+ const moreTours=manyRoom.querySelector('.hotel-room-more');assert(moreTours);moreTours.open=true;
+ const nestedOffer=moreTours.querySelector('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-1"]');nestedOffer.focus();q('#modal-body').scrollTop=96;nestedOffer.click();
+ await wait(()=>q('#modal-body').textContent.includes('Не удалось подтвердить цену'));click('#modal-back');
+ assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);assert(q('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').open,'Back retains the expanded nested tour list');
+ assert.equal(q('#modal-body').scrollTop,96);assert.equal(starts(),beforeMoreBackSearch+1);
+ click('[data-action="close-modal"]');await settle();
  const url=w.location.href;w.history.replaceState(null,'','/poisk-turov/');assert.equal(w.Search3CanonicalProfilesV1.create(()=>{}),null,'production consumer stays denied');w.history.replaceState(null,'',url);
  assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);
  console.log('PASS live bridge: truthful live/DB/application disclosure; explicit search only; departure error/retry/cancel/late-response recovery; three canonical sources → one hotel; current TV quote/flights/exact-price application dry-run; contact draft survives offer change while consent resets; SAMO verified receipt; ANEX concrete + non-final surcharge; actionable Back, retained receipts and late APD, cross-provider return without replay; no live HTTP');
