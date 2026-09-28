@@ -242,6 +242,7 @@ def check_width(browser, origin, width):
             assert body["listing_price_ref"] == "listing_" + "e" * 64
             reply({"ok": True, "data": {
                 "schema_version": 1, "provider": "andromeda", "local_id": 105,
+                "expires_at": int(datetime.now(timezone.utc).timestamp()) + 900,
                 "selection_enabled": True, "booking_enabled": False,
                 "state": "quote_verified", "quote_state": "verified",
                 "final_price": {"amount": "305000", "currency": "RUB"},
