@@ -19,6 +19,12 @@ $programObservationFile = is_file(__DIR__ . '/app/integrations/anex-program-obse
 require_once $programObservationFile;
 unset($programObservationFile);
 
+$packageQuoteFile = is_file(__DIR__ . '/app/integrations/anex-package-quote-runtime.php')
+    ? __DIR__ . '/app/integrations/anex-package-quote-runtime.php'
+    : __DIR__ . '/../app/integrations/anex-package-quote-runtime.php';
+require_once $packageQuoteFile;
+unset($packageQuoteFile);
+
 /** Preview Search3 supplier boundary. No booking or Tourvisor transport. */
 function anytour_anex_search3_name(string $name): string
 {
@@ -766,11 +772,14 @@ function anytour_anex_search3_additional_batch(array $request, array &$state, ca
 
 function anytour_anex_search3_followup(array $request, array &$state, callable $resolver, callable $clientFactory,
     callable $metadataReader, ?callable $clock = null, ?callable $checkpoint = null,
-    ?callable $additionalFactory = null, bool $enforceGatewayRateLimit = true): array
+    ?callable $additionalFactory = null, bool $enforceGatewayRateLimit = true, ?callable $quoteFactory = null): array
 {
     $keys = ['action', 'generation', 'search_ref', 'offer_ref', 'local_hotel_id'];
+    if (($request['action'] ?? null) === 'quote_calculate') $keys[] = 'choice_ref';
     if (count($request) !== count($keys) || array_diff($keys, array_keys($request))
-        || !in_array($request['action'] ?? null, ['offer', 'expand', 'additional_prices', 'flights'], true)
+        || !in_array($request['action'] ?? null, ['offer', 'expand', 'additional_prices', 'flights', 'quote_start', 'quote_calculate'], true)
+        || (($request['action'] ?? null) === 'quote_calculate' && (!is_string($request['choice_ref'] ?? null)
+            || !preg_match('/\Aanex_quote:[a-f0-9]{64}\z/D', $request['choice_ref'])))
         || !is_int($request['generation'] ?? null) || $request['generation'] < 1 || $request['generation'] > 2147483647
         || !is_string($request['search_ref'] ?? null) || !preg_match('/\A[a-f0-9]{32}\z/D', $request['search_ref'])
         || !is_string($request['offer_ref'] ?? null) || !preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $request['offer_ref'])
@@ -804,6 +813,11 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
     $metadata = $metadataReader([$offer]);
     if (anytour_anex_search3_project([$offer], $metadata, $state['params']) === []) {
         return array_replace($reply, ['status' => 'not_available']);
+    }
+    if (in_array($request['action'], ['quote_start', 'quote_calculate'], true)) {
+        if ($checkpoint === null || $quoteFactory === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');
+        return array_replace($reply, anytour_anex_quote_run($request, $state, $offer, $known[$key],
+            $savedEntry, $quoteFactory, $checkpoint, $now));
     }
     if ($request['action'] === 'additional_prices') {
         if (($offer['kind'] ?? null) !== 'concrete') return array_replace($reply, ['status' => 'not_concrete']);
@@ -1030,7 +1044,7 @@ function anytour_anex_search3_http(): void
     if (!session_start()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
     try {
         $action = $request['action'] ?? 'search';
-        if (!in_array($action, ['search', 'continue', 'offer', 'expand', 'additional_prices', 'additional_prices_batch', 'flights'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
+        if (!in_array($action, ['search', 'continue', 'offer', 'expand', 'additional_prices', 'additional_prices_batch', 'flights', 'quote_start', 'quote_calculate'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
         anytour_anex_search3_select_context($request, $_SESSION, time());
         if (!is_array($_SESSION['dictionaries'] ?? null)) $_SESSION['dictionaries'] = [];
         $app = is_file(__DIR__ . '/app/integrations/anex-search.php') ? __DIR__ . '/app/integrations' : __DIR__ . '/../app/integrations';
@@ -1062,6 +1076,13 @@ function anytour_anex_search3_http(): void
             if ($token === '' && defined('ANEX_B2B_TOKEN')) $token = trim((string) ANEX_B2B_TOKEN);
             if ($token === '') throw new RuntimeException('ANEX_ADDITIONAL_CLIENT_UNAVAILABLE');
             return $additionalClient = new AnyTourAnexAdditionalPricesClient($token);
+        };
+        $quoteFactory = static function () use ($reserveSupplierRequest): AnyTourAnexPackageQuoteClient {
+            $reserveSupplierRequest();
+            $token = trim((string) getenv('ANEX_B2B_TOKEN'));
+            if ($token === '' && defined('ANEX_B2B_TOKEN')) $token = trim((string) ANEX_B2B_TOKEN);
+            if ($token === '') throw new RuntimeException('ANEX_QUOTE_CLIENT_UNAVAILABLE');
+            return new AnyTourAnexPackageQuoteClient($token);
         };
         $pdo = v2_data_db();
         if ($action === 'search') {
@@ -1100,7 +1121,7 @@ function anytour_anex_search3_http(): void
             $data = anytour_anex_search3_followup($request, $_SESSION['offer_context'],
                 AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver(), $clientFactory,
                 static function (array $offers) use ($pdo): array { return anytour_anex_search3_metadata($pdo, $offers); },
-                null, 'anytour_anex_search3_checkpoint', $additionalFactory);
+                null, 'anytour_anex_search3_checkpoint', $additionalFactory, true, $quoteFactory);
         }
         anytour_anex_search3_retain_context($_SESSION, time());
         if (in_array($action, ['search', 'expand'], true)) {
