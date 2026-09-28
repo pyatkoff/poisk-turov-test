@@ -1040,20 +1040,22 @@
   async function expandAnexGroup(o){
     const rawOffer=o&&o.raw,localHotelId=Number(rawOffer?.anexLocalHotelId),targetRef=String(rawOffer?.offerRef||'');
     if(!o||o.cached||o.provider!=='anex'||rawOffer?.selectionEnabled!==false||rawOffer?.anexKind!=='group_minimum'
-      ||!Number.isSafeInteger(localHotelId)||localHotelId<1||!(/^anex_online:[a-f0-9]{64}$/).test(targetRef)) {
+      ||rawOffer.anexGeneration!==generation||!Number.isSafeInteger(localHotelId)||localHotelId<1||!(/^anex_online:[a-f0-9]{64}$/).test(targetRef)) {
       throw new Error('Выбранное предложение ANEX нельзя конкретизировать.');
     }
     const exact={...structuredClone(o.search),from:o.day,to:o.day,minNights:o.nights,maxNights:o.nights,adults:o.adults,ages:[...o.ages]};
     const filters={};if(o.meal&&!/уточняется/i.test(o.meal))filters.meals=[o.meal];
-    const p=params(exact,[String(localHotelId)],filters),epoch=stop();
+    // Concretizing one hotel belongs to this search. Stopping it would expire
+    // the still-visible SAMO/ANEX offers and discard their no-replay receipts.
+    const p=params(exact,[String(localHotelId)],filters),epoch=generation;
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url)throw new Error('ANEX сейчас недоступен.');
-    const controller=new AbortController();activeVerification=controller;
+    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
     const request=async body=>{
       const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
         headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
       const payload=await response.json().catch(()=>null);
-      if(epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
+      if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
       if(!response.ok||payload?.ok!==true||!payload.data)throw new Error('ANEX не смог проверить выбранное предложение.');
       return payload.data;
     };
@@ -1080,6 +1082,7 @@
         const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch,anexSessionCurrent:true},p,seen);
         if(item)normalized.push(item);
       }
+      if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
       if(!normalized.length)throw new Error('Конкретные варианты ANEX больше недоступны.');
       const projected=project([{anytourHotelId:o.hotelId,canonicalLegacyIds:[String(localHotelId)],name:'ANEX',tours:normalized}],exact)[0]?.offers||[];
       if(projected.length!==normalized.length||projected.some(item=>item.provider!=='anex'||item.raw?.anexKind!=='concrete'||Number(item.raw?.anexLocalHotelId)!==localHotelId)) {

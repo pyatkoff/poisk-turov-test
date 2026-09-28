@@ -215,6 +215,22 @@ const server=http.createServer((req,res)=>{
   assert.equal(tvRequests(),beforeTvReturn,'cross-provider return keeps the TV receipt and price');
 
   assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth),false);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  // Actual user order: expanding ANEX must leave another source's visible offer usable.
+  await page.locator('[data-action="close-modal"]').click();
+  await page.locator('#applied-search [data-action="edit-search"]').click();await page.locator('.search-submit').click();
+  await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('3 варианта'));
+  const beforeCrossSource=transport.calls.length;
+  await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
+  if(!await anexOffer.isVisible())await anexOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
+  await anexOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
+  if(!await samoOffer.isVisible())await samoOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
+  await samoOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
+  await page.locator('[data-action="andromeda-application-preview"]').waitFor();
+  assert.match((await page.locator('#modal-body').textContent()).replace(/\s/g,''),/125500/);
+  const crossSourceCalls=transport.calls.slice(beforeCrossSource);
+  assert.equal(crossSourceCalls.filter(c=>c.url.endsWith('/api-andromeda-quote-preview.php')).length,1);
+  assert.equal(crossSourceCalls.filter(c=>c.action==='search_start').length,0,'ANEX expansion does not restart the mixed search');
+  await page.screenshot({path:path.join(evidence,`samo-after-anex-${width}.png`)});
   for(const flightChoice of [false,true]){
    await page.locator('[data-action="close-modal"]').click();
    transport.state.samoFailure='supplier_auth';transport.state.samoFlightChoice=flightChoice;

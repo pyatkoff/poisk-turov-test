@@ -322,6 +322,60 @@ test('direct ANEX group verification re-searches exact scope and expands without
  assert.equal(result.hotelId,offer.hotelId);assert.equal(result.offers.length,2);
  assert.ok(result.offers.every(item=>item.provider==='anex'&&item.raw.anexKind==='concrete'&&item.raw.anexLocalHotelId===101));
 });
+for(const phase of ['initial','flight-choices','verified','failed'])test('ANEX expansion preserves same-search SAMO '+phase,async()=>{
+ const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
+ const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),
+  andromedaQuote:async body=>({response:{ok:phase!=='failed',status:phase==='failed'?502:200,json:async()=>phase==='failed'
+   ?{ok:false,failure_category:'supplier_rejected',failure_stage:'broninit',supplier_code:'1108'}
+   :{ok:true,data:phase==='flight-choices'&&body.action==='quote'?andromedaChoice():andromedaVerified()}}}),
+  anex:async body=>({response:{ok:true,json:async()=>body.action==='expand'?expandedAnex(body,{groupRef,searchRef:verifyRef})
+   :directAnex(body,{offerRef:groupRef,searchRef:verification?verifyRef:'a'.repeat(32)})}})});
+ canonicalMeals(h);await h.start();await h.poll();
+ const offers=h.latest().flatMap(row=>row.offers),group=offers.find(o=>o.provider==='anex'),samo=offers.find(o=>o.provider==='andromeda');
+ let retained;
+ if(phase==='failed')await assert.rejects(h.data.verifyAndromeda(samo),error=>error.failureCategory==='supplier_rejected');
+ else if(phase!=='initial')retained=await h.data.verifyAndromeda(samo);
+ verification=true;await h.data.expandAnexGroup(group);
+ if(phase==='failed'){
+  await assert.rejects(h.data.verifyAndromeda(samo),error=>error.failureCategory==='supplier_rejected');
+  assert.equal(h.andromedaQuoteCalls.length,1,'ANEX must not clear a terminal SAMO attempt or authorize replay');
+ }else{
+  const selection=phase==='flight-choices'?{provider:'andromeda',outbound_ref:'flight_'+'2'.repeat(32),return_ref:'flight_'+'3'.repeat(32)}:null;
+  const result=await h.data.verifyAndromeda(samo,selection);
+  assert.equal(result.finalPriceVerified,true,'another provider expansion must not expire a visible SAMO offer');
+  if(phase==='verified')assert.strictEqual(result,retained,'completed quote survives opening another provider');
+  assert.equal(h.andromedaQuoteCalls.length,phase==='flight-choices'?2:1);
+ }
+ assert.equal(h.nativeCalls.length,1,'no additional SAMO search');
+ assert.equal(h.calls.filter(call=>call.action==='search_start').length,1,'one Tourvisor logical start');
+ assert.deepEqual(h.andromedaQuoteCalls[0].params,h.nativeCalls[0].params,'original supplier scope is retained');
+ if(phase==='initial'){
+  await h.data.continueSearch();await flush();
+  assert.equal(h.calls.filter(call=>call.action==='search_continue').length,1,'explicit continuation still belongs to the original search');
+  assert.equal(h.calls.filter(call=>call.action==='search_start').length,1,'continuation does not create another search');
+ }
+ h.data.stop();
+ await assert.rejects(h.data.verifyAndromeda(samo),/устарело/);
+ const before=h.anexCalls.length;
+ await assert.rejects(h.data.expandAnexGroup(group),/нельзя конкретизировать/);
+ assert.equal(h.anexCalls.length,before,'old ANEX groups cannot restart after explicit Stop or a changed search');
+});
+test('a superseded ANEX expansion cannot publish its late response in the same search',async()=>{
+ const gate=defer(),verifyRef='c'.repeat(32);let verification=false,firstSignal=null;
+ const h=harness({anex:async(body,signal)=>{
+  if(body.action==='expand'&&!firstSignal){firstSignal=signal;await gate.promise;}
+  return {response:{ok:true,json:async()=>body.action==='expand'?expandedAnex(body,{searchRef:verifyRef})
+   :directAnex(body,{searchRef:verification?verifyRef:'a'.repeat(32)})}};
+ }});
+ canonicalMeals(h);await h.start();await h.poll();
+ const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');verification=true;
+ const pending=h.data.expandAnexGroup(group);
+ await waitFor(()=>firstSignal!==null,'first expansion reaches its pending response');
+ const current=await h.data.expandAnexGroup(group);
+ assert.equal(current.offers.length,2);assert.equal(firstSignal.aborted,true);
+ gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
+ h.data.stop();
+});
 test('expanded concrete ANEX offer verifies in the same provider session without Tourvisor fallback',async()=>{
  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='c'.repeat(32);let verification=false;
  const h=harness({anex:async body=>{
