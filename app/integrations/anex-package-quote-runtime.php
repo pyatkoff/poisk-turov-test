@@ -15,30 +15,49 @@ function anytour_anex_quote_text($value): string
 }
 
 /** A parser CATCLAIM is not assumed to share identity with B2B: prove the returned package. */
-function anytour_anex_quote_identity(array $response, array $offer): array
+function anytour_anex_quote_identity_date($value): ?string
 {
+    if (!is_string($value)) return null;
+    if (preg_match('/^(\d{4})-?(\d{2})-?(\d{2})$/D', $value, $parts) !== 1
+        || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])) return null;
+    return $parts[1] . '-' . $parts[2] . '-' . $parts[3];
+}
+
+/** Diagnostic classifications never substitute for the strict identity checks. */
+function anytour_anex_quote_identity(array $response, array $offer, ?array &$mismatches = null): array
+{
+    $mismatches = [];
     $doc = $response['bron']['claim']['claimDocument'] ?? null;
-    if (!is_array($doc)) throw new RuntimeException('ANEX_QUOTE_IDENTITY_UNCONFIRMED');
+    if (!is_array($doc)) {
+        $mismatches['document'] = 'missing';
+        throw new RuntimeException('ANEX_QUOTE_IDENTITY_UNCONFIRMED');
+    }
     foreach (['datebeg' => 'checkin', 'dateend' => 'checkout', 'nights' => 'nights', 'adult' => 'adults', 'child' => 'children'] as $from => $to) {
         if (!isset($doc[$from], $offer[$to]) || (string) $doc[$from] !== (string) $offer[$to]) {
-            throw new RuntimeException('ANEX_QUOTE_IDENTITY_UNCONFIRMED');
+            $mismatches[$to] = isset($doc[$from], $offer[$to]) ? 'mismatch' : 'missing';
+            if (in_array($to, ['checkin', 'checkout'], true)) {
+                $actualDate = anytour_anex_quote_identity_date($doc[$from] ?? null);
+                $expectedDate = anytour_anex_quote_identity_date($offer[$to] ?? null);
+                if ($actualDate !== null && $actualDate === $expectedDate) $mismatches[$to] = 'format';
+            }
         }
     }
     $hotels = anytour_anex_quote_rows($doc['hotels']['hotel'] ?? null);
     if (count($hotels) !== 1 || !is_array($hotels[0])
         || (string) ($hotels[0]['key'] ?? '') !== (string) ($offer['hotel']['external_id'] ?? '')) {
-        throw new RuntimeException('ANEX_QUOTE_IDENTITY_UNCONFIRMED');
+        $mismatches['hotel'] = count($hotels) !== 1 ? 'shape' : 'mismatch';
     }
-    $hotel = $hotels[0];
+    $hotel = is_array($hotels[0] ?? null) ? $hotels[0] : [];
     foreach (['room' => 'room', 'meal' => 'meal', 'htplace' => 'hotel_place'] as $from => $to) {
         $expected = anytour_anex_quote_text($offer[$to] ?? null);
         if ($expected === '' || anytour_anex_quote_text($hotel[$from] ?? null) !== $expected) {
-            throw new RuntimeException('ANEX_QUOTE_IDENTITY_UNCONFIRMED');
+            $mismatches[$to] = $expected === '' || !isset($hotel[$from]) ? 'missing' : 'mismatch';
         }
     }
     if (!empty($offer['external_room_id']) && (string) ($hotel['roomKey'] ?? '') !== $offer['external_room_id']) {
-        throw new RuntimeException('ANEX_QUOTE_IDENTITY_UNCONFIRMED');
+        $mismatches['room_id'] = isset($hotel['roomKey']) ? 'mismatch' : 'missing';
     }
+    if ($mismatches !== []) throw new RuntimeException('ANEX_QUOTE_IDENTITY_UNCONFIRMED');
     return $doc;
 }
 
@@ -170,6 +189,7 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
         $stages = ['SetTransport', 'calcfull'];
     }
     $client = null;
+    $identityMismatches = [];
     try {
         foreach ($stages as $stage) {
             // Durable reservation precedes EACH supplier request. A crash cannot grant a replay.
@@ -181,7 +201,7 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
             elseif ($stage === 'transports') $response = $client->transports($attempt['id']);
             elseif ($stage === 'SetTransport') $response = $client->select($attempt['id'], $attempt['choices'][$ref]['selection']);
             else $response = $client->calculate($attempt['id']);
-            $doc = anytour_anex_quote_identity($response, $offer);
+            $doc = anytour_anex_quote_identity($response, $offer, $identityMismatches);
             if (in_array($stage, ['SetTransport', 'calcfull'], true)
                 && anytour_anex_quote_transport_map(anytour_anex_quote_rows($doc['transports']['transport'] ?? null)) !== $attempt['choices'][$ref]['selection']) {
                 throw new RuntimeException('ANEX_QUOTE_TRANSPORT_UNCONFIRMED');
@@ -206,6 +226,10 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
             'ANEX_QUOTE_SUPPLIER_REJECTED', 'ANEX_QUOTE_HTTP_ERROR', 'ANEX_QUOTE_TRANSPORT_ERROR', 'ANEX_QUOTE_INVALID_RESPONSE',
             'ANEX_QUOTE_CLIENT_UNAVAILABLE', 'ANEX_QUOTE_RATE_LIMIT'];
         $attempt['public'] = array_replace($base, ['status' => 'quote_failed', 'reason' => in_array($code, $allowed, true) ? $code : 'ANEX_QUOTE_UNKNOWN']);
+        if ($code === 'ANEX_QUOTE_IDENTITY_UNCONFIRMED' && $identityMismatches !== []) {
+            $attempt['public']['identity_mismatches'] = $identityMismatches;
+            $attempt['public']['failure_stage'] = $stage;
+        }
         if ($client instanceof AnyTourAnexPackageQuoteClient) $attempt['diagnostics'][$stage] = $client->lastRequestDiagnostics();
         // If checkpoint itself fails, leave the durable reservation UNKNOWN; never send a success.
         $checkpoint($state);

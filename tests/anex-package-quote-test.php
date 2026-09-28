@@ -50,6 +50,11 @@ function qp_fixture(string $mode = ''): array
                 'peoples' => ['people' => [['name' => 'PRIVATE_NAME', 'passport' => 'PRIVATE_PASSPORT']]]];
             if ($mode === 'hotel') $doc['hotels']['hotel'][0]['key'] = '470';
             if ($mode === 'party') $doc['adult'] = '3';
+            if ($mode === 'identity-detail') {
+                $doc['datebeg'] = '20261010'; $doc['dateend'] = '20261017';
+                unset($doc['child']);
+                $doc['hotels']['hotel'][0]['meal'] = 'PRIVATE_DIFFERENT_MEAL';
+            }
             if ($mode === 'room') $doc['hotels']['hotel'][0]['room'] = 'OTHER';
             if ($mode === 'meal') $doc['hotels']['hotel'][0]['meal'] = 'BB';
             if ($stage === 'calcfull' && $mode === 'changed-flight') $doc['transports']['transport'][0]['uid'] = 'different';
@@ -129,6 +134,16 @@ foreach (['start', 'transports', 'SetTransport', 'calcfull', 'string'] as $rejec
     qp_assert(strpos(json_encode([$failed, $s]), 'PRIVATE_SUPPLIER_REJECTION') === false, 'rejection text not retained or public');
 }
 [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture('checkpoint');
+[$detailState, $detailRequest, , , , $detailFacts, $detailFactory, $detailPersist] = qp_fixture('identity-detail');
+$detailFailure = qp_run($detailRequest, $detailState, $detailFactory, $detailPersist);
+qp_assert($detailFailure['status'] === 'quote_failed' && $detailFailure['reason'] === 'ANEX_QUOTE_IDENTITY_UNCONFIRMED'
+    && $detailFailure['failure_stage'] === 'start'
+    && $detailFailure['identity_mismatches'] === ['checkin' => 'format', 'checkout' => 'format', 'children' => 'missing', 'meal' => 'mismatch']
+    && !$detailFailure['final_price_verified'], 'fixed field classifications do not relax identity or expose values');
+qp_assert($detailFacts->calls === ['start'] && qp_run($detailRequest, $detailState, $detailFactory, $detailPersist) === $detailFailure
+    && $detailFacts->calls === ['start'], 'identity diagnostic remains terminal with no new request');
+qp_assert(strpos(json_encode([$detailFailure, $detailState]), 'PRIVATE_DIFFERENT_MEAL') === false, 'mismatched supplier values never retained');
+qp_assert(anytour_anex_quote_identity_date('20260230') === null && anytour_anex_quote_identity_date('2026-02-28') === '2026-02-28', 'date classification rejects invalid calendar dates');
 try { qp_run($r, $s, $fac, $cp); throw new RuntimeException('missing checkpoint failure'); }
 catch (RuntimeException $error) { qp_assert($error->getMessage() === 'checkpoint_failed' && $f->calls === [], 'failed persistence prevents transport'); }
 [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture();
