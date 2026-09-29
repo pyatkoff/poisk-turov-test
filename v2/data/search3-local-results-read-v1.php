@@ -233,10 +233,19 @@ function search3_local_calendar_int(mixed $raw,int $min,int $max,string $name): 
     return (int)$value;
 }
 
+/** Optional RUB bound with the same two-decimal precision as stored prices. */
+function search3_local_calendar_price(mixed $raw,string $name): ?float
+{
+    if($raw===null)return null;
+    if((!is_int($raw)&&!is_float($raw)&&!is_string($raw))
+        ||preg_match('/^(?:0|[1-9][0-9]{0,9})(?:\.[0-9]{1,2})?$/D',(string)$raw)!==1)throw new InvalidArgumentException('Invalid '.$name);
+    return (float)$raw;
+}
+
 /** Read-only exact-party calendar through the already-public LOCAL Search3 endpoint. */
 function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $now=null): array
 {
-    $allowed=['action','departureId','countryId','regionId','regionIds','mealPlanIds','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'];
+    $allowed=['action','departureId','countryId','regionId','regionIds','mealPlanIds','priceFrom','priceTo','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'];
     foreach(array_keys($input) as $key)if(!in_array($key,$allowed,true))throw new InvalidArgumentException('Invalid price calendar envelope');
     foreach(['departureId','countryId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'] as $key)if(!array_key_exists($key,$input))throw new InvalidArgumentException('Invalid price calendar envelope');
     if(($input['action']??null)!=='price_calendar'||!is_array($input['childs']))throw new InvalidArgumentException('Invalid price calendar envelope');
@@ -260,6 +269,9 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
         foreach($input['mealPlanIds'] as $id)$mealPlanIds[search3_local_calendar_int($id,1,9007199254740991,'mealPlanIds')]=true;
         $mealPlanIds=array_keys($mealPlanIds);sort($mealPlanIds,SORT_NUMERIC);
     }
+    $priceFrom=search3_local_calendar_price($input['priceFrom']??null,'priceFrom');
+    $priceTo=search3_local_calendar_price($input['priceTo']??null,'priceTo');
+    if($priceFrom!==null&&$priceTo!==null&&$priceFrom>$priceTo)throw new InvalidArgumentException('Invalid calendar budget');
     $nightsFrom=search3_local_calendar_int($input['nightsFrom'],1,30,'nightsFrom');
     $nightsTo=search3_local_calendar_int($input['nightsTo'],1,30,'nightsTo');
     if($nightsTo<$nightsFrom)throw new InvalidArgumentException('Invalid nights');
@@ -290,6 +302,14 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
         foreach($nativeIds as $index=>$id){$key='meal_id_'.$index;$placeholders[]=':'.$key;$mealParams[$key]=search3_local_calendar_int($id,1,1000000,'nativeMealId');}
         $mealSql=' AND o.meal_id IN ('.implode(',',$placeholders).')';
     }
+    // Apply budget AFTER latest-per-segment ranking. An older cheaper price
+    // must not reappear when its latest known observation exceeds the budget.
+    $priceParams=[];$priceSql='';
+    foreach(['price_from'=>$priceFrom,'price_to'=>$priceTo] as $key=>$value){
+        if($value===null)continue;
+        $priceSql.=' AND price '.($key==='price_from'?'>=':'<=').' :'.$key;
+        $priceParams[$key]=number_format($value,2,'.','');
+    }
     $sql="WITH ranked AS (
         SELECT o.*,
                ROW_NUMBER() OVER (
@@ -318,7 +338,7 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
            COUNT(DISTINCT search_id) AS independent_search_count,
            MAX(observed_at) AS latest_observed_at
       FROM ranked
-     WHERE rn=1
+     WHERE rn=1 {$priceSql}
      GROUP BY departure_date
      HAVING MIN(price)>0 AND COUNT(DISTINCT hotel_id)>0 AND COUNT(DISTINCT search_id)>0
      ORDER BY departure_date";
@@ -333,12 +353,14 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
     ];
     $params+=$regionParams;
     $params+=$mealParams;
+    $params+=$priceParams;
     $stmt->execute($params);
     $calendar=v2_price_calendar_build($stmt->fetchAll(PDO::FETCH_ASSOC)?:[],$dateFrom,$dateTo);
     return $calendar+[
         'ok'=>true,'departureId'=>$departureId,'countryId'=>$countryId,'regionId'=>count($regionIds)===1?$regionIds[0]:null,'regionIds'=>$regionIds,
         'nightsFrom'=>$nightsFrom,'nightsTo'=>$nightsTo,
         'mealPlanIds'=>$mealPlanIds,
+        'priceFrom'=>$priceFrom,'priceTo'=>$priceTo,
         'adults'=>$party['adults'],'childrenCount'=>$party['childrenCount'],
         'childAges'=>$party['childAges'],'childAgesSignature'=>$party['childAgesSignature'],
         'currency'=>'RUB','observationWindowHours'=>72,

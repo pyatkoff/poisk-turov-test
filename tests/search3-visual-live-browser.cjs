@@ -81,6 +81,20 @@ const server=http.createServer((req,res)=>{
   assert.match(await page.locator('[data-action="destination-country"]:visible').textContent(),/Саудовская Аравия/);
   await page.locator('[data-action="close-modal"]').click();
   assert.match(await page.locator('#country').textContent(),/Турция/,'cancel preserves the original destination');
+  await page.locator('#quick-budget').click();
+  await page.locator('#budget-min').fill('150000');await page.locator('#budget-max').fill('180000');
+  await page.locator('[data-action="apply-budget"]').click();
+  await page.locator('#search-form [data-action="dates"]').click();
+  await page.waitForFunction(()=>document.querySelector('#date-calendar').textContent.includes('167,5'));
+  assert.doesNotMatch(await page.locator('#date-calendar').textContent(),/97,5/,'cheaper out-of-budget observation cannot leak');
+  const budgetRequest=transport.calls.filter(call=>call.action==='price_calendar').at(-1).body;
+  assert.equal(budgetRequest.priceFrom,150000);assert.equal(budgetRequest.priceTo,180000);
+  assert.equal(transport.calls.filter(call=>call.action==='search_start'||call.url.includes('/api-anex-')||call.url.includes('/api-andromeda-')).length,0,'budget calendar stays supplier-free');
+  await page.screenshot({path:path.join(evidence,`calendar-budget-${width}.png`)});
+  await page.locator('[data-action="close-modal"]').click();
+  await page.locator('#quick-budget').click();
+  await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');
+  await page.locator('[data-action="apply-budget"]').click();
   await page.locator('#search-form [data-action="dates"]').click();
   await page.waitForFunction(()=>document.querySelector('#date-calendar').textContent.includes('97,5'));
   if(width<=760){

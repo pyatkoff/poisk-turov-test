@@ -140,6 +140,7 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
       nightsFrom:String(body.nightsFrom),nightsTo:String(body.nightsTo),adults:String(body.adults),childs:childAges.join(','),regionIds:regionIds.map(String)};
     if(regionIds.length===1)query.regionId=String(regionIds[0]);
     query.mealPlanIds=body.mealPlanIds||[];
+    query.priceFrom=body.priceFrom??null;query.priceTo=body.priceTo??null;
     observationCalls.push(query);assert.ok(observations,'unexpected observation request');
     return {ok:true,json:async()=>({ok:true,data:await observations(query,options.signal)})};
    }
@@ -841,9 +842,30 @@ test('observation prices survive failed LOCAL read and LOCAL prices survive fail
  const localOnly=await other.data.calendarPrices(trip,trip.from,trip.to,new AbortController().signal,{},x=>kept.push(x));
  assert.equal(localOnly.hotels.length,1);assert.equal(localOnly.observations.length,0);assert.equal(localOnly.partial,true);assert.ok(kept.some(x=>x.hotels.length===1));
 });
+test('observation calendar keeps an exact inclusive budget with canonical meals',async()=>{
+ const h=harness({database:(i,p)=>snapshot(p,[]),observations:q=>({...observed(q,97500.5),priceFrom:q.priceFrom,priceTo:q.priceTo})});
+ canonicalMeals(h);
+ const filters={min:97500.5,max:97500.5,meals:['Всё включено']};
+ const result=await h.data.calendarPrices(trip,trip.from,trip.to,new AbortController().signal,filters);
+ assert.equal(h.observationCalls.length,1,'budget must request exact historical prices instead of suppressing the calendar');
+ assert.equal(result.observations[0].price,97500.5);
+ assert.equal(h.observationCalls[0].priceFrom,97500.5);assert.equal(h.observationCalls[0].priceTo,97500.5);
+ assert.deepEqual(h.observationCalls[0].mealPlanIds,[7]);assert.equal(h.calls.length,0);assert.equal(h.latest().length,0);
+ for(const patch of [{priceFrom:null},{priceTo:200000},{priceTo:undefined},{series:[{date:trip.from,observed:true,minPrice:97500}]}]){
+  const other=harness({observations:q=>({...observed(q,97500.5),priceFrom:q.priceFrom,priceTo:q.priceTo,...patch})});
+  await assert.rejects(other.data.observedCalendar(trip,trip.from,trip.to,new AbortController().signal,{min:97500.5,max:97500.5}));
+ }
+ const zero=harness({observations:q=>({...observed(q),priceFrom:q.priceFrom,priceTo:q.priceTo,series:[{date:q.dateFrom,observed:false,minPrice:null}]})});
+ assert.equal((await zero.data.observedCalendar(trip,trip.from,trip.to,new AbortController().signal,{max:0})).length,0);
+ assert.equal(zero.observationCalls[0].priceTo,0,'zero budget is an explicit upper bound, not an unlimited request');
+ const invalid=harness({observations:()=>assert.fail('invalid budget cannot query a broader calendar')});
+ for(const filters of [{min:-1},{max:-1},{min:10,max:5},{max:NaN},{min:Infinity},{max:'100000'},{max:true},{max:1.234},{max:1e10}]){
+  assert.equal((await invalid.data.observedCalendar(trip,trip.from,trip.to,new AbortController().signal,filters)).length,0);
+ }
+});
 test('observation aggregates preserve exact party and canonical multi-resort OR scope',async()=>{
  const h=harness({observations:q=>observed(q)}),signal=new AbortController().signal;
- for(const f of [{stars:[5]},{meals:['AI']},{amenities:['3:15']},{min:1},{max:1500000},{hotelId:501},{q:'hotel'},{flight:['regular']},{operators:['ANEX']},{rating:true}]){
+ for(const f of [{stars:[5]},{meals:['AI']},{amenities:['3:15']},{hotelId:501},{q:'hotel'},{flight:['regular']},{operators:['ANEX']},{rating:true}]){
   assert.equal((await h.data.observedCalendar(trip,trip.from,trip.to,signal,f)).length,0);
  }
  assert.equal(h.observationCalls.length,0);

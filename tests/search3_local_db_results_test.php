@@ -165,6 +165,29 @@ foreach([[7],[103],[0],['bad'],[true],range(1,21)] as $invalid){
  $rejected=false;try{search3_local_price_calendar($pdo,$mealScope+['mealPlanIds'=>$invalid],$at);}catch(InvalidArgumentException|RuntimeException){$rejected=true;}
  need($rejected,'unknown/unmapped/malformed meal scope never becomes unfiltered');
 }
+// Latest 501 moved out of budget: its older 99000 must not be resurrected.
+foreach([[501,'140000'],[506,'110000.50'],[507,'90000'],[508,'150000']] as [$id,$price]){
+ $obs->execute([23,$id,'2026-10-06',7,1,'3,7',$price,20+$id,'2026-10-06 09:40:00']);
+}
+$pdo->exec('UPDATE tour_price_observations SET meal_id=7 WHERE hotel_id IN (501,506,507,508)');
+$budgetScope=$mealScope+['mealPlanIds'=>[101]];
+$limited=search3_local_price_calendar($pdo,$budgetScope+['priceFrom'=>95000,'priceTo'=>120000],$at);
+need($limited['priceFrom']===95000.0&&$limited['priceTo']===120000.0
+ &&(float)$limited['series'][0]['minPrice']===110000.5,'budget applies to latest exact meal/party/region prices');
+$exactPrice=search3_local_price_calendar($pdo,$budgetScope+['priceFrom'=>110000.5,'priceTo'=>110000.5],$at);
+need((float)$exactPrice['series'][0]['minPrice']===110000.5,'inclusive equal decimal bounds retain exact price');
+$staleOnly=search3_local_price_calendar($pdo,$budgetScope+['priceFrom'=>95000,'priceTo'=>100000],$at);
+need($staleOnly['observedDays']===0&&$staleOnly['series'][0]['minPrice']===null,'budget cannot revive older cheaper segment');
+$upperOnly=search3_local_price_calendar($pdo,$budgetScope+['priceTo'=>100000],$at);
+need($upperOnly['priceFrom']===null&&(float)$upperOnly['series'][0]['minPrice']===90000.0,'upper-only budget supported');
+$lowerOnly=search3_local_price_calendar($pdo,$budgetScope+['priceFrom'=>120000],$at);
+need($lowerOnly['priceTo']===null&&(float)$lowerOnly['series'][0]['minPrice']===140000.0,'lower-only budget supported');
+$zeroBudget=search3_local_price_calendar($pdo,$budgetScope+['priceTo'=>0],$at);
+need($zeroBudget['priceTo']===0.0&&$zeroBudget['observedDays']===0,'zero upper bound stays explicit and empty');
+foreach([['priceFrom'=>-1],['priceTo'=>-1],['priceFrom'=>120001,'priceTo'=>120000],['priceTo'=>true],['priceTo'=>[]],['priceTo'=>''],['priceTo'=>'1e5'],['priceTo'=>1.234],['priceTo'=>10000000000]] as $invalid){
+ $rejected=false;try{search3_local_price_calendar($pdo,$budgetScope+$invalid,$at);}catch(InvalidArgumentException){$rejected=true;}
+ need($rejected,'malformed budget cannot become an unfiltered calendar');
+}
 $pdo->exec('DROP TABLE anytour_search_meal_provider_mappings_v1');$pdo->exec('DROP TABLE anytour_meal_plans');
 echo "SEARCH3_LOCAL_PRICE_CALENDAR_OK exact_party=1 wrong_party_excluded=1 multi_region_or=1 unselected_region_excluded=1 writes=0\n";
 
