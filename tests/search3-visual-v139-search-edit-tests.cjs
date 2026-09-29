@@ -2,6 +2,34 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {JSDOM,VirtualConsole}=require('jsdom');
 
+// The selected-date summary must not turn pending/failed DB reads into an empty result.
+{
+ const vm=require('node:vm'),source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+ const extract=name=>source.match(new RegExp('function '+name+'\\([^]*?\\n\\}'))[0];
+ const node={innerHTML:'',attributes:{},setAttribute(name,value){this.attributes[name]=value;}};
+ const context={catalogReady:true,catalogError:'',calendarLoads:new Map(),dateDraft:{from:'2026-10-13',to:'2026-10-19'},dateContext:{search:{}},startDay:'2026-09-29',endDay:'2027-09-29',dateObj:day=>new Date(day+'T12:00:00Z'),addDays:(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*86400000).toISOString().slice(0,10),$:()=>node,calendarPrice:()=>null,esc:String,guestsText:()=> '2 взр.',calendarSourceLabel:()=> 'Ранее найденная цена',money:String};
+ vm.createContext(context);
+ vm.runInContext(['dateRangeError','calendarSelectionPhase','renderDateSelectionPrice'].map(extract).join('\n'),context);
+ const render=()=>{vm.runInContext('renderDateSelectionPrice()',context);return node.innerHTML;};
+ assert.match(render(),/ещё не загружена/,'unobserved mobile month is not an empty result');
+ context.calendarLoads.set('2026-10-01','loading');
+ assert.match(render(),/Загружаем подсказки/);assert.doesNotMatch(node.innerHTML,/нет подсказки/);assert.equal(node.attributes['aria-busy'],'true');
+ context.calendarPrice=day=>day==='2026-10-15'?150075:null;
+ assert.match(render(),/150075/);assert.match(node.innerHTML,/загрузка продолжается/,'partial price stays visible while loading');
+ context.calendarLoads.set('2026-10-01','error');
+ assert.match(render(),/часть цен недоступна/);assert.equal(node.attributes['aria-busy'],'false');
+ context.calendarPrice=()=>null;assert.match(render(),/Не все подсказки цен загрузились/);assert.doesNotMatch(node.innerHTML,/нет подсказки/);
+ context.calendarLoads.set('2026-10-01','complete');assert.match(render(),/нет подсказки цены/,'only completed empty data earns the empty label');
+ context.calendarLoads.set('2026-11-01','loading');assert.match(render(),/нет подсказки цены/,'unrelated visible month cannot keep selected October pending');
+ context.dateDraft={from:'2026-10-30',to:'2026-11-02'};assert.match(render(),/Загружаем подсказки/,'cross-month range waits for both months');
+ context.catalogReady=false;assert.match(render(),/Загружаем подсказки/);
+ context.catalogError='unavailable';assert.match(render(),/Не все подсказки/);
+ context.catalogReady=true;context.dateDraft={from:'2026-10-19',to:'2026-10-13'};assert.match(render(),/корректные даты/);
+ assert.match(source,/loads\.set\(month,snapshot\.partial\?'error':'complete'\);legend\(\)/);
+ assert.match(source,/const legend=\(\)=>\{[^\n]+renderDateSelectionPrice\(\);\}/,'async phase changes rerender the selected summary');
+ console.log('PASS calendar selected summary: loading, partial, failure, empty, unobserved and cross-month states');
+}
+
 // Shared search links must preserve every supported restrictive filter.
 {
  const vm=require('node:vm'),source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
