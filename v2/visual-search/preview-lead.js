@@ -26,10 +26,11 @@
  }
  let contactDraft=null;
  const choiceKey=o=>JSON.stringify([o.key,o.room,o.meal,o.day,o.returnDay,o.adults,o.ages,o.total,o.flightChoiceId]);
- const eligible=o=>['fixture','recorded'].includes(o?.provider)&&!o.cached&&!!o.tour&&!o.loading&&!o.quoteError&&!o.flightsLoading&&!o.flightsError&&!o.pricePending&&Array.isArray(o.variants)&&o.variants.length>0;
+ const eligible=o=>['fixture','recorded'].includes(o?.provider)&&!o.cached&&!!o.tour&&!o.loading&&!o.quoteError&&!o.flightsLoading&&!o.pricePending&&Number.isFinite(Number(o.total))&&Number(o.total)>0;
  function receipt(o){
-  if(!eligible(o))throw new Error('Сначала выберите тур и доступный перелёт.');
-  const index=o.flightChoiceId===null?o.variants.findIndex(v=>v.isDefault):Number(o.flightChoiceId);
+  if(!eligible(o))throw new Error('Сначала подтвердите актуальность тура.');
+  if(o.flightChoiceId===null)return {offerKey:o.key,room:o.room,meal:o.meal,day:o.day,nights:o.nights,adults:o.adults,ages:[...o.ages],flightChoice:null,total:Number(o.total),forward:'Рейс уточнит менеджер',backward:'Рейс уточнит менеджер'};
+  const index=Number(o.flightChoiceId);
   const flight=Number.isInteger(index)&&index>=0?o.variants[index]:null;
   if(!flight||!Number.isFinite(Number(flight.price))||Number(flight.price)<=0||Number(flight.price)!==Number(o.total))throw new Error('Выбранный перелёт и цена не согласованы. Вернитесь к туру.');
   if(!flight.forward?.length||!flight.backward?.length)throw new Error('Нужны рейсы туда и обратно.');

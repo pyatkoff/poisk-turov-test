@@ -20,7 +20,7 @@ const bootstrap = fs.readFileSync(path.join(root, 'index.php'), 'utf8');
 assert.match(bootstrap, /\/\_preview\/search3-next-candidate\/visual-search\//);
 assert.match(bootstrap, /http_response_code\(403\)/);
 assert.match(bootstrap, /hash_file\('sha256'/);
-assert.deepEqual(Object.keys(manifest.adaptedFiles),['app.js','fixture-data.js','index.html','styles.css']);
+assert.deepEqual(Object.keys(manifest.adaptedFiles),['app.js','fixture-data.js','index.html','styles.css','preview-lead.js','live-bridge.js']);
 for(const [file,hash] of Object.entries(manifest.adaptedFiles))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,'adapted '+file);
 assert.match(bootstrap,/prototype-search\/data\.js/);
 assert.match(bootstrap,/prototype-search\/calendar-exact-hotel-v1\.js/);

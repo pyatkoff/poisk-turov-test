@@ -26,12 +26,10 @@ for(const file of scripts){
 const settle=async()=>{await new Promise(resolve=>setTimeout(resolve,120));};
 const wait=async(fn)=>{for(let i=0;i<40;i++){if(fn())return;await settle();}throw Error('Timed out: '+q('#cards').textContent+' / '+q('#modal-body').textContent);};
 const continueToFlights=async()=>{
- if(!q('[data-action="start-tour-flights"]'))return;
+ const start=q('[data-action="start-tour-flights"]'),retry=q('[data-action="retry-flights"]');if(!start&&!retry)return;
  const before=transport.calls.filter(c=>['tour','flights'].includes(c.action)).length;
- assert(q('.chosen-stay'),'exact room/meal visible before any quote');
- click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));
- assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');
- click('[data-action="apply-flight"]');await settle();
+ if(start){assert(q('.chosen-stay'),'exact room/meal visible before any quote');click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');click('[data-action="apply-flight"]');await settle();}
+ else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="choose-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');}
 };
 const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 (async()=>{
@@ -176,7 +174,15 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert(q('.offer-filter-disclosure').open,'browser Forward restores the expanded concrete-tour filters');
  assert.equal(q('#modal-body').scrollTop,142,'browser Forward restores the concrete-tour list position');
  assert.equal(transport.calls.length,callsBeforeOfferListForward,'browser Forward neither restarts search nor checks an offer');
- click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,0,'opening exact tour is supplier-free');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+ click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,0,'opening exact tour is supplier-free');
+ assert(q('[data-action="start-lead"]')&&q('[data-action="start-tour-flights"]'),'application and optional flight check are separate actions');
+ click('[data-action="start-lead"]');await wait(()=>q('#prototype-lead-form'));
+ assert.deepEqual(transport.calls.filter(c=>['tour','flights'].includes(c.action)).map(c=>c.action),['tour'],'application actualizes the tour once without requesting flights');
+ assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);assert.match(q('#modal-footer').textContent,/перелёт уточняется/);
+ q('[name="phone"]').value='+7 999 123-45-67';q('[name="consent"]').checked=true;q('#prototype-lead-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await settle();
+ assert.match(q('.lead-message').textContent,/не отправлена/);click('#modal-back');await settle();
+ assert(q('[data-action="retry-flights"]')&&q('[data-action="confirm-tour"]'),'flight retry stays optional after returning from the application');
+ await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.match(q('#modal-body').textContent,/STANDARD SEA VIEW/);
  click('[data-action="choose-flight"]');click('[name="flight-pair"][value="1"]');click('[data-action="apply-flight"]');await settle();
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/);click('[data-action="confirm-tour"]');await settle();

@@ -13,8 +13,8 @@
  });
  window.AnyTourPrototypeData=Object.freeze(bridge);
  window.AnyTourPrototypeLead=Object.freeze({...lead,
-  canApply:o=>!!o?.tour&&o.provider==='tourvisor'&&!o.cached&&!o.loading&&!o.quoteError&&!o.flightsLoading&&!o.flightsError&&!o.pricePending&&o.variants?.length>0,
-  unavailableMarkup:()=>'<section class="tour-recording-limit"><h3>Проверьте предложение</h3><p>Цена, наличие и рейсы уточняются для выбранных условий.</p></section>'
+  canApply:o=>!!o?.tour&&o.provider==='tourvisor'&&!o.cached&&!o.loading&&!o.quoteError&&!o.flightsLoading&&!o.pricePending&&Number.isFinite(Number(o.total))&&Number(o.total)>0,
+  unavailableMarkup:()=>'<section class="tour-recording-limit"><h3>Проверьте предложение</h3><p>Цена и наличие тура должны быть актуализированы. Рейс можно оставить менеджеру.</p></section>'
  });
  for(const id of ['recording-file','recording-status']){
   const node=document.getElementById(id);if(node)(id==='recording-file'?node.closest('label'):node).hidden=true;
