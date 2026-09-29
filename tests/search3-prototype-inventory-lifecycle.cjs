@@ -297,6 +297,13 @@ test('explicit no-meal spellings share the canonical Russian display label',asyn
   assert.equal(h.data.meal(label),'Без питания',label+' must not create a separate live facet');
  }
 });
+test('explicit ultra-all spellings share the canonical Russian display label',async()=>{
+ const h=harness();
+ for(const label of ['UAI','Ultra All','Ultra All Inclusive','Ультра всё включено']){
+  assert.equal(h.data.meal(label),'Ультра всё включено',label+' must not create a separate live facet');
+ }
+ assert.equal(h.data.meal('High Class All Inclusive'),'High Class All Inclusive','branded meal names stay raw without reviewed identity');
+});
 test('supplier meal scope uses reviewed canonical native IDs, not aliases',async()=>{
  const h=harness();canonicalMeals(h);
  const scope=filters=>h.data.supplierScope(filters);
