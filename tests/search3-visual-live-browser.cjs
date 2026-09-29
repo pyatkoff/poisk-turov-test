@@ -82,12 +82,12 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(evidence,`results-${width}.png`)});
   const cardsBeforeDeparture=await page.locator('#cards').innerHTML(),urlBeforeDeparture=page.url(),startsBeforeDeparture=transport.calls.filter(c=>c.action==='search_start').length;
-  await page.locator('#applied-search [data-action="edit-search"]').click();transport.state.countriesFailure='2';await page.locator('#origin').selectOption('Казань');
+  await page.locator('#applied-search [data-action="edit-search"]').click();transport.state.countriesFailure='2';await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();
   await page.locator('#catalog-error [data-action="retry-countries"]').waitFor();assert(await page.locator('.search-submit').isDisabled());
   await page.screenshot({path:path.join(evidence,`departure-error-${width}.png`)});
   await page.locator('[data-action="destination"]').click();assert(await page.locator('[data-action="apply-destination"]').isDisabled());await page.locator('[data-action="close-modal"]').click();
   transport.state.countriesFailure='';await page.locator('#catalog-error [data-action="retry-countries"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
-  await page.locator('#origin').selectOption('Екатеринбург');await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Екатеринбург"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   await page.locator('#search-form [data-action="dates"]').click();assert.match(await page.locator('.calendar-context').textContent(),/Екатеринбург/);
   await page.waitForFunction(()=>document.querySelector('#date-calendar').textContent.includes('97,5'));
   await page.screenshot({path:path.join(evidence,`departure-calendar-${width}.png`)});
@@ -337,7 +337,7 @@ const server=http.createServer((req,res)=>{
   if(width<=1100)await page.locator('#apply-filters').click();
   assert.match(await page.locator('#results-summary').textContent(),/1 вариант/);
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,facetStarts,'facet editing never starts another search');
-  await page.locator('#applied-search [data-action="edit-search"]').click();await page.locator('#origin').selectOption('Казань');await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await page.locator('.search-submit').click();
+  await page.locator('#applied-search [data-action="edit-search"]').click();await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('1 вариант'));
   assert.equal(await facetEditor.inputValue(),'');assert.equal(transport.calls.filter(c=>c.action==='search_start').length,facetStarts+1);
   await page.locator('[data-action="filters"]:visible').first().click();

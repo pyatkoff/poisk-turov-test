@@ -236,7 +236,7 @@ function search3_local_calendar_int(mixed $raw,int $min,int $max,string $name): 
 /** Read-only exact-party calendar through the already-public LOCAL Search3 endpoint. */
 function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $now=null): array
 {
-    $allowed=['action','departureId','countryId','regionId','regionIds','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'];
+    $allowed=['action','departureId','countryId','regionId','regionIds','mealPlanIds','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'];
     foreach(array_keys($input) as $key)if(!in_array($key,$allowed,true))throw new InvalidArgumentException('Invalid price calendar envelope');
     foreach(['departureId','countryId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs'] as $key)if(!array_key_exists($key,$input))throw new InvalidArgumentException('Invalid price calendar envelope');
     if(($input['action']??null)!=='price_calendar'||!is_array($input['childs']))throw new InvalidArgumentException('Invalid price calendar envelope');
@@ -253,6 +253,12 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
     if($legacyRegionId>0){
         if($regionIds!==[]&&$regionIds!==[$legacyRegionId])throw new InvalidArgumentException('Ambiguous region scope');
         $regionIds=[$legacyRegionId];
+    }
+    $mealPlanIds=[];
+    if(array_key_exists('mealPlanIds',$input)){
+        if(!is_array($input['mealPlanIds'])||!array_is_list($input['mealPlanIds'])||count($input['mealPlanIds'])>20)throw new InvalidArgumentException('Invalid mealPlanIds');
+        foreach($input['mealPlanIds'] as $id)$mealPlanIds[search3_local_calendar_int($id,1,9007199254740991,'mealPlanIds')]=true;
+        $mealPlanIds=array_keys($mealPlanIds);sort($mealPlanIds,SORT_NUMERIC);
     }
     $nightsFrom=search3_local_calendar_int($input['nightsFrom'],1,30,'nightsFrom');
     $nightsTo=search3_local_calendar_int($input['nightsTo'],1,30,'nightsTo');
@@ -274,6 +280,16 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
         foreach($regionIds as $index=>$regionId){$key='region_id_'.$index;$placeholders[]=':'.$key;$regionParams[$key]=$regionId;}
         $regionSql=' AND o.region_id IN ('.implode(',',$placeholders).')';
     }
+    // This historical table retains Tourvisor-native meal IDs. Resolve the
+    // requested AnyTour plans through the existing reviewed catalogue; never
+    // compare IDs from different namespaces or infer a meal from display text.
+    $mealParams=[];$mealSql='';
+    if($mealPlanIds!==[]){
+        $nativeIds=(new AnyTourSearchMealCatalogV1($pdo))->nativeIds('tourvisor','global',$mealPlanIds);
+        $placeholders=[];
+        foreach($nativeIds as $index=>$id){$key='meal_id_'.$index;$placeholders[]=':'.$key;$mealParams[$key]=search3_local_calendar_int($id,1,1000000,'nativeMealId');}
+        $mealSql=' AND o.meal_id IN ('.implode(',',$placeholders).')';
+    }
     $sql="WITH ranked AS (
         SELECT o.*,
                ROW_NUMBER() OVER (
@@ -288,6 +304,7 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
            AND o.departure_id=:departure_id
            AND o.country_id=:country_id
            {$regionSql}
+           {$mealSql}
            AND o.departure_date BETWEEN :date_from AND :date_to
            AND o.nights BETWEEN :nights_from AND :nights_to
            AND o.adults=:adults
@@ -315,11 +332,13 @@ function search3_local_price_calendar(PDO $pdo,array $input,?DateTimeImmutable $
         'child_ages_signature'=>$party['childAgesSignature'],
     ];
     $params+=$regionParams;
+    $params+=$mealParams;
     $stmt->execute($params);
     $calendar=v2_price_calendar_build($stmt->fetchAll(PDO::FETCH_ASSOC)?:[],$dateFrom,$dateTo);
     return $calendar+[
         'ok'=>true,'departureId'=>$departureId,'countryId'=>$countryId,'regionId'=>count($regionIds)===1?$regionIds[0]:null,'regionIds'=>$regionIds,
         'nightsFrom'=>$nightsFrom,'nightsTo'=>$nightsTo,
+        'mealPlanIds'=>$mealPlanIds,
         'adults'=>$party['adults'],'childrenCount'=>$party['childrenCount'],
         'childAges'=>$party['childAges'],'childAgesSignature'=>$party['childAgesSignature'],
         'currency'=>'RUB','observationWindowHours'=>72,

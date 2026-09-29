@@ -932,7 +932,7 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 }
 
 /* v56: keyboard location stays visible on white, tinted and filled controls. */
-:is(button,a,input,select,summary,[tabindex]):focus-visible{outline:3px solid #253fbc;outline-offset:3px;box-shadow:0 0 0 3px #fff}
+:is(button,a,input,select,summary,[tabindex]):not(#modal-title):focus-visible{outline:3px solid #253fbc;outline-offset:3px;box-shadow:0 0 0 3px #fff}
 .ages select[aria-invalid="true"]{border:2px solid #ad2938}
 @media(max-width:760px){.counter button{width:44px;height:44px}}
 
@@ -1889,3 +1889,14 @@ h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
  .results-section{padding-top:20px}
  .results-heading{margin-bottom:16px}
 }
+
+/* Search pickers retain one form value and canonical destination hierarchy. */
+#origin[hidden]{display:none}
+#modal-title:focus{outline:none;box-shadow:none}
+#origin-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.departure-dialog .destination-row{width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;text-align:left;border-bottom:1px solid var(--line);padding:12px 6px;font-size:16px}
+.departure-dialog .destination-row[aria-pressed="true"]{color:var(--brand);font-weight:600}
+.destination-region{border-bottom:1px solid var(--line)}
+.destination-region>details>summary{min-height:44px;padding:10px 12px 10px 42px;cursor:pointer;color:var(--muted);font-size:13px}
+.destination-subregions{margin-left:22px;padding-left:12px;border-left:2px solid var(--line)}
+.destination-region .destination-row{width:100%;text-align:left}
