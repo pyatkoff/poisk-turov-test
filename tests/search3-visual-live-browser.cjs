@@ -73,10 +73,12 @@ const server=http.createServer((req,res)=>{
   assert.deepEqual(await hotelEditor.evaluate(el=>({same:el===window.activeHotelEditor,focused:document.activeElement===el,start:el.selectionStart,end:el.selectionEnd})),{same:true,focused:true,start:3,end:8});
   await hotelEditor.press('End');await page.keyboard.type(' отель');assert.equal(await hotelEditor.inputValue(),'Вымышленный отель');
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,1,'filter typing never repeats the initial search');
+  assert.equal(await page.locator('[data-filter="amenities"][value^="local-service:"]').count(),0,'display-only LOCAL service facts never become search filters');
   await page.screenshot({path:path.join(evidence,`progressive-filter-${width}.png`)});
   if(width<=1100){await page.locator('.mobile-close[data-action="close-filters"]').click();assert.equal(await page.locator('#hotel-query').inputValue(),'');}
   else await page.locator('[data-action="clear-hotel-query"]').click();
   assert.equal(await page.locator('.hotel-card').count(),1);
+  assert.match(await page.locator('.hotel-card .hotel-facts').textContent(),/Wi-Fi из локального профиля/,'legacy canonical service fact is visible on the target hotel card');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(evidence,`results-${width}.png`)});
   const cardsBeforeDeparture=await page.locator('#cards').innerHTML(),urlBeforeDeparture=page.url(),startsBeforeDeparture=transport.calls.filter(c=>c.action==='search_start').length;
@@ -95,6 +97,7 @@ const server=http.createServer((req,res)=>{
 
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   assert((await page.locator('#modal-body').textContent()).includes('Тестовая улица'));
+  assert.match(await page.locator('#modal-body').textContent(),/Wi-Fi из локального профиля/,'legacy canonical service fact remains visible in hotel details');
   assert(await page.evaluate(()=>!!(document.querySelector('#hotel-services-heading').compareDocumentPosition(document.querySelector('#hotel-rooms-heading')) & Node.DOCUMENT_POSITION_FOLLOWING)));
   await page.locator('[data-action="close-modal"]').click();
   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
