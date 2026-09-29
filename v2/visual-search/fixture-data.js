@@ -15,7 +15,7 @@
     HB:'Полупансион','HALF BOARD':'Полупансион','ПОЛУПАНСИОН':'Полупансион',
     FB:'Полный пансион','FULL BOARD':'Полный пансион','ПОЛНЫЙ ПАНСИОН':'Полный пансион',
     AI:'Всё включено',ALL:'Всё включено','ALL INCLUSIVE':'Всё включено','ВСЕ ВКЛЮЧЕНО':'Всё включено','ВСЁ ВКЛЮЧЕНО':'Всё включено',
-    UAI:'Ультра всё включено','ULTRA ALL INCLUSIVE':'Ультра всё включено','УЛЬТРА ВСЕ ВКЛЮЧЕНО':'Ультра всё включено','УЛЬТРА ВСЁ ВКЛЮЧЕНО':'Ультра всё включено'
+    UAI:'Ультра всё включено','ULTRA ALL':'Ультра всё включено','ULTRA ALL INCLUSIVE':'Ультра всё включено','УЛЬТРА ВСЕ ВКЛЮЧЕНО':'Ультра всё включено','УЛЬТРА ВСЁ ВКЛЮЧЕНО':'Ультра всё включено'
   });
   const meal=value=>{const label=text(value).trim(),normalized=label.toLocaleUpperCase('ru-RU').replace(/\s+/g,' ');return mealAliases[normalized]||label;};
   const scenarios = new Set(['snapshot', 'flights', 'flight-error', 'empty', 'mixed', 'family', 'incomplete', 'price-change', 'unavailable', 'expired']);

@@ -54,7 +54,7 @@
   "publicationStatus": "published-bootstrap-calendar-verified",
   "adaptedFiles": {
     "app.js": "23d5841badd29edade6fee026897e145370853dc3a5b3d92eb14b687ed0c5441",
-    "fixture-data.js": "95ddf9dcb7880dd0ddf607148bd81c6d2e5f078746b78a3894fa4506be95df16"
+    "fixture-data.js": "176f25bac72ae889e6d73410873ceb330af133ec18da10d3695fa9eb9a80b389"
   },
   "publication": {
     "sourceSha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
