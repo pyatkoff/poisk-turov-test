@@ -33,6 +33,49 @@ final class AnyTourAndromedaOfferAutosaveV1
     ];
 
     /**
+     * Bind an already-received page to its immutable provider capture, not the
+     * browser's new run number. The caller owns the same search lock used by the
+     * endpoint. This only reads the exact session+criteria cache path supplied by
+     * that endpoint; it cannot start, rebind, renew or recover a supplier request.
+     * The ordinary consume() contract remains strict for all other callers.
+     *
+     * @return array{request:array,generation:int}
+     */
+    public static function bindReceivedPageRequest(
+        array $request,
+        string $directory,
+        string $searchRef,
+        int $callerGeneration,
+        DateTimeImmutable $now
+    ): array {
+        $page = $request['page'] ?? null;
+        $requestGeneration = $request['generation'] ?? null;
+        if (!is_int($page) || $page < 1 || $page > self::MAX_PAGES
+            || !is_int($requestGeneration) || $requestGeneration < 1 || $requestGeneration > 2147483647
+            || $callerGeneration < 1 || $callerGeneration > 2147483647
+            || isset($request['action']) || isset($request['hotel_scope'])
+            || isset($request['andromeda_operator_ids']) || !is_array($request['params'] ?? null)
+            || !preg_match('/\A[a-f0-9]{64}\z/D', $searchRef)
+            || !is_dir($directory) || is_link($directory) || basename($directory) !== 'searches') {
+            throw new DomainException('ANDROMEDA_ANYTOUR_COHORT_INVALID');
+        }
+        $first = self::readState($directory . '/' . $searchRef . '-1.json', false);
+        $capturedGeneration = $first['generation'] ?? null;
+        if (!is_int($capturedGeneration) || $capturedGeneration < 1 || $capturedGeneration > 2147483647
+            || ($first['version'] ?? null) !== 1
+            || ($callerGeneration !== $requestGeneration
+                && ($page === 1 || $callerGeneration !== $capturedGeneration))) {
+            throw new DomainException('ANDROMEDA_ANYTOUR_COHORT_INVALID');
+        }
+        // All three stored generation/ref layers, success status and original TTL
+        // are checked before using the captured generation. UNKNOWN stays blocked.
+        self::validateState($first, $searchRef, $capturedGeneration, 1, $now->getTimestamp());
+        $bound = $request;
+        $bound['generation'] = $capturedGeneration;
+        return ['request' => $bound, 'generation' => $capturedGeneration];
+    }
+
+    /**
      * @param callable(array):array $mappingReader current [namespace,external] -> legacy local map
      * @param callable(array):array $canonicalResolver legacy local -> AnyTour own id/null map
      * @param callable(string,array,array,DateTimeImmutable):array $ingest LOCAL snapshot ingestor
@@ -842,6 +885,14 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
         if ($country < 1) return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'country_invalid']);
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $nowTs = $now->getTimestamp();
+        if ($receivedPage !== null && !isset($request['action']) && !isset($request['hotel_scope'])
+            && !isset($request['andromeda_operator_ids'])) {
+            $bound = AnyTourAndromedaOfferAutosaveV1::bindReceivedPageRequest(
+                $request, $directory, $searchRef, $generation, $now
+            );
+            $request = $bound['request'];
+            $generation = $bound['generation'];
+        }
         $result = AnyTourAndromedaOfferAutosaveV1::consume(
             $request,
             $directory,
