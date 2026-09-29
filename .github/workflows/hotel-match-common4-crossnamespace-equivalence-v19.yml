@@ -1,0 +1,117 @@
+name: MATCH COMMON4 crossnamespace equivalence v19
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_common4_crossnamespace_equivalence_v19.php'
+      - 'tests/hotel_match_common4_crossnamespace_equivalence_v19_test.php'
+      - '.github/workflows/hotel-match-common4-crossnamespace-equivalence-v19.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-common4-crossnamespace-equivalence-1971-20260925-v19, cancel-in-progress: false}
+env:
+  OP: hotel-match-common4-crossnamespace-equivalence-1971-20260925-v19
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5830228103'
+  POST_ARTIFACT: '10856651937'
+  POST_ARCHIVE_SHA: 3650be64ff4a38093b5f56cb4d8cb4ec1bf7c4a6edda557a796fc18dbc527235
+  POST_RESULT_SHA: d521c8313d6d30274ebe292672a90f59ed30f48b63ff474e866195c0d9b00792
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-crossnamespace-equivalence-v19-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_common4_crossnamespace_equivalence_v19.php
+      - run: php scripts/diagnostics/hotel_match_common4_crossnamespace_equivalence_v19.php --self-test
+      - run: php tests/hotel_match_common4_crossnamespace_equivalence_v19_test.php
+      - run: |
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_common4_crossnamespace_equivalence_v19.php
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-crossnamespace-equivalence-v19-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim Security and postwrite v18
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/post terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-common4-crossnamespace-equivalence-v19.yml scripts/diagnostics/hotel_match_common4_crossnamespace_equivalence_v19.php tests/hotel_match_common4_crossnamespace_equivalence_v19_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'direct ANEX effective preview identity','accepted `bgoperator`','REPEATABLE READ / READ ONLY','Provider/Tourvisor/SAMO/ANEX/Andromeda HTTP0']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$POST_ARTIFACT/zip" -o input/post.zip
+          test "$(sha256sum input/post.zip|awk '{print $1}')" = "$POST_ARCHIVE_SHA"
+          unzip -q input/post.zip -d input/post
+          result="$(find input/post -type f -name result.json -print -quit)";receipt="$(find input/post -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt";cp "$result" input/post-result.json;cp "$receipt" input/post-receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          rp=pathlib.Path('input/post-result.json');r=json.load(open(rp));q=json.load(open('input/post-receipt.json'));h=hashlib.sha256(rp.read_bytes()).hexdigest()
+          assert h==os.environ['POST_RESULT_SHA']==q['result_sha256']
+          assert r['operation']=='hotel-match-samo-business-live30-common4-postwrite-1971-20260925-v18'
+          assert r['state']=='samo_business_live30_common4_plan_ready'
+          assert r['deduped_unique_local_count']==1711 and r['deduped_lane_state_conflicts']==0
+          assert r['deduped_missing_lane_counts']=={'operator_5':1516,'operator_115':1285,'operator_315':1304,'operator_342':668}
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          PY
+      - name: Run CURRENT crossnamespace equivalence v19
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read','postwrite_result_sha256':os.environ['POST_RESULT_SHA'],'provider_http_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
+          scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" input/post-result.json "$remote:$op/payload/postwrite-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_common4_crossnamespace_equivalence_v19.php "$remote:$op/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_POSTWRITE_RESULT=\"\$HOME/$op/payload/postwrite-result.json\" MATCH_POSTWRITE_SHA='$POST_RESULT_SHA' MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_common4_crossnamespace_equivalence_v19.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['operation']=='hotel-match-common4-crossnamespace-equivalence-1971-20260925-v19'
+          assert r['state']=='completed_read_only_crossnamespace_equivalence'
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          summary={k:r[k] for k in ['anex_registry','direct_anex_vs_operator_5','bgoperator_vs_operator_115']}
+          summary['operator_5_missing_crossfill']={k:v for k,v in r['operator_5_missing_crossfill'].items() if k!='rows'}
+          summary['operator_115_missing_crossfill']={k:v for k,v in r['operator_115_missing_crossfill'].items() if k!='rows'}
+          print(json.dumps(summary,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-common4-crossnamespace-equivalence-v19-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
