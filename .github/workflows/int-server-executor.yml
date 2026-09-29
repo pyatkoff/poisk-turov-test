@@ -7,8 +7,10 @@ on:
       - '.github/workflows/int-server-executor.yml'
       - 'scripts/deploy/int_server_executor.py'
       - 'scripts/deploy/int_server_executor_anex_secret_transport.py'
+      - 'scripts/deploy/int_server_executor_match_primary.py'
       - 'tests/int_server_executor_test.py'
       - 'tests/int_server_executor_anex_secret_transport_test.py'
+      - 'tests/int_server_executor_match_primary_test.py'
       - 'scripts/diagnostics/int_funsun_direction_store_server_readback.py'
       - 'tests/int_funsun_direction_store_server_readback_test.py'
   workflow_dispatch:
@@ -43,6 +45,8 @@ jobs:
           python3 tests/int_server_executor_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_anex_secret_transport.py
           python3 tests/int_server_executor_anex_secret_transport_test.py -v
+          python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
+          python3 tests/int_server_executor_match_primary_test.py -v
           python3 -m py_compile scripts/diagnostics/int_funsun_direction_store_server_readback.py
           python3 tests/int_funsun_direction_store_server_readback_test.py -v
 
@@ -75,6 +79,8 @@ jobs:
           python3 tests/int_server_executor_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_anex_secret_transport.py
           python3 tests/int_server_executor_anex_secret_transport_test.py -v
+          python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
+          python3 tests/int_server_executor_match_primary_test.py -v
       - name: Parse and authorize exact current-source command
         id: command
         env:
@@ -82,7 +88,7 @@ jobs:
           INT_OWNER_COMMAND: ${{ inputs.owner_command }}
         run: |
           set -euo pipefail
-          python3 scripts/deploy/int_server_executor.py --parse-only > "$RUNNER_TEMP/int-command.txt"
+          python3 scripts/deploy/int_server_executor_anex_secret_transport.py --parse-only > "$RUNNER_TEMP/int-command.txt"
           source_sha="$(sed -n 's/^source_sha=//p' "$RUNNER_TEMP/int-command.txt")"
           test "${#source_sha}" = 40
           printf 'source_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
