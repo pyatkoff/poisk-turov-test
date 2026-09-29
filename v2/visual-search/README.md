@@ -1,5 +1,25 @@
 # Search3 v147 — isolated visual migration
 
+## Tourvisor fuel disclosure — 2026-09-29
+
+The connected presentation owner uses Tourvisor's returned total unchanged.
+The existing `three-provider-search-handoff.php::customerPriceReadiness` contract
+and `tourvisor-anytour-offer-autosave-test.php` treat a Tourvisor search price with
+an explicit reported fuel amount as the full listing price, without adding fuel.
+The official [OpenAPI 1.2.4](https://api.tourvisor.ru/search/docs), read on
+2026-09-29, calls both `Tour.price` and `TourOutput.price` «Итоговая цена».
+
+Positive fuel reported by the same priced Tourvisor tour/flight pair is therefore
+labelled included. Missing/invalid fuel, a different API, stale price, currency
+mismatch, or a fee inherited from the tour instead of the selected flight cannot
+acquire that assertion. No amount, transport, or protected money/lead contract changes.
+
+`GET /tours/{id}` retrieves tour data; `GET /tours/{id}/flights` retrieves the
+operator-cart actualization and flight alternatives. The application path without
+flights shows «Цена предложения», keeps the manager handoff, and does not claim
+that tour-data retrieval alone performed cart actualization. Known fuel inclusion
+and future price/availability confirmation remain separate facts.
+
 ## Selected-tour quote owner — 2026-09-29
 
 The owner-requested refactor pass keeps the connected `app.js` as the presentation

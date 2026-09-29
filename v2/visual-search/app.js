@@ -1207,19 +1207,27 @@ function flightAllowanceText(o,field){
  return [['forward','Туда'],['backward','Обратно']].map(([key,label])=>label+': '+window.AnyTourFlightPickerV18.directionAllowance(v[key],field)).join(' · ');
 }
 function fuelAmount(o){const pair=flightPairFor(o),raw=pair||o.savedFuelAmount===undefined?data.fuel(o.tour,pair):o.savedFuelAmount;if(!['number','string'].includes(typeof raw)||String(raw).trim()==='')return null;const n=Number(raw);return Number.isFinite(n)&&n>=0?n:null;}
-function fuelText(o){const n=fuelAmount(o);return n===null?'Сбор уточняется':n===0?'Без доплаты по сбору':money(n)+' · включение в цену уточняется';}
+function fuelIncludedInPrice(o){
+ if(o.provider!=='tourvisor'||o.cached||o.quoteError||o.pricePending)return false;
+ // Tourvisor supplies the total. Apply its contract only to fuel reported by
+ // the same priced tour/flight pair, never to an inherited fee or another API.
+ const priced=flightPairFor(o)||o.tour,price=data.amount(priced?.price),fuel=data.fuel(priced);
+ const currency=priced?.price?.currency||priced?.currency||'RUB',fuelCurrency=priced?.fuelCharge?.currency||currency;
+ return currency==='RUB'&&fuelCurrency===currency&&price>0&&price===data.amount(o.total)&&fuel!==null&&fuel<=price;
+}
+function fuelText(o){const n=fuelAmount(o);return n===null?'Сбор уточняется':n===0?'Без доплаты по сбору':money(n)+(fuelIncludedInPrice(o)?' · включён в цену':' · включение в цену уточняется');}
 function selectedPriceStatus(o){
  if(o.provider==='fixture')return 'Демонстрационная цена';
  if(o.provider==='recorded')return 'Цена из записи';
  if(o.quoteError)return 'Цена из выдачи · не подтверждена';
  if(!o.tour)return 'Цена из выдачи · требует проверки';
- if(!flightPairFor(o))return 'Цена после проверки · перелёт уточняется';
+ if(!flightPairFor(o))return 'Цена предложения · перелёт уточняется';
  const fuel=fuelAmount(o);
- return fuel===0?'Цена с выбранными рейсами · без топливной доплаты':fuel===null?'Цена с выбранными рейсами · сбор уточняется':'Цена с выбранными рейсами · включение сбора уточняется';
+ return fuel===0?'Цена с выбранными рейсами · без топливной доплаты':fuel===null?'Цена с выбранными рейсами · сбор уточняется':fuelIncludedInPrice(o)?'Цена с выбранными рейсами · сбор включён':'Цена с выбранными рейсами · включение сбора уточняется';
 }
 function fuelDisclosureHTML(o){
  const n=fuelAmount(o);
- return `<div class="tour-fuel-disclosure"><span>Топливный сбор</span><strong>${esc(fuelText(o))}</strong><p>${n===null?'Размер сбора и его включение в цену нужно проверить.':n===0?'По данным предложения. Другие возможные доплаты требуют проверки.':'Не указано, входит ли сбор в цену предложения или оплачивается дополнительно.'}</p></div>`;
+ return `<div class="tour-fuel-disclosure"><span>Топливный сбор</span><strong>${esc(fuelText(o))}</strong><p>${n===null?'Размер сбора и его включение в цену нужно проверить.':n===0?'По данным предложения. Другие возможные доплаты требуют проверки.':fuelIncludedInPrice(o)?'Уже учтён в показанной стоимости тура. Дополнительно прибавлять его не нужно.':'Не указано, входит ли сбор в цену предложения или оплачивается дополнительно.'}</p></div>`;
 }
 function withFlightPair(o,id){const variant=o.variants?.[Number(id)],price=data.variantPrice(o.tour,variant);return {...o,flightChoiceId:String(id),total:price,pricePending:!price};}
 function legHTML(segments,label){
@@ -1307,13 +1315,13 @@ function chosenStayHTML(o,editable=false){
  return `<section class="chosen-stay" aria-label="Выбранные условия тура"><p class="chosen-trip"><strong>${rangeText(o.day,o.returnDay)} · ${nightsText(o.nights)}</strong><span>${guestsText(o)}${o.ages?.length?' · '+esc(childAgesLabel(o.ages,true)):''}</span></p><dl class="saved-stay-summary"><div><dt>Номер</dt><dd>${esc(o.room)}</dd></div><div><dt>Питание</dt><dd>${esc(mealLabel(o))}</dd></div>${placement?`<div><dt>Размещение</dt><dd>${esc(placement)}</dd></div>`:''}<div><dt>Оператор</dt><dd>${esc(o.operator)}</dd></div></dl>${alternatives?'<button class="text-button change-room" data-action="change-room">Другие номера и питание '+icon('arrow')+'</button>':''}</section>`;
 }
 function offerSelectionHint(o,terminalQuoteError){
- if(o.loading)return 'Проверяем цену и условия тура…';
+ if(o.loading)return 'Получаем цену и условия тура…';
  if(o.flightsLoading)return 'Загружаем варианты перелёта…';
  if(terminalQuoteError)return 'Выберите другой тур в результатах.';
  if(o.quoteError)return 'Повторите проверку предложения, чтобы продолжить.';
  if(o.pricePending)return 'Цена этого рейса не подтверждена. Можно выбрать другой или оставить рейс менеджеру.';
  if(o.flightsError)return 'Рейсы не загрузились — заявку можно оставить без них.';
- if(!o.tour)return 'Перед заявкой проверим актуальность цены. Рейс можно оставить менеджеру.';
+ if(!o.tour)return 'Перед заявкой получим условия предложения. Рейс можно оставить менеджеру.';
  if(!o.variants?.length)return 'Рейсы не указаны — их уточнит менеджер.';
  return '';
 }
@@ -1346,7 +1354,7 @@ function renderRealOffer(){
  ${o.pricePending?'<p class="error-text" role="status">Цена выбранного перелёта пока не подтверждена. Можно выбрать другой вариант или оставить рейс менеджеру.</p>':''}
 
  <div class="tour-layout"><div class="tour-main-details">${chosenStayHTML(o,true)}${flightSummaryHTML(o)}</div>
- <aside class="tour-price-details" aria-label="Состав и стоимость тура"><div class="price-breakdown"><h3>Цена и условия</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${o.quoteError?'Цена из выдачи':flightPairFor(o)?'С выбранным перелётом':'Цена предложения'}</span><strong id="detail-total">${o.pricePending?'Уточняется':money(o.total)}</strong></div>${!unavailable?`<p class="price-assurance">${icon('info')} ${o.quoteError?'Эта сумма не подтверждена после проверки.':o.provider==='fixture'?priceNote(o):o.loading?'Проверяем актуальность…':unavailable?priceNote(o):'Условия цены и наличие подтверждаются перед оформлением'}</p>`:''}${!unavailable&&selectionHint?`<p class="tour-selection-hint" role="status">${selectionHint}</p>`:''}${fuelDisclosureHTML(o)}</div></aside></div>`,true);
+ <aside class="tour-price-details" aria-label="Состав и стоимость тура"><div class="price-breakdown"><h3>Цена и условия</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${o.quoteError?'Цена из выдачи':flightPairFor(o)?'С выбранным перелётом':'Цена предложения'}</span><strong id="detail-total">${o.pricePending?'Уточняется':money(o.total)}</strong></div>${!unavailable?`<p class="price-assurance">${icon('info')} ${o.quoteError?'Эта сумма не подтверждена после проверки.':o.provider==='fixture'?priceNote(o):o.loading?'Получаем цену предложения…':unavailable?priceNote(o):'Условия цены и наличие подтверждаются перед оформлением'}</p>`:''}${!unavailable&&selectionHint?`<p class="tour-selection-hint" role="status">${selectionHint}</p>`:''}${fuelDisclosureHTML(o)}</div></aside></div>`,true);
  $('#modal').classList.add('tour-dialog');
  const footerAction=offerPrimaryActionHTML(o,h,unavailable,terminalQuoteError);
  const footerStatus=selectedPriceStatus(o);
