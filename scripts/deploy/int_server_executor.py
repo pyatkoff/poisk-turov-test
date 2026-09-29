@@ -2765,7 +2765,7 @@ try:
         result['match_samo_live30_persistence']=match_samo_live30_persistence(stage)
         result['production_after']=fingerprints()
         if result['production_after']!=before: fail('production_drift')
-        result['status']='complete_read_only'
+        result['status']='reconciled_read_only'
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
@@ -2890,7 +2890,7 @@ try:
             result['match942']['summary'].get('samo_http_calls','bounded'))
         result['database_writes']=0
         result['production_unchanged']=True
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-samo-live30-persistence-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         provider='anex' if mode in ('anex-demand','anex-range') else 'andromeda'
         result['before_db']=db_summary(provider)
         env={k:v for k,v in os.environ.items() if k not in ('ANEX_API_TOKEN','ANEX_B2B_TOKEN')}
@@ -2922,7 +2922,7 @@ try:
           '--capture-mode='+('external_group_only' if mode=='andromeda-external-group' else 'non_external_only')]
         if payload['region']: command.append('--region='+str(payload['region']))
         if mode=='andromeda-operator-scope': command.append('--operator-id='+str(payload['operator_id']))
-    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
+    if mode not in ('reconcile','local-readback','program-fuel-readback','program-fuel-probe','funsun-direction-fuel-seed','funsun-direction-fx-seed','operator-direction-fuel-readback','install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview','match-coverage','match-coverage-v2','match-coverage-v2-readback','match-samo-live30-persistence-readback','match-coverage-readback','match-tv234-readback','match-tv234-secondary','match-common4-acquire','match-common4-continuation-acquire','match-common4-continuation-resume-day','match-common4-resume-readback','match-common4-readback','match-common4-current-v2','match-readback','match-tv942-reconcile','match-tv942-write','match-tv942','match-samo942','andromeda-operator-preflight'):
         run=subprocess.run(command,cwd=stage,env=env,capture_output=True,text=True,timeout=900)
         result['collector_exit']=run.returncode
         stderr=run.stderr.strip()
