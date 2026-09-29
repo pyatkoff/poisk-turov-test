@@ -45,4 +45,16 @@ t(hmsl_excluded_country('Abkhazia'),'exclude_abkhazia');
 t(!hmsl_excluded_country('Turkey'),'keep_turkey');
 t(strlen($r['mapped_local_hotels']['set_sha256'])===64,'mapped_hash');
 t(strlen($r['hashes']['observed_identity_keys_sha256'])===64,'obs_hash');
-echo "SAMO_LIVE30_PERSISTENCE_RECONCILE_TEST_OK 25 checks\n";
+
+$catalog=hmsl_catalog_reconcile($active,$accepted,$obs,[1,3],[1,2],['A'=>100,'C'=>101,'U2'=>102]);
+t($catalog['persistent_catalog_identity_keys']===3,'persistent_catalog');
+t($catalog['retained_cache_catalog_identity_keys']===3,'cache_catalog');
+t($catalog['overlap_identity_keys']===1,'catalog_overlap');
+t($catalog['persistent_only_identity_keys']===2,'persistent_only');
+t($catalog['cache_only_identity_keys']===2,'cache_only');
+t($catalog['union_catalog_identity_keys']===5,'catalog_union');
+t($catalog['accepted_exact_identity_keys_now']===1,'catalog_accepted');
+t($catalog['unresolved_identity_keys_now']===3,'catalog_unresolved');
+t($catalog['collision_identity_keys_now']===1,'catalog_collision');
+t(strlen($catalog['union_sha256'])===64,'catalog_union_hash');
+echo "SAMO_LIVE30_PERSISTENCE_RECONCILE_TEST_OK 35 checks\n";
