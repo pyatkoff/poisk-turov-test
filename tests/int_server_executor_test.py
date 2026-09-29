@@ -298,6 +298,27 @@ class ParseTest(unittest.TestCase):
         self.assertEqual('match-coverage-v2-readback',v['mode'])
         self.assertEqual(SHA,v['source_sha'])
 
+    def test_match_samo_live30_persistence_readback_mode(self):
+        v=m.parse_command(f'/run-int-server-v1 {SHA} match-samo-live30-persistence-readback int-andromeda-samo-live30-persistence-readback-20260929-v1')
+        self.assertEqual('match-samo-live30-persistence-readback',v['mode'])
+        self.assertEqual(SHA,v['source_sha'])
+        with self.assertRaises(ValueError):
+            m.parse_command(f'/run-int-server-v1 {SHA} match-samo-live30-persistence-readback int-anex-samo-live30-persistence-readback-20260929-v1')
+        with self.assertRaises(ValueError):
+            m.parse_command(f'/run-int-server-v1 {SHA} match-samo-live30-persistence-readback int-andromeda-samo-live30-persistence-readback-20260929-v1 extra')
+
+    def test_match_samo_live30_persistence_executor_contract(self):
+        source=SCRIPT.read_text()
+        for required in [
+            "scripts/diagnostics/hotel_match_samo_live30_persistence_reconcile_v1.php",
+            "def match_samo_live30_persistence(stage):",
+            "HMSLPR_SELFTEST_OK",
+            "historical_completeness_proven",
+            "unknown_history_gap",
+            "mode=='match-samo-live30-persistence-readback'",
+        ]:
+            self.assertIn(required,source)
+
     def test_match_coverage_readback_mode(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-coverage-readback int-andromeda-match-coverage-readback-20260923-v1')
         self.assertEqual('match-coverage-readback',v['mode'])
