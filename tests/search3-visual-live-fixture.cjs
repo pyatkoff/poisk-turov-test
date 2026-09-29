@@ -24,7 +24,11 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
   if(u.pathname.endsWith('/hotel-details-read-v1.php')){const ids=q.getAll('legacyHotelIds[]');return {ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:[profile],links:ids.map(id=>({legacyHotelId:id,anytourHotelId:501}))};}
   if(u.pathname.endsWith('/search3-local-results-read-v1.php')){
    if(action==='meal_catalog')return {ok:true,data:{source:'anytour-search-meal-v1',provider:'tourvisor',scopeKey:'global',available:true,revision:'a'.repeat(64),plans:[{id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:['7']},{id:2,code:'breakfast',nameRu:'Завтраки',nativeIds:['3']}]}};
-   if(action==='price_calendar')return {ok:true,data:{ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',mealPlanIds:body.mealPlanIds||[],adults:body.adults,childrenCount:0,childAges:[],childAgesSignature:'',departureId:body.departureId,countryId:body.countryId,regionId:null,regionIds:[],dateFrom:body.dateFrom,dateTo:body.dateTo,nightsFrom:body.nightsFrom,nightsTo:body.nightsTo,series:[{date:day,observed:true,minPrice:97500}]}};
+   if(action==='price_calendar'){
+    const priceFrom=body.priceFrom??null,priceTo=body.priceTo??null;
+    const minPrice=[97500,167500.5,220000].find(price=>(priceFrom===null||price>=priceFrom)&&(priceTo===null||price<=priceTo))??null;
+    return {ok:true,data:{ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',mealPlanIds:body.mealPlanIds||[],priceFrom,priceTo,adults:body.adults,childrenCount:0,childAges:[],childAgesSignature:'',departureId:body.departureId,countryId:body.countryId,regionId:null,regionIds:[],dateFrom:body.dateFrom,dateTo:body.dateTo,nightsFrom:body.nightsFrom,nightsTo:body.nightsTo,series:[{date:day,observed:minPrice!==null,minPrice}]}};
+   }
    if(!body.params)throw Error('Unexpected DB action');
    return {ok:true,data:{source:'anytour-db-first-results-v1',scopeVersion:1,scopeDigest:'e'.repeat(64),scope:{...body.params,scopeVersion:1},hotelCount:0,eligibleHotelCount:0,offerCount:0,storedOfferCount:0,withheldOfferCount:0,categoryFilteredOfferCount:0,omittedHotelCount:0,omittedOfferCount:0,providerOfferCounts:{},selectionAuthority:false,hotels:[]}};
   }

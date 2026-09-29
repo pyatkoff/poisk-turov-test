@@ -971,12 +971,17 @@
     // Party and canonical region OR are exact first-class observation scopes.
     // The observation reader has no exact subregion dimension yet: suppress it
     // instead of presenting a broader parent-region minimum as exact.
-    if(filters.hotelId||filters.q||filters.min>0
-      ||filters.max!==undefined&&filters.max!==null&&filters.max!==''
+    if(filters.hotelId||filters.q||observationBudget(filters)===null
       ||['stars','operators','flight','amenities'].some(key=>filters[key]?.length)
       ||['rating','beach','family','spa'].some(key=>filters[key]))return false;
     try{if(destinationScope(s,filters).subregionIds.length)return false;}catch{return false;}
     return observationMealPlans(filters)!==null;
+  }
+  function observationBudget(filters={}) {
+    const from=filters.min??0,to=filters.max===undefined||filters.max===null||filters.max===''?null:filters.max;
+    const valid=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=9999999999.99&&Math.round(value*100)/100===value;
+    if(!valid(from)||to!==null&&(!valid(to)||from>to))return null;
+    return {priceFrom:from>0?from:null,priceTo:to};
   }
   async function observedCalendar(s,from,to,signal,filters={}) {
     if(!observationScopeSupported(s,filters))return [];
@@ -985,12 +990,12 @@
     let nativeCountryId;try{nativeCountryId=tourvisorCountryId(s.country);}catch{return [];}
     const childAges=[...s.ages].sort((a,b)=>a-b),childSignature=childAges.join(',');
     const destination=destinationScope(s,filters);if(destination.subregionIds.length)return [];
-    const selected=[...new Set(destination.regionIds.map(Number))].sort((a,b)=>a-b),mealPlanIds=observationMealPlans(filters);
+    const selected=[...new Set(destination.regionIds.map(Number))].sort((a,b)=>a-b),mealPlanIds=observationMealPlans(filters),budget=observationBudget(filters);
     const query={departureId:String(departure.id),countryId:nativeCountryId,dateFrom:from,dateTo:to,nightsFrom:String(s.minNights),nightsTo:String(s.maxNights),adults:String(s.adults),childs:childSignature,regionIds:selected.map(String)};
     const response=await fetch(local+'data/search3-local-results-read-v1.php',{
       method:'POST',credentials:'same-origin',cache:'no-store',signal,
       headers:{Accept:'application/json','Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
-      body:JSON.stringify({action:'price_calendar',departureId:Number(query.departureId),countryId:Number(query.countryId),regionIds:selected,mealPlanIds,
+      body:JSON.stringify({action:'price_calendar',departureId:Number(query.departureId),countryId:Number(query.countryId),regionIds:selected,mealPlanIds,...budget,
         dateFrom:from,dateTo:to,nightsFrom:s.minNights,nightsTo:s.maxNights,adults:s.adults,childs:childAges})
     });
     if(!response.ok)throw new Error('Сохранённые цены календаря временно недоступны.');
@@ -1001,6 +1006,8 @@
       ||!Array.isArray(result.childAges)||result.childAges.length!==childAges.length||result.childAges.some((age,index)=>age!==childAges[index])||result.childAgesSignature!==childSignature
       ||String(result.departureId)!==query.departureId||String(result.countryId)!==query.countryId
       ||(mealPlanIds.length||result.mealPlanIds!==undefined)&&(!Array.isArray(result.mealPlanIds)||JSON.stringify(result.mealPlanIds)!==JSON.stringify(mealPlanIds))
+      ||(budget.priceFrom!==null||budget.priceTo!==null||result.priceFrom!==undefined||result.priceTo!==undefined)
+        &&(result.priceFrom!==budget.priceFrom||result.priceTo!==budget.priceTo)
       ||!Array.isArray(result.regionIds)||result.regionIds.map(String).join(',')!==query.regionIds.join(',')
       ||String(result.regionId||'')!==(query.regionIds.length===1?query.regionIds[0]:'')||result.dateFrom!==from||result.dateTo!==to
       ||String(result.nightsFrom)!==query.nightsFrom||String(result.nightsTo)!==query.nightsTo||!Array.isArray(result.series))throw new Error('Сохранённые цены не соответствуют параметрам поездки.');
@@ -1008,7 +1015,7 @@
     for(const row of result.series){
       if(!row||date(row.date)!==row.date||row.date<from||row.date>to||seen.has(row.date)||typeof row.observed!=='boolean')throw new Error('Некорректные даты сохранённых цен.');
       seen.add(row.date);
-      if(row.observed){const price=amount(row.minPrice);if(price===null)throw new Error('Некорректная сохранённая цена.');points.push({date:row.date,price});}
+      if(row.observed){const price=amount(row.minPrice);if(price===null||budget.priceFrom!==null&&price<budget.priceFrom||budget.priceTo!==null&&price>budget.priceTo)throw new Error('Некорректная сохранённая цена.');points.push({date:row.date,price});}
     }
     return points;
   }
