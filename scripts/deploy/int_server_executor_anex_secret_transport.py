@@ -20,6 +20,14 @@ if spec is None or spec.loader is None:
 core = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(core)
 
+MATCH_SCRIPT = SCRIPT.with_name('int_server_executor_match_primary.py')
+match_spec = importlib.util.spec_from_file_location('int_server_executor_match_primary', MATCH_SCRIPT)
+if match_spec is None or match_spec.loader is None:
+    raise RuntimeError('match_registration_import')
+match_primary = importlib.util.module_from_spec(match_spec)
+match_spec.loader.exec_module(match_primary)
+match_primary.register_parser(core)
+
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
@@ -156,6 +164,7 @@ def main() -> None:
         for key, value in command.items():
             print(f'{key}={value}')
         return
+    match_primary.activate(core, command)
     if command['mode'] in SUPPLIER_SLOT_MODES:
         core.ensure_supplier_slot(token)
     if command['mode'] in DIRECT_ANEX_MODES:
