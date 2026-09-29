@@ -1,0 +1,117 @@
+name: MATCH unread catalog tail
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_catalog_tail_v1.php
+      - .github/workflows/hotel-match-catalog-tail-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-catalog-tail-1971-20260921-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-catalog-tail-1971-20260921-v1
+  BASE_SHA: 2321db22b5dede7f1cb9b6d5dc9a098521ed86f6
+  SCRIPT_PATH: scripts/diagnostics/hotel_match_catalog_tail_v1.php
+  WORKFLOW_PATH: .github/workflows/hotel-match-catalog-tail-v1.yml
+  SCRIPT_SHA256: e56eac15f01be30464449c1d6675e796975201ffc1848b84125e6d65e5cb459a
+  CLAIM: '5763248103'
+  CLAIM_SHA256: cf68e18cec3bb4ba72675ab5e237ed0d0db13fc466fe98c9512217f5e95bb4a1
+jobs:
+  tail:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and read-only scope
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import hashlib,os,pathlib,subprocess
+          changed=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert changed=={os.environ['SCRIPT_PATH'],os.environ['WORKFLOW_PATH']},changed
+          assert hashlib.sha256(pathlib.Path(os.environ['SCRIPT_PATH']).read_bytes()).hexdigest()==os.environ['SCRIPT_SHA256']
+          PY
+          php -l "$SCRIPT_PATH"; php "$SCRIPT_PATH" --self-test
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import hashlib,json,os
+          c=json.load(open('input/claim.json'))
+          assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url']=='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/issues/2530'
+          assert hashlib.sha256(c['body'].encode()).hexdigest()==os.environ['CLAIM_SHA256']
+          assert os.environ['OPERATION_ID'] in c['body'] and 'READ ONLY' in c['body'] and 'catalog_hotels.id>126145' in c['body']
+          PY
+      - name: Reserve before database access
+        env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import datetime,json,os
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_db','source_sha':os.environ['HEAD_SHA'],'script_sha256':os.environ['SCRIPT_SHA256'],'cursor_exclusive':126145,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          with open('reservation/reservation.json','x') as f: f.write(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-catalog-tail-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f: runs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD_SHA']]
+              if runs and max(runs,key=lambda x:x['id'])['status']=='completed':
+                  assert max(runs,key=lambda x:x['id'])['conclusion']=='success'; break
+              time.sleep(5)
+          else: raise SystemExit('exact_security_not_green')
+          PY
+      - name: Read only the previously unexported catalog range
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/match-tail-key"; known="$RUNNER_TEMP/match-tail-known"; trap 'rm -f "$key" "$known"' EXIT
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"; script="${SCRIPT_PATH##*/}"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/.anytoour-match/operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+          scp "${opts[@]}" "$SCRIPT_PATH" reservation/reservation.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op/payload\" && echo '$SCRIPT_SHA256  $script' | sha256sum -c - && php -l '$script' && php '$script' --self-test" > terminal/server-preflight.txt
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD_SHA' php \"\$HOME/$op/payload/$script\" --execute" > terminal/remote.stdout 2> terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\" && tar -czf - -- started.json result.json receipt.json" > terminal/server.tgz
+      - name: Verify cursor range, receipt and exact projection
+        env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              assert set(t.getnames())=={'started.json','result.json','receipt.json'} and len(t.getnames())==3
+              for n in t.getnames():
+                  m=t.getmember(n); assert m.isfile(); pathlib.Path('terminal',n).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json')); q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID']
+          assert r['source_sha']==q['source_sha']==os.environ['HEAD_SHA']
+          assert r['state']==q['state']=='completed_read_only'
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert all(r[k]==q[k]==0 for k in ['provider_calls','tourvisor_calls','samo_calls','andromeda_calls','database_writes','mapping_writes'])
+          assert r['cursor_exclusive']==126145 and r['limit']==50000
+          assert r['captured_rows']==q['captured_rows']==len(r['rows'])==min(r['tail_total_rows'],50000)
+          assert r['truncated']==q['truncated']==(r['tail_total_rows']>50000) and r['exhausted']==(not r['truncated'])
+          cols=['id','name','country_id','country_name','region_id','region_name','subregion_id','subregion_name','category','is_active','latitude','longitude']
+          assert r['columns']==cols and all(list(x)==cols for x in r['rows'])
+          ids=[int(x['id']) for x in r['rows']]
+          assert all(x>126145 for x in ids) and ids==sorted(set(ids))
+          summary={k:v for k,v in r.items() if k!='rows'}
+          pathlib.Path('terminal/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('terminal/stage.txt').write_text('completed_read_only_verified\n')
+          print(json.dumps(summary,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-catalog-tail-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
