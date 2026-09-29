@@ -1,5 +1,21 @@
 # Search3 v147 — isolated visual migration
 
+## Selected-tour quote owner — 2026-09-29
+
+The owner-requested refactor pass keeps the connected `app.js` as the presentation
+owner. Both explicit Tourvisor actions (application and optional flight selection)
+share `quoteSelectedOffer`; it applies the same quote fields and error handling.
+`isCurrentOfferRequest` checks the selection generation, exact offer key and open
+offer dialog before quote/flight responses may update the view. Closing, reopening
+or changing a selection prevents an earlier response from changing that view.
+`offerSelectionHint` and `offerPrimaryActionHTML` keep the existing ordered UI
+choices readable. No provider transport, price arithmetic or lead contract moved.
+
+Characterization in `tests/search3-visual-live-bridge.cjs` covers late success and
+failure after close/reopen for both actions, temporary versus expired quote errors,
+quote-only application and retained selected flights. It uses fictional intercepted
+responses; real supplier readiness is a separate acceptance step.
+
 ## SAMO quote recovery — 2026-09-26
 
 Current-search SAMO verification retains the first pending, confirmed or failed attempt. Reopening the offer reuses that outcome; after flight confirmation it retains the flight outcome. An unconfirmed attempt returns to other offers with the listing price explicitly unconfirmed. It cannot silently submit the same quote again. A new explicit search invalidates previous receipts. Browser-local failure events retain only fixed public status/category codes, without response text, identities or private state.
