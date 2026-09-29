@@ -179,10 +179,79 @@ foreach([
     }catch(InvalidArgumentException|DomainException $expected){pa_assert($calls===0,'invalid partial mode or authoritative empty rejected');}
 }
 
+// A browser run number and an immutable successful capture are different clocks.
+// The runtime binder bridges them without changing the stored capture or guards.
+$dir=pa_dir();$ref=hash('sha256','cached-provider-page');$ingests=[];$cb=pa_callbacks($ingests);
+$first=pa_state($ref,1,4,$at,[pa_offer('cached-one')]);$first['version']=1;
+$firstPath=pa_path($dir,$ref,$at,1);
+$now=new DateTimeImmutable('@'.($at+30));
+$browser=pa_request();$browser['generation']=2;
+try {
+    pa_save($firstPath,$first);$originalBytes=file_get_contents($firstPath);
+    // The original strict API still fails on different generations, as it should.
+    try {
+        AnyTourAndromedaOfferAutosaveV1::consume($browser,$dir,$ref,2,$now,
+            $cb[0],$cb[1],$cb[2],$cb[3],$cb[4],1);
+        throw new LogicException('strict consume accepted browser generation');
+    } catch (DomainException $expected) { pa_assert($ingests===[],'strict consume generation guard retained'); }
+    $bound=AnyTourAndromedaOfferAutosaveV1::bindReceivedPageRequest($browser,$dir,$ref,2,$now);
+    pa_assert($bound['generation']===1 && $bound['request']['generation']===1,'cached capture supplies persistence generation');
+    pa_assert($browser['generation']===2 && $bound['request']['params']===$browser['params'],'browser request and search criteria unchanged');
+    $persist=static function(array $binding) use($dir,$ref,$now,$cb): array {
+        return AnyTourAndromedaOfferAutosaveV1::consume($binding['request'],$dir,$ref,$binding['generation'],$now,
+            $cb[0],$cb[1],$cb[2],$cb[3],$cb[4],$binding['request']['page']);
+    };
+    $result=$persist($bound);
+    pa_assert($result['published'] && count($ingests)===1,'new browser run saves already-received first page');
+    pa_confirmation($ingests[0]['rows'][0]['dto'],'185125',$at,1);
+    pa_assert($ingests[0]['rows'][0]['dto']['context']['generation']===1,'DTO retains original provider generation');
+    $browser['generation']=3;
+    $again=AnyTourAndromedaOfferAutosaveV1::bindReceivedPageRequest($browser,$dir,$ref,3,$now);
+    pa_assert($persist($again)['reason']==='already_published' && count($ingests)===1,'another browser run reuses the same idempotency checkpoint');
+    pa_assert(file_get_contents($firstPath)===$originalBytes,'successful capture not rewritten or renewed');
+    pa_assert(!file_exists(pa_path($dir,$ref,$at,2)),'binding never acquires missing second page');
+    $second=pa_state($ref,2,4,$at+5,[pa_offer('cached-two','Intourist',102)]);$second['version']=1;
+    pa_save(pa_path($dir,$ref,$at,2),$second);$browser['page']=2;
+    // On Continue the existing endpoint supplies the capture generation already.
+    $next=AnyTourAndromedaOfferAutosaveV1::bindReceivedPageRequest($browser,$dir,$ref,1,$now);
+    pa_assert($persist($next)['published'] && count($ingests)===2,'Continue accepts source-bound caller generation');
+    pa_assert(count($ingests[1]['rows'])===1 && $ingests[1]['rows'][0]['dto']['context']['page']===2,'Continue saves only received second page');
+    $second['generation']=2;pa_save(pa_path($dir,$ref,$at,2),$second);
+    try {$persist($next);throw new LogicException('mixed generation page accepted');}
+    catch(DomainException $expected){pa_assert(count($ingests)===2,'mixed-generation second page stays rejected');}
+    foreach(['pending','unavailable','expired','future','snapshot_generation','store_generation','ref','version'] as $case){
+        $bad=$first;
+        if(in_array($case,['pending','unavailable'],true))$bad['status']=$case;
+        if($case==='expired'){$bad['store']['created_at']=$at-900;$bad['store']['expires_at']=$at;}
+        if($case==='future'){$bad['store']['created_at']=$at+60;$bad['store']['expires_at']=$at+960;}
+        if($case==='snapshot_generation')$bad['store']['snapshot']['generation']=2;
+        if($case==='store_generation')$bad['store']['generation']=2;
+        if($case==='ref')$bad['store']['search_ref']=hash('sha256','other-search');
+        if($case==='version')$bad['version']=2;
+        pa_save($firstPath,$bad);
+        try{AnyTourAndromedaOfferAutosaveV1::bindReceivedPageRequest($browser,$dir,$ref,3,$now);throw new LogicException($case.' accepted');}
+        catch(DomainException $expected){pa_assert(count($ingests)===2,$case.' cannot authorize cached persistence');}
+    }
+    pa_save($firstPath,$first);
+    foreach(['wrong_caller','page_zero','bad_request_generation','action','hotel_scope','missing_cache'] as $case){
+        $bad=pa_request();$bad['generation']=2;$caller=2;$cacheRef=$ref;
+        if($case==='wrong_caller')$caller=3;
+        if($case==='page_zero')$bad['page']=0;
+        if($case==='bad_request_generation')$bad['generation']='2';
+        if($case==='action')$bad['action']='offer_detail';
+        if($case==='hotel_scope')$bad['hotel_scope']=['local_id'=>101];
+        if($case==='missing_cache')$cacheRef=hash('sha256','not-captured');
+        try{AnyTourAndromedaOfferAutosaveV1::bindReceivedPageRequest($bad,$dir,$cacheRef,$caller,$now);throw new LogicException($case.' accepted');}
+        catch(DomainException $expected){pa_assert(count($ingests)===2,$case.' rejected without ingest');}
+    }
+}finally{pa_cleanup($dir);}
+
 $evidence=['status'=>'passed','checks'=>count($paChecks),'cases'=>$paChecks,
     'real_production_normalizer_money_context_handoff_producer'=>true,
     'mapping_and_ingest_callbacks'=>'test doubles, no SQL execution',
     'supplier_http'=>0,'live_db_reads'=>0,'live_db_writes'=>0,
     'source_sha256'=>hash_file('sha256',dirname(__DIR__).'/app/integrations/andromeda-anytour-offer-autosave.php'),
     'producer_sha256'=>hash_file('sha256',dirname(__DIR__).'/app/integrations/anytour-offer-snapshot-producer.php')];
+
+
 echo json_encode($evidence,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
