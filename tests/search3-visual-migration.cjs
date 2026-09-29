@@ -20,7 +20,7 @@ const bootstrap = fs.readFileSync(path.join(root, 'index.php'), 'utf8');
 assert.match(bootstrap, /\/\_preview\/search3-next-candidate\/visual-search\//);
 assert.match(bootstrap, /http_response_code\(403\)/);
 assert.match(bootstrap, /hash_file\('sha256'/);
-assert.deepEqual(Object.keys(manifest.adaptedFiles),['app.js']);
+assert.deepEqual(Object.keys(manifest.adaptedFiles),['app.js','fixture-data.js']);
 assert.match(bootstrap,/prototype-search\/data\.js/);
 assert.match(bootstrap,/prototype-search\/calendar-exact-hotel-v1\.js/);
 console.log('PASS visual migration: preserved Site assets, explicit integration delta, separate live/offline entry graphs, noindex and cache binding');
