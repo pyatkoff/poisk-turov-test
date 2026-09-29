@@ -241,7 +241,13 @@ async function loadResorts(country){
  if(modalType==='destination'&&destinationChoice?.country===country)renderDestination();
 }
 function currentDraftDestination(){return draftDestination||{country:draft.country,resorts:draft.country===state.search.country?[...state.filters.resorts]:[],hotelId:draft.country===state.search.country?state.filters.hotelId:0};}
-function destinationLabel(d,full=false){const h=destinationHotel(d.hotelId);if(h)return full?`${h.name}, ${h.resort}, ${countryNames[h.country]||''}`:h.name;if(d.hotelId)return hotelRestorePending?'Восстанавливаем отель…':'Выбранный отель недоступен';if(d.resorts.length)return full?`${countryNames[d.country]||''} · ${d.resorts.join(', ')}`:d.resorts.length===1?d.resorts[0]:`${countryNames[d.country]||''} · ${d.resorts.length} ${d.resorts.length<5?'курорта':'курортов'}`;return countryNames[d.country];}
+function destinationLabel(d,full=false){
+ const h=destinationHotel(d.hotelId),country=countryNames[d.country]||'';
+ if(h)return full?`${h.name}, ${h.resort}, ${countryNames[h.country]||''}`:h.name;
+ if(d.hotelId)return hotelRestorePending?'Восстанавливаем отель…':'Выбранный отель недоступен';
+ if(d.resorts.length)return full&&country?`${country} · ${d.resorts.join(', ')}`:d.resorts.length===1?d.resorts[0]:`${country?country+' · ':''}${d.resorts.length} ${d.resorts.length<5?'курорта':'курортов'}`;
+ return country||(!catalogReady&&!catalogError?'Загружаем направления…':'Выберите направление');
+}
 function recentDestinations(){const v=getStored('anytour.prototype.v18.destinations.v1',[]);return (Array.isArray(v)?v:[]).filter(d=>d&&countryNames[d.country]&&Array.isArray(d.resorts)&&d.resorts.every(r=>(data.catalog.regions[d.country]||[]).some(row=>row.name===r))&&(!d.hotelId||destinationHotel(d.hotelId)?.country===d.country)).slice(0,3);}
 function rememberDestination(){const d=appliedDestination(),key=x=>JSON.stringify([x.country,[...x.resorts].sort(),x.hotelId]);saveStored('anytour.prototype.v18.destinations.v1',[d,...recentDestinations().filter(x=>key(x)!==key(d))].slice(0,3));}
 function restoredDestinationChoice(value){

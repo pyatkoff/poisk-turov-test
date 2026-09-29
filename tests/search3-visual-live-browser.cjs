@@ -63,6 +63,8 @@ const server=http.createServer((req,res)=>{
   const hydrationControls=page.locator('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget');
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true','initial form discloses catalog/URL hydration');
   assert.equal(await hydrationControls.evaluateAll(controls=>controls.every(control=>control.disabled)),true,'initial controls cannot accept input that URL hydration would overwrite');
+  assert.equal(await page.locator('#destination-label').textContent(),'Загружаем направления…','initial destination never exposes a missing catalog value');
+  assert.doesNotMatch(await page.locator('#country').getAttribute('aria-label'),/undefined|null/i,'initial destination accessible name stays truthful');
   releaseInitialCatalog();delete transport.state.countryGates['1'];
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'false');
