@@ -158,9 +158,9 @@ $pdo->exec("UPDATE tour_price_observations SET meal_id=3 WHERE hotel_id=504");
 $mealScope=['action'=>'price_calendar','departureId'=>1,'countryId'=>4,'regionIds'=>[23,24],
  'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07','nightsFrom'=>7,'nightsTo'=>7,'adults'=>1,'childs'=>[3,7]];
 $ai=search3_local_price_calendar($pdo,$mealScope+['mealPlanIds'=>[101,101]],$at);
-need($ai['mealPlanIds']===[101]&&(float)$ai['bestPrice']===99000.0&&$ai['observedDays']===1,'canonical AI plan resolves native meal; cheaper breakfast and unknown meal excluded');
+need($ai['mealPlanIds']===[101]&&(float)$ai['series'][0]['minPrice']===99000.0&&$ai['bestPrice']===null&&$ai['observedDays']===1,'canonical AI plan resolves native meal; cheaper breakfast and unknown meal excluded');
 $both=search3_local_price_calendar($pdo,$mealScope+['mealPlanIds'=>[102,101]],$at);
-need($both['mealPlanIds']===[101,102]&&(float)$both['bestPrice']===88000.0,'explicit multi-meal OR normalized');
+need($both['mealPlanIds']===[101,102]&&(float)$both['series'][0]['minPrice']===88000.0&&$both['bestPrice']===null,'explicit multi-meal OR normalized');
 foreach([[7],[103],[0],['bad'],[true],range(1,21)] as $invalid){
  $rejected=false;try{search3_local_price_calendar($pdo,$mealScope+['mealPlanIds'=>$invalid],$at);}catch(InvalidArgumentException|RuntimeException){$rejected=true;}
  need($rejected,'unknown/unmapped/malformed meal scope never becomes unfiltered');
