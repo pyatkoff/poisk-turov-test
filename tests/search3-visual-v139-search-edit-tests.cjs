@@ -49,6 +49,19 @@ const edit=()=>click('#applied-search [data-action="edit-search"]');
 const cancel=()=>click('#search-return');
 (async()=>{
  await settle();
+ // The result drawer must use the same stable meal order as the search picker.
+ click('#applied-search [data-action="filters"]');
+ const mealFacetOrder=()=>[...d.querySelectorAll('[data-filter="meals"]')].map(node=>node.value);
+ const beforeMealSelection=mealFacetOrder();
+ const coreMeals=['Всё включено','Ультра всё включено','Завтраки','Полупансион','Полный пансион','Без питания'].filter(value=>beforeMealSelection.includes(value));
+ assert.deepEqual(beforeMealSelection.slice(0,coreMeals.length),coreMeals,'result meals put the standard choices before branded supplier names');
+ assert(beforeMealSelection.includes('High Class All Inclusive'),'branded meal remains a distinct result choice');
+ click('[data-filter="meals"][value="Завтраки"]');
+ assert.deepEqual(mealFacetOrder(),beforeMealSelection,'selecting a meal must not move it to the top');
+ click('[data-filter="meals"][value="High Class All Inclusive"]');
+ assert.deepEqual(mealFacetOrder(),beforeMealSelection,'selecting a branded meal preserves the complete order');
+ assert.match(q('[data-facet-options="meals"] .facet-picked').textContent,/Завтраки.*High Class All Inclusive/,'selected choices remain accessible in the selected summary');
+ click('[data-action="close-filters"]');await settle();
  const snapshotEvents=[];
  await w.AnyTourPrototypeData.search(w.AnyTourPrototypeData.initialSearch,event=>snapshotEvents.push(event));
  const snapshotHotels=snapshotEvents.find(event=>event.type==='results').hotels;
