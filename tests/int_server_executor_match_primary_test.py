@@ -60,7 +60,7 @@ class PrimaryRegistrationTest(unittest.TestCase):
             raise AssertionError(path)
         with patch.object(self.core,'api_get',side_effect=api):
             self.assertEqual(self.core.checked_event('fixture',event,CONTROL)['maximum_writes'],3)
-            for mutate in [lambda e:e['issue'].update(number=2530),lambda e:e['issue'].update(pull_request={}),lambda e:e['comment']['user'].update(id=1),lambda e:e['comment'].update(author_association='NONE')]:
+            for mutate in [lambda e:e['issue'].update(number=2530),lambda e:e['issue'].update(pull_request={'url':'fixture-pr'}),lambda e:e['comment']['user'].update(id=1),lambda e:e['comment'].update(author_association='NONE')]:
                 bad=copy.deepcopy(event);mutate(bad)
                 with self.assertRaises(ValueError):self.core.checked_event('fixture',bad,CONTROL)
             with self.assertRaises(ValueError):self.core.checked_event('fixture',event,'c'*40)
