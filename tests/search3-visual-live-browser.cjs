@@ -91,6 +91,16 @@ const server=http.createServer((req,res)=>{
   assert.equal(budgetRequest.priceFrom,150000);assert.equal(budgetRequest.priceTo,180000);
   assert.equal(transport.calls.filter(call=>call.action==='search_start'||call.url.includes('/api-anex-')||call.url.includes('/api-andromeda-')).length,0,'budget calendar stays supplier-free');
   await page.screenshot({path:path.join(evidence,`calendar-budget-${width}.png`)});
+  await page.reload();
+  await page.waitForFunction(()=>document.querySelector('#modal')?.open&&document.querySelector('#date-calendar'));
+  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  await page.waitForFunction(()=>document.querySelector('#date-calendar').textContent.includes('167,5')||document.querySelector('#date-calendar').textContent.includes('97,5'));
+  const reloadedURL=new URL(page.url());
+  assert.equal(reloadedURL.searchParams.get('min'),'150000','reload with the calendar open preserves the minimum budget');
+  assert.equal(reloadedURL.searchParams.get('max'),'180000','reload with the calendar open preserves the maximum budget');
+  const reloadedBudgetRequest=transport.calls.filter(call=>call.action==='price_calendar').at(-1).body;
+  assert.equal(reloadedBudgetRequest.priceFrom,150000);assert.equal(reloadedBudgetRequest.priceTo,180000);
+  assert.doesNotMatch(await page.locator('#date-calendar').textContent(),/97,5/,'reload cannot reopen an unbounded calendar');
   await page.locator('[data-action="close-modal"]').click();
   await page.locator('#quick-budget').click();
   await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');

@@ -9,7 +9,7 @@ const {JSDOM,VirtualConsole}=require('jsdom');
  const defaults=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false});
  const trip={origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-07',minNights:7,maxNights:7,adults:2,ages:[]};
  const state={search:structuredClone(trip),filters:defaults(),sort:'recommended',hasSearched:false,selectedDate:null};
- const context={state,structuredClone,URLSearchParams,countryNames:{4:'Турция'},startDay:'2026-09-27',endDay:'2027-09-27',dateObj:v=>new Date(v+'T12:00:00Z'),data:{scenario:'live',catalog:{departures:[{name:'Москва'}]},text:x=>x.name,date:v=>v,meal:v=>v},$:()=>({value:''}),location:{search:'',hash:''},history:{state:null,replaceState(_,__,query){context.location.search=query;}},searchEditSession:null};
+ const context={state,structuredClone,URLSearchParams,countryNames:{4:'Турция'},startDay:'2026-09-27',endDay:'2027-09-27',dateObj:v=>new Date(v+'T12:00:00Z'),data:{scenario:'live',catalog:{departures:[{name:'Москва'}]},text:x=>x.name,date:v=>v,meal:v=>v},$:()=>({value:''}),location:{search:'',hash:''},history:{state:null,replaceState(_,__,query){context.location.search=query;}},searchEditSession:null,urlStateHydrated:true};
  vm.createContext(context);
  vm.runInContext(extract('restoreURL')+'\n'+source.match(/function updateURL\([^]*?\n/)[0],context);
  state.filters={...defaults(),flight:['charter'],beach:true,family:true,spa:true,rating:true};
