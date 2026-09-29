@@ -88,7 +88,10 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
   let releaseFlights;
   w.fetch=async(url,options={})=>{
    const value=await transport.json(url,options);
-   if(value.data?.status==='flights'){await new Promise(resolve=>releaseFlights=resolve);if(failed)return new Response(JSON.stringify({ok:false}),{status:502});}
+   if(value.data?.status==='flights'){
+    for(const route of value.data.flights.routes)route.date=route.date.replaceAll('-','');
+    await new Promise(resolve=>releaseFlights=resolve);if(failed)return new Response(JSON.stringify({ok:false}),{status:502});
+   }
    return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});
   };
   const wait=async(fn)=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}assert.fail('Timeout: '+d.body.textContent.slice(-2500));};
@@ -106,7 +109,7 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
    click('[data-action="close-modal"]');click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');
    assert.match(q('#anex-flight-inventory').textContent,/Загружаем рейсы/);assert(!q('[data-action="anex-flights"]'),'pending read cannot repeat after reopen');
    releaseFlights();await wait(()=>q('#anex-flight-inventory').textContent.includes(failed?'Не удалось':'TEST ANEX 101'));
-   if(!failed){assert.match(q('#anex-flight-inventory').textContent,/Расписание уточняется/);assert.match(q('#anex-flight-inventory').textContent,/не выбранные рейсы/);}
+   if(!failed){const flightText=q('#anex-flight-inventory').textContent,expectedDate=new Date(trip.from+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'}).replace('.','');assert.match(flightText,new RegExp(expectedDate));assert.doesNotMatch(flightText,/\b\d{8}\b/,'compact supplier dates are never exposed raw');assert.match(flightText,/Расписание уточняется/);assert.match(flightText,/не выбранные рейсы/);}
    assert(!q('[data-action="anex-application-preview"]'),'unknown price cannot acquire priced application authority');
    const before=transport.calls.length;
    click('[data-action="close-modal"]');await new Promise(r=>setTimeout(r,150));w.history.forward();await new Promise(r=>setTimeout(r,150));

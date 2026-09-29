@@ -41,7 +41,7 @@ const iso = d=>d.toISOString().slice(0,10);
 const addDays = (s,n)=>iso(new Date(dateObj(s).getTime()+n*86400000));
 const dateText = s=>dateObj(s).toLocaleDateString('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'}).replace('.','');
 const dateLong = s=>dateObj(s).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
-const flightDateText = s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||''))?dateText(s):String(s||'Дата уточняется');
+const flightDateText = s=>{const raw=String(s||'');const iso=/^\d{8}$/.test(raw)?`${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`:raw;return /^\d{4}-\d{2}-\d{2}$/.test(iso)&&!Number.isNaN(dateObj(iso).getTime())?dateText(iso):raw||'Дата уточняется';};
 const rangeText = (a,b)=>a===b?dateText(a):`${dateText(a)} — ${dateText(b)}`;
 const nightsText = n=>`${n} ${n%10===1&&n!==11?'ночь':n%10>=2&&n%10<=4&&(n<12||n>14)?'ночи':'ночей'}`;
 const childAgeText = n=>n===0?'до года':`${n} ${n%10===1&&n!==11?'год':n%10>=2&&n%10<=4&&(n<12||n>14)?'года':'лет'}`;
@@ -1409,7 +1409,7 @@ function anexFlightInventoryHTML(o){
  if(view.error)return `<h3>Перелёт ANEX</h3><p class="error-text" role="alert">${esc(view.error)} Повторный запрос автоматически не выполняется.</p>`;
  const result=view.result,point=p=>[p.airportCode||p.airport,p.time].filter(Boolean).join(' · ')||'Расписание уточняется';
  const availability={Y:'Есть места',N:'Нет мест',R:'Под запрос'};
- const routes=result.routes.map(route=>`<details open><summary>${esc([route.date,route.from,route.to].filter(Boolean).join(' · ')||'Направление уточняется')}</summary>${route.options.length?route.options.map(option=>`<div class="verification-tour"><strong>${esc([option.name,option.carrier].filter(Boolean).join(' · ')||'Рейс уточняется')}</strong><span>${esc(point(option.departure))} → ${esc(point(option.arrival))}</span>${option.classes.map(item=>`<span>${esc(item.name||'Класс уточняется')} · ${availability[item.availability]||'Места уточняются'} · Багаж: ${esc(item.baggage??'не указан')} · Ручная кладь: ${esc(item.handBaggage??'не указана')}</span>`).join('')}</div>`).join(''):'<p>Варианты рейсов не получены.</p>'}</details>`).join('');
+ const routes=result.routes.map(route=>`<details open><summary>${esc([flightDateText(route.date),route.from,route.to].filter(Boolean).join(' · ')||'Направление уточняется')}</summary>${route.options.length?route.options.map(option=>`<div class="verification-tour"><strong>${esc([option.name,option.carrier].filter(Boolean).join(' · ')||'Рейс уточняется')}</strong><span>${esc(point(option.departure))} → ${esc(point(option.arrival))}</span>${option.classes.map(item=>`<span>${esc(item.name||'Класс уточняется')} · ${availability[item.availability]||'Места уточняются'} · Багаж: ${esc(item.baggage??'не указан')} · Ручная кладь: ${esc(item.handBaggage??'не указана')}</span>`).join('')}</div>`).join(''):'<p>Варианты рейсов не получены.</p>'}</details>`).join('');
  return `<h3>Перелёт ANEX</h3>${routes||'<p>ANEX не вернул варианты рейсов для этого предложения.</p>'}${result.truncated?'<p>Показана часть вариантов поставщика.</p>':''}<p class="modal-intro">Это варианты перелёта, не выбранные рейсы. Их включение в цену и итоговая стоимость тура пока не подтверждены.</p>`;
 }
 function renderAnexFlightInventory(){
