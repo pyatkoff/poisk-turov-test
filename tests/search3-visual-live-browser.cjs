@@ -176,6 +176,10 @@ const server=http.createServer((req,res)=>{
   assert.match(await page.locator('.tour-fuel-disclosure').textContent(),/включён в цену/);
   assert.match(await page.locator('#modal-footer').textContent(),/Цена предложения/);
   assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/120000/,'fuel is already part of the supplier total');
+  const contactFields=await page.locator('#prototype-lead-form>.form-row').first().locator('label').evaluateAll(labels=>labels.map(label=>{const box=label.getBoundingClientRect();return{x:box.x,y:box.y,width:box.width,height:box.height};}));
+  assert.equal(contactFields.length,2,'application keeps name and phone fields');
+  if(width===390){assert(Math.abs(contactFields[0].x-contactFields[1].x)<1,'phone contact fields align in one mobile column');assert(contactFields[1].y>=contactFields[0].y+contactFields[0].height,'phone contact fields stack at full width');assert(contactFields.every(field=>field.width>300),'stacked phone contact fields use the available width');}
+  else{assert(contactFields[1].x>=contactFields[0].x+contactFields[0].width,'tablet and desktop keep the compact two-column contact row');}
   const quoteOnlyCalls=transport.calls.length;
   await page.screenshot({path:path.join(evidence,`application-without-flight-${width}.png`)});
   await page.locator('[data-action="close-modal"]').click();
