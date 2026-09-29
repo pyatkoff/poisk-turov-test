@@ -1891,3 +1891,14 @@ h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
  .compact-search .secondary>span{display:inline;max-width:62px;white-space:normal}
  .compact-brand img{width:70px}
 }
+
+/* Keep the selected month below the calendar context when async notices grow. */
+.dates-dialog #modal-body{overflow-anchor:none}
+
+.destination-countries{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.destination-countries button{min-width:0;overflow-wrap:anywhere}
+.destination-countries svg{flex-shrink:0}
+.destination-more-countries{margin-top:10px}
+.destination-more-countries summary{cursor:pointer;color:var(--brand);font-size:14px;min-height:44px;align-content:center}
+.destination-more-countries[open] summary{margin-bottom:8px}
+@media(max-width:760px){.destination-countries{grid-template-columns:repeat(2,minmax(0,1fr))}}
