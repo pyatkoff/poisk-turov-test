@@ -244,17 +244,25 @@
     return data;
   }
   function amenities(h) {
-    const groups=h.hotelInformation?.services?.tags||h.services?.tags,items=new Map();
-    if(!Array.isArray(groups))return [];
-    for(const group of groups){
+    const services=h.hotelInformation?.services||h.services||{},groups=services?.tags,items=new Map(),labels=new Set();
+    if(Array.isArray(groups))for(const group of groups){
       // Saved structured hotel facts only. Promotional/availability badges
       // (group 7) are not amenities and cannot promise a bookable tour.
       if(!group||![1,2,3,5,8].includes(group.id)||!text(group.name).trim()||!Array.isArray(group.items))continue;
       for(const item of group.items){
         if(!item||!Number.isSafeInteger(item.id)||item.id<1||!text(item.name).trim())continue;
-        const key=group.id+':'+item.id;
-        items.set(key,{key,label:text(item.name).trim(),group:text(group.name).trim(),groupId:group.id});
+        const key=group.id+':'+item.id,label=text(item.name).trim();
+        items.set(key,{key,label,group:text(group.name).trim(),groupId:group.id,filterable:true});labels.add(label);
       }
+    }
+    // Older canonical profiles can retain descriptive service maps keyed by a
+    // supplier service id. Keep their exact text visible, but never invent a
+    // Tourvisor group identity or turn it into a search/filter contract.
+    if(services&&typeof services==='object'&&!Array.isArray(services))for(const [serviceId,value] of Object.entries(services)){
+      if(serviceId==='tags'||!(/^[1-9][0-9]*$/).test(serviceId)||typeof value!=='string')continue;
+      const label=value.replace(/\s+/g,' ').trim();if(!label||labels.has(label))continue;
+      const key='local-service:'+serviceId;
+      items.set(key,{key,label,group:'Услуги отеля',groupId:0,filterable:false});labels.add(label);
     }
     return [...items.values()];
   }
