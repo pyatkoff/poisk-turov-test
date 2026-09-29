@@ -95,8 +95,9 @@ async function run(){
     await application('samo-application');assert.match((await page.locator('.lead-message').textContent()).replace(/\s/g,''),/125500/);
     assert.equal(transport.calls.filter(c=>c.url.endsWith('/api-andromeda-quote-preview.php')).length,2);
     await page.locator('[data-action="close-modal"]').click();
-    await choose('tourvisor');await page.waitForFunction(()=>document.querySelector('[data-action="confirm-tour"]')&&!document.querySelector('[data-action="confirm-tour"]').disabled);
-    await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();
+    await choose('tourvisor');assert.equal(transport.calls.filter(c=>c.action==='tour'||c.action==='flights').length,0,'opening the tour only shows its exact conditions');
+    await page.locator('[data-action="start-tour-flights"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();
+    assert.equal(transport.calls.filter(c=>c.action==='tour').length,1);assert.equal(transport.calls.filter(c=>c.action==='flights').length,1);
     await page.locator('[data-action="confirm-tour"]').click();await application('tourvisor-application');
     await page.locator('[data-action="close-modal"]').click();
     await choose('anex');await page.locator('[data-action="refresh-hotel"]').click();
