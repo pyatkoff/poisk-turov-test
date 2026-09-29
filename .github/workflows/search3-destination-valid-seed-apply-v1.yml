@@ -1,0 +1,194 @@
+name: SEARCH destination valid seed apply v1
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/diagnostics/search3_destination_valid_seed_apply_v1.php'
+      - 'tests/search3_destination_valid_seed_apply_v1_test.php'
+      - '.github/workflows/search3-destination-valid-seed-apply-v1.yml'
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: search3-destination-valid-seed-apply-1646-20260924-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: search3-destination-valid-seed-apply-1646-20260924-v1
+  CLAIM_COMMENT_ID: '5821671727'
+  SCRIPT_PATH: scripts/diagnostics/search3_destination_valid_seed_apply_v1.php
+  TEST_PATH: tests/search3_destination_valid_seed_apply_v1_test.php
+  EXPECTED_MANIFEST_SHA256: f0abf9faad49b1f4b7749b9eb97c4e321b7a8a7ca75f95a1dfe3fba36f605915
+  EXPECTED_ROWS: '1225'
+  EVIDENCE_REF: 'github:#3419/comment/5821671727/manifest/f0abf9faad49b1f4b7749b9eb97c4e321b7a8a7ca75f95a1dfe3fba36f605915'
+  REVIEWED_BY: 'owner-claim-5821671727'
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: fixture-only-password
+          MYSQL_DATABASE: anytour_destination_apply_fixture
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pfixture-only-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          coverage: none
+      - name: Verify canonical DDL and guarded fixture apply
+        env:
+          SEARCH3_DESTINATION_APPLY_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=anytour_destination_apply_fixture;charset=utf8mb4
+          SEARCH3_DESTINATION_APPLY_TEST_USER: root
+          SEARCH3_DESTINATION_APPLY_TEST_PASSWORD: fixture-only-password
+        run: |
+          set -euo pipefail
+          php -l "$SCRIPT_PATH"
+          php -l "$TEST_PATH"
+          php "$TEST_PATH"
+
+  guarded-apply:
+    needs: contract
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.user.id == 226193297 &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact owner claim and scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          body="$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM_COMMENT_ID" --jq .body)"
+          author="$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM_COMMENT_ID" --jq .user.id)"
+          test "$author" = 226193297
+          [[ "$body" == *"$OPERATION_ID"* ]]
+          [[ "$body" == *"$EXPECTED_MANIFEST_SHA256"* ]]
+          [[ "$body" == *"1225"* ]]
+          [[ "$body" == *"$SCRIPT_PATH"* ]]
+          actual="$(git diff --name-only "${{ github.event.pull_request.base.sha }}"..HEAD | sort)"
+          expected="$(printf '%s\n' '.github/workflows/search3-destination-valid-seed-apply-v1.yml' 'scripts/diagnostics/search3_destination_valid_seed_apply_v1.php' 'tests/search3_destination_valid_seed_apply_v1_test.php' | sort)"
+          test "$actual" = "$expected"
+          php -l "$SCRIPT_PATH"
+          php -l "$TEST_PATH"
+          printf '{"operation":"%s","sourceSha":"%s","state":"reserved_before_db_write","expectedManifestSha256":"%s","expectedRows":%s,"providerCalls":0,"siteFileWrites":0}\n' "$OPERATION_ID" "$HEAD_SHA" "$EXPECTED_MANIFEST_SHA256" "$EXPECTED_ROWS" > reservation.json
+      - name: Retain pre-write reservation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-destination-apply-reservation-${{ github.run_id }}
+          path: reservation.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          for _ in range(120):
+              req=urllib.request.Request(url,headers=headers)
+              with urllib.request.urlopen(req,timeout=30) as f:
+                  runs=[r for r in json.load(f)['workflow_runs'] if r['name']=='Security guard']
+              if runs:
+                  run=max(runs,key=lambda r:r['id'])
+                  if run['status']=='completed':
+                      if run['conclusion']!='success':
+                          raise SystemExit('security_not_green')
+                      print('SECURITY_OK',run['id'])
+                      break
+              time.sleep(4)
+          else:
+              raise SystemExit('security_timeout')
+          PY
+      - name: Execute one guarded CURRENT schema plus seed apply
+        env:
+          PREVIEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          PREVIEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PREVIEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p terminal
+          key="$RUNNER_TEMP/search3-destination-apply-key"
+          known="$RUNNER_TEMP/search3-destination-apply-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$PREVIEW_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$PREVIEW_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$PREVIEW_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keyscan -T 15 -t ed25519 "$PREVIEW_HOST" > "$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$PREVIEW_USER@$PREVIEW_HOST"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" SEARCH3_DESTINATION_APPLY=1 SEARCH3_EXPECTED_MANIFEST_SHA256='$EXPECTED_MANIFEST_SHA256' SEARCH3_EXPECTED_ROWS='$EXPECTED_ROWS' SEARCH3_EVIDENCE_REF='$EVIDENCE_REF' SEARCH3_REVIEWED_BY='$REVIEWED_BY' php" < "$SCRIPT_PATH" > terminal/result.json
+          rc=$?
+          set -e
+          test -s terminal/result.json
+          python3 - <<'PY'
+          import json, pathlib
+          data=json.loads(pathlib.Path('terminal/result.json').read_text())
+          print(json.dumps(data,ensure_ascii=False,indent=2,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+          python3 - <<'PY'
+          import json, pathlib
+          data=json.loads(pathlib.Path('terminal/result.json').read_text())
+          assert data['operation']=='search3-destination-valid-seed-apply-1646-20260924-v1'
+          assert data['state']=='committed_verified'
+          assert data['manifestSha256']=='f0abf9faad49b1f4b7749b9eb97c4e321b7a8a7ca75f95a1dfe3fba36f605915'
+          assert data['schemaTablesCreated']==2
+          assert data['destinationWrites']==1225
+          assert data['mappingWrites']==1225
+          assert data['readbackVerified'] is True
+          rb=data['readback']
+          assert rb['destinationRows']==1225
+          assert rb['acceptedTourvisorBridges']==1225
+          assert rb['kindCounts']=={'country':74,'region':620,'subregion':531}
+          assert rb['turkey']['regions']==20 and rb['turkey']['subregions']==65
+          assert data['providerCalls']==0 and data['siteFileWrites']==0
+          PY
+      - name: Retain terminal writer result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-destination-valid-seed-apply-${{ github.run_id }}
+          path: terminal/result.json
+          if-no-files-found: warn
+          retention-days: 90
