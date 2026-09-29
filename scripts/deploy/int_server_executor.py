@@ -44,6 +44,7 @@ FIXED = [
     'scripts/diagnostics/hotel_match_live234_tv_secondary_refresh_v1.py',
     'scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v1.php',
     'scripts/diagnostics/hotel_match_current_coverage_wrapper_v1.php',
+    'scripts/diagnostics/hotel_match_samo_live30_persistence_reconcile_v1.php',
     'scripts/diagnostics/hotel_match_live30_common4_gap_matrix_v1.php',
     'scripts/diagnostics/hotel_match_live30_common4_plan_v1.php',
     'scripts/diagnostics/hotel_match_live30_common4_acquire_v1.py',
@@ -524,6 +525,10 @@ def parse_command(body: str) -> dict:
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
     if mode == 'match-coverage-v2-readback':
+        need(len(parts) == 3, 'command_shape')
+        need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
+        return {'source_sha': source, 'mode': mode, 'operation_id': operation}
+    if mode == 'match-samo-live30-persistence-readback':
         need(len(parts) == 3, 'command_shape')
         need(operation.startswith('int-andromeda-'), 'match_operation_namespace')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
@@ -1171,6 +1176,43 @@ echo json_encode(['readbackError'=>$code,'errorClass'=>get_class($e),
             continue
         parsed['status']='complete';parsed.update(meta);rows.append(parsed)
     return rows
+
+def match_samo_live30_persistence(stage):
+    script=stage/'scripts/diagnostics/hotel_match_samo_live30_persistence_reconcile_v1.php'
+    if not safe_file(script,1024*1024): fail('samo_live30_persistence_source_missing')
+    check=subprocess.run(['php',str(script),'--self-test'],cwd=stage,capture_output=True,text=True,timeout=30)
+    if check.returncode!=0 or check.stderr.strip() or 'HMSLPR_SELFTEST_OK' not in check.stdout:
+        fail('samo_live30_persistence_selftest')
+    env=dict(os.environ);env['ANYTOUR_ROOT']=str(project)
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0',str(script),'--execute'],cwd=stage,env=env,capture_output=True,text=True,timeout=120)
+    if run.returncode!=0 or run.stderr.strip(): fail('samo_live30_persistence_execute')
+    try: data=json.loads(run.stdout.strip())
+    except Exception: fail('samo_live30_persistence_json')
+    if (not isinstance(data,dict) or data.get('schema_version')!=1
+            or data.get('source')!='hotel-match-samo-live30-persistence-reconcile-v1'
+            or data.get('state')!='completed_read_only_samo_live30_persistence_reconcile'
+            or data.get('historical_completeness_proven') is not False
+            or data.get('unknown_history_gap') is not True
+            or data.get('provider_http_calls')!=0 or data.get('tourvisor_calls')!=0
+            or data.get('samo_calls')!=0 or data.get('anex_calls')!=0
+            or data.get('database_writes')!=0 or data.get('mapping_writes')!=0
+            or data.get('safe_to_write_now') is not False):
+        fail('samo_live30_persistence_contract')
+    rec=data.get('reconciliation'); storage=data.get('storage')
+    if not isinstance(rec,dict) or not isinstance(storage,dict): fail('samo_live30_persistence_shape')
+    mapped=rec.get('mapped_local_hotels'); journal=rec.get('observation_journal'); bounds=rec.get('unique_hotel_accounting_range'); hashes=rec.get('hashes')
+    if not all(isinstance(x,dict) for x in (mapped,journal,bounds,hashes)): fail('samo_live30_persistence_shape')
+    for key in ('accounted_30d','price_history','offer_store','later_resolved_observations'):
+        if not isinstance(mapped.get(key),int) or mapped[key]<0: fail('samo_live30_persistence_counts')
+    for key in ('identity_keys','mapped_identity_keys_now','unresolved_identity_keys','source_collision_keys','catalog_identity_keys','catalog_mapped_local_hotels_now','catalog_unresolved_identity_keys'):
+        if not isinstance(journal.get(key),int) or journal[key]<0: fail('samo_live30_persistence_counts')
+    if (not isinstance(bounds.get('lower_bound_mapped_local_hotels'),int)
+            or not isinstance(bounds.get('upper_bound_if_every_unresolved_identity_is_distinct_new_hotel'),int)
+            or bounds['upper_bound_if_every_unresolved_identity_is_distinct_new_hotel']<bounds['lower_bound_mapped_local_hotels']):
+        fail('samo_live30_persistence_bounds')
+    for key in ('observed_identity_keys_sha256','catalog_unresolved_sha256'):
+        if not isinstance(hashes.get(key),str) or not re.fullmatch(r'[a-f0-9]{64}',hashes[key]): fail('samo_live30_persistence_hash')
+    return data
 
 def operator_preflight(stage):
     api=stage/'v2/api-andromeda-search3-preview.php'
@@ -2716,6 +2758,14 @@ try:
         result['production_after']=fingerprints()
         if result['production_after']!=before: fail('production_drift')
         result['status']='complete'
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['production_unchanged']=True
+    if mode=='match-samo-live30-persistence-readback':
+        result['match_samo_live30_persistence']=match_samo_live30_persistence(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='complete_read_only'
         result['supplier_calls']=0
         result['database_writes']=0
         result['production_unchanged']=True
