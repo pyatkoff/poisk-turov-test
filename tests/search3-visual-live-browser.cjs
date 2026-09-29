@@ -56,7 +56,7 @@ const server=http.createServer((req,res)=>{
    const req=route.request(),u=new URL(req.url());
    if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
-   try{const value=await transport.json(req.url(),{body:req.postData()});if(value.data?.state==='flight_selection_required')value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(JSON.parse(req.postData()||'{}').action==='quote_select_flights')await samoPairGate;if(u.pathname.includes('anex')&&value.data?.status==='quote_verified')await new Promise(resolve=>{releaseAnexQuote=resolve;markAnexQuotePending();});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
+   try{const value=await transport.json(req.url(),{body:req.postData()});if(value.kind==='country'&&value.items)value.items.push(...['Египет','ОАЭ','Таиланд','Вьетнам','Мальдивы','Шри-Ланка','Китай','Россия','Австрия','Саудовская Аравия'].map((name,i)=>({id:100+i,kind:'country',parentId:null,name,slug:'test-country-'+i,revision:1,tourvisorIds:[String(100+i)]})));if(value.data?.state==='flight_selection_required')value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(JSON.parse(req.postData()||'{}').action==='quote_select_flights')await samoPairGate;if(u.pathname.includes('anex')&&value.data?.status==='quote_verified')await new Promise(resolve=>{releaseAnexQuote=resolve;markAnexQuotePending();});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
   });
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}));
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
@@ -68,8 +68,26 @@ const server=http.createServer((req,res)=>{
    await page.locator('.search-submit').click();assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0,'invalid budget blocks the first desktop search');
    assert.equal(await page.locator('#max-price').evaluate(el=>document.activeElement===el),true);await page.locator('#max-price').fill('');initialInvalidBudgetBlocked=true;
   }
+  await page.locator('#search-form [data-action="destination"]').click();
+  assert.equal(await page.locator('[data-action="destination-country"]:visible').count(),6,'initial country list leaves room for resorts');
+  await page.screenshot({path:path.join(evidence,`destination-compact-${width}.png`)});
+  await page.locator('.destination-more-countries summary').click();
+  assert.equal(await page.locator('[data-action="destination-country"]:visible').count(),11);
+  await page.locator('[data-action="destination-country"][data-value="107"]').click();
+  assert(await page.locator('[data-action="destination-country"][data-value="107"]').isVisible(),'selected non-leading country stays visible');
+  assert.equal(await page.locator('.destination-more-countries[open]').count(),0);
+  await page.locator('#destination-query').fill('сауд');
+  assert.equal(await page.locator('[data-action="destination-country"]:visible').count(),1,'search includes countries outside the compact list');
+  assert.match(await page.locator('[data-action="destination-country"]:visible').textContent(),/Саудовская Аравия/);
+  await page.locator('[data-action="close-modal"]').click();
+  assert.match(await page.locator('#country').textContent(),/Турция/,'cancel preserves the original destination');
   await page.locator('#search-form [data-action="dates"]').click();
   await page.waitForFunction(()=>document.querySelector('#date-calendar').textContent.includes('97,5'));
+  if(width<=760){
+   const heading=await page.evaluate(month=>{const tools=document.querySelector('.date-choice-tools').getBoundingClientRect(),h=document.querySelector(`[data-month="${month}"] h3`).getBoundingClientRect();return{top:h.top,toolsBottom:tools.bottom};},trip.from.slice(0,7)+'-01');
+   assert(heading.top>=heading.toolsBottom,'selected month remains below the async calendar notice');
+  }
+
   await page.locator('[data-action="apply-dates"]').click();
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
   let releaseSamoSearch;transport.state.samoSearchGate=new Promise(resolve=>releaseSamoSearch=resolve);
