@@ -125,8 +125,8 @@ function restoreURL(){
 }
 let searchEditSession=null;
 function updateURL(){if(searchEditSession)return;const p=new URLSearchParams();p.set('scenario',data.scenario);for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);if(state.selectedDate)p.set('date',state.selectedDate);if(state.hasSearched)p.set('searched','1');if(state.onlyFavorites)p.set('favorites','1');const f=state.filters;for(const k of ['stars','meals','resorts','operators','flight','amenities'])if(f[k].length)p.set(k,f[k].join('|'));for(const k of ['beach','rating','family','spa'])if(f[k])p.set(k,'1');if(f.hotelId)p.set('hotel',f.hotelId);if(f.q)p.set('q',f.q);if(f.min)p.set('min',f.min);if(f.max!==null)p.set('max',f.max);if(state.sort!=='recommended')p.set('sort',state.sort);const query='?'+p.toString();if(location.search!==query||location.hash)history.replaceState(history.state,'',query);}
-function renderSummary(){const s=state.search,f=state.filters;$('#applied-search').innerHTML=`<div class="applied-main"><div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><small>Маршрут</small><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong></div></div><dl class="applied-trip"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${guestsText()}</dd></div></dl><button class="secondary" data-action="edit-search" aria-controls="search-form" aria-expanded="false">${icon('sliders')} Изменить</button></div><div class="applied-extras"><button type="button" data-action="category-filters" aria-label="Категория отеля">${f.stars.length?f.stars.join(' / ')+' ★':'Любая категория'}</button><button type="button" data-action="meals">${f.meals.length?f.meals.map(esc).join(', '):'Любое питание'}</button><button type="button" data-action="budget" aria-label="Бюджет за всех: ${budgetText()}">${f.min||f.max!==null?budgetText():'Без лимита'}</button><button type="button" data-action="filters">Все фильтры${filterCount()?' · '+filterCount():''}</button></div>`;}
-function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intro').hidden=true;$('#applied-search').hidden=false;$('#search').classList.add('search-collapsed');document.body.classList.remove('search-editing');renderCompactRefinements();}
+function renderSummary(){const s=state.search,f=state.filters;$('#applied-search').innerHTML=`<div class="applied-main"><div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><small>Маршрут</small><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong></div></div><dl class="applied-trip"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${guestsText()}</dd></div></dl><button class="secondary" data-action="edit-search" aria-controls="search-form" aria-expanded="false">${icon('sliders')} Изменить поиск</button></div><div class="applied-extras"><button type="button" data-action="filters">Все фильтры${filterCount()?' · '+filterCount():''}</button></div>`;}
+function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intro').hidden=true;$('#applied-search').hidden=false;$('#search').classList.add('search-collapsed');document.body.classList.remove('search-editing');}
 function editSearch(){
  if(searchResponse.pending||Object.values(searchResponse.providers||{}).includes('loading'))stopSearch();if(innerWidth<=1100)closeFilters();
  $('#results').classList.remove('filters-requested');
@@ -137,7 +137,7 @@ function editSearch(){
  $('#search-return').hidden=!state.hasSearched;$('#search-edit-note').hidden=!state.hasSearched;
  $('#page-title').textContent=state.hasSearched?'Изменить поиск':'Куда отправимся?';
  $('#search-form').hidden=false;$('.intro').hidden=false;$('#applied-search').hidden=true;$('#search').classList.remove('search-collapsed');document.body.classList.add('search-editing');
- updateSearchUI();renderCompactRefinements();$('#search').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#departure-button').focus({preventScroll:true});
+ updateSearchUI();$('#search').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#departure-button').focus({preventScroll:true});
 }
 function cancelSearchEdit(){
  const saved=searchEditSession,originChanged=draft.origin!==state.search.origin;searchEditSession=null;
@@ -594,7 +594,7 @@ function renderCalendarStrip(){
  const calendarRows=[...hotels,...resultCalendar.hotels],prices=days.map(day=>calendarMinimum(day,{calendarHotels:calendarRows},resultCalendar.observations)),known=prices.filter(p=>p!==null),min=Math.min(...known),max=Math.max(...known);
  const source=resultCalendar.phase==='loading'?'Открываем сохранённые цены…':resultCalendar.phase==='error'?'База цен временно недоступна · показаны найденные предложения':resultCalendar.phase==='partial'?'Часть базы цен временно недоступна · показаны доступные цены и найденные предложения':calendarSourceLabel();
  const scope=calendarScope({search:s,filters:state.filters});
- $('#calendar-caption').textContent=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''} · ${source}`;
+ $('#calendar-caption').textContent=source;$('#calendar-caption').title=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''}`;
  $('#price-strip').setAttribute('aria-busy',String(resultCalendar.phase==='loading'));
  $('#price-strip').innerHTML=days.map((day,i)=>`<button class="date-price ${prices[i]!==null&&prices[i]===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${prices[i]!==null?', от '+money(prices[i]):', цена пока неизвестна'}${state.selectedDate===day?', выбрано; нажмите ещё раз, чтобы вернуть все даты':''}"><span class="date">${dateText(day)}</span><strong>${prices[i]===null?'—':money(prices[i])}</strong><span class="calendar-bar" style="--bar-height:${prices[i]===null?5:12+Math.round((prices[i]-min)/Math.max(1,max-min)*22)}px"></span></button>`).join('');
  $('#clear-date').hidden=!state.selectedDate;
@@ -727,7 +727,7 @@ function renderResults(options={}){
  $('#results').classList.toggle('results-pristine',pristine);document.body.classList.toggle('results-pristine-active',pristine);
  $('#compact-route').textContent=`${esc(state.search.origin)} → ${destinationLabel(appliedDestination())}`;
  $('#compact-details').textContent=`${state.selectedDate?dateText(state.selectedDate):rangeText(state.search.from,state.search.to)} · ${durationText()} · ${guestsText()}`;
- renderCompactRefinements();
+
  $('#route-label').textContent=`${esc(state.search.origin)} → ${esc(countryNames[state.search.country]||'')} · ${departureScopeText()}`;
  $('#results-title').textContent=pristine?'Ваш следующий отдых':state.onlyFavorites?'Ваши избранные отели':`Отели и туры · ${countryNames[state.search.country]||'Выберите направление'}`;
  const failed=!pristine&&!items.length&&responseFor(state.search).phase==='error';
@@ -745,12 +745,6 @@ function renderResults(options={}){
  }
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
  renderCalendarStrip();renderActive();updateNav();renderSummary();updateURL();if(!options.keepFilters)renderFilters();else{updateFacetCounts();syncFilterResetState();}renderSearchStatus(items,total);if(filterDraft)updateDrawerPreview();if(modalType==='budget')updateBudgetPreview();if(modalType==='meals'){updateMealCounts();updateMealPicker();}
-}
-function renderCompactRefinements(){
- $('.compact-refinements').hidden=!state.hasSearched||!$('#search-form').hidden;
- const f=state.filters,meal=f.meals.join(', '),category=f.stars.join(' / '),budget=f.min>0||f.max!==null;
- const choices=[['category',category?category+' ★':'Звёзды','Категория отеля: '+(category?category+' звёзд':'любая'),f.stars.length>0],['meal',f.meals.length>1?'Питание · '+f.meals.length:meal||'Питание','Питание: '+(meal||'любое'),f.meals.length>0],['budget',budget?budgetText():'Бюджет','Бюджет на всех туристов: '+budgetText(),budget]];
- for(const [id,label,full,active] of choices){const button=$('#compact-'+id);button.firstElementChild.textContent=label;button.setAttribute('aria-label',full);button.title=full;button.classList.toggle('active',active);}
 }
 function syncFilters(){renderResults();updateSearchUI();}
 function applyQuickFilters(){
@@ -1183,17 +1177,21 @@ function flightAllowanceText(o,field){
  const v=flightPairFor(o);if(!v)return typeof o.savedFlightAllowance?.[field]==='string'?o.savedFlightAllowance[field]:'Уточняется после выбора и проверки рейсов';
  return [['forward','Туда'],['backward','Обратно']].map(([key,label])=>label+': '+window.AnyTourFlightPickerV18.directionAllowance(v[key],field)).join(' · ');
 }
-function priceExplanationHTML(o){
- const demo=o.provider==='fixture';
- return `<details class="tour-price-explanation"><summary>О цене и багаже</summary><p>${demo?'Это вымышленное предложение для проверки интерфейса.':o.provider==='recorded'?'Цена и рейсы из загруженной записи. Наличие и подлинность источника не проверяются; заявка только учебная.':o.cached?'Сохранённая цена из предложения. Перед оформлением нужно проверить её актуальность и наличие тура.':'Цена предложения требует подтверждения перед оформлением.'}</p><dl><div><dt>Перелёт</dt><dd>${flightPairFor(o)?'Выбранная пара рейсов туда и обратно':'Конкретные рейсы пока не подтверждены'}</dd></div><div><dt>Багаж</dt><dd>${esc(flightAllowanceText(o,'baggage'))}</dd></div><div><dt>Ручная кладь</dt><dd>${esc(flightAllowanceText(o,'carryOn'))}</dd></div></dl></details>`;
-}
 function fuelAmount(o){const pair=flightPairFor(o),raw=pair||o.savedFuelAmount===undefined?data.fuel(o.tour,pair):o.savedFuelAmount;if(!['number','string'].includes(typeof raw)||String(raw).trim()==='')return null;const n=Number(raw);return Number.isFinite(n)&&n>=0?n:null;}
 function fuelText(o){const n=fuelAmount(o);return n===null?'Сбор уточняется':n===0?'Без доплаты по сбору':money(n)+' · включение в цену уточняется';}
+function selectedPriceStatus(o){
+ if(o.provider==='fixture')return 'Демонстрационная цена';
+ if(o.provider==='recorded')return 'Цена из записи';
+ if(o.quoteError)return 'Цена из выдачи · не подтверждена';
+ if(!o.tour)return 'Цена из выдачи · требует проверки';
+ if(!flightPairFor(o))return 'Цена после проверки · перелёт уточняется';
+ const fuel=fuelAmount(o);
+ return fuel===0?'Цена с выбранными рейсами · без топливной доплаты':fuel===null?'Цена с выбранными рейсами · сбор уточняется':'Цена с выбранными рейсами · включение сбора уточняется';
+}
 function fuelDisclosureHTML(o){
  const n=fuelAmount(o);
  return `<div class="tour-fuel-disclosure"><span>Топливный сбор</span><strong>${esc(fuelText(o))}</strong><p>${n===null?'Размер сбора и его включение в цену нужно проверить.':n===0?'По данным предложения. Другие возможные доплаты требуют проверки.':'Не указано, входит ли сбор в цену предложения или оплачивается дополнительно.'}</p></div>`;
 }
-function tourConditionsHTML(){return `<details class="tour-section tour-conditions-review" ${innerWidth>760?'open':''}><summary><span>${icon('shield')} Дополнительные условия</span><small>Трансфер, страховка и отмена · нужно уточнить</small></summary><dl>${[['Трансфер','Не указаны маршрут, тип и включение в цену.'],['Страховка','Не указаны покрытие и включение в цену.'],['Отмена и изменения','Сроки, штрафы и возможность возврата не указаны.']].map(([label,note])=>`<div><dt>${label}</dt><dd>${note}</dd></div>`).join('')}</dl><p>Эти условия и окончательную сумму нужно подтвердить перед оформлением.</p></details>`;}
 function withFlightPair(o,id){const variant=o.variants?.[Number(id)],price=data.variantPrice(o.tour,variant);return {...o,flightChoiceId:String(id),total:price,pricePending:!price};}
 function legHTML(segments,label){
  if(!segments?.length)return `<div class="flight-leg"><strong>${label}</strong><p class="tour-missing">Расписание пока не предоставлено.</p></div>`;
@@ -1207,11 +1205,12 @@ function flightSummaryHTML(o){
 }
 async function openOffer(key,restored=null,chooseFlight=false){
  const initial=restored||offerFromKey(key);if(!initial)return;
- andromedaApplicationDraft=null;const run=++selectionGeneration;selectedOffer={...initial};if(restoreProviderView(initial))return;renderRealOffer();
+ andromedaApplicationDraft=null;const run=++selectionGeneration;selectedOffer={...initial};if(restoreProviderView(initial)){if(chooseFlight)openFlightPicker();return;}renderRealOffer();
  if(needsRefresh(initial)){
   if(initial.provider==='andromeda'&&data.hasAndromedaQuoteAttempt?.(initial))await refreshHotel(initial.hotelId);
   return;
  }
+ if(!chooseFlight)return;
  selectedOffer.loading=true;renderRealOffer();
  try{const tour=await data.quote(initial);if(run!==selectionGeneration||!$('#modal').open||modalType!=='offer'||selectedOffer?.key!==key)return;selectedOffer={...initial,tour,quoteListingTotal:initial.total,total:data.amount(tour.price)||initial.total,room:data.text(tour.roomType)||initial.room,meal:data.meal(tour.meal)||initial.meal,loading:false,flightsLoading:true};renderRealOffer();await loadRealFlights(run);if(chooseFlight&&run===selectionGeneration&&selectedOffer?.variants?.length)openFlightPicker();}
  catch(error){if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===key){selectedOffer={...initial,quoteError:error.message,quoteErrorCode:String(error?.code||''),loading:false};renderRealOffer();}}
@@ -1222,9 +1221,9 @@ async function loadRealFlights(run=selectionGeneration){
  catch(error){if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===o.key){selectedOffer={...selectedOffer,flightsLoading:false,flightsError:'Не удалось загрузить рейсы. Попробуйте ещё раз.'};renderRealOffer();}}
 }
 function quotePriceChangeHTML(o){
- const before=Number(o?.quoteListingTotal),after=data.amount(o?.tour?.price);
+ const before=Number(o?.quoteListingTotal),after=o?.pricePending?null:data.amount(o?.total);
  if(o?.loading||o?.quoteError||!Number.isFinite(before)||before<=0||!after||before===after)return '';
- return `<p class="quote-price-change" role="status"><strong>Цена изменилась после проверки</strong><span>Было ${money(before)} → стало ${money(after)} за всех туристов.</span></p>`;
+ return `<p class="quote-price-change" role="status"><strong>Цена изменилась после проверки и выбора рейсов</strong><span>Было ${money(before)} → стало ${money(after)} за всех туристов.</span></p>`;
 }
 function chosenStayHTML(o,editable=false){
  const placement=data.text(o.tour?.placement)||o.placement;
@@ -1238,17 +1237,17 @@ function renderRealOffer(){
  const terminalQuoteError=o.quoteErrorTerminal===true||['offer_unavailable','offer_expired'].includes(o.quoteErrorCode);
  const selectionHint=o.loading?'Проверяем цену и условия тура…':o.flightsLoading?'Загружаем варианты перелёта…':terminalQuoteError?'Выберите другой тур в результатах.':o.quoteError?'Повторите проверку предложения, чтобы продолжить.':o.pricePending?'Выберите перелёт с подтверждённой ценой.':o.flightsError?'Повторите загрузку рейсов в разделе перелёта.':!o.variants?.length||!o.tour?'Для выбора тура нужны актуальная цена и доступные рейсы.':'';
  showModal('offer','Ваш тур в деталях',o.loading?'ПРОВЕРЯЕМ ПРЕДЛОЖЕНИЕ':'ПРОВЕРЬТЕ УСЛОВИЯ',`
- ${unavailable?'':selectionStepsHTML(o.loading||o.quoteError?0:1)}${quotePriceChangeHTML(o)}<div class="tour-hero">${h.photos?.length?`<img src="${esc(photoUrl(h))}" alt="Фото ${esc(h.name)}">`:`<div class="tour-photo-missing">${icon('image')}<span>Нет фото</span></div>`}<div>${hotelStarsHTML(h)}<h3>${esc(h.name)}</h3><p>${esc(h.resort)}, ${esc(countryNames[h.country]||'')}</p></div></div>
+ ${unavailable?'':selectionStepsHTML(!o.tour||o.loading||o.quoteError?0:1)}${quotePriceChangeHTML(o)}<div class="tour-hero">${h.photos?.length?`<img src="${esc(photoUrl(h))}" alt="Фото ${esc(h.name)}">`:`<div class="tour-photo-missing">${icon('image')}<span>Нет фото</span></div>`}<div>${hotelStarsHTML(h)}<h3>${esc(h.name)}</h3><p>${esc(h.resort)}, ${esc(countryNames[h.country]||'')}</p></div></div>
 
  ${unavailable&&!terminalQuoteError?(data.live?`<p class="saved-tour-notice">${esc(refreshOfferNotice(o))}</p>`:window.AnyTourPrototypeLead.unavailableMarkup(o)):''}
  ${o.quoteError?`<p class="error-text" role="alert">${esc(o.quoteError)}</p>`:''}
  ${o.pricePending?'<p class="error-text" role="status">Цена выбранного перелёта пока не подтверждена. Выберите другой вариант рейсов.</p>':''}
 
- <div class="tour-layout"><div class="tour-main-details">${chosenStayHTML(o,true)}${flightSummaryHTML(o)}${tourConditionsHTML()}</div>
- <aside class="tour-price-details" aria-label="Состав и стоимость тура"><div class="price-breakdown"><h3>Цена и условия</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${o.quoteError?'Цена из выдачи':flightPairFor(o)?'С выбранным перелётом':'Цена предложения'}</span><strong id="detail-total">${o.pricePending?'Уточняется':money(o.total)}</strong></div>${!unavailable?`<p class="price-assurance">${icon('info')} ${o.quoteError?'Эта сумма не подтверждена после проверки.':o.provider==='fixture'?priceNote(o):o.loading?'Проверяем актуальность…':unavailable?priceNote(o):'Условия цены и наличие подтверждаются перед оформлением'}</p>`:''}${!unavailable&&selectionHint?`<p class="tour-selection-hint" role="status">${selectionHint}</p>`:''}${fuelDisclosureHTML(o)}${priceExplanationHTML(o)}</div></aside></div>`,true);
+ <div class="tour-layout"><div class="tour-main-details">${chosenStayHTML(o,true)}${o.tour||o.loading||o.quoteError?flightSummaryHTML(o):''}</div>
+ <aside class="tour-price-details" aria-label="Состав и стоимость тура"><div class="price-breakdown"><h3>Цена и условия</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${o.quoteError?'Цена из выдачи':flightPairFor(o)?'С выбранным перелётом':'Цена предложения'}</span><strong id="detail-total">${o.pricePending?'Уточняется':money(o.total)}</strong></div>${!unavailable?`<p class="price-assurance">${icon('info')} ${o.quoteError?'Эта сумма не подтверждена после проверки.':o.provider==='fixture'?priceNote(o):o.loading?'Проверяем актуальность…':unavailable?priceNote(o):'Условия цены и наличие подтверждаются перед оформлением'}</p>`:''}${!unavailable&&selectionHint?`<p class="tour-selection-hint" role="status">${selectionHint}</p>`:''}${fuelDisclosureHTML(o)}</div></aside></div>`,true);
  $('#modal').classList.add('tour-dialog');
- const footerAction=terminalQuoteError?(o.quoteErrorTerminal?`<button class="primary" data-action="all-offers" data-id="${h.id}">Выбрать другой тур</button>`:'<button class="primary" data-action="close-modal">К результатам</button>'):unavailable?(data.live?`<button class="primary" data-action="refresh-hotel" data-id="${h.id}" ${o.loading?'disabled':''}>${o.loading?'Проверяем предложение…':o.quoteError?'Повторить проверку':o.raw?.anexKind==='group_minimum'?'Показать конкретные туры':refreshOfferActionLabel(o)}</button>`:'<button class="primary" data-action="close-modal">К результатам</button>'):o.quoteError?`<button class="primary" data-action="offer" data-key="${esc(o.key)}">Повторить проверку</button>`:o.loading?'<button class="primary" disabled>Проверяем предложение…</button>':o.flightsLoading?'<button class="primary" disabled>Загружаем рейсы…</button>':o.flightsError?'<button class="primary" data-action="retry-flights">Повторить загрузку рейсов</button>':o.pricePending&&o.variants?.length?'<button class="primary" data-action="choose-flight">Выбрать другой рейс</button>':!o.variants?.length&&o.tour?'<button class="primary" data-action="retry-flights">Загрузить рейсы снова</button>':`<button class="primary" data-action="confirm-tour" ${!o.tour?'disabled':''}>К заявке ${icon('arrow')}</button>`;
- const footerStatus=o.quoteError?'Цена из выдачи · не подтверждена':o.provider==='fixture'?'Демонстрационная цена':'Цена требует подтверждения';
+ const footerAction=terminalQuoteError?(o.quoteErrorTerminal?`<button class="primary" data-action="all-offers" data-id="${h.id}">Выбрать другой тур</button>`:'<button class="primary" data-action="close-modal">К результатам</button>'):unavailable?(data.live?`<button class="primary" data-action="refresh-hotel" data-id="${h.id}" ${o.loading?'disabled':''}>${o.loading?'Проверяем предложение…':o.quoteError?'Повторить проверку':o.raw?.anexKind==='group_minimum'?'Показать конкретные туры':refreshOfferActionLabel(o)}</button>`:'<button class="primary" data-action="close-modal">К результатам</button>'):o.quoteError?`<button class="primary" data-action="start-tour-flights" data-key="${esc(o.key)}">Повторить проверку</button>`:!o.tour&&!o.loading?`<button class="primary" data-action="start-tour-flights" data-key="${esc(o.key)}">Перейти к рейсам ${icon('arrow')}</button>`:o.loading?'<button class="primary" disabled>Проверяем предложение…</button>':o.flightsLoading?'<button class="primary" disabled>Загружаем рейсы…</button>':o.flightsError?'<button class="primary" data-action="retry-flights">Повторить загрузку рейсов</button>':o.pricePending&&o.variants?.length?'<button class="primary" data-action="choose-flight">Выбрать другой рейс</button>':!o.variants?.length&&o.tour?'<button class="primary" data-action="retry-flights">Загрузить рейсы снова</button>':`<button class="primary" data-action="confirm-tour" ${!o.tour?'disabled':''}>К заявке ${icon('arrow')}</button>`;
+ const footerStatus=selectedPriceStatus(o);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total"><span>${o.quoteError?'Цена из выдачи за всех':'За всех туристов'}</span><strong>${o.pricePending?'Цена уточняется':money(o.total)}</strong><small class="footer-price-status">${footerStatus}</small></div>${footerAction}`;
 }
 function openFlightPicker(){
@@ -1258,7 +1257,7 @@ function openFlightPicker(){
  $('#modal').classList.add('flight-picker-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="flight-selection-total" aria-live="polite"><span>Весь тур за всех</span><strong id="flight-total"></strong></div><button class="primary" data-action="apply-flight">Выбрать рейсы</button><div class="flight-selection-caption" aria-live="polite"><span id="flight-selected-summary"></span><span id="flight-price-change"></span></div>';updateFlightPreview();
  $('#modal-title').tabIndex=-1;$('#modal-title').focus({preventScroll:true});$('#modal-body').scrollTop=0;
 }
-function updateFlightPreview(){if(!flightDraft||modalType!=='flights')return;const o=withFlightPair(flightDraft.base,flightDraft.id),delta=o.total-flightDraft.base.total;$('#flight-price-change').hidden=!o.pricePending&&delta===0;$('#flight-selected-summary').textContent=window.AnyTourFlightPickerV18.selectionSummary(flightDraft.base,flightDraft.id);$('#flight-total').textContent=o.pricePending?'Цена уточняется':money(o.total);$('#flight-price-change').textContent=o.pricePending?'Цена этого перелёта пока не подтверждена. Выберите другой вариант.':(delta===0?'Цена тура не изменится':`${delta>0?'Дороже':'Дешевле'} на ${money(Math.abs(delta))} · было ${money(flightDraft.base.total)}`);$('[data-action="apply-flight"]').disabled=o.pricePending;}
+function updateFlightPreview(){if(!flightDraft||modalType!=='flights')return;const o=withFlightPair(flightDraft.base,flightDraft.id),before=flightDraft.base.quoteListingTotal||flightDraft.base.total,delta=o.total-before;$('#flight-price-change').hidden=!o.pricePending&&delta===0;$('#flight-selected-summary').textContent=window.AnyTourFlightPickerV18.selectionSummary(flightDraft.base,flightDraft.id);$('#flight-total').textContent=o.pricePending?'Цена уточняется':money(o.total);$('#flight-price-change').textContent=o.pricePending?'Цена этого перелёта пока не подтверждена. Выберите другой вариант.':(delta===0?'Цена тура не изменится':`${delta>0?'Дороже':'Дешевле'} на ${money(Math.abs(delta))} · было ${money(before)}`);$('[data-action="apply-flight"]').disabled=o.pricePending;}
 
 function applyFlightPair(){if(!flightDraft)return;const applied=withFlightPair(flightDraft.base,flightDraft.id);if(applied.pricePending){updateFlightPreview();return;}flightDraft=null;modalBack();selectedOffer=applied;renderRealOffer();toast('Перелёт выбран');}
 function flightConnectionText(segments){return (segments||[]).slice(0,-1).map((segment,i)=>[...new Set([data.text(segment.arrival?.port),data.text(segments[i+1]?.departure?.port)].filter(Boolean))].join(' / ')||'Аэропорт уточняется').join('; ');}
@@ -1565,7 +1564,7 @@ function openLeadPreview(){
  const o=selectedOffer,h=selectedTourHotel(o);if(!o||!h)return;if(needsRefresh(o)||!window.AnyTourPrototypeLead.canApply(o)){renderRealOffer();return;}
  showModal('selected-tour','Заявка на тур',data.live?'ПРОВЕРКА БЕЗ ОТПРАВКИ':'УЧЕБНЫЙ СЦЕНАРИЙ',`${selectionStepsHTML(2)}${quotePriceChangeHTML(o)}<section class="application-choice" aria-label="Выбранный тур"><h3>${esc(h.name)}</h3>${chosenStayHTML(o)}</section>${data.live?fuelDisclosureHTML(o):''}${window.AnyTourPrototypeLead.markup(o)}${finalFlightDetailsHTML(o)}`);
  $('#modal').classList.add('application-dialog');
- $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total summary-price"><span>За всех туристов</span><strong>${money(o.total)}</strong><small>${data.live?'Цена предложения · сборы уточняются':o.provider==='recorded'?'Цена из записи':'Демонстрационная цена'}</small></div>${window.AnyTourPrototypeLead.action(o)}`;
+ $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total summary-price"><span>За всех туристов</span><strong>${money(o.total)}</strong><small>${selectedPriceStatus(o)}</small></div>${window.AnyTourPrototypeLead.action(o)}`;
  window.AnyTourPrototypeLead.bind(o);
 }
 
@@ -1789,10 +1788,15 @@ function renderSearchStatus(items,total){
  more.hidden=!state.hasSearched||r.pending||!r.canContinue;
  more.innerHTML=more.hidden?'':`<div class="search-status-top"><div><h3>Продолжить подбор</h3><p>${r.resultLimitReached?'Получена большая выборка. Уточните условия, чтобы увидеть другие предложения.':'Запросите ещё варианты. Найденные туры и выбранные фильтры сохранятся.'}</p></div></div><div class="search-status-actions"><button class="primary" data-action="continue-search">${r.retryRead?'Проверить результат':'Продолжить поиск'}</button></div>`;
  node.hidden=!state.hasSearched||r.phase==='complete'&&!noCurrent&&!providerPending&&!partialError;
+ node.classList.toggle('search-status-compact',!r.pending&&!providerPending&&items.length>0&&!noCurrent);
  if(node.hidden)return;
  const failed=r.phase==='error'&&!items.length,fallback=r.databaseError&&items.length>0;
  const title=r.coverageGap?'Условия стали шире поиска':noCurrent?'Актуальные варианты пока не найдены':r.pending?(r.continued?'Продолжаем поиск':'Ищем предложения'):providerPending?'Дополняем найденные туры':fallback?'Показаны сохранённые туры':partialError?'Получены не все предложения':r.phase==='cancelled'?'Поиск остановлен':failed?'Туры не загрузились':'Поиск не завершён';
  const message=r.coverageGap?r.message:noCurrent?'Тот же тур — отель, дата, ночи, состав туристов, номер, питание, туроператор и тип перелёта — пока не найден. Другие предложения ниже показаны только как альтернативы и не заменяют сохранённый выбор.':r.pending?(r.message||'Предложения добавляются по мере получения.'):providerPending?'Часть туроператоров ещё отвечает. Уже найденные туры доступны ниже.':fallback?(r.message||'База сейчас не отвечает. Ниже показаны сохранённые предложения; цену и наличие нужно проверить.'):partialError?'Часть предложений сейчас недоступна. Уже найденные туры доступны для выбора; можно повторить поиск.':r.message||'Поиск можно повторить с выбранными условиями.';
+ if(node.classList.contains('search-status-compact')){
+  node.innerHTML=`<details><summary>${icon('info')} ${esc(title)}<span>Подробнее</span></summary><p>${esc(message)}</p><div class="search-status-actions"><button class="text-button" data-action="retry-search">Повторить поиск</button><button class="text-button" data-action="edit-search">Изменить поиск</button></div></details>`;
+  return;
+ }
  node.innerHTML=`<div class="search-status-top"><div><h3>${r.pending||providerPending?'<span class="search-progress-spinner" aria-hidden="true"></span>':icon('info')}${title}</h3><p>${esc(message)}</p></div></div><div class="search-status-actions">${r.pending||providerPending?'<button class="secondary" data-action="stop-search">Остановить поиск</button>':partialError||!r.canContinue?'<button class="primary" data-action="retry-search">Повторить поиск</button>':''}<button class="text-button" data-action="edit-search">Изменить условия</button></div>`;
  if(!items.length&&r.pending)$('#cards').innerHTML=Array.from({length:2},()=>'<div class="search-skeleton" aria-hidden="true"><div class="skeleton-photo"></div><div class="skeleton-lines"><i></i><i></i><i></i></div></div>').join('');
 }
@@ -1908,7 +1912,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'budget-preset':$('#budget-min').value=0;$('#budget-max').value=b.dataset.value;updateBudgetPreview();rememberUIRoute();break;
  case 'budget-adjust-max':$('#budget-max').value=b.dataset.value;updateBudgetPreview();rememberUIRoute();$('[data-action="apply-budget"]').focus({preventScroll:true});break;
  case 'apply-budget':{const budget=readBudget();if(!budget.valid){updateBudgetPreview();$(budget.invalidMin?'#budget-min':'#budget-max').focus();return}filterBudgetEdit=null;state.filters.min=budget.min;state.filters.max=budget.max;applyQuickFilters();break}
- case 'any-stars':state.filters.stars=[];syncFilters();break;case 'nights':openNights();break;case 'guests':openGuests();break;case 'toggle-price-preview':{const expanded=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',String(expanded));$('#price-calendar').classList.toggle('preview-expanded',expanded);$('.calendar-preview-label').textContent=expanded?'Скрыть':'Показать';break;}case 'calendar':openCalendar();break;
+ case 'any-stars':state.filters.stars=[];syncFilters();break;case 'nights':openNights();break;case 'guests':openGuests();break;case 'calendar':openCalendar();break;
  case 'modal-back':modalBack();break;case 'close-modal':closeModal();break;case 'filters':openFilters();break;case 'close-filters':closeFilters();break;case 'apply-filters':closeFilters({apply:true});break;case 'review-filter-recovery':if(filterDraft)jumpToFilterSection('drawer-recovery');break;
  case 'top':case 'edit-search':editSearch();break;
  case 'cancel-search-edit':cancelSearchEdit();break;
@@ -1946,7 +1950,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'all-offers':openAllOffers(id);break;
  case 'offer-view':if(optionalShortlistEnabled&&offerView&&['list','compare'].includes(b.dataset.value)){offerView.mode=b.dataset.value;renderOfferList();b.focus({preventScroll:true});}break;
  case 'compare-tour':{if(!optionalShortlistEnabled)break;const o=offerFromKey(b.dataset.key);if(o&&offerView?.id===o.hotelId){offerView.mode='compare';offerView.day=o.day;offerView.nights=o.nights;offerView.activeVariant=o.variant;offerView.pair=[];renderOfferList();$('#modal-body').scrollTop=0;($('.comparison-date-disclosure>summary')||$('.comparison-fixed-dates'))?.focus({preventScroll:true});}break;}
- case 'offer-flights':openOffer(b.dataset.key,null,true);break;
+ case 'offer-flights':case 'start-tour-flights':openOffer(b.dataset.key,null,true);break;
  case 'offer-group':{const key=b.dataset.value;offerView.open=offerView.open.includes(key)?offerView.open.filter(x=>x!==key):[...offerView.open,key];renderOfferList();$(`[data-action="offer-group"][data-value="${key}"]`).focus({preventScroll:true});break}
  case 'group-more':{const key=b.dataset.value,body=$('#modal-body'),scroll=body.scrollTop,shown=b.parentElement.querySelectorAll('.grouped-offer').length;offerView.limits[key]=(offerView.limits[key]||4)+8;renderOfferList();body.scrollTop=scroll;const firstNew=document.getElementById('group-'+key)?.querySelectorAll('.grouped-offer')[shown];firstNew?.querySelector('[data-action="offer"]')?.focus({preventScroll:true});firstNew?.scrollIntoView({behavior:scrollBehavior(),block:'nearest'});break;}
  case 'remove-offer-filter':if(offerRefinementFields.includes(b.dataset.field)&&offerView){offerView[b.dataset.field]='';renderOfferList(true);$('#offer-count').focus();}break;
