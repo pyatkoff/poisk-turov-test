@@ -65,6 +65,10 @@ const server=http.createServer((req,res)=>{
   assert.equal(await hydrationControls.evaluateAll(controls=>controls.every(control=>control.disabled)),true,'initial controls cannot accept input that URL hydration would overwrite');
   assert.equal(await page.locator('#destination-label').textContent(),'Загружаем направления…','initial destination never exposes a missing catalog value');
   assert.doesNotMatch(await page.locator('#country').getAttribute('aria-label'),/undefined|null/i,'initial destination accessible name stays truthful');
+  assert.equal(await page.locator('#results').evaluate(node=>node.classList.contains('results-pristine')),true,'initial results shell is marked pristine before catalog hydration');
+  assert.match(await page.locator('#cards').textContent(),/Готовим поиск/,'initial results shell truthfully describes hydration');
+  assert.equal(await page.locator('#price-calendar').isVisible(),false,'initial results shell cannot flash the post-search calendar');
+  assert.equal(await page.locator('.results-toolbar').isVisible(),false,'initial results shell cannot flash post-search controls');
   releaseInitialCatalog();delete transport.state.countryGates['1'];
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'false');
