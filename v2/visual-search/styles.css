@@ -1068,17 +1068,6 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
  .prototype-tools>summary{gap:8px;font-size:12px}
 }
 
-/* v65: the first hotel comes before the optional mobile price overview. */
-.calendar-preview-toggle{display:none}
-@media(max-width:760px){
- .calendar-preview-toggle{display:flex;align-items:center;gap:8px;min-height:44px;width:100%;text-align:left;font-size:14px}
- .calendar-preview-toggle>svg{width:18px;height:18px;color:var(--brand)}
- .calendar-preview-label{margin-left:auto;color:var(--brand)}
- .calendar-card:not(.preview-expanded) #calendar-preview{display:none}
- .calendar-card.preview-expanded .calendar-preview-toggle{border-bottom:1px solid var(--line);margin-bottom:6px}
- .calendar-card.preview-expanded .calendar-preview-toggle>span:last-child{transform:rotate(180deg)}
-}
-
 /* v66: budget feedback before applying; align the mobile quick fields. */
 .budget-feedback{padding:14px 16px;background:var(--soft-blue);border-radius:12px;margin-top:16px;font-size:16px;line-height:1.5}
 .budget-feedback .text-button{display:block;text-align:left;min-height:44px;margin-top:7px;font-size:14px}
@@ -1211,17 +1200,7 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 /* v90: long aircraft labels stay inside their timeline column. */
 .tour-layout .flight-timeline>.flight-duration>span,
 .flight-expanded .flight-timeline>.flight-duration>span{white-space:normal;overflow-wrap:anywhere;line-height:1.25;max-width:100%}
-
-/* v94: refine a long mobile result list without returning to the trip form. */
-.compact-refinements{display:none}
 @media(max-width:760px){
- .compact-refinements:not([hidden]){display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr) minmax(0,1.5fr);gap:6px;padding:0 12px 8px}
- .compact-refinements button{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font:inherit;font-size:13px;line-height:1.3;text-align:left;cursor:pointer}
- .compact-refinements button>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
- .compact-refinements button>span:last-child{flex-shrink:0;color:var(--brand)}
- .compact-refinements button.active{border-color:var(--brand);background:#eef2ff;color:var(--brand);font-weight:600}
- .compact-refinements button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
- html:has(#compact-search:not([hidden]) .compact-refinements:not([hidden])){scroll-padding-top:126px}
  html:has(#compact-search:not([hidden])) #cards{scroll-margin-top:8px}
 }
 
@@ -1339,7 +1318,7 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
  .tour-handoff h3{font-size:17px}
 }
 
-@media(max-width:760px){.compact-refinements button>span:last-child{display:none}}
+
 
 /* v97: four readable bottom actions and stable hotel-title links. */
 @media(max-width:760px){
@@ -1611,7 +1590,7 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 .chosen-trip{display:grid;gap:3px;margin:0 0 12px;font-size:16px;line-height:1.5}
 .chosen-trip>span{font-size:14px;color:var(--muted)}
 .chosen-stay .saved-stay-summary{margin:0;gap:6px;font-size:16px;line-height:1.45}
-.chosen-stay .saved-stay-summary>div{grid-template-columns:82px minmax(0,1fr);gap:10px}
+.chosen-stay .saved-stay-summary>div{grid-template-columns:108px minmax(0,1fr);gap:10px}
 .chosen-stay dt{font-size:14px;line-height:1.65}
 .application-choice{padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:18px}
 .application-choice>h3{margin:0 0 8px;font-size:20px;line-height:1.3;overflow-wrap:anywhere}
@@ -1633,7 +1612,7 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 .application-dialog #modal-footer .summary-price>small{font-size:13px;line-height:1.4}
 @media(max-width:760px){
  .chosen-stay{padding:12px;margin-bottom:16px}
- .chosen-stay .saved-stay-summary>div{grid-template-columns:72px minmax(0,1fr);gap:8px}
+ .chosen-stay .saved-stay-summary>div{grid-template-columns:100px minmax(0,1fr);gap:10px}
  .tour-dialog .tour-hero p{font-size:14px}
  .application-dialog .modal-header{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px;padding:8px 12px}
  .application-dialog .modal-header:has(#modal-back:not([hidden])){grid-template-columns:44px minmax(0,1fr) 44px}
@@ -1866,19 +1845,13 @@ h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
  .search-collapsed .applied-extras{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
  .search-collapsed .applied-extras button{padding:8px 6px;font-size:14px;line-height:1.35;min-height:48px;text-align:center}
  /* The same filter action is permanently visible in the bottom navigation. */
- .search-collapsed .applied-extras button[data-action="filters"]{display:none}
+ .search-collapsed .applied-extras{display:flex;justify-content:flex-start}
  .search-collapsed .applied-extras button:last-child{margin:0}
  .results-heading{margin-bottom:12px}
  .hotel-section-nav button{font-size:14px}
 }
-@media(max-width:760px){
- .calendar-card:not(.preview-expanded){background:transparent;border:0;padding:0 2px 8px;border-radius:0;box-shadow:none}
- .calendar-card:not(.preview-expanded) .calendar-preview-toggle{padding:0;min-height:44px}
-}
-@media(max-width:760px){
- .calendar-card.preview-expanded .calendar-heading h3{display:none}
- .calendar-card.preview-expanded .calendar-heading{justify-content:flex-end}
-}
+
+
 @media(min-width:761px) and (max-width:1100px){
  .search-section.search-collapsed>.wrap{padding:16px 20px}
  .search-collapsed .applied-main{gap:10px 14px}
@@ -1900,3 +1873,21 @@ h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
 .destination-region>details>summary{min-height:44px;padding:10px 12px 10px 42px;cursor:pointer;color:var(--muted);font-size:13px}
 .destination-subregions{margin-left:22px;padding-left:12px;border-left:2px solid var(--line)}
 .destination-region .destination-row{width:100%;text-align:left}
+
+/* Terminal partial search stays discoverable without blocking the first result. */
+.search-status-compact{padding:8px 12px;margin-bottom:12px;border-radius:10px}
+.search-status-compact summary{display:flex;align-items:center;gap:8px;min-height:32px;font-size:13px;cursor:pointer;list-style:none}
+.search-status-compact summary>svg{width:16px;height:16px;flex-shrink:0}
+.search-status-compact summary>span{margin-left:auto;color:var(--brand);font-size:12px}
+.search-status-compact p{font-size:13px;line-height:1.5;margin-top:8px}
+@media(max-width:760px){
+ #price-calendar{padding:8px 0;border:0;background:transparent;box-shadow:none}
+ #price-calendar .calendar-heading{align-items:center;margin-bottom:2px}
+ #price-calendar .calendar-heading h3{font-size:14px}
+ #price-calendar .calendar-heading .text-button{min-height:36px}
+ #price-calendar .calendar-caption{font-size:12px;margin:0 0 6px}
+ #price-calendar .calendar-foot{font-size:11px}
+ .compact-search .secondary{width:auto;min-height:44px;padding:8px;font-size:12px}
+ .compact-search .secondary>span{display:inline;max-width:62px;white-space:normal}
+ .compact-brand img{width:70px}
+}

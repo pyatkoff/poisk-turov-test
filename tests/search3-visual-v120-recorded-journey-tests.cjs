@@ -33,6 +33,11 @@ for (const name of ['fixture-data.js', 'recorded-data.js', 'search-lifecycle-v1.
 const settle = (delay = 70) => new Promise(resolve => setTimeout(resolve, delay));
 const click = selector => {const element = d.querySelector(selector); assert(element, selector); element.click();};
 
+const continueToFlights=async()=>{
+ if(!d.querySelector('[data-action="start-tour-flights"]'))return;
+ click('[data-action="start-tour-flights"]');await settle(140);
+ if(d.querySelector('[data-action="apply-flight"]')){click('[data-action="apply-flight"]');await settle();}
+};
 (async()=>{
  await settle(200);
  const initialRequests=requests.length;
@@ -51,7 +56,7 @@ const click = selector => {const element = d.querySelector(selector); assert(ele
 
    click('[data-action="close-modal"]');await settle();
   }
-  click('.hotel-card [data-action="offer"]');await settle(130);
+  click('.hotel-card [data-action="offer"]');await settle(130);await continueToFlights();
   if(scenario==='mixed'){
    const before=d.querySelector('#modal-footer .footer-total strong').textContent;
    const beforeFlight=d.querySelector('.flight-summary').textContent;
@@ -99,13 +104,13 @@ const click = selector => {const element = d.querySelector(selector); assert(ele
  let hotels;await w.AnyTourPrototypeData.search(w.AnyTourPrototypeData.initialSearch,e=>{if(e.type==='results')hotels=e.hotels;});
  const chosen=hotels[1].offers[1],before=await w.AnyTourPrototypeData.quote(chosen),oldNow=w.Date.now;
  w.Date.now=()=>oldNow()+86400000*2;const after=await w.AnyTourPrototypeData.quote(chosen);assert.equal(before.price,after.price);assert.equal(before.id,after.id);w.Date.now=oldNow;
- for(const scenario of ['expired','unavailable']){await change(scenario);click('.hotel-card [data-action="offer"]');await settle(130);assert(d.querySelector('.error-text[role="alert"]'));assert(!d.querySelector('[data-action="confirm-tour"]'));assert(!d.querySelector('#prototype-lead-form'));assert(d.querySelector('#modal-footer [data-action="close-modal"]'));click('#modal-footer [data-action="close-modal"]');}
- await change('flight-error');click('.hotel-card [data-action="offer"]');await settle(130);assert(d.querySelector('[data-action="retry-flights"]'));assert(!d.querySelector('[data-action="confirm-tour"]'));
+ for(const scenario of ['expired','unavailable']){await change(scenario);click('.hotel-card [data-action="offer"]');await settle(130);await continueToFlights();assert(d.querySelector('.error-text[role="alert"]'));assert(!d.querySelector('[data-action="confirm-tour"]'));assert(!d.querySelector('#prototype-lead-form'));assert(d.querySelector('#modal-footer [data-action="close-modal"]'));click('#modal-footer [data-action="close-modal"]');}
+ await change('flight-error');click('.hotel-card [data-action="offer"]');await settle(130);await continueToFlights();assert(d.querySelector('[data-action="retry-flights"]'));assert(!d.querySelector('[data-action="confirm-tour"]'));
  await change('empty');assert.equal(d.querySelectorAll('.hotel-card').length,0);
  await change('snapshot');
  const hotelQuery=d.querySelector('#hotel-query');hotelQuery.value='THE LAILA';hotelQuery.dispatchEvent(new w.Event('input',{bubbles:true}));await settle(220);
  click('.hotel-card [data-action="hotel-details"]');await settle();
- click('[data-action="close-modal"]');await settle();click('.hotel-card [data-action="offer"]');await settle();assert(!d.querySelector('[data-action="confirm-tour"]'),'Snapshot cannot open a fake application or summary');assert.match(d.querySelector('.tour-recording-limit').textContent,/Перейти к заявке здесь нельзя/);assert(!d.querySelector('#prototype-lead-form'),'Real snapshot must not gain invented quote/flights');click('#modal-footer [data-action="close-modal"]');await settle();assert(!d.querySelector('#modal').open,'Snapshot returns to results');
+ click('[data-action="close-modal"]');await settle();click('.hotel-card [data-action="offer"]');await settle();await continueToFlights();assert(!d.querySelector('[data-action="confirm-tour"]'),'Snapshot cannot open a fake application or summary');assert.match(d.querySelector('.tour-recording-limit').textContent,/Перейти к заявке здесь нельзя/);assert(!d.querySelector('#prototype-lead-form'),'Real snapshot must not gain invented quote/flights');click('#modal-footer [data-action="close-modal"]');await settle();assert(!d.querySelector('#modal').open,'Snapshot returns to results');
  await change('family');
  let recordedHotels;await w.AnyTourPrototypeData.search(w.AnyTourPrototypeData.initialSearch,e=>{if(e.type==='results')recordedHotels=e.hotels;});
  const record={schemaVersion:1,kind:'demo',currency:'RUB',countryName:'Турция',capturedAt:'2026-09-24T12:00:00Z',source:'Synthetic fixture for import regression',search:structuredClone(w.AnyTourPrototypeData.initialSearch),hotels:structuredClone(recordedHotels),entries:[]};
@@ -116,7 +121,7 @@ const click = selector => {const element = d.querySelector(selector); assert(ele
  const beforeRecordingStorage=JSON.stringify(w.localStorage);
  const input=d.querySelector('#recording-file');Object.defineProperty(input,'files',{configurable:true,value:[{size:1000,text:async()=>JSON.stringify(record)}]});input.dispatchEvent(new w.Event('change'));await settle(250);
  assert.equal(w.AnyTourPrototypeData.scenario,'recorded');assert.match(d.querySelector('#recording-status').textContent,/Загружено 1 отелей и 1 туров/);assert.match(w.AnyTourPrototypeData.describe(),/Демонстрационная запись/);
- click('.hotel-card [data-action="offer"]');await settle(180);assert.match(d.querySelector('#detail-total').textContent,/186/);click('[data-action="confirm-tour"]');await settle();
+ click('.hotel-card [data-action="offer"]');await settle(180);await continueToFlights();assert.match(d.querySelector('#detail-total').textContent,/186/);click('[data-action="confirm-tour"]');await settle();
  const recordedForm=d.querySelector('#prototype-lead-form');assert(recordedForm);recordedForm.elements.phone.value='+7 000 000-00-00';recordedForm.elements.consent.checked=true;recordedForm.dispatchEvent(new w.Event('submit',{cancelable:true,bubbles:true}));assert.equal(recordedForm.dataset.checked,'1');assert.match(recordedForm.textContent,/дети: до года, 8 лет/);
  assert.equal(JSON.stringify(w.localStorage),beforeRecordingStorage,'Imported selection is not persisted');
  assert.equal(d.querySelectorAll('[data-action="save-tour-for-later"]').length,0);
