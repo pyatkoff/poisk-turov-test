@@ -318,6 +318,8 @@ class ParseTest(unittest.TestCase):
             "mode=='match-samo-live30-persistence-readback'",
         ]:
             self.assertIn(required,source)
+        self.assertEqual(2,source.count("'match-coverage-v2-readback','match-samo-live30-persistence-readback','match-coverage-readback'"))
+        self.assertIn("result['status']='reconciled_read_only'",source)
 
     def test_match_coverage_readback_mode(self):
         v=m.parse_command(f'/run-int-server-v1 {SHA} match-coverage-readback int-andromeda-match-coverage-readback-20260923-v1')
