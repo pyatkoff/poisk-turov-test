@@ -9,7 +9,8 @@
   // same public Russian meal identities as the live adapter. This prevents a
   // saved supplier alias from becoming a separate customer-facing filter.
   const mealAliases=Object.freeze({
-    RO:'Без питания','ROOM ONLY':'Без питания','NO MEAL':'Без питания','БЕЗ ПИТАНИЯ':'Без питания',
+    RO:'Без питания',AO:'Без питания','ROOM ONLY':'Без питания','ACCOMMODATION ONLY':'Без питания','NO MEAL':'Без питания',
+    'БЕЗ ПИТАНИЯ':'Без питания','БЕЗ ПИТАНИЯ (ROOM ONLY)':'Без питания',
     BB:'Завтраки',BREAKFAST:'Завтраки','BED & BREAKFAST':'Завтраки','BED AND BREAKFAST':'Завтраки','ЗАВТРАК':'Завтраки','ЗАВТРАКИ':'Завтраки','ТОЛЬКО ЗАВТРАК':'Завтраки',
     HB:'Полупансион','HALF BOARD':'Полупансион','ПОЛУПАНСИОН':'Полупансион',
     FB:'Полный пансион','FULL BOARD':'Полный пансион','ПОЛНЫЙ ПАНСИОН':'Полный пансион',
