@@ -66,6 +66,8 @@ const cancel=()=>click('#search-return');
  const mealChoices=[...d.querySelectorAll('[data-meal-choice]')].map(node=>node.value);
  assert.equal(mealChoices.filter(value=>value==='Завтраки').length,1,'breakfast aliases share one canonical choice');
  for(const alias of ['breakfast','Bed & Breakfast','Bed and Breakfast'])assert(!mealChoices.includes(alias),alias+' must not create a separate target facet');
+ assert.equal(mealChoices.filter(value=>value==='Без питания').length,1,'explicit no-meal aliases share one canonical choice');
+ for(const alias of ['AO','Room Only','Room only','Без питания (Room only)'])assert(!mealChoices.includes(alias),alias+' must not create a separate target facet');
  click('[data-meal-choice][value="Завтраки"]');click('[data-action="apply-meals"]');await settle();
  assert.match(q('#dates-label').textContent,/3 окт/);assert.match(q('#nights-label').textContent,/10 ночей/);assert.match(q('#guests-label').textContent,/3 взр/);
  assert.equal(w.location.search,originalURL);cancel();await settle();

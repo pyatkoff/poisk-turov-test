@@ -291,6 +291,12 @@ test('common breakfast spellings share the canonical Russian display label',asyn
   assert.equal(h.data.meal(label),'Завтраки',label+' must not create a separate live facet');
  }
 });
+test('explicit no-meal spellings share the canonical Russian display label',async()=>{
+ const h=harness();
+ for(const label of ['RO','AO','Room Only','Accommodation Only','No Meal','Без питания','Без питания (Room only)']){
+  assert.equal(h.data.meal(label),'Без питания',label+' must not create a separate live facet');
+ }
+});
 test('supplier meal scope uses reviewed canonical native IDs, not aliases',async()=>{
  const h=harness();canonicalMeals(h);
  const scope=filters=>h.data.supplierScope(filters);
