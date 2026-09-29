@@ -51,6 +51,17 @@ const cancel=()=>click('#search-return');
  await settle();
  // The result drawer must use the same stable meal order as the search picker.
  click('#applied-search [data-action="filters"]');
+ const resortRows=()=>[...d.querySelectorAll('[data-facet-options="resorts"] .check-row')];
+ const resortOrder=()=>resortRows().map(row=>({value:row.querySelector('input').value,count:Number(row.querySelector('small').textContent)}));
+ const beforeResortSelection=resortOrder();
+ assert(beforeResortSelection.length>7,'large result corpus exposes the searchable resort facet');
+ assert(beforeResortSelection.every((row,index)=>index===0||beforeResortSelection[index-1].count>=row.count),'result resorts are ordered by the factual matching-hotel count');
+ const resortChoice=beforeResortSelection.find((row,index)=>index>0&&row.count<beforeResortSelection[index-1].count);
+ assert(resortChoice,'fixture contains a non-leading resort for stable-selection regression');
+ click(`[data-filter="resorts"][value="${resortChoice.value}"]`);
+ assert.deepEqual(resortOrder(),beforeResortSelection,'selecting a resort must not move it ahead of more useful current-result choices');
+ assert(q('[data-facet-options="resorts"] .facet-picked').textContent.includes(resortChoice.value),'selected resort remains available in the explicit selected summary');
+ click(`[data-filter="resorts"][value="${resortChoice.value}"]`);
  const mealFacetOrder=()=>[...d.querySelectorAll('[data-filter="meals"]')].map(node=>node.value);
  const beforeMealSelection=mealFacetOrder();
  const coreMeals=['Всё включено','Ультра всё включено','Завтраки','Полупансион','Полный пансион','Без питания'].filter(value=>beforeMealSelection.includes(value));
