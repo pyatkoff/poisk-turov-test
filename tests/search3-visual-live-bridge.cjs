@@ -15,11 +15,11 @@ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogE
 let additionalGate=null;
 w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(value.data?.state==='flight_selection_required')value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(value.data?.status==='additional_prices'&&additionalGate)await additionalGate;return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
 const quoteFailures=[];w.addEventListener('anytour:quote-failure',e=>quoteFailures.push(e.detail));
-let lastSamoOffer;
+let lastSamoOffer,quoteControl=null;
 for(const file of scripts){
  if(file==='visual-search/app.js'){
   const canonical=w.AnyTourPrototypeData;
-  w.AnyTourPrototypeData=Object.freeze(Object.create(canonical,{verifyAndromeda:{value:(...args)=>{lastSamoOffer=args[0];return canonical.verifyAndromeda(...args);}}}));
+  w.AnyTourPrototypeData=Object.freeze(Object.create(canonical,{quote:{value:async(...args)=>{const control=quoteControl,tour=await canonical.quote(...args);if(control){control.started=true;await control.pending;if(control.error)throw control.error;}return tour;}},verifyAndromeda:{value:(...args)=>{lastSamoOffer=args[0];return canonical.verifyAndromeda(...args);}}}));
  }
  w.eval(source(file));
 }
@@ -168,16 +168,43 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert.equal(starts(),searchesBeforeRecovery,'catalogue recovery and cancellation never start a supplier search');
 
  click('[data-action="hotel-details"][data-id="501"]');assert.match(q('#modal-body').textContent,/Тестовая улица/);assert.match(q('#modal-body').textContent,/Мини-клуб/);click('[data-action="close-modal"]');await settle();
+ // Both quote entry points must ignore a response after closing/reopening the same offer.
+ const tvActions=()=>transport.calls.filter(c=>c.url==='/api-v2.php'&&['tour','flights'].includes(c.action));
+ const openTv=()=>{click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');};
+ for(const action of ['start-lead','start-tour-flights']){
+  for(const failure of [false,true]){
+   let release;quoteControl={pending:new Promise(resolve=>release=resolve),error:failure?new Error('Отложенный тестовый отказ'):null};
+   openTv();const before=tvActions().length;click(`[data-action="${action}"]`);await wait(()=>quoteControl.started);
+   assert(q('#modal-footer .primary').disabled,'a pending quote disables continuation');
+   assert.match(q('.tour-selection-hint').textContent,/Проверяем цену/);
+   click('[data-action="close-modal"]');await settle();openTv();const unchanged=q('#modal-body').innerHTML;
+   release();await settle();quoteControl=null;
+   assert.equal(q('#modal-body').innerHTML,unchanged,'late '+action+' response cannot replace a reopened offer');
+   assert(q('[data-action="start-lead"]'),'reopened offer still needs its own quote');
+   assert(!q('#prototype-lead-form')&&!q('[data-action="choose-flight"]'));
+   assert.deepEqual(tvActions().slice(before).map(c=>c.action),['tour'],'late quote never starts flights');
+   click('[data-action="close-modal"]');await settle();
+  }
+  for(const code of ['', 'offer_expired']){
+   quoteControl={error:Object.assign(new Error('Тестовый отказ актуализации'),{code})};
+   openTv();click(`[data-action="${action}"]`);await wait(()=>q('#modal-body .error-text')?.textContent==='Тестовый отказ актуализации');
+   assert.match(q('.footer-price-status').textContent,/не подтверждена/);
+   assert.equal(q('#modal-footer .primary').dataset.action,code?'close-modal':'start-lead','terminal errors exit; temporary errors allow explicit retry');
+   assert(!q('#prototype-lead-form'));quoteControl=null;
+   click('[data-action="close-modal"]');await settle();
+  }
+ }
+ const tvCallsBeforeSelection=tvActions().length;
  click('[data-action="all-offers"][data-id="501"]');await settle();
  const callsBeforeOfferListForward=transport.calls.length;q('.offer-filter-disclosure').open=true;q('#modal-body').scrollTop=142;
  click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#all-offers-list'));
  assert(q('.offer-filter-disclosure').open,'browser Forward restores the expanded concrete-tour filters');
  assert.equal(q('#modal-body').scrollTop,142,'browser Forward restores the concrete-tour list position');
  assert.equal(transport.calls.length,callsBeforeOfferListForward,'browser Forward neither restarts search nor checks an offer');
- click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,0,'opening exact tour is supplier-free');
+ click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');assert.equal(tvActions().length,tvCallsBeforeSelection,'opening exact tour is supplier-free');
  assert(q('[data-action="start-lead"]')&&q('[data-action="start-tour-flights"]'),'application and optional flight check are separate actions');
  click('[data-action="start-lead"]');await wait(()=>q('#prototype-lead-form'));
- assert.deepEqual(transport.calls.filter(c=>['tour','flights'].includes(c.action)).map(c=>c.action),['tour'],'application actualizes the tour once without requesting flights');
+ assert.deepEqual(tvActions().slice(tvCallsBeforeSelection).map(c=>c.action),['tour'],'application actualizes the tour once without requesting flights');
  assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);assert.match(q('#modal-footer').textContent,/перелёт уточняется/);
  q('[name="phone"]').value='+7 999 123-45-67';q('[name="consent"]').checked=true;q('#prototype-lead-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await settle();
  assert.match(q('.lead-message').textContent,/не отправлена/);click('#modal-back');await settle();
