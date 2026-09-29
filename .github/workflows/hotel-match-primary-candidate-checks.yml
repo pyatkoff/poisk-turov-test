@@ -1,0 +1,51 @@
+name: MATCH primary candidate checks
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_primary_candidate_v1.php'
+      - 'scripts/diagnostics/hotel_match_pending8_transition_v76.php'
+      - 'scripts/diagnostics/hotel_match_raw_native_pending11_v78.php'
+      - 'tests/hotel_match_primary_candidate_v1_test.php'
+      - '.github/workflows/hotel-match-primary-candidate-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: match-fixture-only
+          MYSQL_DATABASE: match_primary_fixture
+        ports:
+          - 33306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmatch-fixture-only"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Ensure local fixture PHP extensions
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y php-cli php-mbstring php-mysql
+      - name: Validate actual MATCH source and transactions
+        env:
+          MATCH_PRIMARY_MYSQL_TEST: '1'
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_pending8_transition_v76.php
+          php -l scripts/diagnostics/hotel_match_raw_native_pending11_v78.php
+          php -l scripts/diagnostics/hotel_match_primary_candidate_v1.php
+          php -l tests/hotel_match_primary_candidate_v1_test.php
+          php tests/hotel_match_primary_candidate_v1_test.php
