@@ -17,7 +17,8 @@
     "recorded-data.js": "68ee7344d7132efbe608d02e6ffb7b896ab7a616ea8b18bba5bb9296c330b3c1",
     "search-lifecycle-v1.js": "77a1d952263da2d50781bbbf92d176c0cada68a006bd0a62e169d32fe6acacc6",
     "flight-picker-v18.js": "d6de6d2deb26c5f6fbce4bbbbc70bfafda61961b1d674d67c5fef7a70626d7a5",
-    "preview-lead.js": "c2758b6fd2e1e7b23dc84612dbe62eb567cae01950f1520ca4a209a0796b6164",
+    "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
+    "live-bridge.js": "919fc37599f8027c95f1b7d5e04bcff59dda754d1df61c0ef1e7d0e60039030c",
     "assets/inter-cyrillic.woff2": "aebf2ab4a4ce6810d73c1ac7be7cafb4e5ec4cee2d6db5fb3e09691747ec4bd6",
     "assets/anytour-logo.svg": "3c033c7697dbb8879f6a867f659a7964efc180518f92655391c289b74ce2e049",
     "assets/photo-2.jpg": "b39ed20cfca3bac216398a335f5b2d0189abd91c877dec130267b43a7c23bdd9",
@@ -53,10 +54,12 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "published-bootstrap-calendar-verified",
   "adaptedFiles": {
-    "app.js": "1fcf6b89a5c4cf2d4120c822780e44b6f49ea4cea6f8aaea16b420cdfe3e5edb",
+    "app.js": "390f0392dcbc52de9326000f390aee66e734aa580af1e09cda8ac4edfe49f09b",
     "fixture-data.js": "176f25bac72ae889e6d73410873ceb330af133ec18da10d3695fa9eb9a80b389",
     "index.html": "4de09aa30438b43be7a0dcbe7d6771e986c6af535629e67676457737ecbb38f9",
-    "styles.css": "4d7890f61a3ac4b784b4024be4ed797f1ad1a1b60835ebf390b5c92ae2888426"
+    "styles.css": "4d7890f61a3ac4b784b4024be4ed797f1ad1a1b60835ebf390b5c92ae2888426",
+    "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
+    "live-bridge.js": "919fc37599f8027c95f1b7d5e04bcff59dda754d1df61c0ef1e7d0e60039030c"
   },
   "publication": {
     "sourceSha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
