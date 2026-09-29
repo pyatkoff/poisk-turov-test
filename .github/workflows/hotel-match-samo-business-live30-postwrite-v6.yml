@@ -1,0 +1,108 @@
+name: MATCH SAMO business-live30 postwrite v6
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v6.php'
+      - 'tests/hotel_match_samo_business_live30_common4_postwrite_v6_test.php'
+      - '.github/workflows/hotel-match-samo-business-live30-postwrite-v6.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-business-live30-postwrite-1971-20260924-v6, cancel-in-progress: false}
+env:
+  OP: hotel-match-samo-business-live30-common4-postwrite-1971-20260924-v6
+  BASE: 48db6edecc206a5fe0937168288ff9a1af084d0f
+  CLAIM: '5821442357'
+  WRITER_ARTIFACT: '10831421254'
+  WRITER_ARCHIVE_SHA: 0a4bdb0722aeb3dd586e8ef5db0896782aa898dbc5aea8cad42a84fccdcb11a9
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-postwrite-v6-20260924'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v6.php
+      - run: php tests/hotel_match_samo_business_live30_common4_postwrite_v6_test.php
+      - run: |
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v6.php
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-postwrite-v6-20260924'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate writer receipt claim and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/writer terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-samo-business-live30-postwrite-v6.yml scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v6.php tests/hotel_match_samo_business_live30_common4_postwrite_v6_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'wave3 committed total=325/325','Biblio1632','REPEATABLE READ / READ ONLY']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$WRITER_ARTIFACT/zip" -o input/writer.zip
+          test "$(sha256sum input/writer.zip|awk '{print $1}')" = "$WRITER_ARCHIVE_SHA"
+          unzip -q input/writer.zip -d input/writer
+          result="$(find input/writer -type f -name result.json -print -quit)";receipt="$(find input/writer -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt"
+          python3 - "$result" "$receipt" <<'PY'
+          import json,hashlib,pathlib,sys
+          r=json.load(open(sys.argv[1]));q=json.load(open(sys.argv[2]))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest()
+          assert r['operation']=='hotel-match-samo-business-live30-common4-wave3-writer-1971-20260924-v11-w2b'
+          assert r['state']=='committed_verified' and r['inserted']==25 and r['inserted_by_namespace']=={'operator_115':25}
+          assert r['readback_verified'] is True
+          PY
+      - name: Run CURRENT COMMON4 postwrite v6
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read','provider_http_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
+          scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v6.php "$remote:$op/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v6.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['operation']=='hotel-match-samo-business-live30-common4-postwrite-1971-20260924-v6' and r['state']=='samo_business_live30_common4_plan_ready'
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          print(json.dumps({k:r[k] for k in ['catalog_live30_count','mapped_source_count','mapped_unique_local_count','unresolved_source_count','common4_lanes_by_count_mapped','missing_lane_counts','acquisition_ready_count']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-business-live30-postwrite-v6-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
