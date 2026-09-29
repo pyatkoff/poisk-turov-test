@@ -1252,7 +1252,7 @@ function chosenStayHTML(o,editable=false){
 }
 function renderRealOffer(){
  const o=selectedOffer,h=selectedTourHotel(o);if(!o||!h)return;
- if(o.provider==='tourvisor'&&o.tour&&!o.loading&&!o.quoteError&&!o.flightsLoading&&!o.flightsError&&o.variants?.length)rememberProviderView(o,'tourvisor-selection');
+ if(o.provider==='tourvisor'&&data.amount(o.tour?.price)>0&&!needsRefresh(o)&&!o.loading&&!o.quoteError&&!o.flightsLoading)rememberProviderView(o,'tourvisor-selection');
  const unavailable=needsRefresh(o);
  const terminalQuoteError=o.quoteErrorTerminal===true||['offer_unavailable','offer_expired'].includes(o.quoteErrorCode);
  const selectionHint=o.loading?'Проверяем цену и условия тура…':o.flightsLoading?'Загружаем варианты перелёта…':terminalQuoteError?'Выберите другой тур в результатах.':o.quoteError?'Повторите проверку предложения, чтобы продолжить.':o.pricePending?'Цена этого рейса не подтверждена. Можно выбрать другой или оставить рейс менеджеру.':o.flightsError?'Рейсы не загрузились — заявку можно оставить без них.':!o.tour?'Перед заявкой проверим актуальность цены. Рейс можно оставить менеджеру.':!o.variants?.length?'Рейсы не указаны — их уточнит менеджер.':'';

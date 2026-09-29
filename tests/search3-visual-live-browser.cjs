@@ -29,9 +29,13 @@ const forwardProviderApplication=async(page,transport,room,price)=>{
  assert.deepEqual(await page.evaluate(()=>Object.keys(history.state['anytour.prototype.v18.ui.v1']).sort()),['key','scroll','type']);
 };
 const continueToFlights=async page=>{
- if(!await page.locator('[data-action="start-tour-flights"]').count())return;
- await page.locator('[data-action="start-tour-flights"]').click();
- await page.locator('[data-action="apply-flight"]').click();
+ if(await page.locator('[data-action="start-tour-flights"]').count()){
+  await page.locator('[data-action="start-tour-flights"]').click();
+  await page.locator('[data-action="apply-flight"]').click();
+ }else if(await page.locator('[data-action="retry-flights"]').count()){
+  await page.locator('[data-action="retry-flights"]').click();
+  await page.locator('[data-action="choose-flight"]').waitFor();
+ }
 };
 const server=http.createServer((req,res)=>{
  const u=new URL(req.url,'http://fixture');if(!u.pathname.startsWith(base)){res.writeHead(404).end();return;}
@@ -108,7 +112,17 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
   const tvOffer=page.locator('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
   if(!await tvOffer.isVisible())await tvOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
-  await tvOffer.click();await continueToFlights(page);await page.waitForFunction(()=>document.querySelector('[data-action="confirm-tour"]')&&!document.querySelector('[data-action="confirm-tour"]').disabled);
+  await tvOffer.click();await page.locator('[data-action="start-lead"]').click();await page.locator('#prototype-lead-form').waitFor();
+  assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
+  const quoteOnlyCalls=transport.calls.length;
+  await page.screenshot({path:path.join(evidence,`application-without-flight-${width}.png`)});
+  await page.locator('[data-action="close-modal"]').click();
+  await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
+  if(!await tvOffer.isVisible())await tvOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
+  await tvOffer.click();await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();
+  assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
+  assert.equal(transport.calls.length,quoteOnlyCalls,'return to the same actualized tour without flights adds no request');
+  await page.locator('#modal-back').click();await continueToFlights(page);await page.waitForFunction(()=>document.querySelector('[data-action="confirm-tour"]')&&!document.querySelector('[data-action="confirm-tour"]').disabled);
   await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();
   assert((await page.locator('#detail-total').textContent()).replace(/\s/g,'').includes('133500'));
   await page.locator('[data-action="confirm-tour"]').click();
