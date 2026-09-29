@@ -147,6 +147,25 @@ $invalidRegionList=false;try{search3_local_price_calendar($pdo,[
  'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07','nightsFrom'=>7,'nightsTo'=>7,'adults'=>1,'childs'=>[3,7],
 ],$at);}catch(InvalidArgumentException){$invalidRegionList=true;}
 need($invalidRegionList,'price calendar invalid region list fails closed');
+// AnyTour plan 101 deliberately differs from its reviewed Tourvisor ID 7.
+$pdo->exec("CREATE TABLE anytour_meal_plans (id BIGINT UNSIGNED PRIMARY KEY,code VARCHAR(64),name_ru VARCHAR(255),is_active TINYINT)");
+$pdo->exec("INSERT INTO anytour_meal_plans VALUES (101,'all-inclusive','Всё включено',1),(102,'breakfast','Завтраки',1),(103,'unknown','Не сопоставлено',1)");
+exec_sql($pdo,__DIR__.'/../v2/data/migrations/20260923-anytour-search-meal-provider-mappings-v1.sql');
+$map=$pdo->prepare("INSERT INTO anytour_search_meal_provider_mappings_v1 VALUES('tourvisor','global',?,?,'accepted','fixture',?,'fixture',UTC_TIMESTAMP())");
+$map->execute(['7',101,str_repeat('a',64)]);$map->execute(['3',102,str_repeat('b',64)]);
+$pdo->exec("UPDATE tour_price_observations SET meal_id=7 WHERE hotel_id=501");
+$pdo->exec("UPDATE tour_price_observations SET meal_id=3 WHERE hotel_id=504");
+$mealScope=['action'=>'price_calendar','departureId'=>1,'countryId'=>4,'regionIds'=>[23,24],
+ 'dateFrom'=>'2026-10-06','dateTo'=>'2026-10-07','nightsFrom'=>7,'nightsTo'=>7,'adults'=>1,'childs'=>[3,7]];
+$ai=search3_local_price_calendar($pdo,$mealScope+['mealPlanIds'=>[101,101]],$at);
+need($ai['mealPlanIds']===[101]&&(float)$ai['series'][0]['minPrice']===99000.0&&$ai['bestPrice']===null&&$ai['observedDays']===1,'canonical AI plan resolves native meal; cheaper breakfast and unknown meal excluded');
+$both=search3_local_price_calendar($pdo,$mealScope+['mealPlanIds'=>[102,101]],$at);
+need($both['mealPlanIds']===[101,102]&&(float)$both['series'][0]['minPrice']===88000.0&&$both['bestPrice']===null,'explicit multi-meal OR normalized');
+foreach([[7],[103],[0],['bad'],[true],range(1,21)] as $invalid){
+ $rejected=false;try{search3_local_price_calendar($pdo,$mealScope+['mealPlanIds'=>$invalid],$at);}catch(InvalidArgumentException|RuntimeException){$rejected=true;}
+ need($rejected,'unknown/unmapped/malformed meal scope never becomes unfiltered');
+}
+$pdo->exec('DROP TABLE anytour_search_meal_provider_mappings_v1');$pdo->exec('DROP TABLE anytour_meal_plans');
 echo "SEARCH3_LOCAL_PRICE_CALENDAR_OK exact_party=1 wrong_party_excluded=1 multi_region_or=1 unselected_region_excluded=1 writes=0\n";
 
 need(AnyTourOfferScopeIndexV1::recordIfInstalled($pdo,$scope,$at),'narrow scope indexed');

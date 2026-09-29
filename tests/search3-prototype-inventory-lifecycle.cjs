@@ -139,6 +139,7 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
     const query={departureId:String(body.departureId),countryId:String(body.countryId),dateFrom:body.dateFrom,dateTo:body.dateTo,
       nightsFrom:String(body.nightsFrom),nightsTo:String(body.nightsTo),adults:String(body.adults),childs:childAges.join(','),regionIds:regionIds.map(String)};
     if(regionIds.length===1)query.regionId=String(regionIds[0]);
+    query.mealPlanIds=body.mealPlanIds||[];
     observationCalls.push(query);assert.ok(observations,'unexpected observation request');
     return {ok:true,json:async()=>({ok:true,data:await observations(query,options.signal)})};
    }
@@ -240,7 +241,7 @@ for(const mode of ['complete','http-error','wrong-offer','verified','malformed',
  const request=h.anexCalls.at(-1);assert.equal(request.action,'flights');assert.equal(request.offer_ref,concrete.raw.offerRef);assert.equal(request.search_ref,concrete.raw.searchRef);
  h.data.stop();await assert.rejects(h.data.verifyAnexFlights(concrete),/Сначала/);
 });
-const observed=(q,price=97500)=>{const childAges=String(q.childs||'').trim()?String(q.childs).split(',').map(Number).sort((a,b)=>a-b):[],regionIds=[...new Set((q.regionIds||[]).map(Number))].sort((a,b)=>a-b);return {ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',adults:Number(q.adults),childrenCount:childAges.length,childAges,childAgesSignature:childAges.join(','),departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:regionIds.length===1?regionIds[0]:null,regionIds,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]};};
+const observed=(q,price=97500)=>{const childAges=String(q.childs||'').trim()?String(q.childs).split(',').map(Number).sort((a,b)=>a-b):[],regionIds=[...new Set((q.regionIds||[]).map(Number))].sort((a,b)=>a-b);return {ok:true,source:'latest-known-exact-segments-from-anytour-first-party-observations',cachedPriceIsFinal:false,currency:'RUB',mealPlanIds:q.mealPlanIds||[],adults:Number(q.adults),childrenCount:childAges.length,childAges,childAgesSignature:childAges.join(','),departureId:Number(q.departureId),countryId:Number(q.countryId),regionId:regionIds.length===1?regionIds[0]:null,regionIds,dateFrom:q.dateFrom,dateTo:q.dateTo,nightsFrom:Number(q.nightsFrom),nightsTo:Number(q.nightsTo),series:[{date:q.dateFrom,observed:true,minPrice:price}]};};
 function canonicalMeals(h){
  h.data.catalog.meals.splice(0,h.data.catalog.meals.length,
   {id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'});
@@ -1533,3 +1534,19 @@ function cachedProviderSnapshot(params,provider,operatorName){
  return data;
 }
 (async()=>{for(const [name,fn]of tests){await fn();console.log('PASS',name);}console.log('SEARCH3_PROTOTYPE_INVENTORY_LIFECYCLE_OK',tests.length);})().catch(error=>{console.error(error);process.exitCode=1;});
+
+
+test('meal calendar requests exact canonical plans and refuses mismatched historical minima',async()=>{
+ const h=harness({database:(i,p)=>snapshot(p,[]),observations:q=>observed(q,q.mealPlanIds.length?120000:50000)});
+ await h.data.init();
+ const signal=new AbortController().signal;
+ const exact=await h.data.calendarPrices(trip,trip.from,trip.to,signal,{meals:['Всё включено']});
+ assert.equal(exact.observations[0].price,120000);
+ assert.deepEqual(h.observationCalls.at(-1).mealPlanIds,[7]);
+ const before=h.observationCalls.length;
+ const unknown=await h.data.calendarPrices(trip,trip.from,trip.to,signal,{meals:['Неизвестное питание']});
+ assert.equal(unknown.observations.length,0);assert.equal(h.observationCalls.length,before);
+ const bad=harness({database:(i,p)=>snapshot(p,[]),observations:q=>({...observed(q),mealPlanIds:[2]})});await bad.data.init();
+ const rejected=await bad.data.calendarPrices(trip,trip.from,trip.to,signal,{meals:['Всё включено']});
+ assert.equal(rejected.observations.length,0);assert.equal(rejected.partial,true);
+});

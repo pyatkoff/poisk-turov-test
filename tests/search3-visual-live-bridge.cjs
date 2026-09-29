@@ -29,6 +29,21 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 (async()=>{
  await wait(()=>!q('.search-submit').disabled);
  assert.equal(starts(),0,'opening shared/search URL never spends a supplier search');assert.equal(d.querySelectorAll('.hotel-card').length,0);
+ // Form pickers preserve canonical values and spend no supplier searches.
+ click('[data-action="departure"]');
+ assert.deepEqual([...d.querySelectorAll('[data-action="choose-departure"]')].map(x=>x.dataset.value),['Москва','Екатеринбург','Казань']);
+ q('#departure-query').value='кат';q('#departure-query').dispatchEvent(new w.Event('input',{bubbles:true}));
+ assert.equal(d.querySelectorAll('[data-action="choose-departure"]').length,1);assert.equal(q('[data-action="choose-departure"]').dataset.value,'Екатеринбург');
+ click('[data-action="close-modal"]');await settle();assert.equal(q('#origin').value,'Москва');
+ click('#search-form [data-action="meals"]');click('[data-meal-choice][value="Завтраки"]');click('[data-action="apply-meals"]');await settle();
+ click('#search-form [data-action="meals"]');assert.deepEqual([...d.querySelectorAll('[data-meal-choice]')].map(x=>x.value),['','Всё включено','Завтраки']);
+ click('[data-meal-choice][value=""]');click('[data-action="apply-meals"]');await settle();
+ const regions=w.AnyTourPrototypeData.catalog.regions['4'];
+ w.AnyTourPrototypeData.catalog.regions['4']=[...regions,{id:'121',kind:'subregion',parentId:'21',country:'4',name:'Кадрие',tourvisorIds:['121']}];
+ click('#search-form [data-action="destination"]');
+ assert(q('.destination-region details [data-action="destination-resort"][data-value="Кадрие"]'),'subresort stays under the LOCAL region');
+ click('[data-action="close-modal"]');await settle();w.AnyTourPrototypeData.catalog.regions['4']=regions;
+ assert.equal(starts(),0,'city/meal/destination pickers never start suppliers');
  w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));
  q('#max-price').value='abc';q('#max-price').dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(q('#max-price').getAttribute('aria-invalid'),'true');click('.search-submit');await settle();

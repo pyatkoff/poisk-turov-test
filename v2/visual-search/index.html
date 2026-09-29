@@ -27,8 +27,9 @@
   <div class="intro"><h1 id="page-title">Куда отправимся?</h1><button type="button" class="text-button more-filters" data-action="filters"><span data-icon="sliders"></span> Все фильтры <span id="filter-count"></span></button></div>
   <div id="applied-search" class="applied-search" hidden></div>
   <form id="search-form" class="search-box">
+    <select id="origin" name="origin" hidden aria-hidden="true" tabindex="-1"><option>Москва</option><option>Санкт-Петербург</option><option>Казань</option></select>
     <div class="search-primary">
-      <label class="search-field"><span class="field-label">Откуда</span><span class="field-control"><span data-icon="plane"></span><select id="origin" aria-label="Город вылета"><option>Москва</option><option>Санкт-Петербург</option><option>Казань</option></select></span></label>
+      <button type="button" class="search-field field-button" id="departure-button" data-action="departure" aria-haspopup="dialog" aria-label="Город вылета"><span class="field-label">Откуда</span><span class="field-control"><span data-icon="plane"></span><span id="origin-label">Москва</span><span class="chevron">⌄</span></span></button>
       <button type="button" class="search-field field-button destination-field" id="country" data-action="destination" aria-label="Направление"><span class="field-label">Куда</span><span class="field-control"><span data-icon="pin"></span><span id="destination-label">Турция</span><span class="chevron">⌄</span></span></button>
       <button type="button" class="search-field field-button" data-action="dates"><span class="field-label">Даты вылета</span><span class="field-control"><span data-icon="calendar"></span><span id="dates-label"></span><span class="chevron">⌄</span></span></button>
       <button type="button" class="search-field field-button" data-action="nights"><span class="field-label">Ночей</span><span class="field-control"><span data-icon="moon"></span><span id="nights-label"></span><span class="chevron">⌄</span></span></button>

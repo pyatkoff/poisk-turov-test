@@ -53,8 +53,10 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "published-bootstrap-calendar-verified",
   "adaptedFiles": {
-    "app.js": "2dd117266bf3655879321098c280821321b9026b5311637ae37b04b49daf0296",
-    "fixture-data.js": "176f25bac72ae889e6d73410873ceb330af133ec18da10d3695fa9eb9a80b389"
+    "app.js": "3cd65bb89c3c6383df3614a3cdb245644e9b12a1ecbb326d7d3b3a372bcf142e",
+    "fixture-data.js": "176f25bac72ae889e6d73410873ceb330af133ec18da10d3695fa9eb9a80b389",
+    "index.html": "2c87d49cad34cad07d85fdc59d4baa838d1831b938a7137f201f7915d665b7ed",
+    "styles.css": "1dc083a2aedee9b42c5da7cb6c441696206f1a9c2970cf6bc083878436025682"
   },
   "publication": {
     "sourceSha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
