@@ -1207,7 +1207,7 @@ function legHTML(segments,label){
 }
 function flightSummaryHTML(o){
  const v=flightPairFor(o),canChoose=o.variants?.length;
- const action=canChoose?`<button class="secondary" data-action="choose-flight">${v?'Изменить рейсы':'Выбрать рейсы'} ${icon('arrow')}</button>`:o.flightsLoading||o.loading?'':o.tour?'<button class="secondary" data-action="retry-flights">Проверить рейсы ещё раз</button>':`<button class="secondary" data-action="start-tour-flights" data-key="${esc(o.key)}">Уточнить рейсы ${icon('arrow')}</button>`;
+ const action=canChoose?`<button class="secondary" data-action="choose-flight">${v?'Изменить рейсы':'Выбрать рейсы'} ${icon('arrow')}</button>`:o.flightsLoading||o.loading?'':o.tour?'<button class="secondary" data-action="retry-flights">Уточнить рейсы</button>':`<button class="secondary" data-action="start-tour-flights" data-key="${esc(o.key)}">Уточнить рейсы ${icon('arrow')}</button>`;
  const content=o.flightsLoading?'<p role="status">Загружаем варианты рейсов…</p>':v?`${window.AnyTourFlightPickerV18.pairSummary(v,{esc,text:data.text})}<details class="tour-flight-details"><summary>Детали рейсов</summary><div>${legHTML(v.forward,'Туда')+legHTML(v.backward,'Обратно')}</div></details>`:o.savedFlightText&&o.savedFlightText!=='Рейс пока не выбран'?'<p class="saved-flight-notice">Сохранённый перелёт · расписание требует проверки</p>'+savedFlightSummaryHTML(o):`<p class="tour-missing">${esc(o.flightsError||'Рейс можно уточнить сейчас или оставить менеджеру.')}</p>`;
  return `<section class="tour-section flight-summary"><div class="tour-section-heading"><h3>${icon('plane')} Перелёт</h3>${action}</div>${content}</section>`;
 }
