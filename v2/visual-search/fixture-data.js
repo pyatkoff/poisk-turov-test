@@ -5,6 +5,18 @@
   const text = value => typeof value === 'string' ? value : value?.name || value?.russianName || '';
   const amount = value => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : null;
   const rating = value => {const n=Number(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>0&&n<=5?n:null;};
+  // The offline graph keeps the captured wording in mealRaw, but projects the
+  // same public Russian meal identities as the live adapter. This prevents a
+  // saved supplier alias from becoming a separate customer-facing filter.
+  const mealAliases=Object.freeze({
+    RO:'Без питания','ROOM ONLY':'Без питания','NO MEAL':'Без питания','БЕЗ ПИТАНИЯ':'Без питания',
+    BB:'Завтраки',BREAKFAST:'Завтраки','BED & BREAKFAST':'Завтраки','BED AND BREAKFAST':'Завтраки','ЗАВТРАК':'Завтраки','ЗАВТРАКИ':'Завтраки','ТОЛЬКО ЗАВТРАК':'Завтраки',
+    HB:'Полупансион','HALF BOARD':'Полупансион','ПОЛУПАНСИОН':'Полупансион',
+    FB:'Полный пансион','FULL BOARD':'Полный пансион','ПОЛНЫЙ ПАНСИОН':'Полный пансион',
+    AI:'Всё включено',ALL:'Всё включено','ALL INCLUSIVE':'Всё включено','ВСЕ ВКЛЮЧЕНО':'Всё включено','ВСЁ ВКЛЮЧЕНО':'Всё включено',
+    UAI:'Ультра всё включено','ULTRA ALL INCLUSIVE':'Ультра всё включено','УЛЬТРА ВСЕ ВКЛЮЧЕНО':'Ультра всё включено','УЛЬТРА ВСЁ ВКЛЮЧЕНО':'Ультра всё включено'
+  });
+  const meal=value=>{const label=text(value).trim(),normalized=label.toLocaleUpperCase('ru-RU').replace(/\s+/g,' ');return mealAliases[normalized]||label;};
   const scenarios = new Set(['snapshot', 'flights', 'flight-error', 'empty', 'mixed', 'family', 'incomplete', 'price-change', 'unavailable', 'expired']);
   let scenario = new URLSearchParams(location.search).get('scenario') || 'snapshot';
   if (!scenarios.has(scenario)) scenario = 'snapshot';
@@ -24,7 +36,7 @@
         key: o.key, hotelId: h.id, variant: i, provider: decodeURIComponent(o.key).split(':')[0],
         cached: true, raw: {selectionEnabled: false, listingPriceState: 'snapshot'}, origin: 'Москва', search: clone(search),
         day: iso(Number(o.dates.match(/^\d+/)?.[0])), returnDay: iso(Number(o.dates.split('→')[1]?.match(/\d+/)?.[0])),
-        nights: 7, adults: 2, ages: [], meal: o.meal, room: o.room, operator: o.operator, flight: o.flight,
+        nights: 7, adults: 2, ages: [], meal: meal(o.meal), mealRaw: o.meal, room: o.room, operator: o.operator, flight: o.flight,
         total: Number(o.price.replace(/\D/g, '')), flightChoiceId: null
       }))
     }));
@@ -104,7 +116,7 @@
       : [leg(from, to, start, start + 275, '')];
   }
   window.AnyTourPrototypeData = Object.freeze({
-    preview: true, catalog, text, amount, meal: text, date: value => String(value || ''),
+    preview: true, catalog, text, amount, meal, date: value => String(value || ''),
     get initialSearch() {return scenarioSearch();}, clockStart: '2026-09-24', describe, get scenario() {return scenario;},
     async init() {await ready; return {origin: 'Москва', ...catalog};},
     async countries() {await ready; return {origin: 'Москва', ...catalog};},

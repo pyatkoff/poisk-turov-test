@@ -285,6 +285,12 @@ test('canonical mealPlanId owns top-level taxonomy while raw meal stays detail',
  assert.equal(h.data.mealPlan({provider:'tourvisor',meal:{id:7,name:'anything'}},'tourvisor').id,7,'reviewed native ID is authoritative');
  assert.equal(h.data.mealPlan({provider:'tourvisor',meal:{name:'On Request'}},'tourvisor'),null,'raw label never invents a plan');
 });
+test('common breakfast spellings share the canonical Russian display label',async()=>{
+ const h=harness();
+ for(const label of ['BB','Breakfast','Bed & Breakfast','Bed and Breakfast','Завтраки']){
+  assert.equal(h.data.meal(label),'Завтраки',label+' must not create a separate live facet');
+ }
+});
 test('supplier meal scope uses reviewed canonical native IDs, not aliases',async()=>{
  const h=harness();canonicalMeals(h);
  const scope=filters=>h.data.supplierScope(filters);
