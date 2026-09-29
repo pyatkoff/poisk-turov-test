@@ -1,0 +1,149 @@
+name: SEARCH destination identity current census v2
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - 'scripts/diagnostics/search3_destination_identity_current_census_v2.php'
+      - 'tests/search3_destination_identity_current_census_v2_test.php'
+      - '.github/workflows/search3-destination-identity-current-census-v2.yml'
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: search3-destination-identity-current-census-1646-20260924-v2
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: search3-destination-identity-current-census-1646-20260924-v2
+  CLAIM_COMMENT_ID: '5821524024'
+  SCRIPT_PATH: scripts/diagnostics/search3_destination_identity_current_census_v2.php
+  TEST_PATH: tests/search3_destination_identity_current_census_v2_test.php
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify read-only contract
+        run: |
+          set -euo pipefail
+          php -l "$SCRIPT_PATH"
+          php -l "$TEST_PATH"
+          php "$TEST_PATH"
+
+  current-census:
+    needs: contract
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.user.id == 226193297 &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact claim and source shape
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          body="$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM_COMMENT_ID" --jq .body)"
+          author="$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM_COMMENT_ID" --jq .user.id)"
+          test "$author" = 226193297
+          [[ "$body" == *"$OPERATION_ID"* ]]
+          [[ "$body" == *"$SCRIPT_PATH"* ]]
+          [[ "$body" == *"READ ONLY"* || "$body" == *"read-only"* ]]
+          test "$(git diff --name-only "${{ github.event.pull_request.base.sha }}"..HEAD | sort | tr '\n' ' ')" = ".github/workflows/search3-destination-identity-current-census-v2.yml scripts/diagnostics/search3_destination_identity_current_census_v2.php tests/search3_destination_identity_current_census_v2_test.php "
+          php -l "$SCRIPT_PATH"
+          php "$TEST_PATH"
+          printf '{"operation":"%s","sourceSha":"%s","state":"reserved_before_db","databaseWrites":0,"mappingWrites":0,"providerCalls":0,"siteFileWrites":0}\n' "$OPERATION_ID" "$HEAD_SHA" > reservation.json
+      - name: Retain pre-DB reservation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-destination-census-reservation-${{ github.run_id }}
+          path: reservation.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          for _ in range(90):
+              req=urllib.request.Request(url,headers=headers)
+              with urllib.request.urlopen(req,timeout=30) as f:
+                  runs=[r for r in json.load(f)['workflow_runs'] if r['name']=='Security guard']
+              if runs:
+                  run=max(runs,key=lambda r:r['id'])
+                  if run['status']=='completed':
+                      if run['conclusion']!='success':
+                          raise SystemExit('security_not_green')
+                      print('SECURITY_OK',run['id'])
+                      break
+              time.sleep(4)
+          else:
+              raise SystemExit('security_timeout')
+          PY
+      - name: Execute CURRENT MySQL census without server writes
+        env:
+          PREVIEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          PREVIEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PREVIEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p terminal
+          key="$RUNNER_TEMP/search3-destination-census-key"
+          known="$RUNNER_TEMP/search3-destination-census-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$PREVIEW_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$PREVIEW_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$PREVIEW_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keyscan -T 15 -t ed25519 "$PREVIEW_HOST" > "$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$PREVIEW_USER@$PREVIEW_HOST"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" SEARCH3_SOURCE_SHA='$HEAD_SHA' SEARCH3_DESTINATION_CENSUS=1 php" < "$SCRIPT_PATH" > terminal/result.json
+          python3 - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('terminal/result.json')
+          data=json.loads(p.read_text())
+          assert data['operation']=='search3-destination-identity-current-census-1646-20260924-v2'
+          assert data['state']=='completed_read_only'
+          assert data['safeToApply'] is False
+          assert data['databaseWrites']==data['mappingWrites']==data['providerCalls']==data['siteFileWrites']==0
+          print(json.dumps(data,ensure_ascii=False,indent=2,sort_keys=True))
+          PY
+      - name: Retain sanitized terminal census
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-destination-current-census-${{ github.run_id }}
+          path: terminal/result.json
+          if-no-files-found: warn
+          retention-days: 30
