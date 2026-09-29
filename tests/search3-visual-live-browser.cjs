@@ -171,6 +171,9 @@ const server=http.createServer((req,res)=>{
   if(!await tvOffer.isVisible())await tvOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
   await tvOffer.click();await page.locator('[data-action="start-lead"]').click();await page.locator('#prototype-lead-form').waitFor();
   assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
+  assert.match(await page.locator('.tour-fuel-disclosure').textContent(),/включён в цену/);
+  assert.match(await page.locator('#modal-footer').textContent(),/Цена предложения/);
+  assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/120000/,'fuel is already part of the supplier total');
   const quoteOnlyCalls=transport.calls.length;
   await page.screenshot({path:path.join(evidence,`application-without-flight-${width}.png`)});
   await page.locator('[data-action="close-modal"]').click();
@@ -184,7 +187,7 @@ const server=http.createServer((req,res)=>{
   assert((await page.locator('#detail-total').textContent()).replace(/\s/g,'').includes('133500'));
   await page.locator('[data-action="confirm-tour"]').click();
   assert.match((await page.locator('#modal-body .tour-fuel-disclosure').textContent()).replace(/\s/g,''),/20686₽/);
-  assert.match(await page.locator('#modal-footer').textContent(),/Цена с выбранными рейсами · включение сбора уточняется/);
+  assert.match(await page.locator('#modal-footer').textContent(),/Цена с выбранными рейсами · сбор включён/);
   await page.screenshot({path:path.join(evidence,`application-fuel-${width}.png`)});
   await page.locator('[name="name"]').fill('Тестовый турист');await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="comment"]').fill('Тестовый комментарий');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
