@@ -49,6 +49,7 @@ const server=http.createServer((req,res)=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{for(const width of [390,768,1280]){
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  let releaseInitialCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
   await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
   let releaseAnexQuote,markAnexQuotePending;const anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
   let releaseSamoPair;const samoPairGate=new Promise(resolve=>releaseSamoPair=resolve);
@@ -58,8 +59,16 @@ const server=http.createServer((req,res)=>{
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
    try{const value=await transport.json(req.url(),{body:req.postData()});if(value.kind==='country'&&value.items)value.items.push(...['Египет','ОАЭ','Таиланд','Вьетнам','Мальдивы','Шри-Ланка','Китай','Россия','Австрия','Саудовская Аравия'].map((name,i)=>({id:100+i,kind:'country',parentId:null,name,slug:'test-country-'+i,revision:1,tourvisorIds:[String(100+i)]})));if(value.data?.state==='flight_selection_required')value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(JSON.parse(req.postData()||'{}').action==='quote_select_flights')await samoPairGate;if(u.pathname.includes('anex')&&value.data?.status==='quote_verified')await new Promise(resolve=>{releaseAnexQuote=resolve;markAnexQuotePending();});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
   });
-  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}));
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
+  const hydrationControls=page.locator('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget');
+  assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true','initial form discloses catalog/URL hydration');
+  assert.equal(await hydrationControls.evaluateAll(controls=>controls.every(control=>control.disabled)),true,'initial controls cannot accept input that URL hydration would overwrite');
+  releaseInitialCatalog();delete transport.state.countryGates['1'];
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'false');
+  assert.equal(await page.locator('#quick-stars [data-value="4"]').getAttribute('aria-pressed'),'true','URL stars restore after delayed catalog hydration');
+  assert.equal(await page.locator('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'false','a locked pre-hydration control cannot replace URL state');
+  await page.locator('#quick-stars [data-action="any-stars"]').click();
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
   let initialInvalidBudgetBlocked=false;
   if(width===1280){
