@@ -1,0 +1,98 @@
+name: MATCH COMMON4 v26 recovery v27
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_common4_v26_recovery_v27.php'
+      - 'tests/hotel_match_common4_v26_recovery_v27_test.php'
+      - '.github/workflows/hotel-match-common4-v26-recovery-v27.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-common4-v26-recovery-1971-20260925-v27, cancel-in-progress: false}
+env:
+  OP: hotel-match-common4-retained-context-v26-recovery-1971-20260925-v27b
+  TARGET_OP: hotel-match-common4-retained-context-acquire-1971-20260925-v26
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5831239347'
+  TARGET_RESULT_SHA: 036b64868f17ca2b9f087e998c1064f3f6b1d312c7683bef4768e5f6338844c4
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-v26-recovery-v27-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_common4_v26_recovery_v27.php
+      - run: php scripts/diagnostics/hotel_match_common4_v26_recovery_v27.php --self-test
+      - run: php tests/hotel_match_common4_v26_recovery_v27_test.php
+      - run: |
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_common4_v26_recovery_v27.php
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-v26-recovery-v27-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-common4-v26-recovery-v27.yml scripts/diagnostics/hotel_match_common4_v26_recovery_v27.php tests/hotel_match_common4_v26_recovery_v27_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],os.environ['TARGET_OP'],os.environ['TARGET_RESULT_SHA'],'DB/mapping writes']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Recover sealed v26 state read-only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          recovery=".anytoour-match/operations/$OP";target=".anytoour-match/operations/$TARGET_OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_read_only_recovery','target_operation':os.environ['TARGET_OP'],'provider_http_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$recovery\";test -d \"\$HOME/$target\";mkdir -p \"\$HOME/$recovery/payload/scripts/diagnostics\""
+          scp "${opts[@]}" input/reservation.json "$remote:$recovery/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_common4_v26_recovery_v27.php "$remote:$recovery/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "set -eu;MATCH_RECOVERY_OPERATION_DIR=\"\$HOME/$recovery\" MATCH_TARGET_OPERATION_DIR=\"\$HOME/$target\" php \"\$HOME/$recovery/payload/scripts/diagnostics/hotel_match_common4_v26_recovery_v27.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$recovery/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$recovery/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['operation']=='hotel-match-common4-retained-context-v26-recovery-1971-20260925-v27b'
+          assert r['state']=='completed_supplier_free_v26_recovery'
+          assert r['target_operation']=='hotel-match-common4-retained-context-acquire-1971-20260925-v26'
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          assert r['raw_provider_payload_exported'] is False
+          print(json.dumps({k:r[k] for k in ['state','http_reservation_count','http_actions','legacy_context_reservation_file_count','legacy_evidence_file_count','first_context','consumed_ordinals','unconsumed_ordinals']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-common4-v26-recovery-v27-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
