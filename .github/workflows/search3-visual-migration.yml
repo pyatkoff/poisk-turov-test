@@ -97,4 +97,3 @@ jobs:
           name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}
           path: visual-live-evidence/
           if-no-files-found: warn
-

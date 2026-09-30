@@ -187,4 +187,3 @@ const cancel=()=>click('#search-return');
  await settle();assert.deepEqual(errors,[]);assert.deepEqual(requests,['./fixtures/live-search-2026-09-23.json']);
  console.log('PASS v139: reversible stars/budget/full filters, frozen prior results/URL, 48-card pagination, position, commit/repeat, desktop immediate filters, no supplier calls');dom.window.close();
 })().catch(error=>{console.error(error);dom.window.close();process.exitCode=1});
-
