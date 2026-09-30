@@ -3,6 +3,33 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const appliedSummaryControls=async(page,width,transport,evidence)=>{
+ const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
+ await summary.locator('[data-action="filters"]').first().click();
+ const star=page.locator('#filters [data-action="star"]').first(),value=await star.getAttribute('data-value');await star.click();
+ if(width<=1100)await page.locator('#apply-filters').click();
+ assert.match(await summary.locator('[data-action="filters"]').first().textContent(),new RegExp(value+' ★'),'applied summary displays selected stars');
+ await summary.locator('[data-action="meals"]').click();
+ const choice=page.locator('[data-meal-choice]:not([value=""])').first(),mealValue=await choice.getAttribute('value');
+ await choice.check();await page.locator('[data-action="apply-meals"]').click();
+ assert((await summary.locator('[data-action="meals"]').textContent()).includes(mealValue),'applied summary displays selected meal');
+ await summary.locator('[data-action="budget"]').click();await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('200000');await page.locator('[data-action="apply-budget"]').click();
+ assert.match(await summary.locator('[data-action="budget"]').textContent(),/200\s*000/,'applied summary displays the total budget');
+ if(width===390){
+  await page.setViewportSize({width:360,height:900});
+  const boxes=await summary.locator('.applied-extras button').evaluateAll(buttons=>buttons.map(el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width};}));
+  assert.equal(boxes.length,4);assert(boxes.every(b=>b.x>=0&&b.right<=360),'all four applied controls fit360px');
+  assert(boxes[2].y>=boxes[0].bottom&&Math.abs(boxes[0].x-boxes[2].x)<1,'mobile applied controls use two rows');
+  await page.screenshot({path:path.join(evidence,'applied-summary-360.png')});await page.setViewportSize({width,height:900});
+ }
+ await summary.locator('[data-action="budget"]').click();await page.locator('#budget-max').fill('999999');await page.locator('[data-action="close-modal"]').click();
+ assert.match(await summary.locator('[data-action="budget"]').textContent(),/200\s*000/,'cancelled budget does not replace the applied value');
+ await summary.locator('[data-action="budget"]').click();await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');await page.locator('[data-action="apply-budget"]').click();
+ await summary.locator('[data-action="meals"]').click();await page.locator('[data-meal-choice][value=""]').check();await page.locator('[data-action="apply-meals"]').click();
+ await summary.locator('[data-action="filters"]').first().click();await page.locator('#filters [data-action="star"]').first().click();if(width<=1100)await page.locator('#apply-filters').click();
+ assert.match(await summary.locator('[data-action="filters"]').first().textContent(),/Любая категория/);assert.match(await summary.locator('[data-action="meals"]').textContent(),/Любое/);assert.match(await summary.locator('[data-action="budget"]').textContent(),/Без ограничений/);
+ assert.equal(transport.calls.filter(c=>c.action==='search_start').length,starts,'summary edits never repeat supplier search');
+};
 const contactLayout=async(page,width,provider)=>{
  const fields=await page.locator('#prototype-lead-form>.form-row').first().locator('label').evaluateAll(labels=>labels.map(label=>{const box=label.getBoundingClientRect();return{x:box.x,y:box.y,width:box.width,height:box.height};}));
  assert.equal(fields.length,2,provider+' keeps name and phone fields');
@@ -185,6 +212,7 @@ const server=http.createServer((req,res)=>{
   assert.match(await page.locator('.hotel-card .hotel-facts').textContent(),/Wi-Fi из локального профиля/,'legacy canonical service fact is visible on the target hotel card');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(evidence,`results-${width}.png`)});
+  await appliedSummaryControls(page,width,transport,evidence);
   const cardsBeforeDeparture=await page.locator('#cards').innerHTML(),urlBeforeDeparture=page.url(),startsBeforeDeparture=transport.calls.filter(c=>c.action==='search_start').length;
   await page.locator('#applied-search [data-action="edit-search"]').click();transport.state.countriesFailure='2';await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();
   await page.locator('#catalog-error [data-action="retry-countries"]').waitFor();assert(await page.locator('.search-submit').isDisabled());
