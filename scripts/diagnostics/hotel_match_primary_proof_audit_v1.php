@@ -58,6 +58,49 @@ function pp1_producer(array $producer,int $id,array $spec): array {
         'invalid_edge_rows'=>$invalid,'edge_checks'=>$checks];
 }
 
+/** Provenance inventory only; a discovered file is never write authority. */
+function pp1_origins(string $root): array {
+    $rows=[];foreach(PM1_PAIRS as $id=>$spec)$rows[$id]=['tv_hotel_id'=>$id,'references'=>[]];
+    $out=['state'=>'completed_bounded_inventory','files_read'=>0,'bytes_read'=>0,'skipped_large_files'=>0,'invalid_files'=>0];
+    $dirs=[];
+    if(is_dir($root)&&!is_link($root))foreach(new DirectoryIterator($root) as $d){
+        if($d->isDot()||!$d->isDir()||$d->isLink()||!preg_match('/^hotel-match-[a-zA-Z0-9_-]+$/D',$d->getFilename()))continue;
+        $dirs[]=$d->getFilename();
+    }
+    sort($dirs,SORT_STRING);
+    if(count($dirs)>2000){$dirs=array_slice($dirs,0,2000);$out['state']='partial_bounded_inventory';}
+    foreach($dirs as $op){
+        $files=['result.json'];foreach(PM1_PAIRS as $id=>$spec)$files[]='tv-edge-'.$id.'-'.$spec['operator'].'.json';
+        foreach($files as $file){
+            $path=$root.'/'.$op.'/'.$file;
+            if(!is_file($path)||is_link($path))continue;
+            $size=filesize($path);
+            if($size>33554432){++$out['skipped_large_files'];$out['state']='partial_bounded_inventory';continue;}
+            if($out['files_read']>=5000||$out['bytes_read']+$size>536870912){$out['state']='partial_bounded_inventory';break 2;}
+            ++$out['files_read'];$out['bytes_read']+=$size;
+            try{
+                $raw=file_get_contents($path);$hash=hash('sha256',$raw);
+                $value=pm1_read($root,$op.'/'.$file,$hash,33554432);
+            }catch(Throwable $e){++$out['invalid_files'];continue;}
+            $edges=$file==='result.json'?($value['edges']??[]):[$value];
+            if(!is_array($edges)||!array_is_list($edges)){++$out['invalid_files'];continue;}
+            foreach($edges as $index=>$edge){
+                if(!is_array($edge))continue;
+                $id=(int)($edge['tv_hotel_id']??0);$spec=PM1_PAIRS[$id]??null;
+                if(!$spec||(int)($edge['operator_id']??0)!==$spec['operator'])continue;
+                $ids=$edge['positive_native_candidates']??null;
+                if(!is_array($ids)||count($ids)!==1||!is_scalar(reset($ids))||(string)reset($ids)!==$spec['native'])continue;
+                if(count($rows[$id]['references'])>=100){$out['state']='partial_bounded_inventory';continue;}
+                $failed=pp1_edge_failures($edge,$id,$spec);
+                $rows[$id]['references'][]=['source_operation'=>$op,'file'=>$file,'sha256'=>$hash,
+                    'json_pointer'=>$file==='result.json'?'/edges/'.$index:'',
+                    'verified'=>$failed===[]&&pm1_tv_edge($edge,$id,$spec),'failed_fields'=>$failed];
+            }
+        }
+    }
+    $out['rows']=array_values($rows);return $out;
+}
+
 function pp1_saved(string $root): array {
     $rows=[];
     foreach(PM1_PAIRS as $id=>$spec){
@@ -75,7 +118,8 @@ function pp1_saved(string $root): array {
         $rows[]=$row;
     }
     return ['state'=>'completed_saved_proof_audit','batch'=>PM1_BATCH,'rows'=>$rows,
-        'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
+        'provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false,
+        'origin_lookup'=>pp1_origins($root)];
 }
 
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){

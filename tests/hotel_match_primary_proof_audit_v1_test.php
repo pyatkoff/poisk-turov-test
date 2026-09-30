@@ -53,5 +53,19 @@ ppcheck(pm1_terminal($dir,'hotel-match-fixture',$sha,[$result['state']])===$resu
 file_put_contents($op.'/result.json',$bytes.' ');$rejected=false;
 try{pm1_terminal($dir,'hotel-match-fixture',$sha,[$result['state']]);}catch(RuntimeException $e){$rejected=$e->getMessage()==='retained_digest';}
 ppcheck($rejected,'tampering_rejected');
-unlink($op.'/result.json');unlink($op.'/receipt.json');rmdir($op);rmdir($dir);
+unlink($op.'/result.json');unlink($op.'/receipt.json');
+$edge=ppfixture(420);$edge['operatorLink']='fixture-secret';
+file_put_contents($op.'/tv-edge-420-43.json',w76_json($edge));
+file_put_contents($op.'/result.json',w76_json(['edges'=>[$edge]]));
+$before=scandir($op);$inventory=pp1_origins($dir);
+ppcheck($inventory['state']==='completed_bounded_inventory'&&$inventory['files_read']===2,'origin_scan');
+ppcheck(array_column($inventory['rows'],'tv_hotel_id')===[420,16944,42903],'origin_fixed_scope');
+$refs=$inventory['rows'][0]['references'];
+ppcheck(count($refs)===2&&$refs[0]['json_pointer']==='/edges/0'&&$refs[1]['json_pointer']===''&&$refs[0]['verified']&&$refs[1]['verified'],'both_origin_formats');
+ppcheck($refs[1]['sha256']===hash_file('sha256',$op.'/tv-edge-420-43.json'),'origin_file_hash');
+ppcheck(!str_contains(w76_json($inventory),'fixture-secret')&&scandir($op)===$before,'origin_redaction_read_only');
+unlink($op.'/result.json');unlink($op.'/tv-edge-420-43.json');
+file_put_contents($op.'/result.json','invalid-json');
+ppcheck(pp1_origins($dir)['invalid_files']===1,'origin_invalid_json');
+unlink($op.'/result.json');rmdir($op);rmdir($dir);
 echo 'PP1_TEST_PASS '.$checks."\n";
