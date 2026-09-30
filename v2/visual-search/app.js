@@ -842,10 +842,11 @@ function restorePageReturn(){
  const saved=pageReturn;pageReturn=null;if(saved)restoreFocus(saved.focus,$('#results'));
  if(uiHistoryClosing)pendingPageReturn=saved;else finishPageReturn(saved);
 }
+function providerHistoryRoute(type){return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop,...(type==='andromeda-flights'?{outbound:$('[name="andromeda-outbound"]:checked')?.value,inbound:$('[name="andromeda-return"]:checked')?.value}:{}),...(type==='anex-quote'?{choice:$('[name="anex-package-choice"]:checked')?.value}:{})};}
 function uiRoute(){
  if($('#filter-panel').classList.contains('open')){const budget=currentFilterBudgetEdit(filterDraft?.filters);return {type:'filters',draft:filterHistorySnapshot(filterDraft),budget:budget?{minText:budget.minText,maxText:budget.maxText}:null,sections:[...expandedFilterSections],scroll:$('#filter-panel').scrollTop};}
  const type=modalType;
- if(['andromeda-flights','andromeda-verified','provider-application','anex-current','anex-additional','anex-quote','anex-application'].includes(type))return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop,...(type==='andromeda-flights'?{outbound:$('[name="andromeda-outbound"]:checked')?.value,inbound:$('[name="andromeda-return"]:checked')?.value}:{}),...(type==='anex-quote'?{choice:$('[name="anex-package-choice"]:checked')?.value}:{})};
+ if(['andromeda-flights','andromeda-verified','provider-application','anex-current','anex-additional','anex-quote','anex-application'].includes(type))return providerHistoryRoute(type);
  if(type==='departure')return {type,query:$('#departure-query')?.value||''};
  if(type==='destination')return {type,choice:{country:destinationChoice?.country,resorts:[...(destinationChoice?.resorts||[])],hotelId:destinationChoice?.hotelId||0},query:$('#destination-query')?.value||'',resolvedQuery:destinationResolvedQuery,expanded:destinationResortsExpanded,limit:destinationHotelLimit,scroll:$('#modal-body').scrollTop};
  if(type==='guests')return {type,draft:{adults:guestDraft.adults,ages:[...(guestDraft.ages||[])]}};
@@ -876,6 +877,20 @@ function leaveUIHistory(fromHistory=false){
  if(!fromHistory)rememberUIRoute();uiHistoryOpen=false;
  if(!fromHistory&&history.state?.[uiHistoryKey]){uiHistoryClosing=true;history.back();}
 }
+function restoreProviderHistoryRoute(route){
+  const o=offerFromKey(route.key),view=retainedProviderView(o),provider=route.type.startsWith('anex-')?'anex':'andromeda';
+  // History is a passive locator, never authority for a price or supplier request.
+  if(o?.provider!==provider||!view||!view.type.startsWith(provider+'-'))return false;
+  if(route.type==='provider-application'&&view.type!=='andromeda-verified'||route.type==='anex-application'&&view.type!=='anex-additional'&&!(view.type==='anex-quote'&&view.result?.state==='quote_verified'))return false;
+  if(view.type==='andromeda-flights'){selectedOffer=view.offer;renderRealOffer();}
+  if(!restoreProviderView(o))return false;
+  if(modalType==='andromeda-flights'&&!view.pending)for(const [name,value] of [['andromeda-outbound',route.outbound],['andromeda-return',route.inbound]]){const input=$$('[name="'+name+'"]').find(el=>el.value===value);if(input){input.checked=true;rememberAndromedaFlightChoice(input);}}
+  if(modalType==='anex-quote'&&!view.pending&&!view.error){const input=$$('[name="anex-package-choice"]').find(el=>el.value===route.choice);if(input){input.checked=true;retainedProviderView(o).choice=input.value;}}
+  if(route.type==='provider-application')openAndromedaApplicationPreview();
+  if(route.type==='anex-application')openAnexApplicationPreview();
+  if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;
+  return true;
+}
 function reopenUIRoute(route){
  if(!route||typeof route!=='object')return false;
  const hotel=hotels.find(h=>h.id===route.id);
@@ -890,17 +905,7 @@ function reopenUIRoute(route){
  case 'budget':openBudget(route);break;
  case 'saved-tour':case 'saved-details':return false;
  case 'andromeda-flights':case 'andromeda-verified':case 'provider-application':case 'anex-current':case 'anex-additional':case 'anex-quote':case 'anex-application':{
-  const o=offerFromKey(route.key),view=retainedProviderView(o),provider=route.type.startsWith('anex-')?'anex':'andromeda';
-  // History is a passive locator, never authority for a price or supplier request.
-  if(o?.provider!==provider||!view||!view.type.startsWith(provider+'-'))return false;
-  if(route.type==='provider-application'&&view.type!=='andromeda-verified'||route.type==='anex-application'&&view.type!=='anex-additional'&&!(view.type==='anex-quote'&&view.result?.state==='quote_verified'))return false;
-  if(view.type==='andromeda-flights'){selectedOffer=view.offer;renderRealOffer();}
-  if(!restoreProviderView(o))return false;
-  if(modalType==='andromeda-flights'&&!view.pending)for(const [name,value] of [['andromeda-outbound',route.outbound],['andromeda-return',route.inbound]]){const input=$$('[name="'+name+'"]').find(el=>el.value===value);if(input){input.checked=true;rememberAndromedaFlightChoice(input);}}
-  if(modalType==='anex-quote'&&!view.pending&&!view.error){const input=$$('[name="anex-package-choice"]').find(el=>el.value===route.choice);if(input){input.checked=true;retainedProviderView(o).choice=input.value;}}
-  if(route.type==='provider-application')openAndromedaApplicationPreview();
-  if(route.type==='anex-application')openAnexApplicationPreview();
-  if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;
+  if(!restoreProviderHistoryRoute(route))return false;
   break;
  }
  case 'selected-tour':{
@@ -1028,9 +1033,10 @@ function calendarScope(ctx){
  return {destination:destinationLabel(place),fullDestination:destinationLabel(place,true),filters:filterChipData({filters:ctx.filters}).filter(chip=>!['hotelId','resorts'].includes(chip.key))};
 }
 const calendarSourceLabel=()=>data.scenario==='live'?'Ранее найденная цена':data.scenario==='snapshot'?'Снимок 23.09 · без обновления':data.scenario==='recorded'?(hotels.some(h=>h.offers?.some(o=>o.recordingKind==='demo'))?'Демонстрационная запись':'Цена из загруженной записи'):'Демонстрационная цена';
+function calendarScopeHTML(ctx,scope){return `<details class="calendar-scope"><summary><span class="calendar-scope-label"><strong>${esc(scope.destination)}</strong><small>${esc(dateContextLabel(ctx.search))}</small></span><span class="calendar-scope-toggle">${scope.filters.length?'Фильтры: '+scope.filters.length:'Условия'}</span></summary><div class="calendar-scope-content"><p>${esc(scope.fullDestination)}</p>${ctx.search.ages.length?`<p>${esc(childAgesLabel(ctx.search.ages))}</p>`:''}${scope.filters.length?`<p>Цены с учётом выбранных условий:</p><ul>${scope.filters.map(chip=>`<li>${esc(chip.label)}</li>`).join('')}</ul>`:'<p>Без дополнительных фильтров</p>'}<p>${esc(calendarSourceLabel())}. Цена указана за весь тур и всех туристов; актуальность и наличие требуют проверки.</p><p>Прочерк означает, что подсказки цены нет. Он не означает отсутствие туров.</p></div></details>`;}
 function renderCalendarScope(){
  const ctx=dateContext,scope=calendarScope(ctx),node=$('.calendar-context');if(!node)return;
- node.innerHTML=`<details class="calendar-scope"><summary><span class="calendar-scope-label"><strong>${esc(scope.destination)}</strong><small>${esc(dateContextLabel(ctx.search))}</small></span><span class="calendar-scope-toggle">${scope.filters.length?'Фильтры: '+scope.filters.length:'Условия'}</span></summary><div class="calendar-scope-content"><p>${esc(scope.fullDestination)}</p>${ctx.search.ages.length?`<p>${esc(childAgesLabel(ctx.search.ages))}</p>`:''}${scope.filters.length?`<p>Цены с учётом выбранных условий:</p><ul>${scope.filters.map(chip=>`<li>${esc(chip.label)}</li>`).join('')}</ul>`:'<p>Без дополнительных фильтров</p>'}<p>${esc(calendarSourceLabel())}. Цена указана за весь тур и всех туристов; актуальность и наличие требуют проверки.</p><p>Прочерк означает, что подсказки цены нет. Он не означает отсутствие туров.</p></div></details>`;
+ node.innerHTML=calendarScopeHTML(ctx,scope);
 }
 function mealPreviewModel(){
  const place=currentDraftDestination(),changed=searchKey(draft)!==searchKey(state.search)||place.hotelId!==state.filters.hotelId||JSON.stringify(place.resorts)!==JSON.stringify(state.filters.resorts);
@@ -1101,12 +1107,15 @@ function openBudget(restore=null){
  if(Number.isFinite(restore?.scroll)&&restore.scroll>=0)$('#modal-body').scrollTop=restore.scroll;
 }
 
-function openDates(source='form',restore=null){
+function prepareDatePicker(source,restore){
  dateContext=createDateContext(source);const s=dateContext.search,selectedDay=source==='results'?state.selectedDate:draftSelectedDate();
  const restoredDraft=restore?.draft&&typeof restore.draft==='object'?{from:String(restore.draft.from||''),to:String(restore.draft.to||''),phase:restore.draft.phase===1?1:0}:null;
  dateDraft=restoredDraft&&!dateRangeError(restoredDraft)?restoredDraft:{from:selectedDay||s.from,to:selectedDay||s.to,phase:0};
  const firstMonth=startDay.slice(0,7)+'-01',lastMonth=endDay.slice(0,7)+'-01',restoredMonth=String(restore?.month||'');
  datePrices=new Map();calendarLoads=new Map();calendarMonth=/^\d{4}-\d{2}-01$/.test(restoredMonth)&&restoredMonth>=firstMonth&&restoredMonth<=lastMonth?restoredMonth:dateDraft.from.slice(0,7)+'-01';
+}
+function openDates(source='form',restore=null){
+ prepareDatePicker(source,restore);
  showModal('dates','Даты вылета','КАЛЕНДАРЬ ЦЕН · ЗА ВСЕХ ТУРИСТОВ',`<div class="date-choice-tools"><div class="calendar-context"></div><div class="calendar-price-key"><span>Весь тур · тыс. ₽</span><span><i class="legend-dot"></i>Минимум в месяце</span></div><div class="calendar-legend" role="status" hidden><span></span></div></div><div id="date-calendar"></div>`);
  renderCalendarScope();
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="date-footer"><div id="date-selection-price" class="date-selection-price" aria-live="polite"></div><p id="date-selection-hint" aria-live="polite"></p><p class="error-text" id="date-error" role="alert"></p><button class="primary picker-apply" data-action="apply-dates"></button></div>`;
@@ -1149,12 +1158,18 @@ function calendarSelectionPhase(){
  const phases=new Set();for(let day=dateDraft.from;day<=dateDraft.to;day=addDays(day,1))phases.add(calendarLoads.get(day.slice(0,7)+'-01')||'idle');
  return phases.has('loading')?'loading':phases.has('error')?'error':phases.has('idle')?'idle':'complete';
 }
-function renderDateSelectionPrice(){
- const node=$('#date-selection-price');if(!node)return;const from=dateDraft.from,to=dateDraft.to,values=[];
+function dateSelectionPriceModel(){
+ const from=dateDraft.from,to=dateDraft.to,values=[];
  if(from&&to&&from<=to&&(dateObj(to)-dateObj(from))/86400000<=21){for(let day=from;day<=to;day=addDays(day,1)){const p=calendarPrice(day);if(Number.isFinite(p)&&p>0)values.push(p);}}
- const phase=calendarSelectionPhase();node.setAttribute('aria-busy',String(phase==='loading'));
+ const phase=calendarSelectionPhase();
  const note=phase==='loading'?'Загружаем подсказки цен…':phase==='error'?'Не все подсказки цен загрузились.':phase==='idle'?'Подсказка цены ещё не загружена.':phase==='invalid'?'Выберите корректные даты вылета.':'На выбранные даты нет подсказки цены.';
- node.innerHTML=values.length?`<span>За весь тур · ${esc(guestsText(dateContext.search))}<small>${esc(calendarSourceLabel())}${phase==='loading'?' · загрузка продолжается':phase==='error'?' · часть цен недоступна':''}</small></span><strong>от ${money(Math.min(...values))}</strong>`:`<span>${note}<small>${phase==='complete'?'Даты можно выбрать: это не означает, что туров нет.':phase==='invalid'?'':'Даты можно выбрать, не дожидаясь цены.'}</small></span>`;
+ return {values,phase,note};
+}
+function dateSelectionPriceHTML({values,phase,note}){return values.length?`<span>За весь тур · ${esc(guestsText(dateContext.search))}<small>${esc(calendarSourceLabel())}${phase==='loading'?' · загрузка продолжается':phase==='error'?' · часть цен недоступна':''}</small></span><strong>от ${money(Math.min(...values))}</strong>`:`<span>${note}<small>${phase==='complete'?'Даты можно выбрать: это не означает, что туров нет.':phase==='invalid'?'':'Даты можно выбрать, не дожидаясь цены.'}</small></span>`;}
+function renderDateSelectionPrice(){
+ const node=$('#date-selection-price');if(!node)return;const model=dateSelectionPriceModel();
+ node.setAttribute('aria-busy',String(model.phase==='loading'));
+ node.innerHTML=dateSelectionPriceHTML(model);
 }
 function openCalendar(){openDates('results');}
 function restoredGuestDraft(value){
@@ -2014,7 +2029,6 @@ function handleResultFilterChange(t){
  if(t.id==='sort'||t.id==='mobile-sort'){if(!['recommended','price','rating'].includes(t.value))return true;state.sort=t.value;renderResults({keepFilters:true});if(t.id==='mobile-sort'){$('#cards').scrollIntoView({behavior:scrollBehavior(),block:'start'});toast(t.options[t.selectedIndex].textContent)}}
  if(t.id==='filter-section-jump'){jumpToFilterSection(t.value);return true;}
  if(t.dataset.filter){const arr=editingFilterModel().filters[t.dataset.filter],idx=arr.indexOf(t.value);if(t.checked&&idx<0)arr.push(t.value);if(!t.checked&&idx>=0)arr.splice(idx,1);filterEdited()}
- if(t.id==='filter-section-jump'){jumpToFilterSection(t.value);return true;}
  if(t.dataset.filter){const host=t.closest('.facet-options');if(host)applyFacetSearch(host);}
  if(t.dataset.filterBool){editingFilterModel().filters[t.dataset.filterBool]=t.checked;filterEdited()}
  if(['min-price','max-price'].includes(t.id))editFilterBudget();

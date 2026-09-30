@@ -41,6 +41,8 @@ jobs:
         run: |
           node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-results-rendering.cjs
+          node tests/search3-visual-passive-contexts.cjs
+          node tests/search3-visual-event-dispatch.cjs
   visual-migration:
     # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
     if: ${{ !github.event.pull_request.draft }}
