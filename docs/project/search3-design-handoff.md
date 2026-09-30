@@ -1,5 +1,25 @@
 # Search3 — работа с дизайном и передача в NEXT
 
+## Текущая подготовка переноса Sites8–10 — 30.09.2026
+
+Владелец21:08МСК: «Ну давай готовить, там правда вроде еще занято было». Подготовка выполнена; рабочие NEXT-файлы не менялись. Датированные checkpoints ниже — история, их старые следующие действия не исполнять.
+
+База release: `2bfc5a243b31f7637015f842adcd16a54d90ba9c`; опубликованный runtime O8: `dfadc988a9dd811e0680d3b38c70ee72d0e9dfa8`. O8 terminal [5916482248](https://github.com/pyatkoff/poisk-turov-test/issues/3419#issuecomment-5916482248) и docs terminal5916525620 освобождают его runtime writer/publisher/release hold. Свежая координация повторно прочитана перед подготовкой; новых NEXT-claims на последней странице не было. Подготовка не резервирует NEXT/runtime/manifest/publisher и не мешает следующему SIZE-пакету.
+
+Донор: Sites native14, source `5e4c844977a9d237c4bad724f990f2b98182b17c`, визуальные пакеты8–10. [Мобильный стенд](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=390).
+
+Готовые входы: [patch](search3-sites-to-next-prepared.patch), [база/хеши/файлы](search3-sites-to-next-prepared.json). Патч применяется только к указанной базе либо после отдельной адаптации нового head; старый app.js Sites не копировать.
+
+Состав: существующие styles.css/mobile-controls-v1.css, две видимые подписи renderSummary в текущем app.js, заголовок/подсказка календаря index.html, только соответствующие adaptedFiles хеши migration-manifest. В styles удалены54 заменяемых правила и консолидированы102 изменённых selector/context владельца. Удалены два прежних мобильных правила: общий аспект фотографии и общий44px selector звёзд, которым теперь владеют более точные правила карточки/фильтра. CSS нетто+5165B; JS−30B; HTML+124B. Это рост для визуала, не оптимизация загрузки; gzip/compiled initial/full пока не измерены.
+
+Подключение назначения доказано index.php/index.html: текущие canonical data/lifecycle/lead и ./app.js; styles.css затем mobile-controls-v1.css. index.php и O8 offer-list-v1 cold owner/loader/version locator сохранены. Supplier URLs/payload, offer identity, фильтры/черновики, арифметика цены/топлива, quote/flight/lead/Метка, logo и production не меняются.
+
+Подготовка проверена: патч чисто применяется (git apply --check); JS syntax; исходные SHA256 совпадают с post-O8 migration-manifest; JS diff ограничен одной строкой renderSummary/двумя подписями; все102 CSS delta значения присутствуют в кандидате; manifest вне изменённых adaptedFiles байтово-значимому JSON равен прежнему; PHP graph неизменён. Это статическая подготовка, не NEXT CI/browser acceptance.
+
+Sites evidence:360/390/430 и desktop; snapshot2окт→32/32; family до демозаявки/проверки с детьми0/8 и186400₽; flight-error не блокирует заявку; empty с восстановлением. Физический Safari/200% текста/live supplier/CRM не подтверждены. DESIGN_APPROVED не присвоен.
+
+Следующий этап: свежие release/claims → один runtime writer на эти пять файлов → применить/адаптировать этот пакет → один финальный Security+exact build цикл и изменённые UI сценарии → штатная накопленная NEXT публикация по отдельной актуальной координации. Не создавать hold заранее; не повторять O8 publisher/старые artifact pins; не засчитывать Sites screenshots как NEXT acceptance.
+
 Решение владельца 30.09.2026: попробовать единый процесс разработки с визуальным прототипом в Sites. Уточнение: refactor pass выполняется в соседнем диалоге.
 
 Этот документ дополняет [anytour-development.md](anytour-development.md) и [search3-product-development-plan.md](search3-product-development-plan.md). Единственная координация — [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419), продуктовая очередь SEARCH — [#1646](https://github.com/pyatkoff/poisk-turov-test/issues/1646). Здесь нет второго current_task, нового расписания или нового допуска к production.
