@@ -9,7 +9,7 @@ const server=http.createServer((req,res)=>{
  const local=path.resolve(root,url.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
  const file=fs.existsSync(local)&&fs.statSync(local).isDirectory()?path.join(local,'index.php'):local;
  if(!fs.existsSync(file)){res.writeHead(404).end();return;}
- if(file.endsWith('.php')){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; $_GET["scenario"]="snapshot"; include $argv[1];',file]));return;}
+ if(file.endsWith('.php')){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; $_GET["scenario"]="mixed"; include $argv[1];',file]));return;}
  res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'application/octet-stream');res.end(fs.readFileSync(file));
 });
 (async()=>{
@@ -23,15 +23,15 @@ const server=http.createServer((req,res)=>{
    await route.continue();
   });
   try{
-   await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=snapshot`);
+   await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=mixed`);
    const trigger=page.locator('.hotel-card [data-action="all-offers"]').first();await trigger.waitFor();assert.equal(requests,0,'form/results never download offer-list renderer');
    await trigger.click();await page.locator('[data-action="retry-offer-list"]').waitFor();assert.equal(requests,1);
    await page.locator('[data-action="retry-offer-list"]').click();while(!pending)await page.waitForTimeout(20);assert.equal(requests,2);
    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);release();await page.waitForFunction(()=>!!window.AnyTourOfferList?.create);
    assert.equal(await page.locator('#modal').evaluate(el=>el.open),false,'late load does not reopen a closed modal');
-   await trigger.click();await page.locator('.grouped-offer').first().waitFor();assert.equal(requests,2,'warm open reuses the already loaded owner');
+   await trigger.click();await page.locator('#offer-count').waitFor();await page.locator('.offer-group-heading').first().click();await page.locator('.grouped-offer').first().waitFor();assert.equal(requests,2,'warm open reuses the already loaded owner');
    if(!await page.locator('.offer-filter-disclosure').evaluate(el=>el.open))await page.locator('.offer-filter-disclosure>summary').click();
-   const room=page.locator('#offer-room');const choices=await room.locator('option').count();assert(choices>1);const selected=await room.locator('option').nth(1).getAttribute('value');await room.selectOption(selected);
+   const room=page.locator('#offer-room');const choices=await room.locator('option').count();assert(choices>=3,'mixed fixture has two actual room choices');const selected=await room.locator('option').nth(1).getAttribute('value');await room.selectOption(selected);
    assert.equal(await room.inputValue(),selected);assert(await page.locator('.grouped-offer').count()>0);
    await page.screenshot({path:path.join(evidence,`offers-${width}.png`)});
    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await page.goForward();await page.locator('#offer-room').waitFor();assert.equal(await room.inputValue(),selected,'Forward restores the same offer refinement');assert.equal(requests,2);
