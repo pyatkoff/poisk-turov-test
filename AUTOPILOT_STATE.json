@@ -1285,7 +1285,7 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: O4/O5/O6 published and accumulated browser acceptance passed",
+    "title": "Search3 NEXT: O7 served script size reduction published; source splitting remains",
     "status": "SCRIPT_OPTIMIZATION_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 3419,
@@ -1293,11 +1293,11 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Owner 2026-09-30: «Делай именно refactor pass. На данный момент упор именно на него. Потом на оптимизацию скриптов всех». After detailed NEXT target audit, owner instructed «давай делать». Continue the current bounded behavior-preserving pass; optimization follows as a separate phase. Preserve protected contracts and production gate. Latest continuation: «давай дальше делать»; owner requested fewer repeated checks for the test preview. Lean draft cadence is now implemented; the selected refactor boundaries and separately scoped visual corrections have been checked and published together. Owner then continued «давай дальше» on 2026-09-30; optimization O1 implemented, checked and published. Repeated continuation/permission questions are unnecessary within existing authorized scope.",
-    "last_fully_checked_release_sha": "ad790158e6fdccc5cf066e9caeba28bb4d2598d8",
-    "published_source_sha": "ad790158e6fdccc5cf066e9caeba28bb4d2598d8",
-    "acceptance_status": "SCRIPT_OPTIMIZATION_O1_O6_PUBLISHED_ACCUMULATED_CHECKPOINT_PASSED",
-    "next_action": "Continue measured bounded script optimization from fresh release and claims; P1–P11 refactor and O1–O6 done. NEXT sourcead790158e6fdccc5cf066e9caeba28bb4d2598d8, PR4173. Full Chromium390/768/1280 run36725716402 success (132SAMO choices/calendar/filter/application dryruns). Exact833-file source build36725574133 artifact11101264629; stock updater36726732896 SUCCESS, command5912944886 issued once, receipt11102861993 terminalpublished_update. Production/sibling unchanged; predecessor5020e9a9701a98ebe1041ae8647040fc4bd92f1d retained; noindex/lead403/supplier_searches0/real_leads0. Public app13042eb8d0b2/flight87d00cdcf18d; demo24→multiword12→unknown0→clear24, selection and186400price retained. O4 lazy resort inventory/scalar counts; O5 only two calendar consumers sort:false; O6 transient normalized row text once/update, 1000rows/fourterms4001→1001calls helper-only. Combined+149raw/+60gzip. Do not replay publisher or rebuild/deploy this docs checkpoint. PhysicalSafari/fresh real suppliers/realCRM/manager-inquiry review deferred. Preserve supplier/auth/payload/price/fuel/leads/CRM/Metrika/search scopes/generation and production gate. Design draft4164 separate. Next candidate needs measured redundant work and parity. No active runtime writer/publisher/background task remains.",
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5913891364"
+    "last_fully_checked_release_sha": "b099a12dbfaa6abd59cd5389488f0ab852da9159",
+    "published_source_sha": "b099a12dbfaa6abd59cd5389488f0ab852da9159",
+    "acceptance_status": "SCRIPT_SIZE_O7_PUBLISHED_BROADER_OPTIMIZATION_IN_PROGRESS",
+    "next_action": "Owner18:11MSK explicitly prioritizes huge JS size, not only CPU work. O7#4176 implemented/checked/published: artifact-only pinned conservative binding renaming; source owners remain readable, no statement/arithmetic compression, URLs/order/global/property/function names/arity preserved. All21 scriptfiles compiled, no duplicate runtime layer. Actual installed LIVE16 gzip bodies162418→139089bytes (-23329,-14.36%); raw587383→472743 (-114640,-19.5%); app raw313400→266763, actualgzip85002→74775. All16 after-bytes independently SHA-matched exact834-file artifact11107289562/build36737990826; app639932b027b9/flightb35f1df26831. Security36737990748/focused+FULL compiled Chromium390/768/1280+132choice36737991122 SUCCESS, normalizer132/1000 bounds/ref/expiry/identity preserved. Stock updater36738823582 command5914640839 issued once, receipt11110030207 terminalpublished_update:834files/37assets/9routes200/noindex/counter0/lead403/supplier0/reallead0. Predecessor0d8ec3729c6af0fd710e2f2a66409b2308d323d8 retained, production/sibling unchanged. Earlier840b sourceartifact superseded/no-publish. DESIGN4174 mobilefooter/quickfields included and published before O7; design4164 docs separate. P1–P11/O1–O6 prior boundaries complete, broad size optimization NOT complete. Source app remains313400bytes, data122928; next audit/extract a coherent cold presentation owner and load only on demand, measure initial+complete bytes, preserve behaviors; splitting eager files alone is not savings. Do not replay publisher or rebuild/deploy docs. PhysicalSafari/fresh real suppliers/realCRM deferred. Preserve protected supplier/auth/URLs/payload/price/fuel/leads/CRM/Metrika/generation and production gate. No active runtime writer/publisher from this lane.",
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5914734984"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
