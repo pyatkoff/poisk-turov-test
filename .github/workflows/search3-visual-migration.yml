@@ -27,6 +27,7 @@ jobs:
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
           node tests/search3-visual-lifecycle-scheduling.cjs
           node tests/search3-visual-flight-rendering.cjs
+          node tests/search3-visual-data-orchestration.cjs
           node tests/search3-visual-migration.cjs
           node tests/search3-visual-live-bridge.cjs
           node tests/search3-visual-anex-flight-continuation.cjs
