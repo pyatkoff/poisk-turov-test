@@ -1285,19 +1285,19 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: behavior-preserving refactor pass; optimization follows",
-    "status": "ACTIVE_OWNER_AUTHORIZED",
+    "title": "Search3 NEXT: refactor pass complete; script optimization next",
+    "status": "REFACTOR_COMPLETE_OPTIMIZATION_READY",
     "issue": 1646,
     "coordinator_issue": 3419,
     "pr": null,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "Owner 2026-09-30: «Делай именно refactor pass. На данный момент упор именно на него. Потом на оптимизацию скриптов всех». After detailed NEXT target audit, owner instructed «давай делать». Continue the current bounded behavior-preserving pass; optimization follows as a separate phase. Preserve protected contracts and production gate.",
-    "last_fully_checked_release_sha": "fb2ef5d736b80027432c9465e2d1fc9f15f14bfd",
-    "published_source_sha": "cb47476cb56182dd20c8a109a69eef37b288999b",
-    "acceptance_status": "REFACTOR_P5_P7_PUBLISHED_NEXT_P8_CI_CHECKED_FULL_PASS_ACTIVE",
-    "next_action": "Continue the actual result/filter/date rendering and context boundaries in LIVE visual-search/app.js from fresh release/claims with before/after characterization. P1–P7 are installed in NEXT; P8 CI dependency closure is merged. Latest installation: sourcecb47476cb56182dd20c8a109a69eef37b288999b, releasebcefc0e1cf6344337fcafaf63adc18adca660c17, command5907449550, publisher36690902732, deployment artifact11086040981:833files,36visual assets,9routes200,lead403,counter0,previous e2f9 retained, production/sibling unchanged, supplier searches0/real leads0. Public browser app hash74f5fbd18011 and no-search guest age0/close/focus spot check confirmed; physical Safari/fresh suppliers remain unverified. All source/workflow/publisher claims released. Do not replay the publisher, old LOCAL commands/claims or completed P1–P8. Full refactor is still active; optimization starts only after it. Gallery-header and SAMO mobile-form defects are separate bug packets; protected manager-inquiry contract is not authorized by this refactor.",
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5907610322"
+    "owner_request": "Owner 2026-09-30: «Делай именно refactor pass. На данный момент упор именно на него. Потом на оптимизацию скриптов всех». After detailed NEXT target audit, owner instructed «давай делать». Continue the current bounded behavior-preserving pass; optimization follows as a separate phase. Preserve protected contracts and production gate. Latest continuation: «давай дальше делать»; owner requested fewer repeated checks for the test preview. Lean draft cadence is now implemented; the selected refactor boundaries and separately scoped visual corrections have been checked and published together.",
+    "last_fully_checked_release_sha": "d2924f86012678c4e690ac6607da8104311ee77c",
+    "published_source_sha": "0a8a95faac82ae2b119f0eef4c899922f8657d2e",
+    "acceptance_status": "REFACTOR_P1_P11_PUBLISHED_NEXT_AVAILABLE_ACCEPTANCE_COMPLETE",
+    "next_action": "Begin the separate optimization pass of the actual loaded scripts, starting from fresh release/claims and measured initial/complete load plus CPU/duplicate-owner hotspots. Preserve supplier/auth/payload, raw identity/generation, price/fuel, lead/CRM/Metrika and production isolation. Refactor P1–P11 is installed in NEXT: source0a8a95faac82ae2b119f0eef4c899922f8657d2e, release d2924f86012678c4e690ac6607da8104311ee77c, command5908833329/publisher36699357485 terminal, deployment11088688978;833files/36visualassets/9routes200/lead403/counter0/noindex,previouscb47476c/rollback retained,production/sibling unchanged,supplier_searches0/real_leads0. Public app68af366631f9/CSSd9bffd400b05 and saved-snapshot gallery contrast/image/close/focus confirmed. P9/P10 before/after observations and final Security36698661314/build36698661342/full visual36698661447 passed after existing calendar-test harness dependency repair. Lean drafts keep Security+focused checks+one artifact; full matrix at review/checkpoint, publication accumulated. Physical Safari, fresh suppliers/real delivery and separate manager-inquiry contract review remain deferred. Do not replay completed publishers or refactor packets; do not merge unrelated design draft#4164 automatically.",
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5909005644"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
