@@ -804,6 +804,22 @@
     run.andromedaContinuation=null;run.anexContinuation=null;
     return true;
   }
+  // Terminal bookkeeping is synchronous: polling retains every await/guard.
+  function completeTourvisorRun(run,inventory){
+    const resultLimitReached=inventory.hotels>=5000,tvBaseline=run.continueBaselineTourvisor,baseline=run.continueBaseline;
+    const tvGrew=!run.continued||!tvBaseline||inventory.hotels>tvBaseline.hotels||inventory.offers>tvBaseline.offers;
+    const union=canonicalUnion(),after={hotels:union.hotels,offers:union.offers};
+    const unionGrew=!run.continued||!baseline||after.hotels>baseline.hotels||after.offers>baseline.offers;
+    // Preserve the established Tourvisor continuation receipt. Provider-union
+    // growth is used only when Continue has no Tourvisor continuation to report.
+    const growthBefore=tvBaseline||baseline,growthAfter=tvBaseline?inventory:after,growthGrew=tvBaseline?tvGrew:unionGrew;
+    run.tvCanContinue=!resultLimitReached&&(!run.continued||tvGrew);
+    run.andromedaCanContinue=andromedaContinuationAvailable(run);
+    run.pending=false;run.resumeOnly=false;run.canContinue=run.tvCanContinue||run.andromedaCanContinue||anexContinuationAvailable(run);
+    notify({type:'complete',canContinue:run.canContinue,continued:run.continued,resultLimitReached,
+      continuationGrowth:run.continued&&growthBefore?{before:structuredClone(growthBefore),after:structuredClone(growthAfter),grew:growthGrew}:null,
+      sources:structuredClone(run.sourceCounts),union});
+  }
   async function pollSearch(run){
     if(!current(run))return;
     try{
@@ -825,42 +841,38 @@
         clearCalendarWindows();if(!current(run))return;
         if(!run.continued&&!(await settleInitialSources(run)))return;
         if(run.continued&&!(await settleContinuedSources(run)))return;
-        const resultLimitReached=inventory.hotels>=5000,tvBaseline=run.continueBaselineTourvisor,baseline=run.continueBaseline;
-        const tvGrew=!run.continued||!tvBaseline||inventory.hotels>tvBaseline.hotels||inventory.offers>tvBaseline.offers;
-        const union=canonicalUnion(),after={hotels:union.hotels,offers:union.offers};
-        const unionGrew=!run.continued||!baseline||after.hotels>baseline.hotels||after.offers>baseline.offers;
-        // Preserve the established Tourvisor continuation receipt. Provider-union
-        // growth is used only when Continue has no Tourvisor continuation to report.
-        const growthBefore=tvBaseline||baseline,growthAfter=tvBaseline?inventory:after,growthGrew=tvBaseline?tvGrew:unionGrew;
-        run.tvCanContinue=!resultLimitReached&&(!run.continued||tvGrew);
-        run.andromedaCanContinue=andromedaContinuationAvailable(run);
-        run.pending=false;run.resumeOnly=false;run.canContinue=run.tvCanContinue||run.andromedaCanContinue||anexContinuationAvailable(run);
-        notify({type:'complete',canContinue:run.canContinue,continued:run.continued,resultLimitReached,
-          continuationGrowth:run.continued&&growthBefore?{before:structuredClone(growthBefore),after:structuredClone(growthAfter),grew:growthGrew}:null,
-          sources:structuredClone(run.sourceCounts),union});return;
+        completeTourvisorRun(run,inventory);return;
       }
       if(run.deadline&&Date.now()>=run.deadline)throw new Error('Продолжение поиска ещё не завершено. Проверьте результат повторно.');
       timer=setTimeout(()=>pollSearch(run),2500);
     }catch(error){await searchError(run,error);}
   }
-  async function resumeCached(s, callback, hotelIds=[], filters={}) {
+  // One synchronous boundary owns validation, invalidation and the new run.
+  // Keep callbacks and supplier starts in their respective public entrypoints.
+  function prepareSearchRun(s,callback,hotelIds,filters,cached){
     const plan=requestPlan(s,hotelIds,filters),p=plan.request,epoch=stop();
     currentSupplierScope=plan.scope;notify=callback;context=structuredClone(s);searchParams=structuredClone(p);
     raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
     const skipped=()=>({status:'skipped',hotels:0,offers:0});
     const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),
-      controller:new AbortController(),pending:false,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:false,
+      controller:new AbortController(),pending:!cached,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:!cached,
       continueBaseline:null,lastProgress:-10,lastRead:0,deadline:0,
-      sourceCounts:{tourvisor:skipped(),anex:skipped(),andromeda:skipped(),database:skipped()}};
-    activeSearch=run;callback({type:'loading',cachedResume:true});if(!current(run))return false;
+      sourceCounts:cached
+        ?{tourvisor:skipped(),anex:skipped(),andromeda:skipped(),database:skipped()}
+        :{database:skipped()}};
+    activeSearch=run;
+    return {run,params:p};
+  }
+  async function resumeCached(s, callback, hotelIds=[], filters={}) {
+    const {run}=prepareSearchRun(s,callback,hotelIds,filters,true);
+    callback({type:'loading',cachedResume:true});if(!current(run))return false;
     notify({type:'complete',cachedResume:true,partial:false,canContinue:false,retryRead:false,resultLimitReached:false,
       sources:structuredClone(run.sourceCounts),union:canonicalUnion()});
     return true;
   }
   async function search(s, callback, hotelIds=[], filters={}) {
-    const plan=requestPlan(s,hotelIds,filters),p=plan.request,epoch=stop();currentSupplierScope=plan.scope;notify=callback;context=structuredClone(s);searchParams=structuredClone(p);raw=[];searchId=0;rt.setSearchId(0);owner?.reset();
-    const run={generation:epoch,search:structuredClone(s),hotelIds:[...hotelIds],filters:structuredClone(filters),controller:new AbortController(),pending:true,searchId:0,resumeOnly:true,continued:false,expired:false,canContinue:true,continueBaseline:null,lastProgress:-10,lastRead:0,deadline:0,sourceCounts:{database:{status:'skipped',hotels:0,offers:0}}};
-    activeSearch=run;callback({type:'loading'});if(!current(run))return;
+    const {run,params:p}=prepareSearchRun(s,callback,hotelIds,filters,false);
+    callback({type:'loading'});if(!current(run))return;
     run.andromeda=enrichAndromeda(run,p);
     run.anex=enrichAnex(run,p);
     notify({type:'provider',provider:'tourvisor',status:'loading'});if(!current(run))return;
@@ -871,6 +883,16 @@
       run.searchId=searchId;rt.setSearchId(searchId);
       timer=setTimeout(()=>pollSearch(run),1000);
     }catch(error){await searchError(run,error);}
+  }
+  // Provider-only continuation deliberately reports union growth, not TV growth.
+  function completeProviderRun(run){
+    const baseline=run.continueBaseline,union=canonicalUnion(),after={hotels:union.hotels,offers:union.offers};
+    const grew=!baseline||after.hotels>baseline.hotels||after.offers>baseline.offers;
+    run.andromedaCanContinue=andromedaContinuationAvailable(run);run.pending=false;run.resumeOnly=false;
+    run.canContinue=run.andromedaCanContinue||anexContinuationAvailable(run);
+    notify({type:'complete',canContinue:run.canContinue,continued:true,resultLimitReached:false,
+      continuationGrowth:baseline?{before:structuredClone(baseline),after:structuredClone(after),grew}:null,
+      sources:structuredClone(run.sourceCounts),union});
   }
   async function continueSearch(){
     const run=activeSearch;
@@ -903,13 +925,7 @@
       }
       if(!(await settleContinuedSources(run)))return false;
       if(!current(run))return false;
-      const baseline=run.continueBaseline,union=canonicalUnion(),after={hotels:union.hotels,offers:union.offers};
-      const grew=!baseline||after.hotels>baseline.hotels||after.offers>baseline.offers;
-      run.andromedaCanContinue=andromedaContinuationAvailable(run);run.pending=false;run.resumeOnly=false;
-      run.canContinue=run.andromedaCanContinue||anexContinuationAvailable(run);
-      notify({type:'complete',canContinue:run.canContinue,continued:true,resultLimitReached:false,
-        continuationGrowth:baseline?{before:structuredClone(baseline),after:structuredClone(after),grew}:null,
-        sources:structuredClone(run.sourceCounts),union});
+      completeProviderRun(run);
       return current(run);
     }catch(error){await searchError(run,error);return false;}
   }
