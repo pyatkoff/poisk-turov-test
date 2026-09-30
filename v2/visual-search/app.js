@@ -159,7 +159,7 @@ function cancelSearchEdit(){
 }
 const hotelPlaces=h=>[...new Set([h.subRegion,h.region,h.resort].map(value=>String(value||'').trim()).filter(Boolean))];
 function hotelMatch(h,f=state.filters,s=state.search,onlyFavorites=state.onlyFavorites){
- const places=hotelPlaces(h);
+ const places=f.resorts.length?hotelPlaces(h):null;
  return h.country===s.country&&(!f.hotelId||h.id===f.hotelId)
   &&matchesHotelQuery(h,f.q)
   &&(!f.stars.length||f.stars.includes(h.stars))
@@ -357,7 +357,7 @@ function updateNav(){
 let filterDraft=null,emptySuggestions=[],drawerSuggestions=[],filterBudgetEdit=null;
 const appliedFilterModel=()=>({filters:state.filters,onlyFavorites:state.onlyFavorites,selectedDate:state.selectedDate});
 const editingFilterModel=()=>filterDraft||appliedFilterModel();
-const countMatchingHotels=model=>hotels.filter(h=>hotelOffers(h,{...model,firstOnly:true}).length).length;
+const countMatchingHotels=model=>hotels.reduce((count,h)=>count+Number(hotelOffers(h,{...model,firstOnly:true}).length>0),0);
 const hotelCountText=n=>`${n} ${n%10===1&&n%100!==11?'отель':n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?'отеля':'отелей'}`;
 function filterChipData(model=appliedFilterModel()){
  const f=model.filters,chips=[];

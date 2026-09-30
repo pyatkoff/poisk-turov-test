@@ -80,3 +80,29 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
  assert.strictEqual(full[0],h.offers[0]);assert.strictEqual(full[999],h.offers[999]);
  console.log('PASS filter existence: 720 hotel/filter/date/shortlist cases; first-only age calls 2000->2, full 2000->1001; raw references and sorted output retained');
 }
+
+// Exercise hotel membership with the actual query normalizer, not only prices.
+function membership(source){
+ const hs=fixture(),ctx=make(source,hs),before=JSON.stringify(hs),rows=[];
+ vm.runInContext(section(source,'const normalizeSearch=','const destinationHotels=')+'\n'+source.match(/^const countMatchingHotels=[^\n]+/m)[0]+'\nglobalThis.matchingCount=countMatchingHotels;',ctx);
+ const choices=[...variants,{q:'  HOTEL--1 '},{q:'неизвестный'},{resorts:['неизвестный','Кемер']},{resorts:[' Анталья ']},{resorts:['Анталья','Анталья']}];
+ for(const a of choices)for(const b of choices)for(const selectedDate of [null,day(2)])for(const onlyFavorites of [false,true]){
+  const filters={...defaultFilters(),...a,...b},model={filters,selectedDate,onlyFavorites};
+  const ids=hs.filter(h=>ctx.hotelOffers(h,{...model,firstOnly:true}).length).map(h=>h.id);
+  assert.equal(ctx.matchingCount(model),ids.length,'scalar count matches membership');rows.push(ids);
+ }
+ assert.equal(JSON.stringify(hs),before,'membership preserves raw inputs');return rows;
+}
+{
+ const rows=membership(source),hash=crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex');
+ assert.equal(hash,'bea2e770dcfadef635f51c7f05e9359a5edc74e42f964e008c3596e8d2f10e11','pinned original hotel membership');
+ if(compare>=0)assert.deepEqual(rows,membership(fs.readFileSync(process.argv[compare+1],'utf8')),'original/candidate hotel membership');
+ assert.notDeepEqual(rows,membership(source.replace('!f.resorts.length||f.resorts.some','true||f.resorts.some')),'resort predicate mutation detected');
+ const hs=Array.from({length:1047},(_,i)=>({...fixture()[1],id:i+1})),ctx=make(source,hs);
+ vm.runInContext('globalThis.placeCalls=0;const RealSet=Set;globalThis.Set=class extends RealSet{constructor(...args){super(...args);placeCalls++;}};',ctx);
+ for(let i=0;i<30;i++)for(const h of hs)ctx.hotelOffers(h,{onlyFavorites:false,firstOnly:true});
+ assert.equal(ctx.placeCalls,0,'empty resort filter allocates no place inventories');
+ ctx.hotelOffers(hs[0],{onlyFavorites:false,filters:{...defaultFilters(),resorts:['missing','Кемер']},firstOnly:true});
+ assert.equal(ctx.placeCalls,1,'multi-resort predicate computes places once per hotel');
+ console.log(`PASS hotel membership: ${rows.length} model cases; digest ${hash}; 31410 unused resort inventories -> 0; one inventory for multi-resort match`);
+}
