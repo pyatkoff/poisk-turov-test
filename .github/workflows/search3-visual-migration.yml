@@ -2,6 +2,7 @@ name: Search3 full visual migration
 on:
   pull_request:
     branches: [release/search3-production-ready-v1]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'v2/visual-search/**'
       - 'v2/prototype-search/config.js'
@@ -24,7 +25,25 @@ on:
 permissions:
   contents: read
 jobs:
+  focused-presentation:
+    # Drafts retain affected-owner checks without installing a browser matrix.
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify affected presentation owners and CI restoration
+        run: |
+          node tests/search3-visual-ci-coverage.cjs
+          node tests/search3-visual-results-rendering.cjs
   visual-migration:
+    # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

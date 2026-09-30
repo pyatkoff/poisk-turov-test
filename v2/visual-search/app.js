@@ -606,15 +606,20 @@ function loadResultCalendar(){
   if(resultCalendar!==request)return;request.hotels=snapshot.hotels;request.observations=snapshot.observations;request.phase=snapshot.partial?'partial':'complete';renderCalendarStrip();
  }).catch(error=>{if(resultCalendar!==request||error.name==='AbortError')return;request.phase='error';renderCalendarStrip();});
 }
-function renderCalendarStrip(){
- loadResultCalendar();
+function resultCalendarModel(){
  const s=state.search,days=[];for(let day=s.from;day<=s.to;day=addDays(day,1))days.push(day);
  const calendarRows=[...hotels,...resultCalendar.hotels],prices=days.map(day=>calendarMinimum(day,{calendarHotels:calendarRows},resultCalendar.observations)),known=prices.filter(p=>p!==null),min=Math.min(...known),max=Math.max(...known);
  const source=resultCalendar.phase==='loading'?'Открываем сохранённые цены…':resultCalendar.phase==='error'?'База цен временно недоступна · показаны найденные предложения':resultCalendar.phase==='partial'?'Часть базы цен временно недоступна · показаны доступные цены и найденные предложения':calendarSourceLabel();
  const scope=calendarScope({search:s,filters:state.filters});
+ return {s,days,prices,min,max,source,scope};
+}
+function calendarStripHTML({days,prices,min,max}){return days.map((day,i)=>`<button class="date-price ${prices[i]!==null&&prices[i]===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${prices[i]!==null?', от '+money(prices[i]):', цена пока неизвестна'}${state.selectedDate===day?', выбрано; нажмите ещё раз, чтобы вернуть все даты':''}"><span class="date">${dateText(day)}</span><strong>${prices[i]===null?'—':money(prices[i])}</strong><span class="calendar-bar" style="--bar-height:${prices[i]===null?5:12+Math.round((prices[i]-min)/Math.max(1,max-min)*22)}px"></span></button>`).join('');}
+function renderCalendarStrip(){
+ loadResultCalendar();
+ const model=resultCalendarModel(),{s,source,scope}=model;
  $('#calendar-caption').textContent=source;$('#calendar-caption').title=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''}`;
  $('#price-strip').setAttribute('aria-busy',String(resultCalendar.phase==='loading'));
- $('#price-strip').innerHTML=days.map((day,i)=>`<button class="date-price ${prices[i]!==null&&prices[i]===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${prices[i]!==null?', от '+money(prices[i]):', цена пока неизвестна'}${state.selectedDate===day?', выбрано; нажмите ещё раз, чтобы вернуть все даты':''}"><span class="date">${dateText(day)}</span><strong>${prices[i]===null?'—':money(prices[i])}</strong><span class="calendar-bar" style="--bar-height:${prices[i]===null?5:12+Math.round((prices[i]-min)/Math.max(1,max-min)*22)}px"></span></button>`).join('');
+ $('#price-strip').innerHTML=calendarStripHTML(model);
  $('#clear-date').hidden=!state.selectedDate;
  refreshEmptyCalendarContext();
 }
@@ -732,16 +737,13 @@ function openHotelDetails(id){
  renderHotelRooms(id);
 }
 let renderedCardLimit=24,renderedCardScope='';
-function renderResults(options={}){
- // A changed form is a draft, not a new result set. Keep cards, pagination and
- // the shareable URL intact until Search; child pickers may still preview counts.
- if(searchEditSession){
-  if(!options.keepFilters)renderFilters();else{updateFacetCounts();syncFilterResetState();}
-  if(filterDraft)updateDrawerPreview();if(modalType==='budget')updateBudgetPreview();if(modalType==='meals'){updateMealCounts();updateMealPicker();}
-  return;
- }
- if(searchResponse.key&&searchResponse.key!==searchKey(state.search)){clearSearchTimers();searchResponse={key:searchKey(state.search),phase:'complete',operators:[...operators],pending:false};}
- const items=results(),total=items.reduce((s,r)=>s+r.offers.length,0),pristine=!state.hasSearched&&!state.onlyFavorites;
+function refreshResultFilters(options){
+ if(!options.keepFilters)renderFilters();else{updateFacetCounts();syncFilterResetState();}
+}
+function refreshResultPickerPreviews(){
+ if(filterDraft)updateDrawerPreview();if(modalType==='budget')updateBudgetPreview();if(modalType==='meals'){updateMealCounts();updateMealPicker();}
+}
+function renderResultHeadings(items,total,pristine){
  $('#results').classList.toggle('results-pristine',pristine);document.body.classList.toggle('results-pristine-active',pristine);
  $('#compact-route').textContent=`${esc(state.search.origin)} → ${destinationLabel(appliedDestination())}`;
  $('#compact-details').textContent=`${state.selectedDate?dateText(state.selectedDate):rangeText(state.search.from,state.search.to)} · ${durationText()} · ${guestsText()}`;
@@ -751,6 +753,8 @@ function renderResults(options={}){
  const failed=!pristine&&!items.length&&responseFor(state.search).phase==='error';
  $('#results-summary').textContent=pristine?'Задайте направление, даты и состав туристов — предложения появятся после поиска.':failed?`Результаты не получены · ${durationText()} · ${guestsText()}`:`${hotelCountText(items.length)} · ${total} ${total%10===1&&total%100!==11?'вариант':total%10>=2&&total%10<=4&&(total%100<12||total%100>14)?'варианта':'вариантов'} тура`;
  const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;
+}
+function renderResultCards(items){
  const cards=$('#cards'),cardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]),sameCardScope=cardScope===renderedCardScope;
  const active=document.activeElement,activeInCards=sameCardScope&&cards.contains(active),focus=activeInCards?focusReference(active,cards):null,focusAction=activeInCards?active.dataset.action:null;
  const anchor=activeInCards?active.closest('.hotel-card'):null,anchorId=anchor?.id||'',anchorTop=anchor?.getBoundingClientRect().top,anchorScroll=scrollY;
@@ -761,8 +765,20 @@ function renderResults(options={}){
   restoreFocus(focus,fallback,cards);
   if(nextAnchor&&Number.isFinite(anchorTop))window.scrollTo({top:anchorScroll+nextAnchor.getBoundingClientRect().top-anchorTop,behavior:'instant'});
  }
+}
+function renderResults(options={}){
+ // A changed form is a draft, not a new result set. Keep cards, pagination and
+ // the shareable URL intact until Search; child pickers may still preview counts.
+ if(searchEditSession){
+  refreshResultFilters(options);refreshResultPickerPreviews();
+  return;
+ }
+ if(searchResponse.key&&searchResponse.key!==searchKey(state.search)){clearSearchTimers();searchResponse={key:searchKey(state.search),phase:'complete',operators:[...operators],pending:false};}
+ const items=results(),total=items.reduce((s,r)=>s+r.offers.length,0),pristine=!state.hasSearched&&!state.onlyFavorites;
+ renderResultHeadings(items,total,pristine);
+ renderResultCards(items);
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
- renderCalendarStrip();renderActive();updateNav();renderSummary();updateURL();if(!options.keepFilters)renderFilters();else{updateFacetCounts();syncFilterResetState();}renderSearchStatus(items,total);if(filterDraft)updateDrawerPreview();if(modalType==='budget')updateBudgetPreview();if(modalType==='meals'){updateMealCounts();updateMealPicker();}
+ renderCalendarStrip();renderActive();updateNav();renderSummary();updateURL();refreshResultFilters(options);renderSearchStatus(items,total);refreshResultPickerPreviews();
 }
 function syncFilters(){renderResults();updateSearchUI();}
 function applyQuickFilters(){
@@ -1796,11 +1812,15 @@ function refreshOpenOfferList(){
  if(focus&&document.activeElement!==focus.element)restoreFocus(focus,$('#offer-count'),body);
  body.scrollTop=scroll;
 }
-function renderOfferList(reset=false){
- if(!optionalShortlistEnabled)offerView.mode='list';
+function offerListInventory(){
  const h=hotels.find(h=>h.id===offerView.id),all=hotelOffers(h),filtered=all.filter(o=>(offerView.mode==='compare'||!offerView.departure||o.day===offerView.departure)&&(!offerView.flight||o.flight===offerView.flight)&&(!offerView.room||o.room===offerView.room)&&(!offerView.meal||o.meal===offerView.meal));
  const sorted=[...filtered].sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total:a.total-b.total||a.day.localeCompare(b.day));
  const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));
+ return {h,all,filtered,groups};
+}
+function renderOfferList(reset=false){
+ if(!optionalShortlistEnabled)offerView.mode='list';
+ const {h,all,filtered,groups}=offerListInventory();
  for(const field of offerRefinementFields){
   const select=$('#offer-'+field),values=[...new Set(all.map(o=>field==='departure'?o.day:o[field]))];
   if(offerView[field]&&!values.includes(offerView[field]))values.push(offerView[field]);
