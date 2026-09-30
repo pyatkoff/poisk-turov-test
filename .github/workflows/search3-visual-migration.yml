@@ -51,6 +51,7 @@ jobs:
           node tests/search3-visual-results-rendering.cjs
           node tests/search3-visual-offer-list-lazy.cjs
           node tests/search3-visual-hotel-details-lazy.cjs
+          node tests/search3-visual-hotel-content-text.cjs
           node tests/search3-visual-passive-contexts.cjs
           node tests/search3-visual-event-dispatch.cjs
   visual-migration:
@@ -87,6 +88,7 @@ jobs:
           node tests/search3-visual-offer-list-lazy.cjs
           node tests/search3-visual-hotel-details-lazy.cjs
           node tests/search3-visual-hotel-details-rendering.cjs
+          node tests/search3-visual-hotel-content-text.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-offer-list-browser.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-hotel-details-browser.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-terminal-offer-browser.cjs
